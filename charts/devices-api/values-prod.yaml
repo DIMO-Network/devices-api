@@ -1,0 +1,75 @@
+replicaCount: 2
+image:
+  repository: dimozone/devices-api
+  pullPolicy: IfNotPresent
+  tag: 1.10.2
+cronJob:
+  enabled: false
+  schedule: 0 0 * * 0
+env:
+  ENVIRONMENT: prod
+  PORT: '8080'
+  LOG_LEVEL: info
+  DB_PORT: '5432'
+  DB_NAME: devices_api
+  DB_MAX_OPEN_CONNECTIONS: '50'
+  DB_MAX_IDLE_CONNECTIONS: '15'
+  SERVICE_NAME: devices-api
+  JWT_KEY_SET_URL: https://auth.dimo.zone/keys
+  DEPLOYMENT_BASE_URL: https://devices-api.dimo.zone
+  TOR_PROXY_URL: socks5://tor.p2p:9050
+  REDIS_USER: default
+  REDIS_CLUSTER_MODE: true
+  REDIS_TLS: true
+  INGEST_SMARTCAR_URL: http://ingest-smartcar-prod:8080
+  INGEST_SMARTCAR_TOPIC: topic.interface.ingest.smartcar
+  KAFKA_BROKERS: kafka-prod-dimo-kafka-kafka-brokers:9092
+  DEVICE_STATUS_TOPIC: topic.device.status
+  PRIVACY_FENCE_TOPIC: table.device.privacyfence
+  EVENTS_TOPIC: topic.event
+  DEVICE_DATA_INDEX_NAME: device-status-prod*
+  USERS_API_GRPC_ADDR: users-api-prod:8086
+  AWS_DOCUMENTS_BUCKET_NAME: dimo-network-documents-prod
+  DIMO_REGISTRY_CHAIN_ID: 137
+  NFT_S3_BUCKET: dimo-network-nfts-prod
+  DEFINITIONS_GRPC_ADDR: device-definitions-api-prod:8086
+  ELASTIC_DEVICE_STATUS_INDEX: device-status-prod-*
+  DIMO_REGISTRY_ADDR: '0xFA8beC73cebB9D88FF88a2f75E7D7312f2Fd39EC'
+  ENABLE_PRIVILEGES: true
+  TOKEN_EXCHANGE_JWK_KEY_SET_URL: http://dex-roles-rights-prod.prod.svc.cluster.local:5556/keys
+  VEHICLE_NFT_ADDRESS: '0xba5738a18d83d41847dffbdc6101d37c69c9b0cf'
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/auth-tls-secret: ingress/cf-origin-ca
+    nginx.ingress.kubernetes.io/auth-tls-verify-client: 'on'
+    nginx.ingress.kubernetes.io/enable-cors: 'true'
+    nginx.ingress.kubernetes.io/cors-allow-origin: https://app.dimo.zone
+    nginx.ingress.kubernetes.io/limit-rps: '9'
+    external-dns.alpha.kubernetes.io/hostname: devices-api.dimo.zone
+  hosts:
+    - host: devices-api.dimo.zone
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+resources:
+  limits:
+    cpu: 1
+    memory: 1024Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podDisruptionBudget:
+  minAvailable: 1
+kafka:
+  clusterName: kafka-prod-dimo-kafka

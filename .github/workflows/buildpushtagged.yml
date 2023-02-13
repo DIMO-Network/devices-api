@@ -1,0 +1,44 @@
+name: buildpushprod
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  build_test:
+    # The type of runner that the job will run on
+    name: buildpush
+    runs-on: self-hosted
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Get tag
+        id: tag
+        uses: dawidd6/action-get-tag@v1
+        with:
+          strip_v: true
+
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: ./resources/docker/Dockerfile
+          push: true
+          platforms: linux/amd64
+          tags: dimozone/devices-api:${{steps.tag.outputs.tag}}
+
+      - name: Update Image Version in the related HelmChart values.yaml
+        uses: fjogeleit/yaml-update-action@v0.11.1
+        with:
+          valueFile: 'charts/devices-api/values-prod.yaml'
+          propertyPath: 'image.tag'
+          value: ${{steps.tag.outputs.tag}}
+          branch: main
+          message: 'Update Image Version to ${{steps.tag.outputs.tag}}'

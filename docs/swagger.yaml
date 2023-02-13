@@ -1,0 +1,2268 @@
+basePath: /v1
+definitions:
+  apitypes.Type:
+    properties:
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  apitypes.TypedData:
+    properties:
+      domain:
+        $ref: '#/definitions/apitypes.TypedDataDomain'
+      message:
+        $ref: '#/definitions/apitypes.TypedDataMessage'
+      primaryType:
+        type: string
+      types:
+        $ref: '#/definitions/apitypes.Types'
+    type: object
+  apitypes.TypedDataDomain:
+    properties:
+      chainId:
+        $ref: '#/definitions/math.HexOrDecimal256'
+      name:
+        type: string
+      salt:
+        type: string
+      verifyingContract:
+        type: string
+      version:
+        type: string
+    type: object
+  apitypes.TypedDataMessage:
+    additionalProperties: true
+    type: object
+  apitypes.Types:
+    additionalProperties:
+      items:
+        $ref: '#/definitions/apitypes.Type'
+      type: array
+    type: object
+  big.Int:
+    type: object
+  github_com_DIMO-Network_devices-api_internal_controllers_helpers.CreateResponse:
+    properties:
+      id:
+        type: string
+    type: object
+  github_com_DIMO-Network_devices-api_internal_services.AutoPiCommandJob:
+    properties:
+      commandJobId:
+        type: string
+      commandRaw:
+        type: string
+      commandState:
+        type: string
+      lastUpdated:
+        type: string
+      result:
+        $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiCommandResult'
+    type: object
+  github_com_DIMO-Network_devices-api_internal_services.AutoPiCommandResult:
+    properties:
+      tag:
+        description: corresponds to webhook response.tag
+        type: string
+      type:
+        description: corresponds to webhook response.data.return._type
+        type: string
+      value:
+        description: corresponds to webhook response.data.return.value
+        type: string
+    type: object
+  github_com_DIMO-Network_devices-api_internal_services.AutoPiTask:
+    properties:
+      code:
+        type: integer
+      description:
+        type: string
+      error:
+        type: string
+      status:
+        type: string
+      taskId:
+        type: string
+      updatedAt:
+        type: string
+      updates:
+        description: Updates increments every time the job was updated.
+        type: integer
+    type: object
+  github_com_DIMO-Network_devices-api_internal_services.DeviceAttribute:
+    properties:
+      name:
+        type: string
+      value:
+        type: string
+    type: object
+  github_com_DIMO-Network_devices-api_internal_services.DeviceCompatibility:
+    properties:
+      capabilities:
+        items:
+          type: integer
+        type: array
+      country:
+        type: string
+      id:
+        type: string
+      region:
+        type: string
+      style:
+        type: string
+      type:
+        type: string
+      vendor:
+        type: string
+    type: object
+  github_com_DIMO-Network_devices-api_internal_services.DeviceDefinition:
+    properties:
+      compatibleIntegrations:
+        description: CompatibleIntegrations has systems this vehicle can integrate
+          with
+        items:
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceCompatibility'
+        type: array
+      deviceAttributes:
+        description: DeviceAttributes is a list of attributes for the device type
+          as defined in device_types.properties
+        items:
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceAttribute'
+        type: array
+      deviceDefinitionId:
+        type: string
+      imageUrl:
+        type: string
+      make:
+        $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceMake'
+      metadata: {}
+      name:
+        type: string
+      type:
+        $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceType'
+      vehicleData:
+        allOf:
+        - $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceVehicleInfo'
+        description: VehicleInfo will be empty if not a vehicle type
+      verified:
+        type: boolean
+    type: object
+  github_com_DIMO-Network_devices-api_internal_services.DeviceMake:
+    properties:
+      id:
+        type: string
+      logo_url:
+        $ref: '#/definitions/null.String'
+      name:
+        type: string
+      oem_platform_name:
+        $ref: '#/definitions/null.String'
+    type: object
+  github_com_DIMO-Network_devices-api_internal_services.DeviceType:
+    properties:
+      make:
+        type: string
+      model:
+        type: string
+      subModels:
+        items:
+          type: string
+        type: array
+      type:
+        description: Type is eg. Vehicle, E-bike, roomba
+        type: string
+      year:
+        type: integer
+    type: object
+  github_com_DIMO-Network_devices-api_internal_services.DeviceVehicleInfo:
+    properties:
+      base_msrp:
+        type: integer
+      driven_wheels:
+        type: string
+      epa_class:
+        type: string
+      fuel_tank_capacity_gal:
+        type: string
+      fuel_type:
+        type: string
+      mpg:
+        type: string
+      mpg_city:
+        type: string
+      mpg_highway:
+        type: string
+      number_of_doors:
+        type: string
+      vehicle_type:
+        description: VehicleType PASSENGER CAR, from NHTSA
+        type: string
+    type: object
+  github_com_DIMO-Network_devices-api_internal_services.PowertrainType:
+    enum:
+    - ICE
+    - HEV
+    - PHEV
+    - BEV
+    - FCEV
+    type: string
+    x-enum-varnames:
+    - ICE
+    - HEV
+    - PHEV
+    - BEV
+    - FCEV
+  github_com_DIMO-Network_devices-api_internal_services.UserDeviceMetadata:
+    properties:
+      elasticDefinitionSynced:
+        type: boolean
+      elasticRegionSynced:
+        type: boolean
+      geoDecodedCountry:
+        type: string
+      geoDecodedStateProv:
+        type: string
+      postal_code:
+        type: string
+      powertrainType:
+        $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.PowertrainType'
+    type: object
+  grpc.Integration:
+    properties:
+      auto_pi_default_template_id:
+        type: integer
+      auto_pi_powertrain_template:
+        $ref: '#/definitions/grpc.Integration_AutoPiPowertrainTemplate'
+      id:
+        type: string
+      refresh_limit_secs:
+        type: integer
+      style:
+        type: string
+      type:
+        type: string
+      vendor:
+        type: string
+    type: object
+  grpc.Integration_AutoPiPowertrainTemplate:
+    properties:
+      BEV:
+        type: integer
+      HEV:
+        type: integer
+      ICE:
+        type: integer
+      PHEV:
+        type: integer
+    type: object
+  internal_controllers.AutoPiClaimRequest:
+    properties:
+      aftermarketDeviceSignature:
+        description: AftermarketDeviceSignature is the signature from the aftermarket
+          device.
+        type: string
+      userSignature:
+        description: UserSignature is the signature from the user, using their private
+          key.
+        type: string
+    type: object
+  internal_controllers.AutoPiCommandRequest:
+    properties:
+      command:
+        type: string
+    type: object
+  internal_controllers.AutoPiDeviceInfo:
+    properties:
+      claim:
+        allOf:
+        - $ref: '#/definitions/internal_controllers.AutoPiTransactionStatus'
+        description: Claim contains the status of the on-chain claiming meta-transaction.
+      deviceId:
+        type: string
+      dockerReleases:
+        items:
+          type: integer
+        type: array
+      ethereumAddress:
+        items:
+          type: integer
+        type: array
+      hwRevision:
+        type: string
+      isUpdated:
+        type: boolean
+      lastCommunication:
+        type: string
+      ownerAddress:
+        items:
+          type: integer
+        type: array
+      pair:
+        allOf:
+        - $ref: '#/definitions/internal_controllers.AutoPiTransactionStatus'
+        description: Pair contains the status of the on-chain pairing meta-transaction.
+      releaseVersion:
+        type: string
+      shouldUpdate:
+        type: boolean
+      template:
+        type: integer
+      tokenId:
+        $ref: '#/definitions/big.Int'
+      unitId:
+        type: string
+      unpair:
+        allOf:
+        - $ref: '#/definitions/internal_controllers.AutoPiTransactionStatus'
+        description: Unpair contains the status of the on-chain unpairing meta-transaction.
+    type: object
+  internal_controllers.AutoPiPairRequest:
+    properties:
+      externalId:
+        type: string
+      signature:
+        type: string
+    type: object
+  internal_controllers.AutoPiTransactionStatus:
+    properties:
+      createdAt:
+        description: CreatedAt is the timestamp of the creation of the meta-transaction.
+        example: "2022-10-01T09:22:21.002Z"
+        type: string
+      hash:
+        description: Hash is the hexidecimal transaction hash, available for any transaction
+          at the Submitted stage or greater.
+        example: 0x28b4662f1e1b15083261a4a5077664f4003d58cb528826b7aab7fad466c28e70
+        type: string
+      status:
+        description: Status is the state of the transaction performing this operation.
+          There are only four options.
+        enum:
+        - Unsubmitted
+        - Submitted
+        - Mined
+        - Confirmed
+        example: Mined
+        type: string
+      updatedAt:
+        description: UpdatedAt is the last time we updated the status of the transaction.
+        example: "2022-10-01T09:22:26.337Z"
+        type: string
+    type: object
+  internal_controllers.CommandRequestStatusResp:
+    properties:
+      command:
+        example: doors/unlock
+        type: string
+      createdAt:
+        example: "2022-08-09T19:38:39Z"
+        type: string
+      id:
+        example: 2D8LqUHQtaMHH6LYPqznmJMBeZm
+        type: string
+      status:
+        enum:
+        - Pending
+        - Complete
+        - Failed
+        example: Complete
+        type: string
+      updatedAt:
+        example: "2022-08-09T19:39:22Z"
+        type: string
+    type: object
+  internal_controllers.CommandResponse:
+    properties:
+      requestId:
+        type: string
+    type: object
+  internal_controllers.CreateGeofence:
+    properties:
+      h3Indexes:
+        description: 'required: false'
+        items:
+          type: string
+        type: array
+      name:
+        description: 'required: true'
+        type: string
+      type:
+        description: |-
+          one of following: "PrivacyFence", "TriggerEntry", "TriggerExit"
+          required: true
+        type: string
+      userDeviceIds:
+        description: Optionally link the geofence with a list of user device ID
+        items:
+          type: string
+        type: array
+    type: object
+  internal_controllers.DeviceOffer:
+    properties:
+      offerSets:
+        description: Contains a list of offer sets, one for each source
+        items:
+          $ref: '#/definitions/internal_controllers.OfferSet'
+        type: array
+    type: object
+  internal_controllers.DeviceRange:
+    properties:
+      rangeSets:
+        description: Contains a list of range sets, one for each range basis (may
+          be empty)
+        items:
+          $ref: '#/definitions/internal_controllers.RangeSet'
+        type: array
+    type: object
+  internal_controllers.DeviceSnapshot:
+    properties:
+      ambientTemp:
+        type: number
+      batteryCapacity:
+        type: integer
+      batteryVoltage:
+        type: number
+      chargeLimit:
+        type: number
+      charging:
+        type: boolean
+      fuelPercentRemaining:
+        type: number
+      latitude:
+        type: number
+      longitude:
+        type: number
+      odometer:
+        type: number
+      oil:
+        type: number
+      range:
+        type: number
+      recordCreatedAt:
+        type: string
+      recordUpdatedAt:
+        type: string
+      soc:
+        description: 'todo: change json to match after update frontend'
+        type: number
+      tirePressure:
+        $ref: '#/definitions/smartcar.TirePressure'
+    type: object
+  internal_controllers.DeviceValuation:
+    properties:
+      valuationSets:
+        description: Contains a list of valuation sets, one for each vendor
+        items:
+          $ref: '#/definitions/internal_controllers.ValuationSet'
+        type: array
+    type: object
+  internal_controllers.DocumentResponse:
+    properties:
+      createdAt:
+        type: string
+      ext:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      type:
+        $ref: '#/definitions/internal_controllers.DocumentTypeEnum'
+      url:
+        type: string
+      userDeviceId:
+        type: string
+    type: object
+  internal_controllers.DocumentTypeEnum:
+    enum:
+    - DriversLicense
+    - Other
+    - VehicleTitle
+    - VehicleRegistration
+    - VehicleInsurance
+    - VehicleMaintenance
+    - VehicleCustomImage
+    type: string
+    x-enum-varnames:
+    - DriversLicense
+    - Other
+    - VehicleTitle
+    - VehicleRegistration
+    - VehicleInsurance
+    - VehicleMaintenance
+    - VehicleCustomImage
+  internal_controllers.GeoFenceUserDevice:
+    properties:
+      mmy:
+        type: string
+      name:
+        type: string
+      userDeviceId:
+        type: string
+    type: object
+  internal_controllers.GetGeofence:
+    properties:
+      createdAt:
+        type: string
+      h3Indexes:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      name:
+        type: string
+      type:
+        type: string
+      updatedAt:
+        type: string
+      userDevices:
+        items:
+          $ref: '#/definitions/internal_controllers.GeoFenceUserDevice'
+        type: array
+    type: object
+  internal_controllers.GetUserDeviceIntegrationResponse:
+    properties:
+      createdAt:
+        description: CreatedAt is the creation time of this integration for this device.
+        type: string
+      externalId:
+        description: |-
+          ExternalID is the identifier used by the third party for the device. It may be absent if we
+          haven't authorized yet.
+        type: string
+      status:
+        description: Status is one of "Pending", "PendingFirstData", "Active", "Failed",
+          "DuplicateIntegration".
+        type: string
+    type: object
+  internal_controllers.MintRequest:
+    properties:
+      imageData:
+        description: ImageData contains the base64-encoded NFT PNG image.
+        type: string
+      imageDataTransparent:
+        description: |-
+          ImageDataTransparent contains the base64-encoded NFT PNG image
+          with a transparent background, for use in the app. For compatibility
+          with older versions it is not required.
+        type: string
+      signature:
+        description: Signature is the hex encoding of the EIP-712 signature result.
+        type: string
+    required:
+    - imageData
+    - signature
+    type: object
+  internal_controllers.MyDevicesResp:
+    properties:
+      sharedDevices:
+        items:
+          $ref: '#/definitions/internal_controllers.UserDeviceFull'
+        type: array
+      userDevices:
+        items:
+          $ref: '#/definitions/internal_controllers.UserDeviceFull'
+        type: array
+    type: object
+  internal_controllers.NFTAttribute:
+    properties:
+      trait_type:
+        type: string
+      value:
+        type: string
+    type: object
+  internal_controllers.NFTData:
+    properties:
+      ownerAddress:
+        description: OwnerAddress is the Ethereum address of the NFT owner.
+        items:
+          type: integer
+        type: array
+      status:
+        description: Status is the minting status of the NFT.
+        enum:
+        - Unstarted
+        - Submitted
+        - Mined
+        - Confirmed
+        example: Confirmed
+        type: string
+      tokenId:
+        example: 37
+        type: number
+      tokenUri:
+        example: https://nft.dimo.zone/37
+        type: string
+      txHash:
+        description: TxHash is the hash of the minting transaction.
+        example: 0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e
+        type: string
+    type: object
+  internal_controllers.NFTImageData:
+    properties:
+      imageData:
+        description: ImageData contains the base64-encoded NFT PNG image.
+        type: string
+      imageDataTransparent:
+        description: |-
+          ImageDataTransparent contains the base64-encoded NFT PNG image
+          with a transparent background, for use in the app. For compatibility
+          with older versions it is not required.
+        type: string
+    required:
+    - imageData
+    type: object
+  internal_controllers.NFTMetadataResp:
+    properties:
+      attributes:
+        items:
+          $ref: '#/definitions/internal_controllers.NFTAttribute'
+        type: array
+      description:
+        type: string
+      image:
+        type: string
+      name:
+        type: string
+    type: object
+  internal_controllers.Offer:
+    properties:
+      declineReason:
+        description: The reason the offer was declined from the vendor
+        type: string
+      error:
+        description: An error from the vendor (eg. when the VIN is invalid)
+        type: string
+      grade:
+        description: The grade of the offer from the vendor (eg. "RETAIL")
+        type: string
+      price:
+        description: The offer price from the vendor
+        type: integer
+      url:
+        description: The offer URL from the vendor
+        type: string
+      vendor:
+        description: The vendor of the offer (eg. "carmax", "carvana", etc.)
+        type: string
+    type: object
+  internal_controllers.OfferSet:
+    properties:
+      mileage:
+        description: The mileage used for the offers
+        type: integer
+      offers:
+        description: Contains a list of offers from the source
+        items:
+          $ref: '#/definitions/internal_controllers.Offer'
+        type: array
+      source:
+        description: The source of the offers (eg. "drivly")
+        type: string
+      updated:
+        description: The time the offers were pulled
+        type: string
+      zipCode:
+        description: This will be the zip code used (if any) for the offers request
+          regardless if the source uses it
+        type: string
+    type: object
+  internal_controllers.Privilege:
+    properties:
+      expiry:
+        type: string
+      id:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  internal_controllers.PrivilegeUser:
+    properties:
+      address:
+        type: string
+      privileges:
+        items:
+          $ref: '#/definitions/internal_controllers.Privilege'
+        type: array
+    type: object
+  internal_controllers.RangeSet:
+    properties:
+      rangeBasis:
+        description: The basis for the range calculation (eg. "MPG" or "MPG Highway")
+        type: string
+      rangeDistance:
+        description: The estimated range distance
+        type: integer
+      rangeUnit:
+        description: The unit used for the rangeDistance (eg. "miles" or "kilometers")
+        type: string
+      updated:
+        description: The time the data was collected
+        type: string
+    type: object
+  internal_controllers.RegisterDeviceIntegrationRequest:
+    properties:
+      accessToken:
+        type: string
+      code:
+        description: Code is an OAuth authorization code. Not used in all integrations.
+        type: string
+      expiresIn:
+        type: integer
+      externalId:
+        description: ExternalID is the only field needed for AutoPi registrations.
+          It is the UnitID.
+        type: string
+      redirectURI:
+        description: RedirectURI is the OAuth redirect URI used by the frontend. Not
+          used in all integrations.
+        type: string
+      refreshToken:
+        type: string
+    type: object
+  internal_controllers.RegisterUserDevice:
+    properties:
+      countryCode:
+        type: string
+      deviceDefinitionId:
+        type: string
+    type: object
+  internal_controllers.RegisterUserDeviceResponse:
+    properties:
+      deviceDefinitionId:
+        type: string
+      integrationCapabilities:
+        items:
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceCompatibility'
+        type: array
+      userDeviceId:
+        type: string
+    type: object
+  internal_controllers.RegisterUserDeviceSmartcar:
+    properties:
+      code:
+        description: Code refers to the auth code provided by smartcar when user logs
+          in
+        type: string
+      countryCode:
+        type: string
+      redirectURI:
+        type: string
+    type: object
+  internal_controllers.RegisterUserDeviceVIN:
+    properties:
+      countryCode:
+        type: string
+      vin:
+        type: string
+    type: object
+  internal_controllers.UpdateCountryCodeReq:
+    properties:
+      countryCode:
+        type: string
+    type: object
+  internal_controllers.UpdateImageURLReq:
+    properties:
+      imageUrl:
+        type: string
+    type: object
+  internal_controllers.UpdateNameReq:
+    properties:
+      name:
+        type: string
+    type: object
+  internal_controllers.UpdateVINReq:
+    properties:
+      signature:
+        description: |-
+          Signature is the hex-encoded result of the AutoPi signing the VIN. It must
+          be present to verify the VIN.
+        example: 16b15f88bbd2e0a22d1d0084b8b7080f2003ea83eab1a00f80d8c18446c9c1b6224f17aa09eaf167717ca4f355bb6dc94356e037edf3adf6735a86fc3741f5231b
+        type: string
+      vin:
+        description: |-
+          VIN is a vehicle identification number. At the very least, it must be
+          17 characters in length and contain only letters and numbers.
+        example: 4Y1SL65848Z411439
+        type: string
+    required:
+    - vin
+    type: object
+  internal_controllers.UserDeviceFull:
+    properties:
+      countryCode:
+        type: string
+      customImageUrl:
+        type: string
+      deviceDefinition:
+        $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceDefinition'
+      id:
+        type: string
+      integrations:
+        items:
+          $ref: '#/definitions/internal_controllers.UserDeviceIntegrationStatus'
+        type: array
+      metadata:
+        $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.UserDeviceMetadata'
+      name:
+        type: string
+      nft:
+        $ref: '#/definitions/internal_controllers.NFTData'
+      optedInAt:
+        type: string
+      privilegedUsers:
+        items:
+          $ref: '#/definitions/internal_controllers.PrivilegeUser'
+        type: array
+      vin:
+        type: string
+      vinConfirmed:
+        type: boolean
+    type: object
+  internal_controllers.UserDeviceIntegrationStatus:
+    properties:
+      createdAt:
+        type: string
+      externalId:
+        type: string
+      integrationId:
+        type: string
+      integrationVendor:
+        type: string
+      metadata:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  internal_controllers.ValuationSet:
+    properties:
+      mileage:
+        description: The mileage used for the valuation
+        type: integer
+      retail:
+        description: retail is equal to retailAverage when available
+        type: integer
+      retailAverage:
+        type: integer
+      retailClean:
+        description: retailClean, retailAverage, and retailRough my not always be
+          available
+        type: integer
+      retailRough:
+        type: integer
+      retailSource:
+        description: Useful when Drivly returns multiple vendors and we've selected
+          one (eg. "drivly:blackbook")
+        type: string
+      tradeIn:
+        description: tradeIn is equal to tradeInAverage when available
+        type: integer
+      tradeInAverage:
+        type: integer
+      tradeInClean:
+        description: tradeInClean, tradeInAverage, and tradeInRough my not always
+          be available
+        type: integer
+      tradeInRough:
+        type: integer
+      tradeInSource:
+        description: Useful when Drivly returns multiple vendors and we've selected
+          one (eg. "drivly:blackbook")
+        type: string
+      updated:
+        description: The time the valuation was pulled or in the case of blackbook,
+          this may be the event time of the device odometer which was used for the
+          valuation
+        type: string
+      vendor:
+        description: The source of the valuation (eg. "drivly" or "blackbook")
+        type: string
+      zipCode:
+        description: This will be the zip code used (if any) for the valuation request
+          regardless if the vendor uses it
+        type: string
+    type: object
+  math.HexOrDecimal256:
+    type: object
+  null.String:
+    properties:
+      string:
+        type: string
+      valid:
+        type: boolean
+    type: object
+  smartcar.TirePressure:
+    properties:
+      age:
+        description: 'Deprecated: Should use DataAge instead of Age'
+        type: string
+      backLeft:
+        type: number
+      backRight:
+        type: number
+      dataAge:
+        type: string
+      frontLeft:
+        type: number
+      frontRight:
+        type: number
+      requestId:
+        type: string
+      unitSystem:
+        $ref: '#/definitions/smartcar.UnitSystem'
+    type: object
+  smartcar.UnitSystem:
+    enum:
+    - metric
+    - imperial
+    type: string
+    x-enum-varnames:
+    - Metric
+    - Imperial
+info:
+  contact: {}
+  title: DIMO Devices API
+  version: "1.0"
+paths:
+  /aftermarket/device/{tokenId}:
+    get:
+      description: Retrieves NFT metadata for a given aftermarket device.
+      parameters:
+      - description: token id
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.NFTMetadataResp'
+        "404":
+          description: Not Found
+      tags:
+      - nfts
+  /aftermarket/device/{tokenId}/image:
+    get:
+      description: Returns the image for the given aftermarket device NFT.
+      parameters:
+      - description: token id
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      produces:
+      - image/png
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: Not Found
+      tags:
+      - nfts
+  /autopi/task/:taskID:
+    get:
+      description: gets the status of an autopi related task. In future could be other
+        tasks too?
+      parameters:
+      - description: task id
+        in: path
+        name: taskID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiTask'
+      security:
+      - BearerAuth: []
+      tags:
+      - integrations
+  /autopi/unit/:unitID:
+    get:
+      description: gets the information about the autopi by the unitId
+      parameters:
+      - description: autopi unit id
+        in: path
+        name: unitID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.AutoPiDeviceInfo'
+      security:
+      - BearerAuth: []
+      tags:
+      - integrations
+  /autopi/unit/:unitID/commands/claim:
+    get:
+      description: Return the EIP-712 payload to be signed for AutoPi device claiming.
+      parameters:
+      - description: AutoPi unit id
+        in: path
+        name: unitID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apitypes.TypedData'
+      security:
+      - BearerAuth: []
+    post:
+      description: Return the EIP-712 payload to be signed for AutoPi device claiming.
+      parameters:
+      - description: AutoPi unit id
+        in: path
+        name: unitID
+        required: true
+        type: string
+      - description: Signatures from the user and AutoPi
+        in: body
+        name: claimRequest
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.AutoPiClaimRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+  /autopi/unit/:unitID/is-online:
+    get:
+      description: 'gets whether the autopi is online right now, if already paired
+        with a user, makes sure user has access. returns json with {"online": true/false}'
+      parameters:
+      - description: autopi unit id
+        in: path
+        name: unitID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      security:
+      - BearerAuth: []
+      tags:
+      - integrations
+  /autopi/unit/:unitID/update:
+    post:
+      description: checks to see if autopi unit needs to be updated, and starts update
+        process if so.
+      parameters:
+      - description: autopi unit id
+        in: path
+        name: unitID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiTask'
+      security:
+      - BearerAuth: []
+      tags:
+      - integrations
+  /device-definitions:
+    get:
+      description: gets a specific device definition by make model and year
+      parameters:
+      - description: make eg TESLA
+        in: query
+        name: make
+        required: true
+        type: string
+      - description: model eg MODEL Y
+        in: query
+        name: model
+        required: true
+        type: string
+      - description: year eg 2021
+        in: query
+        name: year
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceDefinition'
+      tags:
+      - device-definitions
+  /device-definitions/:id:
+    get:
+      description: gets a specific device definition by id, adds autopi integration
+        on the fly if does not have it and year > cutoff
+      parameters:
+      - description: device definition id, KSUID format
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceDefinition'
+      tags:
+      - device-definitions
+  /device-definitions/{id}/integrations:
+    get:
+      description: gets all the available integrations for a device definition. Includes
+        the capabilities of the device with the integration
+      parameters:
+      - description: device definition id, KSUID format
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceCompatibility'
+            type: array
+      tags:
+      - device-definitions
+  /documents:
+    get:
+      consumes:
+      - application/json
+      description: gets all documents associated with current user - pulled from token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_controllers.DocumentResponse'
+            type: array
+      security:
+      - BearerAuth: []
+      tags:
+      - documents
+    post:
+      consumes:
+      - multipart/form-data
+      description: post document by id associated with current user - pulled from
+        token
+      parameters:
+      - description: The file to upload. file is required
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: The document name. name is required
+        in: formData
+        name: name
+        required: true
+        type: string
+      - description: The document type. type is required
+        in: formData
+        name: type
+        required: true
+        type: string
+      - description: The user device ID, optional
+        in: formData
+        name: userDeviceID
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_controllers.DocumentResponse'
+      security:
+      - BearerAuth: []
+      tags:
+      - documents
+  /documents/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: delete document associated with current user - pulled from token
+      parameters:
+      - description: Document ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      tags:
+      - documents
+    get:
+      consumes:
+      - application/json
+      description: get document by id associated with current user - pulled from token
+      parameters:
+      - description: Document ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.DocumentResponse'
+      security:
+      - BearerAuth: []
+      tags:
+      - documents
+  /documents/{id}/download:
+    get:
+      description: download document associated with current user - pulled from token
+      parameters:
+      - description: Document ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      - image/png
+      - image/jpeg
+      responses:
+        "200":
+          description: OK
+      security:
+      - BearerAuth: []
+      tags:
+      - documents
+  /integrations:
+    get:
+      description: gets list of integrations we have defined
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/grpc.Integration'
+            type: array
+      security:
+      - BearerAuth: []
+      tags:
+      - integrations
+  /manufacturer/{tokenId}:
+    get:
+      description: Retrieves NFT metadata for a given manufacturer.
+      parameters:
+      - description: token id
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.NFTMetadataResp'
+        "404":
+          description: Not Found
+      tags:
+      - nfts
+  /user/devices:
+    post:
+      consumes:
+      - application/json
+      description: adds a device to a user. can add with only device_definition_id
+        or with MMY, which will create a device_definition on the fly
+      parameters:
+      - description: add device to user. either MMY or id are required
+        in: body
+        name: user_device
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.RegisterUserDevice'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_controllers.RegisterUserDeviceResponse'
+      security:
+      - ApiKeyAuth: []
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/:userDeviceID/autopi/command:
+    post:
+      consumes:
+      - application/json
+      description: Closed off in prod. Submit a raw autopi command to unit. Device
+        must be registered with autopi before this can be used
+      parameters:
+      - description: raw autopi command
+        in: body
+        name: AutoPiCommandRequest
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.AutoPiCommandRequest'
+      responses:
+        "200":
+          description: OK
+      security:
+      - BearerAuth: []
+      tags:
+      - integrations
+  /user/devices/:userDeviceID/autopi/command/:jobID:
+    get:
+      description: gets the status of an autopi raw command by jobID
+      parameters:
+      - description: job id, from autopi
+        in: path
+        name: jobID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiCommandJob'
+      security:
+      - BearerAuth: []
+      tags:
+      - integrations
+  /user/devices/:userDeviceID/autopi/commands/cloud-repair:
+    post:
+      description: Re-apply AutoPi cloud actions in an attempt to get the device transmitting
+        data again.
+      parameters:
+      - description: Device id
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+  /user/devices/:userDeviceID/autopi/commands/pair:
+    get:
+      description: |-
+        Return the EIP-712 payload to be signed for AutoPi device pairing. The device must
+        either already be integrated with the vehicle, or you must provide its unit id
+        as a query parameter. In the latter case, the integration process will start
+        once the transaction confirms.
+      parameters:
+      - description: Device id
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      - description: External id, for now AutoPi unit id
+        in: query
+        name: external_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: EIP-712 message for pairing.
+          schema:
+            $ref: '#/definitions/apitypes.TypedData'
+      security:
+      - BearerAuth: []
+    post:
+      description: Submit the signature for pairing this device with its attached
+        AutoPi.
+      parameters:
+      - description: Device id
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      - description: User signature.
+        in: body
+        name: userSignature
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.AutoPiPairRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+  /user/devices/:userDeviceID/autopi/commands/unpair:
+    get:
+      description: Return the EIP-712 payload to be signed for AutoPi device unpairing.
+      parameters:
+      - description: Device id
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apitypes.TypedData'
+      security:
+      - BearerAuth: []
+    post:
+      description: Submit the signature for unpairing this device from its attached
+        AutoPi.
+      parameters:
+      - description: Device id
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      - description: User signature.
+        in: body
+        name: userSignature
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.AutoPiPairRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+  /user/devices/:userDeviceID/integrations/:integrationID:
+    post:
+      consumes:
+      - application/json
+      description: Submit credentials for registering a device with a given integration.
+      parameters:
+      - description: Integration credentials
+        in: body
+        name: userDeviceIntegrationRegistration
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.RegisterDeviceIntegrationRequest'
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      tags:
+      - integrations
+  /user/devices/{userDeviceID}:
+    delete:
+      description: delete the user device record (hard delete)
+      parameters:
+      - description: device id
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/{userDeviceID}/commands/mint:
+    get:
+      description: Returns the data the user must sign in order to mint this device.
+      parameters:
+      - description: user device ID
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apitypes.TypedData'
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+    post:
+      description: Sends a mint device request to the blockchain
+      parameters:
+      - description: user device ID
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      - description: Signature and NFT data
+        in: body
+        name: mintRequest
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.MintRequest'
+      responses:
+        "200":
+          description: OK
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/{userDeviceID}/commands/opt-in:
+    post:
+      description: Opts the device into data-sharing, and hence rewards.
+      parameters:
+      - description: user device id
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/{userDeviceID}/commands/refresh:
+    post:
+      description: Starts the process of refreshing device status from Smartcar
+      parameters:
+      - description: user device ID
+        in: path
+        name: user_device_id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "429":
+          description: rate limit hit for integration
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/{userDeviceID}/country_code:
+    patch:
+      consumes:
+      - application/json
+      description: updates the CountryCode on the user device record
+      parameters:
+      - description: Country code
+        in: body
+        name: name
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.UpdateCountryCodeReq'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/{userDeviceID}/image:
+    patch:
+      consumes:
+      - application/json
+      description: updates the ImageUrl on the user device record
+      parameters:
+      - description: Image URL
+        in: body
+        name: name
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.UpdateImageURLReq'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/{userDeviceID}/integrations/{integrationID}:
+    delete:
+      description: Remove an integration from a device.
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      tags:
+      - integrations
+    get:
+      description: Receive status updates about a Smartcar integration
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.GetUserDeviceIntegrationResponse'
+      security:
+      - BearerAuth: []
+      tags:
+      - integrations
+  /user/devices/{userDeviceID}/integrations/{integrationID}/commands/{requestID}:
+    get:
+      description: Get the status of a submitted command by request id.
+      operationId: get-command-request-status
+      parameters:
+      - description: Device ID
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      - description: Integration ID
+        in: path
+        name: integrationID
+        required: true
+        type: string
+      - description: Command request ID
+        in: path
+        name: requestID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.CommandRequestStatusResp'
+      summary: Get the status of a submitted command.
+      tags:
+      - device
+      - integration
+      - command
+  /user/devices/{userDeviceID}/integrations/{integrationID}/commands/doors/lock:
+    post:
+      description: Lock the device's doors.
+      operationId: lock-doors
+      parameters:
+      - description: Device ID
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      - description: Integration ID
+        in: path
+        name: integrationID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.CommandResponse'
+      summary: Lock the device's doors
+      tags:
+      - device
+      - integration
+      - command
+  /user/devices/{userDeviceID}/integrations/{integrationID}/commands/doors/unlock:
+    post:
+      description: Unlock the device's doors.
+      operationId: unlock-doors
+      parameters:
+      - description: Device ID
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      - description: Integration ID
+        in: path
+        name: integrationID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.CommandResponse'
+      summary: Unlock the device's doors
+      tags:
+      - device
+      - integration
+      - command
+  /user/devices/{userDeviceID}/integrations/{integrationID}/commands/frunk/open:
+    post:
+      description: Open the device's front trunk. Currently, this only works for Teslas
+        connected through Tesla.
+      operationId: open-frunk
+      parameters:
+      - description: Device ID
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      - description: Integration ID
+        in: path
+        name: integrationID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.CommandResponse'
+      summary: Open the device's front trunk
+      tags:
+      - device
+      - integration
+      - command
+  /user/devices/{userDeviceID}/integrations/{integrationID}/commands/trunk/open:
+    post:
+      description: Open the device's front trunk. Currently, this only works for Teslas
+        connected through Tesla.
+      operationId: open-trunk
+      parameters:
+      - description: Device ID
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      - description: Integration ID
+        in: path
+        name: integrationID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.CommandResponse'
+      summary: Open the device's rear trunk
+      tags:
+      - device
+      - integration
+      - command
+  /user/devices/{userDeviceID}/name:
+    patch:
+      consumes:
+      - application/json
+      description: updates the Name on the user device record
+      parameters:
+      - description: Name
+        in: body
+        name: name
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.UpdateNameReq'
+      - description: user id
+        in: path
+        name: user_device_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/{userDeviceID}/offers:
+    get:
+      description: gets offers for a particular user device
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.DeviceOffer'
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/{userDeviceID}/range:
+    get:
+      description: gets the estimated range for a particular user device
+      parameters:
+      - description: user device id
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.DeviceRange'
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/{userDeviceID}/status:
+    get:
+      description: |-
+        Returns the latest status update for the device. May return 404 if the
+        user does not have a device with the ID, or if no status updates have come
+      parameters:
+      - description: user device ID
+        in: path
+        name: user_device_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.DeviceSnapshot'
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/{userDeviceID}/valuations:
+    get:
+      description: gets valuations for a particular user device. Includes only price
+        valuations, not offers. only gets the latest valuation.
+      parameters:
+      - description: user device id
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.DeviceValuation'
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/{userDeviceID}/vin:
+    patch:
+      consumes:
+      - application/json
+      description: updates the VIN on the user device record
+      parameters:
+      - description: VIN
+        in: body
+        name: vin
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.UpdateVINReq'
+      - description: user id
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/{userDeviceId}/commands/update-nft-image:
+    post:
+      description: Updates a user's NFT image.
+      parameters:
+      - description: user device id
+        in: path
+        name: userDeviceId
+        required: true
+        type: string
+      - description: base64-encoded NFT image data
+        in: body
+        name: nftIamges
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.NFTImageData'
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/fromsmartcar:
+    post:
+      consumes:
+      - application/json
+      description: adds a device to a user by decoding VIN from Smartcar. If cannot
+        decode returns 424 or 500 if error
+      parameters:
+      - description: add device to user. all fields required
+        in: body
+        name: user_device
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.RegisterUserDeviceSmartcar'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_controllers.RegisterUserDeviceSmartcar'
+        "400":
+          description: validation failure
+        "424":
+          description: unable to decode VIN
+        "500":
+          description: server error, dependency error
+      security:
+      - ApiKeyAuth: []
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/fromvin:
+    post:
+      consumes:
+      - application/json
+      description: adds a device to a user by decoding a VIN. If cannot decode returns
+        424 or 500 if error
+      parameters:
+      - description: add device to user. VIN is required and so is country
+        in: body
+        name: user_device
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.RegisterUserDeviceVIN'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_controllers.RegisterUserDeviceResponse'
+        "400":
+          description: validation failure
+        "424":
+          description: unable to decode VIN
+        "500":
+          description: server error, dependency error
+      security:
+      - ApiKeyAuth: []
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/me:
+    get:
+      description: gets all devices associated with current user - pulled from token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.MyDevicesResp'
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/shared:
+    get:
+      description: gets all devices shared with current user - pulled from token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.MyDevicesResp'
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/geofences:
+    get:
+      description: gets all geofences for the current user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_controllers.GetGeofence'
+            type: array
+      security:
+      - ApiKeyAuth: []
+      - BearerAuth: []
+      tags:
+      - geofence
+    post:
+      consumes:
+      - application/json
+      description: adds a new geofence to the user's account, optionally attached
+        to specific user_devices
+      parameters:
+      - description: add geofence to user.
+        in: body
+        name: geofence
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.CreateGeofence'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.CreateResponse'
+      security:
+      - ApiKeyAuth: []
+      - BearerAuth: []
+      tags:
+      - geofence
+  /user/geofences/{geofenceID}:
+    delete:
+      description: hard deletes a geofence from db
+      parameters:
+      - description: geofence id
+        in: path
+        name: geofenceID
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      security:
+      - ApiKeyAuth: []
+      - BearerAuth: []
+      tags:
+      - geofence
+    put:
+      consumes:
+      - application/json
+      description: updates an existing geofence for the current user
+      parameters:
+      - description: geofence id
+        in: path
+        name: geofenceID
+        required: true
+        type: string
+      - description: add geofence to user.
+        in: body
+        name: geofence
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.CreateGeofence'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - ApiKeyAuth: []
+      - BearerAuth: []
+      tags:
+      - geofence
+  /vehicle/{tokenID}/commands/doors/lock:
+    post:
+      description: Lock the device's doors.
+      parameters:
+      - description: Token ID
+        in: path
+        name: tokenID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.CommandResponse'
+      summary: Lock the device's doors
+      tags:
+      - device
+      - integration
+      - command
+  /vehicle/{tokenID}/commands/doors/unlock:
+    post:
+      description: Unlock the device's doors.
+      parameters:
+      - description: Token ID
+        in: path
+        name: tokenID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.CommandResponse'
+      summary: Unlock the device's doors
+      tags:
+      - device
+      - integration
+      - command
+  /vehicle/{tokenID}/commands/frunk/open:
+    post:
+      description: Open the device's front trunk. Currently, this only works for Teslas
+        connected through Tesla.
+      parameters:
+      - description: Token ID
+        in: path
+        name: tokenID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.CommandResponse'
+      summary: Open the device's front trunk
+      tags:
+      - device
+      - integration
+      - command
+  /vehicle/{tokenID}/commands/trunk/open:
+    post:
+      description: Open the device's front trunk. Currently, this only works for Teslas
+        connected through Tesla.
+      parameters:
+      - description: Token ID
+        in: path
+        name: tokenID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.CommandResponse'
+      summary: Open the device's rear trunk
+      tags:
+      - device
+      - integration
+      - command
+  /vehicle/{tokenId}:
+    get:
+      description: retrieves NFT metadata for a given tokenID
+      parameters:
+      - description: token id
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.NFTMetadataResp'
+        "404":
+          description: Not Found
+      tags:
+      - nfts
+  /vehicle/{tokenId}/image:
+    get:
+      description: Returns the image for the given vehicle NFT.
+      parameters:
+      - description: token id
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      - description: whether to remove the image background
+        in: query
+        name: transparent
+        type: boolean
+      produces:
+      - image/png
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: Not Found
+      tags:
+      - nfts
+  /vehicle/{tokenId}/status:
+    get:
+      description: Returns the latest status update for the vehicle with a given token
+        id.
+      parameters:
+      - description: token id
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.DeviceSnapshot'
+        "404":
+          description: Not Found
+      tags:
+      - permission
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

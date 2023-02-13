@@ -1,0 +1,30 @@
+FROM golang:1.19.5 AS build
+
+WORKDIR /go/src/github.com/DIMO-Network/devices-api/
+COPY . /go/src/github.com/DIMO-Network/devices-api/
+
+RUN apt-get update && apt-get install -y --no-install-recommends libzmq3-dev
+
+ENV GOOS=linux
+ENV GOFLAGS=-mod=vendor
+
+RUN make
+
+FROM debian:stretch
+
+LABEL maintainer="DIMO <hello@dimo.zone>"
+
+WORKDIR /
+
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=build /etc/passwd /etc/passwd
+COPY --from=build /go/src/github.com/DIMO-Network/devices-api/target/bin/devices-api .
+COPY ./config/default.yaml /default.yaml
+
+USER dimo
+
+EXPOSE 8080
+
+ENTRYPOINT ["/devices-api"]
+
+CMD ["-c", "/default.yaml"]

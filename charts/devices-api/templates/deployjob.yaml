@@ -1,0 +1,39 @@
+{{- if .Values.deployJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "devices-api.fullname" . }}-load-dd
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "devices-api.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install, post-upgrade
+    helm.sh/hook-delete-policy: hook-succeeded
+spec:
+  schedule: {{ .Values.cronJob.schedule | quote}}
+  concurrencyPolicy: "Forbid"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          annotations:
+          {{- with .Values.podAnnotations }}
+            {{- toYaml . | nindent 8 }}
+          {{- end }}
+          labels:
+            {{- include "devices-api.selectorLabels" . | nindent 12 }}
+        spec:
+          containers:
+          - name: vehicles-sync
+            securityContext:
+              {{- toYaml .Values.securityContext | nindent 14 }}
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+            command: ['/bin/sh']
+            args: ['-c', '/devices-api smartcar-sync; CODE=$?; echo "smartcar-sync completed"; wget -q --post-data "hello=shutdown" http://localhost:4191/shutdown; exit $CODE;']
+            envFrom:
+            - configMapRef:
+                name: {{ include "devices-api.fullname" . }}-config
+            - secretRef:
+                name: {{ include "devices-api.fullname" . }}-secret
+          restartPolicy: OnFailure
+{{ end }}          

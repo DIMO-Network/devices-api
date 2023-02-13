@@ -1,0 +1,261 @@
+{
+  "componentChunkName": "component---src-templates-compatible-vehicles-template-compatible-vehicles-template-jsx",
+  "path": "/product/compatible-vehicles/",
+  "result": {
+    "data": {
+      "allMakesTable": {
+        "edges": [
+          {
+            "node": {
+              "compatibilityData": {
+                "US": [
+                  {
+                    "name": "Audi",
+                    "headers": [
+                      {
+                        "text": "Models",
+                        "tooltip": null
+                      },
+                      {
+                        "text": "Location",
+                        "tooltip": "Pinpoint a vehicle’s location by latitude and longitude."
+                      },
+                      {
+                        "text": "Odometer",
+                        "tooltip": "Retrieve accurate mileage information from your customers’ vehicles."
+                      },
+                      {
+                        "text": "Lock & unlock",
+                        "tooltip": "Enable your customers to lock and unlock their cars directly from their phones."
+                      },
+                      {
+                        "text": "EV battery",
+                        "tooltip": "Retrieve the state of charge and the remaining range of an electric vehicle’s battery."
+                      },
+                      {
+                        "text": "EV charging status",
+                        "tooltip": "Know whether an electric vehicle’s charging cable is plugged in and charging."
+                      },
+                      {
+                        "text": "EV start & stop charge",
+                        "tooltip": "Start or stop charging an electric vehicle."
+                      },
+                      {
+                        "text": "Fuel tank",
+                        "tooltip": "Retrieve the fuel tank level and the remaining range from gasoline cars."
+                      },
+                      {
+                        "text": "Tire pressure",
+                        "tooltip": "Check the air pressure on each of a vehicle’s tires."
+                      },
+                      {
+                        "text": "Engine oil life",
+                        "tooltip": "Know the remaining life span of a vehicle’s engine oil."
+                      },
+                      {
+                        "text": "Vehicle attributes",
+                        "tooltip": "Know the make, model, and year of your customers’ vehicles."
+                      },
+                      {
+                        "text": "VIN",
+                        "tooltip": "Read a car’s vehicle identification number."
+                      }
+                    ],
+                    "rows": [
+                      [
+                        {
+                          "color": null,
+                          "subtext": "2017+",
+                          "text": "A3",
+                          "type": null,
+                          "vehicleType": null
+                        },
+                        {
+                          "color": null,
+                          "subtext": null,
+                          "text": null,
+                          "type": null,
+                          "vehicleType": "ICE"
+                        },
+                        {
+                          "color": null,
+                          "subtext": null,
+                          "text": null,
+                          "type": "check",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": null,
+                          "subtext": null,
+                          "text": null,
+                          "type": "check",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": null,
+                          "subtext": null,
+                          "text": null,
+                          "type": "check",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": "unavailable",
+                          "subtext": null,
+                          "text": null,
+                          "type": "minus",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": "unavailable",
+                          "subtext": null,
+                          "text": null,
+                          "type": "minus",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": "unavailable",
+                          "subtext": null,
+                          "text": null,
+                          "type": "minus",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": null,
+                          "subtext": null,
+                          "text": null,
+                          "type": "check",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": "unavailable",
+                          "subtext": null,
+                          "text": null,
+                          "type": "minus",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": "unavailable",
+                          "subtext": null,
+                          "text": null,
+                          "type": "minus",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": null,
+                          "subtext": null,
+                          "text": null,
+                          "type": "check",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": null,
+                          "subtext": null,
+                          "text": null,
+                          "type": "check",
+                          "vehicleType": null
+                        }
+                      ],
+                      [
+                        {
+                          "color": null,
+                          "subtext": "2017+",
+                          "text": "A4",
+                          "type": null,
+                          "vehicleType": null
+                        },
+                        {
+                          "color": null,
+                          "subtext": null,
+                          "text": null,
+                          "type": null,
+                          "vehicleType": "ICE"
+                        },
+                        {
+                          "color": null,
+                          "subtext": null,
+                          "text": null,
+                          "type": "check",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": null,
+                          "subtext": null,
+                          "text": null,
+                          "type": "check",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": null,
+                          "subtext": null,
+                          "text": null,
+                          "type": "check",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": "unavailable",
+                          "subtext": null,
+                          "text": null,
+                          "type": "minus",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": "unavailable",
+                          "subtext": null,
+                          "text": null,
+                          "type": "minus",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": "unavailable",
+                          "subtext": null,
+                          "text": null,
+                          "type": "minus",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": null,
+                          "subtext": null,
+                          "text": null,
+                          "type": "check",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": "unavailable",
+                          "subtext": null,
+                          "text": null,
+                          "type": "minus",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": "unavailable",
+                          "subtext": null,
+                          "text": null,
+                          "type": "minus",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": null,
+                          "subtext": null,
+                          "text": null,
+                          "type": "check",
+                          "vehicleType": null
+                        },
+                        {
+                          "color": null,
+                          "subtext": null,
+                          "text": null,
+                          "type": "check",
+                          "vehicleType": null
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
