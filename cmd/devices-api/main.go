@@ -262,6 +262,8 @@ func main() {
 			}
 			autoPiSvc := services.NewAutoPiAPIService(&settings, pdb.DBS)
 			autoPiSvc.CreateNewTemplate(templateName, parent, description)
+		} else {
+			// TODO: return error message
 		}
 	default:
 		if settings.EnablePrivileges {

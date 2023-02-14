@@ -153,16 +153,19 @@ func (a *autoPiAPIService) AssociateDeviceToTemplate(deviceID string, templateID
 //	Parent is optional(setting to 0 creates template with no parent)
 func (a *autoPiAPIService) CreateNewTemplate(templateName string, parent int, description string) error {
 	var p postNewTemplateDetails
+	var emptyDevicesSet = []string{}
 	if parent > 0 {
 		p = postNewTemplateDetails{
 			TemplateName: templateName,
 			Parent:       parent,
 			Description:  description,
+			Devices:      emptyDevicesSet,
 		}
 	} else {
 		p = postNewTemplateDetails{
 			TemplateName: templateName,
 			Description:  description,
+			Devices:      emptyDevicesSet,
 		}
 	}
 	j, _ := json.Marshal(p)
