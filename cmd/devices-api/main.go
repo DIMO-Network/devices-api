@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -245,6 +246,23 @@ func main() {
 			logger.Fatal().Err(err).Msg("failed to sync all devices with their templates")
 		}
 		logger.Info().Msg("success")
+		//							1				2		3		4			5
+	case "autopi-tools": //   autopi-tools   templateName  [-p  parent]  description
+		if len(os.Args) > 2 {
+			templateName := os.Args[2]
+			var parent int
+			var description string
+
+			if os.Args[3] == "-p" {
+				parent, _ = strconv.Atoi(os.Args[4])
+				description = os.Args[5]
+			} else {
+				parent = 0
+				description = os.Args[4]
+			}
+			autoPiSvc := services.NewAutoPiAPIService(&settings, pdb.DBS)
+			autoPiSvc.CreateNewTemplate(templateName, parent, description)
+		}
 	default:
 		if settings.EnablePrivileges {
 			startContractEventsConsumer(logger, &settings, pdb)

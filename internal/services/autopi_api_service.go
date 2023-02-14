@@ -27,6 +27,7 @@ type AutoPiAPIService interface {
 	PatchVehicleProfile(vehicleID int, profile PatchVehicleProfile) error
 	UnassociateDeviceTemplate(deviceID string, templateID int) error
 	AssociateDeviceToTemplate(deviceID string, templateID int) error
+	CreateNewTemplate(templateName string, parent int, description string) error
 	ApplyTemplate(deviceID string, templateID int) error
 	CommandQueryVIN(ctx context.Context, unitID, deviceID, userDeviceID string) (*AutoPiCommandResponse, error)
 	CommandSyncDevice(ctx context.Context, unitID, deviceID, userDeviceID string) (*AutoPiCommandResponse, error)
@@ -144,6 +145,32 @@ func (a *autoPiAPIService) AssociateDeviceToTemplate(deviceID string, templateID
 	}
 	defer res.Body.Close() // nolint
 
+	return nil
+}
+
+// CreateNewTemplate create a new template on the AutoPi cloud by doing a put request.
+//
+//	Parent is optional(setting to 0 creates template with no parent)
+func (a *autoPiAPIService) CreateNewTemplate(templateName string, parent int, description string) error {
+	var p postNewTemplateDetails
+	if parent > 0 {
+		p = postNewTemplateDetails{
+			TemplateName: templateName,
+			Parent:       parent,
+			Description:  description,
+		}
+	} else {
+		p = postNewTemplateDetails{
+			TemplateName: templateName,
+			Description:  description,
+		}
+	}
+	j, _ := json.Marshal(p)
+	res, err := a.httpClient.ExecuteRequest("/dongle/templates/", "POST", j)
+	if err != nil {
+		return errors.Wrapf(err, "error calling autopi api to create new template")
+	}
+	defer res.Body.Close() // nolint
 	return nil
 }
 
@@ -344,6 +371,14 @@ type PatchVehicleProfile struct {
 type postDeviceIDs struct {
 	Devices         []string `json:"devices"`
 	UnassociateOnly bool     `json:"unassociate_only,omitempty"`
+}
+
+// used to create a new AutoPi template on the cloud
+type postNewTemplateDetails struct {
+	TemplateName string   `json:"templateName"`
+	Parent       int      `json:"parent,omitempty"`
+	Description  string   `json:"description"`
+	Devices      []string `json:"devices"`
 }
 
 type autoPiCommandRequest struct {
