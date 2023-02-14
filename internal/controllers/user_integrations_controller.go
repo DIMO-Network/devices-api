@@ -536,10 +536,10 @@ func (udc *UserDevicesController) GetAutoPiCommandStatus(c *fiber.Ctx) error {
 func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 	const minimumAutoPiRelease = "v1.21.9" // correct semver has leading v
 
-	unitID := c.Params("unitID")
-	v, unitID := services.ValidateAndCleanUUID(unitID)
+	rawUnitID := c.Params("unitID")
+	v, unitID := services.ValidateAndCleanUUID(rawUnitID)
 	if !v {
-		return c.SendStatus(fiber.StatusBadRequest)
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Invalid serial number: %q", rawUnitID))
 	}
 	userID := helpers.GetUserID(c)
 	// check if unitId has already been assigned to a different user - don't allow querying in this case
