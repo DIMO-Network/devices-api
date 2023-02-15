@@ -149,6 +149,9 @@ func TestUpdatedTimestamp(t *testing.T) {
 	err = c.processMessage(msg)
 	s.assert.NoError(err)
 
+	a, _ := models.NFTPrivileges().All(s.ctx, s.pdb.DBS().Reader)
+	s.assert.Equal(len(a), 1)
+
 	newNft, err := models.FindNFTPrivilege(s.ctx, s.pdb.DBS().Reader, args.contract.Bytes(), args.tokenID, args.privilegeID, args.userAddress.Bytes())
 	s.assert.NoError(err)
 
@@ -169,6 +172,7 @@ func TestUpdatedTimestamp(t *testing.T) {
 	}
 
 	s.assert.Equal(expected, actual, "Event was updated successful")
+	s.assert.NotEqual(oldNft.UpdatedAt, newNft.UpdatedAt)
 }
 
 // Utility/Helper functions
