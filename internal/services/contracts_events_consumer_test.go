@@ -85,6 +85,7 @@ func initCEventsTestHelper(t *testing.T) cEventsTestHelper {
 }
 
 func (s cEventsTestHelper) destroy() {
+	test.TruncateTables(s.pdb.DBS().Writer.DB, s.t)
 	if err := s.container.Terminate(s.ctx); err != nil {
 		s.t.Fatal(err)
 	}
