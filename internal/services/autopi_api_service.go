@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -155,19 +156,14 @@ func (a *autoPiAPIService) AssociateDeviceToTemplate(deviceID string, templateID
 func (a *autoPiAPIService) CreateNewTemplate(templateName string, parent int, description string) (int, error) {
 	var p postNewTemplateRequest
 	var emptyDeviceSet []string
+
+	p = postNewTemplateRequest{
+		TemplateName: templateName,
+		Description:  description,
+		Devices:      emptyDeviceSet,
+	}
 	if parent > 0 {
-		p = postNewTemplateRequest{
-			TemplateName: templateName,
-			Parent:       parent,
-			Description:  description,
-			Devices:      emptyDeviceSet,
-		}
-	} else {
-		p = postNewTemplateRequest{
-			TemplateName: templateName,
-			Description:  description,
-			Devices:      emptyDeviceSet,
-		}
+		p.Parent = parent
 	}
 	j, _ := json.Marshal(p)
 	res, err := a.httpClient.ExecuteRequest("/dongle/templates/", "POST", j)
@@ -176,10 +172,22 @@ func (a *autoPiAPIService) CreateNewTemplate(templateName string, parent int, de
 	}
 	var callResponse map[string]interface{}
 	respBytes, _ := io.ReadAll(res.Body)
-	json.Unmarshal(respBytes, &callResponse)
+	err = json.Unmarshal(respBytes, &callResponse)
 	var newTemplateID, _ = strconv.Atoi((callResponse["id"]).(string))
 	defer res.Body.Close() // nolint
 	return newTemplateID, nil
+}
+
+//go:embed generic_ice_power_settings.json
+var powerSettings string
+
+func (a *autoPiAPIService) SetTemplateICEPowerSettings(templateId int) error {
+	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/dongle/settings/?template_id=%d", templateId), "POST", []byte(powerSettings))
+	if err != nil {
+		println(res.Body)
+		return errors.Wrapf(err, "Could not apply power settings to template %d", templateId)
+	}
+	return nil
 }
 
 // ApplyTemplate When device awakes, it checks if it has templates to be applied. If device is awake, this won't do anything until next cycle.
