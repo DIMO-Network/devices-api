@@ -259,19 +259,19 @@ func main() {
 				description = os.Args[5]
 			} else {
 				parent = 0
-				description = os.Args[4]
+				description = os.Args[3]
 			}
 			autoPiSvc := services.NewAutoPiAPIService(&settings, pdb.DBS)
 			newTemplateIndex, err = autoPiSvc.CreateNewTemplate(templateName, parent, description)
 			if err == nil && newTemplateIndex > 0 {
-				println("template created: " + strconv.Itoa(newTemplateIndex) + " : " + description)
+				println("template created: " + strconv.Itoa(newTemplateIndex) + " : " + templateName + " : " + description)
 			} else {
 				println(err.Error())
-				// TODO: return detailed error message
 			}
 		} else {
-			// TODO: return error message
 			// "incorrect argument count"
+			println("Incorrect parameter count. Please use following syntax:")
+			println("\"thisEXECUTABLE autopi-tools  templateName  [-p  parentIndex]  description\"")
 		}
 	default:
 		if settings.EnablePrivileges {
