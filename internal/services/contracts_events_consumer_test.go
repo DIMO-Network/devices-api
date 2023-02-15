@@ -3,10 +3,8 @@ package services
 import (
 	"context"
 
-	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"testing"
 	"time"
 
@@ -22,9 +20,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
-const contractEventPayload = "{\"data\":{\"contract\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"transactionHash\":\"0x29d1aa4f5eb409bf7d334a7f50fcba50264fbefe00c991cc278f444eb64fdfe5\",\"blockCompleted\":true,\"eventSignature\":\"0x61a24679288162b799d80b2bb2b8b0fcdd5c5f53ac19e9246cc190b60196c359\",\"eventName\":\"PrivilegeSet\",\"arguments\":{\"0\":\"1\",\"1\":\"1\",\"2\":\"2\",\"3\":\"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\"4\":\"1668722877\",\"tokenId\":\"1\",\"version\":\"1\",\"privId\":\"2\",\"user\":\"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\"expires\":\"1676451061\"}},\"type\":\"zone.dimo.contract.event\"}"
-
-// contract_address, token_id, privilege, user_address
 type mockTestEntity struct {
 	Contract    []byte
 	TokenID     types.Decimal
@@ -33,25 +28,49 @@ type mockTestEntity struct {
 	ExpiresAt   time.Time
 }
 
+type mockTestArgs struct {
+	contract    common.Address
+	tokenID     types.Decimal
+	userAddress common.Address
+	expiresAt   int64
+	privilegeID int64
+}
+
+type cEventsTestHelper struct {
+	logger    zerolog.Logger
+	pdb       db.Store
+	container testcontainers.Container
+	ctx       context.Context
+	t         *testing.T
+	assert    *assert.Assertions
+}
+
+type eventsFactoryResp struct {
+	args    mockTestArgs
+	payload string
+}
+
 func TestProcessContractsEventsMessages(t *testing.T) {
 	s := initCEventsTestHelper(t)
 	defer s.destroy()
 
+	e := eventsPayloadFactory(1, 1)
+	factoryResp := e[0]
+
 	msg := &message.Message{
-		Payload: []byte(contractEventPayload),
+		Payload: []byte(factoryResp.payload),
 	}
 	c := NewContractsEventsConsumer(s.pdb, &s.logger)
 
 	err := c.processMessage(msg)
-	assert.NoError(t, err)
+	s.assert.NoError(err)
 
-	mock, err := createMockEntities("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", "1", "1676451061", 2)
-	assert.NoError(t, err)
+	args := factoryResp.args
 
-	nft, err := models.FindNFTPrivilege(s.ctx, s.pdb.DBS().Reader, mock.Contract, mock.TokenID, mock.PrivilegeID, mock.UserAddress)
-	assert.NoError(t, err)
+	nft, err := models.FindNFTPrivilege(s.ctx, s.pdb.DBS().Reader, args.contract.Bytes(), args.tokenID, args.privilegeID, args.userAddress.Bytes())
+	s.assert.NoError(err)
 
-	assert.NotNil(t, nft)
+	s.assert.NotNil(nft)
 
 	actual := mockTestEntity{
 		Contract:    nft.ContractAddress,
@@ -61,26 +80,99 @@ func TestProcessContractsEventsMessages(t *testing.T) {
 		ExpiresAt:   nft.Expiry,
 	}
 
-	assert.Equal(t, mock, actual)
+	expected := mockTestEntity{
+		Contract:    args.contract.Bytes(),
+		UserAddress: args.userAddress.Bytes(),
+		TokenID:     args.tokenID,
+		ExpiresAt:   time.Unix(args.expiresAt, 0).UTC(),
+		PrivilegeID: args.privilegeID,
+	}
+
+	s.assert.Equal(expected, actual, "Event was persisted properly")
 }
 
-type cEventsTestHelper struct {
-	logger    zerolog.Logger
-	pdb       db.Store
-	container testcontainers.Container
-	ctx       context.Context
-	t         *testing.T
+func TestIgnoreWrongEventNames(t *testing.T) {
+	s := initCEventsTestHelper(t)
+	defer s.destroy()
+
+	e := eventsPayloadFactory(1, 1)
+	factoryResp := e[0]
+
+	msg := &message.Message{
+		Payload: []byte(factoryResp.payload),
+	}
+	c := NewContractsEventsConsumer(s.pdb, &s.logger)
+
+	err := c.processMessage(msg)
+	s.assert.NoError(err)
+
+	s.assert.Nil(err)
+}
+
+// Utility/Helper functions
+
+func eventsPayloadFactory(from, to int) []eventsFactoryResp {
+	res := []eventsFactoryResp{}
+
+	convertTokenIDToDecimal := func(t string) types.Decimal {
+		ti, ok := new(decimal.Big).SetString(t)
+		if !ok {
+			return types.Decimal{}
+		}
+
+		return types.NewDecimal(ti)
+	}
+
+	for i := from; i <= to; i++ {
+		contractAddr := common.BytesToAddress([]byte{uint8(i)})
+		userAddr := common.BytesToAddress([]byte{uint8(i + 1)})
+		tokenID := convertTokenIDToDecimal(fmt.Sprint(i))
+		privID := i + 1
+		expiry := time.Now().Add(time.Hour + time.Duration(i)).UTC().Unix()
+
+		payload := fmt.Sprintf(`{
+				"data": {
+					"contract": "%s",
+					"transactionHash": "0x29d1aa4f5eb409bf7d334a7f50fcba50264fbefe00c991cc278f444eb64fdfe5",
+					"eventSignature": "0x61a24679288162b799d80b2bb2b8b0fcdd5c5f53ac19e9246cc190b60196c359",
+					"eventName": "PrivilegeSet",
+					"arguments": {
+						"tokenId": "%s",
+						"version": 1,
+						"privId": %d,
+						"user": "%s",
+						"expires": %d
+					}
+				},
+				"type": "zone.dimo.contract.event"
+			}`, contractAddr.String(), tokenID, privID, userAddr.String(), expiry)
+
+		res = append(res, eventsFactoryResp{
+			payload: payload,
+			args: mockTestArgs{
+				contract:    contractAddr,
+				tokenID:     tokenID,
+				userAddress: userAddr,
+				expiresAt:   expiry,
+				privilegeID: int64(privID),
+			},
+		})
+	}
+	return res
 }
 
 func initCEventsTestHelper(t *testing.T) cEventsTestHelper {
 	ctx := context.Background()
 	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	assert := assert.New(t)
+
 	return cEventsTestHelper{
 		logger:    zerolog.New(os.Stdout).With().Timestamp().Logger(),
 		pdb:       pdb,
 		container: container,
 		ctx:       ctx,
 		t:         t,
+		assert:    assert,
 	}
 }
 
@@ -88,27 +180,4 @@ func (s cEventsTestHelper) destroy() {
 	if err := s.container.Terminate(s.ctx); err != nil {
 		s.t.Fatal(err)
 	}
-}
-
-func createMockEntities(contract, userAddress, tokenID, expiresAt string, privilegeID int64) (mockTestEntity, error) {
-	ti, ok := new(decimal.Big).SetString(tokenID)
-	if !ok {
-		return mockTestEntity{}, fmt.Errorf("couldn't parse token id %q", tokenID)
-	}
-
-	tid := types.NewDecimal(ti)
-
-	t, err := strconv.ParseInt(expiresAt, 10, 64)
-	if err != nil {
-		return mockTestEntity{}, errors.New("could not parse timestamp")
-	}
-	tm := time.Unix(t, 0)
-
-	return mockTestEntity{
-		Contract:    common.FromHex(contract),
-		UserAddress: common.FromHex(userAddress),
-		PrivilegeID: privilegeID,
-		TokenID:     tid,
-		ExpiresAt:   tm.UTC(),
-	}, nil
 }
