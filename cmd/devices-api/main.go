@@ -248,6 +248,7 @@ func main() {
 		logger.Info().Msg("success")
 		//							1				2		3		4			5
 	case "autopi-tools": //   autopi-tools   templateName  [-p  parent]  description
+		var newTemplate int
 		if len(os.Args) > 2 {
 			templateName := os.Args[2]
 			var parent int
@@ -261,7 +262,7 @@ func main() {
 				description = os.Args[4]
 			}
 			autoPiSvc := services.NewAutoPiAPIService(&settings, pdb.DBS)
-			autoPiSvc.CreateNewTemplate(templateName, parent, description)
+			newTemplate, err = autoPiSvc.CreateNewTemplate(templateName, parent, description)
 		} else {
 			// TODO: return error message
 		}

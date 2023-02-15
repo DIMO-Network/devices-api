@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -27,7 +28,7 @@ type AutoPiAPIService interface {
 	PatchVehicleProfile(vehicleID int, profile PatchVehicleProfile) error
 	UnassociateDeviceTemplate(deviceID string, templateID int) error
 	AssociateDeviceToTemplate(deviceID string, templateID int) error
-	CreateNewTemplate(templateName string, parent int, description string) error
+	CreateNewTemplate(templateName string, parent int, description string) (int, error)
 	ApplyTemplate(deviceID string, templateID int) error
 	CommandQueryVIN(ctx context.Context, unitID, deviceID, userDeviceID string) (*AutoPiCommandResponse, error)
 	CommandSyncDevice(ctx context.Context, unitID, deviceID, userDeviceID string) (*AutoPiCommandResponse, error)
@@ -151,30 +152,35 @@ func (a *autoPiAPIService) AssociateDeviceToTemplate(deviceID string, templateID
 // CreateNewTemplate create a new template on the AutoPi cloud by doing a put request.
 //
 //	Parent is optional(setting to 0 creates template with no parent)
-func (a *autoPiAPIService) CreateNewTemplate(templateName string, parent int, description string) error {
-	var p postNewTemplateDetails
-	var emptyDevicesSet = []string{}
+func (a *autoPiAPIService) CreateNewTemplate(templateName string, parent int, description string) (int, error) {
+	var p postNewTemplateRequest
+	var emptyDeviceSet []string
 	if parent > 0 {
-		p = postNewTemplateDetails{
+		p = postNewTemplateRequest{
 			TemplateName: templateName,
 			Parent:       parent,
 			Description:  description,
-			Devices:      emptyDevicesSet,
+			Devices:      emptyDeviceSet,
 		}
 	} else {
-		p = postNewTemplateDetails{
+		p = postNewTemplateRequest{
 			TemplateName: templateName,
 			Description:  description,
-			Devices:      emptyDevicesSet,
+			Devices:      emptyDeviceSet,
 		}
 	}
 	j, _ := json.Marshal(p)
 	res, err := a.httpClient.ExecuteRequest("/dongle/templates/", "POST", j)
 	if err != nil {
-		return errors.Wrapf(err, "error calling autopi api to create new template")
+		return 0, errors.Wrapf(err, "error calling autopi api to create new template")
 	}
+	var callResponse map[string]interface{}
+	//res.
+	res2, _ := io.ReadAll(res.Body)
+	json.Unmarshal(res2, &callResponse)
+	var newTemplateID, _ = strconv.Atoi((callResponse["id"]).(string))
 	defer res.Body.Close() // nolint
-	return nil
+	return newTemplateID, nil
 }
 
 // ApplyTemplate When device awakes, it checks if it has templates to be applied. If device is awake, this won't do anything until next cycle.
@@ -377,11 +383,18 @@ type postDeviceIDs struct {
 }
 
 // used to create a new AutoPi template on the cloud
-type postNewTemplateDetails struct {
+type postNewTemplateRequest struct {
 	TemplateName string   `json:"templateName"`
 	Parent       int      `json:"parent,omitempty"`
 	Description  string   `json:"description"`
 	Devices      []string `json:"devices"`
+}
+
+// response structure after creating a new AutoPi template on the cloud
+type postNewTemplateResponse struct {
+	Id     int    `json:"id"`
+	Name   string `json:"name"`
+	Parent int    `json:"parent,omitempty"`
 }
 
 type autoPiCommandRequest struct {
