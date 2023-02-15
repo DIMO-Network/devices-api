@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"log"
 
 	"fmt"
 	"os"
@@ -54,7 +55,7 @@ func TestProcessContractsEventsMessages(t *testing.T) {
 	s := initCEventsTestHelper(t)
 	defer s.destroy()
 
-	e := eventsPayloadFactory(1, 1)
+	e := eventsPayloadFactory(1, 1, "", 0)
 	factoryResp := e[0]
 
 	msg := &message.Message{
@@ -95,9 +96,9 @@ func TestIgnoreWrongEventNames(t *testing.T) {
 	s := initCEventsTestHelper(t)
 	defer s.destroy()
 
-	e := eventsPayloadFactory(1, 1)
+	e := eventsPayloadFactory(2, 2, "SomeEvent", 0)
 	factoryResp := e[0]
-
+	log.Println(factoryResp)
 	msg := &message.Message{
 		Payload: []byte(factoryResp.payload),
 	}
@@ -107,11 +108,71 @@ func TestIgnoreWrongEventNames(t *testing.T) {
 	s.assert.NoError(err)
 
 	s.assert.Nil(err)
+
+	args := factoryResp.args
+
+	nft, err := models.FindNFTPrivilege(s.ctx, s.pdb.DBS().Reader, args.contract.Bytes(), args.tokenID, args.privilegeID, args.userAddress.Bytes())
+	s.assert.EqualError(err, "sql: no rows in result set")
+
+	s.assert.Nil(nft)
+}
+
+func TestUpdatedTimestamp(t *testing.T) {
+	s := initCEventsTestHelper(t)
+	defer s.destroy()
+
+	e := eventsPayloadFactory(3, 3, "", 0)
+	factoryResp := e[0]
+
+	c := NewContractsEventsConsumer(s.pdb, &s.logger)
+
+	msg := &message.Message{
+		Payload: []byte(factoryResp.payload),
+	}
+	err := c.processMessage(msg)
+	s.assert.NoError(err)
+
+	args := factoryResp.args
+
+	oldNft, err := models.FindNFTPrivilege(s.ctx, s.pdb.DBS().Reader, args.contract.Bytes(), args.tokenID, args.privilegeID, args.userAddress.Bytes())
+	s.assert.NoError(err)
+
+	s.assert.NotNil(oldNft)
+
+	expiry := time.Now().Add(time.Hour + time.Duration(4)).UTC().Unix()
+	e = eventsPayloadFactory(3, 3, "", expiry)
+	factoryResp = e[0]
+
+	msg = &message.Message{
+		Payload: []byte(factoryResp.payload),
+	}
+	err = c.processMessage(msg)
+	s.assert.NoError(err)
+
+	newNft, err := models.FindNFTPrivilege(s.ctx, s.pdb.DBS().Reader, args.contract.Bytes(), args.tokenID, args.privilegeID, args.userAddress.Bytes())
+	s.assert.NoError(err)
+
+	actual := mockTestEntity{
+		Contract:    newNft.ContractAddress,
+		TokenID:     newNft.TokenID,
+		PrivilegeID: newNft.Privilege,
+		UserAddress: newNft.UserAddress,
+		ExpiresAt:   newNft.Expiry,
+	}
+
+	expected := mockTestEntity{
+		Contract:    args.contract.Bytes(),
+		UserAddress: args.userAddress.Bytes(),
+		TokenID:     args.tokenID,
+		ExpiresAt:   time.Unix(expiry, 0).UTC(),
+		PrivilegeID: args.privilegeID,
+	}
+
+	s.assert.Equal(expected, actual, "Event was updated successful")
 }
 
 // Utility/Helper functions
-
-func eventsPayloadFactory(from, to int) []eventsFactoryResp {
+func eventsPayloadFactory(from, to int, eventName string, exp int64) []eventsFactoryResp {
 	res := []eventsFactoryResp{}
 
 	convertTokenIDToDecimal := func(t string) types.Decimal {
@@ -123,6 +184,10 @@ func eventsPayloadFactory(from, to int) []eventsFactoryResp {
 		return types.NewDecimal(ti)
 	}
 
+	if eventName == "" {
+		eventName = "PrivilegeSet"
+	}
+
 	for i := from; i <= to; i++ {
 		contractAddr := common.BytesToAddress([]byte{uint8(i)})
 		userAddr := common.BytesToAddress([]byte{uint8(i + 1)})
@@ -130,12 +195,16 @@ func eventsPayloadFactory(from, to int) []eventsFactoryResp {
 		privID := i + 1
 		expiry := time.Now().Add(time.Hour + time.Duration(i)).UTC().Unix()
 
+		if exp != 0 {
+			expiry = exp
+		}
+
 		payload := fmt.Sprintf(`{
 				"data": {
 					"contract": "%s",
 					"transactionHash": "0x29d1aa4f5eb409bf7d334a7f50fcba50264fbefe00c991cc278f444eb64fdfe5",
 					"eventSignature": "0x61a24679288162b799d80b2bb2b8b0fcdd5c5f53ac19e9246cc190b60196c359",
-					"eventName": "PrivilegeSet",
+					"eventName": "%s",
 					"arguments": {
 						"tokenId": "%s",
 						"version": 1,
@@ -145,7 +214,7 @@ func eventsPayloadFactory(from, to int) []eventsFactoryResp {
 					}
 				},
 				"type": "zone.dimo.contract.event"
-			}`, contractAddr.String(), tokenID, privID, userAddr.String(), expiry)
+			}`, contractAddr.String(), eventName, tokenID, privID, userAddr.String(), expiry)
 
 		res = append(res, eventsFactoryResp{
 			payload: payload,
