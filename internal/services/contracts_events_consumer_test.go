@@ -90,7 +90,7 @@ func (s cEventsTestHelper) destroy() {
 	}
 }
 
-func createMockEntities(contract, userAddress, tokenID, expiresAt string, privilegeId int64) (mockTestEntity, error) {
+func createMockEntities(contract, userAddress, tokenID, expiresAt string, privilegeID int64) (mockTestEntity, error) {
 	ti, ok := new(decimal.Big).SetString(tokenID)
 	if !ok {
 		return mockTestEntity{}, fmt.Errorf("couldn't parse token id %q", tokenID)
@@ -107,7 +107,7 @@ func createMockEntities(contract, userAddress, tokenID, expiresAt string, privil
 	return mockTestEntity{
 		Contract:    common.FromHex(contract),
 		UserAddress: common.FromHex(userAddress),
-		PrivilegeID: privilegeId,
+		PrivilegeID: privilegeID,
 		TokenID:     tid,
 		ExpiresAt:   tm.UTC(),
 	}, nil
