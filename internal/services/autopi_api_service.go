@@ -175,9 +175,8 @@ func (a *autoPiAPIService) CreateNewTemplate(templateName string, parent int, de
 		return 0, errors.Wrapf(err, "error calling autopi api to create new template")
 	}
 	var callResponse map[string]interface{}
-	//res.
-	res2, _ := io.ReadAll(res.Body)
-	json.Unmarshal(res2, &callResponse)
+	respBytes, _ := io.ReadAll(res.Body)
+	json.Unmarshal(respBytes, &callResponse)
 	var newTemplateID, _ = strconv.Atoi((callResponse["id"]).(string))
 	defer res.Body.Close() // nolint
 	return newTemplateID, nil

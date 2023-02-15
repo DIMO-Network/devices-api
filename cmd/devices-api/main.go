@@ -248,7 +248,7 @@ func main() {
 		logger.Info().Msg("success")
 		//							1				2		3		4			5
 	case "autopi-tools": //   autopi-tools   templateName  [-p  parent]  description
-		var newTemplate int
+		var newTemplateIndex int
 		if len(os.Args) > 2 {
 			templateName := os.Args[2]
 			var parent int
@@ -262,9 +262,16 @@ func main() {
 				description = os.Args[4]
 			}
 			autoPiSvc := services.NewAutoPiAPIService(&settings, pdb.DBS)
-			newTemplate, err = autoPiSvc.CreateNewTemplate(templateName, parent, description)
+			newTemplateIndex, err = autoPiSvc.CreateNewTemplate(templateName, parent, description)
+			if err == nil && newTemplateIndex > 0 {
+				println("template created: " + strconv.Itoa(newTemplateIndex) + " : " + description)
+			} else {
+				println(err.Error())
+				// TODO: return detailed error message
+			}
 		} else {
 			// TODO: return error message
+			// "incorrect argument count"
 		}
 	default:
 		if settings.EnablePrivileges {
