@@ -34,6 +34,7 @@ type DeviceDefinitionService interface {
 	FindDeviceDefinitionByMMY(ctx context.Context, mk, model string, year int) (*ddgrpc.GetDeviceDefinitionItemResponse, error)
 	UpdateDeviceDefinitionFromNHTSA(ctx context.Context, deviceDefinitionID string, vin string) error
 	PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string, forceSetAll bool) (DrivlyDataStatusEnum, error)
+	PullVincarioValuation(ctx context.Context, userDeiceID, deviceDefinitionID, vin string) (DrivlyDataStatusEnum, error)
 	GetOrCreateMake(ctx context.Context, tx boil.ContextExecutor, makeName string) (*ddgrpc.DeviceMake, error)
 	GetMakeByTokenID(ctx context.Context, tokenID *big.Int) (*ddgrpc.DeviceMake, error)
 	GetDeviceDefinitionsByIDs(ctx context.Context, ids []string) ([]*ddgrpc.GetDeviceDefinitionItemResponse, error)
@@ -49,6 +50,7 @@ type DeviceDefinitionService interface {
 type deviceDefinitionService struct {
 	dbs                 func() *db.ReaderWriter
 	drivlySvc           DrivlyAPIService
+	vincarioSvc         VincarioAPIService
 	log                 *zerolog.Logger
 	nhtsaSvc            INHTSAService
 	definitionsGRPCAddr string
@@ -63,6 +65,7 @@ func NewDeviceDefinitionService(DBS func() *db.ReaderWriter, log *zerolog.Logger
 		drivlySvc:           NewDrivlyAPIService(settings, DBS),
 		definitionsGRPCAddr: settings.DefinitionsGRPCAddr,
 		googleMapsAPIKey:    settings.GoogleMapsAPIKey,
+		vincarioSvc:         NewVincarioAPIService(settings, log),
 	}
 }
 
@@ -318,6 +321,36 @@ func (d *deviceDefinitionService) UpdateDeviceDefinitionFromNHTSA(ctx context.Co
 	}
 
 	return nil
+}
+
+func (d *deviceDefinitionService) PullVincarioValuation(ctx context.Context, userDeviceID, deviceDefinitionID, vin string) (DrivlyDataStatusEnum, error) {
+	const repullWindow = time.Hour * 24 * 14
+	if len(vin) != 17 {
+		return "", errors.Errorf("invalid VIN %s", vin)
+	}
+
+	// make sure userdevice exists
+	ud, err := models.FindUserDevice(ctx, d.dbs().Reader, userDeviceID)
+	if err != nil {
+		return "", err
+	}
+	// only pull for USA
+	if ud.CountryCode.String == "USA" {
+		return SkippedDrivlyStatus, nil
+	}
+	// todo check repull window
+
+	//externalVinData := &models.ExternalVinDatum{
+	//	ID:                 ksuid.New().String(),
+	//	DeviceDefinitionID: null.StringFrom(deviceDefinitionID),
+	//	Vin:                vin,
+	//	UserDeviceID:       null.StringFrom(userDeviceID),
+	//}
+	//valuation, err := d.vincarioSvc.GetMarketValuation(vin)
+	//if err != nil {
+	//	return "", err
+	//}
+	return "", nil
 }
 
 const MilesToKmFactor = 1.609344 // there is 1.609 kilometers in a mile. const should probably be KmToMilesFactor

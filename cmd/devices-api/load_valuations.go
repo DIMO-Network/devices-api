@@ -15,8 +15,8 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// loadUserDeviceDrivly iterates over user_devices with vin verified in USA and tries pulling data from drivly
-func loadUserDeviceDrivly(ctx context.Context, logger *zerolog.Logger, settings *config.Settings, forceSetAll bool, wmi string, pdb db.Store) error {
+// loadValuations iterates over user_devices with vin verified and tries pulling data from drivly in USA & CAN and vincario for rest of world
+func loadValuations(ctx context.Context, logger *zerolog.Logger, settings *config.Settings, forceSetAll bool, wmi string, pdb db.Store) error {
 	// get all devices from DB.
 	all, err := models.UserDevices(
 		models.UserDeviceWhere.VinConfirmed.EQ(true),
@@ -41,13 +41,23 @@ func loadUserDeviceDrivly(ctx context.Context, logger *zerolog.Logger, settings 
 	deviceDefinitionSvc := services.NewDeviceDefinitionService(pdb.DBS, logger, nil, settings)
 	statsAggr := map[services.DrivlyDataStatusEnum]int{}
 	for _, ud := range all {
-		status, err := deviceDefinitionSvc.PullDrivlyData(ctx, ud.ID, ud.DeviceDefinitionID, ud.VinIdentifier.String, forceSetAll)
-		if err != nil {
-			logger.Err(err).Str("vin", ud.VinIdentifier.String).Msg("error pulling drivly data")
+		if ud.CountryCode.String == "USA" || ud.CountryCode.String == "CAN" || ud.CountryCode.String == "MEX" {
+			status, err := deviceDefinitionSvc.PullDrivlyData(ctx, ud.ID, ud.DeviceDefinitionID, ud.VinIdentifier.String, forceSetAll)
+			if err != nil {
+				logger.Err(err).Str("vin", ud.VinIdentifier.String).Msg("error pulling drivly data")
+			} else {
+				logger.Info().Msgf("%s vin: %s", status, ud.VinIdentifier.String)
+			}
+			statsAggr[status]++
 		} else {
-			logger.Info().Msgf("%s vin: %s", status, ud.VinIdentifier.String)
+			status, err := deviceDefinitionSvc.PullVincarioValuation(ctx, ud.ID, ud.DeviceDefinitionID, ud.VinIdentifier.String)
+			if err != nil {
+				logger.Err(err).Str("vin", ud.VinIdentifier.String).Msg("error pulling vincario data")
+			} else {
+				logger.Info().Msgf("%s vin: %s, country: %s", status, ud.VinIdentifier.String, ud.CountryCode.String)
+			}
+			statsAggr[status]++
 		}
-		statsAggr[status]++
 	}
 	fmt.Println("-------------------RUN SUMMARY--------------------------")
 	// colorize each result
