@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/volatiletech/null/v8"
-
 	"github.com/DIMO-Network/shared/db"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -19,8 +17,7 @@ import (
 func loadValuations(ctx context.Context, logger *zerolog.Logger, settings *config.Settings, forceSetAll bool, wmi string, pdb db.Store) error {
 	// get all devices from DB.
 	all, err := models.UserDevices(
-		models.UserDeviceWhere.VinConfirmed.EQ(true),
-		models.UserDeviceWhere.CountryCode.EQ(null.StringFrom("USA"))).
+		models.UserDeviceWhere.VinConfirmed.EQ(true)).
 		All(ctx, pdb.DBS().Reader)
 	if err != nil {
 		return err
@@ -65,6 +62,7 @@ func loadValuations(ctx context.Context, logger *zerolog.Logger, settings *confi
 	fmt.Printf("New Drivly Pulls (vin + valuations): %d \n", statsAggr[services.PulledAllDrivlyStatus])
 	fmt.Printf("Pulled New Pricing & Offers: %d \n", statsAggr[services.PulledValuationDrivlyStatus])
 	fmt.Printf("SkippedDrivlyStatus due to biz logic: %d \n", statsAggr[services.SkippedDrivlyStatus])
+	fmt.Printf("Pulled New Vincario Market Valuation: %d \n", statsAggr[services.PulledValuationVincarioStatus])
 	fmt.Printf("SkippedDrivlyStatus due to error: %d \n", statsAggr[""])
 	fmt.Println("--------------------------------------------------------")
 	return nil

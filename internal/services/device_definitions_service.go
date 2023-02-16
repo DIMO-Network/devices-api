@@ -338,19 +338,38 @@ func (d *deviceDefinitionService) PullVincarioValuation(ctx context.Context, use
 	if ud.CountryCode.String == "USA" {
 		return SkippedDrivlyStatus, nil
 	}
-	// todo check repull window
 
-	//externalVinData := &models.ExternalVinDatum{
-	//	ID:                 ksuid.New().String(),
-	//	DeviceDefinitionID: null.StringFrom(deviceDefinitionID),
-	//	Vin:                vin,
-	//	UserDeviceID:       null.StringFrom(userDeviceID),
-	//}
-	//valuation, err := d.vincarioSvc.GetMarketValuation(vin)
-	//if err != nil {
-	//	return "", err
-	//}
-	return "", nil
+	// check repull window
+	existingPricingData, _ := models.ExternalVinData(
+		models.ExternalVinDatumWhere.Vin.EQ(vin),
+		models.ExternalVinDatumWhere.PricingMetadata.IsNotNull(),
+		qm.OrderBy("updated_at desc"), qm.Limit(1)).
+		One(context.Background(), d.dbs().Writer)
+	// just return if already pulled recently for this VIN, but still need to insert never pulled vin - should be uncommon scenario
+	if existingPricingData != nil && existingPricingData.UpdatedAt.Add(repullWindow).After(time.Now()) {
+		return SkippedDrivlyStatus, nil
+	}
+
+	externalVinData := &models.ExternalVinDatum{
+		ID:                 ksuid.New().String(),
+		DeviceDefinitionID: null.StringFrom(deviceDefinitionID),
+		Vin:                vin,
+		UserDeviceID:       null.StringFrom(userDeviceID),
+	}
+	valuation, err := d.vincarioSvc.GetMarketValuation(vin)
+	if err != nil {
+		return "", errors.Wrap(err, "error pulling market data from vincario")
+	}
+	err = externalVinData.VincarioMetadata.Marshal(valuation)
+	if err != nil {
+		return "", errors.Wrap(err, "error marshalling vincario responset")
+	}
+	err = externalVinData.Insert(ctx, d.dbs().Writer, boil.Infer())
+	if err != nil {
+		return "", errors.Wrap(err, "error inserting external_vin_data for vincario")
+	}
+
+	return PulledValuationVincarioStatus, nil
 }
 
 const MilesToKmFactor = 1.609344 // there is 1.609 kilometers in a mile. const should probably be KmToMilesFactor
@@ -367,8 +386,9 @@ const (
 	// PulledAllDrivlyStatus means we pulled vin, edmunds, build and valuations
 	PulledAllDrivlyStatus DrivlyDataStatusEnum = "PulledAll"
 	// PulledValuationDrivlyStatus means we only pulled offers and pricing
-	PulledValuationDrivlyStatus DrivlyDataStatusEnum = "PulledValuations"
-	SkippedDrivlyStatus         DrivlyDataStatusEnum = "Skipped"
+	PulledValuationDrivlyStatus   DrivlyDataStatusEnum = "PulledValuations"
+	PulledValuationVincarioStatus DrivlyDataStatusEnum = "PulledValuationVincario"
+	SkippedDrivlyStatus           DrivlyDataStatusEnum = "Skipped"
 )
 
 // PullDrivlyData pulls vin info from drivly, and inserts a record with the data.

@@ -4,9 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"github.com/DIMO-Network/devices-api/internal/config"
-	"reflect"
 	"time"
 
 	"github.com/DIMO-Network/shared"
@@ -68,40 +66,6 @@ func vincarioPathBuilder(vin, id, key, secret string) string {
 	controlSum := hex.EncodeToString(bs[0:5])
 
 	return "/" + key + "/" + controlSum + "/" + id + "/" + vin + ".json"
-}
-
-func setStructPropertiesByMetadataKey(structPtr interface{}, key string, value interface{}) error {
-	structValue := reflect.ValueOf(structPtr).Elem()
-	structType := structValue.Type()
-
-	for i := 0; i < structValue.NumField(); i++ {
-		field := structValue.Field(i)
-		fieldType := structType.Field(i)
-
-		if fieldType.Tag.Get("key") == key {
-			if !field.CanSet() {
-				return fmt.Errorf("field %s is unexported and cannot be set", fieldType.Name)
-			}
-
-			fieldValue := reflect.ValueOf(value)
-
-			if !fieldValue.Type().AssignableTo(field.Type()) {
-				if fieldValue.Kind() == reflect.Float64 || fieldValue.Kind() == reflect.Float32 {
-					f := fieldValue.Float()
-					if field.Kind() == reflect.Int {
-						field.Set(reflect.ValueOf(int(f)))
-					}
-				} else {
-					return fmt.Errorf("value %v is not assignable to field %s of type %s", value, fieldType.Name, field.Type())
-				}
-			} else {
-				field.Set(fieldValue)
-			}
-			return nil
-		}
-	}
-
-	return fmt.Errorf("struct does not contain a field with key %s", key)
 }
 
 type VincarioMarketValueResponse struct {
