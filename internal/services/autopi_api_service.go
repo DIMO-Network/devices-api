@@ -398,13 +398,6 @@ type postNewTemplateRequest struct {
 	Devices      []string `json:"devices"`
 }
 
-// response structure after creating a new AutoPi template on the cloud
-type postNewTemplateResponse struct {
-	Id     int    `json:"id"`
-	Name   string `json:"name"`
-	Parent int    `json:"parent,omitempty"`
-}
-
 type autoPiCommandRequest struct {
 	Command     string  `json:"command"`
 	CallbackURL *string `json:"callback_url,omitempty"`

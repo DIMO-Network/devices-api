@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -248,37 +247,8 @@ func main() {
 		logger.Info().Msg("success")
 		//							1				2		3		4			5
 	case "autopi-tools": //   autopi-tools   templateName  [-p  parent]  description
-		var newTemplateIndex int
-		if len(os.Args) > 3 {
-			templateName := os.Args[2]
-			var parent int
-			var description string
-
-			if os.Args[3] == "-p" {
-				parent, _ = strconv.Atoi(os.Args[4])
-				description = os.Args[5]
-			} else {
-				parent = 0
-				description = os.Args[3]
-			}
-			autoPiSvc := services.NewAutoPiAPIService(&settings, pdb.DBS)
-			newTemplateIndex, err = autoPiSvc.CreateNewTemplate(templateName, parent, description)
-			if err == nil && newTemplateIndex > 0 {
-				println("template created: " + strconv.Itoa(newTemplateIndex) + " : " + templateName + " : " + description)
-				err := autoPiSvc.SetTemplateICEPowerSettings(newTemplateIndex)
-				if err != nil {
-					println(err.Error())
-				} else {
-					println("Set ICE Template PowerSettings set on template: " + templateName + " (" + strconv.Itoa(newTemplateIndex) + ")")
-				}
-			} else {
-				println(err.Error())
-			}
-		} else {
-			// "incorrect argument count"
-			println("Incorrect parameter count. Please use following syntax:")
-			println("\"thisEXECUTABLE  autopi-tools  templateName  [-p  parentIndex]  description\"")
-		}
+		autoPiSvc := services.NewAutoPiAPIService(&settings, pdb.DBS)
+		autopiTools(os.Args, autoPiSvc)
 	default:
 		if settings.EnablePrivileges {
 			startContractEventsConsumer(logger, &settings, pdb)
