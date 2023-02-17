@@ -3,9 +3,11 @@ package services
 import (
 	"context"
 	"database/sql"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -27,6 +29,8 @@ type AutoPiAPIService interface {
 	PatchVehicleProfile(vehicleID int, profile PatchVehicleProfile) error
 	UnassociateDeviceTemplate(deviceID string, templateID int) error
 	AssociateDeviceToTemplate(deviceID string, templateID int) error
+	CreateNewTemplate(templateName string, parent int, description string) (int, error)
+	SetTemplateICEPowerSettings(templateID int) error
 	ApplyTemplate(deviceID string, templateID int) error
 	CommandQueryVIN(ctx context.Context, unitID, deviceID, userDeviceID string) (*AutoPiCommandResponse, error)
 	CommandSyncDevice(ctx context.Context, unitID, deviceID, userDeviceID string) (*AutoPiCommandResponse, error)
@@ -144,6 +148,49 @@ func (a *autoPiAPIService) AssociateDeviceToTemplate(deviceID string, templateID
 	}
 	defer res.Body.Close() // nolint
 
+	return nil
+}
+
+// CreateNewTemplate create a new template on the AutoPi cloud by doing a put request.
+//
+//	Parent is optional(setting to 0 creates template with no parent)
+func (a *autoPiAPIService) CreateNewTemplate(templateName string, parent int, description string) (int, error) {
+	var p postNewTemplateRequest
+	var emptyDeviceSet []string
+
+	p = postNewTemplateRequest{
+		TemplateName: templateName,
+		Description:  description,
+		Devices:      emptyDeviceSet,
+	}
+	if parent > 0 {
+		p.Parent = parent
+	}
+	j, _ := json.Marshal(p)
+	res, err := a.httpClient.ExecuteRequest("/dongle/templates/", "POST", j)
+	if err != nil {
+		return 0, errors.Wrapf(err, "error calling autopi api to create new template")
+	}
+	var callResponse map[string]interface{}
+	respBytes, _ := io.ReadAll(res.Body)
+	err = json.Unmarshal(respBytes, &callResponse)
+	if err != nil {
+		return 0, errors.Wrapf(err, "error unmarshalling create template response")
+	}
+	var newTemplateID, _ = strconv.Atoi((callResponse["id"]).(string))
+	defer res.Body.Close() // nolint
+	return newTemplateID, nil
+}
+
+//go:embed generic_ice_power_settings.json
+var powerSettings string
+
+func (a *autoPiAPIService) SetTemplateICEPowerSettings(templateID int) error {
+	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/dongle/settings/?template_id=%d", templateID), "POST", []byte(powerSettings))
+	if err != nil {
+		println(res.Body)
+		return errors.Wrapf(err, "Could not apply power settings to template %d", templateID)
+	}
 	return nil
 }
 
@@ -344,6 +391,14 @@ type PatchVehicleProfile struct {
 type postDeviceIDs struct {
 	Devices         []string `json:"devices"`
 	UnassociateOnly bool     `json:"unassociate_only,omitempty"`
+}
+
+// used to create a new AutoPi template on the cloud
+type postNewTemplateRequest struct {
+	TemplateName string   `json:"templateName"`
+	Parent       int      `json:"parent,omitempty"`
+	Description  string   `json:"description"`
+	Devices      []string `json:"devices"`
 }
 
 type autoPiCommandRequest struct {

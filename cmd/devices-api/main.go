@@ -245,6 +245,10 @@ func main() {
 			logger.Fatal().Err(err).Msg("failed to sync all devices with their templates")
 		}
 		logger.Info().Msg("success")
+		//							1				2		3		4			5
+	case "autopi-tools": //   autopi-tools   templateName  [-p  parent]  description
+		autoPiSvc := services.NewAutoPiAPIService(&settings, pdb.DBS)
+		autopiTools(os.Args, autoPiSvc)
 	default:
 		if settings.EnablePrivileges {
 			startContractEventsConsumer(logger, &settings, pdb)

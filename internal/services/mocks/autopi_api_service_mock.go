@@ -109,6 +109,21 @@ func (mr *MockAutoPiAPIServiceMockRecorder) CommandSyncDevice(ctx, unitID, devic
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommandSyncDevice", reflect.TypeOf((*MockAutoPiAPIService)(nil).CommandSyncDevice), ctx, unitID, deviceID, userDeviceID)
 }
 
+// CreateNewTemplate mocks base method.
+func (m *MockAutoPiAPIService) CreateNewTemplate(templateName string, parent int, description string) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateNewTemplate", templateName, parent, description)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateNewTemplate indicates an expected call of CreateNewTemplate.
+func (mr *MockAutoPiAPIServiceMockRecorder) CreateNewTemplate(templateName, parent, description interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateNewTemplate", reflect.TypeOf((*MockAutoPiAPIService)(nil).CreateNewTemplate), templateName, parent, description)
+}
+
 // GetCommandStatus mocks base method.
 func (m *MockAutoPiAPIService) GetCommandStatus(ctx context.Context, jobID string) (*services.AutoPiCommandJob, *models.AutopiJob, error) {
 	m.ctrl.T.Helper()
@@ -197,6 +212,20 @@ func (m *MockAutoPiAPIService) PatchVehicleProfile(vehicleID int, profile servic
 func (mr *MockAutoPiAPIServiceMockRecorder) PatchVehicleProfile(vehicleID, profile interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchVehicleProfile", reflect.TypeOf((*MockAutoPiAPIService)(nil).PatchVehicleProfile), vehicleID, profile)
+}
+
+// SetTemplateICEPowerSettings mocks base method.
+func (m *MockAutoPiAPIService) SetTemplateICEPowerSettings(templateId int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetTemplateICEPowerSettings", templateId)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetTemplateICEPowerSettings indicates an expected call of SetTemplateICEPowerSettings.
+func (mr *MockAutoPiAPIServiceMockRecorder) SetTemplateICEPowerSettings(templateId interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTemplateICEPowerSettings", reflect.TypeOf((*MockAutoPiAPIService)(nil).SetTemplateICEPowerSettings), templateId)
 }
 
 // UnassociateDeviceTemplate mocks base method.
