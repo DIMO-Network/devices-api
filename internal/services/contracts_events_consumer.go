@@ -167,8 +167,8 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 		return err
 	}
 
-	autopiApiService := NewAutoPiAPIService(c.settings, c.db.DBS)
-	device, err := autopiApiService.GetDeviceByEthAddress(p.DeviceAddress)
+	autopiAPIService := NewAutoPiAPIService(c.settings, c.db.DBS)
+	device, err := autopiAPIService.GetDeviceByEthAddress(p.DeviceAddress)
 	if err != nil {
 		c.log.Error().Msg(fmt.Sprintf("Couldn't fetch dongle with eth_address %s.", p.DeviceAddress))
 		return fmt.Errorf("couldn't fetch dongle with eth_address %s", p.DeviceAddress)
