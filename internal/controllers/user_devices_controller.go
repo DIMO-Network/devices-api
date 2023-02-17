@@ -1079,9 +1079,9 @@ func (udc *UserDevicesController) GetValuations(c *fiber.Ctx) error {
 				RetailSource:  "vincario",
 				Updated:       valuationData.UpdatedAt.Format(time.RFC3339),
 			}
-			valJson := valuationData.PricingMetadata.JSON
+			valJson := valuationData.VincarioMetadata.JSON
 			requestJSON := valuationData.RequestMetadata.JSON
-			odometerMarket := gjson.GetBytes(valJson, "market_odometer.odometer_mean")
+			odometerMarket := gjson.GetBytes(valJson, "market_odometer.odometer_avg")
 			if odometerMarket.Exists() {
 				vincarioVal.Mileage = int(odometerMarket.Int())
 				vincarioVal.Odometer = int(odometerMarket.Int())
