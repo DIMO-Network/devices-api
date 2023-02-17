@@ -991,6 +991,8 @@ type ValuationSet struct {
 	Odometer      int    `json:"odometer"`
 	// UserDisplayPrice the top level value to show to users in mobile app
 	UserDisplayPrice int `json:"userDisplayPrice"`
+	// eg. USD or EUR
+	Currency string `json:"currency"`
 }
 
 // GetValuations godoc
@@ -1063,6 +1065,7 @@ func (udc *UserDevicesController) GetValuations(c *fiber.Ctx) error {
 			// Drivly Retail
 			drivlyVal.Retail = extractDrivlyValuation(drivlyJSON, "retail")
 			drivlyVal.RetailAverage = drivlyVal.Retail
+			drivlyVal.Currency = "USD"
 
 			// often drivly saves valuations with 0 for value, if this is case do not consider it
 			if drivlyVal.Retail > 0 || drivlyVal.TradeIn > 0 {
@@ -1100,6 +1103,7 @@ func (udc *UserDevicesController) GetValuations(c *fiber.Ctx) error {
 			vincarioVal.RetailAverage = vincarioVal.Retail
 
 			vincarioVal.UserDisplayPrice = int(gjson.GetBytes(valJSON, "market_price.price_avg").Int())
+			vincarioVal.Currency = gjson.GetBytes(valJSON, "market_price.price_currency").String()
 
 			// often drivly saves valuations with 0 for value, if this is case do not consider it
 			if vincarioVal.Retail > 0 || vincarioVal.TradeIn > 0 {

@@ -512,6 +512,7 @@ func (s *UserDevicesControllerTestSuite) TestGetDeviceValuations_Format1() {
 	assert.Equal(s.T(), 54123, int(gjson.GetBytes(body, "valuationSets.#(vendor=drivly).retail").Int()))
 	//54123 + 50151 / 2
 	assert.Equal(s.T(), 52137, int(gjson.GetBytes(body, "valuationSets.#(vendor=drivly).userDisplayPrice").Int()))
+	assert.Equal(s.T(), "USD", gjson.GetBytes(body, "valuationSets.#(vendor=drivly).currency").String())
 	// 49040 + 52173 + 49241 / 3 = 50151
 	assert.Equal(s.T(), 50151, int(gjson.GetBytes(body, "valuationSets.#(vendor=drivly).tradeIn").Int()))
 	assert.Equal(s.T(), 50151, int(gjson.GetBytes(body, "valuationSets.#(vendor=drivly).tradeInAverage").Int()))
@@ -559,6 +560,7 @@ func (s *UserDevicesControllerTestSuite) TestGetDeviceValuations_Vincario() {
 	assert.Equal(s.T(), 30137, int(gjson.GetBytes(body, "valuationSets.#(vendor=vincario).mileage").Int()))
 	assert.Equal(s.T(), 30137, int(gjson.GetBytes(body, "valuationSets.#(vendor=vincario).odometer").Int()))
 	assert.Equal(s.T(), "km", gjson.GetBytes(body, "valuationSets.#(vendor=vincario).odometerUnit").String())
+	assert.Equal(s.T(), "EUR", gjson.GetBytes(body, "valuationSets.#(vendor=vincario).currency").String())
 
 	assert.Equal(s.T(), 44800, int(gjson.GetBytes(body, "valuationSets.#(vendor=vincario).tradeIn").Int()))
 	assert.Equal(s.T(), 55200, int(gjson.GetBytes(body, "valuationSets.#(vendor=vincario).retail").Int()))
