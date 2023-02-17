@@ -187,7 +187,7 @@ func main() {
 				}
 			}
 		}
-		err = loadUserDeviceDrivly(ctx, &logger, &settings, setAll, wmi, pdb)
+		err = loadValuations(ctx, &logger, &settings, setAll, wmi, pdb)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("error trying to sync driv.ly")
 		}

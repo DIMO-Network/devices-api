@@ -34,6 +34,7 @@ type DeviceDefinitionService interface {
 	FindDeviceDefinitionByMMY(ctx context.Context, mk, model string, year int) (*ddgrpc.GetDeviceDefinitionItemResponse, error)
 	UpdateDeviceDefinitionFromNHTSA(ctx context.Context, deviceDefinitionID string, vin string) error
 	PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string, forceSetAll bool) (DrivlyDataStatusEnum, error)
+	PullVincarioValuation(ctx context.Context, userDeiceID, deviceDefinitionID, vin string) (DrivlyDataStatusEnum, error)
 	GetOrCreateMake(ctx context.Context, tx boil.ContextExecutor, makeName string) (*ddgrpc.DeviceMake, error)
 	GetMakeByTokenID(ctx context.Context, tokenID *big.Int) (*ddgrpc.DeviceMake, error)
 	GetDeviceDefinitionsByIDs(ctx context.Context, ids []string) ([]*ddgrpc.GetDeviceDefinitionItemResponse, error)
@@ -49,6 +50,7 @@ type DeviceDefinitionService interface {
 type deviceDefinitionService struct {
 	dbs                 func() *db.ReaderWriter
 	drivlySvc           DrivlyAPIService
+	vincarioSvc         VincarioAPIService
 	log                 *zerolog.Logger
 	nhtsaSvc            INHTSAService
 	definitionsGRPCAddr string
@@ -63,6 +65,7 @@ func NewDeviceDefinitionService(DBS func() *db.ReaderWriter, log *zerolog.Logger
 		drivlySvc:           NewDrivlyAPIService(settings, DBS),
 		definitionsGRPCAddr: settings.DefinitionsGRPCAddr,
 		googleMapsAPIKey:    settings.GoogleMapsAPIKey,
+		vincarioSvc:         NewVincarioAPIService(settings, log),
 	}
 }
 
@@ -320,6 +323,55 @@ func (d *deviceDefinitionService) UpdateDeviceDefinitionFromNHTSA(ctx context.Co
 	return nil
 }
 
+func (d *deviceDefinitionService) PullVincarioValuation(ctx context.Context, userDeviceID, deviceDefinitionID, vin string) (DrivlyDataStatusEnum, error) {
+	const repullWindow = time.Hour * 24 * 14
+	if len(vin) != 17 {
+		return "", errors.Errorf("invalid VIN %s", vin)
+	}
+
+	// make sure userdevice exists
+	ud, err := models.FindUserDevice(ctx, d.dbs().Reader, userDeviceID)
+	if err != nil {
+		return "", err
+	}
+	// only pull for USA
+	if ud.CountryCode.String == "USA" {
+		return SkippedDrivlyStatus, nil
+	}
+
+	// check repull window
+	existingPricingData, _ := models.ExternalVinData(
+		models.ExternalVinDatumWhere.Vin.EQ(vin),
+		models.ExternalVinDatumWhere.PricingMetadata.IsNotNull(),
+		qm.OrderBy("updated_at desc"), qm.Limit(1)).
+		One(context.Background(), d.dbs().Writer)
+	// just return if already pulled recently for this VIN, but still need to insert never pulled vin - should be uncommon scenario
+	if existingPricingData != nil && existingPricingData.UpdatedAt.Add(repullWindow).After(time.Now()) {
+		return SkippedDrivlyStatus, nil
+	}
+
+	externalVinData := &models.ExternalVinDatum{
+		ID:                 ksuid.New().String(),
+		DeviceDefinitionID: null.StringFrom(deviceDefinitionID),
+		Vin:                vin,
+		UserDeviceID:       null.StringFrom(userDeviceID),
+	}
+	valuation, err := d.vincarioSvc.GetMarketValuation(vin)
+	if err != nil {
+		return "", errors.Wrap(err, "error pulling market data from vincario")
+	}
+	err = externalVinData.VincarioMetadata.Marshal(valuation)
+	if err != nil {
+		return "", errors.Wrap(err, "error marshalling vincario responset")
+	}
+	err = externalVinData.Insert(ctx, d.dbs().Writer, boil.Infer())
+	if err != nil {
+		return "", errors.Wrap(err, "error inserting external_vin_data for vincario")
+	}
+
+	return PulledValuationVincarioStatus, nil
+}
+
 const MilesToKmFactor = 1.609344 // there is 1.609 kilometers in a mile. const should probably be KmToMilesFactor
 const EstMilesPerYear = 12000.0
 
@@ -334,8 +386,9 @@ const (
 	// PulledAllDrivlyStatus means we pulled vin, edmunds, build and valuations
 	PulledAllDrivlyStatus DrivlyDataStatusEnum = "PulledAll"
 	// PulledValuationDrivlyStatus means we only pulled offers and pricing
-	PulledValuationDrivlyStatus DrivlyDataStatusEnum = "PulledValuations"
-	SkippedDrivlyStatus         DrivlyDataStatusEnum = "Skipped"
+	PulledValuationDrivlyStatus   DrivlyDataStatusEnum = "PulledValuations"
+	PulledValuationVincarioStatus DrivlyDataStatusEnum = "PulledValuationVincario"
+	SkippedDrivlyStatus           DrivlyDataStatusEnum = "Skipped"
 )
 
 // PullDrivlyData pulls vin info from drivly, and inserts a record with the data.
