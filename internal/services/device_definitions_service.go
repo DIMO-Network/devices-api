@@ -342,7 +342,7 @@ func (d *deviceDefinitionService) PullVincarioValuation(ctx context.Context, use
 	// check repull window
 	existingPricingData, _ := models.ExternalVinData(
 		models.ExternalVinDatumWhere.Vin.EQ(vin),
-		models.ExternalVinDatumWhere.PricingMetadata.IsNotNull(),
+		models.ExternalVinDatumWhere.VincarioMetadata.IsNotNull(),
 		qm.OrderBy("updated_at desc"), qm.Limit(1)).
 		One(context.Background(), d.dbs().Writer)
 	// just return if already pulled recently for this VIN, but still need to insert never pulled vin - should be uncommon scenario
