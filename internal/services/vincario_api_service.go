@@ -4,8 +4,9 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/DIMO-Network/devices-api/internal/config"
 	"time"
+
+	"github.com/DIMO-Network/devices-api/internal/config"
 
 	"github.com/DIMO-Network/shared"
 	"github.com/rs/zerolog"
