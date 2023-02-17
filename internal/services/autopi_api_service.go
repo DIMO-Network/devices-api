@@ -30,7 +30,7 @@ type AutoPiAPIService interface {
 	UnassociateDeviceTemplate(deviceID string, templateID int) error
 	AssociateDeviceToTemplate(deviceID string, templateID int) error
 	CreateNewTemplate(templateName string, parent int, description string) (int, error)
-	SetTemplateICEPowerSettings(templateId int) error
+	SetTemplateICEPowerSettings(templateID int) error
 	ApplyTemplate(deviceID string, templateID int) error
 	CommandQueryVIN(ctx context.Context, unitID, deviceID, userDeviceID string) (*AutoPiCommandResponse, error)
 	CommandSyncDevice(ctx context.Context, unitID, deviceID, userDeviceID string) (*AutoPiCommandResponse, error)
@@ -174,6 +174,9 @@ func (a *autoPiAPIService) CreateNewTemplate(templateName string, parent int, de
 	var callResponse map[string]interface{}
 	respBytes, _ := io.ReadAll(res.Body)
 	err = json.Unmarshal(respBytes, &callResponse)
+	if err != nil {
+		return 0, errors.Wrapf(err, "error unmarshalling create template response")
+	}
 	var newTemplateID, _ = strconv.Atoi((callResponse["id"]).(string))
 	defer res.Body.Close() // nolint
 	return newTemplateID, nil
@@ -182,11 +185,11 @@ func (a *autoPiAPIService) CreateNewTemplate(templateName string, parent int, de
 //go:embed generic_ice_power_settings.json
 var powerSettings string
 
-func (a *autoPiAPIService) SetTemplateICEPowerSettings(templateId int) error {
-	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/dongle/settings/?template_id=%d", templateId), "POST", []byte(powerSettings))
+func (a *autoPiAPIService) SetTemplateICEPowerSettings(templateID int) error {
+	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/dongle/settings/?template_id=%d", templateID), "POST", []byte(powerSettings))
 	if err != nil {
 		println(res.Body)
-		return errors.Wrapf(err, "Could not apply power settings to template %d", templateId)
+		return errors.Wrapf(err, "Could not apply power settings to template %d", templateID)
 	}
 	return nil
 }

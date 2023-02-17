@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/DIMO-Network/devices-api/internal/services"
 	"strconv"
+
+	"github.com/DIMO-Network/devices-api/internal/services"
 )
 
 func autopiTools(args []string, autoPiSvc services.AutoPiAPIService) {
-	var newTemplateIndex int
 	if len(args) > 3 {
 		templateName := args[2]
 		var parent int
