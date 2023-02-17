@@ -33,7 +33,7 @@ func loadValuations(ctx context.Context, logger *zerolog.Logger, settings *confi
 		}
 		all = filtered
 	}
-	logger.Info().Msgf("processing %d user_devices with verified VINs in the USA only", len(all))
+	logger.Info().Msgf("processing %d user_devices with verified VINs in ALL regions", len(all))
 
 	deviceDefinitionSvc := services.NewDeviceDefinitionService(pdb.DBS, logger, nil, settings)
 	statsAggr := map[services.DrivlyDataStatusEnum]int{}
@@ -43,7 +43,7 @@ func loadValuations(ctx context.Context, logger *zerolog.Logger, settings *confi
 			if err != nil {
 				logger.Err(err).Str("vin", ud.VinIdentifier.String).Msg("error pulling drivly data")
 			} else {
-				logger.Info().Msgf("%s vin: %s", status, ud.VinIdentifier.String)
+				logger.Info().Msgf("Drivly   %s vin: %s", status, ud.VinIdentifier.String)
 			}
 			statsAggr[status]++
 		} else {
@@ -51,7 +51,7 @@ func loadValuations(ctx context.Context, logger *zerolog.Logger, settings *confi
 			if err != nil {
 				logger.Err(err).Str("vin", ud.VinIdentifier.String).Msg("error pulling vincario data")
 			} else {
-				logger.Info().Msgf("%s vin: %s, country: %s", status, ud.VinIdentifier.String, ud.CountryCode.String)
+				logger.Info().Msgf("Vincario %s vin: %s, country: %s", status, ud.VinIdentifier.String, ud.CountryCode.String)
 			}
 			statsAggr[status]++
 		}
