@@ -204,10 +204,10 @@ func (mr *MockDeviceDefinitionServiceMockRecorder) GetOrCreateMake(ctx, tx, make
 }
 
 // PullDrivlyData mocks base method.
-func (m *MockDeviceDefinitionService) PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string, forceSetAll bool) (services.DrivlyDataStatusEnum, error) {
+func (m *MockDeviceDefinitionService) PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string, forceSetAll bool) (services.DataPullStatusEnum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PullDrivlyData", ctx, userDeviceID, deviceDefinitionID, vin, forceSetAll)
-	ret0, _ := ret[0].(services.DrivlyDataStatusEnum)
+	ret0, _ := ret[0].(services.DataPullStatusEnum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -219,10 +219,10 @@ func (mr *MockDeviceDefinitionServiceMockRecorder) PullDrivlyData(ctx, userDevic
 }
 
 // PullVincarioValuation mocks base method.
-func (m *MockDeviceDefinitionService) PullVincarioValuation(ctx context.Context, userDeiceID, deviceDefinitionID, vin string) (services.DrivlyDataStatusEnum, error) {
+func (m *MockDeviceDefinitionService) PullVincarioValuation(ctx context.Context, userDeiceID, deviceDefinitionID, vin string) (services.DataPullStatusEnum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PullVincarioValuation", ctx, userDeiceID, deviceDefinitionID, vin)
-	ret0, _ := ret[0].(services.DrivlyDataStatusEnum)
+	ret0, _ := ret[0].(services.DataPullStatusEnum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
