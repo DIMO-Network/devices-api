@@ -42,191 +42,624 @@ definitions:
     type: object
   big.Int:
     type: object
-  github_com_DIMO-Network_devices-api_internal_controllers_helpers.CreateResponse:
+  github.com_DIMO-Network_devices-api_internal_controllers.AutoPiClaimRequest:
     properties:
-      id:
+      aftermarketDeviceSignature:
+        description: AftermarketDeviceSignature is the signature from the aftermarket
+          device.
+        type: string
+      userSignature:
+        description: UserSignature is the signature from the user, using their private
+          key.
         type: string
     type: object
-  github_com_DIMO-Network_devices-api_internal_services.AutoPiCommandJob:
+  github.com_DIMO-Network_devices-api_internal_controllers.AutoPiCommandRequest:
     properties:
-      commandJobId:
-        type: string
-      commandRaw:
-        type: string
-      commandState:
-        type: string
-      lastUpdated:
-        type: string
-      result:
-        $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiCommandResult'
-    type: object
-  github_com_DIMO-Network_devices-api_internal_services.AutoPiCommandResult:
-    properties:
-      tag:
-        description: corresponds to webhook response.tag
-        type: string
-      type:
-        description: corresponds to webhook response.data.return._type
-        type: string
-      value:
-        description: corresponds to webhook response.data.return.value
+      command:
         type: string
     type: object
-  github_com_DIMO-Network_devices-api_internal_services.AutoPiTask:
+  github.com_DIMO-Network_devices-api_internal_controllers.AutoPiDeviceInfo:
     properties:
-      code:
-        type: integer
-      description:
+      claim:
+        $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.AutoPiTransactionStatus'
+        description: Claim contains the status of the on-chain claiming meta-transaction.
+      deviceId:
         type: string
-      error:
-        type: string
-      status:
-        type: string
-      taskId:
-        type: string
-      updatedAt:
-        type: string
-      updates:
-        description: Updates increments every time the job was updated.
-        type: integer
-    type: object
-  github_com_DIMO-Network_devices-api_internal_services.DeviceAttribute:
-    properties:
-      name:
-        type: string
-      value:
-        type: string
-    type: object
-  github_com_DIMO-Network_devices-api_internal_services.DeviceCompatibility:
-    properties:
-      capabilities:
+      dockerReleases:
         items:
           type: integer
         type: array
-      country:
-        type: string
-      id:
-        type: string
-      region:
-        type: string
-      style:
-        type: string
-      type:
-        type: string
-      vendor:
-        type: string
-    type: object
-  github_com_DIMO-Network_devices-api_internal_services.DeviceDefinition:
-    properties:
-      compatibleIntegrations:
-        description: CompatibleIntegrations has systems this vehicle can integrate
-          with
+      ethereumAddress:
+        description: OwnerAddress is the Ethereum address of the NFT owner.
         items:
-          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceCompatibility'
+          type: integer
         type: array
-      deviceAttributes:
-        description: DeviceAttributes is a list of attributes for the device type
-          as defined in device_types.properties
-        items:
-          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceAttribute'
-        type: array
-      deviceDefinitionId:
+      hwRevision:
         type: string
-      imageUrl:
-        type: string
-      make:
-        $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceMake'
-      metadata: {}
-      name:
-        type: string
-      type:
-        $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceType'
-      vehicleData:
-        allOf:
-        - $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceVehicleInfo'
-        description: VehicleInfo will be empty if not a vehicle type
-      verified:
+      isUpdated:
         type: boolean
+      lastCommunication:
+        type: string
+      ownerAddress:
+        description: OwnerAddress is the Ethereum address of the NFT owner.
+        items:
+          type: integer
+        type: array
+      pair:
+        $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.AutoPiTransactionStatus'
+        description: Pair contains the status of the on-chain pairing meta-transaction.
+      releaseVersion:
+        type: string
+      shouldUpdate:
+        type: boolean
+      template:
+        type: integer
+      tokenId:
+        $ref: '#/definitions/big.Int'
+      unitId:
+        type: string
+      unpair:
+        $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.AutoPiTransactionStatus'
+        description: Unpair contains the status of the on-chain unpairing meta-transaction.
     type: object
-  github_com_DIMO-Network_devices-api_internal_services.DeviceMake:
+  github.com_DIMO-Network_devices-api_internal_controllers.AutoPiPairRequest:
     properties:
+      externalId:
+        type: string
+      signature:
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.AutoPiTransactionStatus:
+    properties:
+      createdAt:
+        description: CreatedAt is the timestamp of the creation of the meta-transaction.
+        example: "2022-10-01T09:22:21.002Z"
+        type: string
+      hash:
+        description: Hash is the hexidecimal transaction hash, available for any transaction
+          at the Submitted stage or greater.
+        example: 0x28b4662f1e1b15083261a4a5077664f4003d58cb528826b7aab7fad466c28e70
+        type: string
+      status:
+        description: Status is the state of the transaction performing this operation.
+          There are only four options.
+        enum:
+        - Unsubmitted
+        - Submitted
+        - Mined
+        - Confirmed
+        example: Mined
+        type: string
+      updatedAt:
+        description: UpdatedAt is the last time we updated the status of the transaction.
+        example: "2022-10-01T09:22:26.337Z"
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.CommandRequestStatusResp:
+    properties:
+      command:
+        example: doors/unlock
+        type: string
+      createdAt:
+        example: "2022-08-09T19:38:39Z"
+        type: string
       id:
+        example: 2D8LqUHQtaMHH6LYPqznmJMBeZm
         type: string
-      logo_url:
-        $ref: '#/definitions/null.String'
-      name:
+      status:
+        enum:
+        - Pending
+        - Complete
+        - Failed
+        example: Complete
         type: string
-      oem_platform_name:
-        $ref: '#/definitions/null.String'
+      updatedAt:
+        example: "2022-08-09T19:39:22Z"
+        type: string
     type: object
-  github_com_DIMO-Network_devices-api_internal_services.DeviceType:
+  github.com_DIMO-Network_devices-api_internal_controllers.CommandResponse:
     properties:
-      make:
+      requestId:
         type: string
-      model:
-        type: string
-      subModels:
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.CreateGeofence:
+    properties:
+      h3Indexes:
+        description: 'required: false'
         items:
           type: string
         type: array
+      name:
+        description: 'required: true'
+        type: string
       type:
-        description: Type is eg. Vehicle, E-bike, roomba
+        description: |-
+          one of following: "PrivacyFence", "TriggerEntry", "TriggerExit"
+          required: true
         type: string
-      year:
-        type: integer
+      userDeviceIds:
+        description: Optionally link the geofence with a list of user device ID
+        items:
+          type: string
+        type: array
     type: object
-  github_com_DIMO-Network_devices-api_internal_services.DeviceVehicleInfo:
+  github.com_DIMO-Network_devices-api_internal_controllers.DeviceOffer:
     properties:
-      base_msrp:
+      offerSets:
+        description: Contains a list of offer sets, one for each source
+        items:
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.OfferSet'
+        type: array
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.DeviceRange:
+    properties:
+      rangeSets:
+        description: Contains a list of range sets, one for each range basis (may
+          be empty)
+        items:
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RangeSet'
+        type: array
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.DeviceSnapshot:
+    properties:
+      ambientTemp:
+        type: number
+      batteryCapacity:
         type: integer
-      driven_wheels:
+      batteryVoltage:
+        type: number
+      chargeLimit:
+        type: number
+      charging:
+        type: boolean
+      fuelPercentRemaining:
+        type: number
+      latitude:
+        type: number
+      longitude:
+        type: number
+      odometer:
+        type: number
+      oil:
+        type: number
+      range:
+        type: number
+      recordCreatedAt:
         type: string
-      epa_class:
+      recordUpdatedAt:
         type: string
-      fuel_tank_capacity_gal:
+      soc:
+        description: 'todo: change json to match after update frontend'
+        type: number
+      tirePressure:
+        $ref: '#/definitions/smartcar.TirePressure'
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.DeviceValuation:
+    properties:
+      valuationSets:
+        description: Contains a list of valuation sets, one for each vendor
+        items:
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.ValuationSet'
+        type: array
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.DocumentResponse:
+    properties:
+      createdAt:
         type: string
-      fuel_type:
+      ext:
         type: string
-      mpg:
+      id:
         type: string
-      mpg_city:
+      name:
         type: string
-      mpg_highway:
+      type:
         type: string
-      number_of_doors:
+      url:
         type: string
-      vehicle_type:
-        description: VehicleType PASSENGER CAR, from NHTSA
+      userDeviceId:
         type: string
     type: object
-  github_com_DIMO-Network_devices-api_internal_services.PowertrainType:
-    enum:
-    - ICE
-    - HEV
-    - PHEV
-    - BEV
-    - FCEV
-    type: string
-    x-enum-varnames:
-    - ICE
-    - HEV
-    - PHEV
-    - BEV
-    - FCEV
-  github_com_DIMO-Network_devices-api_internal_services.UserDeviceMetadata:
+  github.com_DIMO-Network_devices-api_internal_controllers.GeoFenceUserDevice:
     properties:
-      elasticDefinitionSynced:
+      mmy:
+        type: string
+      name:
+        type: string
+      userDeviceId:
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.GetGeofence:
+    properties:
+      createdAt:
+        type: string
+      h3Indexes:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      name:
+        type: string
+      type:
+        type: string
+      updatedAt:
+        type: string
+      userDevices:
+        items:
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.GeoFenceUserDevice'
+        type: array
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.GetUserDeviceIntegrationResponse:
+    properties:
+      createdAt:
+        description: CreatedAt is the creation time of this integration for this device.
+        type: string
+      externalId:
+        description: |-
+          ExternalID is the identifier used by the third party for the device. It may be absent if we
+          haven't authorized yet.
+        type: string
+      status:
+        description: Status is one of "Pending", "PendingFirstData", "Active", "Failed",
+          "DuplicateIntegration".
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.MintRequest:
+    properties:
+      imageData:
+        description: ImageData contains the base64-encoded NFT PNG image.
+        type: string
+      imageDataTransparent:
+        description: |-
+          ImageDataTransparent contains the base64-encoded NFT PNG image
+          with a transparent background, for use in the app. For compatibility
+          with older versions it is not required.
+        type: string
+      signature:
+        description: Signature is the hex encoding of the EIP-712 signature result.
+        type: string
+    required:
+    - imageData
+    - signature
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.MyDevicesResp:
+    properties:
+      sharedDevices:
+        items:
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UserDeviceFull'
+        type: array
+      userDevices:
+        items:
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UserDeviceFull'
+        type: array
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.NFTAttribute:
+    properties:
+      trait_type:
+        type: string
+      value:
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.NFTData:
+    properties:
+      ownerAddress:
+        description: OwnerAddress is the Ethereum address of the NFT owner.
+        items:
+          type: integer
+        type: array
+      status:
+        description: Status is the minting status of the NFT.
+        enum:
+        - Unstarted
+        - Submitted
+        - Mined
+        - Confirmed
+        example: Confirmed
+        type: string
+      tokenId:
+        example: 37
+        type: number
+      tokenUri:
+        example: https://nft.dimo.zone/37
+        type: string
+      txHash:
+        description: TxHash is the hash of the minting transaction.
+        example: 0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.NFTImageData:
+    properties:
+      imageData:
+        description: ImageData contains the base64-encoded NFT PNG image.
+        type: string
+      imageDataTransparent:
+        description: |-
+          ImageDataTransparent contains the base64-encoded NFT PNG image
+          with a transparent background, for use in the app. For compatibility
+          with older versions it is not required.
+        type: string
+    required:
+    - imageData
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.NFTMetadataResp:
+    properties:
+      attributes:
+        items:
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.NFTAttribute'
+        type: array
+      description:
+        type: string
+      image:
+        type: string
+      name:
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.Offer:
+    properties:
+      declineReason:
+        description: The reason the offer was declined from the vendor
+        type: string
+      error:
+        description: An error from the vendor (eg. when the VIN is invalid)
+        type: string
+      grade:
+        description: The grade of the offer from the vendor (eg. "RETAIL")
+        type: string
+      price:
+        description: The offer price from the vendor
+        type: integer
+      url:
+        description: The offer URL from the vendor
+        type: string
+      vendor:
+        description: The vendor of the offer (eg. "carmax", "carvana", etc.)
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.OfferSet:
+    properties:
+      mileage:
+        description: The mileage used for the offers
+        type: integer
+      offers:
+        description: Contains a list of offers from the source
+        items:
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.Offer'
+        type: array
+      source:
+        description: The source of the offers (eg. "drivly")
+        type: string
+      updated:
+        description: The time the offers were pulled
+        type: string
+      zipCode:
+        description: This will be the zip code used (if any) for the offers request
+          regardless if the source uses it
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.Privilege:
+    properties:
+      expiry:
+        type: string
+      id:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.PrivilegeUser:
+    properties:
+      address:
+        type: string
+      privileges:
+        items:
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.Privilege'
+        type: array
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.RangeSet:
+    properties:
+      rangeBasis:
+        description: The basis for the range calculation (eg. "MPG" or "MPG Highway")
+        type: string
+      rangeDistance:
+        description: The estimated range distance
+        type: integer
+      rangeUnit:
+        description: The unit used for the rangeDistance (eg. "miles" or "kilometers")
+        type: string
+      updated:
+        description: The time the data was collected
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.RegisterDeviceIntegrationRequest:
+    properties:
+      accessToken:
+        type: string
+      code:
+        description: Code is an OAuth authorization code. Not used in all integrations.
+        type: string
+      expiresIn:
+        type: integer
+      externalId:
+        description: ExternalID is the only field needed for AutoPi registrations.
+          It is the UnitID.
+        type: string
+      redirectURI:
+        description: RedirectURI is the OAuth redirect URI used by the frontend. Not
+          used in all integrations.
+        type: string
+      refreshToken:
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.RegisterUserDevice:
+    properties:
+      countryCode:
+        type: string
+      deviceDefinitionId:
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.RegisterUserDeviceResponse:
+    properties:
+      deviceDefinitionId:
+        type: string
+      integrationCapabilities:
+        items:
+          $ref: '#/definitions/services.DeviceCompatibility'
+        type: array
+      userDeviceId:
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.RegisterUserDeviceSmartcar:
+    properties:
+      code:
+        description: Code refers to the auth code provided by smartcar when user logs
+          in
+        type: string
+      countryCode:
+        type: string
+      redirectURI:
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.RegisterUserDeviceVIN:
+    properties:
+      countryCode:
+        type: string
+      vin:
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.UpdateCountryCodeReq:
+    properties:
+      countryCode:
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.UpdateImageURLReq:
+    properties:
+      imageUrl:
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.UpdateNameReq:
+    properties:
+      name:
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.UpdateVINReq:
+    properties:
+      signature:
+        description: |-
+          Signature is the hex-encoded result of the AutoPi signing the VIN. It must
+          be present to verify the VIN.
+        example: 16b15f88bbd2e0a22d1d0084b8b7080f2003ea83eab1a00f80d8c18446c9c1b6224f17aa09eaf167717ca4f355bb6dc94356e037edf3adf6735a86fc3741f5231b
+        type: string
+      vin:
+        description: |-
+          VIN is a vehicle identification number. At the very least, it must be
+          17 characters in length and contain only letters and numbers.
+        example: 4Y1SL65848Z411439
+        type: string
+    required:
+    - vin
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.UserDeviceFull:
+    properties:
+      countryCode:
+        type: string
+      customImageUrl:
+        type: string
+      deviceDefinition:
+        $ref: '#/definitions/services.DeviceDefinition'
+      id:
+        type: string
+      integrations:
+        items:
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UserDeviceIntegrationStatus'
+        type: array
+      metadata:
+        $ref: '#/definitions/services.UserDeviceMetadata'
+      name:
+        type: string
+      nft:
+        $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.NFTData'
+      optedInAt:
+        type: string
+      privilegedUsers:
+        items:
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.PrivilegeUser'
+        type: array
+      vin:
+        type: string
+      vinConfirmed:
         type: boolean
-      elasticRegionSynced:
-        type: boolean
-      geoDecodedCountry:
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.UserDeviceIntegrationStatus:
+    properties:
+      createdAt:
         type: string
-      geoDecodedStateProv:
+      externalId:
         type: string
-      postal_code:
+      integrationId:
         type: string
-      powertrainType:
-        $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.PowertrainType'
+      integrationVendor:
+        type: string
+      metadata:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  github.com_DIMO-Network_devices-api_internal_controllers.ValuationSet:
+    properties:
+      mileage:
+        description: The mileage used for the valuation
+        type: integer
+      odometer:
+        type: integer
+      odometerUnit:
+        type: string
+      retail:
+        description: retail is equal to retailAverage when available
+        type: integer
+      retailAverage:
+        type: integer
+      retailClean:
+        description: retailClean, retailAverage, and retailRough my not always be
+          available
+        type: integer
+      retailRough:
+        type: integer
+      retailSource:
+        description: Useful when Drivly returns multiple vendors and we've selected
+          one (eg. "drivly:blackbook")
+        type: string
+      tradeIn:
+        description: tradeIn is equal to tradeInAverage when available
+        type: integer
+      tradeInAverage:
+        type: integer
+      tradeInClean:
+        description: tradeInClean, tradeInAverage, and tradeInRough my not always
+          be available
+        type: integer
+      tradeInRough:
+        type: integer
+      tradeInSource:
+        description: Useful when Drivly returns multiple vendors and we've selected
+          one (eg. "drivly:blackbook")
+        type: string
+      updated:
+        description: The time the valuation was pulled or in the case of blackbook,
+          this may be the event time of the device odometer which was used for the
+          valuation
+        type: string
+      userDisplayPrice:
+        description: UserDisplayPrice the top level value to show to users in mobile
+          app
+        type: integer
+      vendor:
+        description: The source of the valuation (eg. "drivly" or "blackbook")
+        type: string
+      zipCode:
+        description: This will be the zip code used (if any) for the valuation request
+          regardless if the vendor uses it
+        type: string
     type: object
   grpc.Integration:
     properties:
@@ -256,6 +689,11 @@ definitions:
       PHEV:
         type: integer
     type: object
+  helpers.CreateResponse:
+    properties:
+      id:
+        type: string
+    type: object
   internal_controllers.AutoPiClaimRequest:
     properties:
       aftermarketDeviceSignature:
@@ -275,8 +713,7 @@ definitions:
   internal_controllers.AutoPiDeviceInfo:
     properties:
       claim:
-        allOf:
-        - $ref: '#/definitions/internal_controllers.AutoPiTransactionStatus'
+        $ref: '#/definitions/internal_controllers.AutoPiTransactionStatus'
         description: Claim contains the status of the on-chain claiming meta-transaction.
       deviceId:
         type: string
@@ -285,6 +722,7 @@ definitions:
           type: integer
         type: array
       ethereumAddress:
+        description: OwnerAddress is the Ethereum address of the NFT owner.
         items:
           type: integer
         type: array
@@ -295,12 +733,12 @@ definitions:
       lastCommunication:
         type: string
       ownerAddress:
+        description: OwnerAddress is the Ethereum address of the NFT owner.
         items:
           type: integer
         type: array
       pair:
-        allOf:
-        - $ref: '#/definitions/internal_controllers.AutoPiTransactionStatus'
+        $ref: '#/definitions/internal_controllers.AutoPiTransactionStatus'
         description: Pair contains the status of the on-chain pairing meta-transaction.
       releaseVersion:
         type: string
@@ -313,8 +751,7 @@ definitions:
       unitId:
         type: string
       unpair:
-        allOf:
-        - $ref: '#/definitions/internal_controllers.AutoPiTransactionStatus'
+        $ref: '#/definitions/internal_controllers.AutoPiTransactionStatus'
         description: Unpair contains the status of the on-chain unpairing meta-transaction.
     type: object
   internal_controllers.AutoPiPairRequest:
@@ -468,30 +905,12 @@ definitions:
       name:
         type: string
       type:
-        $ref: '#/definitions/internal_controllers.DocumentTypeEnum'
+        type: string
       url:
         type: string
       userDeviceId:
         type: string
     type: object
-  internal_controllers.DocumentTypeEnum:
-    enum:
-    - DriversLicense
-    - Other
-    - VehicleTitle
-    - VehicleRegistration
-    - VehicleInsurance
-    - VehicleMaintenance
-    - VehicleCustomImage
-    type: string
-    x-enum-varnames:
-    - DriversLicense
-    - Other
-    - VehicleTitle
-    - VehicleRegistration
-    - VehicleInsurance
-    - VehicleMaintenance
-    - VehicleCustomImage
   internal_controllers.GeoFenceUserDevice:
     properties:
       mmy:
@@ -735,7 +1154,7 @@ definitions:
         type: string
       integrationCapabilities:
         items:
-          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceCompatibility'
+          $ref: '#/definitions/services.DeviceCompatibility'
         type: array
       userDeviceId:
         type: string
@@ -797,7 +1216,7 @@ definitions:
       customImageUrl:
         type: string
       deviceDefinition:
-        $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceDefinition'
+        $ref: '#/definitions/services.DeviceDefinition'
       id:
         type: string
       integrations:
@@ -805,7 +1224,7 @@ definitions:
           $ref: '#/definitions/internal_controllers.UserDeviceIntegrationStatus'
         type: array
       metadata:
-        $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.UserDeviceMetadata'
+        $ref: '#/definitions/services.UserDeviceMetadata'
       name:
         type: string
       nft:
@@ -843,6 +1262,10 @@ definitions:
       mileage:
         description: The mileage used for the valuation
         type: integer
+      odometer:
+        type: integer
+      odometerUnit:
+        type: string
       retail:
         description: retail is equal to retailAverage when available
         type: integer
@@ -878,6 +1301,10 @@ definitions:
           this may be the event time of the device odometer which was used for the
           valuation
         type: string
+      userDisplayPrice:
+        description: UserDisplayPrice the top level value to show to users in mobile
+          app
+        type: integer
       vendor:
         description: The source of the valuation (eg. "drivly" or "blackbook")
         type: string
@@ -894,6 +1321,172 @@ definitions:
         type: string
       valid:
         type: boolean
+    type: object
+  services.AutoPiCommandJob:
+    properties:
+      commandJobId:
+        type: string
+      commandRaw:
+        type: string
+      commandState:
+        type: string
+      lastUpdated:
+        type: string
+      result:
+        $ref: '#/definitions/services.AutoPiCommandResult'
+    type: object
+  services.AutoPiCommandResult:
+    properties:
+      tag:
+        description: corresponds to webhook response.tag
+        type: string
+      type:
+        description: corresponds to webhook response.data.return._type
+        type: string
+      value:
+        description: corresponds to webhook response.data.return.value
+        type: string
+    type: object
+  services.AutoPiTask:
+    properties:
+      code:
+        type: integer
+      description:
+        type: string
+      error:
+        type: string
+      status:
+        type: string
+      taskId:
+        type: string
+      updatedAt:
+        type: string
+      updates:
+        description: Updates increments every time the job was updated.
+        type: integer
+    type: object
+  services.DeviceAttribute:
+    properties:
+      name:
+        type: string
+      value:
+        type: string
+    type: object
+  services.DeviceCompatibility:
+    properties:
+      capabilities:
+        items:
+          type: integer
+        type: array
+      country:
+        type: string
+      id:
+        type: string
+      region:
+        type: string
+      style:
+        type: string
+      type:
+        type: string
+      vendor:
+        type: string
+    type: object
+  services.DeviceDefinition:
+    properties:
+      compatibleIntegrations:
+        description: CompatibleIntegrations has systems this vehicle can integrate
+          with
+        items:
+          $ref: '#/definitions/services.DeviceCompatibility'
+        type: array
+      deviceAttributes:
+        description: DeviceAttributes is a list of attributes for the device type
+          as defined in device_types.properties
+        items:
+          $ref: '#/definitions/services.DeviceAttribute'
+        type: array
+      deviceDefinitionId:
+        type: string
+      imageUrl:
+        type: string
+      make:
+        $ref: '#/definitions/services.DeviceMake'
+      metadata: {}
+      name:
+        type: string
+      type:
+        $ref: '#/definitions/services.DeviceType'
+      vehicleData:
+        $ref: '#/definitions/services.DeviceVehicleInfo'
+        description: VehicleInfo will be empty if not a vehicle type
+      verified:
+        type: boolean
+    type: object
+  services.DeviceMake:
+    properties:
+      id:
+        type: string
+      logo_url:
+        $ref: '#/definitions/null.String'
+      name:
+        type: string
+      oem_platform_name:
+        $ref: '#/definitions/null.String'
+    type: object
+  services.DeviceType:
+    properties:
+      make:
+        type: string
+      model:
+        type: string
+      subModels:
+        items:
+          type: string
+        type: array
+      type:
+        description: Type is eg. Vehicle, E-bike, roomba
+        type: string
+      year:
+        type: integer
+    type: object
+  services.DeviceVehicleInfo:
+    properties:
+      base_msrp:
+        type: integer
+      driven_wheels:
+        type: string
+      epa_class:
+        type: string
+      fuel_tank_capacity_gal:
+        type: string
+      fuel_type:
+        type: string
+      mpg:
+        type: string
+      mpg_city:
+        type: string
+      mpg_highway:
+        type: string
+      number_of_doors:
+        type: string
+      vehicle_type:
+        description: VehicleType PASSENGER CAR, from NHTSA
+        type: string
+    type: object
+  services.UserDeviceMetadata:
+    properties:
+      elasticDefinitionSynced:
+        type: boolean
+      elasticRegionSynced:
+        type: boolean
+      geoDecodedCountry:
+        type: string
+      geoDecodedStateProv:
+        type: string
+      postal_code:
+        type: string
+      powertrainType:
+        type: string
     type: object
   smartcar.TirePressure:
     properties:
@@ -913,16 +1506,8 @@ definitions:
       requestId:
         type: string
       unitSystem:
-        $ref: '#/definitions/smartcar.UnitSystem'
+        type: string
     type: object
-  smartcar.UnitSystem:
-    enum:
-    - metric
-    - imperial
-    type: string
-    x-enum-varnames:
-    - Metric
-    - Imperial
 info:
   contact: {}
   title: DIMO Devices API
@@ -982,7 +1567,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiTask'
+            $ref: '#/definitions/services.AutoPiTask'
       security:
       - BearerAuth: []
       tags:
@@ -1081,7 +1666,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiTask'
+            $ref: '#/definitions/services.AutoPiTask'
       security:
       - BearerAuth: []
       tags:
@@ -1111,7 +1696,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceDefinition'
+            $ref: '#/definitions/services.DeviceDefinition'
       tags:
       - device-definitions
   /device-definitions/:id:
@@ -1130,7 +1715,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceDefinition'
+            $ref: '#/definitions/services.DeviceDefinition'
       tags:
       - device-definitions
   /device-definitions/{id}/integrations:
@@ -1150,7 +1735,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceCompatibility'
+              $ref: '#/definitions/services.DeviceCompatibility'
             type: array
       tags:
       - device-definitions
@@ -1166,7 +1751,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_controllers.DocumentResponse'
+              $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DocumentResponse'
             type: array
       security:
       - BearerAuth: []
@@ -1203,7 +1788,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_controllers.DocumentResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DocumentResponse'
       security:
       - BearerAuth: []
       tags:
@@ -1244,7 +1829,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.DocumentResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DocumentResponse'
       security:
       - BearerAuth: []
       tags:
@@ -1317,14 +1902,14 @@ paths:
         name: user_device
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.RegisterUserDevice'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RegisterUserDevice'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_controllers.RegisterUserDeviceResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RegisterUserDeviceResponse'
       security:
       - ApiKeyAuth: []
       - BearerAuth: []
@@ -1365,7 +1950,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiCommandJob'
+            $ref: '#/definitions/services.AutoPiCommandJob'
       security:
       - BearerAuth: []
       tags:
@@ -1537,7 +2122,7 @@ paths:
         name: mintRequest
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.MintRequest'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.MintRequest'
       responses:
         "200":
           description: OK
@@ -1592,7 +2177,7 @@ paths:
         name: name
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.UpdateCountryCodeReq'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UpdateCountryCodeReq'
       produces:
       - application/json
       responses:
@@ -1613,7 +2198,7 @@ paths:
         name: name
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.UpdateImageURLReq'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UpdateImageURLReq'
       produces:
       - application/json
       responses:
@@ -1797,7 +2382,7 @@ paths:
         name: name
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.UpdateNameReq'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UpdateNameReq'
       - description: user id
         in: path
         name: user_device_id
@@ -1821,7 +2406,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.DeviceOffer'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DeviceOffer'
       security:
       - BearerAuth: []
       tags:
@@ -1841,7 +2426,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.DeviceRange'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DeviceRange'
       security:
       - BearerAuth: []
       tags:
@@ -1863,7 +2448,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.DeviceSnapshot'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DeviceSnapshot'
       security:
       - BearerAuth: []
       tags:
@@ -1884,7 +2469,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.DeviceValuation'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DeviceValuation'
       security:
       - BearerAuth: []
       tags:
@@ -1900,7 +2485,7 @@ paths:
         name: vin
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.UpdateVINReq'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UpdateVINReq'
       - description: user id
         in: path
         name: userDeviceID
@@ -1929,7 +2514,7 @@ paths:
         name: nftIamges
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.NFTImageData'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.NFTImageData'
       responses:
         "204":
           description: No Content
@@ -1949,14 +2534,14 @@ paths:
         name: user_device
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.RegisterUserDeviceSmartcar'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RegisterUserDeviceSmartcar'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_controllers.RegisterUserDeviceSmartcar'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RegisterUserDeviceSmartcar'
         "400":
           description: validation failure
         "424":
@@ -1980,14 +2565,14 @@ paths:
         name: user_device
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.RegisterUserDeviceVIN'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RegisterUserDeviceVIN'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_controllers.RegisterUserDeviceResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RegisterUserDeviceResponse'
         "400":
           description: validation failure
         "424":
@@ -2008,7 +2593,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.MyDevicesResp'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.MyDevicesResp'
       security:
       - BearerAuth: []
       tags:
@@ -2022,7 +2607,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.MyDevicesResp'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.MyDevicesResp'
       security:
       - BearerAuth: []
       tags:
@@ -2037,7 +2622,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_controllers.GetGeofence'
+              $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.GetGeofence'
             type: array
       security:
       - ApiKeyAuth: []
@@ -2055,14 +2640,14 @@ paths:
         name: geofence
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.CreateGeofence'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CreateGeofence'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.CreateResponse'
+            $ref: '#/definitions/helpers.CreateResponse'
       security:
       - ApiKeyAuth: []
       - BearerAuth: []
@@ -2100,7 +2685,7 @@ paths:
         name: geofence
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.CreateGeofence'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CreateGeofence'
       produces:
       - application/json
       responses:
