@@ -1079,13 +1079,13 @@ func (udc *UserDevicesController) GetValuations(c *fiber.Ctx) error {
 				RetailSource:  "vincario",
 				Updated:       valuationData.UpdatedAt.Format(time.RFC3339),
 			}
-			valJson := valuationData.VincarioMetadata.JSON
+			valJSON := valuationData.VincarioMetadata.JSON
 			requestJSON := valuationData.RequestMetadata.JSON
-			odometerMarket := gjson.GetBytes(valJson, "market_odometer.odometer_avg")
+			odometerMarket := gjson.GetBytes(valJSON, "market_odometer.odometer_avg")
 			if odometerMarket.Exists() {
 				vincarioVal.Mileage = int(odometerMarket.Int())
 				vincarioVal.Odometer = int(odometerMarket.Int())
-				vincarioVal.OdometerUnit = gjson.GetBytes(valJson, "market_odometer.odometer_unit").String()
+				vincarioVal.OdometerUnit = gjson.GetBytes(valJSON, "market_odometer.odometer_unit").String()
 			}
 			// todo this needs to be implemented in the load_valuations script
 			requestPostalCode := gjson.GetBytes(requestJSON, "postalCode")
@@ -1093,19 +1093,19 @@ func (udc *UserDevicesController) GetValuations(c *fiber.Ctx) error {
 				vincarioVal.ZipCode = requestPostalCode.String()
 			}
 			// vincario Trade-In - just using the price below mkt mean
-			vincarioVal.TradeIn = int(gjson.GetBytes(valJson, "market_price.price_below").Int())
+			vincarioVal.TradeIn = int(gjson.GetBytes(valJSON, "market_price.price_below").Int())
 			vincarioVal.TradeInAverage = vincarioVal.TradeIn
 			// vincario Retail - just using the price above mkt mean
-			vincarioVal.Retail = int(gjson.GetBytes(valJson, "market_price.price_above").Int())
+			vincarioVal.Retail = int(gjson.GetBytes(valJSON, "market_price.price_above").Int())
 			vincarioVal.RetailAverage = vincarioVal.Retail
 
-			vincarioVal.UserDisplayPrice = int(gjson.GetBytes(valJson, "market_price.price_avg").Int())
+			vincarioVal.UserDisplayPrice = int(gjson.GetBytes(valJSON, "market_price.price_avg").Int())
 
 			// often drivly saves valuations with 0 for value, if this is case do not consider it
 			if vincarioVal.Retail > 0 || vincarioVal.TradeIn > 0 {
 				dVal.ValuationSets = append(dVal.ValuationSets, vincarioVal)
 			} else {
-				logger.Warn().Msg("did not find a market value from vincario, or valJson in unexpected format")
+				logger.Warn().Msg("did not find a market value from vincario, or valJSON in unexpected format")
 			}
 
 		}
