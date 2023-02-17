@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strconv"
 	"time"
 
+	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
@@ -16,19 +18,22 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 type ContractsEventsConsumer struct {
-	db  db.Store
-	log *zerolog.Logger
+	db       db.Store
+	log      *zerolog.Logger
+	settings *config.Settings
 }
 
 type EventName string
 
 const (
-	PrivilegeSet EventName = "PrivilegeSet"
+	PrivilegeSet                EventName = "PrivilegeSet"
+	AftermarketDeviceNodeMinted EventName = "AftermarketDeviceNodeMinted"
 )
 
 func (r EventName) String() string {
@@ -46,8 +51,8 @@ type ContractEventData struct {
 	EventName       string         `json:"eventName,omitempty"`
 }
 
-func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger) *ContractsEventsConsumer {
-	return &ContractsEventsConsumer{db: pdb, log: log}
+func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings) *ContractsEventsConsumer {
+	return &ContractsEventsConsumer{db: pdb, log: log, settings: settings}
 }
 
 func (c *ContractsEventsConsumer) ProcessContractsEventsMessages(messages <-chan *message.Message) {
@@ -92,6 +97,9 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[map[stri
 	case PrivilegeSet.String():
 		c.log.Info().Str("event", data.EventName).Msg("Event received")
 		return c.setPrivilegeHandler(&data)
+	case AftermarketDeviceNodeMinted.String():
+		c.log.Info().Str("event", data.EventName).Msg("Event received")
+		return c.setMintedAfterMarketDevice(&data)
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -138,6 +146,54 @@ func (c *ContractsEventsConsumer) setPrivilegeHandler(e *ContractEventData) erro
 	nftCols := models.NFTPrivilegeColumns
 
 	err = udp.Upsert(context.Background(), c.db.DBS().Writer, true, []string{nftCols.ContractAddress, nftCols.TokenID, nftCols.Privilege, nftCols.UserAddress}, boil.Infer(), boil.Infer())
+	if err != nil {
+		c.log.Error().Err(err).Msg("Failed to insert privilege record.")
+		return err
+	}
+
+	return nil
+}
+
+type MintedAftermarketDeviceArgs struct {
+	TokenID       string `mapstructure:"newTokenId"`
+	DeviceAddress string
+	Owner         string // TODO - confirm who the minter is
+}
+
+func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventData) error {
+	p := MintedAftermarketDeviceArgs{}
+	err := mapstructure.WeakDecode(e.Arguments, &p)
+	if err != nil {
+		return err
+	}
+
+	autopiApiService := NewAutoPiAPIService(c.settings, c.db.DBS)
+	device, err := autopiApiService.GetDeviceByEthAddress(p.DeviceAddress)
+	if err != nil {
+		c.log.Error().Msg(fmt.Sprintf("Couldn't fetch dongle with eth_address %s.", p.DeviceAddress))
+		return fmt.Errorf("couldn't fetch dongle with eth_address %s", p.DeviceAddress)
+	}
+
+	var maybeAddr null.Bytes
+
+	if strAddr := device.EthereumAddress; common.IsHexAddress(p.DeviceAddress) {
+		maybeAddr = null.BytesFrom(common.FromHex(strAddr))
+	} else {
+		c.log.Warn().Str("address", device.EthereumAddress).Msg("Invalid device Ethereum address from AutoPi.")
+	}
+
+	tokenID, _ := new(big.Int).SetString(p.TokenID, 16)
+
+	ap := models.AutopiUnit{
+		AutopiUnitID:    device.UnitID,
+		AutopiDeviceID:  null.StringFrom(device.ID),
+		EthereumAddress: maybeAddr,
+		TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+	}
+
+	apCols := models.AutopiUnitColumns
+
+	err = ap.Upsert(context.Background(), c.db.DBS().Writer, true, []string{apCols.AutopiUnitID, apCols.EthereumAddress}, boil.Infer(), boil.Infer())
 	if err != nil {
 		c.log.Error().Err(err).Msg("Failed to insert privilege record.")
 		return err

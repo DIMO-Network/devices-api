@@ -26,6 +26,7 @@ type AutoPiAPIService interface {
 	GetUserDeviceIntegrationByUnitID(ctx context.Context, unitID string) (*models.UserDeviceAPIIntegration, error)
 	GetDeviceByUnitID(unitID string) (*AutoPiDongleDevice, error)
 	GetDeviceByID(deviceID string) (*AutoPiDongleDevice, error)
+	GetDeviceByEthAddress(ethAddress string) (*AutoPiDongleDevice, error)
 	PatchVehicleProfile(vehicleID int, profile PatchVehicleProfile) error
 	UnassociateDeviceTemplate(deviceID string, templateID int) error
 	AssociateDeviceToTemplate(deviceID string, templateID int) error
@@ -104,6 +105,23 @@ func (a *autoPiAPIService) GetDeviceByID(deviceID string) (*AutoPiDongleDevice, 
 	err = json.NewDecoder(res.Body).Decode(d)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error decoding json from autopi api to get device %s", deviceID)
+	}
+	return d, nil
+}
+
+// GetDeviceByEthAddress calls https://api.dimo.autopi.io/dongle/devices/by_eth_address/{eth_address}/. This helps get the device for the eth_address.
+// Throws an error if none or more than one is found.
+func (a *autoPiAPIService) GetDeviceByEthAddress(ethAddress string) (*AutoPiDongleDevice, error) {
+	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/dongle/devices/by_eth_address/%s/", ethAddress), "GET", nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error calling autopi api to get device %s", ethAddress)
+	}
+	defer res.Body.Close() // nolint
+
+	d := new(AutoPiDongleDevice)
+	err = json.NewDecoder(res.Body).Decode(d)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error decoding json from autopi api to get device %s", ethAddress)
 	}
 	return d, nil
 }
