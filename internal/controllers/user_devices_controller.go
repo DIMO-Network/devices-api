@@ -984,9 +984,13 @@ type ValuationSet struct {
 	// retail is equal to retailAverage when available
 	Retail int `json:"retail,omitempty"`
 	// retailClean, retailAverage, and retailRough my not always be available
-	RetailClean   int `json:"retailClean,omitempty"`
-	RetailAverage int `json:"retailAverage,omitempty"`
-	RetailRough   int `json:"retailRough,omitempty"`
+	RetailClean   int    `json:"retailClean,omitempty"`
+	RetailAverage int    `json:"retailAverage,omitempty"`
+	RetailRough   int    `json:"retailRough,omitempty"`
+	OdometerUnit  string `json:"odometerUnit"`
+	Odometer      int    `json:"odometer"`
+	// UserDisplayPrice the top level value to show to users in mobile app
+	UserDisplayPrice int `json:"userDisplayPrice"`
 }
 
 // GetValuations godoc
@@ -1020,48 +1024,90 @@ func (udc *UserDevicesController) GetValuations(c *fiber.Ctx) error {
 	}
 
 	// Drivly data
-	drivlyVinData, err := models.ExternalVinData(
+	valuationData, err := models.ExternalVinData(
 		models.ExternalVinDatumWhere.UserDeviceID.EQ(null.StringFrom(udi)),
-		models.ExternalVinDatumWhere.PricingMetadata.IsNotNull(),
+		qm.Where("pricing_metadata is not null or vincario_metadata is not null"),
 		qm.OrderBy("updated_at desc"),
 		qm.Limit(1)).One(c.Context(), udc.DBS().Reader)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
-	if drivlyVinData != nil {
-		drivlyVal := ValuationSet{
-			Vendor:        "drivly",
-			TradeInSource: "drivly",
-			RetailSource:  "drivly",
-			Updated:       drivlyVinData.UpdatedAt.Format(time.RFC3339),
-		}
-		drivlyJSON := drivlyVinData.PricingMetadata.JSON
-		requestJSON := drivlyVinData.RequestMetadata.JSON
-		drivlyMileage := gjson.GetBytes(drivlyJSON, "mileage")
-		if drivlyMileage.Exists() {
-			drivlyVal.Mileage = int(drivlyMileage.Int())
-		} else {
-			requestMileage := gjson.GetBytes(requestJSON, "mileage")
-			if requestMileage.Exists() {
-				drivlyVal.Mileage = int(requestMileage.Int())
+	if valuationData != nil {
+		if valuationData.PricingMetadata.Valid {
+			drivlyVal := ValuationSet{
+				Vendor:        "drivly",
+				TradeInSource: "drivly",
+				RetailSource:  "drivly",
+				Updated:       valuationData.UpdatedAt.Format(time.RFC3339),
 			}
-		}
-		requestZipCode := gjson.GetBytes(requestJSON, "zipCode")
-		if requestZipCode.Exists() {
-			drivlyVal.ZipCode = requestZipCode.String()
-		}
-		// Drivly Trade-In
-		drivlyVal.TradeIn = extractDrivlyValuation(drivlyJSON, "trade")
-		drivlyVal.TradeInAverage = drivlyVal.TradeIn
-		// Drivly Retail
-		drivlyVal.Retail = extractDrivlyValuation(drivlyJSON, "retail")
-		drivlyVal.RetailAverage = drivlyVal.Retail
+			drivlyJSON := valuationData.PricingMetadata.JSON
+			requestJSON := valuationData.RequestMetadata.JSON
+			drivlyMileage := gjson.GetBytes(drivlyJSON, "mileage")
+			if drivlyMileage.Exists() {
+				drivlyVal.Mileage = int(drivlyMileage.Int())
+				drivlyVal.Odometer = int(drivlyMileage.Int())
+				drivlyVal.OdometerUnit = "miles"
+			} else {
+				requestMileage := gjson.GetBytes(requestJSON, "mileage")
+				if requestMileage.Exists() {
+					drivlyVal.Mileage = int(requestMileage.Int())
+				}
+			}
+			requestZipCode := gjson.GetBytes(requestJSON, "zipCode")
+			if requestZipCode.Exists() {
+				drivlyVal.ZipCode = requestZipCode.String()
+			}
+			// Drivly Trade-In
+			drivlyVal.TradeIn = extractDrivlyValuation(drivlyJSON, "trade")
+			drivlyVal.TradeInAverage = drivlyVal.TradeIn
+			// Drivly Retail
+			drivlyVal.Retail = extractDrivlyValuation(drivlyJSON, "retail")
+			drivlyVal.RetailAverage = drivlyVal.Retail
 
-		// often drivly saves valuations with 0 for value, if this is case do not consider it
-		if drivlyVal.Retail > 0 || drivlyVal.TradeIn > 0 {
-			dVal.ValuationSets = append(dVal.ValuationSets, drivlyVal)
-		} else {
-			logger.Warn().Msg("did not find a trade-in or retail value, or json in unexpected format")
+			// often drivly saves valuations with 0 for value, if this is case do not consider it
+			if drivlyVal.Retail > 0 || drivlyVal.TradeIn > 0 {
+				// set the price to display to users
+				drivlyVal.UserDisplayPrice = (drivlyVal.Retail + drivlyVal.TradeIn) / 2
+				dVal.ValuationSets = append(dVal.ValuationSets, drivlyVal)
+			} else {
+				logger.Warn().Msg("did not find a drivly trade-in or retail value, or json in unexpected format")
+			}
+		} else if valuationData.VincarioMetadata.Valid {
+			vincarioVal := ValuationSet{
+				Vendor:        "vincario",
+				TradeInSource: "vincario",
+				RetailSource:  "vincario",
+				Updated:       valuationData.UpdatedAt.Format(time.RFC3339),
+			}
+			valJSON := valuationData.VincarioMetadata.JSON
+			requestJSON := valuationData.RequestMetadata.JSON
+			odometerMarket := gjson.GetBytes(valJSON, "market_odometer.odometer_avg")
+			if odometerMarket.Exists() {
+				vincarioVal.Mileage = int(odometerMarket.Int())
+				vincarioVal.Odometer = int(odometerMarket.Int())
+				vincarioVal.OdometerUnit = gjson.GetBytes(valJSON, "market_odometer.odometer_unit").String()
+			}
+			// todo this needs to be implemented in the load_valuations script
+			requestPostalCode := gjson.GetBytes(requestJSON, "postalCode")
+			if requestPostalCode.Exists() {
+				vincarioVal.ZipCode = requestPostalCode.String()
+			}
+			// vincario Trade-In - just using the price below mkt mean
+			vincarioVal.TradeIn = int(gjson.GetBytes(valJSON, "market_price.price_below").Int())
+			vincarioVal.TradeInAverage = vincarioVal.TradeIn
+			// vincario Retail - just using the price above mkt mean
+			vincarioVal.Retail = int(gjson.GetBytes(valJSON, "market_price.price_above").Int())
+			vincarioVal.RetailAverage = vincarioVal.Retail
+
+			vincarioVal.UserDisplayPrice = int(gjson.GetBytes(valJSON, "market_price.price_avg").Int())
+
+			// often drivly saves valuations with 0 for value, if this is case do not consider it
+			if vincarioVal.Retail > 0 || vincarioVal.TradeIn > 0 {
+				dVal.ValuationSets = append(dVal.ValuationSets, vincarioVal)
+			} else {
+				logger.Warn().Msg("did not find a market value from vincario, or valJSON in unexpected format")
+			}
+
 		}
 	}
 

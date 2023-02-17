@@ -322,6 +322,9 @@ func SetupCreateExternalVINData(t *testing.T, ddID string, ud *models.UserDevice
 	if pmd, ok := md["PricingMetadata"]; ok {
 		evd.PricingMetadata = null.JSONFrom(pmd)
 	}
+	if vmd, ok := md["VincarioMetadata"]; ok {
+		evd.VincarioMetadata = null.JSONFrom(vmd)
+	}
 	if bmd, ok := md["BlackbookMetadata"]; ok {
 		evd.BlackbookMetadata = null.JSONFrom(bmd)
 	}
