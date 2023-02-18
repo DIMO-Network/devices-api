@@ -7,8 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strconv"
 	"time"
+
+	"github.com/tidwall/gjson"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -155,11 +156,10 @@ func (a *autoPiAPIService) AssociateDeviceToTemplate(deviceID string, templateID
 //
 //	Parent is optional(setting to 0 creates template with no parent)
 func (a *autoPiAPIService) CreateNewTemplate(templateName string, parent int, description string) (int, error) {
-	var p postNewTemplateRequest
-
-	p = postNewTemplateRequest{
+	p := postNewTemplateRequest{
 		TemplateName: templateName,
 		Description:  description,
+		Devices:      []string{}, // must not be null, but not required to have entries
 	}
 	if parent > 0 {
 		p.Parent = parent
@@ -169,15 +169,14 @@ func (a *autoPiAPIService) CreateNewTemplate(templateName string, parent int, de
 	if err != nil {
 		return 0, errors.Wrapf(err, "error calling autopi api to create new template")
 	}
-	var callResponse map[string]interface{}
+
 	respBytes, _ := io.ReadAll(res.Body)
-	err = json.Unmarshal(respBytes, &callResponse)
-	if err != nil {
-		return 0, errors.Wrapf(err, "error unmarshalling create template response")
-	}
-	var newTemplateID, _ = strconv.Atoi((callResponse["id"]).(string))
+	idResult := gjson.GetBytes(respBytes, "id")
 	defer res.Body.Close() // nolint
-	return newTemplateID, nil
+	if idResult.Exists() && idResult.Int() > 0 {
+		return int(idResult.Int()), nil
+	}
+	return 0, errors.New("did not find a template id in the response: " + string(respBytes))
 }
 
 //go:embed generic_ice_power_settings.json
@@ -393,10 +392,10 @@ type postDeviceIDs struct {
 
 // used to create a new AutoPi template on the cloud
 type postNewTemplateRequest struct {
-	TemplateName string `json:"name"`
-	Parent       int    `json:"parent,omitempty"`
-	Description  string `json:"description"`
-	//Devices      []string `json:"devices"`
+	TemplateName string   `json:"name"`
+	Parent       int      `json:"parent,omitempty"`
+	Description  string   `json:"description"`
+	Devices      []string `json:"devices"`
 }
 
 type autoPiCommandRequest struct {
