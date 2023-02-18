@@ -137,7 +137,9 @@ func (c *ContractsEventsConsumer) setPrivilegeHandler(e *ContractEventData) erro
 
 	nftCols := models.NFTPrivilegeColumns
 
-	err = udp.Upsert(context.Background(), c.db.DBS().Writer, true, []string{nftCols.ContractAddress, nftCols.TokenID, nftCols.Privilege, nftCols.UserAddress}, boil.Infer(), boil.Infer())
+	err = udp.Upsert(context.Background(), c.db.DBS().Writer, true,
+		[]string{nftCols.ContractAddress, nftCols.TokenID, nftCols.Privilege, nftCols.UserAddress},
+		boil.Whitelist(nftCols.UpdatedAt), boil.Infer())
 	if err != nil {
 		c.log.Error().Err(err).Msg("Failed to insert privilege record.")
 		return err

@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"log"
 
 	"fmt"
 	"os"
@@ -98,7 +97,7 @@ func TestIgnoreWrongEventNames(t *testing.T) {
 
 	e := eventsPayloadFactory(2, 2, "SomeEvent", 0)
 	factoryResp := e[0]
-	log.Println(factoryResp)
+
 	msg := &message.Message{
 		Payload: []byte(factoryResp.payload),
 	}
@@ -172,6 +171,7 @@ func TestUpdatedTimestamp(t *testing.T) {
 	}
 
 	s.assert.Equal(expected, actual, "Event was updated successful")
+	s.assert.Equal(oldNft.CreatedAt, newNft.CreatedAt)
 	s.assert.NotEqual(oldNft.UpdatedAt, newNft.UpdatedAt)
 }
 
