@@ -156,12 +156,10 @@ func (a *autoPiAPIService) AssociateDeviceToTemplate(deviceID string, templateID
 //	Parent is optional(setting to 0 creates template with no parent)
 func (a *autoPiAPIService) CreateNewTemplate(templateName string, parent int, description string) (int, error) {
 	var p postNewTemplateRequest
-	var emptyDeviceSet []string
 
 	p = postNewTemplateRequest{
 		TemplateName: templateName,
 		Description:  description,
-		Devices:      emptyDeviceSet,
 	}
 	if parent > 0 {
 		p.Parent = parent
@@ -395,10 +393,10 @@ type postDeviceIDs struct {
 
 // used to create a new AutoPi template on the cloud
 type postNewTemplateRequest struct {
-	TemplateName string   `json:"templateName"`
-	Parent       int      `json:"parent,omitempty"`
-	Description  string   `json:"description"`
-	Devices      []string `json:"devices"`
+	TemplateName string `json:"name"`
+	Parent       int    `json:"parent,omitempty"`
+	Description  string `json:"description"`
+	//Devices      []string `json:"devices"`
 }
 
 type autoPiCommandRequest struct {
