@@ -185,7 +185,7 @@ func (udc *DocumentsController) PostDocument(c *fiber.Ctx) error {
 	// Create an uploader with the session and default options
 	uploader := manager.NewUploader(udc.s3Client)
 
-	// Unique Id
+	// Unique ID
 	id := ksuid.New().String()
 	documentID := buildUniqueID(id, udi)
 

@@ -36,6 +36,20 @@ func (m *MockAutoPiAPIService) EXPECT() *MockAutoPiAPIServiceMockRecorder {
 	return m.recorder
 }
 
+// AddDefaultPIDsToTemplate mocks base method.
+func (m *MockAutoPiAPIService) AddDefaultPIDsToTemplate(templateID int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddDefaultPIDsToTemplate", templateID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddDefaultPIDsToTemplate indicates an expected call of AddDefaultPIDsToTemplate.
+func (mr *MockAutoPiAPIServiceMockRecorder) AddDefaultPIDsToTemplate(templateID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddDefaultPIDsToTemplate", reflect.TypeOf((*MockAutoPiAPIService)(nil).AddDefaultPIDsToTemplate), templateID)
+}
+
 // ApplyTemplate mocks base method.
 func (m *MockAutoPiAPIService) ApplyTemplate(deviceID string, templateID int) error {
 	m.ctrl.T.Helper()
@@ -215,17 +229,17 @@ func (mr *MockAutoPiAPIServiceMockRecorder) PatchVehicleProfile(vehicleID, profi
 }
 
 // SetTemplateICEPowerSettings mocks base method.
-func (m *MockAutoPiAPIService) SetTemplateICEPowerSettings(templateId int) error {
+func (m *MockAutoPiAPIService) SetTemplateICEPowerSettings(templateID int) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetTemplateICEPowerSettings", templateId)
+	ret := m.ctrl.Call(m, "SetTemplateICEPowerSettings", templateID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SetTemplateICEPowerSettings indicates an expected call of SetTemplateICEPowerSettings.
-func (mr *MockAutoPiAPIServiceMockRecorder) SetTemplateICEPowerSettings(templateId interface{}) *gomock.Call {
+func (mr *MockAutoPiAPIServiceMockRecorder) SetTemplateICEPowerSettings(templateID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTemplateICEPowerSettings", reflect.TypeOf((*MockAutoPiAPIService)(nil).SetTemplateICEPowerSettings), templateId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTemplateICEPowerSettings", reflect.TypeOf((*MockAutoPiAPIService)(nil).SetTemplateICEPowerSettings), templateID)
 }
 
 // UnassociateDeviceTemplate mocks base method.
