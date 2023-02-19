@@ -191,6 +191,33 @@ func (a *autoPiAPIService) SetTemplateICEPowerSettings(templateID int) error {
 	return nil
 }
 
+// AddDefaultPIDsToTemplate adds all default PIDs to template for 2008+, does not add odometer PID
+func (a *autoPiAPIService) AddDefaultPIDsToTemplate(templateID int) error {
+	pids := make([]*addPIDRequest, 11)
+	pids[0] = newAddPIDReqWithDefaults(templateID, 32, 30)    // runtime
+	pids[1] = newAddPIDReqWithDefaults(templateID, 52, 5)     //bar pressure
+	pids[2] = newAddPIDReqWithDefaults(templateID, 18, 5)     // throttle pos
+	pids[3] = newAddPIDReqWithDefaults(templateID, 14, 5)     //speed
+	pids[4] = newAddPIDReqWithDefaults(templateID, 5, 5)      // engine load
+	pids[5] = newAddPIDReqWithDefaults(templateID, 71, 5)     // ambiente air
+	pids[6] = newAddPIDReqWithDefaults(templateID, 16, 5)     // intake temp
+	pids[7] = newAddPIDReqWithDefaults(templateID, 48, 5)     // fuel level
+	pids[8] = newAddPIDReqWithDefaults(templateID, 6, 5)      // coolant temp
+	pids[9] = newAddPIDReqWithDefaults(templateID, 2900, 600) // vin 2008+
+	pids[10] = newAddPIDReqWithDefaults(templateID, 13, 3)    // rpm
+	pids[10].Trigger = []string{"rpm_engine_event"}
+
+	for _, pid := range pids {
+		req, _ := json.Marshal(pid)
+		res, err := a.httpClient.ExecuteRequest("/obd/loggers/pid/", "POST", req)
+		if err != nil {
+			println(res.Body)
+			return errors.Wrapf(err, "Could not add PID %d to template %d", pid.Pid, templateID)
+		}
+	}
+	return nil
+}
+
 // ApplyTemplate When device awakes, it checks if it has templates to be applied. If device is awake, this won't do anything until next cycle.
 func (a *autoPiAPIService) ApplyTemplate(deviceID string, templateID int) error {
 	p := postDeviceIDs{
@@ -417,4 +444,33 @@ type AutoPiCommandResult struct {
 	Value string `json:"value"`
 	// corresponds to webhook response.tag
 	Tag string `json:"tag"`
+}
+
+type addPIDRequest struct {
+	ID        int      `json:"id"`
+	Converter string   `json:"converter"`
+	Trigger   []string `json:"trigger"`
+	Filter    string   `json:"filter"`
+	Returner  []string `json:"returner"`
+	Interval  int      `json:"interval"`
+	Pid       int      `json:"pid"`
+	Verify    bool     `json:"verify"`
+	Enabled   bool     `json:"enabled"`
+	Template  int      `json:"template"`
+}
+
+func newAddPIDReqWithDefaults(templateID, pid, interval int) *addPIDRequest {
+	req := addPIDRequest{
+		ID:        0,
+		Converter: "",
+		Trigger:   nil,
+		Filter:    "alternating_readout",
+		Returner:  []string{"context_returner_data"},
+		Interval:  interval,
+		Pid:       pid,
+		Verify:    false,
+		Enabled:   true,
+		Template:  templateID,
+	}
+	return &req
 }
