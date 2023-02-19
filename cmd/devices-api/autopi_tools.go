@@ -19,14 +19,20 @@ func autopiTools(args []string, autoPiSvc services.AutoPiAPIService) {
 			parent = 0
 			description = args[3]
 		}
-		newTemplateIndex, err := autoPiSvc.CreateNewTemplate(templateName, parent, description)
-		if err == nil && newTemplateIndex > 0 {
-			println("template created: " + strconv.Itoa(newTemplateIndex) + " : " + templateName + " : " + description)
-			err := autoPiSvc.SetTemplateICEPowerSettings(newTemplateIndex)
+		newTemplateID, err := autoPiSvc.CreateNewTemplate(templateName, parent, description)
+		if err == nil && newTemplateID > 0 {
+			println("template created: " + strconv.Itoa(newTemplateID) + " : " + templateName + " : " + description)
+			err := autoPiSvc.SetTemplateICEPowerSettings(newTemplateID)
 			if err != nil {
 				println(err.Error())
 			} else {
-				println("Set ICE Template PowerSettings set on template: " + templateName + " (" + strconv.Itoa(newTemplateIndex) + ")")
+				println("Set ICE Template PowerSettings set on template: " + templateName + " (" + strconv.Itoa(newTemplateID) + ")")
+			}
+			err = autoPiSvc.AddDefaultPIDsToTemplate(newTemplateID)
+			if err != nil {
+				println(err.Error())
+			} else {
+				println("Add default PIDs to template")
 			}
 		} else {
 			println(err.Error())

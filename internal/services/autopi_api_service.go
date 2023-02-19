@@ -31,6 +31,7 @@ type AutoPiAPIService interface {
 	UnassociateDeviceTemplate(deviceID string, templateID int) error
 	AssociateDeviceToTemplate(deviceID string, templateID int) error
 	CreateNewTemplate(templateName string, parent int, description string) (int, error)
+	AddDefaultPIDsToTemplate(templateID int) error
 	SetTemplateICEPowerSettings(templateID int) error
 	ApplyTemplate(deviceID string, templateID int) error
 	CommandQueryVIN(ctx context.Context, unitID, deviceID, userDeviceID string) (*AutoPiCommandResponse, error)
