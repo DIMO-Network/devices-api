@@ -150,6 +150,8 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 		return fmt.Errorf("couldn't fetch dongle with address %s: %w", args.AftermarketDeviceAddress, err)
 	}
 
+	c.log.Info().Msgf("Device minted with unit id %s, address %s, token id %d.", device.UnitID, args.AftermarketDeviceAddress, args.TokenId)
+
 	ap := models.AutopiUnit{
 		AutopiUnitID:    device.UnitID,
 		AutopiDeviceID:  null.StringFrom(device.ID),
