@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/shared"
 	"github.com/Shopify/sarama"
 	"github.com/ethereum/go-ethereum/common"
@@ -155,8 +156,8 @@ type Message interface {
 }
 
 // mintVehicleSign(uint256 manufacturerNode, address owner,	string[] calldata attributes, string[] calldata infos, bytes calldata signature)
-func (c *Client) MintVehicleSign(requestID string, manufacturerNode *big.Int, owner common.Address, attrInfo []AttributeInfoPair, signature []byte) error {
-	abi, err := RegistryMetaData.GetAbi()
+func (c *Client) MintVehicleSign(requestID string, manufacturerNode *big.Int, owner common.Address, attrInfo []contracts.AttributeInfoPair, signature []byte) error {
+	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
 	}
@@ -171,7 +172,7 @@ func (c *Client) MintVehicleSign(requestID string, manufacturerNode *big.Int, ow
 
 // claimAftermarketDeviceSign(uint256 aftermarketDeviceNode, address owner,	bytes calldata ownerSig, bytes calldata aftermarketDeviceSig)
 func (c *Client) ClaimAftermarketDeviceSign(requestID string, aftermarketDeviceNode *big.Int, owner common.Address, ownerSig []byte, aftermarketDeviceSig []byte) error {
-	abi, err := RegistryMetaData.GetAbi()
+	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
 	}
@@ -186,7 +187,7 @@ func (c *Client) ClaimAftermarketDeviceSign(requestID string, aftermarketDeviceN
 
 // function pairAftermarketDeviceSign(uint256 aftermarketDeviceNode, uint256 vehicleNode, bytes calldata signature)
 func (c *Client) PairAftermarketDeviceSign(requestID string, aftermarketDeviceNode *big.Int, vehicleNode *big.Int, signature []byte) error {
-	abi, err := RegistryMetaData.GetAbi()
+	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
 	}
@@ -201,7 +202,7 @@ func (c *Client) PairAftermarketDeviceSign(requestID string, aftermarketDeviceNo
 
 // function unpairAftermarketDeviceSign(uint256 aftermarketDeviceNode, uint256 vehicleNode, bytes calldata signature)
 func (c *Client) UnPairAftermarketDeviceSign(requestID string, aftermarketDeviceNode *big.Int, vehicleNode *big.Int, signature []byte) error {
-	abi, err := RegistryMetaData.GetAbi()
+	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
 	}
