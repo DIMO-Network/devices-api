@@ -48,6 +48,7 @@ type ContractEventData struct {
 	Arguments       json.RawMessage `json:"arguments"`
 	EventSignature  common.Hash     `json:"eventSignature"`
 	EventName       string          `json:"eventName"`
+	// TODO(elffjs): chainID. Don't repeat this struct everywhere.
 }
 
 func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings) *ContractsEventsConsumer {
