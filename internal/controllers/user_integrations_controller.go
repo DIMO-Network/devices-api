@@ -12,6 +12,7 @@ import (
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
@@ -2179,7 +2180,7 @@ func (udc *UserDevicesController) AdminDeviceWeb3Unclaim(c *fiber.Ctx) error {
 		return err
 	}
 
-	abi, err := registry.RegistryMetaData.GetAbi()
+	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
 	}
@@ -2261,7 +2262,7 @@ func (udc *UserDevicesController) AdminDeviceWeb3Unpair(c *fiber.Ctx) error {
 		return err
 	}
 
-	abi, err := registry.RegistryMetaData.GetAbi()
+	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
 	}
