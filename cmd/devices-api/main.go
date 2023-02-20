@@ -405,7 +405,7 @@ func startContractEventsConsumer(logger zerolog.Logger, settings *config.Setting
 		logger.Fatal().Err(err).Msg("Could not start contract event consumer")
 	}
 
-	cevConsumer := services.NewContractsEventsConsumer(pdb, &logger)
+	cevConsumer := services.NewContractsEventsConsumer(pdb, &logger, settings)
 	consumer.Start(context.Background(), cevConsumer.ProcessContractsEventsMessages)
 
 	logger.Info().Msg("Contracts events consumer started")

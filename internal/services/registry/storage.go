@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 
+	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
@@ -71,7 +72,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		for _, l1 := range data.Transaction.Logs {
 			l2 := convertLog(&l1)
 			if l2.Topics[0] == vehicleMintedEvent.ID {
-				out := new(RegistryVehicleNodeMinted)
+				out := new(contracts.RegistryVehicleNodeMinted)
 				err := p.parseLog(out, vehicleMintedEvent, *l2)
 				if err != nil {
 					return err
@@ -93,7 +94,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		for _, l1 := range data.Transaction.Logs {
 			l2 := convertLog(&l1)
 			if l2.Topics[0] == deviceClaimedEvent.ID {
-				out := new(RegistryAftermarketDeviceClaimed)
+				out := new(contracts.RegistryAftermarketDeviceClaimed)
 				err := p.parseLog(out, deviceClaimedEvent, *l2)
 				if err != nil {
 					return err
@@ -112,7 +113,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		for _, l1 := range data.Transaction.Logs {
 			l2 := convertLog(&l1)
 			if l2.Topics[0] == devicePairedEvent.ID {
-				out := new(RegistryAftermarketDevicePaired)
+				out := new(contracts.RegistryAftermarketDevicePaired)
 				err := p.parseLog(out, devicePairedEvent, *l2)
 				if err != nil {
 					return err
@@ -131,7 +132,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		for _, l1 := range data.Transaction.Logs {
 			l2 := convertLog(&l1)
 			if l2.Topics[0] == deviceUnpairedEvent.ID {
-				out := new(RegistryAftermarketDeviceUnpaired)
+				out := new(contracts.RegistryAftermarketDeviceUnpaired)
 				err := p.parseLog(out, deviceUnpairedEvent, *l2)
 				if err != nil {
 					return err
@@ -194,7 +195,7 @@ func NewProcessor(
 	logger *zerolog.Logger,
 	ap *autopi.Integration,
 ) (StatusProcessor, error) {
-	abi, err := RegistryMetaData.GetAbi()
+	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return nil, err
 	}
