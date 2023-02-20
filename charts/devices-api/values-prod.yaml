@@ -4,8 +4,8 @@ image:
   pullPolicy: IfNotPresent
   tag: 1.11.4
 cronJob:
-  enabled: false
-  schedule: 0 0 * * 0
+  enabled: true
+  schedule: 0 0 1 * *
 env:
   ENVIRONMENT: prod
   PORT: '8080'
