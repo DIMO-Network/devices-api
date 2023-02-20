@@ -205,8 +205,9 @@ func (a *autoPiAPIService) AddDefaultPIDsToTemplate(templateID int) error {
 	pids[7] = newAddPIDReqWithDefaults(templateID, 48, 5)     // fuel level
 	pids[8] = newAddPIDReqWithDefaults(templateID, 6, 5)      // coolant temp
 	pids[9] = newAddPIDReqWithDefaults(templateID, 2900, 600) // vin 2008+
-	pids[10] = newAddPIDReqWithDefaults(templateID, 13, 3)    // rpm
-	pids[10].Trigger = []string{"rpm_engine_event"}
+	rpm := newAddPIDReqWithDefaults(templateID, 13, 3)        // rpm
+	rpm.Trigger = []string{"rpm_engine_event"}
+	pids[10] = rpm
 
 	for _, pid := range pids {
 		req, _ := json.Marshal(pid)
@@ -464,7 +465,7 @@ func newAddPIDReqWithDefaults(templateID, pid, interval int) *addPIDRequest {
 	req := addPIDRequest{
 		ID:        0,
 		Converter: "",
-		Trigger:   nil,
+		Trigger:   []string{},
 		Filter:    "alternating_readout",
 		Returner:  []string{"context_returner_data"},
 		Interval:  interval,
