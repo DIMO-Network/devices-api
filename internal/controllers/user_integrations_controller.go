@@ -12,6 +12,7 @@ import (
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
@@ -274,7 +275,7 @@ func (udc *UserDevicesController) SendAutoPiCommand(c *fiber.Ctx) error {
 // GetCommandRequestStatus godoc
 // @Summary     Get the status of a submitted command.
 // @Description Get the status of a submitted command by request id.
-// @Id          get-command-request-status
+// @ID          get-command-request-status
 // @Tags        device,integration,command
 // @Success 200 {object} controllers.CommandRequestStatusResp
 // @Produce     json
@@ -446,7 +447,7 @@ type CommandResponse struct {
 // UnlockDoors godoc
 // @Summary     Unlock the device's doors
 // @Description Unlock the device's doors.
-// @Id          unlock-doors
+// @ID          unlock-doors
 // @Tags        device,integration,command
 // @Success 200 {object} controllers.CommandResponse
 // @Produce     json
@@ -460,7 +461,7 @@ func (udc *UserDevicesController) UnlockDoors(c *fiber.Ctx) error {
 // LockDoors godoc
 // @Summary     Lock the device's doors
 // @Description Lock the device's doors.
-// @Id          lock-doors
+// @ID          lock-doors
 // @Tags        device,integration,command
 // @Success 200 {object} controllers.CommandResponse
 // @Produce     json
@@ -474,7 +475,7 @@ func (udc *UserDevicesController) LockDoors(c *fiber.Ctx) error {
 // OpenTrunk godoc
 // @Summary     Open the device's rear trunk
 // @Description Open the device's front trunk. Currently, this only works for Teslas connected through Tesla.
-// @Id          open-trunk
+// @ID          open-trunk
 // @Tags        device,integration,command
 // @Success 200 {object} controllers.CommandResponse
 // @Produce     json
@@ -488,7 +489,7 @@ func (udc *UserDevicesController) OpenTrunk(c *fiber.Ctx) error {
 // OpenFrunk godoc
 // @Summary     Open the device's front trunk
 // @Description Open the device's front trunk. Currently, this only works for Teslas connected through Tesla.
-// @Id          open-frunk
+// @ID          open-frunk
 // @Tags        device,integration,command
 // @Success 200 {object} controllers.CommandResponse
 // @Produce     json
@@ -2179,7 +2180,7 @@ func (udc *UserDevicesController) AdminDeviceWeb3Unclaim(c *fiber.Ctx) error {
 		return err
 	}
 
-	abi, err := registry.RegistryMetaData.GetAbi()
+	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
 	}
@@ -2261,7 +2262,7 @@ func (udc *UserDevicesController) AdminDeviceWeb3Unpair(c *fiber.Ctx) error {
 		return err
 	}
 
-	abi, err := registry.RegistryMetaData.GetAbi()
+	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
 	}

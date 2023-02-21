@@ -173,8 +173,8 @@ func main() {
 			logger.Fatal().Err(err).Msg("Error starting Smartcar task.")
 		}
 		logger.Info().Msgf("Successfully started Smartcar task for %s.", userDeviceID)
-	case "drivly-sync-data":
-		logger.Info().Msgf("Pull VIN info, valuations and pricing from driv.ly")
+	case "valuations-pull":
+		logger.Info().Msgf("Pull VIN info, valuations and pricing from driv.ly for USA and valuations from Vincario for EUR")
 		setAll := false
 		wmi := ""
 		if len(os.Args) > 2 {
@@ -187,9 +187,9 @@ func main() {
 				}
 			}
 		}
-		err = loadUserDeviceDrivly(ctx, &logger, &settings, setAll, wmi, pdb)
+		err = loadValuations(ctx, &logger, &settings, setAll, wmi, pdb)
 		if err != nil {
-			logger.Fatal().Err(err).Msg("error trying to sync driv.ly")
+			logger.Fatal().Err(err).Msg("error trying to pull valuations")
 		}
 	case "web2-pair":
 		if len(os.Args[2:]) != 2 {
@@ -245,6 +245,10 @@ func main() {
 			logger.Fatal().Err(err).Msg("failed to sync all devices with their templates")
 		}
 		logger.Info().Msg("success")
+		//							1				2		3		4			5
+	case "autopi-tools": //   autopi-tools   templateName  [-p  parent]  description
+		autoPiSvc := services.NewAutoPiAPIService(&settings, pdb.DBS)
+		autopiTools(os.Args, autoPiSvc)
 	default:
 		if settings.EnablePrivileges {
 			startContractEventsConsumer(logger, &settings, pdb)
@@ -401,7 +405,7 @@ func startContractEventsConsumer(logger zerolog.Logger, settings *config.Setting
 		logger.Fatal().Err(err).Msg("Could not start contract event consumer")
 	}
 
-	cevConsumer := services.NewContractsEventsConsumer(pdb, &logger)
+	cevConsumer := services.NewContractsEventsConsumer(pdb, &logger, settings)
 	consumer.Start(context.Background(), cevConsumer.ProcessContractsEventsMessages)
 
 	logger.Info().Msg("Contracts events consumer started")

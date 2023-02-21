@@ -2,10 +2,10 @@ replicaCount: 2
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 1.11.0
+  tag: 1.11.5
 cronJob:
-  enabled: false
-  schedule: 0 0 * * 0
+  enabled: true
+  schedule: 0 0 1 * *
 env:
   ENVIRONMENT: prod
   PORT: '8080'

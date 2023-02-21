@@ -3,10 +3,13 @@ package services
 import (
 	"context"
 	"database/sql"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
 	"time"
+
+	"github.com/tidwall/gjson"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -24,9 +27,13 @@ type AutoPiAPIService interface {
 	GetUserDeviceIntegrationByUnitID(ctx context.Context, unitID string) (*models.UserDeviceAPIIntegration, error)
 	GetDeviceByUnitID(unitID string) (*AutoPiDongleDevice, error)
 	GetDeviceByID(deviceID string) (*AutoPiDongleDevice, error)
+	GetDeviceByEthAddress(ethAddress string) (*AutoPiDongleDevice, error)
 	PatchVehicleProfile(vehicleID int, profile PatchVehicleProfile) error
 	UnassociateDeviceTemplate(deviceID string, templateID int) error
 	AssociateDeviceToTemplate(deviceID string, templateID int) error
+	CreateNewTemplate(templateName string, parent int, description string) (int, error)
+	AddDefaultPIDsToTemplate(templateID int) error
+	SetTemplateICEPowerSettings(templateID int) error
 	ApplyTemplate(deviceID string, templateID int) error
 	CommandQueryVIN(ctx context.Context, unitID, deviceID, userDeviceID string) (*AutoPiCommandResponse, error)
 	CommandSyncDevice(ctx context.Context, unitID, deviceID, userDeviceID string) (*AutoPiCommandResponse, error)
@@ -104,6 +111,23 @@ func (a *autoPiAPIService) GetDeviceByID(deviceID string) (*AutoPiDongleDevice, 
 	return d, nil
 }
 
+// GetDeviceByEthAddress calls https://api.dimo.autopi.io/dongle/devices/by_eth_address/{eth_address}/. This helps get the device for the eth_address.
+// Throws an error if none or more than one is found.
+func (a *autoPiAPIService) GetDeviceByEthAddress(ethAddress string) (*AutoPiDongleDevice, error) {
+	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/dongle/devices/by_eth_address/%s/", ethAddress), "GET", nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error calling autopi api to get device %s", ethAddress)
+	}
+	defer res.Body.Close() // nolint
+
+	d := new(AutoPiDongleDevice)
+	err = json.NewDecoder(res.Body).Decode(d)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error decoding json from autopi api to get device %s", ethAddress)
+	}
+	return d, nil
+}
+
 // PatchVehicleProfile https://api.dimo.autopi.io/vehicle/profile/{device.vehicle.id}/ driveType: {"ICE", "BEV", "PHEV", "HEV"}
 func (a *autoPiAPIService) PatchVehicleProfile(vehicleID int, profile PatchVehicleProfile) error {
 	j, _ := json.Marshal(profile)
@@ -144,6 +168,73 @@ func (a *autoPiAPIService) AssociateDeviceToTemplate(deviceID string, templateID
 	}
 	defer res.Body.Close() // nolint
 
+	return nil
+}
+
+// CreateNewTemplate create a new template on the AutoPi cloud by doing a put request.
+//
+//	Parent is optional(setting to 0 creates template with no parent)
+func (a *autoPiAPIService) CreateNewTemplate(templateName string, parent int, description string) (int, error) {
+	p := postNewTemplateRequest{
+		TemplateName: templateName,
+		Description:  description,
+		Devices:      []string{}, // must not be null, but not required to have entries
+	}
+	if parent > 0 {
+		p.Parent = parent
+	}
+	j, _ := json.Marshal(p)
+	res, err := a.httpClient.ExecuteRequest("/dongle/templates/", "POST", j)
+	if err != nil {
+		return 0, errors.Wrapf(err, "error calling autopi api to create new template")
+	}
+
+	respBytes, _ := io.ReadAll(res.Body)
+	idResult := gjson.GetBytes(respBytes, "id")
+	defer res.Body.Close() // nolint
+	if idResult.Exists() && idResult.Int() > 0 {
+		return int(idResult.Int()), nil
+	}
+	return 0, errors.New("did not find a template id in the response: " + string(respBytes))
+}
+
+//go:embed generic_ice_power_settings.json
+var powerSettings string
+
+func (a *autoPiAPIService) SetTemplateICEPowerSettings(templateID int) error {
+	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/dongle/settings/?template_id=%d", templateID), "POST", []byte(powerSettings))
+	if err != nil {
+		println(res.Body)
+		return errors.Wrapf(err, "Could not apply power settings to template %d", templateID)
+	}
+	return nil
+}
+
+// AddDefaultPIDsToTemplate adds all default PIDs to template for 2008+, does not add odometer PID
+func (a *autoPiAPIService) AddDefaultPIDsToTemplate(templateID int) error {
+	pids := make([]*addPIDRequest, 11)
+	pids[0] = newAddPIDReqWithDefaults(templateID, 32, 30)    // runtime
+	pids[1] = newAddPIDReqWithDefaults(templateID, 52, 5)     //bar pressure
+	pids[2] = newAddPIDReqWithDefaults(templateID, 18, 5)     // throttle pos
+	pids[3] = newAddPIDReqWithDefaults(templateID, 14, 5)     //speed
+	pids[4] = newAddPIDReqWithDefaults(templateID, 5, 5)      // engine load
+	pids[5] = newAddPIDReqWithDefaults(templateID, 71, 5)     // ambiente air
+	pids[6] = newAddPIDReqWithDefaults(templateID, 16, 5)     // intake temp
+	pids[7] = newAddPIDReqWithDefaults(templateID, 48, 5)     // fuel level
+	pids[8] = newAddPIDReqWithDefaults(templateID, 6, 5)      // coolant temp
+	pids[9] = newAddPIDReqWithDefaults(templateID, 2900, 600) // vin 2008+
+	rpm := newAddPIDReqWithDefaults(templateID, 13, 3)        // rpm
+	rpm.Trigger = []string{"rpm_engine_event"}
+	pids[10] = rpm
+
+	for _, pid := range pids {
+		req, _ := json.Marshal(pid)
+		res, err := a.httpClient.ExecuteRequest("/obd/loggers/pid/", "POST", req)
+		if err != nil {
+			println(res.Body)
+			return errors.Wrapf(err, "Could not add PID %d to template %d", pid.Pid, templateID)
+		}
+	}
 	return nil
 }
 
@@ -346,6 +437,14 @@ type postDeviceIDs struct {
 	UnassociateOnly bool     `json:"unassociate_only,omitempty"`
 }
 
+// used to create a new AutoPi template on the cloud
+type postNewTemplateRequest struct {
+	TemplateName string   `json:"name"`
+	Parent       int      `json:"parent,omitempty"`
+	Description  string   `json:"description"`
+	Devices      []string `json:"devices"`
+}
+
 type autoPiCommandRequest struct {
 	Command     string  `json:"command"`
 	CallbackURL *string `json:"callback_url,omitempty"`
@@ -365,4 +464,33 @@ type AutoPiCommandResult struct {
 	Value string `json:"value"`
 	// corresponds to webhook response.tag
 	Tag string `json:"tag"`
+}
+
+type addPIDRequest struct {
+	ID        int      `json:"id"`
+	Converter string   `json:"converter"`
+	Trigger   []string `json:"trigger"`
+	Filter    string   `json:"filter"`
+	Returner  []string `json:"returner"`
+	Interval  int      `json:"interval"`
+	Pid       int      `json:"pid"`
+	Verify    bool     `json:"verify"`
+	Enabled   bool     `json:"enabled"`
+	Template  int      `json:"template"`
+}
+
+func newAddPIDReqWithDefaults(templateID, pid, interval int) *addPIDRequest {
+	req := addPIDRequest{
+		ID:        0,
+		Converter: "",
+		Trigger:   []string{},
+		Filter:    "alternating_readout",
+		Returner:  []string{"context_returner_data"},
+		Interval:  interval,
+		Pid:       pid,
+		Verify:    false,
+		Enabled:   true,
+		Template:  templateID,
+	}
+	return &req
 }

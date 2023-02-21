@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
+
+	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/contracts"
 
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
@@ -13,22 +15,25 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 type ContractsEventsConsumer struct {
-	db  db.Store
-	log *zerolog.Logger
+	db           db.Store
+	log          *zerolog.Logger
+	settings     *config.Settings
+	registryAddr common.Address
 }
 
 type EventName string
 
 const (
-	PrivilegeSet EventName = "PrivilegeSet"
+	PrivilegeSet                EventName = "PrivilegeSet"
+	AftermarketDeviceNodeMinted EventName = "AftermarketDeviceNodeMinted"
 )
 
 func (r EventName) String() string {
@@ -38,16 +43,16 @@ func (r EventName) String() string {
 const contractEventCEType = "zone.dimo.contract.event"
 
 type ContractEventData struct {
-	Contract        string         `json:"contract,omitempty"`
-	TransactionHash string         `json:"transactionHash,omitempty"`
-	Arguments       map[string]any `json:"arguments,omitempty"`
-	BlockCompleted  bool           `json:"blockCompleted,omitempty"`
-	EventSignature  string         `json:"eventSignature,omitempty"`
-	EventName       string         `json:"eventName,omitempty"`
+	Contract        common.Address  `json:"contract"`
+	TransactionHash common.Hash     `json:"transactionHash"`
+	Arguments       json.RawMessage `json:"arguments"`
+	EventSignature  common.Hash     `json:"eventSignature"`
+	EventName       string          `json:"eventName"`
+	// TODO(elffjs): chainID. Don't repeat this struct everywhere.
 }
 
-func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger) *ContractsEventsConsumer {
-	return &ContractsEventsConsumer{db: pdb, log: log}
+func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings) *ContractsEventsConsumer {
+	return &ContractsEventsConsumer{db: pdb, log: log, settings: settings, registryAddr: common.HexToAddress(settings.DIMORegistryAddr)}
 }
 
 func (c *ContractsEventsConsumer) ProcessContractsEventsMessages(messages <-chan *message.Message) {
@@ -68,7 +73,7 @@ func (c *ContractsEventsConsumer) processMessage(msg *message.Message) error {
 		return nil
 	}
 
-	event := new(shared.CloudEvent[map[string]any])
+	event := new(shared.CloudEvent[json.RawMessage])
 	if err := json.Unmarshal(msg.Payload, event); err != nil {
 		return errors.Wrap(err, "error parsing device event payload")
 	}
@@ -76,15 +81,14 @@ func (c *ContractsEventsConsumer) processMessage(msg *message.Message) error {
 	return c.processEvent(event)
 }
 
-func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[map[string]any]) error {
+func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.RawMessage]) error {
 	if event.Type != contractEventCEType {
 		return nil
 	}
 
 	var data ContractEventData
 
-	err := mapstructure.Decode(event.Data, &data)
-	if err != nil {
+	if err := json.Unmarshal(event.Data, &data); err != nil {
 		return err
 	}
 
@@ -92,6 +96,12 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[map[stri
 	case PrivilegeSet.String():
 		c.log.Info().Str("event", data.EventName).Msg("Event received")
 		return c.setPrivilegeHandler(&data)
+	case AftermarketDeviceNodeMinted.String():
+		if data.Contract == c.registryAddr {
+			c.log.Info().Str("event", data.EventName).Msg("Event received")
+			return c.setMintedAfterMarketDevice(&data)
+		}
+		fallthrough // TODO(elffjs): Danger!
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -107,39 +117,51 @@ type PrivilegeArgs struct {
 }
 
 func (c *ContractsEventsConsumer) setPrivilegeHandler(e *ContractEventData) error {
-	p := PrivilegeArgs{}
-	err := mapstructure.WeakDecode(e.Arguments, &p)
+	var args contracts.MultiPrivilegeSetPrivilegeData
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return err
+	}
+
+	udp := models.NFTPrivilege{
+		UserAddress:     args.User.Bytes(),
+		ContractAddress: e.Contract.Bytes(),
+		TokenID:         types.NewDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
+		Privilege:       args.PrivId.Int64(),
+		Expiry:          time.Unix(args.Expires.Int64(), 0),
+	}
+
+	cols := models.NFTPrivilegeColumns
+
+	return udp.Upsert(context.Background(), c.db.DBS().Writer, true, []string{cols.ContractAddress, cols.TokenID, cols.Privilege, cols.UserAddress}, boil.Whitelist(cols.Expiry, cols.UpdatedAt), boil.Infer())
+}
+
+func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventData) error {
+	var args contracts.RegistryAftermarketDeviceNodeMinted
+	err := json.Unmarshal(e.Arguments, &args)
 	if err != nil {
 		return err
 	}
 
-	t, err := strconv.ParseInt(p.ExpiresAt, 10, 64)
+	// TODO(elffjs): Don't initialize this every time.
+	autopiAPIService := NewAutoPiAPIService(c.settings, c.db.DBS)
+
+	device, err := autopiAPIService.GetDeviceByEthAddress(args.AftermarketDeviceAddress.Hex())
 	if err != nil {
-		panic(err) // TODO(elffjs): Get rid of this.
-	}
-	tm := time.Unix(t, 0)
-
-	ti, ok := new(decimal.Big).SetString(p.TokenID)
-	if !ok {
-		c.log.Error().Msg(fmt.Sprintf("Couldn't parse token id %q.", ti))
-		return fmt.Errorf("couldn't parse token id %q", p.TokenID)
+		return fmt.Errorf("couldn't fetch dongle with address %s: %w", args.AftermarketDeviceAddress, err)
 	}
 
-	tid := types.NewDecimal(ti)
+	c.log.Info().Str("serial", device.UnitID).Msgf("Aftermarket device minted with address %s, token id %d.", args.AftermarketDeviceAddress, args.TokenId)
 
-	udp := models.NFTPrivilege{
-		UserAddress:     common.FromHex(p.UserAddress),
-		ContractAddress: common.FromHex(e.Contract),
-		TokenID:         tid,
-		Privilege:       p.PrivilegeID,
-		Expiry:          tm,
+	ap := models.AutopiUnit{
+		AutopiUnitID:    device.UnitID,
+		AutopiDeviceID:  null.StringFrom(device.ID),
+		EthereumAddress: null.BytesFrom(args.AftermarketDeviceAddress.Bytes()),
+		TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
 	}
 
-	nftCols := models.NFTPrivilegeColumns
+	cols := models.AutopiUnitColumns
 
-	err = udp.Upsert(context.Background(), c.db.DBS().Writer, true,
-		[]string{nftCols.ContractAddress, nftCols.TokenID, nftCols.Privilege, nftCols.UserAddress},
-		boil.Whitelist(nftCols.UpdatedAt), boil.Infer())
+	err = ap.Upsert(context.Background(), c.db.DBS().Writer, true, []string{cols.AutopiUnitID}, boil.Whitelist(cols.AutopiDeviceID, cols.EthereumAddress, cols.TokenID, cols.UpdatedAt), boil.Infer())
 	if err != nil {
 		c.log.Error().Err(err).Msg("Failed to insert privilege record.")
 		return err
