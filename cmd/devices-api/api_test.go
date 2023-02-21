@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/DIMO-Network/devices-api/internal/controllers"
+	"github.com/DIMO-Network/shared/middleware/privilegetoken"
 	pr "github.com/DIMO-Network/shared/middleware/privilegetoken"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
@@ -60,15 +61,14 @@ func (t testHelper) signToken(p jwt.MapClaims) *jwt.Token {
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, p)
 }
 
-func TestPrivilegeMiddleware(t *testing.T) {
+func TestSuccessOnValidSinglePrivilege(t *testing.T) {
 	th := initTestHelper(t)
 
-	tests := []httpTestTemplate{
-		{
-			description:  "Test simple 200 is returned",
-			route:        fmt.Sprintf("/v1/test/%d", controllers.Commands),
-			expectedCode: 200,
-		},
+	test := httpTestTemplate{
+
+		description:  "Test success response when token contains at only allowed privilege on endpoint",
+		route:        fmt.Sprintf("/v1/test/%d", controllers.Commands),
+		expectedCode: fiber.StatusOK,
 	}
 
 	vehicleAddr := common.BytesToAddress([]byte{uint8(1)})
@@ -88,13 +88,153 @@ func TestPrivilegeMiddleware(t *testing.T) {
 		return c.SendString("Ok")
 	})
 
-	// Iterate through test single test cases
-	for _, test := range tests {
-		req := httptest.NewRequest("GET", test.route, nil)
+	req := httptest.NewRequest("GET", test.route, nil)
 
-		resp, _ := th.app.Test(req, 1)
+	resp, _ := th.app.Test(req, 1)
 
-		// Verify, if the status code is as expected
-		assert.Equalf(t, test.expectedCode, resp.StatusCode, test.description)
+	// Verify, if the status code is as expected
+	th.assert.Equalf(test.expectedCode, resp.StatusCode, test.description)
+}
+
+func TestSuccessOnValidTokenPrivilegeOnMany(t *testing.T) {
+	th := initTestHelper(t)
+
+	test := httpTestTemplate{
+		description:  "Test success response when token contains at least 1 of allowed privileges on endpoint",
+		route:        fmt.Sprintf("/v1/test/%d", controllers.Commands),
+		expectedCode: fiber.StatusOK,
 	}
+
+	vehicleAddr := common.BytesToAddress([]byte{uint8(1)})
+
+	th.app.Use(func(c *fiber.Ctx) error {
+		token := th.signToken((jwt.MapClaims{
+			"token_id":         "2",
+			"contract_address": vehicleAddr,
+			"privilege_ids":    []int64{controllers.Commands},
+		}))
+
+		c.Locals("user", token)
+		return c.Next()
+	})
+
+	th.app.Get("/v1/test/:tokenID", th.privilegeMiddleware.OneOf(vehicleAddr, []int64{controllers.Commands, controllers.AllTimeLocation}), func(c *fiber.Ctx) error {
+
+		return c.SendString("Ok")
+	})
+
+	req := httptest.NewRequest("GET", test.route, nil)
+
+	resp, _ := th.app.Test(req, 1)
+
+	// Verify, if the status code is as expected
+	th.assert.Equalf(test.expectedCode, resp.StatusCode, test.description)
+}
+
+func TestMiddlewareWriteClaimsToContext(t *testing.T) {
+	th := initTestHelper(t)
+
+	test := httpTestTemplate{
+		description:  "Test success response when token contains at least 1 of allowed privileges on endpoint",
+		route:        fmt.Sprintf("/v1/test/%d", controllers.Commands),
+		expectedCode: fiber.StatusOK,
+	}
+
+	vehicleAddr := common.BytesToAddress([]byte{uint8(1)})
+	cClaims := privilegetoken.CustomClaims{
+		ContractAddress: vehicleAddr,
+		TokenID:         "2",
+		PrivilegeIDs:    []int64{controllers.Commands},
+	}
+	th.app.Use(func(c *fiber.Ctx) error {
+		token := th.signToken((jwt.MapClaims{
+			"token_id":         cClaims.TokenID,
+			"contract_address": cClaims.ContractAddress,
+			"privilege_ids":    cClaims.PrivilegeIDs,
+		}))
+
+		c.Locals("user", token)
+		return c.Next()
+	})
+
+	th.app.Get("/v1/test/:tokenID", th.privilegeMiddleware.OneOf(vehicleAddr, []int64{controllers.Commands, controllers.AllTimeLocation}), func(c *fiber.Ctx) error {
+		cl := c.Locals("tokenClaims").(privilegetoken.CustomClaims)
+		th.assert.Equal(cl, cClaims)
+		return c.SendString("Ok")
+	})
+
+	req := httptest.NewRequest("GET", test.route, nil)
+
+	resp, _ := th.app.Test(req, 1)
+
+	// Verify, if the status code is as expected
+	th.assert.Equalf(test.expectedCode, resp.StatusCode, test.description)
+}
+
+func TestFailureOnInvalidPrivilegeInToken(t *testing.T) {
+	th := initTestHelper(t)
+
+	test := httpTestTemplate{
+		description:  "Test unauthorized response when token does not contain at least 1 of allowed privileges on endpoint",
+		route:        fmt.Sprintf("/v1/test/%d", controllers.Commands),
+		expectedCode: fiber.StatusUnauthorized,
+	}
+
+	vehicleAddr := common.BytesToAddress([]byte{uint8(1)})
+
+	th.app.Use(func(c *fiber.Ctx) error {
+		token := th.signToken((jwt.MapClaims{
+			"token_id":         "2",
+			"contract_address": vehicleAddr,
+			"privilege_ids":    []int64{controllers.Commands},
+		}))
+
+		c.Locals("user", token)
+		return c.Next()
+	})
+
+	th.app.Get("/v1/test/:tokenID", th.privilegeMiddleware.OneOf(vehicleAddr, []int64{controllers.AllTimeLocation}), func(c *fiber.Ctx) error {
+		return c.SendString("Ok")
+	})
+
+	req := httptest.NewRequest("GET", test.route, nil)
+
+	resp, _ := th.app.Test(req, 1)
+
+	// Verify, if the status code is as expected
+	th.assert.Equalf(test.expectedCode, resp.StatusCode, test.description)
+}
+
+func TestFailureOnInvalidContractAddress(t *testing.T) {
+	th := initTestHelper(t)
+
+	test := httpTestTemplate{
+		description:  "Test unauthorized response when token does not contain at least 1 of allowed privileges on endpoint",
+		route:        fmt.Sprintf("/v1/test/%d", controllers.Commands),
+		expectedCode: fiber.StatusUnauthorized,
+	}
+
+	vehicleAddr := common.BytesToAddress([]byte{uint8(1)})
+
+	th.app.Use(func(c *fiber.Ctx) error {
+		token := th.signToken((jwt.MapClaims{
+			"token_id":         "2",
+			"contract_address": common.BytesToAddress([]byte{uint8(2)}),
+			"privilege_ids":    []int64{controllers.Commands},
+		}))
+
+		c.Locals("user", token)
+		return c.Next()
+	})
+
+	th.app.Get("/v1/test/:tokenID", th.privilegeMiddleware.OneOf(vehicleAddr, []int64{controllers.AllTimeLocation}), func(c *fiber.Ctx) error {
+		return c.SendString("Ok")
+	})
+
+	req := httptest.NewRequest("GET", test.route, nil)
+
+	resp, _ := th.app.Test(req, 1)
+
+	// Verify, if the status code is as expected
+	th.assert.Equalf(test.expectedCode, resp.StatusCode, test.description)
 }
