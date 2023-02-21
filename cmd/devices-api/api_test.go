@@ -2,17 +2,16 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/DIMO-Network/devices-api/internal/controllers"
-	pr "github.com/DIMO-Network/shared/middleware/privilegetoken"
+	"github.com/DIMO-Network/shared/middleware/privilegetoken"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/rs/zerolog"
-	"github.com/stretchr/testify/assert"
 )
 
 type httpTestTemplate struct {
@@ -21,13 +20,13 @@ type httpTestTemplate struct {
 	expectedCode int    // expected HTTP status code
 }
 
-type testHelper struct {
-	app                 *fiber.App
-	t                   *testing.T
-	assert              *assert.Assertions
-	logger              zerolog.Logger
-	privilegeMiddleware pr.IVerifyPrivilegeToken
-}
+// type testHelper struct {
+// 	app                 *fiber.App
+// 	t                   *testing.T
+// 	assert              *assert.Assertions
+// 	logger              zerolog.Logger
+// 	privilegeMiddleware pr.IVerifyPrivilegeToken
+// }
 
 type CustomClaims struct {
 	ContractAddress common.Address `json:"contract_address"`
@@ -40,62 +39,63 @@ type Token struct {
 	CustomClaims
 }
 
-func initTestHelper(t *testing.T) testHelper {
-	assert := assert.New(t)
-	app := fiber.New() // This can be moved into a new var to avoid re-initializing TBD.
-	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
-
-	return testHelper{
-		assert: assert,
-		t:      t,
-		app:    app,
-		logger: logger,
-		privilegeMiddleware: pr.New(pr.Config{
-			Log: &logger,
-		}),
-	}
-}
-
-func (t testHelper) signToken(p jwt.MapClaims) *jwt.Token {
-	return jwt.NewWithClaims(jwt.SigningMethodHS256, p)
-}
-
 func TestPrivilegeMiddleware(t *testing.T) {
-	th := initTestHelper(t)
+	// th := initTestHelper(t)
 
-	tests := []httpTestTemplate{
-		{
-			description:  "Test simple 200 is returned",
-			route:        fmt.Sprintf("/v1/test/%d", controllers.Commands),
-			expectedCode: 200,
-		},
+	// tests := []httpTestTemplate{
+	// 	{
+	// 		description:  "Test simple 200 is returned",
+	// 		route:        fmt.Sprintf("/v1/test/%d", controllers.Commands),
+	// 		expectedCode: 200,
+	// 	},
+	// }
+
+	app := fiber.New()
+
+	vehicleAddr := "0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF"
+
+	pre := func(c *fiber.Ctx) error {
+		tok := &jwt.Token{
+			Claims: jwt.MapClaims{
+				// "userEthAddress":   common.BytesToAddress([]byte{uint8(2)}).Hex(),
+				"token_id":         "2",
+				"contract_address": vehicleAddr,
+				"privilege_ids":    []int64{controllers.Commands},
+			},
+		}
+
+		c.Locals("user", tok)
+
+		return c.Next()
 	}
 
-	th.app.Use(func(c *fiber.Ctx) error {
-		token := th.signToken((jwt.MapClaims{
-			"UserEthAddress":     common.BytesToAddress([]byte{uint8(2)}).Hex(),
-			"TokenID":            "2",
-			"NFTContractAddress": common.BytesToAddress([]byte{uint8(1)}).Hex(),
-			"PrivilegeIDs":       []int64{controllers.Commands},
-		}))
+	app.Use(pre)
 
-		c.Locals("user", token)
-		return c.Next()
-	})
+	logger := zerolog.Nop()
 
-	vehicleAddr := common.BytesToAddress([]byte{uint8(1)})
+	mw := privilegetoken.New(privilegetoken.Config{Log: &logger})
 
-	th.app.Get("/v1/test/:tokenID", th.privilegeMiddleware.OneOf(vehicleAddr, []int64{controllers.Commands}), func(c *fiber.Ctx) error {
+	app.Get("/v1/test/:tokenID", mw.OneOf(common.HexToAddress(vehicleAddr), []int64{controllers.Commands}), func(c *fiber.Ctx) error {
 		return c.SendString("Ok")
 	})
 
-	// Iterate through test single test cases
-	for _, test := range tests {
-		req := httptest.NewRequest("GET", test.route, nil)
+	req := httptest.NewRequest("GET", "/v1/test/2", nil)
 
-		resp, _ := th.app.Test(req, 1)
-
-		// Verify, if the status code is as expected
-		assert.Equalf(t, test.expectedCode, resp.StatusCode, test.description)
+	resp, err := app.Test(req, 100)
+	if err != nil {
+		t.Fatal(err)
 	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		t.Fatalf("expected status 200, but got %d", resp.StatusCode)
+	}
+
+	fmt.Println(resp)
+	out, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println(string(out))
 }
