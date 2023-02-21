@@ -2,7 +2,7 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ include "devices-api.fullname" . }}-load-dd
+  name: {{ include "devices-api.fullname" . }}-jobs
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "devices-api.labels" . | nindent 4 }}
@@ -21,12 +21,12 @@ spec:
             {{- include "devices-api.selectorLabels" . | nindent 12 }}
         spec:
           containers:
-          - name: edmunds-vehicles-sync
+          - name: valuations-pull
             securityContext:
               {{- toYaml .Values.securityContext | nindent 14 }}
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
             command: ['/bin/sh']
-            args: ['-c', '/devices-api smartcar-sync; CODE=$?; echo "smartcar-sync completed"; wget -q --post-data "hello=shutdown" http://localhost:4191/shutdown; exit $CODE;']
+            args: ['-c', '/devices-api valuations-pull; CODE=$?; echo "valuations-pull completed"; wget -q --post-data "hello=shutdown" http://localhost:4191/shutdown; exit $CODE;']
             envFrom:
             - configMapRef:
                 name: {{ include "devices-api.fullname" . }}-config
