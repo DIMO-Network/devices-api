@@ -144,7 +144,7 @@ func (a *autoPiAPIService) PatchVehicleProfile(vehicleID int, profile PatchVehic
 func (a *autoPiAPIService) UnassociateDeviceTemplate(deviceID string, templateID int) error {
 	p := postDeviceIDs{
 		Devices:         []string{deviceID},
-		UnassociateOnly: false,
+		UnassociateOnly: true,
 	}
 	j, _ := json.Marshal(p)
 	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/dongle/templates/%d/unassociate_devices/", templateID), "POST", j)
