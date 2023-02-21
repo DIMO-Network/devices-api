@@ -71,19 +71,18 @@ func TestPrivilegeMiddleware(t *testing.T) {
 		},
 	}
 
+	vehicleAddr := common.BytesToAddress([]byte{uint8(1)})
+
 	th.app.Use(func(c *fiber.Ctx) error {
 		token := th.signToken((jwt.MapClaims{
-			"UserEthAddress":     common.BytesToAddress([]byte{uint8(2)}).Hex(),
-			"TokenID":            "2",
-			"NFTContractAddress": common.BytesToAddress([]byte{uint8(1)}).Hex(),
-			"PrivilegeIDs":       []int64{controllers.Commands},
+			"token_id":         "2",
+			"contract_address": vehicleAddr,
+			"privilege_ids":    []int64{controllers.Commands},
 		}))
 
 		c.Locals("user", token)
 		return c.Next()
 	})
-
-	vehicleAddr := common.BytesToAddress([]byte{uint8(1)})
 
 	th.app.Get("/v1/test/:tokenID", th.privilegeMiddleware.OneOf(vehicleAddr, []int64{controllers.Commands}), func(c *fiber.Ctx) error {
 		return c.SendString("Ok")
