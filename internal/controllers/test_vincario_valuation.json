@@ -1,0 +1,33 @@
+{
+  "vin": "LRW3E7FA2LC110099",
+  "period": {
+    "to": "2023-02-17",
+    "from": "2022-02-17"
+  },
+  "vehicle": {
+    "make": "Tesla",
+    "model": "Model 3",
+    "model_year": 2020,
+    "transmission": "",
+    "fuel_type_primary": "Electric",
+    "engine_displacement_ccm": 0
+  },
+  "market_price": {
+    "price_avg": 51440,
+    "price_mean": 51975,
+    "price_above": 55200,
+    "price_below": 44800,
+    "price_count": 88,
+    "price_stdev": 5188,
+    "price_currency": "EUR"
+  },
+  "market_odometer": {
+    "odometer_avg": 30137,
+    "odometer_mean": 27750,
+    "odometer_unit": "km",
+    "odometer_above": 43900,
+    "odometer_below": 19000,
+    "odometer_count": 88,
+    "odometer_stdev": 15078
+  }
+}

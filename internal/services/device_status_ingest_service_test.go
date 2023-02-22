@@ -256,6 +256,11 @@ func (t testDeviceDefSvc) GetDeviceDefinitionByID(ctx context.Context, id string
 	return dd[0], err
 }
 
+func (t testDeviceDefSvc) PullVincarioValuation(ctx context.Context, userDeiceID, deviceDefinitionID, vin string) (DataPullStatusEnum, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (t testDeviceDefSvc) DecodeVIN(ctx context.Context, vin string) (*ddgrpc.DecodeVinResponse, error) {
 	//TODO implement me
 	panic("implement me")
@@ -276,7 +281,7 @@ func (t testDeviceDefSvc) UpdateDeviceDefinitionFromNHTSA(ctx context.Context, d
 	panic("implement me")
 }
 
-func (t testDeviceDefSvc) PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string, forceSetAll bool) (DrivlyDataStatusEnum, error) {
+func (t testDeviceDefSvc) PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string, forceSetAll bool) (DataPullStatusEnum, error) {
 	//TODO implement me
 	panic("implement me")
 }

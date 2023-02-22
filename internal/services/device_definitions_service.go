@@ -33,7 +33,8 @@ import (
 type DeviceDefinitionService interface {
 	FindDeviceDefinitionByMMY(ctx context.Context, mk, model string, year int) (*ddgrpc.GetDeviceDefinitionItemResponse, error)
 	UpdateDeviceDefinitionFromNHTSA(ctx context.Context, deviceDefinitionID string, vin string) error
-	PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string, forceSetAll bool) (DrivlyDataStatusEnum, error)
+	PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string, forceSetAll bool) (DataPullStatusEnum, error)
+	PullVincarioValuation(ctx context.Context, userDeiceID, deviceDefinitionID, vin string) (DataPullStatusEnum, error)
 	GetOrCreateMake(ctx context.Context, tx boil.ContextExecutor, makeName string) (*ddgrpc.DeviceMake, error)
 	GetMakeByTokenID(ctx context.Context, tokenID *big.Int) (*ddgrpc.DeviceMake, error)
 	GetDeviceDefinitionsByIDs(ctx context.Context, ids []string) ([]*ddgrpc.GetDeviceDefinitionItemResponse, error)
@@ -49,6 +50,7 @@ type DeviceDefinitionService interface {
 type deviceDefinitionService struct {
 	dbs                 func() *db.ReaderWriter
 	drivlySvc           DrivlyAPIService
+	vincarioSvc         VincarioAPIService
 	log                 *zerolog.Logger
 	nhtsaSvc            INHTSAService
 	definitionsGRPCAddr string
@@ -63,6 +65,7 @@ func NewDeviceDefinitionService(DBS func() *db.ReaderWriter, log *zerolog.Logger
 		drivlySvc:           NewDrivlyAPIService(settings, DBS),
 		definitionsGRPCAddr: settings.DefinitionsGRPCAddr,
 		googleMapsAPIKey:    settings.GoogleMapsAPIKey,
+		vincarioSvc:         NewVincarioAPIService(settings, log),
 	}
 }
 
@@ -320,6 +323,55 @@ func (d *deviceDefinitionService) UpdateDeviceDefinitionFromNHTSA(ctx context.Co
 	return nil
 }
 
+func (d *deviceDefinitionService) PullVincarioValuation(ctx context.Context, userDeviceID, deviceDefinitionID, vin string) (DataPullStatusEnum, error) {
+	const repullWindow = time.Hour * 24 * 14
+	if len(vin) != 17 {
+		return ErrorDataPullStatus, errors.Errorf("invalid VIN %s", vin)
+	}
+
+	// make sure userdevice exists
+	ud, err := models.FindUserDevice(ctx, d.dbs().Reader, userDeviceID)
+	if err != nil {
+		return ErrorDataPullStatus, err
+	}
+	// do not pull for USA
+	if ud.CountryCode.String == "USA" {
+		return SkippedDataPullStatus, nil
+	}
+
+	// check repull window
+	existingPricingData, _ := models.ExternalVinData(
+		models.ExternalVinDatumWhere.Vin.EQ(vin),
+		models.ExternalVinDatumWhere.VincarioMetadata.IsNotNull(),
+		qm.OrderBy("updated_at desc"), qm.Limit(1)).
+		One(context.Background(), d.dbs().Writer)
+	// just return if already pulled recently for this VIN, but still need to insert never pulled vin - should be uncommon scenario
+	if existingPricingData != nil && existingPricingData.UpdatedAt.Add(repullWindow).After(time.Now()) {
+		return SkippedDataPullStatus, nil
+	}
+
+	externalVinData := &models.ExternalVinDatum{
+		ID:                 ksuid.New().String(),
+		DeviceDefinitionID: null.StringFrom(deviceDefinitionID),
+		Vin:                vin,
+		UserDeviceID:       null.StringFrom(userDeviceID),
+	}
+	valuation, err := d.vincarioSvc.GetMarketValuation(vin)
+	if err != nil {
+		return ErrorDataPullStatus, errors.Wrap(err, "error pulling market data from vincario")
+	}
+	err = externalVinData.VincarioMetadata.Marshal(valuation)
+	if err != nil {
+		return ErrorDataPullStatus, errors.Wrap(err, "error marshalling vincario responset")
+	}
+	err = externalVinData.Insert(ctx, d.dbs().Writer, boil.Infer())
+	if err != nil {
+		return ErrorDataPullStatus, errors.Wrap(err, "error inserting external_vin_data for vincario")
+	}
+
+	return PulledValuationVincarioStatus, nil
+}
+
 const MilesToKmFactor = 1.609344 // there is 1.609 kilometers in a mile. const should probably be KmToMilesFactor
 const EstMilesPerYear = 12000.0
 
@@ -328,27 +380,29 @@ type ValuationRequestData struct {
 	ZipCode *string  `json:"zipCode,omitempty"`
 }
 
-type DrivlyDataStatusEnum string
+type DataPullStatusEnum string
 
 const (
-	// PulledAllDrivlyStatus means we pulled vin, edmunds, build and valuations
-	PulledAllDrivlyStatus DrivlyDataStatusEnum = "PulledAll"
+	// PulledInfoAndValuationStatus means we pulled vin, edmunds, build and valuations
+	PulledInfoAndValuationStatus DataPullStatusEnum = "PulledAll"
 	// PulledValuationDrivlyStatus means we only pulled offers and pricing
-	PulledValuationDrivlyStatus DrivlyDataStatusEnum = "PulledValuations"
-	SkippedDrivlyStatus         DrivlyDataStatusEnum = "Skipped"
+	PulledValuationDrivlyStatus   DataPullStatusEnum = "PulledValuations"
+	PulledValuationVincarioStatus DataPullStatusEnum = "PulledValuationVincario"
+	SkippedDataPullStatus         DataPullStatusEnum = "Skipped"
+	ErrorDataPullStatus           DataPullStatusEnum = "Error"
 )
 
 // PullDrivlyData pulls vin info from drivly, and inserts a record with the data.
 // Will only pull if haven't in last 2 weeks. Does not re-pull VIN info, updates DD metadata, sets the device_style_id using the edmunds data pulled.
-func (d *deviceDefinitionService) PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string, forceSetVinInfo bool) (DrivlyDataStatusEnum, error) {
+func (d *deviceDefinitionService) PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string, forceSetVinInfo bool) (DataPullStatusEnum, error) {
 	const repullWindow = time.Hour * 24 * 14
 	if len(vin) != 17 {
-		return "", errors.Errorf("invalid VIN %s", vin)
+		return ErrorDataPullStatus, errors.Errorf("invalid VIN %s", vin)
 	}
 
 	deviceDef, err := d.GetDeviceDefinitionByID(ctx, deviceDefinitionID)
 	if err != nil {
-		return "", err
+		return ErrorDataPullStatus, err
 	}
 	localLog := d.log.With().Str("vin", vin).Str("deviceDefinitionID", deviceDefinitionID).Logger()
 
@@ -361,19 +415,15 @@ func (d *deviceDefinitionService) PullDrivlyData(ctx context.Context, userDevice
 	if errors.Is(err, sql.ErrNoRows) {
 		neverPulledVIN = true
 	} else if err != nil {
-		return "", err
+		return ErrorDataPullStatus, err
 	}
 	// make sure userdevice exists
 	ud, err := models.FindUserDevice(ctx, d.dbs().Reader, userDeviceID)
 	if err != nil {
-		return "", err
-	}
-	// only pull for USA
-	if ud.CountryCode.String != "USA" {
-		return SkippedDrivlyStatus, nil
+		return ErrorDataPullStatus, err
 	}
 
-	// by this point we know we need to insert drivly raw json data
+	// by this point we know we might need to insert drivly raw json data
 	externalVinData := &models.ExternalVinDatum{
 		ID:                 ksuid.New().String(),
 		DeviceDefinitionID: null.StringFrom(deviceDef.DeviceDefinitionId),
@@ -383,11 +433,15 @@ func (d *deviceDefinitionService) PullDrivlyData(ctx context.Context, userDevice
 	if neverPulledVIN {
 		vinInfo, err := d.drivlySvc.GetVINInfo(vin)
 		if err != nil {
-			return "", errors.Wrapf(err, "error getting VIN %s. skipping", vin)
+			return ErrorDataPullStatus, errors.Wrapf(err, "error getting VIN %s. skipping", vin)
 		}
+		if len(vinInfo) == 0 {
+			return SkippedDataPullStatus, nil
+		}
+
 		err = externalVinData.VinMetadata.Marshal(vinInfo)
 		if err != nil {
-			return "", err
+			return ErrorDataPullStatus, err
 		}
 
 		build, err := d.drivlySvc.GetBuildByVIN(vin)
@@ -409,12 +463,12 @@ func (d *deviceDefinitionService) PullDrivlyData(ctx context.Context, userDevice
 			var vinInfo map[string]interface{}
 			err = existingVINData.VinMetadata.Unmarshal(&vinInfo)
 			if err != nil {
-				return "", errors.Wrap(err, "unable to unmarshal vin metadata")
+				return ErrorDataPullStatus, errors.Wrap(err, "unable to unmarshal vin metadata")
 			}
 			// update the device attributes via gRPC
 			err2 := d.updateDeviceDefAttrs(ctx, deviceDef, vinInfo)
 			if err2 != nil {
-				return "", err2
+				return ErrorDataPullStatus, err2
 			}
 		}
 	}
@@ -429,16 +483,16 @@ func (d *deviceDefinitionService) PullDrivlyData(ctx context.Context, userDevice
 		if neverPulledVIN {
 			err = externalVinData.Insert(ctx, d.dbs().Writer, boil.Infer())
 			if err != nil {
-				return "", err
+				return ErrorDataPullStatus, err
 			}
 		}
-		return SkippedDrivlyStatus, nil
+		return SkippedDataPullStatus, nil
 	}
 
 	// get mileage for the drivly request
 	deviceMileage, err := d.getDeviceMileage(userDeviceID, int(deviceDef.Type.Year))
 	if err != nil {
-		return "", err
+		return ErrorDataPullStatus, err
 	}
 
 	reqData := ValuationRequestData{
@@ -506,13 +560,13 @@ func (d *deviceDefinitionService) PullDrivlyData(ctx context.Context, userDevice
 
 	err = externalVinData.Insert(ctx, d.dbs().Writer, boil.Infer())
 	if err != nil {
-		return "", err
+		return ErrorDataPullStatus, err
 	}
 
 	defer appmetrics.DrivlyIngestTotalOps.Inc()
 
 	if neverPulledVIN {
-		return PulledAllDrivlyStatus, nil
+		return PulledInfoAndValuationStatus, nil
 	}
 	return PulledValuationDrivlyStatus, nil
 }

@@ -2,12 +2,14 @@ package services
 
 import (
 	"context"
+	"log"
 
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
@@ -43,6 +45,7 @@ type cEventsTestHelper struct {
 	ctx       context.Context
 	t         *testing.T
 	assert    *assert.Assertions
+	settings  *config.Settings
 }
 
 type eventsFactoryResp struct {
@@ -60,7 +63,8 @@ func TestProcessContractsEventsMessages(t *testing.T) {
 	msg := &message.Message{
 		Payload: []byte(factoryResp.payload),
 	}
-	c := NewContractsEventsConsumer(s.pdb, &s.logger)
+
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
 
 	err := c.processMessage(msg)
 	s.assert.NoError(err)
@@ -88,6 +92,8 @@ func TestProcessContractsEventsMessages(t *testing.T) {
 		PrivilegeID: args.privilegeID,
 	}
 
+	log.Println(actual.ExpiresAt, "actual time", expected.ExpiresAt, "expected")
+
 	s.assert.Equal(expected, actual, "Event was persisted properly")
 }
 
@@ -101,7 +107,7 @@ func TestIgnoreWrongEventNames(t *testing.T) {
 	msg := &message.Message{
 		Payload: []byte(factoryResp.payload),
 	}
-	c := NewContractsEventsConsumer(s.pdb, &s.logger)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
 
 	err := c.processMessage(msg)
 	s.assert.NoError(err)
@@ -123,7 +129,7 @@ func TestUpdatedTimestamp(t *testing.T) {
 	e := eventsPayloadFactory(3, 3, "", 0)
 	factoryResp := e[0]
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
 
 	msg := &message.Message{
 		Payload: []byte(factoryResp.payload),
@@ -210,7 +216,7 @@ func eventsPayloadFactory(from, to int, eventName string, exp int64) []eventsFac
 					"eventSignature": "0x61a24679288162b799d80b2bb2b8b0fcdd5c5f53ac19e9246cc190b60196c359",
 					"eventName": "%s",
 					"arguments": {
-						"tokenId": "%s",
+						"tokenId":  %s,
 						"version": 1,
 						"privId": %d,
 						"user": "%s",
@@ -238,6 +244,7 @@ func initCEventsTestHelper(t *testing.T) cEventsTestHelper {
 	ctx := context.Background()
 	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
 	assert := assert.New(t)
+	settings := &config.Settings{AutoPiAPIToken: "fdff"}
 
 	return cEventsTestHelper{
 		logger:    zerolog.New(os.Stdout).With().Timestamp().Logger(),
@@ -246,6 +253,7 @@ func initCEventsTestHelper(t *testing.T) cEventsTestHelper {
 		ctx:       ctx,
 		t:         t,
 		assert:    assert,
+		settings:  settings,
 	}
 }
 

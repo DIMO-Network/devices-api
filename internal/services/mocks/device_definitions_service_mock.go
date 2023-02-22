@@ -204,10 +204,10 @@ func (mr *MockDeviceDefinitionServiceMockRecorder) GetOrCreateMake(ctx, tx, make
 }
 
 // PullDrivlyData mocks base method.
-func (m *MockDeviceDefinitionService) PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string, forceSetAll bool) (services.DrivlyDataStatusEnum, error) {
+func (m *MockDeviceDefinitionService) PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string, forceSetAll bool) (services.DataPullStatusEnum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PullDrivlyData", ctx, userDeviceID, deviceDefinitionID, vin, forceSetAll)
-	ret0, _ := ret[0].(services.DrivlyDataStatusEnum)
+	ret0, _ := ret[0].(services.DataPullStatusEnum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -216,6 +216,21 @@ func (m *MockDeviceDefinitionService) PullDrivlyData(ctx context.Context, userDe
 func (mr *MockDeviceDefinitionServiceMockRecorder) PullDrivlyData(ctx, userDeviceID, deviceDefinitionID, vin, forceSetAll interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PullDrivlyData", reflect.TypeOf((*MockDeviceDefinitionService)(nil).PullDrivlyData), ctx, userDeviceID, deviceDefinitionID, vin, forceSetAll)
+}
+
+// PullVincarioValuation mocks base method.
+func (m *MockDeviceDefinitionService) PullVincarioValuation(ctx context.Context, userDeiceID, deviceDefinitionID, vin string) (services.DataPullStatusEnum, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PullVincarioValuation", ctx, userDeiceID, deviceDefinitionID, vin)
+	ret0, _ := ret[0].(services.DataPullStatusEnum)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PullVincarioValuation indicates an expected call of PullVincarioValuation.
+func (mr *MockDeviceDefinitionServiceMockRecorder) PullVincarioValuation(ctx, userDeiceID, deviceDefinitionID, vin interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PullVincarioValuation", reflect.TypeOf((*MockDeviceDefinitionService)(nil).PullVincarioValuation), ctx, userDeiceID, deviceDefinitionID, vin)
 }
 
 // UpdateDeviceDefinitionFromNHTSA mocks base method.

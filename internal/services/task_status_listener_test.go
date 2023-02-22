@@ -57,21 +57,21 @@ package services
 //
 //	udai := models.UserDeviceAPIIntegration{
 //		UserDeviceID:  ud.ID,
-//		IntegrationID: integration.Id,
+//		IntegrationID: integration.ID,
 //		Status:        models.UserDeviceAPIIntegrationStatusActive,
 //	}
 //	err := udai.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 //	assert.NoError(t, err)
 //
 //	input := &shared.CloudEvent[TaskStatusData]{
-//		Source:      "dimo/integration/" + integration.Id,
+//		Source:      "dimo/integration/" + integration.ID,
 //		SpecVersion: "1.0",
 //		Subject:     ud.ID,
 //		Type:        "zone.dimo.task.smartcar.poll.status.update",
 //		Data: TaskStatusData{
 //			TaskID:        ksuid.New().String(),
 //			UserDeviceID:  ud.ID,
-//			IntegrationID: integration.Id,
+//			IntegrationID: integration.ID,
 //			Status:        "AuthenticationFailure",
 //		},
 //	}
