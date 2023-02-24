@@ -33,7 +33,9 @@ func updateState(ctx context.Context, pdb db.Store, logger *zerolog.Logger, auto
 	for _, apiInt := range apiInts {
 		err := autoPiSvc.UpdateState(apiInt.ExternalID.String, apiInt.Status)
 		if err != nil {
-			logger.Err(err).Msg("failed to update status when calling autopi api")
+			logger.Err(err).Msgf("failed to update status when calling autopi api for deviceId: %s", apiInt.ExternalID.String)
+		} else {
+			logger.Info().Msgf("successfully updated state for %s", apiInt.ExternalID.String)
 		}
 		time.Sleep(500)
 	}
