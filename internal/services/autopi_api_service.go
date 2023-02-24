@@ -372,7 +372,7 @@ func (a *autoPiAPIService) GetCommandStatus(ctx context.Context, jobID string) (
 // UpdateState calls https://api.dimo.autopi.io/dongle/devices/{DEVICE_ID}/ Note that the deviceID is the autoPi one.
 func (a *autoPiAPIService) UpdateState(deviceID string, state string) error {
 	userMetaDataStateInfo := make(map[string]interface{})
-	userMetaDataStateInfo["driven_wheels"] = state
+	userMetaDataStateInfo["state"] = state
 
 	userMetaDataInfo := make(map[string]interface{})
 	userMetaDataInfo["user_metadata"] = userMetaDataStateInfo

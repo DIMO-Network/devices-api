@@ -18,7 +18,12 @@ import (
 func updateState(ctx context.Context, pdb db.Store, logger *zerolog.Logger, autoPiSvc services.AutoPiAPIService) error {
 	db := pdb.DBS().Reader
 
+	const (
+		autopi = "27qftVRWQYpVDcO5DltO5Ojbjxk"
+	)
+
 	apiInts, err := models.UserDeviceAPIIntegrations(
+		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(autopi),
 		models.UserDeviceAPIIntegrationWhere.ExternalID.NEQ(null.StringFromPtr(nil)),
 	).All(ctx, db)
 	if err != nil {
