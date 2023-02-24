@@ -203,7 +203,7 @@ func eventsPayloadFactory(from, to int, eventName string, exp int64) []eventsFac
 		userAddr := common.BytesToAddress([]byte{uint8(i + 1)})
 		tokenID := convertTokenIDToDecimal(fmt.Sprint(i))
 		privID := i + 1
-		expiry := time.Now().Add(time.Hour + time.Duration(i)).UTC().Unix()
+		expiry := time.Now().Add(time.Hour + time.Duration(i)*time.Minute).UTC().Unix()
 
 		if exp != 0 {
 			expiry = exp
