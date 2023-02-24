@@ -11,12 +11,11 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/volatiletech/null/v8"
 )
 
 // updateStatus re-populates the autopi ingest registrar topic based on data we have in user_device_api_integrations
 func updateState(ctx context.Context, pdb db.Store, logger *zerolog.Logger, autoPiSvc services.AutoPiAPIService) error {
-	db := pdb.DBS().Reader
+	reader := pdb.DBS().Reader
 
 	const (
 		autopi = "27qftVRWQYpVDcO5DltO5Ojbjxk"
@@ -24,16 +23,17 @@ func updateState(ctx context.Context, pdb db.Store, logger *zerolog.Logger, auto
 
 	apiInts, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(autopi),
-		models.UserDeviceAPIIntegrationWhere.ExternalID.NEQ(null.StringFromPtr(nil)),
-	).All(ctx, db)
+		models.UserDeviceAPIIntegrationWhere.ExternalID.IsNotNull(),
+	).All(ctx, reader)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve all API integrations with external IDs: %w", err)
 	}
+	logger.Info().Msgf("found %d connected autopis to update status for", len(apiInts))
 
 	for _, apiInt := range apiInts {
 		err := autoPiSvc.UpdateState(apiInt.ExternalID.String, apiInt.Status)
 		if err != nil {
-			logger.Err(err)
+			logger.Err(err).Msg("failed to update status when calling autopi api")
 		}
 		time.Sleep(500)
 	}
