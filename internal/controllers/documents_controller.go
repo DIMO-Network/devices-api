@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"bytes"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 	"time"
@@ -14,8 +14,8 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/segmentio/ksuid"
@@ -169,7 +169,6 @@ func (udc *DocumentsController) PostDocument(c *fiber.Ctx) error {
 	}
 	// Get Buffer from file
 	fileObj, err := file.Open()
-
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "document cannot be read.")
 	}
@@ -181,9 +180,6 @@ func (udc *DocumentsController) PostDocument(c *fiber.Ctx) error {
 	if err := FileTypeAllowedEnum(filetype).IsValid(); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "the provided file format is not allowed.")
 	}
-
-	// Create an uploader with the session and default options
-	uploader := manager.NewUploader(udc.s3Client)
 
 	// Unique ID
 	id := ksuid.New().String()
@@ -201,7 +197,7 @@ func (udc *DocumentsController) PostDocument(c *fiber.Ctx) error {
 	awsPathKey := getAwsFilePath(userID, fileID)
 
 	// Upload the file to S3.
-	result, err := uploader.Upload(c.Context(), &s3.PutObjectInput{
+	_, err = udc.s3Client.PutObject(c.Context(), &s3.PutObjectInput{
 		Bucket:             aws.String(udc.settings.AWSDocumentsBucketName),
 		Key:                aws.String(awsPathKey),
 		Body:               fileObj,
@@ -209,13 +205,10 @@ func (udc *DocumentsController) PostDocument(c *fiber.Ctx) error {
 		ContentType:        aws.String(filetype),
 		Metadata:           metadata,
 	})
-
 	if err != nil {
 		udc.logger.Err(err).Msg("failed to upload glovebox document")
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-
-	_ = result
 
 	url := fmt.Sprintf("%s/v1/documents/%s/download", udc.settings.DeploymentBaseURL, id)
 	if len(udi) > 0 {
@@ -274,27 +267,25 @@ func (udc *DocumentsController) DownloadDocument(c *fiber.Ctx) error {
 	fileID := c.Params("id")
 	folder := resolveFolderKey(userID, fileID)
 
-	buffer := manager.NewWriteAtBuffer([]byte{})
-
-	downloader := manager.NewDownloader(udc.s3Client)
-
-	numBytes, err := downloader.Download(c.Context(), buffer,
-		&s3.GetObjectInput{
-			Bucket: aws.String(udc.settings.AWSDocumentsBucketName),
-			Key:    aws.String(folder),
-		})
-
+	obj, err := udc.s3Client.GetObject(c.Context(), &s3.GetObjectInput{
+		Bucket: aws.String(udc.settings.AWSDocumentsBucketName),
+		Key:    aws.String(folder),
+	})
 	if err != nil {
-		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
+		var nsk types.NoSuchKey
+		if errors.As(err, &nsk) {
+			return fiber.NewError(fiber.StatusNotFound, "Document not found.")
+		}
+		return err
+	}
+	defer obj.Body.Close()
+
+	bs, err := io.ReadAll(obj.Body)
+	if err != nil {
+		return err
 	}
 
-	if numBytes == 0 {
-		return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("no document with id %s found", fileID))
-	}
-
-	data := buffer.Bytes()
-
-	return c.SendStream(bytes.NewReader(data))
+	return c.Send(bs)
 }
 
 func getAwsFilePath(userID, fileID string) string {
