@@ -177,6 +177,32 @@ func (s *userDeviceService) deviceModelToAPI(device *models.UserDevice) *pb.User
 	return out
 }
 
+func (s *userDeviceService) GetClaimedVehicles(ctx context.Context, empty *emptypb.Empty) (*pb.ClaimedVehiclesGrowth, error) {
+
+	// Checking both that the nft exists and is linked to a device.
+	lastWeekNFT, err := models.VehicleNFTS(models.VehicleNFTWhere.UserDeviceID.IsNotNull(),
+		models.VehicleNFTWhere.TokenID.IsNotNull(),
+		qm.And("updated_at > current_date - 7")).Count(ctx, s.dbs().Reader)
+
+	if err != nil {
+		return nil, err
+	}
+
+	totalNFT, err := models.VehicleNFTS(models.VehicleNFTWhere.UserDeviceID.IsNotNull(),
+		models.VehicleNFTWhere.TokenID.IsNotNull()).Count(ctx, s.dbs().Reader)
+
+	if err != nil {
+		return nil, err
+	}
+
+	growthPercentage := float64(lastWeekNFT) / float64(totalNFT) * 100
+
+	return &pb.ClaimedVehiclesGrowth{
+		TotalClaimedVehicles: totalNFT,
+		GrowthPercentage:     float32(growthPercentage),
+	}, nil
+}
+
 // toUint64 takes a nullable decimal and returns nil if there is no value, or
 // a reference to the uint64 value of the decimal otherwise. If the value does not
 // fit then we return nil and log.
