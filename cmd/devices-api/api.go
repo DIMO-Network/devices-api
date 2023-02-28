@@ -167,9 +167,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		v1Auth.Get("/user/devices/shared", userDeviceController.GetSharedDevices)
 	}
 
+	v1Auth.Post("/user/devices/fromvin", userDeviceController.RegisterDeviceForUserFromVIN)
+	v1Auth.Post("/user/devices/fromsmartcar", userDeviceController.RegisterDeviceForUserFromSmartcar)
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
-	v1Auth.Post("/user/device/fromvin", userDeviceController.RegisterDeviceForUserFromVIN)
-	v1Auth.Post("/user/device/fromsmartcar", userDeviceController.RegisterDeviceForUserFromSmartcar)
 
 	v1Auth.Delete("/user/devices/:userDeviceID", userDeviceController.DeleteUserDevice)
 	v1Auth.Patch("/user/devices/:userDeviceID/vin", userDeviceController.UpdateVIN).Name("UpdateVIN")

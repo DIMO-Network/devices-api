@@ -249,6 +249,13 @@ func main() {
 	case "autopi-tools": //   autopi-tools   templateName  [-p  parent]  description
 		autoPiSvc := services.NewAutoPiAPIService(&settings, pdb.DBS)
 		autopiTools(os.Args, autoPiSvc)
+	case "autopi-notify-status":
+		autoPiSvc := services.NewAutoPiAPIService(&settings, pdb.DBS)
+		err := updateState(ctx, pdb, &logger, autoPiSvc)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed to sync autopi notify status")
+		}
+		logger.Info().Msg("success")
 	default:
 		if settings.EnablePrivileges {
 			startContractEventsConsumer(logger, &settings, pdb)

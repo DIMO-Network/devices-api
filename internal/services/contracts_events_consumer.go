@@ -23,10 +23,11 @@ import (
 )
 
 type ContractsEventsConsumer struct {
-	db           db.Store
-	log          *zerolog.Logger
-	settings     *config.Settings
-	registryAddr common.Address
+	db               db.Store
+	log              *zerolog.Logger
+	settings         *config.Settings
+	registryAddr     common.Address
+	autopiAPIService AutoPiAPIService
 }
 
 type EventName string
@@ -52,7 +53,15 @@ type ContractEventData struct {
 }
 
 func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings) *ContractsEventsConsumer {
-	return &ContractsEventsConsumer{db: pdb, log: log, settings: settings, registryAddr: common.HexToAddress(settings.DIMORegistryAddr)}
+	autopiAPIService := NewAutoPiAPIService(settings, pdb.DBS)
+
+	return &ContractsEventsConsumer{
+		db:               pdb,
+		log:              log,
+		settings:         settings,
+		registryAddr:     common.HexToAddress(settings.DIMORegistryAddr),
+		autopiAPIService: autopiAPIService,
+	}
 }
 
 func (c *ContractsEventsConsumer) ProcessContractsEventsMessages(messages <-chan *message.Message) {
@@ -117,6 +126,7 @@ type PrivilegeArgs struct {
 }
 
 func (c *ContractsEventsConsumer) setPrivilegeHandler(e *ContractEventData) error {
+
 	var args contracts.MultiPrivilegeSetPrivilegeData
 	if err := json.Unmarshal(e.Arguments, &args); err != nil {
 		return err
@@ -142,10 +152,7 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 		return err
 	}
 
-	// TODO(elffjs): Don't initialize this every time.
-	autopiAPIService := NewAutoPiAPIService(c.settings, c.db.DBS)
-
-	device, err := autopiAPIService.GetDeviceByEthAddress(args.AftermarketDeviceAddress.Hex())
+	device, err := c.autopiAPIService.GetDeviceByEthAddress(args.AftermarketDeviceAddress.Hex())
 	if err != nil {
 		return fmt.Errorf("couldn't fetch dongle with address %s: %w", args.AftermarketDeviceAddress, err)
 	}

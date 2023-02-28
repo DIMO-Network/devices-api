@@ -37,6 +37,7 @@ func (s *userDeviceService) GetUserDevice(ctx context.Context, req *pb.GetUserDe
 	dbDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(req.Id),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAutopiUnit)),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 	).One(ctx, s.dbs().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -77,6 +78,7 @@ func (s *userDeviceService) ListUserDevicesForUser(ctx context.Context, req *pb.
 	devices, err := models.UserDevices(
 		models.UserDeviceWhere.UserID.EQ(req.UserId),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAutopiUnit)),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 	).All(ctx, s.dbs().Reader)
 	if err != nil {
 		s.logger.Err(err).Str("userId", req.UserId).Msg("Database failure retrieving user's devices.")
@@ -151,9 +153,10 @@ select distinct on (vin) vin, pricing_metadata, jsonb_path_query(evd.pricing_met
 
 func (s *userDeviceService) deviceModelToAPI(device *models.UserDevice) *pb.UserDevice {
 	out := &pb.UserDevice{
-		Id:        device.ID,
-		UserId:    device.UserID,
-		OptedInAt: nullTimeToPB(device.OptedInAt),
+		Id:           device.ID,
+		UserId:       device.UserID,
+		OptedInAt:    nullTimeToPB(device.OptedInAt),
+		Integrations: make([]*pb.UserDeviceIntegration, len(device.R.UserDeviceAPIIntegrations)),
 	}
 
 	if vnft := device.R.VehicleNFT; vnft != nil {
@@ -165,6 +168,10 @@ func (s *userDeviceService) deviceModelToAPI(device *models.UserDevice) *pb.User
 		if amnft := vnft.R.VehicleTokenAutopiUnit; amnft != nil {
 			out.AftermarketDeviceTokenId = s.toUint64(amnft.TokenID)
 		}
+	}
+
+	for i, udai := range device.R.UserDeviceAPIIntegrations {
+		out.Integrations[i] = &pb.UserDeviceIntegration{Id: udai.IntegrationID, Status: udai.Status}
 	}
 
 	return out

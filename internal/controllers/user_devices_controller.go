@@ -474,7 +474,7 @@ var opaqueInternalError = fiber.NewError(fiber.StatusInternalServerError, "Inter
 // @Failure		400 "validation failure"
 // @Failure		424 "unable to decode VIN"
 // @Failure		500 "server error, dependency error"
-// @Success     201 {object} controllers.RegisterUserDeviceResponse
+// @Success     201 {object} controllers.UserDeviceFull
 // @Security    BearerAuth
 // @Router      /user/devices/fromvin [post]
 func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) error {
@@ -517,7 +517,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 // @Failure		400 "validation failure"
 // @Failure		424 "unable to decode VIN"
 // @Failure		500 "server error, dependency error"
-// @Success     201 {object} controllers.RegisterUserDeviceSmartcar
+// @Success     201 {object} controllers.UserDeviceFull
 // @Security    BearerAuth
 // @Router      /user/devices/fromsmartcar [post]
 func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx) error {

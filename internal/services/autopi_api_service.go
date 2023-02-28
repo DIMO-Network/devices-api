@@ -41,6 +41,7 @@ type AutoPiAPIService interface {
 	GetCommandStatus(ctx context.Context, jobID string) (*AutoPiCommandJob, *models.AutopiJob, error)
 	GetCommandStatusFromAutoPi(deviceID string, jobID string) ([]byte, error)
 	UpdateJob(ctx context.Context, jobID, newState string, result *AutoPiCommandResult) (*models.AutopiJob, error)
+	UpdateState(deviceID string, state string) error
 }
 
 type autoPiAPIService struct {
@@ -366,6 +367,25 @@ func (a *autoPiAPIService) GetCommandStatus(ctx context.Context, jobID string) (
 		return nil, nil, err
 	}
 	return job, autoPiJob, nil
+}
+
+// UpdateState calls https://api.dimo.autopi.io/dongle/devices/{DEVICE_ID}/ Note that the deviceID is the autoPi one.
+func (a *autoPiAPIService) UpdateState(deviceID string, state string) error {
+	userMetaDataStateInfo := make(map[string]interface{})
+	userMetaDataStateInfo["state"] = state
+
+	userMetaDataInfo := make(map[string]interface{})
+	userMetaDataInfo["user_metadata"] = userMetaDataStateInfo
+
+	payload, _ := json.Marshal(userMetaDataInfo)
+
+	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/dongle/devices/%s/", deviceID), "PATCH", payload)
+	if err != nil {
+		return errors.Wrapf(err, "error calling autopi api to path device %s", deviceID)
+	}
+	defer res.Body.Close() // nolint
+
+	return nil
 }
 
 // AutoPiDongleDevice https://api.dimo.autopi.io/#/dongle/dongle_devices_read
