@@ -6,7 +6,6 @@ import (
 	"io"
 	"math/big"
 	"strconv"
-	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -541,46 +540,4 @@ func (nc *NFTController) handleEnqueueCommand(c *fiber.Ctx, commandPath string) 
 	logger.Info().Msg("Successfully enqueued command.")
 
 	return c.JSON(CommandResponse{RequestID: subTaskID})
-}
-
-type NFTGrowth struct {
-	TotalNFTs        int64   `json:"totalNFTs"`
-	GrowthPercentage float64 `json:"growthPercentage"`
-}
-
-// GetNFTImage godoc
-// @Description Returns current and difference of nft from today to last week.
-// @Tags        nfts
-// @Produce     json
-// @Success     200
-// @Failure     404
-// @Router      /vehicle/claimed-vehicles [get]
-func (nc *NFTController) GetClaimedVehicles(c *fiber.Ctx) error {
-
-	currentTime := time.Now()
-
-	lastWeek := currentTime.AddDate(0, 0, -7)
-
-	// Checking both that the nft exists and is linked to a device.
-	lastWeekNFT, err := models.VehicleNFTS(models.VehicleNFTWhere.UserDeviceID.IsNotNull(),
-		models.VehicleNFTWhere.TokenID.IsNotNull(),
-		qm.And("updated_at > $1", lastWeek)).Count(c.Context(), nc.DBS().Reader)
-
-	if err != nil {
-		return err
-	}
-
-	totalNFT, err := models.VehicleNFTS(models.VehicleNFTWhere.UserDeviceID.IsNotNull(),
-		models.VehicleNFTWhere.TokenID.IsNotNull()).Count(c.Context(), nc.DBS().Reader)
-
-	if err != nil {
-		return err
-	}
-
-	growthPercentage := float64(lastWeekNFT) / float64(totalNFT) * 100
-
-	return c.JSON(NFTGrowth{
-		TotalNFTs:        totalNFT,
-		GrowthPercentage: growthPercentage,
-	})
 }
