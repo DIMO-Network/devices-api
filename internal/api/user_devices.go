@@ -177,19 +177,19 @@ func (s *userDeviceService) deviceModelToAPI(device *models.UserDevice) *pb.User
 	return out
 }
 
-func (nc *userDeviceService) GetClaimedVehicles(ctx context.Context, empty *emptypb.Empty) (*pb.ClaimedVehiclesGrowth, error) {
+func (s *userDeviceService) GetClaimedVehicles(ctx context.Context, empty *emptypb.Empty) (*pb.ClaimedVehiclesGrowth, error) {
 
 	// Checking both that the nft exists and is linked to a device.
 	lastWeekNFT, err := models.VehicleNFTS(models.VehicleNFTWhere.UserDeviceID.IsNotNull(),
 		models.VehicleNFTWhere.TokenID.IsNotNull(),
-		qm.And("updated_at > current_date - 7")).Count(ctx, nc.dbs().Reader)
+		qm.And("updated_at > current_date - 7")).Count(ctx, s.dbs().Reader)
 
 	if err != nil {
 		return nil, err
 	}
 
 	totalNFT, err := models.VehicleNFTS(models.VehicleNFTWhere.UserDeviceID.IsNotNull(),
-		models.VehicleNFTWhere.TokenID.IsNotNull()).Count(ctx, nc.dbs().Reader)
+		models.VehicleNFTWhere.TokenID.IsNotNull()).Count(ctx, s.dbs().Reader)
 
 	if err != nil {
 		return nil, err
