@@ -177,7 +177,7 @@ func (s *userDeviceService) deviceModelToAPI(device *models.UserDevice) *pb.User
 	return out
 }
 
-func (s *userDeviceService) GetClaimedVehicles(ctx context.Context, empty *emptypb.Empty) (*pb.ClaimedVehiclesGrowth, error) {
+func (s *userDeviceService) GetClaimedVehiclesGrowth(ctx context.Context, empty *emptypb.Empty) (*pb.ClaimedVehiclesGrowth, error) {
 
 	// Checking both that the nft exists and is linked to a device.
 	lastWeekNFT, err := models.VehicleNFTS(models.VehicleNFTWhere.UserDeviceID.IsNotNull(),
