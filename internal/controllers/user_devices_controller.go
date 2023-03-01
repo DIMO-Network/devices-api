@@ -521,7 +521,10 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 // @Security    BearerAuth
 // @Router      /user/devices/fromsmartcar [post]
 func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx) error {
+	const smartCarIntegrationID = "22N2xaPOq2WW2gAHBHd0Ikn4Zob"
 	userID := helpers.GetUserID(c)
+	localLog := udc.log.With().Str("user_id", userID).Logger()
+
 	reg := &RegisterUserDeviceSmartcar{}
 	if err := c.BodyParser(reg); err != nil {
 		// Return status 400 and error message.
@@ -530,8 +533,10 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	if err := reg.Validate(); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
-
-	localLog := udc.log.With().Str("user_id", userID).Logger()
+	country := constants.FindCountry(reg.CountryCode)
+	if country == nil {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("invalid countryCode field or country not supported: %s", reg.CountryCode))
+	}
 
 	// call SC api with stuff and get VIN
 	token, err := udc.smartcarClient.ExchangeCode(c.Context(), reg.Code, reg.RedirectURI)
@@ -550,6 +555,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		localLog.Err(err).Msg("Failed to retrieve VIN from Smartcar.")
 		return smartcarCallErr
 	}
+	localLog = localLog.With().Str("vin", vin).Logger()
 
 	// decode VIN with grpc call
 	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin)
@@ -557,10 +563,19 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		return errors.Wrapf(err, "could not decode vin %s for country %s", vin, reg.CountryCode)
 	}
 	if len(decodeVIN.DeviceDefinitionId) == 0 {
-		localLog.Warn().Str("vin", vin).
+		localLog.Warn().
 			Msg("unable to decode vin for customer request to create vehicle")
 		return fiber.NewError(fiber.StatusFailedDependency, "unable to decode vin")
 	}
+	// attach smartcar integration to device definition
+	_, err = udc.DeviceDefIntSvc.CreateDeviceDefinitionIntegration(c.Context(), smartCarIntegrationID,
+		decodeVIN.DeviceDefinitionId, country.Region)
+	if err != nil {
+		localLog.Err(err).
+			Msgf("unable to CreateDeviceDefinitionIntegration for dd_id: %s", decodeVIN.DeviceDefinitionId)
+		return errors.Wrap(err, "unable to attach smartcar integration to device definition id")
+	}
+
 	// attach device def to user
 	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, reg.CountryCode, userID, &vin)
 	if err != nil {
