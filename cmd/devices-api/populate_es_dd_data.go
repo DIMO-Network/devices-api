@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
+
+	"github.com/google/subcommands"
 
 	"github.com/DIMO-Network/shared/db"
 
@@ -16,6 +19,34 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
+
+type populateESDDDataCmd struct {
+	logger     zerolog.Logger
+	settings   config.Settings
+	pdb        db.Store
+	esInstance es.ElasticSearch
+	ddSvc      services.DeviceDefinitionService
+}
+
+func (*populateESDDDataCmd) Name() string     { return "populate-es-dd-data" }
+func (*populateESDDDataCmd) Synopsis() string { return "populate-es-dd-data args to stdout." }
+func (*populateESDDDataCmd) Usage() string {
+	return `populate-es-dd-data:
+	populate-es-dd-data args.
+  `
+}
+
+func (p *populateESDDDataCmd) SetFlags(f *flag.FlagSet) {
+
+}
+
+func (p *populateESDDDataCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+	err := populateESDDData(ctx, &p.settings, p.esInstance, p.pdb, &p.logger, p.ddSvc)
+	if err != nil {
+		p.logger.Fatal().Err(err).Msg("Error running elastic search dd update")
+	}
+	return subcommands.ExitSuccess
+}
 
 func populateESDDData(ctx context.Context, settings *config.Settings, e es.ElasticSearch, pdb db.Store, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService) error {
 	db := pdb.DBS().Reader

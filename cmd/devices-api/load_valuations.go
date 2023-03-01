@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"strings"
+
+	"github.com/google/subcommands"
 
 	"github.com/DIMO-Network/shared/db"
 
@@ -12,6 +15,46 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/rs/zerolog"
 )
+
+type loadValuationsCmd struct {
+	logger   zerolog.Logger
+	settings config.Settings
+	pdb      db.Store
+}
+
+func (*loadValuationsCmd) Name() string     { return "valuations-pull" }
+func (*loadValuationsCmd) Synopsis() string { return "valuations-pull args to stdout." }
+func (*loadValuationsCmd) Usage() string {
+	return `valuations-pull:
+	valuations-pull args.
+  `
+}
+
+func (p *loadValuationsCmd) SetFlags(f *flag.FlagSet) {
+
+}
+
+func (p *loadValuationsCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+	p.logger.Info().Msgf("Pull VIN info, valuations and pricing from driv.ly for USA and valuations from Vincario for EUR")
+	setAll := false
+	wmi := ""
+	if len(f.Args()) > 2 {
+		setAll = f.Args()[2] == "--set-all"
+		// parse out vin WMI code to filter on
+		for i, a := range f.Args() {
+			if a == "--wmi" {
+				wmi = f.Args()[i+1]
+				break
+			}
+		}
+	}
+	err := loadValuations(ctx, &p.logger, &p.settings, setAll, wmi, p.pdb)
+	if err != nil {
+		p.logger.Fatal().Err(err).Msg("error trying to pull valuations")
+	}
+
+	return subcommands.ExitSuccess
+}
 
 // loadValuations iterates over user_devices with vin verified and tries pulling data from drivly in USA & CAN and vincario for rest of world
 func loadValuations(ctx context.Context, logger *zerolog.Logger, settings *config.Settings, forceSetAll bool, wmi string, pdb db.Store) error {

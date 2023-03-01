@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
+
+	"github.com/google/subcommands"
 
 	"github.com/DIMO-Network/shared/db"
 
@@ -15,6 +18,34 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
+
+type remakeDeviceDefinitionTopicsCmd struct {
+	logger   zerolog.Logger
+	settings config.Settings
+	pdb      db.Store
+	producer sarama.SyncProducer
+	ddSvc    services.DeviceDefinitionService
+}
+
+func (*remakeDeviceDefinitionTopicsCmd) Name() string     { return "remake-dd-topics" }
+func (*remakeDeviceDefinitionTopicsCmd) Synopsis() string { return "remake-dd-topics args to stdout." }
+func (*remakeDeviceDefinitionTopicsCmd) Usage() string {
+	return `remake-dd-topics:
+	remake-dd-topics args.
+  `
+}
+
+func (p *remakeDeviceDefinitionTopicsCmd) SetFlags(f *flag.FlagSet) {
+
+}
+
+func (p *remakeDeviceDefinitionTopicsCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+	err := remakeDeviceDefinitionTopics(ctx, &p.settings, p.pdb, p.producer, &p.logger, p.ddSvc)
+	if err != nil {
+		p.logger.Fatal().Err(err).Msg("Error recreating device definition KTables.")
+	}
+	return subcommands.ExitSuccess
+}
 
 // remakeDeviceDefinitionTopics invokes [services.DeviceDefinitionRegistrar] for each user device
 // with an integration.

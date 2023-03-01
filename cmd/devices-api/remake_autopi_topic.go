@@ -2,17 +2,49 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 
-	"github.com/DIMO-Network/shared/db"
+	"github.com/google/subcommands"
+	"github.com/rs/zerolog"
 
+	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/shared/db"
 	"github.com/Shopify/sarama"
 	"github.com/pkg/errors"
 	"github.com/volatiletech/null/v8"
 )
+
+type remakeAutoPiTopicCmd struct {
+	logger   zerolog.Logger
+	settings config.Settings
+	pdb      db.Store
+	producer sarama.SyncProducer
+	ddSvc    services.DeviceDefinitionService
+}
+
+func (*remakeAutoPiTopicCmd) Name() string     { return "remake-autopi-topic" }
+func (*remakeAutoPiTopicCmd) Synopsis() string { return "remake-autopi-topic args to stdout." }
+func (*remakeAutoPiTopicCmd) Usage() string {
+	return `remake-autopi-topic:
+	remake-autopi-topic args.
+  `
+}
+
+func (p *remakeAutoPiTopicCmd) SetFlags(f *flag.FlagSet) {
+
+}
+
+func (p *remakeAutoPiTopicCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+	err := remakeAutoPiTopic(ctx, p.pdb, p.producer, p.ddSvc)
+	if err != nil {
+		p.logger.Fatal().Err(err).Msg("Error running AutoPi Kafka re-registration")
+	}
+	return subcommands.ExitSuccess
+}
 
 // remakeAutoPiTopic re-populates the autopi ingest registrar topic based on data we have in user_device_api_integrations
 func remakeAutoPiTopic(ctx context.Context, pdb db.Store, producer sarama.SyncProducer, ddSvc services.DeviceDefinitionService) error {

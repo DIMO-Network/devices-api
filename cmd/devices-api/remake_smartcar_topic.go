@@ -2,8 +2,13 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 
+	"github.com/google/subcommands"
+	"github.com/rs/zerolog"
+
+	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/shared/db"
 
 	"github.com/DIMO-Network/devices-api/internal/services"
@@ -11,6 +16,34 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/volatiletech/null/v8"
 )
+
+type remakeSmartcarTopicCmd struct {
+	logger   zerolog.Logger
+	settings config.Settings
+	pdb      db.Store
+	producer sarama.SyncProducer
+	ddSvc    services.DeviceDefinitionService
+}
+
+func (*remakeSmartcarTopicCmd) Name() string     { return "remake-smartcar-topic" }
+func (*remakeSmartcarTopicCmd) Synopsis() string { return "remake-smartcar-topic args to stdout." }
+func (*remakeSmartcarTopicCmd) Usage() string {
+	return `remake-smartcar-topic:
+	remake-smartcar-topic args.
+  `
+}
+
+func (p *remakeSmartcarTopicCmd) SetFlags(f *flag.FlagSet) {
+
+}
+
+func (p *remakeSmartcarTopicCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+	err := remakeSmartcarTopic(ctx, p.pdb, p.producer, p.ddSvc)
+	if err != nil {
+		p.logger.Fatal().Err(err).Msg("Error running Smartcar Kafka re-registration")
+	}
+	return subcommands.ExitSuccess
+}
 
 func remakeSmartcarTopic(ctx context.Context, pdb db.Store, producer sarama.SyncProducer, ddSvc services.DeviceDefinitionService) error {
 	reg := services.NewIngestRegistrar(services.Smartcar, producer)

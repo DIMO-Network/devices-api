@@ -1,14 +1,50 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"flag"
 	"time"
+
+	"github.com/google/subcommands"
+	"github.com/rs/zerolog"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/Shopify/sarama"
 	"github.com/segmentio/ksuid"
 )
+
+type stopTaskByKeyCmd struct {
+	logger   zerolog.Logger
+	settings config.Settings
+	producer sarama.SyncProducer
+}
+
+func (*stopTaskByKeyCmd) Name() string     { return "stop-task-by-key" }
+func (*stopTaskByKeyCmd) Synopsis() string { return "stop-task-by-key args to stdout." }
+func (*stopTaskByKeyCmd) Usage() string {
+	return `stop-task-by-key:
+	stop-task-by-key args.
+  `
+}
+
+func (p *stopTaskByKeyCmd) SetFlags(f *flag.FlagSet) {
+
+}
+
+func (p *stopTaskByKeyCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+	if len(f.Args()[1:]) != 2 {
+		p.logger.Fatal().Msgf("Expected an argument, the task key.")
+	}
+	taskKey := f.Args()[2]
+	p.logger.Info().Msgf("Stopping task %s", taskKey)
+	err := stopTaskByKey(&p.settings, taskKey, p.producer)
+	if err != nil {
+		p.logger.Fatal().Err(err).Msg("Error stopping task.")
+	}
+	return subcommands.ExitSuccess
+}
 
 func stopTaskByKey(settings *config.Settings, taskKey string, producer sarama.SyncProducer) error {
 	tt := struct {

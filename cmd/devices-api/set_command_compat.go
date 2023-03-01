@@ -4,8 +4,12 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net/http"
+
+	"github.com/google/subcommands"
+	"github.com/rs/zerolog"
 
 	"github.com/DIMO-Network/shared/db"
 
@@ -18,6 +22,37 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
+
+type setCommandCompatibilityCmd struct {
+	logger       zerolog.Logger
+	settings     config.Settings
+	pdb          db.Store
+	eventService services.EventService
+	ddSvc        services.DeviceDefinitionService
+}
+
+func (*setCommandCompatibilityCmd) Name() string     { return "set-command-compat" }
+func (*setCommandCompatibilityCmd) Synopsis() string { return "set-command-compat args to stdout." }
+func (*setCommandCompatibilityCmd) Usage() string {
+	return `set-command-compat [] <some text>:
+	set-command-compat args.
+  `
+}
+
+func (p *setCommandCompatibilityCmd) SetFlags(f *flag.FlagSet) {
+
+}
+
+func (p *setCommandCompatibilityCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+
+	err := setCommandCompatibility(ctx, &p.settings, p.pdb, p.ddSvc)
+	if err != nil {
+		p.logger.Fatal().Err(err).Msg("Failed during command compatibility fill.")
+	}
+	p.logger.Info().Msg("Finished setting command compatibility.")
+
+	return subcommands.ExitSuccess
+}
 
 var teslaEnabledCommands = []string{"doors/lock", "doors/unlock", "trunk/open", "frunk/open", "charge/limit"}
 
