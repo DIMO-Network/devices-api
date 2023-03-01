@@ -69,6 +69,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.mockCtrl = mockCtrl
 
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(mockCtrl)
+	s.deviceDefIntSvc = mock_services.NewMockDeviceDefinitionIntegrationService(mockCtrl)
 	s.scClient = mock_services.NewMockSmartcarClient(mockCtrl)
 	s.scTaskSvc = mock_services.NewMockSmartcarTaskService(mockCtrl)
 	teslaSvc := mock_services.NewMockTeslaService(mockCtrl)
@@ -145,6 +146,8 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 		DeviceStyleId:      "",
 		Year:               dd[0].Type.Year,
 	}, nil)
+	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), "22N2xaPOq2WW2gAHBHd0Ikn4Zob", dd[0].DeviceDefinitionId, "Americas").Times(1).
+		Return(nil, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
 	request := test.BuildRequest("POST", "/user/devices/fromsmartcar", string(j))
 	response, responseError := s.app.Test(request)
