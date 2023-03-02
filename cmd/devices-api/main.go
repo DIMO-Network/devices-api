@@ -2,18 +2,19 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
-	"math/big"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/google/subcommands"
 
 	_ "github.com/DIMO-Network/devices-api/docs"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	es "github.com/DIMO-Network/devices-api/internal/elasticsearch"
 	"github.com/DIMO-Network/devices-api/internal/kafka"
 	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/devices-api/internal/services/autopi"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/Shopify/sarama"
@@ -63,6 +64,10 @@ func main() {
 
 	deps := newDependencyContainer(&settings, logger)
 
+	subcommands.Register(subcommands.HelpCommand(), "")
+	subcommands.Register(subcommands.FlagsCommand(), "")
+	subcommands.Register(subcommands.CommandsCommand(), "")
+
 	pdb := db.NewDbConnectionFromSettings(ctx, &settings.DB, true)
 	// check db ready, this is not ideal btw, the db connection handler would be nicer if it did this.
 	totalTime := 0
@@ -81,182 +86,9 @@ func main() {
 
 	nhtsaSvc := services.NewNHTSAService()
 	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, nhtsaSvc, &settings)
-	// todo: use flag or other package to handle args
-	arg := ""
-	if len(os.Args) > 1 {
-		arg = os.Args[1]
-	}
 
-	switch arg {
-	case "migrate":
-		command := "up"
-		if len(os.Args) > 2 {
-			command = os.Args[2]
-			if command == "down-to" || command == "up-to" {
-				command = command + " " + os.Args[3]
-			}
-		}
-		migrateDatabase(logger, &settings, command)
-	case "generate-events":
-		eventService := services.NewEventService(&logger, &settings, deps.getKafkaProducer())
-		nhtsaSvc := services.NewNHTSAService()
-		ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, nhtsaSvc, &settings)
-		generateEvents(logger, pdb, eventService, ddSvc)
-	case "set-command-compat":
-		if err := setCommandCompatibility(ctx, &settings, pdb, ddSvc); err != nil {
-			logger.Fatal().Err(err).Msg("Failed during command compatibility fill.")
-		}
-		logger.Info().Msg("Finished setting command compatibility.")
-	case "remake-smartcar-topic":
-		err = remakeSmartcarTopic(ctx, pdb, deps.getKafkaProducer(), ddSvc)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Error running Smartcar Kafka re-registration")
-		}
-	case "remake-autopi-topic":
-		err = remakeAutoPiTopic(ctx, pdb, deps.getKafkaProducer(), ddSvc)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Error running AutoPi Kafka re-registration")
-		}
-	case "remake-fence-topic":
-		err = remakeFenceTopic(&settings, pdb, deps.getKafkaProducer())
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Error running Smartcar Kafka re-registration")
-		}
-	case "remake-dd-topics":
-		err = remakeDeviceDefinitionTopics(ctx, &settings, pdb, deps.getKafkaProducer(), &logger, ddSvc)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Error recreating device definition KTables.")
-		}
-	case "populate-es-dd-data":
-		err = populateESDDData(ctx, &settings, esInstance, pdb, &logger, ddSvc)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Error running elastic search dd update")
-		}
-	case "populate-es-region-data":
-		err = populateESRegionData(ctx, &settings, esInstance, pdb, &logger, ddSvc)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Error running elastic search region update")
-		}
-	case "populate-usa-powertrain":
-		logger.Info().Msg("Populating USA powertrain data from VINs")
-		nhtsaSvc := services.NewNHTSAService()
-		err := populateUSAPowertrain(ctx, &logger, pdb, nhtsaSvc)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Error filling in powertrain data.")
-		}
-	case "stop-task-by-key":
-		if len(os.Args[1:]) != 2 {
-			logger.Fatal().Msgf("Expected an argument, the task key.")
-		}
-		taskKey := os.Args[2]
-		logger.Info().Msgf("Stopping task %s", taskKey)
-		err := stopTaskByKey(&settings, taskKey, deps.getKafkaProducer())
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Error stopping task.")
-		}
-	case "start-smartcar-from-refresh":
-		if len(os.Args[1:]) != 2 {
-			logger.Fatal().Msgf("Expected an argument, the device ID.")
-		}
-		userDeviceID := os.Args[2]
-		logger.Info().Msgf("Trying to start Smartcar task for %s.", userDeviceID)
-		var cipher shared.Cipher
-		if settings.Environment == "dev" || settings.Environment == "prod" {
-			cipher = createKMS(&settings, &logger)
-		} else {
-			logger.Warn().Msg("Using ROT13 encrypter. Only use this for testing!")
-			cipher = new(shared.ROT13Cipher)
-		}
-		scClient := services.NewSmartcarClient(&settings)
-		scTask := services.NewSmartcarTaskService(&settings, deps.getKafkaProducer())
-		if err := startSmartcarFromRefresh(ctx, &logger, &settings, pdb, cipher, userDeviceID, scClient, scTask, ddSvc); err != nil {
-			logger.Fatal().Err(err).Msg("Error starting Smartcar task.")
-		}
-		logger.Info().Msgf("Successfully started Smartcar task for %s.", userDeviceID)
-	case "valuations-pull":
-		logger.Info().Msgf("Pull VIN info, valuations and pricing from driv.ly for USA and valuations from Vincario for EUR")
-		setAll := false
-		wmi := ""
-		if len(os.Args) > 2 {
-			setAll = os.Args[2] == "--set-all"
-			// parse out vin WMI code to filter on
-			for i, a := range os.Args {
-				if a == "--wmi" {
-					wmi = os.Args[i+1]
-					break
-				}
-			}
-		}
-		err = loadValuations(ctx, &logger, &settings, setAll, wmi, pdb)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("error trying to pull valuations")
-		}
-	case "web2-pair":
-		if len(os.Args[2:]) != 2 {
-			logger.Fatal().Msg("Requires aftermarket_token_id vehicle_token_id")
-		}
-
-		amToken, ok := new(big.Int).SetString(os.Args[2], 10)
-		if !ok {
-			logger.Fatal().Msgf("Couldn't parse aftermarket_token_id %q", os.Args[2])
-		}
-
-		vToken, ok := new(big.Int).SetString(os.Args[3], 10)
-		if !ok {
-			logger.Fatal().Msgf("Couldn't parse vehicle_token_id %q", os.Args[3])
-		}
-
-		logger.Info().Msgf("Attempting to web2 pair am device %s to vehicle %s.", amToken, vToken)
-
-		autoPiSvc := services.NewAutoPiAPIService(&settings, pdb.DBS)
-		producer := deps.getKafkaProducer()
-		autoPiTaskService := services.NewAutoPiTaskService(&settings, autoPiSvc, pdb.DBS, logger)
-		autoPiIngest := services.NewIngestRegistrar(services.AutoPi, producer)
-		eventService := services.NewEventService(&logger, &settings, deps.getKafkaProducer())
-		deviceDefinitionRegistrar := services.NewDeviceDefinitionRegistrar(producer, &settings)
-		hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, pdb.DBS, &logger)
-
-		i := autopi.NewIntegration(pdb.DBS, ddSvc, autoPiSvc, autoPiTaskService, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &logger)
-
-		err := i.Pair(ctx, amToken, vToken)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Pairing failure.")
-		}
-
-		logger.Info().Msg("Pairing success.")
-	case "sync-device-templates":
-		moveFromTemplateID := "10" // default
-		if len(os.Args) > 2 {
-			// parse out custom move from template ID option
-			for i, a := range os.Args {
-				if a == "--move-from-template" {
-					moveFromTemplateID = os.Args[i+1]
-					break
-				}
-			}
-		}
-
-		logger.Info().Msgf("starting syncing device templates based on device definition setting."+
-			"\n Only moving from template ID: %s. To change specify --move-from-template XX. Set to 0 for none.", moveFromTemplateID)
-		autoPiSvc := services.NewAutoPiAPIService(&settings, pdb.DBS)
-		hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, pdb.DBS, &logger)
-		err := syncDeviceTemplates(ctx, &logger, &settings, pdb, hardwareTemplateService, moveFromTemplateID)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("failed to sync all devices with their templates")
-		}
-		logger.Info().Msg("success")
-		//							1				2		3		4			5
-	case "autopi-tools": //   autopi-tools   templateName  [-p  parent]  description
-		autoPiSvc := services.NewAutoPiAPIService(&settings, pdb.DBS)
-		autopiTools(os.Args, autoPiSvc)
-	case "autopi-notify-status":
-		autoPiSvc := services.NewAutoPiAPIService(&settings, pdb.DBS)
-		err := updateState(ctx, pdb, &logger, autoPiSvc)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("failed to sync autopi notify status")
-		}
-		logger.Info().Msg("success")
-	default:
+	// Run API
+	if len(os.Args) == 1 {
 		if settings.EnablePrivileges {
 			startContractEventsConsumer(logger, &settings, pdb)
 		}
@@ -266,7 +98,36 @@ func main() {
 		startCredentialConsumer(logger, &settings, pdb)
 		startTaskStatusConsumer(logger, &settings, pdb)
 		startWebAPI(logger, &settings, pdb, eventService, deps.getKafkaProducer(), deps.getS3ServiceClient(ctx), deps.getS3NFTServiceClient(ctx))
+	} else {
+
+		subcommands.Register(&migrateDBCmd{logger: logger, settings: settings}, "database")
+
+		eventService := services.NewEventService(&logger, &settings, deps.getKafkaProducer())
+		subcommands.Register(&generateEventCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: ddSvc, eventService: eventService}, "events")
+
+		subcommands.Register(&setCommandCompatibilityCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: ddSvc, eventService: eventService}, "device integrations")
+		subcommands.Register(&remakeSmartcarTopicCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: ddSvc, producer: deps.getKafkaProducer()}, "device integrations")
+		subcommands.Register(&remakeAutoPiTopicCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: ddSvc, producer: deps.getKafkaProducer()}, "device integrations")
+		subcommands.Register(&remakeFenceTopicCmd{logger: logger, settings: settings, pdb: pdb, producer: deps.getKafkaProducer()}, "device integrations")
+		subcommands.Register(&remakeDeviceDefinitionTopicsCmd{logger: logger, settings: settings, pdb: pdb, producer: deps.getKafkaProducer(), ddSvc: ddSvc}, "device integrations")
+		subcommands.Register(&startSmartcarFromRefreshCmd{logger: logger, settings: settings, pdb: pdb, producer: deps.getKafkaProducer(), ddSvc: ddSvc}, "device integrations")
+		subcommands.Register(&autopiToolsCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
+		subcommands.Register(&updateStateCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
+		subcommands.Register(&web2PairCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: ddSvc, producer: deps.getKafkaProducer()}, "device integrations")
+
+		subcommands.Register(&populateESDDDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: esInstance, ddSvc: ddSvc}, "populate data")
+		subcommands.Register(&populateESRegionDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: esInstance, ddSvc: ddSvc}, "populate data")
+		subcommands.Register(&populateUSAPowertrainCmd{logger: logger, settings: settings, pdb: pdb, nhtsaService: nhtsaSvc}, "populate data")
+
+		subcommands.Register(&stopTaskByKeyCmd{logger: logger, settings: settings, producer: deps.getKafkaProducer()}, "tasks")
+
+		subcommands.Register(&loadValuationsCmd{logger: logger, settings: settings, pdb: pdb}, "user devices")
+		subcommands.Register(&syncDeviceTemplatesCmd{logger: logger, settings: settings, pdb: pdb}, "user devices")
+
+		flag.Parse()
+		os.Exit(int(subcommands.Execute(ctx)))
 	}
+
 }
 
 func createKafkaProducer(settings *config.Settings) (sarama.SyncProducer, error) {

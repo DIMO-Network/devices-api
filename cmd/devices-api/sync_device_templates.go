@@ -2,10 +2,15 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/google/subcommands"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -18,6 +23,48 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
+
+type syncDeviceTemplatesCmd struct {
+	logger   zerolog.Logger
+	settings config.Settings
+	pdb      db.Store
+}
+
+func (*syncDeviceTemplatesCmd) Name() string     { return "sync-device-templates" }
+func (*syncDeviceTemplatesCmd) Synopsis() string { return "sync-device-templates args to stdout." }
+func (*syncDeviceTemplatesCmd) Usage() string {
+	return `sync-device-templates [] <some text>:
+	sync-device-templates args.
+  `
+}
+
+func (p *syncDeviceTemplatesCmd) SetFlags(f *flag.FlagSet) {
+
+}
+
+func (p *syncDeviceTemplatesCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+	moveFromTemplateID := "10" // default
+	if len(os.Args) > 2 {
+		// parse out custom move from template ID option
+		for i, a := range os.Args {
+			if a == "--move-from-template" {
+				moveFromTemplateID = os.Args[i+1]
+				break
+			}
+		}
+	}
+
+	p.logger.Info().Msgf("starting syncing device templates based on device definition setting."+
+		"\n Only moving from template ID: %s. To change specify --move-from-template XX. Set to 0 for none.", moveFromTemplateID)
+	autoPiSvc := services.NewAutoPiAPIService(&p.settings, p.pdb.DBS)
+	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, p.pdb.DBS, &p.logger)
+	err := syncDeviceTemplates(ctx, &p.logger, &p.settings, p.pdb, hardwareTemplateService, moveFromTemplateID)
+	if err != nil {
+		p.logger.Fatal().Err(err).Msg("failed to sync all devices with their templates")
+	}
+	p.logger.Info().Msg("success")
+	return subcommands.ExitSuccess
+}
 
 // syncDeviceTemplates looks for DD's with a templateID set, and then compares to all UD's connected and Applies the template if doesn't match.
 // If onlyMoveFromTemplate is > 0, then only apply the template if the current template is this value.

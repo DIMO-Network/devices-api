@@ -2,16 +2,50 @@ package main
 
 import (
 	"context"
-
-	"github.com/DIMO-Network/shared/db"
+	"flag"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
+	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/controllers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/shared/db"
+	"github.com/google/subcommands"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
+
+type generateEventCmd struct {
+	logger       zerolog.Logger
+	settings     config.Settings
+	pdb          db.Store
+	eventService services.EventService
+	ddSvc        services.DeviceDefinitionService
+
+	generate bool
+}
+
+func (*generateEventCmd) Name() string     { return "events" }
+func (*generateEventCmd) Synopsis() string { return "events args to stdout." }
+func (*generateEventCmd) Usage() string {
+	return `events [-generate] <some text>:
+	events args.
+  `
+}
+
+func (p *generateEventCmd) SetFlags(f *flag.FlagSet) {
+	f.BoolVar(&p.generate, "generate", true, "generate events")
+}
+
+func (p *generateEventCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+
+	if !p.generate {
+		return subcommands.ExitSuccess
+	}
+
+	generateEvents(p.logger, p.pdb, p.eventService, p.ddSvc)
+	return subcommands.ExitSuccess
+}
 
 func generateEvents(logger zerolog.Logger, pdb db.Store, eventService services.EventService, ddSvc services.DeviceDefinitionService) {
 	ctx := context.Background()

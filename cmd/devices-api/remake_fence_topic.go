@@ -3,7 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"time"
+
+	"github.com/google/subcommands"
+	"github.com/rs/zerolog"
 
 	"github.com/DIMO-Network/shared/db"
 
@@ -15,6 +19,33 @@ import (
 	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
+
+type remakeFenceTopicCmd struct {
+	logger   zerolog.Logger
+	settings config.Settings
+	pdb      db.Store
+	producer sarama.SyncProducer
+}
+
+func (*remakeFenceTopicCmd) Name() string     { return "remake-fence-topic" }
+func (*remakeFenceTopicCmd) Synopsis() string { return "remake-fence-topic args to stdout." }
+func (*remakeFenceTopicCmd) Usage() string {
+	return `remake-fence-topic:
+	remake-fence-topic args.
+  `
+}
+
+func (p *remakeFenceTopicCmd) SetFlags(f *flag.FlagSet) {
+
+}
+
+func (p *remakeFenceTopicCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+	err := remakeFenceTopic(&p.settings, p.pdb, p.producer)
+	if err != nil {
+		p.logger.Fatal().Err(err).Msg("Error running Smartcar Kafka re-registration")
+	}
+	return subcommands.ExitSuccess
+}
 
 func remakeFenceTopic(settings *config.Settings, pdb db.Store, producer sarama.SyncProducer) error {
 	ctx := context.Background()

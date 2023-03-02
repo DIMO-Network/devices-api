@@ -1,10 +1,44 @@
 package main
 
 import (
+	"context"
+	"flag"
+	"os"
+
 	"strconv"
+
+	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/shared/db"
+	"github.com/google/subcommands"
+	"github.com/rs/zerolog"
 
 	"github.com/DIMO-Network/devices-api/internal/services"
 )
+
+type autopiToolsCmd struct {
+	logger   zerolog.Logger
+	settings config.Settings
+	pdb      db.Store
+}
+
+func (*autopiToolsCmd) Name() string     { return "autopi-tools" }
+func (*autopiToolsCmd) Synopsis() string { return "autopi-tools args to stdout." }
+func (*autopiToolsCmd) Usage() string {
+	return `autopi-tools [] <some text>:
+	autopi-tools args.
+  `
+}
+
+func (p *autopiToolsCmd) SetFlags(f *flag.FlagSet) {
+
+}
+
+func (p *autopiToolsCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+	autoPiSvc := services.NewAutoPiAPIService(&p.settings, p.pdb.DBS)
+	autopiTools(os.Args, autoPiSvc)
+
+	return subcommands.ExitSuccess
+}
 
 func autopiTools(args []string, autoPiSvc services.AutoPiAPIService) {
 	if len(args) > 3 {

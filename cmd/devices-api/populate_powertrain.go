@@ -2,15 +2,46 @@ package main
 
 import (
 	"context"
+	"flag"
 
-	"github.com/DIMO-Network/shared/db"
+	"github.com/google/subcommands"
 
+	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/shared/db"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
+
+type populateUSAPowertrainCmd struct {
+	logger       zerolog.Logger
+	settings     config.Settings
+	pdb          db.Store
+	nhtsaService services.INHTSAService
+}
+
+func (*populateUSAPowertrainCmd) Name() string     { return "populate-usa-powertrain" }
+func (*populateUSAPowertrainCmd) Synopsis() string { return "populate-usa-powertrain args to stdout." }
+func (*populateUSAPowertrainCmd) Usage() string {
+	return `populate-usa-powertrain:
+	populate-usa-powertrain args.
+  `
+}
+
+func (p *populateUSAPowertrainCmd) SetFlags(f *flag.FlagSet) {
+
+}
+
+func (p *populateUSAPowertrainCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+	p.logger.Info().Msg("Populating USA powertrain data from VINs")
+	err := populateUSAPowertrain(ctx, &p.logger, p.pdb, p.nhtsaService)
+	if err != nil {
+		p.logger.Fatal().Err(err).Msg("Error filling in powertrain data.")
+	}
+	return subcommands.ExitSuccess
+}
 
 func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.Store, nhtsaService services.INHTSAService) error {
 	devices, err := models.UserDevices(

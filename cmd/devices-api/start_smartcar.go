@@ -2,7 +2,12 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"os"
+
+	"github.com/Shopify/sarama"
+	"github.com/google/subcommands"
 
 	"github.com/DIMO-Network/shared/db"
 
@@ -16,6 +21,51 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
+
+type startSmartcarFromRefreshCmd struct {
+	logger   zerolog.Logger
+	settings config.Settings
+	pdb      db.Store
+	producer sarama.SyncProducer
+	ddSvc    services.DeviceDefinitionService
+}
+
+func (*startSmartcarFromRefreshCmd) Name() string { return "start-smartcar-from-refresh" }
+func (*startSmartcarFromRefreshCmd) Synopsis() string {
+	return "start-smartcar-from-refresh args to stdout."
+}
+func (*startSmartcarFromRefreshCmd) Usage() string {
+	return `start-smartcar-from-refresh:
+	start-smartcar-from-refresh args.
+  `
+}
+
+func (p *startSmartcarFromRefreshCmd) SetFlags(f *flag.FlagSet) {
+
+}
+
+func (p *startSmartcarFromRefreshCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+	if len(os.Args[1:]) != 2 {
+		p.logger.Fatal().Msgf("Expected an argument, the device ID.")
+	}
+	userDeviceID := os.Args[2]
+	p.logger.Info().Msgf("Trying to start Smartcar task for %s.", userDeviceID)
+	var cipher shared.Cipher
+	if p.settings.Environment == "dev" || p.settings.Environment == "prod" {
+		cipher = createKMS(&p.settings, &p.logger)
+	} else {
+		p.logger.Warn().Msg("Using ROT13 encrypter. Only use this for testing!")
+		cipher = new(shared.ROT13Cipher)
+	}
+	scClient := services.NewSmartcarClient(&p.settings)
+	scTask := services.NewSmartcarTaskService(&p.settings, p.producer)
+	if err := startSmartcarFromRefresh(ctx, &p.logger, &p.settings, p.pdb, cipher, userDeviceID, scClient, scTask, p.ddSvc); err != nil {
+		p.logger.Fatal().Err(err).Msg("Error starting Smartcar task.")
+	}
+	p.logger.Info().Msgf("Successfully started Smartcar task for %s.", userDeviceID)
+
+	return subcommands.ExitSuccess
+}
 
 func startSmartcarFromRefresh(ctx context.Context, logger *zerolog.Logger, settings *config.Settings, pdb db.Store, cipher shared.Cipher, userDeviceID string, scClient services.SmartcarClient, scTask services.SmartcarTaskService, ddSvc services.DeviceDefinitionService) error {
 	db := pdb.DBS().Writer

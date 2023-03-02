@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
+
+	"github.com/google/subcommands"
 
 	"github.com/DIMO-Network/shared/db"
 
@@ -15,6 +18,34 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
+
+type populateESRegionDataCmd struct {
+	logger     zerolog.Logger
+	settings   config.Settings
+	pdb        db.Store
+	esInstance es.ElasticSearch
+	ddSvc      services.DeviceDefinitionService
+}
+
+func (*populateESRegionDataCmd) Name() string     { return "populate-es-region-data" }
+func (*populateESRegionDataCmd) Synopsis() string { return "populate-es-region-data args to stdout." }
+func (*populateESRegionDataCmd) Usage() string {
+	return `populate-es-region-data:
+	populate-es-region-data args.
+  `
+}
+
+func (p *populateESRegionDataCmd) SetFlags(f *flag.FlagSet) {
+
+}
+
+func (p *populateESRegionDataCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+	err := populateESRegionData(ctx, &p.settings, p.esInstance, p.pdb, &p.logger, p.ddSvc)
+	if err != nil {
+		p.logger.Fatal().Err(err).Msg("Error running elastic search region update")
+	}
+	return subcommands.ExitSuccess
+}
 
 func populateESRegionData(ctx context.Context, settings *config.Settings, e es.ElasticSearch, pdb db.Store, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService) error {
 	db := pdb.DBS().Reader
