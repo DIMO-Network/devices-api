@@ -179,13 +179,6 @@ func (s *userDeviceService) deviceModelToAPI(device *models.UserDevice) *pb.User
 
 func (s *userDeviceService) GetClaimedVehiclesGrowth(ctx context.Context, empty *emptypb.Empty) (*pb.ClaimedVehiclesGrowth, error) {
 	// Checking both that the nft exists and is linked to a device.
-	lastWeekNFT, err := models.VehicleNFTS(models.VehicleNFTWhere.UserDeviceID.IsNotNull(),
-		models.VehicleNFTWhere.TokenID.IsNotNull(),
-		qm.And("updated_at > current_date - 7")).Count(ctx, s.dbs().Reader)
-
-	if err != nil {
-		return nil, err
-	}
 
 	totalNFT, err := models.VehicleNFTS(models.VehicleNFTWhere.UserDeviceID.IsNotNull(),
 		models.VehicleNFTWhere.TokenID.IsNotNull()).Count(ctx, s.dbs().Reader)
@@ -194,11 +187,9 @@ func (s *userDeviceService) GetClaimedVehiclesGrowth(ctx context.Context, empty 
 		return nil, err
 	}
 
-	growthPercentage := float64(lastWeekNFT) / float64(totalNFT) * 100
-
 	return &pb.ClaimedVehiclesGrowth{
 		TotalClaimedVehicles: totalNFT,
-		GrowthPercentage:     float32(growthPercentage),
+		GrowthPercentage:     0,
 	}, nil
 }
 
