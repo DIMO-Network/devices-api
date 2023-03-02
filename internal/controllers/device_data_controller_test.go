@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/tidwall/gjson"
 	"io"
 	"os"
 	"testing"
@@ -117,4 +118,30 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 		//teardown
 		test.TruncateTables(pdb.DBS().Writer.DB, t)
 	})
+}
+
+func Test_sortByJSONOdometerAsc(t *testing.T) {
+	udd := models.UserDeviceDatumSlice{
+		&models.UserDeviceDatum{
+			UserDeviceID:  "123",
+			Data:          null.JSONFrom([]byte(`{ "odometer": 100 }`)),
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+			IntegrationID: "123",
+		},
+		&models.UserDeviceDatum{
+			UserDeviceID:  "123",
+			Data:          null.JSONFrom([]byte(`{ "odometer": 90}`)),
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+			IntegrationID: "345",
+		},
+	}
+	// validate setup is ok
+	assert.Equal(t, float64(100), gjson.GetBytes(udd[0].Data.JSON, "odometer").Float())
+	assert.Equal(t, float64(90), gjson.GetBytes(udd[1].Data.JSON, "odometer").Float())
+	// sort and validate
+	sortByJSONOdometerAsc(udd)
+	assert.Equal(t, float64(90), gjson.GetBytes(udd[0].Data.JSON, "odometer").Float())
+	assert.Equal(t, float64(100), gjson.GetBytes(udd[1].Data.JSON, "odometer").Float())
 }
