@@ -18,7 +18,7 @@ import (
 
 func PrepareDeviceStatusInformation(deviceData models.UserDeviceDatumSlice, privilegeIDs []int64) DeviceSnapshot {
 	ds := DeviceSnapshot{}
-	// order the records by odometer asc if they both have it, the latter one replaces
+	// order the records by odometer asc so that if they both have it, the latter one replaces with more recent values.
 	sortByJSONOdometerAsc(deviceData)
 
 	// merging data: foreach order by updatedAt desc, only set property if it exists in json data
@@ -236,7 +236,6 @@ func sortByJSONOdometerAsc(udd models.UserDeviceDatumSlice) {
 		} else if !fpri.Exists() && fprj.Exists() {
 			return false
 		}
-		// todo test for below to validate right way
 		return fprj.Float() > fpri.Float()
 	})
 }
