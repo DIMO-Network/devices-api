@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"database/sql"
+	"sort"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -17,6 +18,8 @@ import (
 
 func PrepareDeviceStatusInformation(deviceData models.UserDeviceDatumSlice, privilegeIDs []int64) DeviceSnapshot {
 	ds := DeviceSnapshot{}
+	// order the records by odometer asc if they both have it, the latter one replaces
+	sortByJSONOdometerAsc(deviceData)
 
 	// merging data: foreach order by updatedAt desc, only set property if it exists in json data
 	for _, datum := range deviceData {
@@ -220,4 +223,20 @@ type DeviceSnapshot struct {
 	TirePressure         *smartcar.TirePressure `json:"tirePressure,omitempty"`
 	BatteryVoltage       *float64               `json:"batteryVoltage,omitempty"`
 	AmbientTemp          *float64               `json:"ambientTemp,omitempty"`
+}
+
+// sortByJSONOdometerAsc Sort user device data so the highest odometer is last
+func sortByJSONOdometerAsc(udd models.UserDeviceDatumSlice) {
+	sort.Slice(udd, func(i, j int) bool {
+		fpri := gjson.GetBytes(udd[i].Data.JSON, "odometer")
+		fprj := gjson.GetBytes(udd[j].Data.JSON, "odometer")
+		// if one has it and the other does not, makes no difference
+		if fpri.Exists() && !fprj.Exists() {
+			return true
+		} else if !fpri.Exists() && fprj.Exists() {
+			return false
+		}
+		// todo test for below to validate right way
+		return fprj.Float() > fpri.Float()
+	})
 }
