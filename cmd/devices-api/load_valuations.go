@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/google/subcommands"
@@ -38,12 +39,12 @@ func (p *loadValuationsCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...i
 	p.logger.Info().Msgf("Pull VIN info, valuations and pricing from driv.ly for USA and valuations from Vincario for EUR")
 	setAll := false
 	wmi := ""
-	if len(f.Args()) > 2 {
-		setAll = f.Args()[2] == "--set-all"
+	if len(os.Args) > 2 {
+		setAll = os.Args[2] == "--set-all"
 		// parse out vin WMI code to filter on
-		for i, a := range f.Args() {
+		for i, a := range os.Args {
 			if a == "--wmi" {
-				wmi = f.Args()[i+1]
+				wmi = os.Args[i+1]
 				break
 			}
 		}

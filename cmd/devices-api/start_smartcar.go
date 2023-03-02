@@ -45,7 +45,7 @@ func (p *startSmartcarFromRefreshCmd) SetFlags(f *flag.FlagSet) {
 }
 
 func (p *startSmartcarFromRefreshCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
-	if len(f.Args()[1:]) != 2 {
+	if len(os.Args[1:]) != 2 {
 		p.logger.Fatal().Msgf("Expected an argument, the device ID.")
 	}
 	userDeviceID := os.Args[2]

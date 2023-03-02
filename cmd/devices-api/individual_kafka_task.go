@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"os"
 	"time"
 
 	"github.com/google/subcommands"
@@ -34,10 +35,10 @@ func (p *stopTaskByKeyCmd) SetFlags(f *flag.FlagSet) {
 }
 
 func (p *stopTaskByKeyCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
-	if len(f.Args()[1:]) != 2 {
+	if len(os.Args[1:]) != 2 {
 		p.logger.Fatal().Msgf("Expected an argument, the task key.")
 	}
-	taskKey := f.Args()[2]
+	taskKey := os.Args[2]
 	p.logger.Info().Msgf("Stopping task %s", taskKey)
 	err := stopTaskByKey(&p.settings, taskKey, p.producer)
 	if err != nil {

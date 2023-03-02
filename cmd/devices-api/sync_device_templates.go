@@ -44,11 +44,11 @@ func (p *syncDeviceTemplatesCmd) SetFlags(f *flag.FlagSet) {
 
 func (p *syncDeviceTemplatesCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	moveFromTemplateID := "10" // default
-	if len(f.Args()) > 2 {
+	if len(os.Args) > 2 {
 		// parse out custom move from template ID option
 		for i, a := range os.Args {
 			if a == "--move-from-template" {
-				moveFromTemplateID = f.Args()[i+1]
+				moveFromTemplateID = os.Args[i+1]
 				break
 			}
 		}

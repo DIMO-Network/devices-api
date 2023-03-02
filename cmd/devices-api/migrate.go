@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"flag"
+	"os"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/google/subcommands"
@@ -49,7 +50,7 @@ func (p *migrateDBCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interf
 		p.logger.Fatal().Msgf("failed to ping db: %v\n", err)
 	}
 	// set default
-	command := f.Args()[0]
+	command := os.Args[0]
 	if command == "" {
 		command = "up"
 	}

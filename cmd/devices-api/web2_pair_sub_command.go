@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"os"
 
 	"github.com/Shopify/sarama"
 
@@ -38,18 +39,18 @@ func (p *web2PairCmd) SetFlags(f *flag.FlagSet) {
 
 func (p *web2PairCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 
-	if len(f.Args()[2:]) != 2 {
+	if len(os.Args[2:]) != 2 {
 		p.logger.Fatal().Msg("Requires aftermarket_token_id vehicle_token_id")
 	}
 
-	amToken, ok := new(big.Int).SetString(f.Args()[2], 10)
+	amToken, ok := new(big.Int).SetString(os.Args[2], 10)
 	if !ok {
-		p.logger.Fatal().Msgf("Couldn't parse aftermarket_token_id %q", f.Args()[2])
+		p.logger.Fatal().Msgf("Couldn't parse aftermarket_token_id %q", os.Args[2])
 	}
 
-	vToken, ok := new(big.Int).SetString(f.Args()[3], 10)
+	vToken, ok := new(big.Int).SetString(os.Args[3], 10)
 	if !ok {
-		p.logger.Fatal().Msgf("Couldn't parse vehicle_token_id %q", f.Args()[3])
+		p.logger.Fatal().Msgf("Couldn't parse vehicle_token_id %q", os.Args[3])
 	}
 
 	p.logger.Info().Msgf("Attempting to web2 pair am device %s to vehicle %s.", amToken, vToken)

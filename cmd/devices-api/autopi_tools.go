@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"os"
 
 	"strconv"
 
@@ -34,7 +35,7 @@ func (p *autopiToolsCmd) SetFlags(f *flag.FlagSet) {
 
 func (p *autopiToolsCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	autoPiSvc := services.NewAutoPiAPIService(&p.settings, p.pdb.DBS)
-	autopiTools(f.Args(), autoPiSvc)
+	autopiTools(os.Args, autoPiSvc)
 
 	return subcommands.ExitSuccess
 }
