@@ -20,11 +20,12 @@ import (
 )
 
 type remakeDeviceDefinitionTopicsCmd struct {
-	logger   zerolog.Logger
-	settings config.Settings
-	pdb      db.Store
-	producer sarama.SyncProducer
-	ddSvc    services.DeviceDefinitionService
+	logger    zerolog.Logger
+	settings  config.Settings
+	pdb       db.Store
+	producer  sarama.SyncProducer
+	ddSvc     services.DeviceDefinitionService
+	container dependencyContainer
 }
 
 func (*remakeDeviceDefinitionTopicsCmd) Name() string     { return "remake-dd-topics" }
@@ -40,6 +41,7 @@ func (p *remakeDeviceDefinitionTopicsCmd) SetFlags(f *flag.FlagSet) {
 }
 
 func (p *remakeDeviceDefinitionTopicsCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+	p.producer = p.container.getKafkaProducer()
 	err := remakeDeviceDefinitionTopics(ctx, &p.settings, p.pdb, p.producer, &p.logger, p.ddSvc)
 	if err != nil {
 		p.logger.Fatal().Err(err).Msg("Error recreating device definition KTables.")

@@ -19,11 +19,12 @@ import (
 )
 
 type remakeAutoPiTopicCmd struct {
-	logger   zerolog.Logger
-	settings config.Settings
-	pdb      db.Store
-	producer sarama.SyncProducer
-	ddSvc    services.DeviceDefinitionService
+	logger    zerolog.Logger
+	settings  config.Settings
+	pdb       db.Store
+	producer  sarama.SyncProducer
+	ddSvc     services.DeviceDefinitionService
+	container dependencyContainer
 }
 
 func (*remakeAutoPiTopicCmd) Name() string     { return "remake-autopi-topic" }
@@ -39,6 +40,7 @@ func (p *remakeAutoPiTopicCmd) SetFlags(f *flag.FlagSet) {
 }
 
 func (p *remakeAutoPiTopicCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+	p.producer = p.container.getKafkaProducer()
 	err := remakeAutoPiTopic(ctx, p.pdb, p.producer, p.ddSvc)
 	if err != nil {
 		p.logger.Fatal().Err(err).Msg("Error running AutoPi Kafka re-registration")

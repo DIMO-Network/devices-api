@@ -18,11 +18,12 @@ import (
 )
 
 type web2PairCmd struct {
-	logger   zerolog.Logger
-	settings config.Settings
-	pdb      db.Store
-	producer sarama.SyncProducer
-	ddSvc    services.DeviceDefinitionService
+	logger    zerolog.Logger
+	settings  config.Settings
+	pdb       db.Store
+	producer  sarama.SyncProducer
+	ddSvc     services.DeviceDefinitionService
+	container dependencyContainer
 }
 
 func (*web2PairCmd) Name() string     { return "web2-pair" }
@@ -38,6 +39,8 @@ func (p *web2PairCmd) SetFlags(f *flag.FlagSet) {
 }
 
 func (p *web2PairCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+
+	p.producer = p.container.getKafkaProducer()
 
 	if len(os.Args[2:]) != 2 {
 		p.logger.Fatal().Msg("Requires aftermarket_token_id vehicle_token_id")

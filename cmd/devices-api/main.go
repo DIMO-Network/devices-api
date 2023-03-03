@@ -12,17 +12,13 @@ import (
 
 	_ "github.com/DIMO-Network/devices-api/docs"
 	"github.com/DIMO-Network/devices-api/internal/config"
-	es "github.com/DIMO-Network/devices-api/internal/elasticsearch"
 	"github.com/DIMO-Network/devices-api/internal/kafka"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/Shopify/sarama"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/burdiyan/kafkautil"
 	"github.com/customerio/go-customerio/v3"
 	"github.com/gofiber/adaptor/v2"
@@ -62,12 +58,6 @@ func main() {
 	}
 	zerolog.SetGlobalLevel(level)
 
-	deps := newDependencyContainer(&settings, logger)
-
-	subcommands.Register(subcommands.HelpCommand(), "")
-	subcommands.Register(subcommands.FlagsCommand(), "")
-	subcommands.Register(subcommands.CommandsCommand(), "")
-
 	pdb := db.NewDbConnectionFromSettings(ctx, &settings.DB, true)
 	// check db ready, this is not ideal btw, the db connection handler would be nicer if it did this.
 	totalTime := 0
@@ -79,13 +69,11 @@ func main() {
 		totalTime++
 	}
 
-	esInstance, err := es.NewElasticSearch(settings, &logger)
-	if err != nil {
-		logger.Fatal().Err(err).Msgf("Couldn't instantiate Elasticsearch client.")
-	}
+	deps := newDependencyContainer(&settings, logger, pdb.DBS)
 
-	nhtsaSvc := services.NewNHTSAService()
-	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, nhtsaSvc, &settings)
+	subcommands.Register(subcommands.HelpCommand(), "")
+	subcommands.Register(subcommands.FlagsCommand(), "")
+	subcommands.Register(subcommands.CommandsCommand(), "")
 
 	// Run API
 	if len(os.Args) == 1 {
@@ -101,25 +89,22 @@ func main() {
 	} else {
 
 		subcommands.Register(&migrateDBCmd{logger: logger, settings: settings}, "database")
-
-		eventService := services.NewEventService(&logger, &settings, deps.getKafkaProducer())
-		subcommands.Register(&generateEventCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: ddSvc, eventService: eventService}, "events")
-
-		subcommands.Register(&setCommandCompatibilityCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: ddSvc, eventService: eventService}, "device integrations")
-		subcommands.Register(&remakeSmartcarTopicCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: ddSvc, producer: deps.getKafkaProducer()}, "device integrations")
-		subcommands.Register(&remakeAutoPiTopicCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: ddSvc, producer: deps.getKafkaProducer()}, "device integrations")
-		subcommands.Register(&remakeFenceTopicCmd{logger: logger, settings: settings, pdb: pdb, producer: deps.getKafkaProducer()}, "device integrations")
-		subcommands.Register(&remakeDeviceDefinitionTopicsCmd{logger: logger, settings: settings, pdb: pdb, producer: deps.getKafkaProducer(), ddSvc: ddSvc}, "device integrations")
-		subcommands.Register(&startSmartcarFromRefreshCmd{logger: logger, settings: settings, pdb: pdb, producer: deps.getKafkaProducer(), ddSvc: ddSvc}, "device integrations")
+		subcommands.Register(&generateEventCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "events")
+		subcommands.Register(&setCommandCompatibilityCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
+		subcommands.Register(&remakeSmartcarTopicCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
+		subcommands.Register(&remakeAutoPiTopicCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
+		subcommands.Register(&remakeFenceTopicCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
+		subcommands.Register(&remakeDeviceDefinitionTopicsCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
+		subcommands.Register(&startSmartcarFromRefreshCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
 		subcommands.Register(&autopiToolsCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&updateStateCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
-		subcommands.Register(&web2PairCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: ddSvc, producer: deps.getKafkaProducer()}, "device integrations")
+		subcommands.Register(&web2PairCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
 
-		subcommands.Register(&populateESDDDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: esInstance, ddSvc: ddSvc}, "populate data")
-		subcommands.Register(&populateESRegionDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: esInstance, ddSvc: ddSvc}, "populate data")
-		subcommands.Register(&populateUSAPowertrainCmd{logger: logger, settings: settings, pdb: pdb, nhtsaService: nhtsaSvc}, "populate data")
+		subcommands.Register(&populateESDDDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: deps.getElasticSearchService(), ddSvc: deps.getDeviceDefinitionService()}, "populate data")
+		subcommands.Register(&populateESRegionDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: deps.getElasticSearchService(), ddSvc: deps.getDeviceDefinitionService()}, "populate data")
+		subcommands.Register(&populateUSAPowertrainCmd{logger: logger, settings: settings, pdb: pdb, nhtsaService: deps.getNHTSAService()}, "populate data")
 
-		subcommands.Register(&stopTaskByKeyCmd{logger: logger, settings: settings, producer: deps.getKafkaProducer()}, "tasks")
+		subcommands.Register(&stopTaskByKeyCmd{logger: logger, settings: settings}, "tasks")
 
 		subcommands.Register(&loadValuationsCmd{logger: logger, settings: settings, pdb: pdb}, "user devices")
 		subcommands.Register(&syncDeviceTemplatesCmd{logger: logger, settings: settings, pdb: pdb}, "user devices")
@@ -294,91 +279,4 @@ func startMonitoringServer(logger zerolog.Logger, config *config.Settings) {
 	}()
 
 	logger.Info().Str("port", config.MonitoringServerPort).Msg("Started monitoring web server.")
-}
-
-// dependencyContainer way to hold different dependencies we need for our app. We could put all our deps and follow this pattern for everything.
-type dependencyContainer struct {
-	kafkaProducer      sarama.SyncProducer
-	settings           *config.Settings
-	logger             *zerolog.Logger
-	s3ServiceClient    *s3.Client
-	s3NFTServiceClient *s3.Client
-}
-
-func newDependencyContainer(settings *config.Settings, logger zerolog.Logger) dependencyContainer {
-	return dependencyContainer{
-		settings: settings,
-		logger:   &logger,
-	}
-}
-
-// getKafkaProducer instantiates a new kafka producer if not already set in our container and returns
-func (dc *dependencyContainer) getKafkaProducer() sarama.SyncProducer {
-	if dc.kafkaProducer == nil {
-		p, err := createKafkaProducer(dc.settings)
-		if err != nil {
-			dc.logger.Fatal().Err(err).Msg("Could not initialize Kafka producer, terminating")
-		}
-		dc.kafkaProducer = p
-	}
-	return dc.kafkaProducer
-}
-
-// getS3ServiceClient instantiates a new default config and then a new s3 services client if not already set. Takes context in, although it could likely use a context from container passed in on instantiation
-func (dc *dependencyContainer) getS3ServiceClient(ctx context.Context) *s3.Client {
-	if dc.s3ServiceClient == nil {
-
-		cfg, err := awsconfig.LoadDefaultConfig(ctx,
-			awsconfig.WithRegion(dc.settings.AWSRegion),
-			// Comment the below out if not using localhost
-			awsconfig.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
-				func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-
-					if dc.settings.Environment == "local" {
-						return aws.Endpoint{PartitionID: "aws", URL: dc.settings.DocumentsAWSEndpoint, SigningRegion: dc.settings.AWSRegion}, nil // The SigningRegion key was what's was missing! D'oh.
-					}
-
-					// returning EndpointNotFoundError will allow the service to fallback to its default resolution
-					return aws.Endpoint{}, &aws.EndpointNotFoundError{}
-				})))
-
-		if err != nil {
-			dc.logger.Fatal().Err(err).Msg("Could not load aws config, terminating")
-		}
-
-		dc.s3ServiceClient = s3.NewFromConfig(cfg, func(o *s3.Options) {
-			o.Region = dc.settings.AWSRegion
-			o.Credentials = credentials.NewStaticCredentialsProvider(dc.settings.DocumentsAWSAccessKeyID, dc.settings.DocumentsAWSSecretsAccessKey, "")
-		})
-	}
-	return dc.s3ServiceClient
-}
-
-func (dc *dependencyContainer) getS3NFTServiceClient(ctx context.Context) *s3.Client {
-	if dc.s3NFTServiceClient == nil {
-
-		cfg, err := awsconfig.LoadDefaultConfig(ctx,
-			awsconfig.WithRegion(dc.settings.AWSRegion),
-			// Comment the below out if not using localhost
-			awsconfig.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
-				func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-
-					if dc.settings.Environment == "local" {
-						return aws.Endpoint{PartitionID: "aws", URL: dc.settings.DocumentsAWSEndpoint, SigningRegion: dc.settings.AWSRegion}, nil // The SigningRegion key was what's was missing! D'oh.
-					}
-
-					// returning EndpointNotFoundError will allow the service to fallback to its default resolution
-					return aws.Endpoint{}, &aws.EndpointNotFoundError{}
-				})))
-
-		if err != nil {
-			dc.logger.Fatal().Err(err).Msg("Could not load aws config, terminating")
-		}
-
-		dc.s3NFTServiceClient = s3.NewFromConfig(cfg, func(o *s3.Options) {
-			o.Region = dc.settings.AWSRegion
-			o.Credentials = credentials.NewStaticCredentialsProvider(dc.settings.NFTAWSAccessKeyID, dc.settings.NFTAWSSecretsAccessKey, "")
-		})
-	}
-	return dc.s3NFTServiceClient
 }
