@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
+	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 	"io"
 	"os"
 	"testing"
@@ -145,4 +148,41 @@ func Test_sortByJSONOdometerAsc(t *testing.T) {
 	sortByJSONOdometerAsc(udd)
 	assert.Equal(t, float64(90), gjson.GetBytes(udd[0].Data.JSON, "odometer").Float())
 	assert.Equal(t, float64(100), gjson.GetBytes(udd[1].Data.JSON, "odometer").Float())
+}
+
+func TestUserDevicesController_calculateRange(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	logger := zerolog.New(os.Stdout).With().
+		Timestamp().
+		Str("app", "devices-api").
+		Logger()
+	ctx := context.Background()
+	deviceDefSvc := mock_services.NewMockDeviceDefinitionService(mockCtrl)
+
+	ddId := ksuid.New().String()
+	attrs := []*grpc.DeviceTypeAttribute{
+		{
+			Name:  "fuel_tank_capacity_gal",
+			Value: "15",
+		},
+		{
+			Name:  "mpg",
+			Value: "20",
+		},
+	}
+	deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ddId).Times(1).Return(&grpc.GetDeviceDefinitionItemResponse{
+		DeviceDefinitionId: ddId,
+		Verified:           true,
+		DeviceAttributes:   attrs,
+	}, nil)
+
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, nil, &logger, deviceDefSvc, nil, &fakeEventService{},
+		nil, nil, nil, nil, nil, nil, nil, nil, nil,
+		nil, nil, nil, nil, nil)
+	rge, err := c.calculateRange(ctx, ddId, .70)
+	require.NoError(t, err)
+	require.NotNil(t, rge)
+	assert.Equal(t, 337.9614, *rge)
 }
