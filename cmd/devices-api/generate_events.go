@@ -21,8 +21,8 @@ type generateEventCmd struct {
 	pdb          db.Store
 	eventService services.EventService
 	ddSvc        services.DeviceDefinitionService
-
-	generate bool
+	container    dependencyContainer
+	generate     bool
 }
 
 func (*generateEventCmd) Name() string     { return "events" }
@@ -38,11 +38,11 @@ func (p *generateEventCmd) SetFlags(f *flag.FlagSet) {
 }
 
 func (p *generateEventCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
-
 	if !p.generate {
 		return subcommands.ExitSuccess
 	}
 
+	p.eventService = services.NewEventService(&p.logger, &p.settings, p.container.getKafkaProducer())
 	generateEvents(p.logger, p.pdb, p.eventService, p.ddSvc)
 	return subcommands.ExitSuccess
 }

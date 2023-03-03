@@ -18,11 +18,12 @@ import (
 )
 
 type remakeSmartcarTopicCmd struct {
-	logger   zerolog.Logger
-	settings config.Settings
-	pdb      db.Store
-	producer sarama.SyncProducer
-	ddSvc    services.DeviceDefinitionService
+	logger    zerolog.Logger
+	settings  config.Settings
+	pdb       db.Store
+	producer  sarama.SyncProducer
+	ddSvc     services.DeviceDefinitionService
+	container dependencyContainer
 }
 
 func (*remakeSmartcarTopicCmd) Name() string     { return "remake-smartcar-topic" }
@@ -38,6 +39,7 @@ func (p *remakeSmartcarTopicCmd) SetFlags(f *flag.FlagSet) {
 }
 
 func (p *remakeSmartcarTopicCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+	p.producer = p.container.getKafkaProducer()
 	err := remakeSmartcarTopic(ctx, p.pdb, p.producer, p.ddSvc)
 	if err != nil {
 		p.logger.Fatal().Err(err).Msg("Error running Smartcar Kafka re-registration")

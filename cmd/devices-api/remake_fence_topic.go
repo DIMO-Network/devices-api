@@ -21,10 +21,11 @@ import (
 )
 
 type remakeFenceTopicCmd struct {
-	logger   zerolog.Logger
-	settings config.Settings
-	pdb      db.Store
-	producer sarama.SyncProducer
+	logger    zerolog.Logger
+	settings  config.Settings
+	pdb       db.Store
+	producer  sarama.SyncProducer
+	container dependencyContainer
 }
 
 func (*remakeFenceTopicCmd) Name() string     { return "remake-fence-topic" }
@@ -40,6 +41,7 @@ func (p *remakeFenceTopicCmd) SetFlags(f *flag.FlagSet) {
 }
 
 func (p *remakeFenceTopicCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+	p.producer = p.container.getKafkaProducer()
 	err := remakeFenceTopic(&p.settings, p.pdb, p.producer)
 	if err != nil {
 		p.logger.Fatal().Err(err).Msg("Error running Smartcar Kafka re-registration")

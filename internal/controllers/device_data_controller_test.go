@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/tidwall/gjson"
 	"io"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/tidwall/gjson"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"

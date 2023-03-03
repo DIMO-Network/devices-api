@@ -23,11 +23,12 @@ import (
 )
 
 type startSmartcarFromRefreshCmd struct {
-	logger   zerolog.Logger
-	settings config.Settings
-	pdb      db.Store
-	producer sarama.SyncProducer
-	ddSvc    services.DeviceDefinitionService
+	logger    zerolog.Logger
+	settings  config.Settings
+	pdb       db.Store
+	producer  sarama.SyncProducer
+	ddSvc     services.DeviceDefinitionService
+	container dependencyContainer
 }
 
 func (*startSmartcarFromRefreshCmd) Name() string { return "start-smartcar-from-refresh" }
@@ -45,6 +46,9 @@ func (p *startSmartcarFromRefreshCmd) SetFlags(f *flag.FlagSet) {
 }
 
 func (p *startSmartcarFromRefreshCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+
+	p.producer = p.container.getKafkaProducer()
+
 	if len(os.Args[1:]) != 2 {
 		p.logger.Fatal().Msgf("Expected an argument, the device ID.")
 	}
