@@ -180,8 +180,25 @@ func (s *userDeviceService) deviceModelToAPI(device *models.UserDevice) *pb.User
 func (s *userDeviceService) GetClaimedVehiclesGrowth(ctx context.Context, empty *emptypb.Empty) (*pb.ClaimedVehiclesGrowth, error) {
 	// Checking both that the nft exists and is linked to a device.
 
+	query := `select count(1) 
+			  from vehicle_nfts n 
+			  inner join meta_transaction_requests m
+			  on n.mint_request_id = m.id
+			  where n.user_device_id is not null and n.token_id is not null 
+			  and m.created_at > current_date - 7;`
+
+	var lastWeeksNFT int
+
+	err := queries.Raw(query).Bind(ctx, s.dbs().Reader, &lastWeeksNFT)
+
+	if err != nil {
+		return nil, err
+	}
+
 	totalNFT, err := models.VehicleNFTS(models.VehicleNFTWhere.UserDeviceID.IsNotNull(),
 		models.VehicleNFTWhere.TokenID.IsNotNull()).Count(ctx, s.dbs().Reader)
+
+	growthPercentage := float32(lastWeeksNFT) / float32(totalNFT) * 100
 
 	if err != nil {
 		return nil, err
@@ -189,7 +206,7 @@ func (s *userDeviceService) GetClaimedVehiclesGrowth(ctx context.Context, empty 
 
 	return &pb.ClaimedVehiclesGrowth{
 		TotalClaimedVehicles: totalNFT,
-		GrowthPercentage:     0,
+		GrowthPercentage:     float32(growthPercentage),
 	}, nil
 }
 

@@ -29,7 +29,7 @@ require (
 	github.com/lib/pq v1.10.7
 	github.com/lovoo/goka v1.1.7
 	github.com/pkg/errors v0.9.1
-	github.com/pressly/goose/v3 v3.9.0
+	github.com/pressly/goose/v3 v3.5.3
 	github.com/prometheus/client_golang v1.13.0
 	github.com/rs/zerolog v1.28.0
 	github.com/segmentio/ksuid v1.0.4
