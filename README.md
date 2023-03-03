@@ -160,7 +160,7 @@ it can find the migrations, otherwise get error.
 ```bash
 kc get pods -n dev
 kc exec devices-api-dev-65f8f47ff5-94dp4 -n dev -it -- /bin/sh
-./devices-api migrate down # brings the last migration down
+./devices-api migrate -down # brings the last migration down
 ```
 
 ## Mocks

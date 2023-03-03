@@ -4,8 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"flag"
-	"os"
-
+	"fmt"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/google/subcommands"
 	_ "github.com/lib/pq"
@@ -24,8 +23,8 @@ type migrateDBCmd struct {
 func (*migrateDBCmd) Name() string     { return "migrate" }
 func (*migrateDBCmd) Synopsis() string { return "migrate args to stdout." }
 func (*migrateDBCmd) Usage() string {
-	return `migrate [-up-to|-down-to] <some text>:
-	migrate args.
+	return `migrate [-up | -down]:
+	migrates database up or down accordingly. No argument default is up.
   `
 }
 
@@ -50,10 +49,12 @@ func (p *migrateDBCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interf
 		p.logger.Fatal().Msgf("failed to ping db: %v\n", err)
 	}
 	// set default
-	command := os.Args[0]
-	if command == "" {
-		command = "up"
+	command := "up"
+	if p.down {
+		command = "down"
 	}
+	fmt.Printf("migrate command received is: %s \n", command)
+
 	// todo manually run sql to create devices_api schema
 	_, err = db.Exec("CREATE SCHEMA IF NOT EXISTS devices_api;")
 	if err != nil {
