@@ -212,7 +212,7 @@ func (s *userDeviceService) GetClaimedVehiclesGrowth(ctx context.Context, empty 
 
 	return &pb.ClaimedVehiclesGrowth{
 		TotalClaimedVehicles: totalNFT,
-		GrowthPercentage:     float32(growthPercentage),
+		GrowthPercentage:     growthPercentage,
 	}, nil
 }
 
