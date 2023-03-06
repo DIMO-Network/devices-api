@@ -3,8 +3,9 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/DIMO-Network/shared/db"
 	"testing"
+
+	"github.com/DIMO-Network/shared/db"
 
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
@@ -162,7 +163,7 @@ func (s *WebHooksControllerTestSuite) TestPostWebhookRawCommand() {
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Testla", "Model X", 2020, integ)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, s.pdb)
 	// create user device api integration
-	commandResult := fmt.Sprint(`{ "value": "123", "type": "vin" }`)
+	commandResult := `{ "value": "123", "type": "vin" }`
 
 	autopiJob := test.SetupCreateAutoPiJob(s.T(), autoPiJobID, autoPiDeviceID, "some raw command", ud.ID, "COMMAND_EXECUTED", commandResult, s.pdb)
 
