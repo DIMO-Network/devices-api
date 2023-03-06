@@ -187,7 +187,9 @@ func (s *userDeviceService) GetClaimedVehiclesGrowth(ctx context.Context, empty 
 			  where n.user_device_id is not null and n.token_id is not null 
 			  and m.created_at > current_date - 7;`
 
-	var lastWeeksNFT int
+	var lastWeeksNFT struct {
+		Count int `boil:"count"`
+	}
 
 	err := queries.Raw(query).Bind(ctx, s.dbs().Reader, &lastWeeksNFT)
 
@@ -198,7 +200,7 @@ func (s *userDeviceService) GetClaimedVehiclesGrowth(ctx context.Context, empty 
 	totalNFT, err := models.VehicleNFTS(models.VehicleNFTWhere.UserDeviceID.IsNotNull(),
 		models.VehicleNFTWhere.TokenID.IsNotNull()).Count(ctx, s.dbs().Reader)
 
-	growthPercentage := float32(lastWeeksNFT) / float32(totalNFT) * 100
+	growthPercentage := (float32(lastWeeksNFT.Count) / float32(totalNFT)) * 100
 
 	if err != nil {
 		return nil, err
