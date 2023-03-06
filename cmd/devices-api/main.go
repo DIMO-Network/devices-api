@@ -159,7 +159,8 @@ func changeLogLevel(c *fiber.Ctx) error {
 func startDeviceStatusConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store, eventService services.EventService) {
 	nhtsaSvc := services.NewNHTSAService()
 	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, nhtsaSvc, settings)
-	ingestSvc := services.NewDeviceStatusIngestService(pdb.DBS, &logger, eventService, ddSvc)
+	autoPISvc := services.NewAutoPiAPIService(settings, pdb.DBS)
+	ingestSvc := services.NewDeviceStatusIngestService(pdb.DBS, &logger, eventService, ddSvc, autoPISvc)
 
 	sc := goka.DefaultConfig()
 	sc.Version = sarama.V2_8_1_0

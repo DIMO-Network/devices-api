@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+
 	"log"
 	"math/big"
 	"os"
@@ -74,6 +75,7 @@ func TestIngestDeviceStatus(t *testing.T) {
 		Buffer: make([]*Event, 0),
 	}
 	deviceDefSvc := testDeviceDefSvc{}
+	autoPISvc := testAutoPISvc{}
 
 	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
 	ctx := context.Background()
@@ -87,7 +89,7 @@ func TestIngestDeviceStatus(t *testing.T) {
 	integs, _ := deviceDefSvc.GetIntegrations(ctx)
 	integrationID := integs[0].Id
 
-	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc)
+	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc)
 	ud := test.SetupCreateUserDevice(t, "dylan", ksuid.New().String(), nil, pdb)
 
 	udai := models.UserDeviceAPIIntegration{
@@ -189,6 +191,7 @@ func TestAutoPiStatusMerge(t *testing.T) {
 		Buffer: make([]*Event, 0),
 	}
 	deviceDefSvc := testDeviceDefSvc{}
+	autoPISvc := testAutoPISvc{}
 
 	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
 	ctx := context.Background()
@@ -204,7 +207,7 @@ func TestAutoPiStatusMerge(t *testing.T) {
 	integs, _ := deviceDefSvc.GetIntegrations(ctx)
 	integrationID := integs[0].Id
 
-	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc)
+	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc)
 
 	ud := test.SetupCreateUserDevice(t, "dylan", ddID, nil, pdb)
 
@@ -340,4 +343,96 @@ func (t testDeviceDefSvc) GetIntegrationByFilter(ctx context.Context, integratio
 func (t testDeviceDefSvc) CreateIntegration(ctx context.Context, integrationType string, vendor string, style string) (*ddgrpc.Integration, error) {
 	//TODO implement me
 	panic("implement me")
+}
+
+type testAutoPISvc struct {
+}
+
+func (t testAutoPISvc) GetUserDeviceIntegrationByUnitID(ctx context.Context, unitID string) (*models.UserDeviceAPIIntegration, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t testAutoPISvc) GetDeviceByUnitID(unitID string) (*AutoPiDongleDevice, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t testAutoPISvc) GetDeviceByID(deviceID string) (*AutoPiDongleDevice, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t testAutoPISvc) GetDeviceByEthAddress(ethAddress string) (*AutoPiDongleDevice, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t testAutoPISvc) PatchVehicleProfile(vehicleID int, profile PatchVehicleProfile) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t testAutoPISvc) UnassociateDeviceTemplate(deviceID string, templateID int) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t testAutoPISvc) AssociateDeviceToTemplate(deviceID string, templateID int) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t testAutoPISvc) CreateNewTemplate(templateName string, parent int, description string) (int, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t testAutoPISvc) AddDefaultPIDsToTemplate(templateID int) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t testAutoPISvc) SetTemplateICEPowerSettings(templateID int) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t testAutoPISvc) ApplyTemplate(deviceID string, templateID int) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t testAutoPISvc) CommandQueryVIN(ctx context.Context, unitID, deviceID, userDeviceID string) (*AutoPiCommandResponse, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t testAutoPISvc) CommandSyncDevice(ctx context.Context, unitID, deviceID, userDeviceID string) (*AutoPiCommandResponse, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t testAutoPISvc) CommandRaw(ctx context.Context, unitID, deviceID, command, userDeviceID string) (*AutoPiCommandResponse, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t testAutoPISvc) GetCommandStatus(ctx context.Context, jobID string) (*AutoPiCommandJob, *models.AutopiJob, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t testAutoPISvc) GetCommandStatusFromAutoPi(deviceID string, jobID string) ([]byte, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t testAutoPISvc) UpdateJob(ctx context.Context, jobID, newState string, result *AutoPiCommandResult) (*models.AutopiJob, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t testAutoPISvc) UpdateState(deviceID string, state string) error {
+	return nil
 }

@@ -117,6 +117,12 @@ func (wc *WebhooksController) ProcessCommand(c *fiber.Ctx) error {
 			logger.Err(err).Msg("failed to save user device integration changes")
 			return c.SendStatus(fiber.StatusNoContent)
 		}
+
+		err = wc.autoPiSvc.UpdateState(apiIntegration.ExternalID.String, apiIntegration.Status)
+		if err != nil {
+			logger.Err(err).Msgf("failed to update status when calling autopi api for deviceId: %s", apiIntegration.ExternalID.String)
+			return c.SendStatus(fiber.StatusNoContent)
+		}
 	}
 	logger.Info().Msg("processed webhook successfully")
 
