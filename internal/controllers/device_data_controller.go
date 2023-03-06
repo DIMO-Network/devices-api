@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	"context"
 	"database/sql"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -114,6 +116,45 @@ func PrepareDeviceStatusInformation(deviceData models.UserDeviceDatumSlice, priv
 	return ds
 }
 
+// calculateRange returns the current estimated range based on fuel tank capacity, mpg, and fuelPercentRemaining and returns it in Kilometers
+func (udc *UserDevicesController) calculateRange(ctx context.Context, deviceDefinitionID string, fuelPercentRemaining float64) (*float64, error) {
+	if fuelPercentRemaining == 0 {
+		return nil, errors.New("fuelPercentRemaining is 0 so cannot calculate range")
+	}
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, deviceDefinitionID)
+	if err != nil {
+		return nil, helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+deviceDefinitionID)
+	}
+	if dd != nil && dd.DeviceAttributes != nil {
+		// pull out device attribute values needed for calc
+		var fuelTankCapGal, mpg float64 //mpgHwy
+		for _, attr := range dd.DeviceAttributes {
+			switch attr.Name {
+			case "fuel_tank_capacity_gal":
+				if v, err := strconv.ParseFloat(attr.Value, 32); err == nil {
+					fuelTankCapGal = v
+				}
+			case "mpg":
+				if v, err := strconv.ParseFloat(attr.Value, 32); err == nil {
+					mpg = v
+				}
+				//case "mpg_highway":
+				//	if v, err := strconv.ParseFloat(attr.Value, 32); err == nil {
+				//		mpgHwy = v
+				//	}
+			}
+		}
+		// calculate, convert to Km
+		if fuelTankCapGal > 0 && mpg > 0 {
+			fuelTankAtGal := fuelTankCapGal * fuelPercentRemaining
+			rangeMiles := mpg * fuelTankAtGal
+			rangeKm := 1.60934 * rangeMiles
+			return &rangeKm, nil
+		}
+	}
+	return nil, nil
+}
+
 // GetUserDeviceStatus godoc
 // @Description Returns the latest status update for the device. May return 404 if the
 // @Description user does not have a device with the ID, or if no status updates have come
@@ -144,8 +185,15 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	// how should we handle the errorData, if at all?
 	ds := PrepareDeviceStatusInformation(deviceData, []int64{NonLocationData, CurrentLocation, AllTimeLocation})
+	if len(deviceData) > 0 && ds.Range == nil && ds.FuelPercentRemaining != nil {
+		rge, err := udc.calculateRange(c.Context(), userDevice.DeviceDefinitionID, *ds.FuelPercentRemaining)
+		if err != nil {
+			//just log
+			udc.log.Warn().Err(err).Str("deviceDefinitionID", userDevice.DeviceDefinitionID).Msg("could not get range")
+		}
+		ds.Range = rge
+	}
 
 	return c.JSON(ds)
 }
