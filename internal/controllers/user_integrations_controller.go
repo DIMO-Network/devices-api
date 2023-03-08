@@ -1983,6 +1983,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request JSON body.")
 	}
 
+	// todo: check for token in redis, if exists do not call this.
 	token, err := udc.smartcarClient.ExchangeCode(c.Context(), reqBody.Code, reqBody.RedirectURI)
 	if err != nil {
 		logger.Err(err).Msg("Failed to exchange authorization code with Smartcar.")
@@ -2001,7 +2002,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 		logger.Err(err).Msg("Failed to retrieve vehicle ID from Smartcar.")
 		return smartcarCallErr
 	}
-
+	// todo: if ud vin is confirmed, then no need for this.
 	vin, err := udc.smartcarClient.GetVIN(c.Context(), token.Access, externalID)
 	if err != nil {
 		logger.Err(err).Msg("Failed to retrieve VIN from Smartcar.")

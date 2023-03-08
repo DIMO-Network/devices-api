@@ -5,7 +5,9 @@ import (
 	"context"
 	"database/sql"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"github.com/DIMO-Network/shared/redis"
 	"math/big"
 	"reflect"
 	"regexp"
@@ -71,6 +73,7 @@ type UserDevicesController struct {
 	producer                  sarama.SyncProducer
 	deviceDefinitionRegistrar services.DeviceDefinitionRegistrar
 	autoPiIntegration         *autopi.Integration
+	redisCache                redis.CacheService
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -101,28 +104,7 @@ type Device struct {
 }
 
 // NewUserDevicesController constructor
-func NewUserDevicesController(
-	settings *config.Settings,
-	dbs func() *db.ReaderWriter,
-	logger *zerolog.Logger,
-	ddSvc services.DeviceDefinitionService,
-	ddIntSvc services.DeviceDefinitionIntegrationService,
-	eventService services.EventService,
-	smartcarClient services.SmartcarClient,
-	smartcarTaskSvc services.SmartcarTaskService,
-	teslaService services.TeslaService,
-	teslaTaskService services.TeslaTaskService,
-	cipher shared.Cipher,
-	autoPiSvc services.AutoPiAPIService,
-	nhtsaService services.INHTSAService,
-	autoPiIngestRegistrar services.IngestRegistrar,
-	deviceDefinitionRegistrar services.DeviceDefinitionRegistrar,
-	autoPiTaskService services.AutoPiTaskService,
-	producer sarama.SyncProducer,
-	s3NFTClient *s3.Client,
-	drivlyTaskService services.DrivlyTaskService,
-	autoPi *autopi.Integration,
-) UserDevicesController {
+func NewUserDevicesController(settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService, ddIntSvc services.DeviceDefinitionIntegrationService, eventService services.EventService, smartcarClient services.SmartcarClient, smartcarTaskSvc services.SmartcarTaskService, teslaService services.TeslaService, teslaTaskService services.TeslaTaskService, cipher shared.Cipher, autoPiSvc services.AutoPiAPIService, nhtsaService services.INHTSAService, autoPiIngestRegistrar services.IngestRegistrar, deviceDefinitionRegistrar services.DeviceDefinitionRegistrar, autoPiTaskService services.AutoPiTaskService, producer sarama.SyncProducer, s3NFTClient *s3.Client, drivlyTaskService services.DrivlyTaskService, autoPi *autopi.Integration, cache redis.CacheService) UserDevicesController {
 	return UserDevicesController{
 		Settings:                  settings,
 		DBS:                       dbs,
@@ -144,6 +126,7 @@ func NewUserDevicesController(
 		drivlyTaskService:         drivlyTaskService,
 		deviceDefinitionRegistrar: deviceDefinitionRegistrar,
 		autoPiIntegration:         autoPi,
+		redisCache:                cache,
 	}
 }
 
@@ -545,6 +528,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		// This may not be the user's fault, but 400 for now.
 		return fiber.NewError(fiber.StatusBadRequest, "Failed to exchange authorization code with Smartcar.")
 	}
+
 	externalID, err := udc.smartcarClient.GetExternalID(c.Context(), token.Access)
 	if err != nil {
 		localLog.Err(err).Msg("Failed to retrieve vehicle ID from Smartcar.")
@@ -556,6 +540,17 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		return smartcarCallErr
 	}
 	localLog = localLog.With().Str("vin", vin).Logger()
+
+	// persist token in redis, encrypted, for next step
+	jsonToken, err := json.Marshal(token)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshall sc token")
+	}
+	encToken, err := udc.cipher.Encrypt(string(jsonToken))
+	if err != nil {
+		return errors.Wrap(err, "failed to encrypt smartcar token json")
+	}
+	udc.redisCache.Set(c.Context(), buildSmartcarTokenKey(vin), encToken, time.Hour*2)
 
 	// decode VIN with grpc call
 	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin)
@@ -584,6 +579,10 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,
 	})
+}
+
+func buildSmartcarTokenKey(vin string) string {
+	return fmt.Sprintf("sc-temp-tok-%s", vin)
 }
 
 func (udc *UserDevicesController) createUserDevice(ctx context.Context, deviceDefID, countryCode, userID string, vin *string) (*UserDeviceFull, error) {

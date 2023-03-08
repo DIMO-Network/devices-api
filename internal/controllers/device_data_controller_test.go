@@ -60,9 +60,7 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 	drivlyTaskSvc := mock_services.NewMockDrivlyTaskService(mockCtrl)
 
 	testUserID := "123123"
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &logger, deviceDefSvc, deviceDefIntSvc, &fakeEventService{},
-		scClient, scTaskSvc, teslaSvc, teslaTaskService, nil, nil, nhtsaService, autoPiIngest, deviceDefinitionIngest,
-		autoPiTaskSvc, nil, nil, drivlyTaskSvc, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &logger, deviceDefSvc, deviceDefIntSvc, &fakeEventService{}, scClient, scTaskSvc, teslaSvc, teslaTaskService, nil, nil, nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, drivlyTaskSvc, nil, nil)
 	app := fiber.New()
 	app.Get("/user/devices/:userDeviceID/status", test.AuthInjectorTestHandler(testUserID), c.GetUserDeviceStatus)
 
@@ -177,9 +175,7 @@ func TestUserDevicesController_calculateRange(t *testing.T) {
 		DeviceAttributes:   attrs,
 	}, nil)
 
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, nil, &logger, deviceDefSvc, nil, &fakeEventService{},
-		nil, nil, nil, nil, nil, nil, nil, nil, nil,
-		nil, nil, nil, nil, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, nil, &logger, deviceDefSvc, nil, &fakeEventService{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	rge, err := c.calculateRange(ctx, ddID, .70)
 	require.NoError(t, err)
 	require.NotNil(t, rge)
