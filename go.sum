@@ -83,8 +83,8 @@ github.com/DATA-DOG/go-sqlmock v1.4.1 h1:ThlnYciV1iM/V0OSF/dtkqWb6xo5qITT1TJBG1M
 github.com/DATA-DOG/go-sqlmock v1.4.1/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q5eFN3EC/SaM=
 github.com/DIMO-Network/device-definitions-api v0.7.8 h1:y504u1fql69piwko78RM7tbYo5+2mJ03nfR0B4X+BwQ=
 github.com/DIMO-Network/device-definitions-api v0.7.8/go.mod h1:57vwAVxWtvxsqC1AcFUgTXK2l8+td9blt3JcKmPXX1A=
-github.com/DIMO-Network/shared v0.8.5 h1:RiFT+T3/0gPXK6wGWA4KnxIAFSslSzjx9QUtA/7aKps=
-github.com/DIMO-Network/shared v0.8.5/go.mod h1:Edzbgny+7yh/CKKWKAUbOVT6K+dUWBFAxkYa89kvIxU=
+github.com/DIMO-Network/shared v0.8.7 h1:uXAEgw0W3t+2QffFzDmsk5F7rfPQjebFHnee4cGxBpI=
+github.com/DIMO-Network/shared v0.8.7/go.mod h1:Edzbgny+7yh/CKKWKAUbOVT6K+dUWBFAxkYa89kvIxU=
 github.com/DIMO-Network/taskq/v3 v3.2.9-0.20220518233332-179b5552605f h1:pHPu50/uAiENAiUTQkdThxr7GxzVFwO9STl/jzSaKXg=
 github.com/DIMO-Network/taskq/v3 v3.2.9-0.20220518233332-179b5552605f/go.mod h1:ZoRbkYMZWEUKtKvYlLGKiaRQKUjdvwWAIs/WiW1Nwtg=
 github.com/DIMO-Network/zflogger v1.0.0-beta h1:SlXZmahk4tZqprjHzp14mbLQFMrOcyJ9jpLJLQk8bhw=

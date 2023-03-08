@@ -104,6 +104,16 @@ func (s *userDeviceService) ApplyHardwareTemplate(ctx context.Context, req *pb.A
 	return resp, err
 }
 
+func (s *userDeviceService) CreateTemplate(ctx context.Context, req *pb.CreateTemplateRequest) (*pb.CreateTemplateResponse, error) {
+	resp, err := s.hardwareTemplateService.CreateTemplate(req)
+	if err != nil {
+		s.logger.Err(err).Str("template name", req.Name).Msgf("failed to create template %s", req.Name)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return resp, err
+}
+
 //nolint:all
 func (s *userDeviceService) GetUserDeviceByAutoPIUnitID(ctx context.Context, req *pb.GetUserDeviceByAutoPIUnitIdRequest) (*pb.UserDeviceAutoPIUnitResponse, error) {
 	dbDevice, err := models.UserDeviceAPIIntegrations(
@@ -200,7 +210,7 @@ func (s *userDeviceService) GetClaimedVehiclesGrowth(ctx context.Context, empty 
 	totalNFT, err := models.VehicleNFTS(models.VehicleNFTWhere.UserDeviceID.IsNotNull(),
 		models.VehicleNFTWhere.TokenID.IsNotNull()).Count(ctx, s.dbs().Reader)
 
-  growthPercentage := float32(0)
+	growthPercentage := float32(0)
 
 	if totalNFT > 0 {
 		growthPercentage = (float32(lastWeeksNFT.Count) / float32(totalNFT)) * 100
