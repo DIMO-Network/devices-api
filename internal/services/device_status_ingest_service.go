@@ -36,20 +36,23 @@ type DeviceStatusIngestService struct {
 	eventService EventService
 	deviceDefSvc DeviceDefinitionService
 	integrations []*grpc.Integration
+	autoPiSvc    AutoPiAPIService
 }
 
-func NewDeviceStatusIngestService(db func() *db.ReaderWriter, log *zerolog.Logger, eventService EventService, ddSvc DeviceDefinitionService) *DeviceStatusIngestService {
+func NewDeviceStatusIngestService(db func() *db.ReaderWriter, log *zerolog.Logger, eventService EventService, ddSvc DeviceDefinitionService, autoPiSvc AutoPiAPIService) *DeviceStatusIngestService {
 	// Cache the list of integrations.
 	integrations, err := ddSvc.GetIntegrations(context.Background())
 	if err != nil {
 		log.Fatal().Err(err).Msg("Couldn't retrieve global integration list.")
 	}
+
 	return &DeviceStatusIngestService{
 		db:           db,
 		log:          log,
 		deviceDefSvc: ddSvc,
 		eventService: eventService,
 		integrations: integrations,
+		autoPiSvc:    autoPiSvc,
 	}
 }
 
@@ -135,6 +138,11 @@ func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *Devi
 		apiIntegration.Status = models.UserDeviceAPIIntegrationStatusActive
 		if _, err := apiIntegration.Update(ctx, tx, boil.Infer()); err != nil {
 			return fmt.Errorf("failed to update API integration: %w", err)
+		}
+
+		err := i.autoPiSvc.UpdateState(apiIntegration.ExternalID.String, apiIntegration.Status)
+		if err != nil {
+			return fmt.Errorf("failed to update status when calling autopi api for deviceId: %s", apiIntegration.ExternalID.String)
 		}
 	}
 

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/google/subcommands"
 	_ "github.com/lib/pq"

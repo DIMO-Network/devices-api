@@ -27,12 +27,10 @@ import (
 
 type WebHooksControllerTestSuite struct {
 	suite.Suite
-	pdb         db.Store
-	container   testcontainers.Container
-	ctx         context.Context
-	mockCtrl    *gomock.Controller
-	app         *fiber.App
-	ddDefIntSvc *mock_services.MockDeviceDefinitionIntegrationService
+	pdb       db.Store
+	container testcontainers.Container
+	ctx       context.Context
+	mockCtrl  *gomock.Controller
 }
 
 // SetupSuite starts container db
@@ -40,14 +38,6 @@ func (s *WebHooksControllerTestSuite) SetupSuite() {
 	s.ctx = context.Background()
 	s.pdb, s.container = test.StartContainerDatabase(s.ctx, s.T(), migrationsDirRelPath)
 	s.mockCtrl = gomock.NewController(s.T())
-
-	token := "BobbyHarry"
-	s.ddDefIntSvc = mock_services.NewMockDeviceDefinitionIntegrationService(s.mockCtrl)
-	autopiAPISvc := services.NewAutoPiAPIService(&config.Settings{AutoPiAPIToken: "xxx"}, s.pdb.DBS)
-	c := NewWebhooksController(&config.Settings{AutoPiAPIToken: token}, s.pdb.DBS, test.Logger(), autopiAPISvc, s.ddDefIntSvc)
-	app := fiber.New()
-	app.Post(constants.AutoPiWebhookPath, c.ProcessCommand)
-	s.app = app
 }
 
 // TearDownTest after each test truncate tables
@@ -71,6 +61,15 @@ func TestWebHooksControllerTestSuite(t *testing.T) {
 
 /* Actual Tests */
 func (s *WebHooksControllerTestSuite) TestPostWebhook401InvalidSignature() {
+
+	ddDefIntSvc := mock_services.NewMockDeviceDefinitionIntegrationService(s.mockCtrl)
+	autoAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
+
+	token := "BobbyHarry"
+	c := NewWebhooksController(&config.Settings{AutoPiAPIToken: token}, s.pdb.DBS, test.Logger(), autoAPISvc, ddDefIntSvc)
+	app := fiber.New()
+	app.Post(constants.AutoPiWebhookPath, c.ProcessCommand)
+
 	webhookJSON := `{
 			"jid": "20220414153005426360",
     		"state": "COMMAND_EXECUTED",
@@ -80,20 +79,38 @@ func (s *WebHooksControllerTestSuite) TestPostWebhook401InvalidSignature() {
 
 	request := test.BuildRequest("POST", constants.AutoPiWebhookPath, webhookJSON)
 	request.Header.Set("X-Request-Signature", "") // copy this from replit python generated value
-	response, _ := s.app.Test(request)
+	response, _ := app.Test(request)
 	// assert
 	assert.Equal(s.T(), 401, response.StatusCode)
 }
 func (s *WebHooksControllerTestSuite) TestPostWebhook400BadPayload() {
+
+	ddDefIntSvc := mock_services.NewMockDeviceDefinitionIntegrationService(s.mockCtrl)
+	autoAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
+
+	token := "BobbyHarry"
+	c := NewWebhooksController(&config.Settings{AutoPiAPIToken: token}, s.pdb.DBS, test.Logger(), autoAPISvc, ddDefIntSvc)
+	app := fiber.New()
+	app.Post(constants.AutoPiWebhookPath, c.ProcessCommand)
+
 	webhookJSON := `{"success": true,"device_id": "26b1f359-1799-4a21-8e4e-1ad7607fe5af"}`
 	request := test.BuildRequest("POST", constants.AutoPiWebhookPath, webhookJSON)
 	request.Header.Set("X-Request-Signature", "ade42bd1085401a581722e2003e995adea80ffd81dfb42877b185abc48ddc3fd") // copy this from replit python generated value
-	response, _ := s.app.Test(request)
+	response, _ := app.Test(request)
 	// assert
 	assert.Equal(s.T(), 400, response.StatusCode)
 }
 func (s *WebHooksControllerTestSuite) TestPostWebhookSyncCommand() {
 	// arrange
+
+	ddDefIntSvc := mock_services.NewMockDeviceDefinitionIntegrationService(s.mockCtrl)
+	autoAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
+
+	token := "BobbyHarry"
+	c := NewWebhooksController(&config.Settings{AutoPiAPIToken: token}, s.pdb.DBS, test.Logger(), autoAPISvc, ddDefIntSvc)
+	app := fiber.New()
+	app.Post(constants.AutoPiWebhookPath, c.ProcessCommand)
+
 	testUserID := ksuid.New().String()
 	autoPiDeviceID := "123123"
 	autoPiTemplateID := 987
@@ -101,8 +118,12 @@ func (s *WebHooksControllerTestSuite) TestPostWebhookSyncCommand() {
 	integ := test.BuildIntegrationGRPC(constants.AutoPiVendor, autoPiTemplateID, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model X", 2020, integ)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, s.pdb)
+	autopiJob := test.SetupCreateAutoPiJob(s.T(), autoPiJobID, autoPiDeviceID, "state.sls pending", ud.ID, "COMMAND_EXECUTED", "", s.pdb)
 
-	s.ddDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Return(integ, nil)
+	ddDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Return(integ, nil)
+
+	autoAPISvc.EXPECT().UpdateJob(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(autopiJob, nil)
+	autoAPISvc.EXPECT().UpdateState(gomock.Any(), gomock.Any()).Return(nil)
 
 	udiai := models.UserDeviceAPIIntegration{
 		// create user device api integration
@@ -113,7 +134,7 @@ func (s *WebHooksControllerTestSuite) TestPostWebhookSyncCommand() {
 	}
 	err := udiai.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	require.NoError(s.T(), err)
-	_ = test.SetupCreateAutoPiJob(s.T(), autoPiJobID, autoPiDeviceID, "state.sls pending", ud.ID, s.pdb)
+	//_ = test.SetupCreateAutoPiJob(s.T(), autoPiJobID, autoPiDeviceID, "state.sls pending", ud.ID, s.pdb)
 
 	// act
 	webhookJSON := fmt.Sprintf(`{"jid": "%s","state": "COMMAND_EXECUTED","success": true,"device_id": "%s"}`, autoPiJobID, autoPiDeviceID)
@@ -121,7 +142,8 @@ func (s *WebHooksControllerTestSuite) TestPostWebhookSyncCommand() {
 	request := test.BuildRequest("POST", constants.AutoPiWebhookPath, webhookJSON)
 	// signature generated by python per example code from autopi (for above payload)
 	request.Header.Set("X-Request-Signature", "93c5e5e140fc132f7871f890790d0aa83509a9ba077a4a5fe9f6595f38dd470c")
-	response, _ := s.app.Test(request)
+	response, _ := app.Test(request)
+
 	// assert
 	require.Equal(s.T(), 204, response.StatusCode)
 	// check the database has the expected change in status, and `auto_pi_sync_command_state` in metadata
@@ -149,6 +171,14 @@ func (s *WebHooksControllerTestSuite) TestPostWebhookSyncCommand() {
 }
 func (s *WebHooksControllerTestSuite) TestPostWebhookRawCommand() {
 	// arrange
+	ddDefIntSvc := mock_services.NewMockDeviceDefinitionIntegrationService(s.mockCtrl)
+	autoAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
+
+	token := "BobbyHarry"
+	c := NewWebhooksController(&config.Settings{AutoPiAPIToken: token}, s.pdb.DBS, test.Logger(), autoAPISvc, ddDefIntSvc)
+	app := fiber.New()
+	app.Post(constants.AutoPiWebhookPath, c.ProcessCommand)
+
 	testUserID := ksuid.New().String()
 	autoPiDeviceID := "123123"
 	autoPiTemplateID := 987
@@ -157,7 +187,14 @@ func (s *WebHooksControllerTestSuite) TestPostWebhookRawCommand() {
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Testla", "Model X", 2020, integ)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, s.pdb)
 	// create user device api integration
-	_ = test.SetupCreateAutoPiJob(s.T(), autoPiJobID, autoPiDeviceID, "some raw command", ud.ID, s.pdb)
+	commandResult := `{ "value": "123", "type": "vin" }`
+
+	autopiJob := test.SetupCreateAutoPiJob(s.T(), autoPiJobID, autoPiDeviceID, "some raw command", ud.ID, "COMMAND_EXECUTED", commandResult, s.pdb)
+
+	//ddDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Return(integ, nil)
+
+	autoAPISvc.EXPECT().UpdateJob(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(autopiJob, nil)
+	//autoAPISvc.EXPECT().UpdateState(gomock.Any(), gomock.Any()).Return(nil)
 
 	udiai := models.UserDeviceAPIIntegration{
 		UserDeviceID:  ud.ID,
@@ -174,7 +211,8 @@ func (s *WebHooksControllerTestSuite) TestPostWebhookRawCommand() {
 	request := test.BuildRequest("POST", constants.AutoPiWebhookPath, webhookJSON)
 	// signature generated by python per example code from autopi (for above payload) https://replit.com/@JamesReategui1/HmacPlayground#main.py
 	request.Header.Set("X-Request-Signature", "5573091add7aecb98d3204944f8bb3887026ff51401f421de15ec3deccbad45b")
-	response, _ := s.app.Test(request)
+	response, _ := app.Test(request, 10000)
+
 	// assert
 	assert.Equal(s.T(), 204, response.StatusCode)
 	// check the database has the expected change in status, and `auto_pi_sync_command_state` in metadata
