@@ -107,7 +107,7 @@ func (s *userDeviceService) ApplyHardwareTemplate(ctx context.Context, req *pb.A
 func (s *userDeviceService) CreateTemplate(ctx context.Context, req *pb.CreateTemplateRequest) (*pb.CreateTemplateResponse, error) {
 	resp, err := s.hardwareTemplateService.CreateTemplate(req)
 	if err != nil {
-		s.logger.Err(err).Str("template name", req.Name).Msg("failed to create template")
+		s.logger.Err(err).Str("template name", req.Name).Msgf("failed to create template %s", req.Name)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
