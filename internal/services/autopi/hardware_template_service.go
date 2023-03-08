@@ -4,6 +4,9 @@ import (
 	"context"
 	"strconv"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/rs/zerolog"
 
 	"github.com/pkg/errors"
@@ -21,6 +24,7 @@ import (
 type HardwareTemplateService interface {
 	GetTemplateID(ud *models.UserDevice, dd *ddgrpc.GetDeviceDefinitionItemResponse, integ *ddgrpc.Integration) (string, error)
 	ApplyHardwareTemplate(ctx context.Context, req *pb.ApplyHardwareTemplateRequest) (*pb.ApplyHardwareTemplateResponse, error)
+	CreateTemplate(req *pb.CreateTemplateRequest) (*pb.CreateTemplateResponse, error)
 }
 
 type hardwareTemplateService struct {
@@ -96,6 +100,24 @@ func isTemplateIDValid(templateID string) bool {
 		}
 	}
 	return false
+}
+
+func (a *hardwareTemplateService) CreateTemplate(req *pb.CreateTemplateRequest) (*pb.CreateTemplateResponse, error) {
+	newTemplateID, err := a.ap.CreateNewTemplate(req.Name, int(req.Parent), req.Name)
+	if err == nil && newTemplateID > 0 {
+		err := a.ap.SetTemplateICEPowerSettings(newTemplateID)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		err = a.ap.AddDefaultPIDsToTemplate(newTemplateID)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	} else {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &pb.CreateTemplateResponse{Id: int64(newTemplateID)}, err
 }
 
 func (a *hardwareTemplateService) ApplyHardwareTemplate(ctx context.Context, req *pb.ApplyHardwareTemplateRequest) (*pb.ApplyHardwareTemplateResponse, error) {
