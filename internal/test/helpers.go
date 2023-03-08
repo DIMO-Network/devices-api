@@ -270,14 +270,19 @@ func SetupCreateUserDeviceAPIIntegration(t *testing.T, autoPiUnitID, externalID,
 	return udapiInt
 }
 
-func SetupCreateAutoPiJob(t *testing.T, jobID, deviceID, cmd, userDeviceID string, pdb db.Store) *models.AutopiJob {
+func SetupCreateAutoPiJob(t *testing.T, jobID, deviceID, cmd, userDeviceID, state, commandResult string, pdb db.Store) *models.AutopiJob {
 	autopiJob := models.AutopiJob{
 		ID:             jobID,
 		AutopiDeviceID: deviceID,
 		Command:        cmd,
-		State:          "sent",
+		State:          state,
 		UserDeviceID:   null.StringFrom(userDeviceID),
 	}
+
+	if commandResult != "" {
+		_ = autopiJob.CommandResult.UnmarshalJSON([]byte(commandResult))
+	}
+
 	err := autopiJob.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
 	assert.NoError(t, err)
 	return &autopiJob
