@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	smartcar "github.com/smartcar/go-sdk"
 	"math/big"
 	"strconv"
 	"strings"
@@ -1982,13 +1983,30 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 	if err := c.BodyParser(reqBody); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request JSON body.")
 	}
-
-	// todo: check for token in redis, if exists do not call this.
-	token, err := udc.smartcarClient.ExchangeCode(c.Context(), reqBody.Code, reqBody.RedirectURI)
-	if err != nil {
-		logger.Err(err).Msg("Failed to exchange authorization code with Smartcar.")
-		// This may not be the user's fault, but 400 for now.
-		return fiber.NewError(fiber.StatusBadRequest, "Failed to exchange authorization code with Smartcar.")
+	var token *smartcar.Token
+	// check for token in redis, if exists do not call this.
+	if ud.VinIdentifier.Valid {
+		scTokenGet, err := udc.redisCache.Get(c.Context(), buildSmartcarTokenKey(ud.VinIdentifier.String)).Result()
+		if err == nil && len(scTokenGet) > 0 {
+			// found existing token
+			token = &smartcar.Token{}
+			err = json.Unmarshal([]byte(scTokenGet), token)
+			if err != nil {
+				udc.log.Err(err).Msgf("failed to unmarshal smartcar token found in redis cache for vin: %s", ud.VinIdentifier.String)
+			}
+			// clear cache
+			udc.redisCache.Del(c.Context(), buildSmartcarTokenKey(ud.VinIdentifier.String))
+		}
+	}
+	if token == nil {
+		// no token found or could be unmarshalled so try exchangecode, assumption is it has not been called before for this code
+		var err error
+		token, err = udc.smartcarClient.ExchangeCode(c.Context(), reqBody.Code, reqBody.RedirectURI)
+		if err != nil {
+			logger.Err(err).Msg("Failed to exchange authorization code with Smartcar.")
+			// This may not be the user's fault, but 400 for now.
+			return fiber.NewError(fiber.StatusBadRequest, "Failed to exchange authorization code with Smartcar.")
+		}
 	}
 
 	scUserID, err := udc.smartcarClient.GetUserID(c.Context(), token.Access)
@@ -2002,15 +2020,18 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 		logger.Err(err).Msg("Failed to retrieve vehicle ID from Smartcar.")
 		return smartcarCallErr
 	}
-	// todo: if ud vin is confirmed, then no need for this.
-	vin, err := udc.smartcarClient.GetVIN(c.Context(), token.Access, externalID)
-	if err != nil {
-		logger.Err(err).Msg("Failed to retrieve VIN from Smartcar.")
-		return smartcarCallErr
-	}
+	// by default use vin from userdevice, unless if it is not confirmed, in that case pull from SC
+	vin := ud.VinIdentifier.String
+	if ud.VinConfirmed == false {
+		vin, err = udc.smartcarClient.GetVIN(c.Context(), token.Access, externalID)
+		if err != nil {
+			logger.Err(err).Msg("Failed to retrieve VIN from Smartcar.")
+			return smartcarCallErr
+		}
 
-	if ud.VinConfirmed && ud.VinIdentifier.String != vin {
-		return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle's confirmed VIN does not match Smartcar's %s.", vin))
+		if ud.VinConfirmed && ud.VinIdentifier.String != vin {
+			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle's confirmed VIN does not match Smartcar's %s.", vin))
+		}
 	}
 
 	// Prevent users from connecting a vehicle if it's already connected through another user
@@ -2030,7 +2051,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 
 		if conflict {
 			logger.Error().Msg("VIN %s already in use.")
-			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("VIN %s in use by a previously connected device.", vin))
+			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("VIN %s in use by a previously connected device.", ud.VinIdentifier.String))
 		}
 	}
 
@@ -2100,11 +2121,13 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 		return opaqueInternalError
 	}
 
-	ud.VinIdentifier = null.StringFrom(strings.ToUpper(vin))
-	ud.VinConfirmed = true
-	_, err = ud.Update(c.Context(), tx, boil.Infer())
-	if err != nil {
-		return opaqueInternalError
+	if ud.VinConfirmed == false {
+		ud.VinIdentifier = null.StringFrom(strings.ToUpper(vin))
+		ud.VinConfirmed = true
+		_, err = ud.Update(c.Context(), tx, boil.Infer())
+		if err != nil {
+			return opaqueInternalError
+		}
 	}
 
 	if err := udc.smartcarTaskSvc.StartPoll(integration); err != nil {

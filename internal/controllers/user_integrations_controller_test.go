@@ -3,7 +3,10 @@ package controllers
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"github.com/DIMO-Network/shared/redis/mocks"
+	"github.com/go-redis/redis/v8"
 	"io"
 	"testing"
 	"time"
@@ -51,6 +54,7 @@ type UserIntegrationsControllerTestSuite struct {
 	deviceDefinitionRegistrar *mock_services.MockDeviceDefinitionRegistrar
 	deviceDefSvc              *mock_services.MockDeviceDefinitionService
 	deviceDefIntSvc           *mock_services.MockDeviceDefinitionIntegrationService
+	redisClient               *mocks.MockCacheService
 }
 
 const testUserID = "123123"
@@ -75,9 +79,12 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 	s.drivlyTaskSvc = mock_services.NewMockDrivlyTaskService(s.mockCtrl)
 	s.eventSvc = mock_services.NewMockEventService(s.mockCtrl)
 	s.autoPiTaskService = mock_services.NewMockAutoPiTaskService(s.mockCtrl)
+	s.redisClient = mocks.NewMockCacheService(s.mockCtrl)
 
 	logger := test.Logger()
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, s.eventSvc, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), s.autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, s.autoPiTaskService, nil, nil, s.drivlyTaskSvc, nil, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, s.eventSvc, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), s.autopiAPISvc, nil,
+		s.autoPiIngest, s.deviceDefinitionRegistrar, s.autoPiTaskService, nil, nil, s.drivlyTaskSvc, nil, s.redisClient)
+
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.RegisterDeviceIntegration)
 	app.Post("/user2/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUser2), c.RegisterDeviceIntegration)
@@ -134,7 +141,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCarFailure() {
 			"code": "qxyz",
 			"redirectURI": "http://dimo.zone/cb"
 		}`
-
 	s.scClient.EXPECT().ExchangeCode(gomock.Any(), "qxyz", "http://dimo.zone/cb").Times(1).Return(nil, errors.New("failure communicating with Smartcar"))
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).Times(1).Return(dd, nil)
 
@@ -148,8 +154,9 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCarFailure() {
 	exists, _ := models.UserDeviceAPIIntegrationExists(s.ctx, s.pdb.DBS().Writer, ud.ID, integration.Id)
 	assert.False(s.T(), exists, "no integration should have been created")
 }
-func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar() {
+func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken() {
 	model := "Mach E"
+	const vin = "CARVIN"
 	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
 	// corrected after query smartcar
@@ -162,6 +169,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar() {
 			"redirectURI": "http://dimo.zone/cb"
 		}`
 	expiry, _ := time.Parse(time.RFC3339, "2022-03-01T12:00:00Z")
+
 	s.scClient.EXPECT().ExchangeCode(gomock.Any(), "qxy", "http://dimo.zone/cb").Times(1).Return(&smartcar.Token{
 		Access:        "myAccess",
 		AccessExpiry:  expiry,
@@ -201,7 +209,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar() {
 
 	s.scClient.EXPECT().GetUserID(gomock.Any(), "myAccess").Return(smartCarUserID, nil)
 	s.scClient.EXPECT().GetExternalID(gomock.Any(), "myAccess").Return("smartcar-idx", nil)
-	s.scClient.EXPECT().GetVIN(gomock.Any(), "myAccess", "smartcar-idx").Return("CARVIN", nil)
+	s.scClient.EXPECT().GetVIN(gomock.Any(), "myAccess", "smartcar-idx").Return(vin, nil)
 	s.scClient.EXPECT().GetEndpoints(gomock.Any(), "myAccess", "smartcar-idx").Return([]string{"/", "/vin"}, nil)
 	s.scClient.EXPECT().HasDoorControl(gomock.Any(), "myAccess", "smartcar-idx").Return(false, nil)
 	// return a different year than original to fix up device definition id
@@ -230,12 +238,114 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar() {
 		assert.FailNow(s.T(), "unexpected response: "+string(body))
 	}
 	apiInt, _ := models.FindUserDeviceAPIIntegration(s.ctx, s.pdb.DBS().Writer, ud.ID, integration.Id)
+	updatedUD, _ := models.FindUserDevice(s.ctx, s.pdb.DBS().Reader, ud.ID)
 
 	assert.Equal(s.T(), "zlNpprff", apiInt.AccessToken.String)
 	assert.True(s.T(), expiry.Equal(apiInt.AccessExpiresAt.Time))
 	assert.Equal(s.T(), "PendingFirstData", apiInt.Status)
 	assert.Equal(s.T(), "zlErserfu", apiInt.RefreshToken.String)
+	assert.Equal(s.T(), vin, updatedUD.VinIdentifier.String)
+	assert.Equal(s.T(), true, updatedUD.VinConfirmed)
 }
+
+func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToken() {
+	model := "Mach E"
+	const vin = "CARVIN"
+	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
+	// corrected after query smartcar
+	dd2 := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2022, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, s.pdb)
+	ud.VinIdentifier = null.StringFrom(vin)
+	ud.VinConfirmed = true
+	_, err := ud.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	require.NoError(s.T(), err)
+
+	const smartCarUserID = "smartCarUserId"
+	req := `{
+			"code": "qxy",
+			"redirectURI": "http://dimo.zone/cb"
+		}`
+	expiry, _ := time.Parse(time.RFC3339, "2022-03-01T12:00:00Z")
+	// token found in cache
+	token := &smartcar.Token{
+		Access:        "some-access-code",
+		AccessExpiry:  expiry,
+		Refresh:       "some-refresh-code",
+		RefreshExpiry: expiry,
+		ExpiresIn:     3000,
+	}
+	tokenJSON, err := json.Marshal(token)
+	require.NoError(s.T(), err)
+	s.redisClient.EXPECT().Get(gomock.Any(), buildSmartcarTokenKey(vin)).Return(redis.NewStringResult(string(tokenJSON), nil))
+	s.redisClient.EXPECT().Del(gomock.Any(), buildSmartcarTokenKey(vin)).Return(redis.NewIntResult(1, nil))
+	s.eventSvc.EXPECT().Emit(gomock.Any()).Return(nil).Do(
+		func(event *services.Event) error {
+			assert.Equal(s.T(), ud.ID, event.Subject)
+			assert.Equal(s.T(), "com.dimo.zone.device.integration.create", event.Type)
+
+			data := event.Data.(services.UserDeviceIntegrationEvent)
+
+			assert.Equal(s.T(), dd2[0].DeviceDefinitionId, data.Device.DeviceDefinitionID)
+			assert.Equal(s.T(), dd2[0].Make.Name, data.Device.Make)
+			assert.Equal(s.T(), dd2[0].Type.Model, data.Device.Model)
+			assert.Equal(s.T(), int(dd2[0].Type.Year), data.Device.Year)
+			assert.Equal(s.T(), "CARVIN", data.Device.VIN)
+			assert.Equal(s.T(), ud.ID, data.Device.ID)
+
+			assert.Equal(s.T(), "SmartCar", data.Integration.Vendor)
+			assert.Equal(s.T(), integration.Id, data.Integration.ID)
+			return nil
+		},
+	)
+
+	s.deviceDefinitionRegistrar.EXPECT().Register(services.DeviceDefinitionDTO{
+		IntegrationID:      integration.Id,
+		UserDeviceID:       ud.ID,
+		DeviceDefinitionID: ud.DeviceDefinitionID,
+		Make:               dd2[0].Make.Name,
+		Model:              dd2[0].Type.Model,
+		Year:               int(dd2[0].Type.Year),
+		Region:             "Americas",
+	}).Return(nil)
+
+	s.scClient.EXPECT().GetUserID(gomock.Any(), token.Access).Return(smartCarUserID, nil)
+	s.scClient.EXPECT().GetExternalID(gomock.Any(), token.Access).Return("smartcar-idx", nil)
+	s.scClient.EXPECT().GetEndpoints(gomock.Any(), token.Access, "smartcar-idx").Return([]string{"/", "/vin"}, nil)
+	s.scClient.EXPECT().HasDoorControl(gomock.Any(), token.Access, "smartcar-idx").Return(false, nil)
+	// return a different year than original to fix up device definition id
+	s.scClient.EXPECT().GetYear(gomock.Any(), token.Access, "smartcar-idx").Return(2022, nil)
+	s.drivlyTaskSvc.EXPECT().StartDrivlyUpdate(dd[0].DeviceDefinitionId, ud.ID, vin).Return("task-id-123", nil)
+
+	oUdai := &models.UserDeviceAPIIntegration{}
+	s.scTaskSvc.EXPECT().StartPoll(gomock.AssignableToTypeOf(oUdai)).DoAndReturn(
+		func(udai *models.UserDeviceAPIIntegration) error {
+			oUdai = udai
+			return nil
+		},
+	)
+	// original device def
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).Times(2).Return(dd, nil)
+	// fixup device def with correct year
+	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), "Ford", model, 2022).Return(dd2[0], nil)
+	// fixed up device definition
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).Return(dd2, nil)
+
+	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
+	response, err := s.app.Test(request)
+	require.NoError(s.T(), err)
+	if assert.Equal(s.T(), fiber.StatusNoContent, response.StatusCode, "should return success") == false {
+		body, _ := io.ReadAll(response.Body)
+		assert.FailNow(s.T(), "unexpected response: "+string(body))
+	}
+	apiInt, _ := models.FindUserDeviceAPIIntegration(s.ctx, s.pdb.DBS().Writer, ud.ID, integration.Id)
+
+	assert.Equal(s.T(), "fbzr-npprff-pbqr", apiInt.AccessToken.String)
+	assert.True(s.T(), expiry.Equal(apiInt.AccessExpiresAt.Time))
+	assert.Equal(s.T(), "PendingFirstData", apiInt.Status)
+	assert.Equal(s.T(), "fbzr-erserfu-pbqr", apiInt.RefreshToken.String)
+}
+
 func (s *UserIntegrationsControllerTestSuite) TestPostUnknownDevice() {
 	req := `{
 			"code": "qxy",
