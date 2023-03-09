@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/DIMO-Network/shared/redis"
 	"net"
 	"os"
 	"os/signal"
@@ -71,9 +72,16 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, pdb.DBS, &logger)
 	autoPi := autopi.NewIntegration(pdb.DBS, ddSvc, autoPiSvc, autoPiTaskService, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &logger)
 
+	redisCache := redis.NewRedisCacheService(settings.Environment == "prod", redis.Settings{
+		URL:       settings.RedisURL,
+		Password:  settings.RedisPassword,
+		TLS:       settings.RedisTLS,
+		KeyPrefix: "devices-api",
+	})
+
 	// controllers
 	deviceControllers := controllers.NewDevicesController(settings, pdb.DBS, &logger, nhtsaSvc, ddSvc, ddIntSvc)
-	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService, smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest, deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, drivlyTaskService, autoPi)
+	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService, smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest, deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, drivlyTaskService, autoPi, redisCache)
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
