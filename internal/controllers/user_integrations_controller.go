@@ -1988,9 +1988,13 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 	if ud.VinIdentifier.Valid {
 		scTokenGet, err := udc.redisCache.Get(c.Context(), buildSmartcarTokenKey(ud.VinIdentifier.String)).Result()
 		if err == nil && len(scTokenGet) > 0 {
+			decrypted, err := udc.cipher.Decrypt(scTokenGet)
+			if err != nil {
+				return errors.Wrap(err, "failed to decrypt sc token")
+			}
 			// found existing token
 			token = &smartcar.Token{}
-			err = json.Unmarshal([]byte(scTokenGet), token)
+			err = json.Unmarshal([]byte(decrypted), token)
 			if err != nil {
 				udc.log.Err(err).Msgf("failed to unmarshal smartcar token found in redis cache for vin: %s", ud.VinIdentifier.String)
 			}
