@@ -73,5 +73,5 @@ type Settings struct {
 	VincarioAPISecret                 string      `yaml:"VINCARIO_API_SECRET"`
 	VincarioAPIKey                    string      `yaml:"VINCARIO_API_KEY"`
 	OpenAiSecretKey                   string      `yaml:"OPENAPI_SECRET_KEY"`
-	OpenAiBaseUrl                     string      `yaml:"OPENAI_BASE_URL"`
+	OpenAiBaseURL                     string      `yaml:"OPENAI_BASE_URL"`
 }

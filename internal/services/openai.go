@@ -46,7 +46,7 @@ type ChatGptResponse struct {
 
 func NewOpenAI(c config.Settings) OpenAI {
 	return openAi{
-		baseURL: c.OpenAiBaseUrl,
+		baseURL: c.OpenAiBaseURL,
 		token:   c.OpenAiSecretKey,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
