@@ -9,6 +9,7 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
+	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
@@ -17,6 +18,14 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
 )
+
+type QueryDeviceErrorCodesReq struct {
+	ErrorCodes []string `json:"errorCodes"`
+}
+
+type QueryDeviceErrorCodesResponse struct {
+	Message string `json:"message"`
+}
 
 func PrepareDeviceStatusInformation(deviceData models.UserDeviceDatumSlice, privilegeIDs []int64) DeviceSnapshot {
 	ds := DeviceSnapshot{}
@@ -251,6 +260,54 @@ func (udc *UserDevicesController) RefreshUserDeviceStatus(c *fiber.Ctx) error {
 		}
 	}
 	return fiber.NewError(fiber.StatusBadRequest, "no active Smartcar integration found for this device")
+}
+
+// QueryDeviceErrorCodes godoc
+// @Description Queries chatgpt for user device error codes
+// @Tags        user-devices
+// @Param       user_device_id path string true "user device ID"
+// @Param       queryDeviceErrorCodes body controllers.QueryDeviceErrorCodesReq true "error codes"
+// @Success     200 {object} controllers.QueryDeviceErrorCodesResponse
+// @Security    BearerAuth
+// @Router      /user/devices/{userDeviceID}/error-codes [post]
+func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
+	udi := c.Params("userDeviceID")
+	userID := helpers.GetUserID(c)
+
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(udi),
+		models.UserDeviceWhere.UserID.EQ(userID),
+	).One(c.Context(), udc.DBS().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fiber.NewError(fiber.StatusNotFound, err.Error())
+		}
+		return err
+	}
+
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), ud.DeviceDefinitionID)
+	if err != nil {
+		return helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ud.DeviceDefinitionID)
+	}
+
+	req := &QueryDeviceErrorCodesReq{}
+	if err := c.BodyParser(req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	oi := services.NewOpenAI(*udc.Settings)
+
+	chtResp, err := oi.QueryDeviceErrorCodes(dd.Type.Make, dd.Type.Model, dd.Type.Year, req.ErrorCodes)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(&QueryDeviceErrorCodesResponse{
+		Message: chtResp,
+	})
 }
 
 // DeviceSnapshot is the response object for device status endpoint

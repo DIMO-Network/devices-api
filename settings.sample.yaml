@@ -53,3 +53,6 @@ AUTOPI_NFT_IMAGE:
 VINCARIO_API_URL: https://api.vindecoder.eu/3.2
 VINCARIO_API_KEY:
 VINCARIO_API_SECRET:
+
+OPENAPI_SECRET_KEY:
+OPENAI_BASE_URL: https://api.openai.com/v1/
