@@ -5,11 +5,12 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/redis/mocks"
 	"io"
 	"testing"
 	"time"
+
+	"github.com/DIMO-Network/shared"
+	"github.com/DIMO-Network/shared/redis/mocks"
 
 	"github.com/DIMO-Network/shared/db"
 

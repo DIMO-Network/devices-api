@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/DIMO-Network/shared/redis/mocks"
-	"github.com/go-redis/redis/v8"
 	"io"
 	"testing"
 	"time"
+
+	"github.com/DIMO-Network/shared/redis/mocks"
+	"github.com/go-redis/redis/v8"
 
 	"github.com/DIMO-Network/shared/db"
 
