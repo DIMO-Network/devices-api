@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"github.com/DIMO-Network/shared/redis"
 	"net"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/DIMO-Network/shared/redis"
 
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ethereum/go-ethereum/common"

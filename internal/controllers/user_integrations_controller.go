@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	smartcar "github.com/smartcar/go-sdk"
 	"math/big"
 	"strconv"
 	"strings"
 	"time"
+
+	smartcar "github.com/smartcar/go-sdk"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -2026,7 +2027,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 	}
 	// by default use vin from userdevice, unless if it is not confirmed, in that case pull from SC
 	vin := ud.VinIdentifier.String
-	if ud.VinConfirmed == false {
+	if !ud.VinConfirmed {
 		vin, err = udc.smartcarClient.GetVIN(c.Context(), token.Access, externalID)
 		if err != nil {
 			logger.Err(err).Msg("Failed to retrieve VIN from Smartcar.")
@@ -2125,7 +2126,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 		return opaqueInternalError
 	}
 
-	if ud.VinConfirmed == false {
+	if !ud.VinConfirmed {
 		ud.VinIdentifier = null.StringFrom(strings.ToUpper(vin))
 		ud.VinConfirmed = true
 		_, err = ud.Update(c.Context(), tx, boil.Infer())
