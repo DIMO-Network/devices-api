@@ -3,6 +3,8 @@ package controllers
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"time"
@@ -262,6 +264,8 @@ func (udc *UserDevicesController) RefreshUserDeviceStatus(c *fiber.Ctx) error {
 	return fiber.NewError(fiber.StatusBadRequest, "no active Smartcar integration found for this device")
 }
 
+var errorCodeRegex = regexp.MustCompile(`^[A-Z0-9]{5,8}$`)
+
 // QueryDeviceErrorCodes godoc
 // @Description Queries chatgpt for user device error codes
 // @Tags        user-devices
@@ -294,6 +298,17 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	req := &QueryDeviceErrorCodesReq{}
 	if err := c.BodyParser(req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	errorCodesLength := 100
+	if len(req.ErrorCodes) > errorCodesLength {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Too many error codes. Error codes must be %d and blow", errorCodesLength))
+	}
+
+	for _, v := range req.ErrorCodes {
+		if !errorCodeRegex.MatchString(v) {
+			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Invalid error code %s", v))
+		}
 	}
 
 	oi := services.NewOpenAI(udc.log, *udc.Settings)
