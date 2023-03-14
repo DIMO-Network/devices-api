@@ -31,7 +31,7 @@ type ChatGptResponseChoices struct {
 	FinishReason string `json:"finish_reason"`
 }
 
-type ChatGptResponse struct {
+type ChatGPTResponse struct {
 	ID      string
 	Object  string
 	Created int
