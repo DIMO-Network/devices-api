@@ -104,7 +104,7 @@ func (o openAi) QueryDeviceErrorCodes(make, model string, year int32, errorCodes
 		return "", err
 	}
 
-	if len(r.Choices) < 1 {
+	if len(r.Choices) == 0 {
 		return "", nil
 	}
 
