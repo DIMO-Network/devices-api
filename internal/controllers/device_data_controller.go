@@ -280,7 +280,8 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, err.Error())
+			udc.log.Err(err).Msg("Error fetching user")
+			return fiber.NewError(fiber.StatusNotFound, "could not fetch user")
 		}
 		return err
 	}
@@ -294,11 +295,8 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	if err := c.BodyParser(req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
-	}
 
-	oi := services.NewOpenAI(*udc.Settings)
+	oi := services.NewOpenAI(udc.log, *udc.Settings)
 
 	chtResp, err := oi.QueryDeviceErrorCodes(dd.Type.Make, dd.Type.Model, dd.Type.Year, req.ErrorCodes)
 	if err != nil {
