@@ -89,7 +89,7 @@ func (o openAi) askChatGpt(body *strings.Reader) (*ChatGptResponse, error) {
 }
 
 func (o openAi) QueryDeviceErrorCodes(make, model string, year int32, errorCodes []string) (string, error) {
-	codes := strings.Join(errorCodes[:], ",")
+	codes := strings.Join(errorCodes, ", ")
 	req := fmt.Sprintf(`{
 		"model": "gpt-3.5-turbo",
 		"messages": [
