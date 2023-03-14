@@ -13,8 +13,10 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
+	"github.com/segmentio/ksuid"
 	smartcar "github.com/smartcar/go-sdk"
 	"github.com/tidwall/gjson"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
 )
@@ -25,6 +27,11 @@ type QueryDeviceErrorCodesReq struct {
 
 type QueryDeviceErrorCodesResponse struct {
 	Message string `json:"message"`
+}
+
+type GetUserDevicesErrorCodeQueriesResponse struct {
+	Codes       []string
+	Description string
 }
 
 func PrepareDeviceStatusInformation(deviceData models.UserDeviceDatumSlice, privilegeIDs []int64) DeviceSnapshot {
@@ -274,6 +281,11 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
 	userID := helpers.GetUserID(c)
 
+	req := &QueryDeviceErrorCodesReq{}
+	if err := c.BodyParser(req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
 		models.UserDeviceWhere.UserID.EQ(userID),
@@ -290,24 +302,61 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 		return helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ud.DeviceDefinitionID)
 	}
 
-	req := &QueryDeviceErrorCodesReq{}
-	if err := c.BodyParser(req); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
-	}
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
-	}
-
 	oi := services.NewOpenAI(*udc.Settings)
-
 	chtResp, err := oi.QueryDeviceErrorCodes(dd.Type.Make, dd.Type.Model, dd.Type.Year, req.ErrorCodes)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
+	q := &models.ErrorCodeQuery{ID: ksuid.New().String(), UserDeviceID: udi, ErrorCodes: req.ErrorCodes, QueryResponse: chtResp}
+	err = q.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
+
+	if err != nil {
+		// TODO - should we return an error for this or just log it
+		udc.log.Err(err).Msg("Could not save user query response")
+	}
+
 	return c.JSON(&QueryDeviceErrorCodesResponse{
 		Message: chtResp,
 	})
+}
+
+// GetUserDevicesErrorCodeQueries godoc
+// @Description Returns all error codes queries for user devices
+// @Tags        user-devices
+// @Success     200 {object} controllers.GetUserDevicesErrorCodeQueriesResponse
+// @Security    BearerAuth
+// @Router      /user/devices/error-codes [get]
+func (udc *UserDevicesController) GetUserDevicesErrorCodeQueries(c *fiber.Ctx) error {
+	userID := helpers.GetUserID(c)
+
+	userDevices, err := models.UserDevices(
+		models.UserDeviceWhere.UserID.EQ(userID),
+		qm.Load(models.UserDeviceRels.ErrorCodeQueries),
+	).All(c.Context(), udc.DBS().Reader)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fiber.NewError(fiber.StatusNotFound, err.Error())
+		}
+		return err
+	}
+
+	resp := map[string][]GetUserDevicesErrorCodeQueriesResponse{}
+
+	for _, userDevice := range userDevices {
+		ud := []GetUserDevicesErrorCodeQueriesResponse{}
+		for _, erc := range userDevice.R.ErrorCodeQueries {
+			ud = append(ud, GetUserDevicesErrorCodeQueriesResponse{
+				Codes:       erc.ErrorCodes,
+				Description: erc.QueryResponse,
+			})
+		}
+
+		resp[userDevice.ID] = ud
+	}
+
+	return c.JSON(resp)
 }
 
 // DeviceSnapshot is the response object for device status endpoint

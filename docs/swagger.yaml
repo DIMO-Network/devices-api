@@ -323,6 +323,15 @@ definitions:
           "DuplicateIntegration".
         type: string
     type: object
+  github_com_DIMO-Network_devices-api_internal_controllers.GetUserDevicesErrorCodeQueriesResponse:
+    properties:
+      codes:
+        items:
+          type: string
+        type: array
+      description:
+        type: string
+    type: object
   github_com_DIMO-Network_devices-api_internal_controllers.MintRequest:
     properties:
       imageData:
@@ -1190,6 +1199,15 @@ definitions:
           "DuplicateIntegration".
         type: string
     type: object
+  internal_controllers.GetUserDevicesErrorCodeQueriesResponse:
+    properties:
+      codes:
+        items:
+          type: string
+        type: array
+      description:
+        type: string
+    type: object
   internal_controllers.MintRequest:
     properties:
       imageData:
@@ -1619,7 +1637,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.NFTMetadataResp'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.NFTMetadataResp'
         "404":
           description: Not Found
       tags:
@@ -1976,7 +1994,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.NFTMetadataResp'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.NFTMetadataResp'
         "404":
           description: Not Found
       tags:
@@ -2292,12 +2310,12 @@ paths:
         name: queryDeviceErrorCodes
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesReq'
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.QueryDeviceErrorCodesReq'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesResponse'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.QueryDeviceErrorCodesResponse'
       security:
       - BearerAuth: []
       tags:
@@ -2563,7 +2581,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.DeviceSnapshot'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.DeviceSnapshot'
       security:
       - BearerAuth: []
       tags:
@@ -2633,6 +2651,18 @@ paths:
       responses:
         "204":
           description: No Content
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/error-codes:
+    get:
+      description: Returns all error codes queries for user devices
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.GetUserDevicesErrorCodeQueriesResponse'
       security:
       - BearerAuth: []
       tags:
@@ -2826,7 +2856,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.CommandResponse'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.CommandResponse'
       summary: Lock the device's doors
       tags:
       - device
@@ -2847,7 +2877,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.CommandResponse'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.CommandResponse'
       summary: Unlock the device's doors
       tags:
       - device
@@ -2869,7 +2899,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.CommandResponse'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.CommandResponse'
       summary: Open the device's front trunk
       tags:
       - device
@@ -2891,7 +2921,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.CommandResponse'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.CommandResponse'
       summary: Open the device's rear trunk
       tags:
       - device
@@ -2912,7 +2942,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.NFTMetadataResp'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.NFTMetadataResp'
         "404":
           description: Not Found
       tags:
@@ -2955,7 +2985,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.DeviceSnapshot'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.DeviceSnapshot'
         "404":
           description: Not Found
       tags:

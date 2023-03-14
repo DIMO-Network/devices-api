@@ -148,6 +148,7 @@ var UserDeviceRels = struct {
 	VehicleNFT                string
 	AutopiJobs                string
 	DeviceCommandRequests     string
+	ErrorCodeQueries          string
 	ExternalVinData           string
 	UserDeviceAPIIntegrations string
 	UserDeviceData            string
@@ -156,6 +157,7 @@ var UserDeviceRels = struct {
 	VehicleNFT:                "VehicleNFT",
 	AutopiJobs:                "AutopiJobs",
 	DeviceCommandRequests:     "DeviceCommandRequests",
+	ErrorCodeQueries:          "ErrorCodeQueries",
 	ExternalVinData:           "ExternalVinData",
 	UserDeviceAPIIntegrations: "UserDeviceAPIIntegrations",
 	UserDeviceData:            "UserDeviceData",
@@ -167,6 +169,7 @@ type userDeviceR struct {
 	VehicleNFT                *VehicleNFT                   `boil:"VehicleNFT" json:"VehicleNFT" toml:"VehicleNFT" yaml:"VehicleNFT"`
 	AutopiJobs                AutopiJobSlice                `boil:"AutopiJobs" json:"AutopiJobs" toml:"AutopiJobs" yaml:"AutopiJobs"`
 	DeviceCommandRequests     DeviceCommandRequestSlice     `boil:"DeviceCommandRequests" json:"DeviceCommandRequests" toml:"DeviceCommandRequests" yaml:"DeviceCommandRequests"`
+	ErrorCodeQueries          ErrorCodeQuerySlice           `boil:"ErrorCodeQueries" json:"ErrorCodeQueries" toml:"ErrorCodeQueries" yaml:"ErrorCodeQueries"`
 	ExternalVinData           ExternalVinDatumSlice         `boil:"ExternalVinData" json:"ExternalVinData" toml:"ExternalVinData" yaml:"ExternalVinData"`
 	UserDeviceAPIIntegrations UserDeviceAPIIntegrationSlice `boil:"UserDeviceAPIIntegrations" json:"UserDeviceAPIIntegrations" toml:"UserDeviceAPIIntegrations" yaml:"UserDeviceAPIIntegrations"`
 	UserDeviceData            UserDeviceDatumSlice          `boil:"UserDeviceData" json:"UserDeviceData" toml:"UserDeviceData" yaml:"UserDeviceData"`
@@ -197,6 +200,13 @@ func (r *userDeviceR) GetDeviceCommandRequests() DeviceCommandRequestSlice {
 		return nil
 	}
 	return r.DeviceCommandRequests
+}
+
+func (r *userDeviceR) GetErrorCodeQueries() ErrorCodeQuerySlice {
+	if r == nil {
+		return nil
+	}
+	return r.ErrorCodeQueries
 }
 
 func (r *userDeviceR) GetExternalVinData() ExternalVinDatumSlice {
@@ -553,6 +563,20 @@ func (o *UserDevice) DeviceCommandRequests(mods ...qm.QueryMod) deviceCommandReq
 	)
 
 	return DeviceCommandRequests(queryMods...)
+}
+
+// ErrorCodeQueries retrieves all the error_code_query's ErrorCodeQueries with an executor.
+func (o *UserDevice) ErrorCodeQueries(mods ...qm.QueryMod) errorCodeQueryQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"devices_api\".\"error_code_queries\".\"user_device_id\"=?", o.ID),
+	)
+
+	return ErrorCodeQueries(queryMods...)
 }
 
 // ExternalVinData retrieves all the external_vin_datum's ExternalVinData with an executor.
@@ -946,6 +970,120 @@ func (userDeviceL) LoadDeviceCommandRequests(ctx context.Context, e boil.Context
 				local.R.DeviceCommandRequests = append(local.R.DeviceCommandRequests, foreign)
 				if foreign.R == nil {
 					foreign.R = &deviceCommandRequestR{}
+				}
+				foreign.R.UserDevice = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadErrorCodeQueries allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userDeviceL) LoadErrorCodeQueries(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUserDevice interface{}, mods queries.Applicator) error {
+	var slice []*UserDevice
+	var object *UserDevice
+
+	if singular {
+		var ok bool
+		object, ok = maybeUserDevice.(*UserDevice)
+		if !ok {
+			object = new(UserDevice)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeUserDevice)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeUserDevice))
+			}
+		}
+	} else {
+		s, ok := maybeUserDevice.(*[]*UserDevice)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeUserDevice)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeUserDevice))
+			}
+		}
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userDeviceR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userDeviceR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`devices_api.error_code_queries`),
+		qm.WhereIn(`devices_api.error_code_queries.user_device_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load error_code_queries")
+	}
+
+	var resultSlice []*ErrorCodeQuery
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice error_code_queries")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on error_code_queries")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for error_code_queries")
+	}
+
+	if len(errorCodeQueryAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.ErrorCodeQueries = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &errorCodeQueryR{}
+			}
+			foreign.R.UserDevice = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.UserDeviceID {
+				local.R.ErrorCodeQueries = append(local.R.ErrorCodeQueries, foreign)
+				if foreign.R == nil {
+					foreign.R = &errorCodeQueryR{}
 				}
 				foreign.R.UserDevice = local
 				break
@@ -1657,6 +1795,59 @@ func (o *UserDevice) AddDeviceCommandRequests(ctx context.Context, exec boil.Con
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &deviceCommandRequestR{
+				UserDevice: o,
+			}
+		} else {
+			rel.R.UserDevice = o
+		}
+	}
+	return nil
+}
+
+// AddErrorCodeQueries adds the given related objects to the existing relationships
+// of the user_device, optionally inserting them as new records.
+// Appends related to o.R.ErrorCodeQueries.
+// Sets related.R.UserDevice appropriately.
+func (o *UserDevice) AddErrorCodeQueries(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*ErrorCodeQuery) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.UserDeviceID = o.ID
+			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"devices_api\".\"error_code_queries\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"user_device_id"}),
+				strmangle.WhereClause("\"", "\"", 2, errorCodeQueryPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.IsDebug(ctx) {
+				writer := boil.DebugWriterFrom(ctx)
+				fmt.Fprintln(writer, updateQuery)
+				fmt.Fprintln(writer, values)
+			}
+			if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.UserDeviceID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &userDeviceR{
+			ErrorCodeQueries: related,
+		}
+	} else {
+		o.R.ErrorCodeQueries = append(o.R.ErrorCodeQueries, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &errorCodeQueryR{
 				UserDevice: o,
 			}
 		} else {
