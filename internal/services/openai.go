@@ -16,7 +16,7 @@ type OpenAI interface {
 	QueryDeviceErrorCodes(make, model string, year int32, errorCodes []string) (string, error)
 }
 
-type openAi struct {
+type openAI struct {
 	baseURL    string
 	token      string
 	httpClient *http.Client
