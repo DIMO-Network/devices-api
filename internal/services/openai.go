@@ -22,7 +22,7 @@ type openAi struct {
 	httpClient *http.Client
 }
 
-type ChatGptResponseChoices struct {
+type ChatGPTResponseChoices struct {
 	Message struct {
 		Role    string
 		Content string
