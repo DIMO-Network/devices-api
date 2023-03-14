@@ -80,7 +80,7 @@ func (o openAi) askChatGpt(body *strings.Reader) (*ChatGptResponse, error) {
 	cResp := &ChatGptResponse{}
 	err = json.NewDecoder(resp.Body).Decode(&cResp)
 	if err != nil {
-		return nil, errors.Wrap(err, "error decoding response json")
+		return nil, fmt.Errorf("error decoding response json: %w", err)
 	}
 
 	defer resp.Body.Close()
