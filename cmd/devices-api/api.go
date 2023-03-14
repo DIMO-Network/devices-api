@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"github.com/DIMO-Network/shared/redis"
 	"net"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/DIMO-Network/shared/redis"
 
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ethereum/go-ethereum/common"
@@ -178,6 +179,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices/fromvin", userDeviceController.RegisterDeviceForUserFromVIN)
 	v1Auth.Post("/user/devices/fromsmartcar", userDeviceController.RegisterDeviceForUserFromSmartcar)
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
+	v1Auth.Get("/user/devices/error-codes", userDeviceController.GetUserDevicesErrorCodeQueries)
 
 	v1Auth.Delete("/user/devices/:userDeviceID", userDeviceController.DeleteUserDevice)
 	v1Auth.Patch("/user/devices/:userDeviceID/vin", userDeviceController.UpdateVIN).Name("UpdateVIN")
