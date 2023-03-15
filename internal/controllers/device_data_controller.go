@@ -3,13 +3,14 @@ package controllers
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
-	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
@@ -269,6 +270,8 @@ func (udc *UserDevicesController) RefreshUserDeviceStatus(c *fiber.Ctx) error {
 	return fiber.NewError(fiber.StatusBadRequest, "no active Smartcar integration found for this device")
 }
 
+var errorCodeRegex = regexp.MustCompile(`^[A-Z0-9]{5,8}$`)
+
 // QueryDeviceErrorCodes godoc
 // @Description Queries chatgpt for user device error codes
 // @Tags        user-devices
@@ -292,7 +295,8 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, err.Error())
+			udc.log.Err(err).Msg("Error fetching user")
+			return fiber.NewError(fiber.StatusNotFound, "could not fetch user")
 		}
 		return err
 	}
@@ -302,8 +306,22 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 		return helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ud.DeviceDefinitionID)
 	}
 
-	oi := services.NewOpenAI(*udc.Settings)
-	chtResp, err := oi.QueryDeviceErrorCodes(dd.Type.Make, dd.Type.Model, dd.Type.Year, req.ErrorCodes)
+	if err := c.BodyParser(req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	errorCodesLength := 100
+	if len(req.ErrorCodes) > errorCodesLength {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Too many error codes. Error codes must be %d and blow", errorCodesLength))
+	}
+
+	for _, v := range req.ErrorCodes {
+		if !errorCodeRegex.MatchString(v) {
+			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Invalid error code %s", v))
+		}
+	}
+
+	chtResp, err := udc.openAI.GetErrorCodesDescription(dd.Type.Make, dd.Type.Model, dd.Type.Year, req.ErrorCodes)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}

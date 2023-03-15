@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/DIMO-Network/shared/redis"
 	"math/big"
 	"reflect"
 	"regexp"
@@ -15,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/DIMO-Network/shared/redis"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -74,6 +75,7 @@ type UserDevicesController struct {
 	deviceDefinitionRegistrar services.DeviceDefinitionRegistrar
 	autoPiIntegration         *autopi.Integration
 	redisCache                redis.CacheService
+	openAI                    services.OpenAI
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -104,7 +106,7 @@ type Device struct {
 }
 
 // NewUserDevicesController constructor
-func NewUserDevicesController(settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService, ddIntSvc services.DeviceDefinitionIntegrationService, eventService services.EventService, smartcarClient services.SmartcarClient, smartcarTaskSvc services.SmartcarTaskService, teslaService services.TeslaService, teslaTaskService services.TeslaTaskService, cipher shared.Cipher, autoPiSvc services.AutoPiAPIService, nhtsaService services.INHTSAService, autoPiIngestRegistrar services.IngestRegistrar, deviceDefinitionRegistrar services.DeviceDefinitionRegistrar, autoPiTaskService services.AutoPiTaskService, producer sarama.SyncProducer, s3NFTClient *s3.Client, drivlyTaskService services.DrivlyTaskService, autoPi *autopi.Integration, cache redis.CacheService) UserDevicesController {
+func NewUserDevicesController(settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService, ddIntSvc services.DeviceDefinitionIntegrationService, eventService services.EventService, smartcarClient services.SmartcarClient, smartcarTaskSvc services.SmartcarTaskService, teslaService services.TeslaService, teslaTaskService services.TeslaTaskService, cipher shared.Cipher, autoPiSvc services.AutoPiAPIService, nhtsaService services.INHTSAService, autoPiIngestRegistrar services.IngestRegistrar, deviceDefinitionRegistrar services.DeviceDefinitionRegistrar, autoPiTaskService services.AutoPiTaskService, producer sarama.SyncProducer, s3NFTClient *s3.Client, drivlyTaskService services.DrivlyTaskService, autoPi *autopi.Integration, cache redis.CacheService, openAI services.OpenAI) UserDevicesController {
 	return UserDevicesController{
 		Settings:                  settings,
 		DBS:                       dbs,
@@ -127,6 +129,7 @@ func NewUserDevicesController(settings *config.Settings, dbs func() *db.ReaderWr
 		deviceDefinitionRegistrar: deviceDefinitionRegistrar,
 		autoPiIntegration:         autoPi,
 		redisCache:                cache,
+		openAI:                    openAI,
 	}
 }
 
