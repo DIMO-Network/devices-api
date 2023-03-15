@@ -4,9 +4,10 @@ import (
 	"context"
 	"flag"
 
+	"github.com/DIMO-Network/devices-api/internal/constants"
+
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/controllers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
@@ -90,10 +91,10 @@ func generateEvents(logger zerolog.Logger, pdb db.Store, eventService services.E
 
 		err = eventService.Emit(
 			&services.Event{
-				Type:    controllers.UserDeviceCreationEventType,
+				Type:    constants.UserDeviceCreationEventType,
 				Subject: device.UserID,
 				Source:  "devices-api",
-				Data: controllers.UserDeviceEvent{
+				Data: services.UserDeviceEvent{
 					Timestamp: device.CreatedAt,
 					UserID:    device.UserID,
 					Device: services.UserDeviceEventDevice{
