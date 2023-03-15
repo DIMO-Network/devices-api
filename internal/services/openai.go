@@ -13,7 +13,7 @@ import (
 )
 
 type OpenAI interface {
-	QueryDeviceErrorCodes(make, model string, year int32, errorCodes []string) (string, error)
+	GetErrorCodesDescription(make, model string, year int32, errorCodes []string) (string, error)
 }
 
 type openAI struct {
@@ -90,7 +90,7 @@ func (o openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 	return cResp, nil
 }
 
-func (o openAI) QueryDeviceErrorCodes(make, model string, year int32, errorCodes []string) (string, error) {
+func (o openAI) GetErrorCodesDescription(make, model string, year int32, errorCodes []string) (string, error) {
 	codes := strings.Join(errorCodes, ", ")
 	req := fmt.Sprintf(`{
 		"model": "gpt-3.5-turbo",
