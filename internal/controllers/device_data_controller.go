@@ -33,6 +33,7 @@ type QueryDeviceErrorCodesResponse struct {
 type GetUserDevicesErrorCodeQueriesResponse struct {
 	Codes       []string
 	Description string
+	RequestedAt time.Time
 }
 
 func PrepareDeviceStatusInformation(deviceData models.UserDeviceDatumSlice, privilegeIDs []int64) DeviceSnapshot {
@@ -306,7 +307,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 		return helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ud.DeviceDefinitionID)
 	}
 
-	if err := c.BodyParser(req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
@@ -351,12 +352,10 @@ func (udc *UserDevicesController) GetUserDevicesErrorCodeQueries(c *fiber.Ctx) e
 	userDevices, err := models.UserDevices(
 		models.UserDeviceWhere.UserID.EQ(userID),
 		qm.Load(models.UserDeviceRels.ErrorCodeQueries),
+		qm.OrderBy("created_at desc"),
 	).All(c.Context(), udc.DBS().Reader)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, err.Error())
-		}
 		return err
 	}
 
@@ -368,6 +367,7 @@ func (udc *UserDevicesController) GetUserDevicesErrorCodeQueries(c *fiber.Ctx) e
 			ud = append(ud, GetUserDevicesErrorCodeQueriesResponse{
 				Codes:       erc.ErrorCodes,
 				Description: erc.QueryResponse,
+				RequestedAt: erc.CreatedAt,
 			})
 		}
 
