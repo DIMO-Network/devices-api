@@ -1,5 +1,7 @@
 package constants
 
+const UserDeviceCreationEventType = "com.dimo.zone.device.create"
+
 const (
 	SmartCarVendor = "SmartCar"
 	TeslaVendor    = "Tesla"
