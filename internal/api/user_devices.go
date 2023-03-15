@@ -4,7 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"time"
 
+	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/segmentio/ksuid"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -22,8 +28,13 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func NewUserDeviceService(dbs func() *db.ReaderWriter, hardwareTemplateService autopi.HardwareTemplateService, logger *zerolog.Logger) pb.UserDeviceServiceServer {
-	return &userDeviceService{dbs: dbs, logger: logger, hardwareTemplateService: hardwareTemplateService}
+func NewUserDeviceService(dbs func() *db.ReaderWriter, hardwareTemplateService autopi.HardwareTemplateService, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, eventService services.EventService) pb.UserDeviceServiceServer {
+	return &userDeviceService{dbs: dbs,
+		logger:                  logger,
+		hardwareTemplateService: hardwareTemplateService,
+		deviceDefSvc:            deviceDefSvc,
+		eventService:            eventService,
+	}
 }
 
 type userDeviceService struct {
@@ -31,6 +42,8 @@ type userDeviceService struct {
 	dbs                     func() *db.ReaderWriter
 	hardwareTemplateService autopi.HardwareTemplateService
 	logger                  *zerolog.Logger
+	deviceDefSvc            services.DeviceDefinitionService
+	eventService            services.EventService
 }
 
 func (s *userDeviceService) GetUserDevice(ctx context.Context, req *pb.GetUserDeviceRequest) (*pb.UserDevice, error) {
@@ -114,7 +127,76 @@ func (s *userDeviceService) CreateTemplate(_ context.Context, req *pb.CreateTemp
 	return resp, err
 }
 
-// nolint
+func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *pb.RegisterUserDeviceFromVINRequest) (*pb.RegisterUserDeviceFromVINResponse, error) {
+	resp, err := s.deviceDefSvc.DecodeVIN(ctx, req.Vin)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if len(resp.DeviceDefinitionId) == 0 {
+		s.logger.Warn().
+			Str("vin", req.Vin).
+			Str("user_id", req.UserDeviceId).
+			Msg("unable to decode vin for customer request to create vehicle")
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// attach device def to user
+	dd, err := s.deviceDefSvc.GetDeviceDefinitionByID(ctx, resp.DeviceDefinitionId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	tx, err := s.dbs().Writer.DB.BeginTx(ctx, nil)
+	defer tx.Rollback() //nolint
+	if err != nil {
+		return nil, err
+	}
+
+	userDeviceID := ksuid.New().String()
+	// register device for the user
+	ud := models.UserDevice{
+		ID:                 userDeviceID,
+		UserID:             req.UserDeviceId,
+		DeviceDefinitionID: dd.DeviceDefinitionId,
+		CountryCode:        null.StringFrom(req.CountryCode),
+		VinIdentifier:      null.StringFrom(req.Vin),
+	}
+	err = ud.Insert(ctx, tx, boil.Infer())
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Errorf("could not create user device for def_id: %s", dd.DeviceDefinitionId).Error())
+	}
+
+	err = tx.Commit() // commmit the transaction
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// todo call devide definitions to check and pull image for this device in case don't have one
+	err = s.eventService.Emit(&services.Event{
+		Type:    constants.UserDeviceCreationEventType,
+		Subject: req.UserDeviceId,
+		Source:  "devices-api",
+		Data: services.UserDeviceEvent{
+			Timestamp: time.Now(),
+			UserID:    req.UserDeviceId,
+			Device: services.UserDeviceEventDevice{
+				ID:    userDeviceID,
+				Make:  dd.Make.Name,
+				Model: dd.Type.Model,
+				Year:  int(dd.Type.Year), // Odd.
+			},
+		},
+	})
+
+	if err != nil {
+		s.logger.Err(err).Msg("Failed emitting device creation event")
+	}
+
+	return &pb.RegisterUserDeviceFromVINResponse{Created: true}, err
+}
+
+//nolint:all
 func (s *userDeviceService) GetUserDeviceByAutoPIUnitId(ctx context.Context, req *pb.GetUserDeviceByAutoPIUnitIdRequest) (*pb.UserDeviceAutoPIUnitResponse, error) {
 	dbDevice, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.AutopiUnitID.EQ(null.StringFrom(req.Id)),
