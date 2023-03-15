@@ -300,7 +300,10 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	}
 
 	errorCodesLimit := 100
-	if len(req.ErrorCodes) > errorCodesLength {
+	if len(req.ErrorCodes) == 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "No error codes provided")
+	}
+	if len(req.ErrorCodes) > errorCodesLimit {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Too many error codes. Error codes list must be %d or below in length.", errorCodesLimit))
 	}
 
@@ -312,7 +315,8 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 
 	chtResp, err := udc.openAI.GetErrorCodesDescription(dd.Type.Make, dd.Type.Model, dd.Type.Year, req.ErrorCodes)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		udc.log.Err(err).Interface("requestBody", req).Msg("Error occurred fetching description for error codes")
+		return fiber.NewError(fiber.StatusInternalServerError, "error occurred fetching description for error codes")
 	}
 
 	return c.JSON(&QueryDeviceErrorCodesResponse{

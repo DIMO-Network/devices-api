@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -107,7 +108,7 @@ func (o openAI) GetErrorCodesDescription(make, model string, year int32, errorCo
 	}
 
 	if len(r.Choices) == 0 {
-		return "", nil
+		return "", errors.New("could not fetch description for error codes")
 	}
 
 	c := r.Choices[0]
