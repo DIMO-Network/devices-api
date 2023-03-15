@@ -299,7 +299,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	errorCodesLength := 100
+	errorCodesLimit := 100
 	if len(req.ErrorCodes) > errorCodesLength {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Too many error codes. Error codes must be %d and blow", errorCodesLength))
 	}
