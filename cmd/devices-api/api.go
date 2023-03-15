@@ -272,7 +272,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Delete("/documents/:id", documentsController.DeleteDocument)
 	v1Auth.Get("/documents/:id/download", documentsController.DownloadDocument)
 
-	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger)
+	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService)
 
 	logger.Info().Msg("Server started on port " + settings.Port)
 	// Start Server from a different go routine
@@ -310,7 +310,8 @@ func healthCheck(c *fiber.Ctx) error {
 	return nil
 }
 
-func startGRPCServer(settings *config.Settings, dbs func() *db.ReaderWriter, hardwareTemplateService autopi.HardwareTemplateService, logger *zerolog.Logger) {
+func startGRPCServer(settings *config.Settings, dbs func() *db.ReaderWriter,
+	hardwareTemplateService autopi.HardwareTemplateService, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, eventService services.EventService) {
 	lis, err := net.Listen("tcp", ":"+settings.GRPCPort)
 	if err != nil {
 		logger.Fatal().Err(err).Msgf("Couldn't listen on gRPC port %s", settings.GRPCPort)
@@ -318,7 +319,7 @@ func startGRPCServer(settings *config.Settings, dbs func() *db.ReaderWriter, har
 
 	logger.Info().Msgf("Starting gRPC server on port %s", settings.GRPCPort)
 	server := grpc.NewServer()
-	pb.RegisterUserDeviceServiceServer(server, api.NewUserDeviceService(dbs, hardwareTemplateService, logger))
+	pb.RegisterUserDeviceServiceServer(server, api.NewUserDeviceService(dbs, hardwareTemplateService, logger, deviceDefSvc, eventService))
 	pb.RegisterAftermarketDeviceServiceServer(server, api.NewAftermarketDeviceService(dbs, logger))
 
 	if err := server.Serve(lis); err != nil {
