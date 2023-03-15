@@ -1,7 +1,5 @@
 -- +goose Up
 -- +goose StatementBegin
-SELECT 'up SQL query';
-
 CREATE TABLE devices_api.error_code_queries(
     id char(27) not null,
     user_device_id char(27)    not null,
@@ -18,7 +16,5 @@ CREATE TABLE devices_api.error_code_queries(
 
 -- +goose Down
 -- +goose StatementBegin
-SELECT 'down SQL query';
-
 DROP TABLE devices_api.error_code_queries
 -- +goose StatementEnd
