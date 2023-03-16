@@ -58,7 +58,6 @@ func NewOpenAI(logger *zerolog.Logger, c config.Settings) OpenAI {
 }
 
 func (o openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
-	var req *http.Request
 	req, err := http.NewRequest(
 		"POST",
 		o.chatGptURL,
@@ -74,15 +73,15 @@ func (o openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("received error from request: %s", string(b))
 	}
 
 	cResp := &ChatGPTResponse{}
-	err = json.NewDecoder(resp.Body).Decode(&cResp)
+	err = json.NewDecoder(resp.Body).Decode(cResp)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding response json: %w", err)
 	}
@@ -90,17 +89,17 @@ func (o openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 	return cResp, nil
 }
 
-func (o openAI) GetErrorCodesDescription(make, model string, year int32, errorCodes []string) (string, error) {
+func (o openAI) GetErrorCodesDescription(mk, model string, year int32, errorCodes []string) (string, error) {
 	codes := strings.Join(errorCodes, ", ")
 	req := fmt.Sprintf(`{
 		"model": "gpt-3.5-turbo",
 		"messages": [
 			{
-				"role": "user", 
-				"content": "Briefly summarize for me, in order, what the following error codes mean for a %s %s %d. The error codes are %s."}]
-	  		}
-	  `, make, model, year, codes)
-
+				"role": "user",
+				"content": "Briefly summarize for me, in order, what the following error codes mean for a %s %s %d. The error codes are %s."
+			}
+		]
+	}`, mk, model, year, codes)
 	r, err := o.askChatGPT(strings.NewReader(req))
 	if err != nil {
 		return "", err
