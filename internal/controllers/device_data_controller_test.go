@@ -618,7 +618,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 
 		assert.JSONEq(t,
-			fmt.Sprintf(`{"%s":[{"Codes":["P0017","P0016"],"Description":"1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.", "RequestedAt":"%s"}]}`, ud.ID, currTime.UTC().Truncate(time.Microsecond).Format(time.RFC3339Nano)),
+			fmt.Sprintf(`{"%s":[{"errorCodes":["P0017","P0016"],"description":"1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.", "requestedAt":"%s"}]}`, ud.ID, currTime.UTC().Truncate(time.Microsecond).Format(time.RFC3339Nano)),
 			string(body),
 		)
 
