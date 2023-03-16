@@ -284,7 +284,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			udc.log.Err(err).Str("userDeviceID", udi).Str("userID", userID).Msg("Error fetching user device")
-			return fiber.NewError(fiber.StatusNotFound, "could not any device with provided id")
+			return fiber.NewError(fiber.StatusNotFound, "could not find any device with provided id")
 		}
 		return err
 	}
