@@ -31,9 +31,9 @@ type QueryDeviceErrorCodesResponse struct {
 }
 
 type GetUserDevicesErrorCodeQueriesResponse struct {
-	Codes       []string
-	Description string
-	RequestedAt time.Time
+	Codes       []string  `json:"errorCodes"`
+	Description string    `json:"description"`
+	RequestedAt time.Time `json:"requestedAt"`
 }
 
 func PrepareDeviceStatusInformation(deviceData models.UserDeviceDatumSlice, privilegeIDs []int64) DeviceSnapshot {
