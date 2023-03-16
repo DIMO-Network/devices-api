@@ -75,9 +75,8 @@ func (o openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 		return nil, err
 	}
 
-	if resp != nil && resp.StatusCode != http.StatusOK {
-		defer resp.Body.Close()
-
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("received error from request: %s", string(b))
 	}
@@ -98,7 +97,7 @@ func (o openAI) GetErrorCodesDescription(make, model string, year int32, errorCo
 		"messages": [
 			{
 				"role": "user", 
-				"content": "Briefly summarize for me in order what the following error codes mean for %s %s %d. The error codes are %s"}]
+				"content": "Briefly summarize for me, in order, what the following error codes mean for a %s %s %d. The error codes are %s."}]
 	  		}
 	  `, make, model, year, codes)
 
@@ -113,7 +112,7 @@ func (o openAI) GetErrorCodesDescription(make, model string, year int32, errorCo
 
 	c := r.Choices[0]
 	if c.FinishReason != "stop" {
-		o.logger.Error().Interface("rawResponse", r).Msg("Error fetching response from chatgpt")
+		o.logger.Error().Interface("rawResponse", r).Msg("Unexpected finish_reason from ChatGPT.")
 	}
 
 	return strings.Trim(c.Message.Content, "\n"), nil
