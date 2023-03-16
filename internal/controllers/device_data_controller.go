@@ -285,11 +285,6 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
 	userID := helpers.GetUserID(c)
 
-	req := &QueryDeviceErrorCodesReq{}
-	if err := c.BodyParser(req); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
-	}
-
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
 		models.UserDeviceWhere.UserID.EQ(userID),
@@ -306,8 +301,9 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 		return helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ud.DeviceDefinitionID)
 	}
 
-	if err := c.BodyParser(&req); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	req := &QueryDeviceErrorCodesReq{}
+	if err := c.BodyParser(req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
 	}
 
 	errorCodesLimit := 100

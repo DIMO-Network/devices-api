@@ -140,9 +140,11 @@ func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *Devi
 			return fmt.Errorf("failed to update API integration: %w", err)
 		}
 
-		err := i.autoPiSvc.UpdateState(apiIntegration.ExternalID.String, apiIntegration.Status)
-		if err != nil {
-			return fmt.Errorf("failed to update status when calling autopi api for deviceId: %s", apiIntegration.ExternalID.String)
+		if integration.Vendor == constants.AutoPiVendor {
+			err := i.autoPiSvc.UpdateState(apiIntegration.ExternalID.String, apiIntegration.Status)
+			if err != nil {
+				return fmt.Errorf("failed to update status when calling autopi api for deviceId: %s", apiIntegration.ExternalID.String)
+			}
 		}
 	}
 

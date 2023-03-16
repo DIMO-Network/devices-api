@@ -58,7 +58,6 @@ func NewOpenAI(logger *zerolog.Logger, c config.Settings) OpenAI {
 }
 
 func (o openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
-	var req *http.Request
 	req, err := http.NewRequest(
 		"POST",
 		o.chatGptURL,

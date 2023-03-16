@@ -1282,7 +1282,11 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
+<<<<<<< HEAD
                             "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.QueryDeviceErrorCodesReq"
+=======
+                            "$ref": "#/definitions/internal_controllers.QueryDeviceErrorCodesReq"
+>>>>>>> main
                         }
                     }
                 ],
@@ -1290,7 +1294,11 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
+<<<<<<< HEAD
                             "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.QueryDeviceErrorCodesResponse"
+=======
+                            "$ref": "#/definitions/internal_controllers.QueryDeviceErrorCodesResponse"
+>>>>>>> main
                         }
                     }
                 }
@@ -2640,6 +2648,7 @@ const docTemplate = `{
                 }
             }
         },
+<<<<<<< HEAD
         "github_com_DIMO-Network_devices-api_internal_controllers.GetUserDevicesErrorCodeQueriesResponse": {
             "type": "object",
             "properties": {
@@ -2654,6 +2663,8 @@ const docTemplate = `{
                 }
             }
         },
+=======
+>>>>>>> main
         "github_com_DIMO-Network_devices-api_internal_controllers.MintRequest": {
             "type": "object",
             "required": [
