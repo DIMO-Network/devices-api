@@ -68,7 +68,7 @@ func (o openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer " + o.token))
+	req.Header.Set("Authorization", "Bearer "+o.token)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
