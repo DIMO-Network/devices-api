@@ -298,9 +298,12 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
 	}
 
-	errorCodesLength := 100
-	if len(req.ErrorCodes) > errorCodesLength {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Too many error codes. Error codes must be %d and blow", errorCodesLength))
+	errorCodesLimit := 100
+	if len(req.ErrorCodes) == 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "No error codes provided")
+	}
+	if len(req.ErrorCodes) > errorCodesLimit {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Too many error codes. Error codes list must be %d or below in length.", errorCodesLimit))
 	}
 
 	for _, v := range req.ErrorCodes {
@@ -311,6 +314,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 
 	chtResp, err := udc.openAI.GetErrorCodesDescription(dd.Type.Make, dd.Type.Model, dd.Type.Year, req.ErrorCodes)
 	if err != nil {
+		udc.log.Err(err).Interface("requestBody", req).Msg("Error occurred fetching description for error codes")
 		return err
 	}
 
