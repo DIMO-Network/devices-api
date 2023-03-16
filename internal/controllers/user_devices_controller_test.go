@@ -87,7 +87,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), nil,
-		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, s.drivlyTaskSvc, nil, s.redisClient)
+		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, s.drivlyTaskSvc, nil, s.redisClient, nil)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUser)
 	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUserFromVIN)
