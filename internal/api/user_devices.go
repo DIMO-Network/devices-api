@@ -115,7 +115,7 @@ func (s *userDeviceService) CreateTemplate(ctx context.Context, req *pb.CreateTe
 }
 
 //nolint:all
-func (s *userDeviceService) GetUserDeviceByAutoPIUnitID(ctx context.Context, req *pb.GetUserDeviceByAutoPIUnitIdRequest) (*pb.UserDeviceAutoPIUnitResponse, error) {
+func (s *userDeviceService) GetUserDeviceByAutoPIUnitId(ctx context.Context, req *pb.GetUserDeviceByAutoPIUnitIdRequest) (*pb.UserDeviceAutoPIUnitResponse, error) {
 	dbDevice, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.AutopiUnitID.EQ(null.StringFrom(req.Id)),
 		qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
