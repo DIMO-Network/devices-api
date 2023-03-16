@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -67,7 +68,7 @@ func (o openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", o.token))
+	req.Header.Set("Authorization", "Bearer "+o.token)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -107,7 +108,7 @@ func (o openAI) GetErrorCodesDescription(make, model string, year int32, errorCo
 	}
 
 	if len(r.Choices) == 0 {
-		return "", nil
+		return "", errors.New("could not fetch description for error codes")
 	}
 
 	c := r.Choices[0]

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -365,7 +364,7 @@ func TestUserDevicesController_ShouldErrorOnTooManyErrorCodes(t *testing.T) {
 
 		assert.Equal(t, fiber.StatusBadRequest, response.StatusCode)
 		assert.Equal(t,
-			"Too many error codes. Error codes must be 100 and blow",
+			"Too many error codes. Error codes list must be 100 or below in length.",
 			string(body),
 		)
 
@@ -430,6 +429,70 @@ func TestUserDevicesController_ShouldErrorInvalidErrorCodes(t *testing.T) {
 		assert.Equal(t, fiber.StatusBadRequest, response.StatusCode)
 		assert.Equal(t,
 			"Invalid error code P@$09",
+			string(body),
+		)
+
+		//teardown
+		test.TruncateTables(pdb.DBS().Writer.DB, t)
+	})
+}
+
+func TestUserDevicesController_ShouldErrorOnEmptyErrorCodes(t *testing.T) {
+
+	mockDeps := createMockDependencies(t)
+	defer mockDeps.mockCtrl.Finish()
+
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	testUserID := "123123"
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.nhtsaService, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, mockDeps.autoPiTaskSvc, nil, nil, mockDeps.drivlyTaskSvc, nil, nil, mockDeps.openAISvc)
+	app := fiber.New()
+	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID), c.QueryDeviceErrorCodes)
+
+	t.Run("POST - get description for query codes", func(t *testing.T) {
+
+		req := QueryDeviceErrorCodesReq{
+			ErrorCodes: []string{},
+		}
+
+		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
+		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, pdb)
+
+		mockDeps.deviceDefSvc.
+			EXPECT().
+			GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).
+			Return(&grpc.GetDeviceDefinitionItemResponse{
+				Type: &grpc.DeviceType{
+					Make:  "Toyota",
+					Model: "Camry",
+					Year:  2023,
+				},
+			}, nil).
+			AnyTimes()
+
+		chatGptResp := "1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat."
+		mockDeps.openAISvc.
+			EXPECT().
+			GetErrorCodesDescription(gomock.Eq("Toyota"), gomock.Eq("Camry"), gomock.Eq(int32(2023)), gomock.Eq(req.ErrorCodes)).
+			Return(chatGptResp, nil).
+			AnyTimes()
+
+		j, _ := json.Marshal(req)
+
+		request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/error-codes", string(j))
+		response, _ := app.Test(request)
+		body, _ := io.ReadAll(response.Body)
+
+		assert.Equal(t, fiber.StatusBadRequest, response.StatusCode)
+		assert.Equal(t,
+			"No error codes provided",
 			string(body),
 		)
 
@@ -536,11 +599,13 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 
 		erCodes := []string{"P0017", "P0016"}
 
+		currTime := time.Now()
 		erCodeQuery := models.ErrorCodeQuery{
 			ID:            ksuid.New().String(),
 			UserDeviceID:  ud.ID,
 			ErrorCodes:    erCodes,
 			QueryResponse: "1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+			CreatedAt:     currTime,
 		}
 
 		err := erCodeQuery.Insert(ctx, pdb.DBS().Writer, boil.Infer())
@@ -552,10 +617,8 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 
-		log.Println(string(body))
-
-		assert.Equal(t,
-			fmt.Sprintf(`{"%s":[{"Codes":["P0017","P0016"],"Description":"1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat."}]}`, ud.ID),
+		assert.JSONEq(t,
+			fmt.Sprintf(`{"%s":[{"Codes":["P0017","P0016"],"Description":"1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.", "RequestedAt":"%s"}]}`, ud.ID, currTime.UTC().Format(time.RFC3339Nano)),
 			string(body),
 		)
 

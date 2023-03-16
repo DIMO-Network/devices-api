@@ -296,8 +296,8 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			udc.log.Err(err).Msg("Error fetching user")
-			return fiber.NewError(fiber.StatusNotFound, "could not fetch user")
+			udc.log.Err(err).Str("userDeviceID", udi).Str("userID", userID).Msg("Error fetching user device")
+			return fiber.NewError(fiber.StatusNotFound, "could not any device with provided id")
 		}
 		return err
 	}
@@ -311,9 +311,12 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	errorCodesLength := 100
-	if len(req.ErrorCodes) > errorCodesLength {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Too many error codes. Error codes must be %d and blow", errorCodesLength))
+	errorCodesLimit := 100
+	if len(req.ErrorCodes) == 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "No error codes provided")
+	}
+	if len(req.ErrorCodes) > errorCodesLimit {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Too many error codes. Error codes list must be %d or below in length.", errorCodesLimit))
 	}
 
 	for _, v := range req.ErrorCodes {
@@ -324,7 +327,8 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 
 	chtResp, err := udc.openAI.GetErrorCodesDescription(dd.Type.Make, dd.Type.Model, dd.Type.Year, req.ErrorCodes)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		udc.log.Err(err).Interface("requestBody", req).Msg("Error occurred fetching description for error codes")
+		return fiber.NewError(fiber.StatusInternalServerError, "error occurred fetching description for error codes")
 	}
 
 	q := &models.ErrorCodeQuery{ID: ksuid.New().String(), UserDeviceID: udi, ErrorCodes: req.ErrorCodes, QueryResponse: chtResp}
