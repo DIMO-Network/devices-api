@@ -75,6 +75,7 @@ env:
   VEHICLE_NFT_ADDRESS: '0x90c4d6113ec88dd4bdf12f26db2b3998fd13a144'
   AUTOPI_NFT_IMAGE: autopi.png
   VINCARIO_API_URL: https://api.vindecoder.eu/3.2
+  CHATGPT_URL: https://api.openai.com/v1/completions
 service:
   type: ClusterIP
   ports:
