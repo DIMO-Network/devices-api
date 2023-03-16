@@ -7,12 +7,14 @@ var TableNames = struct {
 	AutopiJobs                string
 	AutopiUnits               string
 	DeviceCommandRequests     string
+	ErrorCodeQueries          string
 	ExternalVinData           string
 	Geofences                 string
 	MetaTransactionRequests   string
 	NFTPrivileges             string
 	UserDeviceAPIIntegrations string
 	UserDeviceData            string
+	UserDevicePrivileges      string
 	UserDeviceToGeofence      string
 	UserDevices               string
 	VehicleNFTS               string
@@ -20,12 +22,14 @@ var TableNames = struct {
 	AutopiJobs:                "autopi_jobs",
 	AutopiUnits:               "autopi_units",
 	DeviceCommandRequests:     "device_command_requests",
+	ErrorCodeQueries:          "error_code_queries",
 	ExternalVinData:           "external_vin_data",
 	Geofences:                 "geofences",
 	MetaTransactionRequests:   "meta_transaction_requests",
 	NFTPrivileges:             "nft_privileges",
 	UserDeviceAPIIntegrations: "user_device_api_integrations",
 	UserDeviceData:            "user_device_data",
+	UserDevicePrivileges:      "user_device_privileges",
 	UserDeviceToGeofence:      "user_device_to_geofence",
 	UserDevices:               "user_devices",
 	VehicleNFTS:               "vehicle_nfts",

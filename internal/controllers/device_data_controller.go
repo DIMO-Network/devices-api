@@ -14,8 +14,10 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
+	"github.com/segmentio/ksuid"
 	smartcar "github.com/smartcar/go-sdk"
 	"github.com/tidwall/gjson"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
 )
@@ -26,6 +28,12 @@ type QueryDeviceErrorCodesReq struct {
 
 type QueryDeviceErrorCodesResponse struct {
 	Message string `json:"message"`
+}
+
+type GetUserDevicesErrorCodeQueriesResponse struct {
+	Codes       []string  `json:"errorCodes"`
+	Description string    `json:"description"`
+	RequestedAt time.Time `json:"requestedAt"`
 }
 
 func PrepareDeviceStatusInformation(deviceData models.UserDeviceDatumSlice, privilegeIDs []int64) DeviceSnapshot {
@@ -318,9 +326,52 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 		return err
 	}
 
+	q := &models.ErrorCodeQuery{ID: ksuid.New().String(), UserDeviceID: udi, ErrorCodes: req.ErrorCodes, QueryResponse: chtResp}
+	err = q.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
+
+	if err != nil {
+		// TODO - should we return an error for this or just log it
+		udc.log.Err(err).Msg("Could not save user query response")
+	}
+
 	return c.JSON(&QueryDeviceErrorCodesResponse{
 		Message: chtResp,
 	})
+}
+
+// GetUserDevicesErrorCodeQueries godoc
+// @Description Returns all error codes queries for user devices
+// @Tags        user-devices
+// @Success     200 {object} controllers.GetUserDevicesErrorCodeQueriesResponse
+// @Security    BearerAuth
+// @Router      /user/devices/error-codes [get]
+func (udc *UserDevicesController) GetUserDevicesErrorCodeQueries(c *fiber.Ctx) error {
+	userID := helpers.GetUserID(c)
+
+	userDevices, err := models.UserDevices(
+		models.UserDeviceWhere.UserID.EQ(userID),
+		qm.Load(models.UserDeviceRels.ErrorCodeQueries, qm.OrderBy("created_at desc")),
+	).All(c.Context(), udc.DBS().Reader)
+	if err != nil {
+		return err
+	}
+
+	resp := map[string][]GetUserDevicesErrorCodeQueriesResponse{}
+
+	for _, userDevice := range userDevices {
+		ud := []GetUserDevicesErrorCodeQueriesResponse{}
+		for _, erc := range userDevice.R.ErrorCodeQueries {
+			ud = append(ud, GetUserDevicesErrorCodeQueriesResponse{
+				Codes:       erc.ErrorCodes,
+				Description: erc.QueryResponse,
+				RequestedAt: erc.CreatedAt,
+			})
+		}
+
+		resp[userDevice.ID] = ud
+	}
+
+	return c.JSON(resp)
 }
 
 // DeviceSnapshot is the response object for device status endpoint
