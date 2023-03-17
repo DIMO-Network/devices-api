@@ -14,7 +14,7 @@ import (
 )
 
 type OpenAI interface {
-	GetErrorCodesDescription(make, model string, year int32, errorCodes []string) (string, error)
+	GetErrorCodesDescription(make, model string, errorCodes []string) (string, error)
 }
 
 type openAI struct {
@@ -89,16 +89,16 @@ func (o openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 	return cResp, nil
 }
 
-func (o openAI) GetErrorCodesDescription(make, model string, year int32, errorCodes []string) (string, error) {
+func (o openAI) GetErrorCodesDescription(make, model string, errorCodes []string) (string, error) {
 	codes := strings.Join(errorCodes, ", ")
 	req := fmt.Sprintf(`{
 		"model": "gpt-3.5-turbo",
 		"messages": [
 			{
 				"role": "user", 
-				"content": "Briefly summarize for me, in order, what the following error codes mean for a %s %s %d. The error codes are %s."}]
+				"content": "Briefly summarize for me, in order, what the following error codes mean for a %s %s. The error codes are %s."}]
 	  		}
-	  `, make, model, year, codes)
+	  `, make, model, codes)
 
 	r, err := o.askChatGPT(strings.NewReader(req))
 	if err != nil {

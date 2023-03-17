@@ -34,16 +34,16 @@ func (m *MockOpenAI) EXPECT() *MockOpenAIMockRecorder {
 }
 
 // GetErrorCodesDescription mocks base method.
-func (m *MockOpenAI) GetErrorCodesDescription(make, model string, year int32, errorCodes []string) (string, error) {
+func (m *MockOpenAI) GetErrorCodesDescription(make, model string, errorCodes []string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetErrorCodesDescription", make, model, year, errorCodes)
+	ret := m.ctrl.Call(m, "GetErrorCodesDescription", make, model, errorCodes)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetErrorCodesDescription indicates an expected call of GetErrorCodesDescription.
-func (mr *MockOpenAIMockRecorder) GetErrorCodesDescription(make, model, year, errorCodes interface{}) *gomock.Call {
+func (mr *MockOpenAIMockRecorder) GetErrorCodesDescription(make, model, errorCodes interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetErrorCodesDescription", reflect.TypeOf((*MockOpenAI)(nil).GetErrorCodesDescription), make, model, year, errorCodes)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetErrorCodesDescription", reflect.TypeOf((*MockOpenAI)(nil).GetErrorCodesDescription), make, model, errorCodes)
 }
