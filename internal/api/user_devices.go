@@ -144,21 +144,46 @@ func (s *userDeviceService) GetUserDeviceByAutoPIUnitId(ctx context.Context, req
 func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, empty *emptypb.Empty) (*pb.ValuationResponse, error) {
 	query := `select sum(evd.retail_price) as total from
                              (
-select distinct on (vin) vin, pricing_metadata, jsonb_path_query(evd.pricing_metadata, '$.retail.kelley.book')::decimal as retail_price, created_at
-       from external_vin_data evd order by vin, created_at desc) as evd;`
+								select distinct on (vin) vin, 
+														pricing_metadata, 
+														jsonb_path_query(evd.pricing_metadata, '$.retail.kelley.book')::decimal as retail_price, 
+														created_at
+       							from external_vin_data evd 
+								order by vin, created_at desc
+							) as evd;`
+
+	queryGrowth := `select sum(evd.retail_price) as total from
+						(
+							select distinct on (vin) vin, 
+													pricing_metadata, 
+													jsonb_path_query(evd.pricing_metadata, '$.retail.kelley.book')::decimal as retail_price, 
+													created_at
+							from external_vin_data evd 
+							order by vin, created_at desc
+							where created_at > current_date - 7
+						) as evd;`
 
 	type Result struct {
 		Total float64 `boil:"total"`
 	}
-	var obj Result
-	err := queries.Raw(query).Bind(ctx, s.dbs().Reader, &obj)
+	var total Result
+	var lastWeek Result
+
+	err := queries.Raw(query).Bind(ctx, s.dbs().Reader, &total)
 	if err != nil {
 		s.logger.Err(err).Msg("Database failure retrieving total valuation.")
 		return nil, status.Error(codes.Internal, "Internal error.")
 	}
+
+	err = queries.Raw(queryGrowth).Bind(ctx, s.dbs().Reader, &lastWeek)
+	if err != nil {
+		s.logger.Err(err).Msg("Database failure retrieving last week valuation.")
+		return nil, status.Error(codes.Internal, "Internal error.")
+	}
+
 	// todo: get an average valuation per vehicle, and multiply for whatever count of vehicles we did not get value for
 
-	return &pb.ValuationResponse{Total: float32(obj.Total)}, nil
+	return &pb.ValuationResponse{Total: float32(total.Total), GrowthPercentage: (float32(lastWeek.Total) / float32(total.Total)) * 100}, nil
 }
 
 func (s *userDeviceService) deviceModelToAPI(device *models.UserDevice) *pb.UserDevice {
