@@ -114,11 +114,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	app.Get("/", healthCheck)
 
 	v1 := app.Group("/v1")
-	sc := swagger.Config{ // custom
-		// Expand ("list") or Collapse ("none") tag groups by default
-		//DocExpansion: "list",
-	}
-	v1.Get("/swagger/*", swagger.New(sc))
+
+	v1.Get("/swagger/*", swagger.HandlerDefault)
 	// Device Definitions
 	v1.Get("/device-definitions/:id", cacheHandler, deviceControllers.GetDeviceDefinitionByID)
 	v1.Get("/device-definitions/:id/integrations", cacheHandler, deviceControllers.GetDeviceIntegrationsByID)
