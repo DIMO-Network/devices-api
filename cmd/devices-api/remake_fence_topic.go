@@ -36,11 +36,12 @@ func (*remakeFenceTopicCmd) Usage() string {
   `
 }
 
+// nolint
 func (p *remakeFenceTopicCmd) SetFlags(f *flag.FlagSet) {
 
 }
 
-func (p *remakeFenceTopicCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+func (p *remakeFenceTopicCmd) Execute(_ context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	p.producer = p.container.getKafkaProducer()
 	err := remakeFenceTopic(&p.settings, p.pdb, p.producer)
 	if err != nil {

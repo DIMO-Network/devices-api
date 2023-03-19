@@ -29,11 +29,12 @@ func (*updateStateCmd) Usage() string {
   `
 }
 
+// nolint
 func (p *updateStateCmd) SetFlags(f *flag.FlagSet) {
 
 }
 
-func (p *updateStateCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+func (p *updateStateCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 
 	autoPiSvc := services.NewAutoPiAPIService(&p.settings, p.pdb.DBS)
 	err := updateState(ctx, p.pdb, &p.logger, autoPiSvc)

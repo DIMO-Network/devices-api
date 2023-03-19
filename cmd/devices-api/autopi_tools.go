@@ -29,11 +29,12 @@ func (*autopiToolsCmd) Usage() string {
   `
 }
 
+// nolint
 func (p *autopiToolsCmd) SetFlags(f *flag.FlagSet) {
 
 }
 
-func (p *autopiToolsCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+func (p *autopiToolsCmd) Execute(_ context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	autoPiSvc := services.NewAutoPiAPIService(&p.settings, p.pdb.DBS)
 	autopiTools(os.Args, autoPiSvc)
 

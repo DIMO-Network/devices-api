@@ -35,11 +35,12 @@ func (*remakeAutoPiTopicCmd) Usage() string {
   `
 }
 
+// nolint
 func (p *remakeAutoPiTopicCmd) SetFlags(f *flag.FlagSet) {
 
 }
 
-func (p *remakeAutoPiTopicCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+func (p *remakeAutoPiTopicCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	p.producer = p.container.getKafkaProducer()
 	err := remakeAutoPiTopic(ctx, p.pdb, p.producer, p.ddSvc)
 	if err != nil {

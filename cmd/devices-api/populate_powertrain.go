@@ -30,11 +30,12 @@ func (*populateUSAPowertrainCmd) Usage() string {
   `
 }
 
+// nolint
 func (p *populateUSAPowertrainCmd) SetFlags(f *flag.FlagSet) {
 
 }
 
-func (p *populateUSAPowertrainCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+func (p *populateUSAPowertrainCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	p.logger.Info().Msg("Populating USA powertrain data from VINs")
 	err := populateUSAPowertrain(ctx, &p.logger, p.pdb, p.nhtsaService)
 	if err != nil {

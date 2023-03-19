@@ -60,12 +60,12 @@ func TestVinValidation(t *testing.T) {
 					return
 				}
 				log.Fatalf("expected test to pass but instead saw an error: %v", err)
-			} else {
-				if c.ExpectedResult == "pass" {
-					return
-				}
-				log.Fatal("expected test to fail but it passed")
 			}
+
+			if c.ExpectedResult == "pass" {
+				return
+			}
+			log.Fatal("expected test to fail but it passed")
 		})
 	}
 }
@@ -259,45 +259,54 @@ func (t testDeviceDefSvc) GetDeviceDefinitionByID(ctx context.Context, id string
 	return dd[0], err
 }
 
+// nolint
 func (t testDeviceDefSvc) PullVincarioValuation(ctx context.Context, userDeiceID, deviceDefinitionID, vin string) (DataPullStatusEnum, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testDeviceDefSvc) DecodeVIN(ctx context.Context, vin string) (*ddgrpc.DecodeVinResponse, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testDeviceDefSvc) FindDeviceDefinitionByMMY(ctx context.Context, mk, model string, year int) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testDeviceDefSvc) CheckAndSetImage(ctx context.Context, dd *ddgrpc.GetDeviceDefinitionItemResponse, overwrite bool) error {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testDeviceDefSvc) UpdateDeviceDefinitionFromNHTSA(ctx context.Context, deviceDefinitionID string, vin string) error {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testDeviceDefSvc) PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string, forceSetAll bool) (DataPullStatusEnum, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testDeviceDefSvc) GetMakeByTokenID(ctx context.Context, tokenID *big.Int) (*ddgrpc.DeviceMake, error) {
 	return nil, nil
 }
 
+// nolint
 func (t testDeviceDefSvc) PullBlackbookData(ctx context.Context, userDeviceID, deviceDefinitionID string, vin string) error {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testDeviceDefSvc) GetOrCreateMake(ctx context.Context, tx boil.ContextExecutor, makeName string) (*ddgrpc.DeviceMake, error) {
 	//TODO implement me
 	panic("implement me")
@@ -305,7 +314,7 @@ func (t testDeviceDefSvc) GetOrCreateMake(ctx context.Context, tx boil.ContextEx
 
 var testDeviceDefs []*ddgrpc.GetDeviceDefinitionItemResponse
 
-func (t testDeviceDefSvc) GetDeviceDefinitionsByIDs(ctx context.Context, ids []string) ([]*ddgrpc.GetDeviceDefinitionItemResponse, error) {
+func (t testDeviceDefSvc) GetDeviceDefinitionsByIDs(_ context.Context, _ []string) ([]*ddgrpc.GetDeviceDefinitionItemResponse, error) {
 	if len(testDeviceDefs) > 0 {
 		return testDeviceDefs, nil
 	}
@@ -316,7 +325,7 @@ func (t testDeviceDefSvc) GetDeviceDefinitionsByIDs(ctx context.Context, ids []s
 
 var testIntegs []*ddgrpc.Integration
 
-func (t testDeviceDefSvc) GetIntegrations(ctx context.Context) ([]*ddgrpc.Integration, error) {
+func (t testDeviceDefSvc) GetIntegrations(_ context.Context) ([]*ddgrpc.Integration, error) {
 	if len(testIntegs) > 0 {
 		return testIntegs, nil
 	}
@@ -325,21 +334,25 @@ func (t testDeviceDefSvc) GetIntegrations(ctx context.Context) ([]*ddgrpc.Integr
 	return testIntegs, nil
 }
 
+// nolint
 func (t testDeviceDefSvc) GetIntegrationByID(ctx context.Context, id string) (*ddgrpc.Integration, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testDeviceDefSvc) GetIntegrationByVendor(ctx context.Context, vendor string) (*ddgrpc.Integration, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testDeviceDefSvc) GetIntegrationByFilter(ctx context.Context, integrationType string, vendor string, style string) (*ddgrpc.Integration, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testDeviceDefSvc) CreateIntegration(ctx context.Context, integrationType string, vendor string, style string) (*ddgrpc.Integration, error) {
 	//TODO implement me
 	panic("implement me")
@@ -348,91 +361,109 @@ func (t testDeviceDefSvc) CreateIntegration(ctx context.Context, integrationType
 type testAutoPISvc struct {
 }
 
+// nolint
 func (t testAutoPISvc) GetUserDeviceIntegrationByUnitID(ctx context.Context, unitID string) (*models.UserDeviceAPIIntegration, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testAutoPISvc) GetDeviceByUnitID(unitID string) (*AutoPiDongleDevice, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testAutoPISvc) GetDeviceByID(deviceID string) (*AutoPiDongleDevice, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testAutoPISvc) GetDeviceByEthAddress(ethAddress string) (*AutoPiDongleDevice, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testAutoPISvc) PatchVehicleProfile(vehicleID int, profile PatchVehicleProfile) error {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testAutoPISvc) UnassociateDeviceTemplate(deviceID string, templateID int) error {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testAutoPISvc) AssociateDeviceToTemplate(deviceID string, templateID int) error {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testAutoPISvc) CreateNewTemplate(templateName string, parent int, description string) (int, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testAutoPISvc) AddDefaultPIDsToTemplate(templateID int) error {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testAutoPISvc) SetTemplateICEPowerSettings(templateID int) error {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testAutoPISvc) ApplyTemplate(deviceID string, templateID int) error {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testAutoPISvc) CommandQueryVIN(ctx context.Context, unitID, deviceID, userDeviceID string) (*AutoPiCommandResponse, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testAutoPISvc) CommandSyncDevice(ctx context.Context, unitID, deviceID, userDeviceID string) (*AutoPiCommandResponse, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testAutoPISvc) CommandRaw(ctx context.Context, unitID, deviceID, command, userDeviceID string) (*AutoPiCommandResponse, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testAutoPISvc) GetCommandStatus(ctx context.Context, jobID string) (*AutoPiCommandJob, *models.AutopiJob, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testAutoPISvc) GetCommandStatusFromAutoPi(deviceID string, jobID string) ([]byte, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testAutoPISvc) UpdateJob(ctx context.Context, jobID, newState string, result *AutoPiCommandResult) (*models.AutopiJob, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// nolint
 func (t testAutoPISvc) UpdateState(deviceID string, state string) error {
 	return nil
 }

@@ -36,11 +36,12 @@ func (*remakeDeviceDefinitionTopicsCmd) Usage() string {
   `
 }
 
+// nolint
 func (p *remakeDeviceDefinitionTopicsCmd) SetFlags(f *flag.FlagSet) {
 
 }
 
-func (p *remakeDeviceDefinitionTopicsCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+func (p *remakeDeviceDefinitionTopicsCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	p.producer = p.container.getKafkaProducer()
 	err := remakeDeviceDefinitionTopics(ctx, &p.settings, p.pdb, p.producer, &p.logger, p.ddSvc)
 	if err != nil {

@@ -40,11 +40,12 @@ func (*setCommandCompatibilityCmd) Usage() string {
   `
 }
 
+// nolint
 func (p *setCommandCompatibilityCmd) SetFlags(f *flag.FlagSet) {
 
 }
 
-func (p *setCommandCompatibilityCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+func (p *setCommandCompatibilityCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 
 	p.eventService = services.NewEventService(&p.logger, &p.settings, p.container.getKafkaProducer())
 	err := setCommandCompatibility(ctx, &p.settings, p.pdb, p.ddSvc)
@@ -63,7 +64,10 @@ func setCommandCompatibility(ctx context.Context, settings *config.Settings, pdb
 	if err := setCommandCompatTesla(ctx, pdb, ddSvc); err != nil {
 		return err
 	}
-	if err := setCommandCompatSmartcar(ctx, settings, pdb, ddSvc); err != nil {
+
+	err := setCommandCompatSmartcar(ctx, settings, pdb, ddSvc)
+
+	if err != nil {
 		return err
 	}
 

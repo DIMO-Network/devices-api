@@ -34,11 +34,12 @@ func (*remakeSmartcarTopicCmd) Usage() string {
   `
 }
 
+// nolint
 func (p *remakeSmartcarTopicCmd) SetFlags(f *flag.FlagSet) {
 
 }
 
-func (p *remakeSmartcarTopicCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+func (p *remakeSmartcarTopicCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	p.producer = p.container.getKafkaProducer()
 	err := remakeSmartcarTopic(ctx, p.pdb, p.producer, p.ddSvc)
 	if err != nil {

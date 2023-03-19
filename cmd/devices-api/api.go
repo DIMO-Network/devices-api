@@ -301,7 +301,9 @@ func healthCheck(c *fiber.Ctx) error {
 		"data": "Server is up and running",
 	}
 
-	if err := c.JSON(res); err != nil {
+	err := c.JSON(res)
+
+	if err != nil {
 		return err
 	}
 
