@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 
 	"log"
 	"math/big"
@@ -259,46 +260,49 @@ func (t testDeviceDefSvc) GetDeviceDefinitionByID(ctx context.Context, id string
 	return dd[0], err
 }
 
-func (t testDeviceDefSvc) PullVincarioValuation(ctx context.Context, userDeiceID, deviceDefinitionID, vin string) (DataPullStatusEnum, error) {
+func (t testDeviceDefSvc) PullVincarioValuation(_ context.Context, userDeiceID, deviceDefinitionID, vin string) (DataPullStatusEnum, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (t testDeviceDefSvc) DecodeVIN(ctx context.Context, vin string) (*ddgrpc.DecodeVinResponse, error) {
+func (t testDeviceDefSvc) DecodeVIN(_ context.Context, vin string) (*ddgrpc.DecodeVinResponse, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (t testDeviceDefSvc) FindDeviceDefinitionByMMY(ctx context.Context, mk, model string, year int) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
+func (t testDeviceDefSvc) FindDeviceDefinitionByMMY(_ context.Context, mk, model string, year int) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (t testDeviceDefSvc) CheckAndSetImage(ctx context.Context, dd *ddgrpc.GetDeviceDefinitionItemResponse, overwrite bool) error {
+func (t testDeviceDefSvc) CheckAndSetImage(_ context.Context, dd *ddgrpc.GetDeviceDefinitionItemResponse, overwrite bool) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (t testDeviceDefSvc) UpdateDeviceDefinitionFromNHTSA(ctx context.Context, deviceDefinitionID string, vin string) error {
+func (t testDeviceDefSvc) UpdateDeviceDefinitionFromNHTSA(_ context.Context, deviceDefinitionID string, vin string) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (t testDeviceDefSvc) PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string, forceSetAll bool) (DataPullStatusEnum, error) {
+func (t testDeviceDefSvc) PullDrivlyData(_ context.Context, userDeviceID, deviceDefinitionID, vin string, forceSetAll bool) (DataPullStatusEnum, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (t testDeviceDefSvc) GetMakeByTokenID(ctx context.Context, tokenID *big.Int) (*ddgrpc.DeviceMake, error) {
+func (t testDeviceDefSvc) GetMakeByTokenID(_ context.Context, tokenID *big.Int) (*ddgrpc.DeviceMake, error) {
 	return nil, nil
 }
 
-func (t testDeviceDefSvc) PullBlackbookData(ctx context.Context, userDeviceID, deviceDefinitionID string, vin string) error {
+func (t testDeviceDefSvc) PullBlackbookData(_ context.Context, userDeviceID, deviceDefinitionID string, vin string) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (t testDeviceDefSvc) GetOrCreateMake(ctx context.Context, tx boil.ContextExecutor, makeName string) (*ddgrpc.DeviceMake, error) {
+func (t testDeviceDefSvc) GetOrCreateMake(_ context.Context, tx boil.ContextExecutor, makeName string) (*ddgrpc.DeviceMake, error) {
+	// this is to satisfy the interface and the test
+	fmt.Println(makeName)
+	fmt.Println(tx)
 	//TODO implement me
 	panic("implement me")
 }

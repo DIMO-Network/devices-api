@@ -104,7 +104,7 @@ func (s *userDeviceService) ApplyHardwareTemplate(ctx context.Context, req *pb.A
 	return resp, err
 }
 
-func (s *userDeviceService) CreateTemplate(ctx context.Context, req *pb.CreateTemplateRequest) (*pb.CreateTemplateResponse, error) {
+func (s *userDeviceService) CreateTemplate(_ context.Context, req *pb.CreateTemplateRequest) (*pb.CreateTemplateResponse, error) {
 	resp, err := s.hardwareTemplateService.CreateTemplate(req)
 	if err != nil {
 		s.logger.Err(err).Str("template name", req.Name).Msgf("failed to create template %s", req.Name)
@@ -141,7 +141,7 @@ func (s *userDeviceService) GetUserDeviceByAutoPIUnitId(ctx context.Context, req
 	return result, nil
 }
 
-func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, empty *emptypb.Empty) (*pb.ValuationResponse, error) {
+func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *emptypb.Empty) (*pb.ValuationResponse, error) {
 	query := `select sum(evd.retail_price) as total from
                              (
 								select distinct on (vin) vin, 
@@ -212,7 +212,7 @@ func (s *userDeviceService) deviceModelToAPI(device *models.UserDevice) *pb.User
 	return out
 }
 
-func (s *userDeviceService) GetClaimedVehiclesGrowth(ctx context.Context, empty *emptypb.Empty) (*pb.ClaimedVehiclesGrowth, error) {
+func (s *userDeviceService) GetClaimedVehiclesGrowth(ctx context.Context, _ *emptypb.Empty) (*pb.ClaimedVehiclesGrowth, error) {
 	// Checking both that the nft exists and is linked to a device.
 
 	query := `select count(1)
