@@ -2074,14 +2074,15 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 		return smartcarCallErr
 	}
 
-	var cap *services.UserDeviceAPIIntegrationsMetadataCommands
+	var commands *services.UserDeviceAPIIntegrationsMetadataCommands
 
 	doorControl, err := udc.smartcarClient.HasDoorControl(c.Context(), token.Access, externalID)
 	if err != nil {
 		return smartcarCallErr
 	}
+
 	if doorControl {
-		cap = &services.UserDeviceAPIIntegrationsMetadataCommands{
+		commands = &services.UserDeviceAPIIntegrationsMetadataCommands{
 			Enabled: []string{"doors/unlock", "doors/lock"},
 		}
 	}
@@ -2089,7 +2090,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 	meta := services.UserDeviceAPIIntegrationsMetadata{
 		SmartcarUserID:    &scUserID,
 		SmartcarEndpoints: endpoints,
-		Commands:          cap,
+		Commands:          commands,
 	}
 
 	b, err := json.Marshal(meta)
@@ -2158,6 +2159,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+// nolint
 func (udc *UserDevicesController) AdminVehicleDeviceLink(c *fiber.Ctx) error {
 	return nil
 }
@@ -2441,7 +2443,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 //
 // We do not attempt to create any new entries in integrations, device_definitions, or
 // device_integrations. This should all be handled elsewhere for Tesla.
-func fixTeslaDeviceDefinition(ctx context.Context, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService, exec boil.ContextExecutor, integ *ddgrpc.Integration, ud *models.UserDevice, vin string) error {
+func fixTeslaDeviceDefinition(ctx context.Context, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService, exec boil.ContextExecutor, _ *ddgrpc.Integration, ud *models.UserDevice, vin string) error {
 	vinMake := "Tesla"
 	vinModel := shared.VIN(vin).TeslaModel()
 	vinYear := shared.VIN(vin).Year()
@@ -2470,7 +2472,7 @@ func fixTeslaDeviceDefinition(ctx context.Context, logger *zerolog.Logger, ddSvc
 //
 // We do not attempt to create any new entries in integrations, device_definitions, or
 // device_integrations. This seems too dangerous to me.
-func (udc *UserDevicesController) fixSmartcarDeviceYear(ctx context.Context, logger *zerolog.Logger, exec boil.ContextExecutor, integ *ddgrpc.Integration, ud *models.UserDevice, year int) error {
+func (udc *UserDevicesController) fixSmartcarDeviceYear(ctx context.Context, logger *zerolog.Logger, _ boil.ContextExecutor, integ *ddgrpc.Integration, ud *models.UserDevice, year int) error {
 
 	deviceDefinitionResponse, err := udc.DeviceDefSvc.GetDeviceDefinitionsByIDs(ctx, []string{ud.DeviceDefinitionID})
 

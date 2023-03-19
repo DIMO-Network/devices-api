@@ -36,11 +36,12 @@ func (*populateESDDDataCmd) Usage() string {
   `
 }
 
+// nolint
 func (p *populateESDDDataCmd) SetFlags(f *flag.FlagSet) {
 
 }
 
-func (p *populateESDDDataCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+func (p *populateESDDDataCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	err := populateESDDData(ctx, &p.settings, p.esInstance, p.pdb, &p.logger, p.ddSvc)
 	if err != nil {
 		p.logger.Fatal().Err(err).Msg("Error running elastic search dd update")

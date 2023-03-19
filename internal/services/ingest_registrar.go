@@ -81,7 +81,7 @@ func (s *ingestRegistrar) Register(externalID, userDeviceID, integrationID strin
 	return nil
 }
 
-func (s *ingestRegistrar) Deregister(smartcarID, userDeviceID, integrationID string) error {
+func (s *ingestRegistrar) Deregister(smartcarID, _, _ string) error {
 	message := &sarama.ProducerMessage{
 		Topic: s.ingestTopic,
 		Key:   sarama.StringEncoder(smartcarID),

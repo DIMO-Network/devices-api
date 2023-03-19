@@ -34,11 +34,12 @@ func (*web2PairCmd) Usage() string {
   `
 }
 
+// nolint
 func (p *web2PairCmd) SetFlags(f *flag.FlagSet) {
 
 }
 
-func (p *web2PairCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+func (p *web2PairCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 
 	p.producer = p.container.getKafkaProducer()
 

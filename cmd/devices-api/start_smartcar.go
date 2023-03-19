@@ -41,11 +41,12 @@ func (*startSmartcarFromRefreshCmd) Usage() string {
   `
 }
 
+// nolint
 func (p *startSmartcarFromRefreshCmd) SetFlags(f *flag.FlagSet) {
 
 }
 
-func (p *startSmartcarFromRefreshCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+func (p *startSmartcarFromRefreshCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 
 	p.producer = p.container.getKafkaProducer()
 

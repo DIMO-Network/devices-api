@@ -31,11 +31,12 @@ func (*stopTaskByKeyCmd) Usage() string {
   `
 }
 
+// nolint
 func (p *stopTaskByKeyCmd) SetFlags(f *flag.FlagSet) {
 
 }
 
-func (p *stopTaskByKeyCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+func (p *stopTaskByKeyCmd) Execute(_ context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 
 	p.producer = p.container.getKafkaProducer()
 

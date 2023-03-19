@@ -255,7 +255,7 @@ func (d *deviceDefinitionService) FindDeviceDefinitionByMMY(ctx context.Context,
 }
 
 // GetOrCreateMake gets the make from the db or creates it if not found. optional tx - if not passed in uses db writer
-func (d *deviceDefinitionService) GetOrCreateMake(ctx context.Context, tx boil.ContextExecutor, makeName string) (*ddgrpc.DeviceMake, error) {
+func (d *deviceDefinitionService) GetOrCreateMake(ctx context.Context, _ boil.ContextExecutor, makeName string) (*ddgrpc.DeviceMake, error) {
 	definitionsClient, conn, err := d.getDeviceDefsGrpcClient()
 	if err != nil {
 		return nil, err

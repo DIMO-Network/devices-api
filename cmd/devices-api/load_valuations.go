@@ -31,11 +31,12 @@ func (*loadValuationsCmd) Usage() string {
   `
 }
 
+// nolint
 func (p *loadValuationsCmd) SetFlags(f *flag.FlagSet) {
 
 }
 
-func (p *loadValuationsCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+func (p *loadValuationsCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	p.logger.Info().Msgf("Pull VIN info, valuations and pricing from driv.ly for USA and valuations from Vincario for EUR")
 	setAll := false
 	wmi := ""

@@ -37,7 +37,7 @@ func (p *generateEventCmd) SetFlags(f *flag.FlagSet) {
 	f.BoolVar(&p.generate, "generate", true, "generate events")
 }
 
-func (p *generateEventCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+func (p *generateEventCmd) Execute(_ context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	if !p.generate {
 		return subcommands.ExitSuccess
 	}

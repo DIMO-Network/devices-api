@@ -38,11 +38,12 @@ func (*syncDeviceTemplatesCmd) Usage() string {
   `
 }
 
+// nolint
 func (p *syncDeviceTemplatesCmd) SetFlags(f *flag.FlagSet) {
 
 }
 
-func (p *syncDeviceTemplatesCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+func (p *syncDeviceTemplatesCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	moveFromTemplateID := "10" // default
 	if len(os.Args) > 2 {
 		// parse out custom move from template ID option

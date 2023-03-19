@@ -35,11 +35,12 @@ func (*populateESRegionDataCmd) Usage() string {
   `
 }
 
+// nolint
 func (p *populateESRegionDataCmd) SetFlags(f *flag.FlagSet) {
 
 }
 
-func (p *populateESRegionDataCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+func (p *populateESRegionDataCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	err := populateESRegionData(ctx, &p.settings, p.esInstance, p.pdb, &p.logger, p.ddSvc)
 	if err != nil {
 		p.logger.Fatal().Err(err).Msg("Error running elastic search region update")
