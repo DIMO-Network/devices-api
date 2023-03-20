@@ -589,7 +589,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 	testUserID := "123123"
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.nhtsaService, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, mockDeps.autoPiTaskSvc, nil, nil, mockDeps.drivlyTaskSvc, nil, nil, mockDeps.openAISvc)
 	app := fiber.New()
-	app.Get("/user/devices/error-codes", test.AuthInjectorTestHandler(testUserID), c.GetUserDevicesErrorCodeQueries)
+	app.Get("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID), c.GetUserDevicesErrorCodeQueries)
 
 	t.Run("GET - all saved error code response for current user devices", func(t *testing.T) {
 
@@ -611,7 +611,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 		err := erCodeQuery.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 		assert.NoError(t, err)
 
-		request := test.BuildRequest("GET", "/user/devices/error-codes", "")
+		request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/error-codes", ud.ID), "")
 		response, _ := app.Test(request)
 		body, _ := io.ReadAll(response.Body)
 

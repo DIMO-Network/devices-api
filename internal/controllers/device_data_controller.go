@@ -344,12 +344,14 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 // @Tags        user-devices
 // @Success     200 {object} controllers.GetUserDevicesErrorCodeQueriesResponse
 // @Security    BearerAuth
-// @Router      /user/devices/error-codes [get]
+// @Router      /user/devices/{userDeviceID}/error-codes [get]
 func (udc *UserDevicesController) GetUserDevicesErrorCodeQueries(c *fiber.Ctx) error {
+	udi := c.Params("userDeviceID")
 	userID := helpers.GetUserID(c)
 
 	userDevices, err := models.UserDevices(
 		models.UserDeviceWhere.UserID.EQ(userID),
+		models.UserDeviceWhere.ID.EQ(udi),
 		qm.Load(models.UserDeviceRels.ErrorCodeQueries, qm.OrderBy("created_at desc")),
 	).All(c.Context(), udc.DBS().Reader)
 	if err != nil {
