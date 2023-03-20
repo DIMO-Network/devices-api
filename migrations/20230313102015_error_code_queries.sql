@@ -10,7 +10,7 @@ CREATE TABLE devices_api.error_code_queries(
     updated_at           timestamptz not null default current_timestamp,
 
     PRIMARY KEY (id),
-    CONSTRAINT error_code_queries_user_device_id_fkey FOREIGN KEY (user_device_id) REFERENCES user_devices(id)
+    CONSTRAINT error_code_queries_user_device_id_fkey FOREIGN KEY (user_device_id) REFERENCES user_devices(id) ON DELETE CASCADE
 );
 -- +goose StatementEnd
 
