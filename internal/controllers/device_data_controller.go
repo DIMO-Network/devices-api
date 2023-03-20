@@ -271,7 +271,7 @@ func (udc *UserDevicesController) RefreshUserDeviceStatus(c *fiber.Ctx) error {
 	return fiber.NewError(fiber.StatusBadRequest, "no active Smartcar integration found for this device")
 }
 
-var errorCodeRegex = regexp.MustCompile(`^[A-Z0-9]{5,8}$`)
+var errorCodeRegex = regexp.MustCompile(`^.{5,8}$`)
 
 // QueryDeviceErrorCodes godoc
 // @Description Queries chatgpt for user device error codes
@@ -320,7 +320,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 		}
 	}
 
-	chtResp, err := udc.openAI.GetErrorCodesDescription(dd.Type.Make, dd.Type.Model, dd.Type.Year, req.ErrorCodes)
+	chtResp, err := udc.openAI.GetErrorCodesDescription(dd.Type.Make, dd.Type.Model, req.ErrorCodes)
 	if err != nil {
 		udc.log.Err(err).Interface("requestBody", req).Msg("Error occurred fetching description for error codes")
 		return err
