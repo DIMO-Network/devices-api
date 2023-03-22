@@ -124,7 +124,7 @@ func GrpcErrorToFiber(err error, msgAppend string) error {
 }
 
 // ErrorHandler custom handler to log recovered errors using our logger and return json instead of string
-func ErrorHandler(c *fiber.Ctx, err error, logger zerolog.Logger, environment string) error {
+func ErrorHandler(c *fiber.Ctx, err error, logger zerolog.Logger, isProduction bool) error {
 	code := fiber.StatusInternalServerError // Default 500 statuscode
 
 	e, fiberTypeErr := err.(*fiber.Error)
@@ -140,7 +140,7 @@ func ErrorHandler(c *fiber.Ctx, err error, logger zerolog.Logger, environment st
 		Str("httpPath", c.Path()).
 		Msg("caught an error from http request")
 	// return an opaque error if we're in a higher level environment and we haven't specified an fiber type err.
-	if !fiberTypeErr && environment == "prod" {
+	if !fiberTypeErr && isProduction {
 		err = fiber.NewError(fiber.StatusInternalServerError, "Internal error")
 	}
 

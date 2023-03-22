@@ -494,7 +494,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 }
 
 // RegisterDeviceForUserFromSmartcar godoc
-// @Description adds a device to a user by decoding VIN from Smartcar. If cannot decode returns 424 or 500 if error
+// @Description adds a device to a user by decoding VIN from Smartcar. If cannot decode returns 424 or 500 if error. Do NOT call this if user device already exists from a different integration - it will conflict.
 // @Tags        user-devices
 // @Produce     json
 // @Accept      json
@@ -502,6 +502,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 // @Security    ApiKeyAuth
 // @Failure		400 "validation failure"
 // @Failure		424 "unable to decode VIN"
+// @Failure		409 "VIN already exists either for different user or same user"
 // @Failure		500 "server error, dependency error"
 // @Success     201 {object} controllers.UserDeviceFull
 // @Security    BearerAuth
@@ -544,6 +545,26 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	}
 	localLog = localLog.With().Str("vin", vin).Logger()
 
+	// duplicate vin check, only in prod. If same user has already registered this car, and are eg. trying to add autopi, client should not call this endpoint
+	if udc.Settings.IsProduction() {
+		conflict, err := models.UserDevices(
+			models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
+			models.UserDeviceWhere.VinConfirmed.EQ(true),
+		).One(c.Context(), udc.DBS().Reader)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			localLog.Err(err).Msg("Failed to search for VIN conflicts.")
+			return err
+		}
+
+		if conflict != nil {
+			localLog.Error().Msgf("failed to create UD from smartcar because VIN already in use. conflict vin user_id: %s", conflict.UserID)
+			explanation := "from your user"
+			if conflict.UserID != userID {
+				explanation = "from a different user"
+			}
+			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("VIN %s in use by a previously connected device %s.", vin, explanation))
+		}
+	}
 	// persist token in redis, encrypted, for next step
 	jsonToken, err := json.Marshal(token)
 	if err != nil {

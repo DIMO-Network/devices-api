@@ -75,3 +75,7 @@ type Settings struct {
 	OpenAISecretKey                   string      `yaml:"OPENAI_SECRET_KEY"`
 	ChatGPTURL                        string      `yaml:"CHATGPT_URL"`
 }
+
+func (s *Settings) IsProduction() bool {
+	return s.Environment == "prod" // this string is set in the helm chart values-prod.yaml
+}

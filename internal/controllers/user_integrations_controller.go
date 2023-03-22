@@ -2041,7 +2041,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 
 	// Prevent users from connecting a vehicle if it's already connected through another user
 	// device object. Disabled outside of prod for ease of testing.
-	if udc.Settings.Environment == "prod" {
+	if udc.Settings.IsProduction() {
 		// Probably a race condition here. Need to either lock something or impose a greater
 		// isolation level.
 		conflict, err := models.UserDevices(

@@ -42,7 +42,7 @@ import (
 func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store, eventService services.EventService, producer sarama.SyncProducer, s3ServiceClient *s3.Client, s3NFTServiceClient *s3.Client) {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
-			return helpers.ErrorHandler(c, err, logger, settings.Environment)
+			return helpers.ErrorHandler(c, err, logger, settings.IsProduction())
 		},
 		DisableStartupMessage: true,
 		ReadBufferSize:        16000,
@@ -50,7 +50,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	})
 
 	var cipher shared.Cipher
-	if settings.Environment == "dev" || settings.Environment == "prod" {
+	if settings.Environment == "dev" || settings.IsProduction() {
 		cipher = createKMS(settings, &logger)
 	} else {
 		logger.Warn().Msg("Using ROT13 encrypter. Only use this for testing!")
@@ -74,7 +74,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	autoPi := autopi.NewIntegration(pdb.DBS, ddSvc, autoPiSvc, autoPiTaskService, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &logger)
 	openAI := services.NewOpenAI(&logger, *settings)
 
-	redisCache := redis.NewRedisCacheService(settings.Environment == "prod", redis.Settings{
+	redisCache := redis.NewRedisCacheService(settings.IsProduction(), redis.Settings{
 		URL:       settings.RedisURL,
 		Password:  settings.RedisPassword,
 		TLS:       settings.RedisTLS,
@@ -254,7 +254,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices/:userDeviceID/autopi/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
 
 	// Dev-only admin endpoints
-	if settings.Environment != "prod" {
+	if settings.IsProduction() {
 		v1Auth.Post("/admin/web3-device-unclaim", userDeviceController.AdminDeviceWeb3Unclaim)
 		v1Auth.Post("/admin/web3-device-unpair", userDeviceController.AdminDeviceWeb3Unpair)
 	}
