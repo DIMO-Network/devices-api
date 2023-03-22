@@ -23,8 +23,8 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 	"github.com/DIMO-Network/shared"
-	pb "github.com/DIMO-Network/shared/api/devices"
 	pr "github.com/DIMO-Network/shared/middleware/privilegetoken"
 	"github.com/DIMO-Network/zflogger"
 	"github.com/Shopify/sarama"
@@ -272,7 +272,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Delete("/documents/:id", documentsController.DeleteDocument)
 	v1Auth.Get("/documents/:id/download", documentsController.DownloadDocument)
 
-	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService)
+	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger)
 
 	logger.Info().Msg("Server started on port " + settings.Port)
 	// Start Server from a different go routine
@@ -311,7 +311,7 @@ func healthCheck(c *fiber.Ctx) error {
 }
 
 func startGRPCServer(settings *config.Settings, dbs func() *db.ReaderWriter,
-	hardwareTemplateService autopi.HardwareTemplateService, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, eventService services.EventService) {
+	hardwareTemplateService autopi.HardwareTemplateService, logger *zerolog.Logger) {
 	lis, err := net.Listen("tcp", ":"+settings.GRPCPort)
 	if err != nil {
 		logger.Fatal().Err(err).Msgf("Couldn't listen on gRPC port %s", settings.GRPCPort)
@@ -319,7 +319,7 @@ func startGRPCServer(settings *config.Settings, dbs func() *db.ReaderWriter,
 
 	logger.Info().Msgf("Starting gRPC server on port %s", settings.GRPCPort)
 	server := grpc.NewServer()
-	pb.RegisterUserDeviceServiceServer(server, api.NewUserDeviceService(dbs, hardwareTemplateService, logger, deviceDefSvc, eventService))
+	pb.RegisterUserDeviceServiceServer(server, api.NewUserDeviceService(dbs, hardwareTemplateService, logger))
 	pb.RegisterAftermarketDeviceServiceServer(server, api.NewAftermarketDeviceService(dbs, logger))
 
 	if err := server.Serve(lis); err != nil {

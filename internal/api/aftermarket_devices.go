@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/DIMO-Network/devices-api/models"
-	pb "github.com/DIMO-Network/shared/api/devices"
+	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
