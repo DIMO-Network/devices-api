@@ -209,6 +209,10 @@ func (s *userDeviceService) deviceModelToAPI(device *models.UserDevice) *pb.User
 		out.Integrations[i] = &pb.UserDeviceIntegration{Id: udai.IntegrationID, Status: udai.Status}
 	}
 
+	if device.VinConfirmed {
+		out.Vin = &device.VinIdentifier.String
+	}
+
 	return out
 }
 
