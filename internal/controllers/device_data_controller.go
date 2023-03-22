@@ -358,6 +358,10 @@ func (udc *UserDevicesController) GetUserDevicesErrorCodeQueries(c *fiber.Ctx) e
 		return err
 	}
 
+	if len(userDevices) == 0 {
+		return fiber.NewError(fiber.StatusNotFound, "device does not exist")
+	}
+
 	resp := []GetUserDevicesErrorCodeQueriesResponse{}
 
 	for _, userDevice := range userDevices {
