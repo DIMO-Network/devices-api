@@ -159,8 +159,8 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 													jsonb_path_query(evd.pricing_metadata, '$.retail.kelley.book')::decimal as retail_price, 
 													created_at
 							from external_vin_data evd 
-							order by vin, created_at desc
 							where created_at > current_date - 7
+							order by vin, created_at desc
 						) as evd;`
 
 	type Result struct {
