@@ -31,6 +31,10 @@ type QueryDeviceErrorCodesResponse struct {
 }
 
 type GetUserDeviceErrorCodeQueriesResponse struct {
+	Queries []GetUserDeviceErrorCodeQueriesResponseItem `json:"queries"`
+}
+
+type GetUserDeviceErrorCodeQueriesResponseItem struct {
 	Codes       []string  `json:"errorCodes"`
 	Description string    `json:"description"`
 	RequestedAt time.Time `json:"requestedAt"`
@@ -343,7 +347,6 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 // @Description Returns all error codes queries for user devices
 // @Tags        user-devices
 // @Success     200 {object} controllers.GetUserDeviceErrorCodeQueriesResponse
-
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/error-codes [get]
 func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) error {
@@ -363,19 +366,17 @@ func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) er
 		return fiber.NewError(fiber.StatusInternalServerError, "error occurred fetching device error queries")
 	}
 
-	resp := map[string][]GetUserDeviceErrorCodeQueriesResponse{}
+	queries := []GetUserDeviceErrorCodeQueriesResponseItem{}
 
-	ud := []GetUserDeviceErrorCodeQueriesResponse{}
 	for _, erc := range userDevice.R.ErrorCodeQueries {
-		ud = append(ud, GetUserDeviceErrorCodeQueriesResponse{
+		queries = append(queries, GetUserDeviceErrorCodeQueriesResponseItem{
 			Codes:       erc.ErrorCodes,
 			Description: erc.QueryResponse,
 			RequestedAt: erc.CreatedAt,
 		})
 	}
-	resp["queries"] = ud
 
-	return c.JSON(resp)
+	return c.JSON(GetUserDeviceErrorCodeQueriesResponse{Queries: queries})
 }
 
 // DeviceSnapshot is the response object for device status endpoint

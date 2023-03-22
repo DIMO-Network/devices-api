@@ -1233,7 +1233,18 @@
                         "BearerAuth": []
                     }
                 ],
-                "responses": {}
+                "description": "Returns all error codes queries for user devices",
+                "tags": [
+                    "user-devices"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.GetUserDeviceErrorCodeQueriesResponse"
+                        }
+                    }
+                }
             },
             "post": {
                 "security": [
@@ -2915,6 +2926,34 @@
                     "items": {
                         "$ref": "#/definitions/internal_controllers.GeoFenceUserDevice"
                     }
+                }
+            }
+        },
+        "internal_controllers.GetUserDeviceErrorCodeQueriesResponse": {
+            "type": "object",
+            "properties": {
+                "queries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_controllers.GetUserDeviceErrorCodeQueriesResponseItem"
+                    }
+                }
+            }
+        },
+        "internal_controllers.GetUserDeviceErrorCodeQueriesResponseItem": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "errorCodes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "requestedAt": {
+                    "type": "string"
                 }
             }
         },

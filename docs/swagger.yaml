@@ -522,6 +522,24 @@ definitions:
           $ref: '#/definitions/internal_controllers.GeoFenceUserDevice'
         type: array
     type: object
+  internal_controllers.GetUserDeviceErrorCodeQueriesResponse:
+    properties:
+      queries:
+        items:
+          $ref: '#/definitions/internal_controllers.GetUserDeviceErrorCodeQueriesResponseItem'
+        type: array
+    type: object
+  internal_controllers.GetUserDeviceErrorCodeQueriesResponseItem:
+    properties:
+      description:
+        type: string
+      errorCodes:
+        items:
+          type: string
+        type: array
+      requestedAt:
+        type: string
+    type: object
   internal_controllers.GetUserDeviceIntegrationResponse:
     properties:
       createdAt:
@@ -1627,9 +1645,16 @@ paths:
       - user-devices
   /user/devices/{userDeviceID}/error-codes:
     get:
-      responses: {}
+      description: Returns all error codes queries for user devices
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.GetUserDeviceErrorCodeQueriesResponse'
       security:
       - BearerAuth: []
+      tags:
+      - user-devices
     post:
       description: Queries chatgpt for user device error codes
       parameters:
