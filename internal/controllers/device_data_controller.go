@@ -30,7 +30,7 @@ type QueryDeviceErrorCodesResponse struct {
 	Message string `json:"message"`
 }
 
-type GetUserDevicesErrorCodeQueriesResponse struct {
+type GetUserDeviceErrorCodeQueriesResponse struct {
 	Codes       []string  `json:"errorCodes"`
 	Description string    `json:"description"`
 	RequestedAt time.Time `json:"requestedAt"`
@@ -342,10 +342,11 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 // GetUserDevicesErrorCodeQueries godoc
 // @Description Returns all error codes queries for user devices
 // @Tags        user-devices
-// @Success     200 {object} controllers.GetUserDevicesErrorCodeQueriesResponse
+// @Success     200 {object} controllers.GetUserDeviceErrorCodeQueriesResponse
+
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/error-codes [get]
-func (udc *UserDevicesController) GetUserDevicesErrorCodeQueries(c *fiber.Ctx) error {
+func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
 	userID := helpers.GetUserID(c)
 
@@ -355,19 +356,20 @@ func (udc *UserDevicesController) GetUserDevicesErrorCodeQueries(c *fiber.Ctx) e
 		qm.Load(models.UserDeviceRels.ErrorCodeQueries, qm.OrderBy(models.ErrorCodeQueryColumns.CreatedAt+" DESC")),
 	).All(c.Context(), udc.DBS().Reader)
 	if err != nil {
-		return err
+		udc.log.Err(err).Str("userDeviceID", udi).Msg("error occureed when fetching error codes for device")
+		return fiber.NewError(fiber.StatusInternalServerError, "error occurred fetching device error queries")
 	}
 
 	if len(userDevices) == 0 {
 		return fiber.NewError(fiber.StatusNotFound, "device does not exist")
 	}
 
-	resp := map[string][]GetUserDevicesErrorCodeQueriesResponse{}
+	resp := map[string][]GetUserDeviceErrorCodeQueriesResponse{}
 
 	for _, userDevice := range userDevices {
-		ud := []GetUserDevicesErrorCodeQueriesResponse{}
+		ud := []GetUserDeviceErrorCodeQueriesResponse{}
 		for _, erc := range userDevice.R.ErrorCodeQueries {
-			ud = append(ud, GetUserDevicesErrorCodeQueriesResponse{
+			ud = append(ud, GetUserDeviceErrorCodeQueriesResponse{
 				Codes:       erc.ErrorCodes,
 				Description: erc.QueryResponse,
 				RequestedAt: erc.CreatedAt,

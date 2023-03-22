@@ -589,7 +589,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 	testUserID := "123123"
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.nhtsaService, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, mockDeps.autoPiTaskSvc, nil, nil, mockDeps.drivlyTaskSvc, nil, nil, mockDeps.openAISvc)
 	app := fiber.New()
-	app.Get("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID), c.GetUserDevicesErrorCodeQueries)
+	app.Get("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID), c.GetUserDeviceErrorCodeQueries)
 
 	t.Run("GET - all saved error code response for current user devices", func(t *testing.T) {
 
@@ -618,7 +618,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 
 		assert.JSONEq(t,
-			fmt.Sprintf(`[{"errorCodes":["P0017","P0016"],"description":"1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.", "requestedAt":"%s"}]`, currTime.UTC().Truncate(time.Microsecond).Format(time.RFC3339Nano)),
+			fmt.Sprintf(`{"queries":[{"errorCodes":["P0017","P0016"],"description":"1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.", "requestedAt":"%s"}]}`, currTime.UTC().Truncate(time.Microsecond).Format(time.RFC3339Nano)),
 			string(body),
 		)
 
