@@ -281,8 +281,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 	cipher := new(shared.ROT13Cipher)
 	encrypted, err := cipher.Encrypt(string(tokenJSON))
 	require.NoError(s.T(), err)
-	s.redisClient.EXPECT().Get(gomock.Any(), buildSmartcarTokenKey(vin)).Return(redis.NewStringResult(encrypted, nil))
-	s.redisClient.EXPECT().Del(gomock.Any(), buildSmartcarTokenKey(vin)).Return(redis.NewIntResult(1, nil))
+	s.redisClient.EXPECT().Get(gomock.Any(), buildSmartcarTokenKey(vin, testUserID)).Return(redis.NewStringResult(encrypted, nil))
+	s.redisClient.EXPECT().Del(gomock.Any(), buildSmartcarTokenKey(vin, testUserID)).Return(redis.NewIntResult(1, nil))
 	s.eventSvc.EXPECT().Emit(gomock.Any()).Return(nil).Do(
 		func(event *services.Event) error {
 			assert.Equal(s.T(), ud.ID, event.Subject)

@@ -553,7 +553,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	if err != nil {
 		return errors.Wrap(err, "failed to encrypt smartcar token json")
 	}
-	udc.redisCache.Set(c.Context(), buildSmartcarTokenKey(vin), encToken, time.Hour*2)
+	udc.redisCache.Set(c.Context(), buildSmartcarTokenKey(vin, userID), encToken, time.Hour*2)
 
 	// decode VIN with grpc call
 	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin)
@@ -584,8 +584,8 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	})
 }
 
-func buildSmartcarTokenKey(vin string) string {
-	return fmt.Sprintf("sc-temp-tok-%s", vin)
+func buildSmartcarTokenKey(vin, userID string) string {
+	return fmt.Sprintf("sc-temp-tok-%s-%s", vin, userID)
 }
 
 func (udc *UserDevicesController) createUserDevice(ctx context.Context, deviceDefID, countryCode, userID string, vin *string) (*UserDeviceFull, error) {
