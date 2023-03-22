@@ -34,7 +34,7 @@ require (
 	github.com/rs/zerolog v1.28.0
 	github.com/segmentio/ksuid v1.0.4
 	github.com/stretchr/testify v1.8.1
-	github.com/swaggo/swag v1.8.6
+	github.com/swaggo/swag v1.8.11
 	github.com/testcontainers/testcontainers-go v0.14.0
 	github.com/tidwall/gjson v1.14.3
 	github.com/vmihailenco/taskq/v3 v3.2.8
@@ -180,9 +180,9 @@ require (
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/volatiletech/randomize v0.0.1 // indirect
 	golang.org/x/exp v0.0.0-20230105000112-eab7a2c85304
-	golang.org/x/net v0.5.0 // indirect
-	golang.org/x/sys v0.4.0 // indirect
-	golang.org/x/text v0.6.0 // indirect
+	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/tools v0.5.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 )

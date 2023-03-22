@@ -30,7 +30,11 @@ type QueryDeviceErrorCodesResponse struct {
 	Message string `json:"message"`
 }
 
-type GetUserDevicesErrorCodeQueriesResponse struct {
+type GetUserDeviceErrorCodeQueriesResponse struct {
+	Queries []GetUserDeviceErrorCodeQueriesResponseItem `json:"queries"`
+}
+
+type GetUserDeviceErrorCodeQueriesResponseItem struct {
 	Codes       []string  `json:"errorCodes"`
 	Description string    `json:"description"`
 	RequestedAt time.Time `json:"requestedAt"`
@@ -342,36 +346,37 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 // GetUserDevicesErrorCodeQueries godoc
 // @Description Returns all error codes queries for user devices
 // @Tags        user-devices
-// @Success     200 {object} controllers.GetUserDevicesErrorCodeQueriesResponse
+// @Success     200 {object} controllers.GetUserDeviceErrorCodeQueriesResponse
 // @Security    BearerAuth
-// @Router      /user/devices/error-codes [get]
-func (udc *UserDevicesController) GetUserDevicesErrorCodeQueries(c *fiber.Ctx) error {
+// @Router      /user/devices/{userDeviceID}/error-codes [get]
+func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) error {
+	udi := c.Params("userDeviceID")
 	userID := helpers.GetUserID(c)
 
-	userDevices, err := models.UserDevices(
+	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.UserID.EQ(userID),
-		qm.Load(models.UserDeviceRels.ErrorCodeQueries, qm.OrderBy("created_at desc")),
-	).All(c.Context(), udc.DBS().Reader)
+		models.UserDeviceWhere.ID.EQ(udi),
+		qm.Load(models.UserDeviceRels.ErrorCodeQueries, qm.OrderBy(models.ErrorCodeQueryColumns.CreatedAt+" DESC")),
+	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
-		return err
-	}
-
-	resp := map[string][]GetUserDevicesErrorCodeQueriesResponse{}
-
-	for _, userDevice := range userDevices {
-		ud := []GetUserDevicesErrorCodeQueriesResponse{}
-		for _, erc := range userDevice.R.ErrorCodeQueries {
-			ud = append(ud, GetUserDevicesErrorCodeQueriesResponse{
-				Codes:       erc.ErrorCodes,
-				Description: erc.QueryResponse,
-				RequestedAt: erc.CreatedAt,
-			})
+		if errors.Is(err, sql.ErrNoRows) {
+			return fiber.NewError(fiber.StatusNotFound, "Could not find user device")
 		}
-
-		resp[userDevice.ID] = ud
+		udc.log.Err(err).Str("userDeviceID", udi).Msg("error occurred when fetching error codes for device")
+		return fiber.NewError(fiber.StatusInternalServerError, "error occurred fetching device error queries")
 	}
 
-	return c.JSON(resp)
+	queries := []GetUserDeviceErrorCodeQueriesResponseItem{}
+
+	for _, erc := range userDevice.R.ErrorCodeQueries {
+		queries = append(queries, GetUserDeviceErrorCodeQueriesResponseItem{
+			Codes:       erc.ErrorCodes,
+			Description: erc.QueryResponse,
+			RequestedAt: erc.CreatedAt,
+		})
+	}
+
+	return c.JSON(GetUserDeviceErrorCodeQueriesResponse{Queries: queries})
 }
 
 // DeviceSnapshot is the response object for device status endpoint
