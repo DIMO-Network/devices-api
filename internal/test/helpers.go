@@ -142,7 +142,7 @@ func getTestDbSettings() config.Settings {
 func SetupAppFiber(logger zerolog.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
-			return helpers.ErrorHandler(c, err, logger, "test")
+			return helpers.ErrorHandler(c, err, logger, false)
 		},
 	})
 	return app
@@ -191,13 +191,17 @@ func Logger() *zerolog.Logger {
 	return &l
 }
 
-func SetupCreateUserDevice(t *testing.T, testUserID string, ddID string, metadata *[]byte, pdb db.Store) models.UserDevice {
+func SetupCreateUserDevice(t *testing.T, testUserID string, ddID string, metadata *[]byte, vin string, pdb db.Store) models.UserDevice {
 	ud := models.UserDevice{
 		ID:                 ksuid.New().String(),
 		UserID:             testUserID,
 		DeviceDefinitionID: ddID,
 		CountryCode:        null.StringFrom("USA"),
 		Name:               null.StringFrom("Chungus"),
+	}
+	if len(vin) == 17 {
+		ud.VinIdentifier = null.StringFrom(vin)
+		ud.VinConfirmed = true
 	}
 	if metadata == nil {
 		// note cannot import enum from services

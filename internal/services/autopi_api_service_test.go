@@ -59,7 +59,7 @@ func (s *AutoPiAPIServiceTestSuite) TestGetUserDeviceIntegrationByUnitID() {
 	const testUserID = "123123"
 	autoPiUnitID := "456"
 
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, ksuid.New().String(), nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, ksuid.New().String(), nil, "", s.pdb)
 
 	unit := &models.AutopiUnit{
 		AutopiUnitID: autoPiUnitID,

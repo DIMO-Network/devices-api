@@ -70,7 +70,7 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 		smartCarInt := test.BuildIntegrationGRPC(constants.SmartCarVendor, 0, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Mach E", 2020, autoPiInteg)
-		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, pdb)
+		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
 		const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 		const deviceID = "device123"
 		_ = test.SetupCreateAutoPiUnit(t, testUserID, unitID, func(s string) *string { return &s }(deviceID), pdb)
@@ -267,7 +267,7 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 
 		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
-		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, pdb)
+		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
 
 		mockDeps.deviceDefSvc.
 			EXPECT().
@@ -335,7 +335,7 @@ func TestUserDevicesController_ShouldErrorOnTooManyErrorCodes(t *testing.T) {
 
 		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
-		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, pdb)
+		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
 
 		mockDeps.deviceDefSvc.
 			EXPECT().
@@ -399,7 +399,7 @@ func TestUserDevicesController_ShouldErrorInvalidErrorCodes(t *testing.T) {
 
 		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
-		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, pdb)
+		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
 
 		mockDeps.deviceDefSvc.
 			EXPECT().
@@ -463,7 +463,7 @@ func TestUserDevicesController_ShouldErrorOnEmptyErrorCodes(t *testing.T) {
 
 		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
-		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, pdb)
+		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
 
 		mockDeps.deviceDefSvc.
 			EXPECT().
@@ -527,7 +527,7 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 
 		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
-		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, pdb)
+		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
 
 		mockDeps.deviceDefSvc.
 			EXPECT().
@@ -595,7 +595,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 
 		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
-		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, pdb)
+		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
 
 		erCodes := []string{"P0017", "P0016"}
 
