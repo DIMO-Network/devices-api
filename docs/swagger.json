@@ -1233,18 +1233,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns all error codes queries for user devices",
-                "tags": [
-                    "user-devices"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.GetUserDevicesErrorCodeQueriesResponse"
-                        }
-                    }
-                }
+                "responses": {}
             },
             "post": {
                 "security": [
@@ -1270,7 +1259,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.QueryDeviceErrorCodesReq"
+                            "$ref": "#/definitions/internal_controllers.QueryDeviceErrorCodesReq"
                         }
                     }
                 ],
@@ -1278,7 +1267,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.QueryDeviceErrorCodesResponse"
+                            "$ref": "#/definitions/internal_controllers.QueryDeviceErrorCodesResponse"
                         }
                     }
                 }
@@ -1684,7 +1673,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.DeviceSnapshot"
+                            "$ref": "#/definitions/internal_controllers.DeviceSnapshot"
                         }
                     }
                 }
@@ -1824,7 +1813,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_controllers.GetGeofence"
+                                "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.GetGeofence"
                             }
                         }
                     }
@@ -1856,7 +1845,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.CreateGeofence"
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.CreateGeofence"
                         }
                     }
                 ],
@@ -1904,7 +1893,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.CreateGeofence"
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.CreateGeofence"
                         }
                     }
                 ],
@@ -2624,23 +2613,6 @@
                 },
                 "status": {
                     "description": "Status is one of \"Pending\", \"PendingFirstData\", \"Active\", \"Failed\", \"DuplicateIntegration\".",
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_DIMO-Network_devices-api_internal_controllers.GetUserDevicesErrorCodeQueriesResponse": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "errorCodes": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "requestedAt": {
                     "type": "string"
                 }
             }
@@ -3870,23 +3842,6 @@
                 },
                 "status": {
                     "description": "Status is one of \"Pending\", \"PendingFirstData\", \"Active\", \"Failed\", \"DuplicateIntegration\".",
-                    "type": "string"
-                }
-            }
-        },
-        "internal_controllers.GetUserDevicesErrorCodeQueriesResponse": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "errorCodes": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "requestedAt": {
                     "type": "string"
                 }
             }

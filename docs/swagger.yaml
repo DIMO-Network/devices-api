@@ -323,17 +323,6 @@ definitions:
           "DuplicateIntegration".
         type: string
     type: object
-  github_com_DIMO-Network_devices-api_internal_controllers.GetUserDevicesErrorCodeQueriesResponse:
-    properties:
-      description:
-        type: string
-      errorCodes:
-        items:
-          type: string
-        type: array
-      requestedAt:
-        type: string
-    type: object
   github_com_DIMO-Network_devices-api_internal_controllers.MintRequest:
     properties:
       imageData:
@@ -1199,17 +1188,6 @@ definitions:
       status:
         description: Status is one of "Pending", "PendingFirstData", "Active", "Failed",
           "DuplicateIntegration".
-        type: string
-    type: object
-  internal_controllers.GetUserDevicesErrorCodeQueriesResponse:
-    properties:
-      description:
-        type: string
-      errorCodes:
-        items:
-          type: string
-        type: array
-      requestedAt:
         type: string
     type: object
   internal_controllers.MintRequest:
@@ -2302,16 +2280,9 @@ paths:
       - user-devices
   /user/devices/{userDeviceID}/error-codes:
     get:
-      description: Returns all error codes queries for user devices
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.GetUserDevicesErrorCodeQueriesResponse'
+      responses: {}
       security:
       - BearerAuth: []
-      tags:
-      - user-devices
     post:
       description: Queries chatgpt for user device error codes
       parameters:
@@ -2325,12 +2296,12 @@ paths:
         name: queryDeviceErrorCodes
         required: true
         schema:
-          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.QueryDeviceErrorCodesReq'
+          $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesReq'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.QueryDeviceErrorCodesResponse'
+            $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesResponse'
       security:
       - BearerAuth: []
       tags:
@@ -2596,7 +2567,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.DeviceSnapshot'
+            $ref: '#/definitions/internal_controllers.DeviceSnapshot'
       security:
       - BearerAuth: []
       tags:
@@ -2770,7 +2741,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_controllers.GetGeofence'
+              $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.GetGeofence'
             type: array
       security:
       - ApiKeyAuth: []
@@ -2788,7 +2759,7 @@ paths:
         name: geofence
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.CreateGeofence'
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.CreateGeofence'
       produces:
       - application/json
       responses:
@@ -2833,7 +2804,7 @@ paths:
         name: geofence
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.CreateGeofence'
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.CreateGeofence'
       produces:
       - application/json
       responses:
