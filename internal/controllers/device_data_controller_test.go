@@ -574,7 +574,6 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 }
 
 func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
-
 	mockDeps := createMockDependencies(t)
 	defer mockDeps.mockCtrl.Finish()
 
@@ -599,7 +598,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 
 		erCodes := []string{"P0017", "P0016"}
 
-		currTime := time.Now()
+		currTime := time.Now().UTC().Truncate(time.Microsecond)
 		erCodeQuery := models.ErrorCodeQuery{
 			ID:            ksuid.New().String(),
 			UserDeviceID:  ud.ID,
@@ -618,7 +617,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 
 		assert.JSONEq(t,
-			fmt.Sprintf(`{"queries":[{"errorCodes":["P0017","P0016"],"description":"1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.", "requestedAt":"%s"}]}`, currTime.UTC().Truncate(time.Microsecond).Format(time.RFC3339Nano)),
+			fmt.Sprintf(`{"queries":[{"errorCodes":["P0017","P0016"],"description":"1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.", "requestedAt":"%s"}]}`, currTime.Format(time.RFC3339Nano)),
 			string(body),
 		)
 
