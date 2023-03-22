@@ -352,25 +352,22 @@ func (udc *UserDevicesController) GetUserDevicesErrorCodeQueries(c *fiber.Ctx) e
 	userDevices, err := models.UserDevices(
 		models.UserDeviceWhere.UserID.EQ(userID),
 		models.UserDeviceWhere.ID.EQ(udi),
-		qm.Load(models.UserDeviceRels.ErrorCodeQueries, qm.OrderBy(models.ErrorCodeQueryColumns.CreatedAt + " DESC")),
+		qm.Load(models.UserDeviceRels.ErrorCodeQueries, qm.OrderBy(models.ErrorCodeQueryColumns.CreatedAt+" DESC")),
 	).All(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		return err
 	}
 
-	resp := map[string][]GetUserDevicesErrorCodeQueriesResponse{}
+	resp := []GetUserDevicesErrorCodeQueriesResponse{}
 
 	for _, userDevice := range userDevices {
-		ud := []GetUserDevicesErrorCodeQueriesResponse{}
 		for _, erc := range userDevice.R.ErrorCodeQueries {
-			ud = append(ud, GetUserDevicesErrorCodeQueriesResponse{
+			resp = append(resp, GetUserDevicesErrorCodeQueriesResponse{
 				Codes:       erc.ErrorCodes,
 				Description: erc.QueryResponse,
 				RequestedAt: erc.CreatedAt,
 			})
 		}
-
-		resp[userDevice.ID] = ud
 	}
 
 	return c.JSON(resp)

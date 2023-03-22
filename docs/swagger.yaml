@@ -1864,7 +1864,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_controllers.DocumentResponse'
+              $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.DocumentResponse'
             type: array
       security:
       - BearerAuth: []
@@ -1901,7 +1901,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_controllers.DocumentResponse'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.DocumentResponse'
       security:
       - BearerAuth: []
       tags:
@@ -1942,7 +1942,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.DocumentResponse'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.DocumentResponse'
       security:
       - BearerAuth: []
       tags:
@@ -2015,14 +2015,14 @@ paths:
         name: user_device
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.RegisterUserDevice'
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.RegisterUserDevice'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_controllers.RegisterUserDeviceResponse'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.RegisterUserDeviceResponse'
       security:
       - ApiKeyAuth: []
       - BearerAuth: []
@@ -2235,7 +2235,7 @@ paths:
         name: mintRequest
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.MintRequest'
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.MintRequest'
       responses:
         "200":
           description: OK
@@ -2290,7 +2290,7 @@ paths:
         name: name
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.UpdateCountryCodeReq'
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.UpdateCountryCodeReq'
       produces:
       - application/json
       responses:
@@ -2346,7 +2346,7 @@ paths:
         name: name
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.UpdateImageURLReq'
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.UpdateImageURLReq'
       produces:
       - application/json
       responses:
@@ -2530,7 +2530,7 @@ paths:
         name: name
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.UpdateNameReq'
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.UpdateNameReq'
       - description: user id
         in: path
         name: user_device_id
@@ -2554,7 +2554,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.DeviceOffer'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.DeviceOffer'
       security:
       - BearerAuth: []
       tags:
@@ -2574,7 +2574,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.DeviceRange'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.DeviceRange'
       security:
       - BearerAuth: []
       tags:
@@ -2617,7 +2617,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.DeviceValuation'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.DeviceValuation'
       security:
       - BearerAuth: []
       tags:
@@ -2633,7 +2633,7 @@ paths:
         name: vin
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.UpdateVINReq'
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.UpdateVINReq'
       - description: user id
         in: path
         name: userDeviceID
@@ -2662,7 +2662,7 @@ paths:
         name: nftIamges
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.NFTImageData'
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.NFTImageData'
       responses:
         "204":
           description: No Content
@@ -2682,14 +2682,14 @@ paths:
         name: user_device
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.RegisterUserDeviceSmartcar'
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.RegisterUserDeviceSmartcar'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_controllers.UserDeviceFull'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.UserDeviceFull'
         "400":
           description: validation failure
         "424":
@@ -2713,14 +2713,14 @@ paths:
         name: user_device
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.RegisterUserDeviceVIN'
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.RegisterUserDeviceVIN'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_controllers.UserDeviceFull'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.UserDeviceFull'
         "400":
           description: validation failure
         "424":
@@ -2741,7 +2741,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.MyDevicesResp'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.MyDevicesResp'
       security:
       - BearerAuth: []
       tags:
@@ -2755,7 +2755,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.MyDevicesResp'
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.MyDevicesResp'
       security:
       - BearerAuth: []
       tags:
@@ -2770,7 +2770,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.GetGeofence'
+              $ref: '#/definitions/internal_controllers.GetGeofence'
             type: array
       security:
       - ApiKeyAuth: []
@@ -2788,7 +2788,7 @@ paths:
         name: geofence
         required: true
         schema:
-          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.CreateGeofence'
+          $ref: '#/definitions/internal_controllers.CreateGeofence'
       produces:
       - application/json
       responses:
@@ -2833,7 +2833,7 @@ paths:
         name: geofence
         required: true
         schema:
-          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers.CreateGeofence'
+          $ref: '#/definitions/internal_controllers.CreateGeofence'
       produces:
       - application/json
       responses:
