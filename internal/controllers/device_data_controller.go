@@ -362,16 +362,18 @@ func (udc *UserDevicesController) GetUserDevicesErrorCodeQueries(c *fiber.Ctx) e
 		return fiber.NewError(fiber.StatusNotFound, "device does not exist")
 	}
 
-	resp := []GetUserDevicesErrorCodeQueriesResponse{}
+	resp := map[string][]GetUserDevicesErrorCodeQueriesResponse{}
 
 	for _, userDevice := range userDevices {
+		ud := []GetUserDevicesErrorCodeQueriesResponse{}
 		for _, erc := range userDevice.R.ErrorCodeQueries {
-			resp = append(resp, GetUserDevicesErrorCodeQueriesResponse{
+			ud = append(ud, GetUserDevicesErrorCodeQueriesResponse{
 				Codes:       erc.ErrorCodes,
 				Description: erc.QueryResponse,
 				RequestedAt: erc.CreatedAt,
 			})
 		}
+		resp["queries"] = ud
 	}
 
 	return c.JSON(resp)
