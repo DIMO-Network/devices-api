@@ -352,7 +352,7 @@ func (udc *UserDevicesController) GetUserDevicesErrorCodeQueries(c *fiber.Ctx) e
 	userDevices, err := models.UserDevices(
 		models.UserDeviceWhere.UserID.EQ(userID),
 		models.UserDeviceWhere.ID.EQ(udi),
-		qm.Load(models.UserDeviceRels.ErrorCodeQueries, qm.OrderBy("created_at desc")),
+		qm.Load(models.UserDeviceRels.ErrorCodeQueries, qm.OrderBy(models.ErrorCodeQueryColumns.CreatedAt + " DESC")),
 	).All(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		return err
