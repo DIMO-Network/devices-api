@@ -362,7 +362,7 @@ func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) er
 		if errors.Is(err, sql.ErrNoRows) {
 			return fiber.NewError(fiber.StatusNotFound, "Could not find user device")
 		}
-		udc.log.Err(err).Str("userDeviceID", udi).Msg("error occureed when fetching error codes for device")
+		udc.log.Err(err).Str("userDeviceID", udi).Msg("error occurred when fetching error codes for device")
 		return fiber.NewError(fiber.StatusInternalServerError, "error occurred fetching device error queries")
 	}
 
