@@ -63,6 +63,12 @@ func (e *eventService) Emit(event *Event) error {
 	return nil
 }
 
+type UserDeviceEvent struct {
+	Timestamp time.Time             `json:"timestamp"`
+	UserID    string                `json:"userId"`
+	Device    UserDeviceEventDevice `json:"device"`
+}
+
 type UserDeviceEventDevice struct {
 	ID                 string `json:"id"`
 	DeviceDefinitionID string `json:"device_definition_id"`

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+option go_package = "github.com/DIMO-Network/devices-api/pkg/grpc";
+
+package devices;
+
+service AftermarketDeviceService {
+	rpc ListAftermarketDevicesForUser(ListAftermarketDevicesForUserRequest) returns (ListAftermarketDevicesForUserResponse);
+}
+
+message ListAftermarketDevicesForUserRequest {
+	string user_id = 1;
+}
+
+message ListAftermarketDevicesForUserResponse {
+	repeated AftermarketDevice aftermarket_devices = 1;
+}
+
+message AftermarketDevice {
+	string serial = 1;
+	optional string user_id = 2;
+	optional bytes owner_address = 3;
+}

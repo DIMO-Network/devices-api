@@ -16,7 +16,7 @@ For an overview of the project, see the [DIMO technical documentation site.](htt
 - [Helm requirements](#helm-requirements)
 - [API](#api)
   - [Generating Swagger / OpenAPI spec](#generating-swagger--openapi-spec)
-
+- [gRPC library](#gRPC-library)
 
 ## Developing locally
 
@@ -209,4 +209,14 @@ curl -X POST -F "file=@./some-test-image.png" -F "name=test file" -F "type=Vehic
 -H "Authorization: Bearer XXX" \
 -H "content-type: application/x-www-form-urlencoded" \
 https://devices-api.dimo.zone/v1/documents
+```
+
+## gRPC library
+
+We should probably put these in the repositories of the services that own them, but we are putting this off for now. To make changes to the current suite for, e.g., the devices API, run
+
+```
+protoc --go_out=. --go_opt=paths=source_relative \
+    --go-grpc_out=. --go-grpc_opt=paths=source_relative \
+    pkg/grpc/*.proto
 ```

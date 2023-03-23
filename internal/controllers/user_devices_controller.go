@@ -410,14 +410,6 @@ func NewUserDeviceIntegrationStatusesFromDatabase(udis []*models.UserDeviceAPIIn
 	return out
 }
 
-const UserDeviceCreationEventType = "com.dimo.zone.device.create"
-
-type UserDeviceEvent struct {
-	Timestamp time.Time                      `json:"timestamp"`
-	UserID    string                         `json:"userId"`
-	Device    services.UserDeviceEventDevice `json:"device"`
-}
-
 // RegisterDeviceForUser godoc
 // @Description adds a device to a user. can add with only device_definition_id or with MMY, which will create a device_definition on the fly
 // @Tags        user-devices
@@ -622,10 +614,10 @@ func (udc *UserDevicesController) createUserDevice(ctx context.Context, deviceDe
 
 	// todo call devide definitions to check and pull image for this device in case don't have one
 	err = udc.eventService.Emit(&services.Event{
-		Type:    UserDeviceCreationEventType,
+		Type:    constants.UserDeviceCreationEventType,
 		Subject: userID,
 		Source:  "devices-api",
-		Data: UserDeviceEvent{
+		Data: services.UserDeviceEvent{
 			Timestamp: time.Now(),
 			UserID:    userID,
 			Device: services.UserDeviceEventDevice{
@@ -1441,7 +1433,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 		Type:    "com.dimo.zone.device.delete",
 		Subject: userID,
 		Source:  "devices-api",
-		Data: UserDeviceEvent{
+		Data: services.UserDeviceEvent{
 			Timestamp: time.Now(),
 			UserID:    userID,
 			Device: services.UserDeviceEventDevice{

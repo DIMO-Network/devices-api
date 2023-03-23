@@ -15,7 +15,7 @@ import (
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
-	pb "github.com/DIMO-Network/shared/api/devices"
+	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/queries"

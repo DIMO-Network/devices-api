@@ -23,8 +23,8 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 	"github.com/DIMO-Network/shared"
-	pb "github.com/DIMO-Network/shared/api/devices"
 	pr "github.com/DIMO-Network/shared/middleware/privilegetoken"
 	"github.com/DIMO-Network/zflogger"
 	"github.com/Shopify/sarama"
@@ -310,7 +310,8 @@ func healthCheck(c *fiber.Ctx) error {
 	return nil
 }
 
-func startGRPCServer(settings *config.Settings, dbs func() *db.ReaderWriter, hardwareTemplateService autopi.HardwareTemplateService, logger *zerolog.Logger) {
+func startGRPCServer(settings *config.Settings, dbs func() *db.ReaderWriter,
+	hardwareTemplateService autopi.HardwareTemplateService, logger *zerolog.Logger) {
 	lis, err := net.Listen("tcp", ":"+settings.GRPCPort)
 	if err != nil {
 		logger.Fatal().Err(err).Msgf("Couldn't listen on gRPC port %s", settings.GRPCPort)
