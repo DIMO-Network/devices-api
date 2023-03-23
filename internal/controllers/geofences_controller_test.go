@@ -118,7 +118,7 @@ func (s *GeofencesControllerTestSuite) TestPostGeofence() {
 	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, producer, s.deviceDefSvc)
 	app := fiber.New()
 	app.Post("/user/geofences", test.AuthInjectorTestHandler(injectedUserID), c.Create)
-	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, ksuid.New().String(), nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, ksuid.New().String(), nil, "", s.pdb)
 	req := CreateGeofence{
 		Name:          "Home",
 		Type:          "PrivacyFence",
@@ -162,7 +162,7 @@ func (s *GeofencesControllerTestSuite) TestPostGeofence400IfSameName() {
 	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, nil, s.deviceDefSvc)
 	app := fiber.New()
 	app.Post("/user/geofences", test.AuthInjectorTestHandler(injectedUserID), c.Create)
-	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, ksuid.New().String(), nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, ksuid.New().String(), nil, "", s.pdb)
 	test.SetupCreateGeofence(s.T(), injectedUserID, "Home", &ud, s.pdb)
 
 	req := CreateGeofence{
@@ -181,7 +181,7 @@ func (s *GeofencesControllerTestSuite) TestPostGeofence400IfNotYourDevice() {
 	app := fiber.New()
 	app.Post("/user/geofences", test.AuthInjectorTestHandler(injectedUserID), c.Create)
 	otherUserID := "7734"
-	ud := test.SetupCreateUserDevice(s.T(), otherUserID, ksuid.New().String(), nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), otherUserID, ksuid.New().String(), nil, "", s.pdb)
 
 	req := CreateGeofence{
 		Name:          "Home",
@@ -201,7 +201,7 @@ func (s *GeofencesControllerTestSuite) TestGetAllUserGeofences() {
 	app.Get("/user/geofences", test.AuthInjectorTestHandler(injectedUserID), c.GetAll)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "escaped", 2020, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Return(dd, nil)
-	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, dd[0].DeviceDefinitionId, nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	test.SetupCreateGeofence(s.T(), injectedUserID, "Home", &ud, s.pdb)
 
 	request, _ := http.NewRequest("GET", "/user/geofences", nil)
@@ -226,7 +226,7 @@ func (s *GeofencesControllerTestSuite) TestPutGeofence() {
 
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "escaped", 2020, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Return(dd, nil)
-	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, dd[0].DeviceDefinitionId, nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	gf := test.SetupCreateGeofence(s.T(), injectedUserID, "something", &ud, s.pdb)
 
 	// The fence is being detached from the device and it has type TriggerEntry anyway.
@@ -266,7 +266,7 @@ func (s *GeofencesControllerTestSuite) TestDeleteGeofence() {
 	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, producer, s.deviceDefSvc)
 	app := fiber.New()
 	app.Delete("/user/geofences/:geofenceID", test.AuthInjectorTestHandler(injectedUserID), c.Delete)
-	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, ksuid.New().String(), nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, ksuid.New().String(), nil, "", s.pdb)
 	gf := test.SetupCreateGeofence(s.T(), injectedUserID, "something", &ud, s.pdb)
 
 	producer.ExpectSendMessageWithMessageCheckerFunctionAndSucceed(checkForDeviceAndH3(ud.ID, []string{}))

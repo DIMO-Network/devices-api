@@ -89,7 +89,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_HardwareTemplate_Success() {
 	autoPiTokenID, _ := new(big.Int).SetString("0", 16)
 	vehicleTokenID, _ := new(big.Int).SetString("0", 16)
 
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
 	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, &ud.ID, s.pdb)
 	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, s.pdb)
 
@@ -151,7 +151,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_Make_HardwareTemplate_Success() {
 	autoPiTokenID, _ := new(big.Int).SetString("0", 16)
 	vehicleTokenID, _ := new(big.Int).SetString("0", 16)
 
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
 	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, &ud.ID, s.pdb)
 	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, s.pdb)
 
@@ -213,7 +213,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_DeviceStyle_HardwareTemplate_Su
 	autoPiTokenID, _ := new(big.Int).SetString("0", 16)
 	vehicleTokenID, _ := new(big.Int).SetString("0", 16)
 
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
 	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, &ud.ID, s.pdb)
 	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, s.pdb)
 
@@ -283,7 +283,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_UserDeviceStyle_HardwareTemplate_S
 	autoPiTokenID, _ := new(big.Int).SetString("0", 16)
 	vehicleTokenID, _ := new(big.Int).SetString("0", 16)
 
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
 	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, &ud.ID, s.pdb)
 	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, s.pdb)
 

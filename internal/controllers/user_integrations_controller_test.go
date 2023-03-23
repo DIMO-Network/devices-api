@@ -136,7 +136,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetIntegrations() {
 func (s *UserIntegrationsControllerTestSuite) TestPostSmartCarFailure() {
 	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Mach E", 2020, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 
 	req := `{
 			"code": "qxyz",
@@ -162,7 +162,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
 	// corrected after query smartcar
 	dd2 := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2022, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 
 	const smartCarUserID = "smartCarUserId"
 	req := `{
@@ -256,7 +256,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
 	// corrected after query smartcar
 	dd2 := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2022, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	ud.VinIdentifier = null.StringFrom(vin)
 	ud.VinConfirmed = true
 	_, err := ud.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
@@ -281,8 +281,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 	cipher := new(shared.ROT13Cipher)
 	encrypted, err := cipher.Encrypt(string(tokenJSON))
 	require.NoError(s.T(), err)
-	s.redisClient.EXPECT().Get(gomock.Any(), buildSmartcarTokenKey(vin)).Return(redis.NewStringResult(encrypted, nil))
-	s.redisClient.EXPECT().Del(gomock.Any(), buildSmartcarTokenKey(vin)).Return(redis.NewIntResult(1, nil))
+	s.redisClient.EXPECT().Get(gomock.Any(), buildSmartcarTokenKey(vin, testUserID)).Return(redis.NewStringResult(encrypted, nil))
+	s.redisClient.EXPECT().Del(gomock.Any(), buildSmartcarTokenKey(vin, testUserID)).Return(redis.NewIntResult(1, nil))
 	s.eventSvc.EXPECT().Emit(gomock.Any()).Return(nil).Do(
 		func(event *services.Event) error {
 			assert.Equal(s.T(), ud.ID, event.Subject)
@@ -362,7 +362,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostUnknownDevice() {
 func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
 	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2020, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 
 	oV := &services.TeslaVehicle{}
 	oUdai := &models.UserDeviceAPIIntegration{}
@@ -448,7 +448,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTeslaAndUpdateDD() {
 	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 20)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Mach E", 2020, integration)
 
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 
 	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dd[0], nil)
 
@@ -475,7 +475,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateD
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 34, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Testla", "Model 4", 2020, integration)
 
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	const (
 		deviceID = "1dd96159-3bb2-9472-91f6-72fe9211cfeb"
 		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
@@ -511,14 +511,14 @@ func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateD
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 34, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Testla", "Model 4", 2022, nil)
 	// the other user that already claimed unit
-	_ = test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, s.pdb)
+	_ = test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	const (
 		deviceID = "1dd96159-3bb2-9472-91f6-72fe9211cfeb"
 		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	)
 	_ = test.SetupCreateAutoPiUnit(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	// test user
-	ud2 := test.SetupCreateUserDevice(s.T(), testUser2, dd[0].DeviceDefinitionId, nil, s.pdb)
+	ud2 := test.SetupCreateUserDevice(s.T(), testUser2, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 
 	req := fmt.Sprintf(`{
 			"externalId": "%s"
@@ -545,7 +545,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiCommand() {
 	// arrange
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 34, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Testla", "Model 4", 2022, nil)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	const (
 		deviceID = "1dd96159-3bb2-9472-91f6-72fe9211cfeb"
 		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
@@ -609,7 +609,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiCommand() {
 	//arrange
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 34, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Testla", "Model 4", 2022, nil)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	const (
 		deviceID = "1dd96159-3bb2-9472-91f6-72fe9211cfeb"
 		jobID    = "somepreviousjobId"
@@ -648,7 +648,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiCommandNoResults400()
 	//arrange
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 34, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Testla", "Model 4", 2022, nil)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	const (
 		jobID    = "somepreviousjobId2"
 		deviceID = "1dd96159-3bb2-9472-91f6-72fe9211cfeb"
@@ -777,7 +777,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoMatchUDAI() {
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 34, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Testla", "Model 4", 2022, nil)
-	ud := test.SetupCreateUserDevice(s.T(), "some-other-user", dd[0].DeviceDefinitionId, nil, s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), "some-other-user", dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	_ = test.SetupCreateAutoPiUnit(s.T(), testUserID, unitID, func(s string) *string { return &s }("1234"), s.pdb)
 	test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, "321", ud.ID, integration.Id, s.pdb)
 

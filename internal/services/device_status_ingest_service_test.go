@@ -90,7 +90,7 @@ func TestIngestDeviceStatus(t *testing.T) {
 	integrationID := integs[0].Id
 
 	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc)
-	ud := test.SetupCreateUserDevice(t, "dylan", ksuid.New().String(), nil, pdb)
+	ud := test.SetupCreateUserDevice(t, "dylan", ksuid.New().String(), nil, "", pdb)
 
 	udai := models.UserDeviceAPIIntegration{
 		UserDeviceID:  ud.ID,
@@ -209,7 +209,7 @@ func TestAutoPiStatusMerge(t *testing.T) {
 
 	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc)
 
-	ud := test.SetupCreateUserDevice(t, "dylan", ddID, nil, pdb)
+	ud := test.SetupCreateUserDevice(t, "dylan", ddID, nil, "", pdb)
 
 	udai := models.UserDeviceAPIIntegration{
 		UserDeviceID:  ud.ID,

@@ -1987,7 +1987,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 	var token *smartcar.Token
 	// check for token in redis, if exists do not call this.
 	if ud.VinIdentifier.Valid {
-		scTokenGet, err := udc.redisCache.Get(c.Context(), buildSmartcarTokenKey(ud.VinIdentifier.String)).Result()
+		scTokenGet, err := udc.redisCache.Get(c.Context(), buildSmartcarTokenKey(ud.VinIdentifier.String, ud.UserID)).Result()
 		if err == nil && len(scTokenGet) > 0 {
 			decrypted, err := udc.cipher.Decrypt(scTokenGet)
 			if err != nil {
@@ -2000,7 +2000,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 				udc.log.Err(err).Msgf("failed to unmarshal smartcar token found in redis cache for vin: %s", ud.VinIdentifier.String)
 			}
 			// clear cache
-			udc.redisCache.Del(c.Context(), buildSmartcarTokenKey(ud.VinIdentifier.String))
+			udc.redisCache.Del(c.Context(), buildSmartcarTokenKey(ud.VinIdentifier.String, ud.UserID))
 		}
 	}
 	if token == nil {
@@ -2041,7 +2041,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 
 	// Prevent users from connecting a vehicle if it's already connected through another user
 	// device object. Disabled outside of prod for ease of testing.
-	if udc.Settings.Environment == "prod" {
+	if udc.Settings.IsProduction() {
 		// Probably a race condition here. Need to either lock something or impose a greater
 		// isolation level.
 		conflict, err := models.UserDevices(
