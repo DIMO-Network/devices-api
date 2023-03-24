@@ -132,8 +132,17 @@ func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *
 	if country == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid countryCode field or country not supported: %s", req.CountryCode)
 	}
-	// todo need check for duplicate vin
-	// how much can we refactor with /fromsmartcar and /fromvin
+	// check for duplicate vin, future: refactor with user_devices_controler fromsmartcar, fromvin
+	conflict, err := models.UserDevices(
+		models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(req.Vin)),
+		models.UserDeviceWhere.VinConfirmed.EQ(true),
+	).Exists(ctx, s.dbs().Reader)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if conflict {
+		return nil, status.Errorf(codes.AlreadyExists, "VIN %s in use by a previously connected device", req.Vin)
+	}
 
 	resp, err := s.deviceDefSvc.DecodeVIN(ctx, req.Vin)
 	if err != nil {
@@ -160,7 +169,7 @@ func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *
 		return nil, err
 	}
 
-	// todo refactor: udc controller has a createUserDevice
+	// future refactor: udc controller has a createUserDevice
 	userDeviceID := ksuid.New().String()
 	// register device for the user
 	ud := models.UserDevice{
