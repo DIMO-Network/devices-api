@@ -176,8 +176,13 @@ func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *
 		ID:                 userDeviceID,
 		UserID:             req.UserDeviceId,
 		DeviceDefinitionID: dd.DeviceDefinitionId,
-		CountryCode:        null.StringFrom(req.CountryCode),
 		VinIdentifier:      null.StringFrom(req.Vin),
+		CountryCode:        null.StringFrom(req.CountryCode),
+		VinConfirmed:       true,
+		Metadata:           null.JSON{}, // todo set powertrain
+	}
+	if len(resp.DeviceStyleId) > 0 {
+		ud.DeviceStyleID = null.StringFrom(resp.DeviceStyleId)
 	}
 	err = ud.Insert(ctx, tx, boil.Infer())
 	if err != nil {
