@@ -128,6 +128,13 @@ func (s *userDeviceService) CreateTemplate(_ context.Context, req *pb.CreateTemp
 }
 
 func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *pb.RegisterUserDeviceFromVINRequest) (*pb.RegisterUserDeviceFromVINResponse, error) {
+	country := constants.FindCountry(req.CountryCode)
+	if country == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid countryCode field or country not supported: %s", req.CountryCode)
+	}
+	// todo need check for duplicate vin
+	// how much can we refactor with /fromsmartcar and /fromvin
+
 	resp, err := s.deviceDefSvc.DecodeVIN(ctx, req.Vin)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -153,6 +160,7 @@ func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *
 		return nil, err
 	}
 
+	// todo refactor: udc controller has a createUserDevice
 	userDeviceID := ksuid.New().String()
 	// register device for the user
 	ud := models.UserDevice{
@@ -172,7 +180,6 @@ func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// todo call devide definitions to check and pull image for this device in case don't have one
 	err = s.eventService.Emit(&services.Event{
 		Type:    constants.UserDeviceCreationEventType,
 		Subject: req.UserDeviceId,
