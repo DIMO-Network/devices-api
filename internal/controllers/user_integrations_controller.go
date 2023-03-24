@@ -537,7 +537,7 @@ func (udc *UserDevicesController) GetAutoPiCommandStatus(c *fiber.Ctx) error {
 // @Security    BearerAuth
 // @Router      /autopi/unit/:unitID [get]
 func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
-	const minimumAutoPiRelease = "v1.21.9" // correct semver has leading v
+	const minimumAutoPiRelease = "v1.22.8" // correct semver has leading v
 
 	rawUnitID := c.Params("unitID")
 	v, unitID := services.ValidateAndCleanUUID(rawUnitID)
