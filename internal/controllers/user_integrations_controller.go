@@ -901,10 +901,11 @@ func (udc *UserDevicesController) GetAutoPiClaimMessage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusForbidden, "AutoPi paired to another user.")
 	}
 
+	if unit.OwnerAddress.Valid {
+		return fiber.NewError(fiber.StatusConflict, "Device already claimed.")
+	}
+
 	if unit.R.ClaimMetaTransactionRequest != nil && unit.R.ClaimMetaTransactionRequest.Status != "Failed" {
-		if unit.R.ClaimMetaTransactionRequest.Status == models.MetaTransactionRequestStatusConfirmed {
-			return fiber.NewError(fiber.StatusConflict, "Device already claimed.")
-		}
 		return fiber.NewError(fiber.StatusConflict, "Claiming transaction in progress.")
 	}
 
@@ -1682,10 +1683,11 @@ func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted.")
 	}
 
+	if unit.OwnerAddress.Valid {
+		return fiber.NewError(fiber.StatusConflict, "Device already claimed.")
+	}
+
 	if unit.R.ClaimMetaTransactionRequest != nil && unit.R.ClaimMetaTransactionRequest.Status != "Failed" {
-		if unit.R.ClaimMetaTransactionRequest.Status == models.MetaTransactionRequestStatusConfirmed {
-			return fiber.NewError(fiber.StatusConflict, "Device already claimed.")
-		}
 		return fiber.NewError(fiber.StatusConflict, "Claiming transaction in progress.")
 	}
 
