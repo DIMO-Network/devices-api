@@ -598,6 +598,9 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 		if dbUnit.OwnerAddress.Valid {
 			addr := common.BytesToAddress(dbUnit.OwnerAddress.Bytes)
 			ownerAddress = &addr
+			claim = &AutoPiTransactionStatus{
+				Status: models.MetaTransactionRequestStatusConfirmed,
+			}
 		}
 
 		if req := dbUnit.R.ClaimMetaTransactionRequest; req != nil {
