@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptrace"
+	"strconv"
 	"strings"
 	"time"
 
@@ -81,6 +82,11 @@ func (o *openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 	}
 
 	defer resp.Body.Close()
+
+	appmetrics.OpenAIResponseTimeOps.With(prometheus.Labels{
+		"method": "GET",
+		"status": strconv.Itoa(resp.StatusCode),
+	}).Observe(o.currentReqResponseTime.Seconds())
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("received error from request: %s", string(b))
@@ -120,11 +126,6 @@ func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []strin
 	if err != nil {
 		return "", err
 	}
-
-	appmetrics.OpenAIResponseTimeOps.With(prometheus.Labels{
-		"method": "GET",
-		"status": "200",
-	}).Observe(o.currentReqResponseTime.Seconds())
 
 	if len(r.Choices) == 0 {
 		return "", errors.New("could not fetch description for error codes")
