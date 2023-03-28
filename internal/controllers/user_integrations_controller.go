@@ -2342,17 +2342,20 @@ func (udc *UserDevicesController) AdminDeviceWeb3Unpair(c *fiber.Ctx) error {
 func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zerolog.Logger, tx *sql.Tx, userDeviceID string, integ *ddgrpc.Integration, ud *models.UserDevice) error {
 	reqBody := new(RegisterDeviceIntegrationRequest)
 	if err := c.BodyParser(reqBody); err != nil {
-		return helpers.ErrorResponseHandler(c, err, fiber.StatusBadRequest)
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
 	}
 
 	// We'll use this to kick off the job
 	teslaID, err := strconv.Atoi(reqBody.ExternalID)
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "externalId for Tesla must be a positive integer")
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse external id %q as an integer.", teslaID))
 	}
+
 	v, err := udc.teslaService.GetVehicle(reqBody.AccessToken, teslaID)
 	if err != nil {
-		return helpers.ErrorResponseHandler(c, err, fiber.StatusBadRequest)
+		logger.Err(err).Msg("Error on initial Tesla call.")
+		// TODO(elffjs): 400 may not be entirely accurate.
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't retrieve vehicle from Tesla.")
 	}
 
 	// Prevent users from connecting a vehicle if it's already connected through another user
@@ -2370,22 +2373,22 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		}
 
 		if conflict {
-			return fiber.NewError(fiber.StatusConflict, "VIN already used for another device's integration")
+			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("VIN %s in use by another vehicle.", v.VIN))
 		}
 	}
 
 	if err := fixTeslaDeviceDefinition(c.Context(), logger, udc.DeviceDefSvc, tx, integ, ud, v.VIN); err != nil {
-		return errors.Wrap(err, "Failed to fix up Tesla device definition")
+		return fmt.Errorf("correcting device definition: %w", err)
 	}
 
 	encAccessToken, err := udc.cipher.Encrypt(reqBody.AccessToken)
 	if err != nil {
-		return opaqueInternalError
+		return err
 	}
 
 	encRefreshToken, err := udc.cipher.Encrypt(reqBody.RefreshToken)
 	if err != nil {
-		return opaqueInternalError
+		return err
 	}
 
 	// TODO(elffjs): Stupid to marshal this again and again.
@@ -2415,7 +2418,6 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	}
 
 	if err := integration.Insert(c.Context(), tx, boil.Infer()); err != nil {
-		logger.Err(err).Msg("Unexpected database error inserting new Tesla integration registration")
 		return err
 	}
 
@@ -2427,7 +2429,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	}
 
 	if err := udc.teslaService.WakeUpVehicle(reqBody.AccessToken, teslaID); err != nil {
-		logger.Err(err).Msg("Failed waking up device")
+		logger.Err(err).Msg("Couldn't wake up Tesla.")
 	}
 
 	if err := udc.teslaTaskService.StartPoll(v, &integration); err != nil {
