@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"strings"
 	"time"
 
+	"github.com/DIMO-Network/devices-api/internal/appmetrics"
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
 )
 
@@ -18,10 +21,11 @@ type OpenAI interface {
 }
 
 type openAI struct {
-	chatGptURL string
-	token      string
-	httpClient *http.Client
-	logger     *zerolog.Logger
+	chatGptURL             string
+	token                  string
+	httpClient             *http.Client
+	logger                 *zerolog.Logger
+	currentReqResponseTime time.Duration
 }
 
 type ChatGPTResponseChoices struct {
@@ -47,7 +51,7 @@ type ChatGPTResponse struct {
 }
 
 func NewOpenAI(logger *zerolog.Logger, c config.Settings) OpenAI {
-	return openAI{
+	return &openAI{
 		chatGptURL: c.ChatGPTURL,
 		token:      c.OpenAISecretKey,
 		httpClient: &http.Client{
@@ -57,7 +61,7 @@ func NewOpenAI(logger *zerolog.Logger, c config.Settings) OpenAI {
 	}
 }
 
-func (o openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
+func (o *openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 	req, err := http.NewRequest(
 		"POST",
 		o.chatGptURL,
@@ -68,6 +72,8 @@ func (o openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+o.token)
+
+	req = o.measureAPIResponseTime(req, time.Now())
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -89,7 +95,17 @@ func (o openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 	return cResp, nil
 }
 
-func (o openAI) GetErrorCodesDescription(make, model string, errorCodes []string) (string, error) {
+func (o *openAI) measureAPIResponseTime(req *http.Request, start time.Time) *http.Request {
+	trace := &httptrace.ClientTrace{
+		GotFirstResponseByte: func() {
+			o.currentReqResponseTime = time.Since(start)
+		},
+	}
+
+	return req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
+}
+
+func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []string) (string, error) {
 	codes := strings.Join(errorCodes, ", ")
 	req := fmt.Sprintf(`{
 		"model": "gpt-3.5-turbo",
@@ -104,6 +120,11 @@ func (o openAI) GetErrorCodesDescription(make, model string, errorCodes []string
 	if err != nil {
 		return "", err
 	}
+
+	appmetrics.OpenAIResponseTimeOps.With(prometheus.Labels{
+		"method": "GET",
+		"status": "200",
+	}).Observe(o.currentReqResponseTime.Seconds())
 
 	if len(r.Choices) == 0 {
 		return "", errors.New("could not fetch description for error codes")
