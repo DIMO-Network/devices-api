@@ -466,17 +466,18 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 	// decode VIN with grpc call
-	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), reg.VIN)
+	vin := strings.ToUpper(reg.VIN)
+	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin)
 	if err != nil {
-		return errors.Wrapf(err, "could not decode vin %s for country %s", reg.VIN, reg.CountryCode)
+		return errors.Wrapf(err, "could not decode vin %s for country %s", vin, reg.CountryCode)
 	}
 	if len(decodeVIN.DeviceDefinitionId) == 0 {
-		udc.log.Warn().Str("vin", reg.VIN).Str("user_id", userID).
+		udc.log.Warn().Str("vin", vin).Str("user_id", userID).
 			Msg("unable to decode vin for customer request to create vehicle")
 		return fiber.NewError(fiber.StatusFailedDependency, "unable to decode vin")
 	}
 	// attach device def to user
-	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, reg.CountryCode, userID, &reg.VIN)
+	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, reg.CountryCode, userID, &vin)
 	if err != nil {
 		return err
 	}
