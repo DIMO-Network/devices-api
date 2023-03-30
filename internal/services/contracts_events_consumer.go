@@ -158,7 +158,7 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 		tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(1), 0))
 
 		apUnit, err := models.AutopiUnits(models.AutopiUnitWhere.TokenID.EQ(tkID)).One(context.Background(), c.db.DBS().Reader)
-		if err != nil {
+		if err != nil || !apUnit.OwnerAddress.Valid {
 			if errors.Is(err, sql.ErrNoRows) {
 				c.log.Err(err).Str("tokenID", tkID.String()).Msg("Could not find device")
 				return nil
