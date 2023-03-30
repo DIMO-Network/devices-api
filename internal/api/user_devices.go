@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -133,25 +134,26 @@ func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *
 		return nil, status.Errorf(codes.InvalidArgument, "invalid countryCode field or country not supported: %s", req.CountryCode)
 	}
 	// check for duplicate vin, future: refactor with user_devices_controler fromsmartcar, fromvin
+	vin := strings.ToUpper(req.Vin)
 	conflict, err := models.UserDevices(
-		models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(req.Vin)),
+		models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
 		models.UserDeviceWhere.VinConfirmed.EQ(true),
 	).Exists(ctx, s.dbs().Reader)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if conflict {
-		return nil, status.Errorf(codes.AlreadyExists, "VIN %s in use by a previously connected device", req.Vin)
+		return nil, status.Errorf(codes.AlreadyExists, "VIN %s in use by a previously connected device", vin)
 	}
 
-	resp, err := s.deviceDefSvc.DecodeVIN(ctx, req.Vin)
+	resp, err := s.deviceDefSvc.DecodeVIN(ctx, vin)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if len(resp.DeviceDefinitionId) == 0 {
 		s.logger.Warn().
-			Str("vin", req.Vin).
+			Str("vin", vin).
 			Str("user_id", req.UserDeviceId).
 			Msg("unable to decode vin for customer request to create vehicle")
 		return nil, status.Error(codes.Internal, err.Error())
@@ -176,7 +178,7 @@ func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *
 		ID:                 userDeviceID,
 		UserID:             req.UserDeviceId,
 		DeviceDefinitionID: dd.DeviceDefinitionId,
-		VinIdentifier:      null.StringFrom(req.Vin),
+		VinIdentifier:      null.StringFrom(vin),
 		CountryCode:        null.StringFrom(req.CountryCode),
 		VinConfirmed:       true,
 		Metadata:           null.JSON{}, // todo set powertrain
