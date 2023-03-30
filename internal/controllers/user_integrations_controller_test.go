@@ -719,7 +719,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_UpToDate()
 		LastCommunication: time.Now(),
 		Release: struct {
 			Version string `json:"version"`
-		}(struct{ Version string }{Version: "1.21.9"}),
+		}(struct{ Version string }{Version: "1.22.8"}),
 	}, nil)
 	autopiAPISvc.EXPECT().GetUserDeviceIntegrationByUnitID(gomock.Any(), unitID).Return(nil, nil)
 	// act
@@ -731,7 +731,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_UpToDate()
 	body, _ := io.ReadAll(response.Body)
 	//assert
 	assert.Equal(s.T(), true, gjson.GetBytes(body, "isUpdated").Bool())
-	assert.Equal(s.T(), "1.21.9", gjson.GetBytes(body, "releaseVersion").String())
+	assert.Equal(s.T(), "1.22.8", gjson.GetBytes(body, "releaseVersion").String())
 	assert.Equal(s.T(), false, gjson.GetBytes(body, "shouldUpdate").Bool()) // returned version is 1.21.9 which is our cutoff
 }
 func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_FutureUpdate() {
