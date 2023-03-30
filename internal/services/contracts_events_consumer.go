@@ -154,10 +154,10 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 		return err
 	}
 
-	if IsZeroAddress(args.From) { // This is not a mint
+	if !IsZeroAddress(args.From) { // This is not a mint
 		tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(1), 0))
 
-		ap_unit, err := models.AutopiUnits(models.AutopiUnitWhere.TokenID.EQ(tkID)).One(context.Background(), c.db.DBS().Reader)
+		apUnit, err := models.AutopiUnits(models.AutopiUnitWhere.TokenID.EQ(tkID)).One(context.Background(), c.db.DBS().Reader)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				c.log.Err(err).Str("tokenID", tkID.String()).Msg("Could not find device")
@@ -167,11 +167,11 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 			return nil
 		}
 
-		ap_unit.UserID = null.String{}
+		apUnit.UserID = null.String{}
 
 		cols := models.AutopiUnitColumns
 
-		_, err = ap_unit.Update(ctx, c.db.DBS().Writer, boil.Whitelist(cols.UserID))
+		_, err = apUnit.Update(ctx, c.db.DBS().Writer, boil.Whitelist(cols.UserID))
 		if err != nil {
 			c.log.Err(err).Str("tokenID", tkID.String()).Msg("Error occurred transferring device")
 			return nil
