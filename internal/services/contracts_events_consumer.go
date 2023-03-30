@@ -103,28 +103,27 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.Raw
 		return err
 	}
 
-	if event.Source == fmt.Sprintf("chain/%d", c.settings.DIMORegistryChainID) {
-		switch data.EventName {
-		case PrivilegeSet.String():
-			c.log.Info().Str("event", data.EventName).Msg("Event received")
-			return c.setPrivilegeHandler(&data)
-		case Transfer.String():
-
-			c.log.Info().Str("event", data.EventName).Msg("Event received")
-			return c.routeTransferEvent(&data)
-
-		case AftermarketDeviceNodeMinted.String():
-			if data.Contract == c.registryAddr {
-				c.log.Info().Str("event", data.EventName).Msg("Event received")
-				return c.setMintedAfterMarketDevice(&data)
-			}
-			fallthrough // TODO(elffjs): Danger!
-		default:
-			c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
-		}
-	} else {
+	if event.Source != fmt.Sprintf("chain/%d", c.settings.DIMORegistryChainID) {
 		c.log.Debug().Str("event", data.EventName).Interface("event data", event).Msg("Handler not provided for event.")
+		return nil
 	}
+	switch data.EventName {
+	case PrivilegeSet.String():
+		c.log.Info().Str("event", data.EventName).Msg("Event received")
+		return c.setPrivilegeHandler(&data)
+	case Transfer.String():
+		c.log.Info().Str("event", data.EventName).Msg("Event received")
+		return c.routeTransferEvent(&data)
+	case AftermarketDeviceNodeMinted.String():
+		if data.Contract == c.registryAddr {
+			c.log.Info().Str("event", data.EventName).Msg("Event received")
+			return c.setMintedAfterMarketDevice(&data)
+		}
+		fallthrough // TODO(elffjs): Danger!
+	default:
+		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
+	}
+
 	return nil
 }
 
@@ -182,7 +181,7 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 
 	cols := models.AutopiUnitColumns
 
-	_, err = apUnit.Update(ctx, c.db.DBS().Writer, boil.Whitelist(cols.UserID))
+	_, err = apUnit.Update(ctx, c.db.DBS().Writer, boil.Whitelist(cols.UserID, cols.OwnerAddress))
 	if err != nil {
 		c.log.Err(err).Str("tokenID", tkID.String()).Msg("Error occurred transferring device")
 		return nil
