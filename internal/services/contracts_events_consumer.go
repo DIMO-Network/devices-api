@@ -148,7 +148,7 @@ func (c *ContractsEventsConsumer) routeTransferEvent(e *ContractEventData) error
 
 func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEventData) error {
 	ctx := context.Background()
-	var args contracts.ContractsTransfer
+	var args contracts.AftermarketDeviceIdTransfer
 	err := json.Unmarshal(e.Arguments, &args)
 	if err != nil {
 		return err
@@ -183,7 +183,6 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 }
 
 func (c *ContractsEventsConsumer) setPrivilegeHandler(e *ContractEventData) error {
-
 	var args contracts.MultiPrivilegeSetPrivilegeData
 	if err := json.Unmarshal(e.Arguments, &args); err != nil {
 		return err
