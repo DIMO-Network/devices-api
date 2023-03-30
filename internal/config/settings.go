@@ -75,7 +75,6 @@ type Settings struct {
 	OpenAISecretKey                   string      `yaml:"OPENAI_SECRET_KEY"`
 	ChatGPTURL                        string      `yaml:"CHATGPT_URL"`
 	AftermarketDeviceContractAddress        string      `yaml:"AFTERMARKET_DEVICE_CONTRACT_ADDRESS"`
-	PolygonChainID                    string      `yaml:"POLYGON_CHAIN_ID"`
 }
 
 func (s *Settings) IsProduction() bool {

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -104,25 +103,27 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.Raw
 		return err
 	}
 
-	switch data.EventName {
-	case PrivilegeSet.String():
-		c.log.Info().Str("event", data.EventName).Msg("Event received")
-		return c.setPrivilegeHandler(&data)
-	case Transfer.String():
-		if event.Source == fmt.Sprintf("chain/%s", c.settings.PolygonChainID) {
+	if event.Source == fmt.Sprintf("chain/%d", c.settings.DIMORegistryChainID) {
+		switch data.EventName {
+		case PrivilegeSet.String():
+			c.log.Info().Str("event", data.EventName).Msg("Event received")
+			return c.setPrivilegeHandler(&data)
+		case Transfer.String():
+
 			c.log.Info().Str("event", data.EventName).Msg("Event received")
 			return c.routeTransferEvent(&data)
+
+		case AftermarketDeviceNodeMinted.String():
+			if data.Contract == c.registryAddr {
+				c.log.Info().Str("event", data.EventName).Msg("Event received")
+				return c.setMintedAfterMarketDevice(&data)
+			}
+			fallthrough // TODO(elffjs): Danger!
+		default:
+			c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 		}
+	} else {
 		c.log.Debug().Str("event", data.EventName).Interface("event data", event).Msg("Handler not provided for event.")
-		return nil
-	case AftermarketDeviceNodeMinted.String():
-		if data.Contract == c.registryAddr {
-			c.log.Info().Str("event", data.EventName).Msg("Event received")
-			return c.setMintedAfterMarketDevice(&data)
-		}
-		fallthrough // TODO(elffjs): Danger!
-	default:
-		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
 	return nil
 }
@@ -137,10 +138,10 @@ type PrivilegeArgs struct {
 
 func (c *ContractsEventsConsumer) routeTransferEvent(e *ContractEventData) error {
 	switch e.Contract {
-	case common.HexToAddress(c.settings.AfterMarketContractAddress):
+	case common.HexToAddress(c.settings.AftermarketDeviceContractAddress):
 		return c.handleAfterMarketTransferEvent(e)
 	default:
-		c.log.Debug().Str("event", e.EventName).Interface("full event data", e).Msg("Handler not provided for event.")
+		c.log.Debug().Str("event", e.EventName).Interface("fullEventData", e).Msg("Handler not provided for event.")
 	}
 
 	return nil
@@ -154,29 +155,37 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 		return err
 	}
 
-	if !IsZeroAddress(args.From) { // This is not a mint
-		tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(1), 0))
+	tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0))
 
-		apUnit, err := models.AutopiUnits(models.AutopiUnitWhere.TokenID.EQ(tkID)).One(context.Background(), c.db.DBS().Reader)
-		if err != nil || !apUnit.OwnerAddress.Valid {
-			if errors.Is(err, sql.ErrNoRows) {
-				c.log.Err(err).Str("tokenID", tkID.String()).Msg("Could not find device")
-				return nil
-			}
-			c.log.Err(err).Str("tokenID", tkID.String()).Msg("Error occurred transferring device")
+	if IsZeroAddress(args.From) {
+		c.log.Err(err).Str("tokenID", tkID.String()).Msg("Ignoring mint event")
+		return nil
+	}
+
+	apUnit, err := models.AutopiUnits(models.AutopiUnitWhere.TokenID.EQ(tkID)).One(context.Background(), c.db.DBS().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.log.Err(err).Str("tokenID", tkID.String()).Msg("Record not found as this might be a newly minted device.")
 			return nil
 		}
+		c.log.Err(err).Str("tokenID", tkID.String()).Msg("Error occurred transferring device")
+		return nil
+	}
 
-		apUnit.UserID = null.String{}
+	if !apUnit.OwnerAddress.Valid {
+		c.log.Err(err).Str("tokenID", tkID.String()).Msg("Device has not been claimed yet")
+		return nil
+	}
 
-		cols := models.AutopiUnitColumns
+	apUnit.UserID = null.String{}
+	apUnit.OwnerAddress = null.BytesFrom(args.To.Bytes())
 
-		_, err = apUnit.Update(ctx, c.db.DBS().Writer, boil.Whitelist(cols.UserID))
-		if err != nil {
-			c.log.Err(err).Str("tokenID", tkID.String()).Msg("Error occurred transferring device")
-			return nil
-		}
+	cols := models.AutopiUnitColumns
 
+	_, err = apUnit.Update(ctx, c.db.DBS().Writer, boil.Whitelist(cols.UserID))
+	if err != nil {
+		c.log.Err(err).Str("tokenID", tkID.String()).Msg("Error occurred transferring device")
+		return nil
 	}
 
 	return nil
