@@ -2,8 +2,10 @@ package services
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -35,6 +37,7 @@ type EventName string
 const (
 	PrivilegeSet                EventName = "PrivilegeSet"
 	AftermarketDeviceNodeMinted EventName = "AftermarketDeviceNodeMinted"
+	Transfer                    EventName = "Transfer"
 )
 
 func (r EventName) String() string {
@@ -105,6 +108,13 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.Raw
 	case PrivilegeSet.String():
 		c.log.Info().Str("event", data.EventName).Msg("Event received")
 		return c.setPrivilegeHandler(&data)
+	case Transfer.String():
+		if event.Source == fmt.Sprintf("chain/%s", c.settings.PolygonChainID) {
+			c.log.Info().Str("event", data.EventName).Msg("Event received")
+			return c.routeTransferEvent(&data)
+		}
+		c.log.Debug().Str("event", data.EventName).Interface("event data", event).Msg("Handler not provided for event.")
+		return nil
 	case AftermarketDeviceNodeMinted.String():
 		if data.Contract == c.registryAddr {
 			c.log.Info().Str("event", data.EventName).Msg("Event received")
@@ -123,6 +133,53 @@ type PrivilegeArgs struct {
 	PrivilegeID int64  `mapstructure:"privId"`
 	UserAddress string `mapstructure:"user"`
 	ExpiresAt   string `mapstructure:"expires"`
+}
+
+func (c *ContractsEventsConsumer) routeTransferEvent(e *ContractEventData) error {
+	switch e.Contract {
+	case common.HexToAddress(c.settings.AfterMarketContractAddress):
+		return c.handleAfterMarketTransferEvent(e)
+	default:
+		c.log.Debug().Str("event", e.EventName).Interface("full event data", e).Msg("Handler not provided for event.")
+	}
+
+	return nil
+}
+
+func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEventData) error {
+	ctx := context.Background()
+	var args contracts.ContractsTransfer
+	err := json.Unmarshal(e.Arguments, &args)
+	if err != nil {
+		return err
+	}
+
+	if IsZeroAddress(args.From) { // This is not a mint
+		tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(1), 0))
+
+		ap_unit, err := models.AutopiUnits(models.AutopiUnitWhere.TokenID.EQ(tkID)).One(context.Background(), c.db.DBS().Reader)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				c.log.Err(err).Str("tokenID", tkID.String()).Msg("Could not find device")
+				return nil
+			}
+			c.log.Err(err).Str("tokenID", tkID.String()).Msg("Error occurred transferring device")
+			return nil
+		}
+
+		ap_unit.UserID = null.String{}
+
+		cols := models.AutopiUnitColumns
+
+		_, err = ap_unit.Update(ctx, c.db.DBS().Writer, boil.Whitelist(cols.UserID))
+		if err != nil {
+			c.log.Err(err).Str("tokenID", tkID.String()).Msg("Error occurred transferring device")
+			return nil
+		}
+
+	}
+
+	return nil
 }
 
 func (c *ContractsEventsConsumer) setPrivilegeHandler(e *ContractEventData) error {

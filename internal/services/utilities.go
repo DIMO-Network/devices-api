@@ -1,8 +1,11 @@
 package services
 
 import (
+	"reflect"
 	"regexp"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // don't let this become a dumping ground!
@@ -28,4 +31,21 @@ func ValidateAndCleanUUID(uuid string) (bool, string) {
 		return true, uuid
 	}
 	return false, ""
+}
+
+// IsZeroAddress validate if it's a 0 address
+func IsZeroAddress(iaddress interface{}) bool {
+	var address common.Address
+	switch v := iaddress.(type) {
+	case string:
+		address = common.HexToAddress(v)
+	case common.Address:
+		address = v
+	default:
+		return false
+	}
+
+	zeroAddressBytes := common.FromHex("0x0000000000000000000000000000000000000000")
+	addressBytes := address.Bytes()
+	return reflect.DeepEqual(addressBytes, zeroAddressBytes)
 }
