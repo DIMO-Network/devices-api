@@ -74,7 +74,7 @@ type Settings struct {
 	VincarioAPIKey                    string      `yaml:"VINCARIO_API_KEY"`
 	OpenAISecretKey                   string      `yaml:"OPENAI_SECRET_KEY"`
 	ChatGPTURL                        string      `yaml:"CHATGPT_URL"`
-	AfterMarketContractAddress        string      `yaml:"DEVICE_AFTERMARKET_CONTRACT_ADDRESS"`
+	AftermarketDeviceContractAddress        string      `yaml:"AFTERMARKET_DEVICE_CONTRACT_ADDRESS"`
 	PolygonChainID                    string      `yaml:"POLYGON_CHAIN_ID"`
 }
 
