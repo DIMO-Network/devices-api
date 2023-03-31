@@ -57,7 +57,8 @@ func TestProcessContractsEventsMessages(t *testing.T) {
 	s := initCEventsTestHelper(t)
 	defer s.destroy()
 
-	e := eventsPayloadFactory(1, 1, "", 0)
+	log.Println("aaaaaaaaaa", s.settings.DIMORegistryChainID)
+	e := eventsPayloadFactory(1, 1, "", 0, s.settings.DIMORegistryChainID)
 	factoryResp := e[0]
 
 	msg := &message.Message{
@@ -101,7 +102,7 @@ func TestIgnoreWrongEventNames(t *testing.T) {
 	s := initCEventsTestHelper(t)
 	defer s.destroy()
 
-	e := eventsPayloadFactory(2, 2, "SomeEvent", 0)
+	e := eventsPayloadFactory(2, 2, "SomeEvent", 0, s.settings.DIMORegistryChainID)
 	factoryResp := e[0]
 
 	msg := &message.Message{
@@ -126,7 +127,7 @@ func TestUpdatedTimestamp(t *testing.T) {
 	s := initCEventsTestHelper(t)
 	defer s.destroy()
 
-	e := eventsPayloadFactory(3, 3, "", 0)
+	e := eventsPayloadFactory(3, 3, "", 0, s.settings.DIMORegistryChainID)
 	factoryResp := e[0]
 
 	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
@@ -145,7 +146,7 @@ func TestUpdatedTimestamp(t *testing.T) {
 	s.assert.NotNil(oldNft)
 
 	expiry := time.Now().Add(time.Hour + time.Duration(4)).UTC().Unix()
-	e = eventsPayloadFactory(3, 3, "", expiry)
+	e = eventsPayloadFactory(3, 3, "", expiry, s.settings.DIMORegistryChainID)
 	factoryResp = e[0]
 
 	msg = &message.Message{
@@ -182,7 +183,7 @@ func TestUpdatedTimestamp(t *testing.T) {
 }
 
 // Utility/Helper functions
-func eventsPayloadFactory(from, to int, eventName string, exp int64) []eventsFactoryResp {
+func eventsPayloadFactory(from, to int, eventName string, exp int64, dIMORegistryChainID int64) []eventsFactoryResp {
 	res := []eventsFactoryResp{}
 
 	convertTokenIDToDecimal := func(t string) types.Decimal {
@@ -223,8 +224,9 @@ func eventsPayloadFactory(from, to int, eventName string, exp int64) []eventsFac
 						"expires": %d
 					}
 				},
-				"type": "zone.dimo.contract.event"
-			}`, contractAddr.String(), eventName, tokenID, privID, userAddr.String(), expiry)
+				"type": "zone.dimo.contract.event",
+				"source": "chain/%d"
+			}`, contractAddr.String(), eventName, tokenID, privID, userAddr.String(), expiry, dIMORegistryChainID)
 
 		res = append(res, eventsFactoryResp{
 			payload: payload,
@@ -244,7 +246,7 @@ func initCEventsTestHelper(t *testing.T) cEventsTestHelper {
 	ctx := context.Background()
 	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
 	assert := assert.New(t)
-	settings := &config.Settings{AutoPiAPIToken: "fdff"}
+	settings := &config.Settings{AutoPiAPIToken: "fdff", DIMORegistryChainID: 1}
 
 	return cEventsTestHelper{
 		logger:    zerolog.New(os.Stdout).With().Timestamp().Logger(),
