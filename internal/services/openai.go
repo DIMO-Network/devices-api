@@ -89,8 +89,8 @@ func (o *openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 	defer resp.Body.Close()
 
 	appmetrics.OpenAIResponseTimeOps.With(prometheus.Labels{
-		"method": "GET",
-		"status": strconv.Itoa(resp.StatusCode),
+		"api_url": o.chatGptURL,
+		"status":  strconv.Itoa(resp.StatusCode),
 	}).Observe(currentReqResponseTime.Seconds())
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
