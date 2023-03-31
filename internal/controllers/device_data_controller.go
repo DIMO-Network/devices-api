@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/DIMO-Network/devices-api/internal/appmetrics"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/models"
@@ -324,8 +325,10 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 		}
 	}
 
+	appmetrics.OpenAITotalCallsOps.Inc() // record new total call to chatgpt
 	chtResp, err := udc.openAI.GetErrorCodesDescription(dd.Type.Make, dd.Type.Model, req.ErrorCodes)
 	if err != nil {
+		appmetrics.OpenAITotalFailedCallsOps.Inc()
 		udc.log.Err(err).Interface("requestBody", req).Msg("Error occurred fetching description for error codes")
 		return err
 	}
