@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -104,7 +103,6 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.Raw
 		return err
 	}
 
-	log.Println(event.Source, fmt.Sprintf("chain/%d", c.settings.DIMORegistryChainID), "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")
 	if event.Source != fmt.Sprintf("chain/%d", c.settings.DIMORegistryChainID) {
 		c.log.Debug().Str("event", data.EventName).Interface("event data", event).Msg("Handler not provided for event.")
 		return nil

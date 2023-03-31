@@ -38,7 +38,7 @@ env:
   ENABLE_PRIVILEGES: true
   TOKEN_EXCHANGE_JWK_KEY_SET_URL: http://dex-roles-rights-prod.prod.svc.cluster.local:5556/keys
   VEHICLE_NFT_ADDRESS: '0xba5738a18d83d41847dffbdc6101d37c69c9b0cf'
-  DEVICE_AFTERMARKET_CONTRACT_ADDRESS: "0x9c94c395cbcbde662235e0a9d3bb87ad708561ba"
+  AFTERMARKET_DEVICE_CONTRACT_ADDRESS: "0x9c94c395cbcbde662235e0a9d3bb87ad708561ba"
 ingress:
   enabled: true
   className: nginx

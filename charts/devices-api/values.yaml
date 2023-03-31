@@ -76,7 +76,7 @@ env:
   AUTOPI_NFT_IMAGE: autopi.png
   VINCARIO_API_URL: https://api.vindecoder.eu/3.2
   CHATGPT_URL: https://api.openai.com/v1/chat/completions
-  DEVICE_AFTERMARKET_CONTRACT_ADDRESS: '0xcf9af64522162da85164a714c23a7705e6e466b3'
+  AFTERMARKET_DEVICE_CONTRACT_ADDRESS: '0xcf9af64522162da85164a714c23a7705e6e466b3'
 service:
   type: ClusterIP
   ports:
