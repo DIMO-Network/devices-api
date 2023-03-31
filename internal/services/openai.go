@@ -22,11 +22,10 @@ type OpenAI interface {
 }
 
 type openAI struct {
-	chatGptURL             string
-	token                  string
-	httpClient             *http.Client
-	logger                 *zerolog.Logger
-	currentReqResponseTime time.Duration
+	chatGptURL string
+	token      string
+	httpClient *http.Client
+	logger     *zerolog.Logger
 }
 
 type ChatGPTResponseChoices struct {
@@ -74,7 +73,13 @@ func (o *openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+o.token)
 
-	req = o.measureAPIResponseTime(req, time.Now())
+	var currentReqResponseTime time.Duration
+	trace := &httptrace.ClientTrace{
+		GotFirstResponseByte: func() {
+			currentReqResponseTime = time.Since(time.Now())
+		},
+	}
+	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -86,7 +91,7 @@ func (o *openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 	appmetrics.OpenAIResponseTimeOps.With(prometheus.Labels{
 		"method": "GET",
 		"status": strconv.Itoa(resp.StatusCode),
-	}).Observe(o.currentReqResponseTime.Seconds())
+	}).Observe(currentReqResponseTime.Seconds())
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("received error from request: %s", string(b))
@@ -99,16 +104,6 @@ func (o *openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 	}
 
 	return cResp, nil
-}
-
-func (o *openAI) measureAPIResponseTime(req *http.Request, start time.Time) *http.Request {
-	trace := &httptrace.ClientTrace{
-		GotFirstResponseByte: func() {
-			o.currentReqResponseTime = time.Since(start)
-		},
-	}
-
-	return req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
 }
 
 func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []string) (string, error) {
@@ -126,6 +121,8 @@ func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []strin
 	if err != nil {
 		return "", err
 	}
+
+	appmetrics.OpenAITotalTokensUsedOps.Add(float64(r.Usage.TotalTokens))
 
 	if len(r.Choices) == 0 {
 		return "", errors.New("could not fetch description for error codes")
