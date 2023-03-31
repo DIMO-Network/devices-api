@@ -81,10 +81,10 @@ func (s *ingestRegistrar) Register(externalID, userDeviceID, integrationID strin
 	return nil
 }
 
-func (s *ingestRegistrar) Deregister(smartcarID, _, _ string) error {
+func (s *ingestRegistrar) Deregister(externalID, _, _ string) error {
 	message := &sarama.ProducerMessage{
 		Topic: s.ingestTopic,
-		Key:   sarama.StringEncoder(smartcarID),
+		Key:   sarama.StringEncoder(externalID),
 		Value: nil, // Delete from compacted topic.
 	}
 	_, _, err := s.Producer.SendMessage(message)

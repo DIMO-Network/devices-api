@@ -341,7 +341,7 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 		}
 	}
 
-	err = i.apReg.Deregister(autoPiModel.AutopiDeviceID.String, ud.ID, integ.Id)
+	err = i.apReg.Deregister(autoPiModel.AutopiUnitID, ud.ID, integ.Id)
 	if err != nil {
 		return err
 	}
