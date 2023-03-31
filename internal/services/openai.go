@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -62,6 +63,7 @@ func NewOpenAI(logger *zerolog.Logger, c config.Settings) OpenAI {
 }
 
 func (o *openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
+	ctx := context.Background()
 	req, err := http.NewRequest(
 		"POST",
 		o.chatGptURL,
@@ -73,13 +75,14 @@ func (o *openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+o.token)
 
+	start := time.Now()
 	var currentReqResponseTime time.Duration
 	trace := &httptrace.ClientTrace{
 		GotFirstResponseByte: func() {
-			currentReqResponseTime = time.Since(time.Now())
+			currentReqResponseTime = time.Since(start)
 		},
 	}
-	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
+	req = req.WithContext(httptrace.WithClientTrace(ctx, trace))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -89,8 +92,7 @@ func (o *openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 	defer resp.Body.Close()
 
 	appmetrics.OpenAIResponseTimeOps.With(prometheus.Labels{
-		"api_url": o.chatGptURL,
-		"status":  strconv.Itoa(resp.StatusCode),
+		"status": strconv.Itoa(resp.StatusCode),
 	}).Observe(currentReqResponseTime.Seconds())
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)

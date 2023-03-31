@@ -48,5 +48,5 @@ var (
 		Name:    "devices_api_error_codes_openai_request_duration_seconds",
 		Help:    "Response duration of OpenAI ChatGPT in seconds",
 		Buckets: []float64{0.1, 0.15, 0.2, 0.25, 0.3, 0.5, 0.7, 0.9, 10},
-	}, []string{"status", "api_url"})
+	}, []string{"status"})
 )
