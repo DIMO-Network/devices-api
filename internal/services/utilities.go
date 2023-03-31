@@ -3,6 +3,8 @@ package services
 import (
 	"regexp"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // don't let this become a dumping ground!
@@ -28,4 +30,11 @@ func ValidateAndCleanUUID(uuid string) (bool, string) {
 		return true, uuid
 	}
 	return false, ""
+}
+
+var zeroAddr common.Address
+
+// IsZeroAddress validate if it's a 0 address
+func IsZeroAddress(addr common.Address) bool {
+	return addr == zeroAddr
 }

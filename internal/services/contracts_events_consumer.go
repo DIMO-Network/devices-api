@@ -2,8 +2,10 @@ package services
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -35,6 +37,7 @@ type EventName string
 const (
 	PrivilegeSet                EventName = "PrivilegeSet"
 	AftermarketDeviceNodeMinted EventName = "AftermarketDeviceNodeMinted"
+	Transfer                    EventName = "Transfer"
 )
 
 func (r EventName) String() string {
@@ -101,10 +104,18 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.Raw
 		return err
 	}
 
+	log.Println(event.Source, fmt.Sprintf("chain/%d", c.settings.DIMORegistryChainID), "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")
+	if event.Source != fmt.Sprintf("chain/%d", c.settings.DIMORegistryChainID) {
+		c.log.Debug().Str("event", data.EventName).Interface("event data", event).Msg("Handler not provided for event.")
+		return nil
+	}
 	switch data.EventName {
 	case PrivilegeSet.String():
 		c.log.Info().Str("event", data.EventName).Msg("Event received")
 		return c.setPrivilegeHandler(&data)
+	case Transfer.String():
+		c.log.Info().Str("event", data.EventName).Msg("Event received")
+		return c.routeTransferEvent(&data)
 	case AftermarketDeviceNodeMinted.String():
 		if data.Contract == c.registryAddr {
 			c.log.Info().Str("event", data.EventName).Msg("Event received")
@@ -114,6 +125,7 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.Raw
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
+
 	return nil
 }
 
@@ -125,8 +137,62 @@ type PrivilegeArgs struct {
 	ExpiresAt   string `mapstructure:"expires"`
 }
 
-func (c *ContractsEventsConsumer) setPrivilegeHandler(e *ContractEventData) error {
+func (c *ContractsEventsConsumer) routeTransferEvent(e *ContractEventData) error {
+	switch e.Contract {
+	case common.HexToAddress(c.settings.AftermarketDeviceContractAddress):
+		return c.handleAfterMarketTransferEvent(e)
+	default:
+		c.log.Debug().Str("event", e.EventName).Interface("fullEventData", e).Msg("Handler not provided for event.")
+	}
 
+	return nil
+}
+
+func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEventData) error {
+	ctx := context.Background()
+	var args contracts.AftermarketDeviceIdTransfer
+	err := json.Unmarshal(e.Arguments, &args)
+	if err != nil {
+		return err
+	}
+
+	tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0))
+
+	if IsZeroAddress(args.From) {
+		c.log.Err(err).Str("tokenID", tkID.String()).Msg("Ignoring mint event")
+		return nil
+	}
+
+	apUnit, err := models.AutopiUnits(models.AutopiUnitWhere.TokenID.EQ(tkID)).One(context.Background(), c.db.DBS().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.log.Err(err).Str("tokenID", tkID.String()).Msg("Record not found as this might be a newly minted device.")
+			return nil
+		}
+		c.log.Err(err).Str("tokenID", tkID.String()).Msg("Error occurred transferring device")
+		return nil
+	}
+
+	if !apUnit.OwnerAddress.Valid {
+		c.log.Err(err).Str("tokenID", tkID.String()).Msg("Device has not been claimed yet")
+		return nil
+	}
+
+	apUnit.UserID = null.String{}
+	apUnit.OwnerAddress = null.BytesFrom(args.To.Bytes())
+
+	cols := models.AutopiUnitColumns
+
+	_, err = apUnit.Update(ctx, c.db.DBS().Writer, boil.Whitelist(cols.UserID, cols.OwnerAddress))
+	if err != nil {
+		c.log.Err(err).Str("tokenID", tkID.String()).Msg("Error occurred transferring device")
+		return nil
+	}
+
+	return nil
+}
+
+func (c *ContractsEventsConsumer) setPrivilegeHandler(e *ContractEventData) error {
 	var args contracts.MultiPrivilegeSetPrivilegeData
 	if err := json.Unmarshal(e.Arguments, &args); err != nil {
 		return err

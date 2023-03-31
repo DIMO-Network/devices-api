@@ -74,6 +74,7 @@ type Settings struct {
 	VincarioAPIKey                    string      `yaml:"VINCARIO_API_KEY"`
 	OpenAISecretKey                   string      `yaml:"OPENAI_SECRET_KEY"`
 	ChatGPTURL                        string      `yaml:"CHATGPT_URL"`
+	AftermarketDeviceContractAddress        string      `yaml:"AFTERMARKET_DEVICE_CONTRACT_ADDRESS"`
 }
 
 func (s *Settings) IsProduction() bool {
