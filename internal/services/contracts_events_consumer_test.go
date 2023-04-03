@@ -418,7 +418,7 @@ func privilegeEventsPayloadFactory(from, to int, eventName string, exp int64, dI
 						"version": 1,
 						"privId": %d,
 						"user": "%s",
-						"expires": %d,
+						"expires": %d
 					}
 				},
 				"type": "zone.dimo.contract.event",
