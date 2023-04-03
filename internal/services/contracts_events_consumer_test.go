@@ -251,7 +251,7 @@ func Test_Ignore_Transfer_Mint_Event(t *testing.T) {
 	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
 
 	err = c.processMessage(msg)
-	s.assert.EqualError(err, "Ignoring mint event")
+	s.assert.EqualError(err, "ignoring mint event")
 }
 
 func Test_Ignore_Transfer_Claims_Event(t *testing.T) {
@@ -278,7 +278,7 @@ func Test_Ignore_Transfer_Claims_Event(t *testing.T) {
 	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
 
 	err = c.processMessage(msg)
-	s.assert.EqualError(err, "Device has not been claimed yet")
+	s.assert.EqualError(err, "device has not been claimed yet")
 }
 
 func Test_Ignore_Transfer_Wrong_Contract(t *testing.T) {
@@ -336,7 +336,7 @@ func Test_Ignore_Transfer_Unit_Not_Found(t *testing.T) {
 	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
 
 	err = c.processMessage(msg)
-	s.assert.EqualError(err, "Record not found as this might be a newly minted device.")
+	s.assert.EqualError(err, "record not found as this might be a newly minted device")
 }
 
 func convertTokenIDToDecimal(t string) types.Decimal {
