@@ -445,8 +445,8 @@ type AutoPiDongleVehicle struct {
 
 // PatchVehicleProfile used to update vehicle profile https://api.dimo.autopi.io/#/vehicle/vehicle_profile_partial_update
 type PatchVehicleProfile struct {
-	Vin      string `json:"vin,omitempty"`
-	CallName string `json:"callName,omitempty"`
+	Vin      string `json:"vin"`
+	CallName string `json:"callName"`
 	Year     int    `json:"year,omitempty"`
 	Type     string `json:"type,omitempty"`
 }

@@ -21,8 +21,10 @@ type autopiToolsCmd struct {
 	pdb      db.Store
 }
 
-func (*autopiToolsCmd) Name() string     { return "autopi-tools" }
-func (*autopiToolsCmd) Synopsis() string { return "autopi-tools args to stdout." }
+func (*autopiToolsCmd) Name() string { return "autopi-tools" }
+func (*autopiToolsCmd) Synopsis() string {
+	return "variety of tools to interact with bulk autopi api operations"
+}
 func (*autopiToolsCmd) Usage() string {
 	return `autopi-tools [] <some text>:
 	autopi-tools args.
