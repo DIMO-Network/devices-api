@@ -157,23 +157,23 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 	tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0))
 
 	if IsZeroAddress(args.From) {
-		c.log.Info().Str("tokenID", tkID.String()).Msg("Ignoring mint event")
-		return errors.New("Ignoring mint event")
+		c.log.Info().Str("tokenID", tkID.String()).Msg("ignoring mint event")
+		return errors.New("ignoring mint event")
 	}
 
 	apUnit, err := models.AutopiUnits(models.AutopiUnitWhere.TokenID.EQ(tkID)).One(context.Background(), c.db.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			c.log.Err(err).Str("tokenID", tkID.String()).Msg("Record not found as this might be a newly minted device.")
-			return errors.New("Record not found as this might be a newly minted device.")
+			c.log.Err(err).Str("tokenID", tkID.String()).Msg("record not found as this might be a newly minted device")
+			return errors.New("record not found as this might be a newly minted device")
 		}
-		c.log.Err(err).Str("tokenID", tkID.String()).Msg("Error occurred transferring device")
-		return errors.New("Error occurred transferring device")
+		c.log.Err(err).Str("tokenID", tkID.String()).Msg("error occurred transferring device")
+		return errors.New("error occurred transferring device")
 	}
 
 	if !apUnit.OwnerAddress.Valid {
-		c.log.Info().Str("tokenID", tkID.String()).Msg("Device has not been claimed yet")
-		return errors.New("Device has not been claimed yet")
+		c.log.Info().Str("tokenID", tkID.String()).Msg("device has not been claimed yet")
+		return errors.New("device has not been claimed yet")
 	}
 
 	apUnit.UserID = null.String{}
@@ -183,8 +183,8 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 
 	_, err = apUnit.Update(ctx, c.db.DBS().Writer, boil.Whitelist(cols.UserID, cols.OwnerAddress))
 	if err != nil {
-		c.log.Err(err).Str("tokenID", tkID.String()).Msg("Error occurred transferring device")
-		return errors.New("Error occurred transferring device")
+		c.log.Err(err).Str("tokenID", tkID.String()).Msg("error occurred transferring device")
+		return errors.New("error occurred transferring device")
 	}
 
 	return nil
