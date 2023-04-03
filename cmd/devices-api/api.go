@@ -319,7 +319,7 @@ func startGRPCServer(settings *config.Settings, dbs func() *db.ReaderWriter,
 
 	logger.Info().Msgf("Starting gRPC server on port %s", settings.GRPCPort)
 	server := grpc.NewServer()
-	pb.RegisterUserDeviceServiceServer(server, api.NewUserDeviceService(dbs, hardwareTemplateService, logger, deviceDefSvc, eventService))
+	pb.RegisterUserDeviceServiceServer(server, api.NewUserDeviceService(dbs, settings, hardwareTemplateService, logger, deviceDefSvc, eventService))
 	pb.RegisterAftermarketDeviceServiceServer(server, api.NewAftermarketDeviceService(dbs, logger))
 
 	if err := server.Serve(lis); err != nil {
