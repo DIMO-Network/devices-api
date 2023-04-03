@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/DIMO-Network/devices-api/models"
 	"os"
 
 	"strconv"
@@ -22,8 +21,10 @@ type autopiToolsCmd struct {
 	pdb      db.Store
 }
 
-func (*autopiToolsCmd) Name() string     { return "autopi-tools" }
-func (*autopiToolsCmd) Synopsis() string { return "autopi-tools args to stdout." }
+func (*autopiToolsCmd) Name() string { return "autopi-tools" }
+func (*autopiToolsCmd) Synopsis() string {
+	return "variety of tools to interact with bulk autopi api operations"
+}
 func (*autopiToolsCmd) Usage() string {
 	return `autopi-tools [] <some text>:
 	autopi-tools args.
@@ -78,38 +79,4 @@ func autopiTools(args []string, autoPiSvc services.AutoPiAPIService) {
 		println("Incorrect parameter count. Please use following syntax:")
 		println("\"thisEXECUTABLE  autopi-tools  templateName  [-p  parentIndex]  description\"")
 	}
-}
-
-// clearVINFromAutopi iterates over all our known AutoPi units and sets the vin to blank, only if it has a value in their autopi profile.
-func clearVINFromAutopi(ctx context.Context, logger *zerolog.Logger, settings *config.Settings, pdb db.Store) {
-	// instantiate
-	autoPiSvc := services.NewAutoPiAPIService(settings, pdb.DBS)
-
-	// iterate all autopi units
-	all, err := models.AutopiUnits().All(ctx, pdb.DBS().Reader)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to query db")
-	}
-	logger.Info().Msgf("processing %d autopi units", len(all))
-
-	for _, unit := range all {
-		innerLogger := logger.With().Str("autopiUnitID", unit.AutopiUnitID).Logger()
-
-		autoPiDevice, err := autoPiSvc.GetDeviceByUnitID(unit.AutopiUnitID)
-		if err != nil {
-			innerLogger.Err(err).Msg("failed to call autopi api to get autoPiDevice")
-		}
-		if len(autoPiDevice.Vehicle.Vin) > 1 {
-			// call api svc to update profile, setting vin = ""
-			err = autoPiSvc.PatchVehicleProfile(autoPiDevice.Vehicle.ID, services.PatchVehicleProfile{
-				Vin: "",
-			})
-			if err != nil {
-				// uh oh spaghettie oh
-				innerLogger.Err(err).Msg("failed to set VIN on autopi service")
-			}
-		}
-	}
-
-	logger.Info().Msg("all done")
 }

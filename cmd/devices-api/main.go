@@ -110,6 +110,8 @@ func main() {
 		subcommands.Register(&loadValuationsCmd{logger: logger, settings: settings, pdb: pdb}, "user devices")
 		subcommands.Register(&syncDeviceTemplatesCmd{logger: logger, settings: settings, pdb: pdb}, "user devices")
 
+		subcommands.Register(&autopiClearVINCmd{logger: logger, settings: settings, pdb: pdb}, "autopi")
+
 		flag.Parse()
 		os.Exit(int(subcommands.Execute(ctx)))
 	}
