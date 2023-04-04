@@ -24,7 +24,7 @@ func (*autoPiKTableDeleteCmd) Usage() string {
 
 func (c *autoPiKTableDeleteCmd) SetFlags(_ *flag.FlagSet) {}
 
-func (c *autoPiKTableDeleteCmd) Execute(ctx context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+func (c *autoPiKTableDeleteCmd) Execute(_ context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	unitID := f.Arg(0)
 
 	c.logger.Info().Msgf("Removing KTable entry for unit %s.", unitID)
