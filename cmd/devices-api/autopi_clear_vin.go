@@ -53,8 +53,9 @@ func clearVINFromAutopi(ctx context.Context, logger *zerolog.Logger, settings *c
 		autoPiDevice, err := autoPiSvc.GetDeviceByUnitID(unit.AutopiUnitID)
 		if err != nil {
 			innerLogger.Err(err).Msg("failed to call autopi api to get autoPiDevice")
+			continue
 		}
-		if len(autoPiDevice.Vehicle.Vin) > 1 {
+		if autoPiDevice != nil && len(autoPiDevice.Vehicle.Vin) > 1 {
 			// call api svc to update profile, setting vin = ""
 			err = autoPiSvc.PatchVehicleProfile(autoPiDevice.Vehicle.ID, services.PatchVehicleProfile{
 				Vin: "",
@@ -62,6 +63,8 @@ func clearVINFromAutopi(ctx context.Context, logger *zerolog.Logger, settings *c
 			if err != nil {
 				// uh oh spaghettie oh
 				innerLogger.Err(err).Msg("failed to set VIN on autopi service")
+			} else {
+				innerLogger.Info().Msgf("cleared vin for unit: %s", unit.AutopiUnitID)
 			}
 		}
 	}
