@@ -9,6 +9,7 @@ import (
 	"github.com/DIMO-Network/shared/db"
 	"github.com/google/subcommands"
 	"github.com/rs/zerolog"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type autopiClearVINCmd struct {
@@ -41,7 +42,7 @@ func clearVINFromAutopi(ctx context.Context, logger *zerolog.Logger, settings *c
 	autoPiSvc := services.NewAutoPiAPIService(settings, pdb.DBS)
 
 	// iterate all autopi units
-	all, err := models.AutopiUnits().All(ctx, pdb.DBS().Reader)
+	all, err := models.AutopiUnits(qm.Where("user_id is not null")).All(ctx, pdb.DBS().Reader)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to query db")
 	}
