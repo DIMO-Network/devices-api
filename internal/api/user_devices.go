@@ -141,7 +141,7 @@ func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *
 
 	hasConflict := false
 
-	if s.settings.Environment == "prod" {
+	if s.settings.IsProduction() {
 		conflict, err := models.UserDevices(
 			models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
 			models.UserDeviceWhere.VinConfirmed.EQ(true),
