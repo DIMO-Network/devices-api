@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/segmentio/ksuid"
@@ -29,9 +30,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func NewUserDeviceService(dbs func() *db.ReaderWriter, hardwareTemplateService autopi.HardwareTemplateService, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, eventService services.EventService) pb.UserDeviceServiceServer {
+func NewUserDeviceService(dbs func() *db.ReaderWriter, settings *config.Settings, hardwareTemplateService autopi.HardwareTemplateService, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, eventService services.EventService) pb.UserDeviceServiceServer {
 	return &userDeviceService{dbs: dbs,
 		logger:                  logger,
+		settings:                settings,
 		hardwareTemplateService: hardwareTemplateService,
 		deviceDefSvc:            deviceDefSvc,
 		eventService:            eventService,
@@ -43,6 +45,7 @@ type userDeviceService struct {
 	dbs                     func() *db.ReaderWriter
 	hardwareTemplateService autopi.HardwareTemplateService
 	logger                  *zerolog.Logger
+	settings                *config.Settings
 	deviceDefSvc            services.DeviceDefinitionService
 	eventService            services.EventService
 }
@@ -135,14 +138,23 @@ func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *
 	}
 	// check for duplicate vin, future: refactor with user_devices_controler fromsmartcar, fromvin
 	vin := strings.ToUpper(req.Vin)
-	conflict, err := models.UserDevices(
-		models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
-		models.UserDeviceWhere.VinConfirmed.EQ(true),
-	).Exists(ctx, s.dbs().Reader)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, status.Error(codes.Internal, err.Error())
+
+	hasConflict := false
+
+	if s.settings.IsProduction() {
+		conflict, err := models.UserDevices(
+			models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
+			models.UserDeviceWhere.VinConfirmed.EQ(true),
+		).Exists(ctx, s.dbs().Reader)
+
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		hasConflict = conflict
 	}
-	if conflict {
+
+	if hasConflict {
 		return nil, status.Errorf(codes.AlreadyExists, "VIN %s in use by a previously connected device", vin)
 	}
 
