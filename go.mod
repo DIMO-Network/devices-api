@@ -46,6 +46,7 @@ require (
 )
 
 require (
+	github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c // indirect
 	github.com/avast/retry-go v3.0.0+incompatible // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect

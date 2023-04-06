@@ -6,6 +6,9 @@ import (
 	"io"
 	"math/big"
 	"strconv"
+	"strings"
+
+	"github.com/DIMO-Network/go-mnemonic"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -89,6 +92,7 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 	nft, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.TokenID.EQ(tid),
 		qm.Load(models.VehicleNFTRels.UserDevice),
+		qm.Load(models.VehicleNFTRels.VehicleTokenAutopiUnit),
 	).One(c.Context(), nc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -118,12 +122,19 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 	} else {
 		name = description
 	}
+	if nft.R.VehicleTokenAutopiUnit != nil {
+		if three, err := mnemonic.EntropyToMnemonicThreeWords(nft.R.VehicleTokenAutopiUnit.EthereumAddress.Bytes); err == nil {
+			name = strings.Join(three, " ")
+		}
+	}
 
 	return c.JSON(NFTMetadataResp{
 		Name:        name,
 		Description: description,
 		Image:       fmt.Sprintf("%s/v1/vehicle/%s/image", nc.Settings.DeploymentBaseURL, ti),
 		Attributes: []NFTAttribute{
+			{TraitType: "Name", Value: name},
+			{TraitType: "Description", Value: "AutoPi Device"},
 			{TraitType: "Make", Value: def.Make.Name},
 			{TraitType: "Model", Value: def.Type.Model},
 			{TraitType: "Year", Value: strconv.Itoa(int(def.Type.Year))},
