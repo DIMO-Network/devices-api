@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
@@ -335,7 +336,7 @@ func (d *deviceDefinitionService) PullVincarioValuation(ctx context.Context, use
 		return ErrorDataPullStatus, err
 	}
 	// do not pull for USA
-	if ud.CountryCode.String == "USA" {
+	if strings.EqualFold(ud.CountryCode.String, "USA") {
 		return SkippedDataPullStatus, nil
 	}
 
@@ -345,7 +346,8 @@ func (d *deviceDefinitionService) PullVincarioValuation(ctx context.Context, use
 		models.ExternalVinDatumWhere.VincarioMetadata.IsNotNull(),
 		qm.OrderBy("updated_at desc"), qm.Limit(1)).
 		One(context.Background(), d.dbs().Writer)
-	// just return if already pulled recently for this VIN, but still need to insert never pulled vin - should be uncommon scenario
+
+		// just return if already pulled recently for this VIN, but still need to insert never pulled vin - should be uncommon scenario
 	if existingPricingData != nil && existingPricingData.UpdatedAt.Add(repullWindow).After(time.Now()) {
 		return SkippedDataPullStatus, nil
 	}
@@ -356,6 +358,7 @@ func (d *deviceDefinitionService) PullVincarioValuation(ctx context.Context, use
 		Vin:                vin,
 		UserDeviceID:       null.StringFrom(userDeviceID),
 	}
+
 	valuation, err := d.vincarioSvc.GetMarketValuation(vin)
 
 	if err != nil {
