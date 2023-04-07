@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"io"
 	"testing"
 	"time"
@@ -62,6 +63,7 @@ type UserDevicesControllerTestSuite struct {
 	drivlyTaskSvc   *mock_services.MockDrivlyTaskService
 	scClient        *mock_services.MockSmartcarClient
 	redisClient     *mocks.MockCacheService
+	autoPiSvc       *mock_services.MockAutoPiAPIService
 }
 
 // SetupSuite starts container db
@@ -83,10 +85,11 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	deviceDefinitionIngest := mock_services.NewMockDeviceDefinitionRegistrar(mockCtrl)
 	autoPiTaskSvc := mock_services.NewMockAutoPiTaskService(mockCtrl)
 	s.redisClient = mocks.NewMockCacheService(mockCtrl)
+	s.autoPiSvc = mock_services.NewMockAutoPiAPIService(mockCtrl)
 
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
-	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), nil,
+	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
 		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, s.drivlyTaskSvc, nil, s.redisClient, nil)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUser)
@@ -492,13 +495,27 @@ func (s *UserDevicesControllerTestSuite) TestNameValidate() {
 
 func (s *UserDevicesControllerTestSuite) TestPatchName() {
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, ksuid.New().String(), nil, "", s.pdb)
+	deviceID := uuid.New().String()
+	apunit := test.SetupCreateAutoPiUnit(s.T(), s.testUserID, uuid.NewString(), &deviceID, s.pdb)
+	autoPiIntID := ksuid.New().String()
+	vehicleID := 3214
+	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), apunit.AutopiUnitID, deviceID, ud.ID, autoPiIntID, s.pdb)
+
 	// nil check test
 	payload := `{}`
 	request := test.BuildRequest("PATCH", "/user/devices/"+ud.ID+"/name", payload)
 	response, _ := s.app.Test(request)
 	assert.Equal(s.T(), fiber.StatusBadRequest, response.StatusCode)
 	// name with spaces happy path test
-	payload = `{ "name": " Queens Charriot,.@!$’ " }`
+	const testName = "Queens Charriot,.@!$’"
+	payload = fmt.Sprintf(`{ "name": " %s " }`, testName) // intentionally has spaces to test trimming
+
+	s.autoPiSvc.EXPECT().GetDeviceByUnitID(apunit.AutopiUnitID).Times(1).Return(&services.AutoPiDongleDevice{
+		ID: deviceID, UnitID: apunit.AutopiUnitID, Vehicle: services.AutoPiDongleVehicle{ID: vehicleID},
+	}, nil)
+	s.autoPiSvc.EXPECT().PatchVehicleProfile(vehicleID, services.PatchVehicleProfile{
+		CallName: testName,
+	}).Times(1).Return(nil)
 	request = test.BuildRequest("PATCH", "/user/devices/"+ud.ID+"/name", payload)
 	response, _ = s.app.Test(request)
 	if assert.Equal(s.T(), fiber.StatusNoContent, response.StatusCode) == false {
@@ -506,7 +523,7 @@ func (s *UserDevicesControllerTestSuite) TestPatchName() {
 		fmt.Println("message: " + string(body))
 	}
 	require.NoError(s.T(), ud.Reload(s.ctx, s.pdb.DBS().Reader))
-	assert.Equal(s.T(), "Queens Charriot,.@!$’", ud.Name.String)
+	assert.Equal(s.T(), testName, ud.Name.String)
 }
 
 func (s *UserDevicesControllerTestSuite) TestPatchImageURL() {
