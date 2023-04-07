@@ -3,6 +3,11 @@ package controllers
 import (
 	"database/sql"
 	"fmt"
+	"io"
+	"math/big"
+	"strconv"
+	"strings"
+
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
@@ -24,10 +29,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"golang.org/x/exp/slices"
-	"io"
-	"math/big"
-	"strconv"
-	"strings"
 )
 
 type NFTController struct {

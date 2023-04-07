@@ -5,10 +5,11 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"io"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/redis/mocks"
@@ -507,14 +508,14 @@ func (s *UserDevicesControllerTestSuite) TestPatchName() {
 	response, _ := s.app.Test(request)
 	assert.Equal(s.T(), fiber.StatusBadRequest, response.StatusCode)
 	// name with spaces happy path test
-	const testName = "Queens Charriot,.@!$’"
+	testName := "Queens Charriot,.@!$’"
 	payload = fmt.Sprintf(`{ "name": " %s " }`, testName) // intentionally has spaces to test trimming
 
 	s.autoPiSvc.EXPECT().GetDeviceByUnitID(apunit.AutopiUnitID).Times(1).Return(&services.AutoPiDongleDevice{
 		ID: deviceID, UnitID: apunit.AutopiUnitID, Vehicle: services.AutoPiDongleVehicle{ID: vehicleID},
 	}, nil)
 	s.autoPiSvc.EXPECT().PatchVehicleProfile(vehicleID, services.PatchVehicleProfile{
-		CallName: testName,
+		CallName: &testName,
 	}).Times(1).Return(nil)
 	request = test.BuildRequest("PATCH", "/user/devices/"+ud.ID+"/name", payload)
 	response, _ = s.app.Test(request)

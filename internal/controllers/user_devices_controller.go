@@ -924,7 +924,7 @@ func (udc *UserDevicesController) UpdateName(c *fiber.Ctx) error {
 			autoPiDevice, err := udc.autoPiSvc.GetDeviceByUnitID(udapi.AutopiUnitID.String)
 			if err == nil {
 				_ = udc.autoPiSvc.PatchVehicleProfile(autoPiDevice.Vehicle.ID, services.PatchVehicleProfile{
-					CallName: *req.Name,
+					CallName: req.Name,
 				})
 			}
 			break
