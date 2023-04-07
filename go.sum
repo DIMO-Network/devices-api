@@ -81,8 +81,8 @@ github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym
 github.com/ClickHouse/clickhouse-go v1.5.4/go.mod h1:EaI/sW7Azgz9UATzd5ZdZHRUhHgv5+JMS9NSr2smCJI=
 github.com/DATA-DOG/go-sqlmock v1.4.1 h1:ThlnYciV1iM/V0OSF/dtkqWb6xo5qITT1TJBG1MRDJM=
 github.com/DATA-DOG/go-sqlmock v1.4.1/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q5eFN3EC/SaM=
-github.com/DIMO-Network/device-definitions-api v0.7.8 h1:y504u1fql69piwko78RM7tbYo5+2mJ03nfR0B4X+BwQ=
-github.com/DIMO-Network/device-definitions-api v0.7.8/go.mod h1:57vwAVxWtvxsqC1AcFUgTXK2l8+td9blt3JcKmPXX1A=
+github.com/DIMO-Network/device-definitions-api v0.9.7 h1:gx9idkbbRe7BQPTiLHAt9JzGWFU05ewdI2olSZpKk0Q=
+github.com/DIMO-Network/device-definitions-api v0.9.7/go.mod h1:BGmmbLedviQxB7TmJ+fRNtz/JMZ6k21RVDtr/INSF9M=
 github.com/DIMO-Network/shared v0.9.1 h1:F1Y6BDc3QrZK8KqZrexkjgoSGRdyiJ12rjStdM68/00=
 github.com/DIMO-Network/shared v0.9.1/go.mod h1:Edzbgny+7yh/CKKWKAUbOVT6K+dUWBFAxkYa89kvIxU=
 github.com/DIMO-Network/taskq/v3 v3.2.9-0.20220518233332-179b5552605f h1:pHPu50/uAiENAiUTQkdThxr7GxzVFwO9STl/jzSaKXg=
