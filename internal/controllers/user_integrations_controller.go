@@ -1645,6 +1645,72 @@ type AutoPiPairRequest struct {
 	Signature  string `json:"signature"`
 }
 
+// PostUnclaimAutoPi godoc
+// @Description Dev-only endpoint for removing a claim. Removes the flag on-chain and clears
+// @Description the owner in the database.
+// @Produce json
+// @Param unitID path string true "AutoPi unit id"
+// @Success 204
+// @Security BearerAuth
+// @Router /autopi/unit/:unitID/commands/unclaim [post]
+func (udc *UserDevicesController) PostUnclaimAutoPi(c *fiber.Ctx) error {
+	userID := helpers.GetUserID(c)
+	unitID := c.Params("unitID")
+
+	logger := udc.log.With().Str("userId", userID).Str("autoPiUnitId", unitID).Str("route", c.Route().Name).Logger()
+
+	logger.Info().Msg("Got unclaim request.")
+
+	unit, err := models.FindAutopiUnit(c.Context(), udc.DBS().Reader, unitID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted, or unit ID invalid.")
+		}
+		return err
+	}
+
+	if unit.PairRequestID.Valid {
+		return fiber.NewError(fiber.StatusConflict, "Unpair device first.")
+	}
+
+	if unit.TokenID.IsZero() || !unit.EthereumAddress.Valid {
+		return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted.")
+	}
+
+	if !unit.OwnerAddress.Valid {
+		return fiber.NewError(fiber.StatusConflict, "Device not claimed.")
+	}
+
+	apToken := unit.TokenID.Int(nil)
+
+	conn, err := grpc.Dial(udc.Settings.UsersAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	client := registry.Client{
+		Producer:     udc.producer,
+		RequestTopic: "topic.transaction.request.send",
+		Contract: registry.Contract{
+			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
+			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
+			Name:    "DIMO",
+			Version: "1",
+		},
+	}
+
+	requestID := ksuid.New().String()
+
+	unit.OwnerAddress = null.Bytes{}
+	unit.ClaimMetaTransactionRequestID = null.String{}
+	if _, err := unit.Update(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
+		return err
+	}
+
+	return client.UnclaimAftermarketDeviceNode(requestID, []*big.Int{apToken})
+}
+
 // PostClaimAutoPi godoc
 // @Description Return the EIP-712 payload to be signed for AutoPi device claiming.
 // @Produce json
