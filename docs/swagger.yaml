@@ -1087,6 +1087,24 @@ paths:
           description: No Content
       security:
       - BearerAuth: []
+  /autopi/unit/:unitID/commands/unclaim:
+    post:
+      description: |-
+        Dev-only endpoint for removing a claim. Removes the flag on-chain and clears
+        the owner in the database.
+      parameters:
+      - description: AutoPi unit id
+        in: path
+        name: unitID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
   /autopi/unit/:unitID/is-online:
     get:
       description: 'gets whether the autopi is online right now, if already paired
@@ -2018,7 +2036,8 @@ paths:
       consumes:
       - application/json
       description: adds a device to a user by decoding VIN from Smartcar. If cannot
-        decode returns 424 or 500 if error
+        decode returns 424 or 500 if error. Do NOT call this if user device already
+        exists from a different integration - it will conflict.
       parameters:
       - description: add device to user. all fields required
         in: body
@@ -2035,6 +2054,8 @@ paths:
             $ref: '#/definitions/internal_controllers.UserDeviceFull'
         "400":
           description: validation failure
+        "409":
+          description: VIN already exists either for different user or same user
         "424":
           description: unable to decode VIN
         "500":
