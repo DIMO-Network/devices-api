@@ -888,34 +888,47 @@ func (udc *UserDevicesController) UpdateName(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
 	userID := helpers.GetUserID(c)
 
-	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi), models.UserDeviceWhere.UserID.EQ(userID)).One(c.Context(), udc.DBS().Writer)
+	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi), models.UserDeviceWhere.UserID.EQ(userID),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations)).One(c.Context(), udc.DBS().Writer)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return fiber.NewError(fiber.StatusNotFound, err.Error())
 		}
 		return err
 	}
-	name := &UpdateNameReq{}
-	if err := c.BodyParser(name); err != nil {
+	req := &UpdateNameReq{}
+	if err := c.BodyParser(req); err != nil {
 		// Return status 400 and error message.
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
-	if name.Name == nil {
+	if req.Name == nil {
 		return fiber.NewError(fiber.StatusBadRequest, "name cannot be empty")
 	}
-	*name.Name = strings.TrimSpace(*name.Name)
+	*req.Name = strings.TrimSpace(*req.Name)
 
-	if err := name.validate(); err != nil {
-		if name.Name != nil {
-			udc.log.Warn().Err(err).Str("userDeviceId", udi).Str("userId", userID).Str("name", *name.Name).Msg("Proposed device name is invalid.")
+	if err := req.validate(); err != nil {
+		if req.Name != nil {
+			udc.log.Warn().Err(err).Str("userDeviceId", udi).Str("userId", userID).Str("name", *req.Name).Msg("Proposed device name is invalid.")
 		}
 		return fiber.NewError(fiber.StatusBadRequest, "Name field is limited to 16 alphanumeric characters.")
 	}
 
-	userDevice.Name = null.StringFromPtr(name.Name)
+	userDevice.Name = null.StringFromPtr(req.Name)
 	_, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Infer())
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+	// update name on autopi too. This helps for debugging purposes to search a vehicle
+	for _, udapi := range userDevice.R.UserDeviceAPIIntegrations {
+		if udapi.AutopiUnitID.Valid {
+			autoPiDevice, err := udc.autoPiSvc.GetDeviceByUnitID(udapi.AutopiUnitID.String)
+			if err == nil {
+				_ = udc.autoPiSvc.PatchVehicleProfile(autoPiDevice.Vehicle.ID, services.PatchVehicleProfile{
+					CallName: req.Name,
+				})
+			}
+			break
+		}
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
