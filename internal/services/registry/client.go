@@ -29,10 +29,10 @@ type Contract struct {
 	Version string
 }
 
-type requestData struct {
-	ID   string `json:"id"`
-	To   string `json:"to"`
-	Data string `json:"data"`
+type RequestData struct {
+	ID   string         `json:"id"`
+	To   common.Address `json:"to"`
+	Data hexutil.Bytes  `json:"data"`
 }
 
 // MintVehicleSign(uint256 manufacturerNode,address owner,string[] attributes,string[] infos)
@@ -216,17 +216,17 @@ func (c *Client) UnPairAftermarketDeviceSign(requestID string, aftermarketDevice
 }
 
 func (c *Client) sendRequest(requestID string, data []byte) error {
-	event := shared.CloudEvent[requestData]{
+	event := shared.CloudEvent[RequestData]{
 		ID:          ksuid.New().String(),
 		Source:      "devices-api",
 		SpecVersion: "1.0",
 		Subject:     requestID,
 		Time:        time.Now(),
 		Type:        "zone.dimo.transaction.request",
-		Data: requestData{
+		Data: RequestData{
 			ID:   requestID,
-			To:   hexutil.Encode(c.Contract.Address[:]),
-			Data: hexutil.Encode(data),
+			To:   c.Contract.Address,
+			Data: data,
 		},
 	}
 

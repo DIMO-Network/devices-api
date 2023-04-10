@@ -37,8 +37,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"golang.org/x/exp/slices"
 	"golang.org/x/mod/semver"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 // GetUserDeviceIntegration godoc
@@ -919,17 +917,7 @@ func (udc *UserDevicesController) GetAutoPiClaimMessage(c *fiber.Ctx) error {
 
 	apToken := unit.TokenID.Int(nil)
 
-	// TODO(elffjs): Really shouldn't be dialing so much.
-	conn, err := grpc.Dial(udc.Settings.UsersAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		udc.log.Err(err).Msg("Failed to create users API client.")
-		return opaqueInternalError
-	}
-	defer conn.Close()
-
-	usersClient := pb.NewUserServiceClient(conn)
-
-	user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		udc.log.Err(err).Msg("Couldn't retrieve user record.")
 		return opaqueInternalError
@@ -1067,17 +1055,7 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 	apToken := autoPiUnit.TokenID.Int(nil)
 	vehicleToken := ud.R.VehicleNFT.TokenID.Int(nil)
 
-	// TODO(elffjs): Really shouldn't be dialing so much.
-	conn, err := grpc.Dial(udc.Settings.UsersAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		udc.log.Err(err).Msg("Failed to create users API client.")
-		return opaqueInternalError
-	}
-	defer conn.Close()
-
-	usersClient := pb.NewUserServiceClient(conn)
-
-	user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		udc.log.Err(err).Msg("Failed to retrieve user information.")
 		return opaqueInternalError
@@ -1233,17 +1211,7 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 	apToken := autoPiUnit.TokenID.Int(nil)
 	vehicleToken := ud.R.VehicleNFT.TokenID.Int(nil)
 
-	// TODO(elffjs): Really shouldn't be dialing so much.
-	conn, err := grpc.Dial(udc.Settings.UsersAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		udc.log.Err(err).Msg("Failed to create users API client.")
-		return opaqueInternalError
-	}
-	defer conn.Close()
-
-	usersClient := pb.NewUserServiceClient(conn)
-
-	user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		udc.log.Err(err).Msg("Failed to retrieve user information.")
 		return opaqueInternalError
@@ -1313,7 +1281,6 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-
 	err = client.PairAftermarketDeviceSign(requestID, apToken, vehicleToken, sigBytes)
 	if err != nil {
 		return err
@@ -1379,19 +1346,7 @@ func (udc *UserDevicesController) CloudRepairAutoPi(c *fiber.Ctx) error {
 func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 
-	// Make sure we have an Ethereum address.
-	// TODO(elffjs): Really shouldn't be dialing so much. Do we even need to do this? We have
-	// the owner's address.
-	conn, err := grpc.Dial(udc.Settings.UsersAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		udc.log.Err(err).Msg("Failed to create users API client.")
-		return opaqueInternalError
-	}
-	defer conn.Close()
-
-	usersClient := pb.NewUserServiceClient(conn)
-
-	user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		udc.log.Err(err).Msg("Failed to retrieve user information.")
 		return opaqueInternalError
@@ -1592,17 +1547,7 @@ func (udc *UserDevicesController) GetAutoPiUnpairMessage(c *fiber.Ctx) error {
 	apToken := autoPiUnit.TokenID.Int(nil)
 	vehicleToken := ud.R.VehicleNFT.TokenID.Int(nil)
 
-	// TODO(elffjs): Really shouldn't be dialing so much.
-	conn, err := grpc.Dial(udc.Settings.UsersAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		udc.log.Err(err).Msg("Failed to create users API client.")
-		return opaqueInternalError
-	}
-	defer conn.Close()
-
-	usersClient := pb.NewUserServiceClient(conn)
-
-	user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		udc.log.Err(err).Msg("Failed to retrieve user information.")
 		return opaqueInternalError
@@ -1696,16 +1641,7 @@ func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
 
 	apToken := unit.TokenID.Int(nil)
 
-	conn, err := grpc.Dial(udc.Settings.UsersAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		udc.log.Err(err).Msg("Failed to create users API client.")
-		return opaqueInternalError
-	}
-	defer conn.Close()
-
-	usersClient := pb.NewUserServiceClient(conn)
-
-	user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		udc.log.Err(err).Msg("Couldn't retrieve user record.")
 		return opaqueInternalError
