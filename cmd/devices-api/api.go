@@ -256,12 +256,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	v1Auth.Post("/user/devices/:userDeviceID/autopi/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
 
-	// Dev-only admin endpoints
-	if settings.IsProduction() {
-		v1Auth.Post("/admin/web3-device-unclaim", userDeviceController.AdminDeviceWeb3Unclaim)
-		v1Auth.Post("/admin/web3-device-unpair", userDeviceController.AdminDeviceWeb3Unpair)
-	}
-
 	// geofence
 	v1Auth.Post("/user/geofences", geofenceController.Create)
 	v1Auth.Get("/user/geofences", geofenceController.GetAll)
