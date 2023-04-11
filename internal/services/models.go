@@ -159,6 +159,8 @@ type UserDeviceMetadata struct {
 	PostalCode              *string         `json:"postal_code"`
 	GeoDecodedCountry       *string         `json:"geoDecodedCountry"`
 	GeoDecodedStateProv     *string         `json:"geoDecodedStateProv"`
+	// CANProtocol is the protocol that was detected by edge-network from the autopi.
+	CANProtocol *string `json:"canProtocol,omitempty"`
 }
 
 // todo: consider moving below to controllers and have service just return db object

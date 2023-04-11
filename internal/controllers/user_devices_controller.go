@@ -431,7 +431,7 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	udFull, err := udc.createUserDevice(c.Context(), *reg.DeviceDefinitionID, reg.CountryCode, userID, nil)
+	udFull, err := udc.createUserDevice(c.Context(), *reg.DeviceDefinitionID, reg.CountryCode, userID, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -443,7 +443,7 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 var opaqueInternalError = fiber.NewError(fiber.StatusInternalServerError, "Internal error.")
 
 // RegisterDeviceForUserFromVIN godoc
-// @Description adds a device to a user by decoding a VIN. If cannot decode returns 424 or 500 if error
+// @Description adds a device to a user by decoding a VIN. If cannot decode returns 424 or 500 if error. Can optionally include the can bus protocol.
 // @Tags        user-devices
 // @Produce     json
 // @Accept      json
@@ -477,7 +477,10 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		return fiber.NewError(fiber.StatusFailedDependency, "unable to decode vin")
 	}
 	// attach device def to user
-	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, reg.CountryCode, userID, &vin)
+	udMd := services.UserDeviceMetadata{
+		CANProtocol: &reg.CANProtocol,
+	}
+	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, reg.CountryCode, userID, &vin, &udMd)
 	if err != nil {
 		return err
 	}
@@ -589,7 +592,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	}
 
 	// attach device def to user
-	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, reg.CountryCode, userID, &vin)
+	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, reg.CountryCode, userID, &vin, nil)
 	if err != nil {
 		return err
 	}
@@ -602,7 +605,7 @@ func buildSmartcarTokenKey(vin, userID string) string {
 	return fmt.Sprintf("sc-temp-tok-%s-%s", vin, userID)
 }
 
-func (udc *UserDevicesController) createUserDevice(ctx context.Context, deviceDefID, countryCode, userID string, vin *string) (*UserDeviceFull, error) {
+func (udc *UserDevicesController) createUserDevice(ctx context.Context, deviceDefID, countryCode, userID string, vin *string, metadata *services.UserDeviceMetadata) (*UserDeviceFull, error) {
 	// attach device def to user
 	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, deviceDefID)
 	if err2 != nil {
@@ -623,6 +626,12 @@ func (udc *UserDevicesController) createUserDevice(ctx context.Context, deviceDe
 		DeviceDefinitionID: dd.DeviceDefinitionId,
 		CountryCode:        null.StringFrom(countryCode),
 		VinIdentifier:      null.StringFromPtr(vin),
+	}
+	if metadata != nil {
+		err = ud.Metadata.Marshal(metadata)
+		if err != nil {
+			udc.log.Warn().Str("func", "createUserDevice").Msg("failed to marshal user device metadata on create")
+		}
 	}
 	err = ud.Insert(ctx, tx, boil.Infer())
 	if err != nil {
@@ -1937,6 +1946,8 @@ type RegisterUserDeviceResponse struct {
 type RegisterUserDeviceVIN struct {
 	VIN         string `json:"vin"`
 	CountryCode string `json:"countryCode"`
+	// CANProtocol is the protocol that was detected by edge-network from the autopi.
+	CANProtocol string `json:"canProtocol"`
 }
 
 type RegisterUserDeviceSmartcar struct {
