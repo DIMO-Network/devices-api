@@ -139,6 +139,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		KeySetURL:            settings.JwtKeySetURL,
 		KeyRefreshInterval:   &keyRefreshInterval,
 		KeyRefreshUnknownKID: &keyRefreshUnknownKID,
+		SuccessHandler:       userDeviceController.DeviceOwnershipMiddleWare,
 	})
 
 	v1Auth := app.Group("/v1")
