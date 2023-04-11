@@ -105,7 +105,7 @@ func main() {
 		subcommands.Register(&populateESRegionDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: deps.getElasticSearchService(), ddSvc: deps.getDeviceDefinitionService()}, "populate data")
 		subcommands.Register(&populateUSAPowertrainCmd{logger: logger, settings: settings, pdb: pdb, nhtsaService: deps.getNHTSAService()}, "populate data")
 
-		subcommands.Register(&stopTaskByKeyCmd{logger: logger, settings: settings}, "tasks")
+		subcommands.Register(&stopTaskByKeyCmd{logger: logger, settings: settings, container: deps}, "tasks")
 
 		subcommands.Register(&loadValuationsCmd{logger: logger, settings: settings, pdb: pdb}, "user devices")
 		subcommands.Register(&syncDeviceTemplatesCmd{logger: logger, settings: settings, pdb: pdb}, "user devices")
