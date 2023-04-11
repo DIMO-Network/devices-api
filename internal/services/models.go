@@ -145,6 +145,8 @@ type UserDeviceAPIIntegrationsMetadata struct {
 	SmartcarEndpoints       []string                                   `json:"smartcarEndpoints,omitempty"`
 	SmartcarUserID          *string                                    `json:"smartcarUserId,omitempty"`
 	Commands                *UserDeviceAPIIntegrationsMetadataCommands `json:"commands,omitempty"`
+	// CANProtocol is the protocol that was detected by edge-network from the autopi.
+	CANProtocol *string `json:"canProtocol,omitempty"`
 }
 
 type UserDeviceAPIIntegrationsMetadataCommands struct {

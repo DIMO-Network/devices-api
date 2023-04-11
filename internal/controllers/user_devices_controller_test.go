@@ -223,7 +223,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	// act request
 	const vinny = "4T3R6RFVXMU023395"
-	reg := RegisterUserDeviceVIN{VIN: vinny, CountryCode: "USA"}
+	reg := RegisterUserDeviceVIN{VIN: vinny, CountryCode: "USA", CANProtocol: "06"}
 	j, _ := json.Marshal(reg)
 
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny).Times(1).Return(&grpc.DecodeVinResponse{
@@ -259,6 +259,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	assert.NotNilf(s.T(), userDevice, "expected a user device in the database to exist")
 	assert.Equal(s.T(), s.testUserID, userDevice.UserID)
 	assert.Equal(s.T(), vinny, userDevice.VinIdentifier.String)
+	assert.Equal(s.T(), "06", gjson.GetBytes(userDevice.Metadata.JSON, "canProtocol").Str)
 }
 
 func (s *UserDevicesControllerTestSuite) TestPostWithExistingDefinitionID() {
