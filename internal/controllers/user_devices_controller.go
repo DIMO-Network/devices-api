@@ -477,10 +477,11 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		return fiber.NewError(fiber.StatusFailedDependency, "unable to decode vin")
 	}
 	// attach device def to user
-	udMd := services.UserDeviceMetadata{
-		CANProtocol: &reg.CANProtocol,
+	var udMd *services.UserDeviceMetadata
+	if reg.CANProtocol != "" {
+		udMd = &services.UserDeviceMetadata{CANProtocol: &reg.CANProtocol}
 	}
-	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, reg.CountryCode, userID, &vin, &udMd)
+	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, reg.CountryCode, userID, &vin, udMd)
 	if err != nil {
 		return err
 	}
