@@ -133,14 +133,10 @@ func NewUserDevicesController(settings *config.Settings, dbs func() *db.ReaderWr
 	}
 }
 
-// check that authenticated user owns the userDeviceID in the path or has a confirmed Eth address that owns the corresponding NFT
+// DeviceOwnershipMiddleWare check that authenticated user owns the userDeviceID in the path or has a confirmed Eth address that owns the corresponding NFT
 func (udc *UserDevicesController) DeviceOwnershipMiddleWare(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
 	userID := helpers.GetUserID(c)
-
-	if udi == "" {
-		return c.Next()
-	}
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),

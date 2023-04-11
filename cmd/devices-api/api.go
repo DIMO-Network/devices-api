@@ -168,6 +168,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 
 	v1Auth.Use(jwtAuth)
+	udOwner := v1Auth.Group("/user/devices/:userDeviceID", userDeviceController.DeviceOwnershipMiddleWare)
+
 	// user's devices
 	v1Auth.Get("/user/devices/me", userDeviceController.GetUserDevices)
 
@@ -179,39 +181,39 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices/fromsmartcar", userDeviceController.RegisterDeviceForUserFromSmartcar)
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
 
-	v1Auth.Delete("/user/devices/:userDeviceID", userDeviceController.DeleteUserDevice)
-	v1Auth.Patch("/user/devices/:userDeviceID/vin", userDeviceController.UpdateVIN).Name("UpdateVIN")
-	v1Auth.Patch("/user/devices/:userDeviceID/name", userDeviceController.UpdateName)
-	v1Auth.Patch("/user/devices/:userDeviceID/country-code", userDeviceController.UpdateCountryCode)
-	v1Auth.Patch("/user/devices/:userDeviceID/image", userDeviceController.UpdateImage)
-	v1Auth.Get("/user/devices/:userDeviceID/valuations", userDeviceController.GetValuations)
-	v1Auth.Get("/user/devices/:userDeviceID/offers", userDeviceController.GetOffers)
-	v1Auth.Get("/user/devices/:userDeviceID/range", userDeviceController.GetRange)
-	v1Auth.Get("/user/devices/:userDeviceID/status", userDeviceController.GetUserDeviceStatus)
-	v1Auth.Post("/user/devices/:userDeviceID/error-codes", userDeviceController.QueryDeviceErrorCodes)
-	v1Auth.Get("/user/devices/:userDeviceID/error-codes", userDeviceController.GetUserDeviceErrorCodeQueries)
+	udOwner.Delete("/", userDeviceController.DeleteUserDevice)
+	udOwner.Patch("/vin", userDeviceController.UpdateVIN).Name("UpdateVIN")
+	udOwner.Patch("/name", userDeviceController.UpdateName)
+	udOwner.Patch("/country-code", userDeviceController.UpdateCountryCode)
+	udOwner.Patch("/image", userDeviceController.UpdateImage)
+	udOwner.Get("/valuations", userDeviceController.GetValuations)
+	udOwner.Get("/offers", userDeviceController.GetOffers)
+	udOwner.Get("/range", userDeviceController.GetRange)
+	udOwner.Get("/status", userDeviceController.GetUserDeviceStatus)
+	udOwner.Post("/error-codes", userDeviceController.QueryDeviceErrorCodes)
+	udOwner.Get("/error-codes", userDeviceController.GetUserDeviceErrorCodeQueries)
 
 	// device integrations
-	v1Auth.Get("/user/devices/:userDeviceID/integrations/:integrationID", userDeviceController.GetUserDeviceIntegration)
-	v1Auth.Delete("/user/devices/:userDeviceID/integrations/:integrationID", userDeviceController.DeleteUserDeviceIntegration)
-	v1Auth.Post("/user/devices/:userDeviceID/integrations/:integrationID", userDeviceController.RegisterDeviceIntegration)
-	v1Auth.Post("/user/devices/:userDeviceID/commands/refresh", userDeviceController.RefreshUserDeviceStatus)
+	udOwner.Get("/integrations/:integrationID", userDeviceController.GetUserDeviceIntegration)
+	udOwner.Delete("/integrations/:integrationID", userDeviceController.DeleteUserDeviceIntegration)
+	udOwner.Post("/integrations/:integrationID", userDeviceController.RegisterDeviceIntegration)
+	udOwner.Post("/commands/refresh", userDeviceController.RefreshUserDeviceStatus)
 
 	// Device commands.
-	v1Auth.Get("/user/devices/:userDeviceID/integrations/:integrationID/commands/:requestID", userDeviceController.GetCommandRequestStatus)
-	v1Auth.Post("/user/devices/:userDeviceID/integrations/:integrationID/commands/doors/unlock", userDeviceController.UnlockDoors)
-	v1Auth.Post("/user/devices/:userDeviceID/integrations/:integrationID/commands/doors/lock", userDeviceController.LockDoors)
-	v1Auth.Post("/user/devices/:userDeviceID/integrations/:integrationID/commands/trunk/open", userDeviceController.OpenTrunk)
-	v1Auth.Post("/user/devices/:userDeviceID/integrations/:integrationID/commands/frunk/open", userDeviceController.OpenFrunk)
+	udOwner.Get("/integrations/:integrationID/commands/:requestID", userDeviceController.GetCommandRequestStatus)
+	udOwner.Post("/integrations/:integrationID/commands/doors/unlock", userDeviceController.UnlockDoors)
+	udOwner.Post("/integrations/:integrationID/commands/doors/lock", userDeviceController.LockDoors)
+	udOwner.Post("/integrations/:integrationID/commands/trunk/open", userDeviceController.OpenTrunk)
+	udOwner.Post("/integrations/:integrationID/commands/frunk/open", userDeviceController.OpenFrunk)
 
 	// Data sharing opt-in.
 	// TODO(elffjs): Opt out.
-	v1Auth.Post("/user/devices/:userDeviceID/commands/opt-in", userDeviceController.DeviceOptIn).Name("DeviceOptIn")
+	udOwner.Post("/commands/opt-in", userDeviceController.DeviceOptIn).Name("DeviceOptIn")
 
 	v1Auth.Get("/integrations", userDeviceController.GetIntegrations)
 	// autopi specific
-	v1Auth.Post("/user/devices/:userDeviceID/autopi/command", userDeviceController.SendAutoPiCommand)
-	v1Auth.Get("/user/devices/:userDeviceID/autopi/command/:jobID", userDeviceController.GetAutoPiCommandStatus)
+	udOwner.Post("/autopi/command", userDeviceController.SendAutoPiCommand)
+	udOwner.Get("/autopi/command/:jobID", userDeviceController.GetAutoPiCommandStatus)
 	v1Auth.Get("/autopi/unit/:unitID", userDeviceController.GetAutoPiUnitInfo)
 	v1Auth.Get("/autopi/unit/:unitID/is-online", userDeviceController.GetIsAutoPiOnline)
 	// delete below line once confirmed no active apps using it.
@@ -220,9 +222,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Get("/autopi/task/:taskID", userDeviceController.GetAutoPiTask)
 
 	// New-style NFT mint, claim, pair.
-	v1Auth.Get("/user/devices/:userDeviceID/commands/mint", userDeviceController.GetMintDevice)
-	v1Auth.Post("/user/devices/:userDeviceID/commands/mint", userDeviceController.PostMintDevice).Name("PostMintDevice")
-	v1Auth.Post("/user/devices/:userDeviceID/commands/update-nft-image", userDeviceController.UpdateNFTImage)
+	udOwner.Get("/commands/mint", userDeviceController.GetMintDevice)
+	udOwner.Post("/commands/mint", userDeviceController.PostMintDevice).Name("PostMintDevice")
+	udOwner.Post("/commands/update-nft-image", userDeviceController.UpdateNFTImage)
 
 	kconf := sarama.NewConfig()
 	kconf.Version = sarama.V2_8_1_0
