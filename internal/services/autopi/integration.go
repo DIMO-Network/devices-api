@@ -138,7 +138,7 @@ func (i *Integration) Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *b
 	}
 
 	var udMd services.UserDeviceMetadata
-	_ = ud.Metadata.Unmarshal(udMd)
+	_ = ud.Metadata.Unmarshal(&udMd)
 
 	hardwareTemplate, err := i.hardwareTemplateService.GetTemplateID(ud, def, integ)
 
@@ -162,7 +162,6 @@ func (i *Integration) Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *b
 		Status:        models.UserDeviceAPIIntegrationStatusPending,
 		AutopiUnitID:  null.StringFrom(autoPi.UnitID),
 	}
-
 	err = udai.Metadata.Marshal(udaiMd)
 	if err != nil {
 		return err
