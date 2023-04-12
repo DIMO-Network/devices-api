@@ -196,6 +196,17 @@ func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *Devi
 	}
 	datum.ErrorData = null.JSON{}
 
+	// save signals logs
+	currentSignalData := make(map[string]any)
+	if err := datum.Signals.Unmarshal(&currentSignalData); err != nil {
+		return err
+	}
+
+	newSignals, err := mergeSignals(currentSignalData, compositeData)
+	if err := datum.Signals.Marshal(newSignals); err != nil {
+		return err
+	}
+
 	if err := datum.Upsert(ctx, tx, true, userDeviceDataPrimaryKeyColumns, boil.Infer(), boil.Infer()); err != nil {
 		return fmt.Errorf("error upserting datum: %w", err)
 	}
@@ -282,6 +293,26 @@ func extractOdometer(data []byte) (float64, error) {
 	}
 
 	return *partialData.Odometer, nil
+}
+
+func mergeSignals(currentData map[string]interface{}, newData map[string]interface{}) (map[string]interface{}, error) {
+
+	merged := make(map[string]interface{})
+	for k, v := range currentData {
+		merged[k] = v
+	}
+	for k, v := range newData {
+		merged[k] = v
+	}
+
+	result := make(map[string]interface{})
+	for key, value := range merged {
+		keyLower := strings.ToLower(key)
+		if strings.Contains(keyLower, "signal") {
+			result[key] = value
+		}
+	}
+	return result, nil
 }
 
 var basicVINExp = regexp.MustCompile(`^[A-Z0-9]{17}$`)

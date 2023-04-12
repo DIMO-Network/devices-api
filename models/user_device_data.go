@@ -32,6 +32,7 @@ type UserDeviceDatum struct {
 	LastOdometerEventAt     null.Time `boil:"last_odometer_event_at" json:"last_odometer_event_at,omitempty" toml:"last_odometer_event_at" yaml:"last_odometer_event_at,omitempty"`
 	IntegrationID           string    `boil:"integration_id" json:"integration_id" toml:"integration_id" yaml:"integration_id"`
 	RealLastOdometerEventAt null.Time `boil:"real_last_odometer_event_at" json:"real_last_odometer_event_at,omitempty" toml:"real_last_odometer_event_at" yaml:"real_last_odometer_event_at,omitempty"`
+	Signals                 null.JSON `boil:"signals" json:"signals,omitempty" toml:"signals" yaml:"signals,omitempty"`
 
 	R *userDeviceDatumR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userDeviceDatumL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -46,6 +47,7 @@ var UserDeviceDatumColumns = struct {
 	LastOdometerEventAt     string
 	IntegrationID           string
 	RealLastOdometerEventAt string
+	Signals                 string
 }{
 	UserDeviceID:            "user_device_id",
 	Data:                    "data",
@@ -55,6 +57,7 @@ var UserDeviceDatumColumns = struct {
 	LastOdometerEventAt:     "last_odometer_event_at",
 	IntegrationID:           "integration_id",
 	RealLastOdometerEventAt: "real_last_odometer_event_at",
+	Signals:                 "signals",
 }
 
 var UserDeviceDatumTableColumns = struct {
@@ -66,6 +69,7 @@ var UserDeviceDatumTableColumns = struct {
 	LastOdometerEventAt     string
 	IntegrationID           string
 	RealLastOdometerEventAt string
+	Signals                 string
 }{
 	UserDeviceID:            "user_device_data.user_device_id",
 	Data:                    "user_device_data.data",
@@ -75,6 +79,7 @@ var UserDeviceDatumTableColumns = struct {
 	LastOdometerEventAt:     "user_device_data.last_odometer_event_at",
 	IntegrationID:           "user_device_data.integration_id",
 	RealLastOdometerEventAt: "user_device_data.real_last_odometer_event_at",
+	Signals:                 "user_device_data.signals",
 }
 
 // Generated where
@@ -88,6 +93,7 @@ var UserDeviceDatumWhere = struct {
 	LastOdometerEventAt     whereHelpernull_Time
 	IntegrationID           whereHelperstring
 	RealLastOdometerEventAt whereHelpernull_Time
+	Signals                 whereHelpernull_JSON
 }{
 	UserDeviceID:            whereHelperstring{field: "\"devices_api\".\"user_device_data\".\"user_device_id\""},
 	Data:                    whereHelpernull_JSON{field: "\"devices_api\".\"user_device_data\".\"data\""},
@@ -97,6 +103,7 @@ var UserDeviceDatumWhere = struct {
 	LastOdometerEventAt:     whereHelpernull_Time{field: "\"devices_api\".\"user_device_data\".\"last_odometer_event_at\""},
 	IntegrationID:           whereHelperstring{field: "\"devices_api\".\"user_device_data\".\"integration_id\""},
 	RealLastOdometerEventAt: whereHelpernull_Time{field: "\"devices_api\".\"user_device_data\".\"real_last_odometer_event_at\""},
+	Signals:                 whereHelpernull_JSON{field: "\"devices_api\".\"user_device_data\".\"signals\""},
 }
 
 // UserDeviceDatumRels is where relationship names are stored.
@@ -127,9 +134,9 @@ func (r *userDeviceDatumR) GetUserDevice() *UserDevice {
 type userDeviceDatumL struct{}
 
 var (
-	userDeviceDatumAllColumns            = []string{"user_device_id", "data", "created_at", "updated_at", "error_data", "last_odometer_event_at", "integration_id", "real_last_odometer_event_at"}
+	userDeviceDatumAllColumns            = []string{"user_device_id", "data", "created_at", "updated_at", "error_data", "last_odometer_event_at", "integration_id", "real_last_odometer_event_at", "signals"}
 	userDeviceDatumColumnsWithoutDefault = []string{"user_device_id", "integration_id"}
-	userDeviceDatumColumnsWithDefault    = []string{"data", "created_at", "updated_at", "error_data", "last_odometer_event_at", "real_last_odometer_event_at"}
+	userDeviceDatumColumnsWithDefault    = []string{"data", "created_at", "updated_at", "error_data", "last_odometer_event_at", "real_last_odometer_event_at", "signals"}
 	userDeviceDatumPrimaryKeyColumns     = []string{"user_device_id", "integration_id"}
 	userDeviceDatumGeneratedColumns      = []string{}
 )

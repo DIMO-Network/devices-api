@@ -38,6 +38,7 @@ import (
 // @in                         header
 // @name                       Authorization
 func main() {
+
 	gitSha1 := os.Getenv("GIT_SHA1")
 	ctx := context.Background()
 	logger := zerolog.New(os.Stdout).With().
