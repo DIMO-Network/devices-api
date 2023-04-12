@@ -1365,7 +1365,7 @@ func (udc *UserDevicesController) CloudRepairAutoPi(c *fiber.Ctx) error {
 	return c.SendStatus(204)
 }
 
-// UnairAutoPi godoc
+// UnpairAutoPi godoc
 // @Description Submit the signature for unpairing this device from its attached AutoPi.
 // @Produce json
 // @Param userDeviceID path string true "Device id"

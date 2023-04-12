@@ -223,25 +223,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices/:userDeviceID/commands/mint", userDeviceController.PostMintDevice).Name("PostMintDevice")
 	v1Auth.Post("/user/devices/:userDeviceID/commands/update-nft-image", userDeviceController.UpdateNFTImage)
 
-	kconf := sarama.NewConfig()
-	kconf.Version = sarama.V2_8_1_0
-
-	kclient, err := sarama.NewClient(strings.Split(settings.KafkaBrokers, ","), kconf)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to create Sarama client")
-	}
-
-	store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to create registry storage client")
-	}
-
-	ctx := context.Background()
-	err = registry.RunConsumer(ctx, kclient, &logger, store)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to create transaction listener")
-	}
-
 	v1Auth.Get("/autopi/unit/:unitID/commands/claim", userDeviceController.GetAutoPiClaimMessage)
 	v1Auth.Post("/autopi/unit/:unitID/commands/claim", userDeviceController.PostClaimAutoPi).Name("PostClaimAutoPi")
 	if !settings.IsProduction() {
@@ -278,6 +259,25 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 			logger.Fatal().Err(err)
 		}
 	}()
+	// start kafka consumer for registry processor
+	kconf := sarama.NewConfig()
+	kconf.Version = sarama.V2_8_1_0
+
+	kclient, err := sarama.NewClient(strings.Split(settings.KafkaBrokers, ","), kconf)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create Sarama client")
+	}
+
+	store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create registry storage client")
+	}
+
+	ctx := context.Background()
+	err = registry.RunConsumer(ctx, kclient, &logger, store)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create transaction listener")
+	}
 	// start task consumer for autopi
 	autoPiTaskService.StartConsumer(ctx)
 	drivlyTaskService.StartConsumer(ctx)
