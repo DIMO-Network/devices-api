@@ -9,14 +9,18 @@ import (
 	"testing"
 	"time"
 
+	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/redis/mocks"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-redis/redis/v8"
+	"github.com/rs/zerolog/log"
 
 	"github.com/DIMO-Network/shared/db"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
@@ -87,12 +91,15 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 		s.autoPiIngest, s.deviceDefinitionRegistrar, s.autoPiTaskService, nil, nil, s.drivlyTaskSvc, nil, s.redisClient, nil)
 
 	app := test.SetupAppFiber(*logger)
-	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.RegisterDeviceIntegration)
+
+	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), s.DeviceOwnershipMiddleWareTest, c.RegisterDeviceIntegration)
+	app.Post("/user/devices/:userDeviceID/autopi/command", test.AuthInjectorTestHandler(testUserID), s.DeviceOwnershipMiddleWareTest, c.SendAutoPiCommand)
+	app.Get("/user/devices/:userDeviceID/autopi/command/:jobID", test.AuthInjectorTestHandler(testUserID), s.DeviceOwnershipMiddleWareTestNFTOwnerOnly, c.GetAutoPiCommandStatus)
+
 	app.Post("/user2/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUser2), c.RegisterDeviceIntegration)
 	app.Get("/integrations", c.GetIntegrations)
-	app.Post("/user/devices/:userDeviceID/autopi/command", test.AuthInjectorTestHandler(testUserID), c.SendAutoPiCommand)
-	app.Get("/user/devices/:userDeviceID/autopi/command/:jobID", test.AuthInjectorTestHandler(testUserID), c.GetAutoPiCommandStatus)
 	s.app = app
+
 }
 
 // TearDownTest after each test truncate tables
@@ -792,4 +799,84 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoMatchUDAI() {
 	require.NoError(s.T(), err)
 	// assert
 	assert.Equal(s.T(), fiber.StatusForbidden, response.StatusCode)
+}
+
+func (s *UserIntegrationsControllerTestSuite) DeviceOwnershipMiddleWareTest(c *fiber.Ctx) error {
+
+	udi := c.Params("userDeviceID")
+	userID := helpers.GetUserID(c)
+
+	usersClient := test.SetupCreateDeviceOwnerMiddleware(&testing.T{}, udi, userID, s.pdb)
+
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(udi),
+		models.UserDeviceWhere.UserID.EQ(userID),
+	).One(c.Context(), s.pdb.DBS().Reader)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		log.Err(err)
+	}
+
+	if userDevice != nil {
+		return c.Next()
+	}
+
+	user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		return opaqueInternalError
+	}
+
+	if user.EthereumAddress == nil {
+		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address and does not own device associated with userDeviceID.")
+	}
+
+	_, err = models.VehicleNFTS(
+		models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(*user.EthereumAddress))),
+		models.VehicleNFTWhere.UserDeviceID.EQ(null.StringFrom(udi)),
+	).All(c.Context(), s.pdb.DBS().Reader)
+	if err != nil {
+		return err
+	}
+
+	return c.Next()
+
+}
+
+func (s *UserIntegrationsControllerTestSuite) DeviceOwnershipMiddleWareTestNFTOwnerOnly(c *fiber.Ctx) error {
+
+	udi := c.Params("userDeviceID")
+	userID := helpers.GetUserID(c)
+
+	usersClient := test.SetupCreateDeviceOwnerMiddlewareNFTOwnerOnly(&testing.T{}, udi, userID, s.pdb)
+
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(udi),
+		models.UserDeviceWhere.UserID.EQ(userID),
+	).One(c.Context(), s.pdb.DBS().Reader)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		log.Err(err)
+	}
+
+	if userDevice != nil {
+		return c.Next()
+	}
+
+	user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		return opaqueInternalError
+	}
+
+	if user.EthereumAddress == nil {
+		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address and does not own device associated with userDeviceID.")
+	}
+
+	_, err = models.VehicleNFTS(
+		models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(*user.EthereumAddress))),
+		models.VehicleNFTWhere.UserDeviceID.EQ(null.StringFrom(udi)),
+	).All(c.Context(), s.pdb.DBS().Reader)
+	if err != nil {
+		return err
+	}
+
+	return c.Next()
+
 }

@@ -16,9 +16,11 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/models"
+	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/docker/go-connections/nat"
 	"github.com/ericlagergren/decimal"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/pkg/errors"
@@ -31,6 +33,9 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const testDbName = "devices_api"
@@ -272,6 +277,81 @@ func SetupCreateUserDeviceAPIIntegration(t *testing.T, autoPiUnitID, externalID,
 	err := udapiInt.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
 	assert.NoError(t, err)
 	return udapiInt
+}
+
+// SetupCreateDeviceOwnerMiddleware establish user as device owner and nft owner in DB
+func SetupCreateDeviceOwnerMiddleware(t *testing.T, deviceID, userID string, pdb db.Store) pb.UserServiceClient {
+	uDevice := models.UserDevice{
+		ID:                 deviceID,
+		UserID:             userID,
+		DeviceDefinitionID: "device" + userID,
+	}
+	err := uDevice.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
+	assert.NoError(t, err)
+
+	userClient := &FakeUserClient{Response: []userClientResp{
+		{
+			ID:      userID,
+			Address: mkAddr(1),
+		},
+	}}
+
+	nftOwner := models.VehicleNFT{
+		UserDeviceID: null.StringFrom(deviceID),
+		OwnerAddress: null.BytesFrom(common.FromHex(mkAddr(1).String())),
+	}
+	err = nftOwner.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
+	assert.NoError(t, err)
+
+	return userClient
+}
+
+// SetupCreateDeviceOwnerMiddleware establish user as nft owner only in DB
+func SetupCreateDeviceOwnerMiddlewareNFTOwnerOnly(t *testing.T, deviceID, userID string, pdb db.Store) pb.UserServiceClient {
+
+	userClient := &FakeUserClient{Response: []userClientResp{
+		{
+			ID:      userID,
+			Address: mkAddr(1),
+		},
+	}}
+
+	nftOwner := models.VehicleNFT{
+		UserDeviceID: null.StringFrom(deviceID),
+		OwnerAddress: null.BytesFrom(common.FromHex(mkAddr(1).String())),
+	}
+	err := nftOwner.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
+	assert.NoError(t, err)
+
+	return userClient
+}
+
+var mkAddr = func(i int) common.Address {
+	return common.BigToAddress(big.NewInt(int64(i)))
+}
+
+type FakeUserClient struct {
+	Response []userClientResp
+}
+
+type userClientResp struct {
+	ID      string
+	Address common.Address
+}
+
+func (d *FakeUserClient) GetUser(ctx context.Context, in *pb.GetUserRequest, opts ...grpc.CallOption) (*pb.User, error) {
+	for _, user := range d.Response {
+		if user.ID == in.Id {
+			addr := user.Address.Hex()
+			out := &pb.User{
+				Id:              user.ID,
+				EthereumAddress: &addr,
+			}
+			return out, nil
+		}
+	}
+
+	return nil, status.Error(codes.NotFound, "No user with that ID found.")
 }
 
 func SetupCreateAutoPiJob(t *testing.T, jobID, deviceID, cmd, userDeviceID, state, commandResult string, pdb db.Store) *models.AutopiJob {
