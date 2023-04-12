@@ -982,7 +982,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "adds a device to a user by decoding a VIN. If cannot decode returns 424 or 500 if error",
+                "description": "adds a device to a user by decoding a VIN. If cannot decode returns 424 or 500 if error. Can optionally include the can bus protocol.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2514,6 +2514,10 @@
         "github_com_DIMO-Network_devices-api_internal_services.UserDeviceMetadata": {
             "type": "object",
             "properties": {
+                "canProtocol": {
+                    "description": "CANProtocol is the protocol that was detected by edge-network from the autopi.",
+                    "type": "string"
+                },
                 "elasticDefinitionSynced": {
                     "type": "boolean"
                 },
@@ -3322,6 +3326,10 @@
         "internal_controllers.RegisterUserDeviceVIN": {
             "type": "object",
             "properties": {
+                "canProtocol": {
+                    "description": "CANProtocol is the protocol that was detected by edge-network from the autopi.",
+                    "type": "string"
+                },
                 "countryCode": {
                     "type": "string"
                 },
