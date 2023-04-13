@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
-	"strconv"
 	"time"
 
-	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/appmetrics"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
@@ -42,13 +40,6 @@ type GetUserDeviceErrorCodeQueriesResponseItem struct {
 	Description string    `json:"description"`
 	RequestedAt time.Time `json:"requestedAt"`
 }
-
-type DeviceAttributeType string
-
-const (
-	MPG                 DeviceAttributeType = "mpg"
-	FuelTankCapacityGal DeviceAttributeType = "fuel_tank_capacity_gal"
-)
 
 func PrepareDeviceStatusInformation(deviceData models.UserDeviceDatumSlice, privilegeIDs []int64) DeviceSnapshot {
 	ds := DeviceSnapshot{}
@@ -160,49 +151,16 @@ func (udc *UserDevicesController) calculateRange(ctx context.Context, deviceDefi
 		return nil, helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+deviceDefinitionID)
 	}
 
-	var metadata []*grpc.DeviceTypeAttribute
-	var fuelTankCapGal, mpg float64 //mpgHwy
+	fuelTankCapGal, mpg, _ := helpers.GetActualDeviceDefinitionMetadataValues(dd, deviceStyleID)
 
-	if !deviceStyleID.IsZero() {
-		for _, style := range dd.DeviceStyles {
-			if style.Id == deviceStyleID.String {
-				metadata = style.DeviceAttributes
-				break
-			}
-		}
+	// calculate, convert to Km
+	if fuelTankCapGal > 0 && mpg > 0 {
+		fuelTankAtGal := fuelTankCapGal * fuelPercentRemaining
+		rangeMiles := mpg * fuelTankAtGal
+		rangeKm := 1.60934 * rangeMiles
+		return &rangeKm, nil
 	}
 
-	if len(metadata) == 0 && dd != nil && dd.DeviceAttributes != nil {
-		metadata = dd.DeviceAttributes
-	}
-
-	if metadata != nil {
-		// pull out device attribute values needed for calc
-
-		for _, attr := range metadata {
-			switch DeviceAttributeType(attr.Name) {
-			case FuelTankCapacityGal:
-				if v, err := strconv.ParseFloat(attr.Value, 32); err == nil {
-					fuelTankCapGal = v
-				}
-			case MPG:
-				if v, err := strconv.ParseFloat(attr.Value, 32); err == nil {
-					mpg = v
-				}
-				//case "mpg_highway":
-				//	if v, err := strconv.ParseFloat(attr.Value, 32); err == nil {
-				//		mpgHwy = v
-				//	}
-			}
-		}
-		// calculate, convert to Km
-		if fuelTankCapGal > 0 && mpg > 0 {
-			fuelTankAtGal := fuelTankCapGal * fuelPercentRemaining
-			rangeMiles := mpg * fuelTankAtGal
-			rangeKm := 1.60934 * rangeMiles
-			return &rangeKm, nil
-		}
-	}
 	return nil, nil
 }
 
