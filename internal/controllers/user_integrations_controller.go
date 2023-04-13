@@ -2047,7 +2047,6 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 var smartcarCallErr = fiber.NewError(fiber.StatusInternalServerError, "Error communicating with Smartcar.")
 
 func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logger *zerolog.Logger, tx *sql.Tx, integ *ddgrpc.Integration, ud *models.UserDevice) error {
-
 	reqBody := new(RegisterDeviceIntegrationRequest)
 	if err := c.BodyParser(reqBody); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request JSON body.")
@@ -2130,6 +2129,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 
 	year, err := udc.smartcarClient.GetYear(c.Context(), token.Access, externalID)
 	if err != nil {
+		logger.Err(err).Msg("Failed to get vehicle year from Smartcar.")
 		return smartcarCallErr
 	}
 
@@ -2139,6 +2139,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 
 	endpoints, err := udc.smartcarClient.GetEndpoints(c.Context(), token.Access, externalID)
 	if err != nil {
+		logger.Err(err).Msg("Failed to retrieve permissions from Smartcar.")
 		return smartcarCallErr
 	}
 
@@ -2146,6 +2147,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 
 	doorControl, err := udc.smartcarClient.HasDoorControl(c.Context(), token.Access, externalID)
 	if err != nil {
+		logger.Err(err).Msg("Failed to retrieve door control permissions from Smartcar.")
 		return smartcarCallErr
 	}
 
