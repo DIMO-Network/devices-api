@@ -178,6 +178,12 @@ func (udc *UserDevicesController) DeviceOwnershipMiddleWare(c *fiber.Ctx) error 
 		return err
 	}
 
+	l := udc.log.With().
+		Timestamp().
+		Str("user_device_id", udi).Str("user_id", userID).
+		Logger()
+
+	c.SetUserContext(l.WithContext(c.Context()))
 	return c.Next()
 }
 
