@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"github.com/tidwall/gjson"
 	"log"
 	"math/big"
 	"os"
@@ -290,8 +291,8 @@ func TestAutoPiStatusWithSignals(t *testing.T) {
 
 	dat1 := models.UserDeviceDatum{
 		UserDeviceID:        ud.ID,
-		Data:                null.JSONFrom([]byte(`{"odometer": 45.22, "signal_name_version_1": {"timestamp": "xx", "value": "yy"}}`)),
-		Signals:             null.JSONFrom([]byte(`{"signal_name_version_1": {"timestamp": "xx", "value": "1"}}`)),
+		Data:                null.JSONFrom([]byte(`{"odometer": 45.22, "signal_name_version_1": 23.4}`)),
+		Signals:             null.JSONFrom([]byte(`{"signal_name_version_1": {"timestamp": "xx", "value": 23.4}}`)),
 		LastOdometerEventAt: null.TimeFrom(time.Now().Add(-10 * time.Second)),
 		IntegrationID:       integrationID,
 	}
@@ -305,7 +306,7 @@ func TestAutoPiStatusWithSignals(t *testing.T) {
 		Subject:     ud.ID,
 		Type:        deviceStatusEventType,
 		Time:        time.Now(),
-		Data:        []byte(`{"odometer": 45.22, "signal_name_version_2": {"timestamp": "aa", "value": 0}}`),
+		Data:        []byte(`{"odometer": 45.22, "signal_name_version_2": 12.3}`),
 	}
 
 	var ctxGk goka.Context
@@ -315,7 +316,15 @@ func TestAutoPiStatusWithSignals(t *testing.T) {
 	err = dat1.Reload(ctx, tx)
 	require.NoError(t, err)
 
-	assert.JSONEq(`{"signal_name_version_1":{"timestamp":"xx","value":"yy"},"signal_name_version_2":{"timestamp":"aa","value":0}}`, string(dat1.Signals.JSON))
+	// validate signals were updated, or not updated, as expected
+	assert.Equal("xx", gjson.GetBytes(dat1.Signals.JSON, "signal_name_version_1.timestamp").Str, "signal 1 ts should not change and be present")
+	assert.Equal(23.4, gjson.GetBytes(dat1.Signals.JSON, "signal_name_version_1.value").Num, "signal 1 value should not change and be present")
+	// assume UTC tz
+	assert.Equal(input.Time.Format("2006-01-02T15:04:05"), gjson.GetBytes(dat1.Signals.JSON, "odometer.timestamp").Str, "odometer ts should be updated from latest event")
+	assert.Equal(45.22, gjson.GetBytes(dat1.Signals.JSON, "odometer.value").Num, "odometer value should be updated from latest event")
+
+	assert.Equal(input.Time.Format("2006-01-02T15:04:05"), gjson.GetBytes(dat1.Signals.JSON, "signal_name_version_2.timestamp").Str, "signal 2 ts should be updated from latest event")
+	assert.Equal(12.3, gjson.GetBytes(dat1.Signals.JSON, "signal_name_version_2.value").Num, "signal 2 value should be updated from latest event")
 }
 
 type testDeviceDefSvc struct {
