@@ -6,12 +6,14 @@ import (
 	"io"
 	"math/big"
 	"strconv"
+	"strings"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/go-mnemonic"
 	"github.com/DIMO-Network/shared/db"
 	pr "github.com/DIMO-Network/shared/middleware/privilegetoken"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -241,10 +243,15 @@ func (nc *NFTController) GetAftermarketDeviceNFTMetadata(c *fiber.Ctx) error {
 		}
 		return err
 	}
+	var name string
+	if three, err := mnemonic.EntropyToMnemonicThreeWords(unit.EthereumAddress.Bytes); err == nil {
+		name = strings.Join(three, " ")
+	}
 
 	return c.JSON(NFTMetadataResp{
 		Image: fmt.Sprintf("%s/v1/aftermarket/device/%s/image", nc.Settings.DeploymentBaseURL, tid),
 		Attributes: []NFTAttribute{
+			{TraitType: "Name", Value: name},
 			{TraitType: "Ethereum Address", Value: common.BytesToAddress(unit.EthereumAddress.Bytes).String()},
 			{TraitType: "Serial Number", Value: unit.AutopiUnitID},
 		},

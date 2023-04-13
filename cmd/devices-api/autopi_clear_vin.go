@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
@@ -58,8 +59,9 @@ func clearVINFromAutopi(ctx context.Context, logger *zerolog.Logger, settings *c
 		}
 		if autoPiDevice != nil && len(autoPiDevice.Vehicle.Vin) > 1 {
 			// call api svc to update profile, setting vin = ""
+			vin := ""
 			err = autoPiSvc.PatchVehicleProfile(autoPiDevice.Vehicle.ID, services.PatchVehicleProfile{
-				Vin: "",
+				Vin: &vin,
 			})
 			if err != nil {
 				// uh oh spaghettie oh

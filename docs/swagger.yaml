@@ -215,6 +215,10 @@ definitions:
     - FCEV
   github_com_DIMO-Network_devices-api_internal_services.UserDeviceMetadata:
     properties:
+      canProtocol:
+        description: CANProtocol is the protocol that was detected by edge-network
+          from the autopi.
+        type: string
       elasticDefinitionSynced:
         type: boolean
       elasticRegionSynced:
@@ -783,6 +787,10 @@ definitions:
     type: object
   internal_controllers.RegisterUserDeviceVIN:
     properties:
+      canProtocol:
+        description: CANProtocol is the protocol that was detected by edge-network
+          from the autopi.
+        type: string
       countryCode:
         type: string
       vin:
@@ -1080,6 +1088,24 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/internal_controllers.AutoPiClaimRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+  /autopi/unit/:unitID/commands/unclaim:
+    post:
+      description: |-
+        Dev-only endpoint for removing a claim. Removes the flag on-chain and clears
+        the owner in the database.
+      parameters:
+      - description: AutoPi unit id
+        in: path
+        name: unitID
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -2018,7 +2044,8 @@ paths:
       consumes:
       - application/json
       description: adds a device to a user by decoding VIN from Smartcar. If cannot
-        decode returns 424 or 500 if error
+        decode returns 424 or 500 if error. Do NOT call this if user device already
+        exists from a different integration - it will conflict.
       parameters:
       - description: add device to user. all fields required
         in: body
@@ -2035,6 +2062,8 @@ paths:
             $ref: '#/definitions/internal_controllers.UserDeviceFull'
         "400":
           description: validation failure
+        "409":
+          description: VIN already exists either for different user or same user
         "424":
           description: unable to decode VIN
         "500":
@@ -2049,7 +2078,7 @@ paths:
       consumes:
       - application/json
       description: adds a device to a user by decoding a VIN. If cannot decode returns
-        424 or 500 if error
+        424 or 500 if error. Can optionally include the can bus protocol.
       parameters:
       - description: add device to user. VIN is required and so is country
         in: body

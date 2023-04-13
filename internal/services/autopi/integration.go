@@ -137,6 +137,9 @@ func (i *Integration) Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *b
 		return err
 	}
 
+	var udMd services.UserDeviceMetadata
+	_ = ud.Metadata.Unmarshal(&udMd)
+
 	hardwareTemplate, err := i.hardwareTemplateService.GetTemplateID(ud, def, integ)
 
 	if err != nil {
@@ -145,26 +148,26 @@ func (i *Integration) Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *b
 
 	templateID, _ := strconv.Atoi(hardwareTemplate)
 
-	udMetadata := services.UserDeviceAPIIntegrationsMetadata{
+	udaiMd := services.UserDeviceAPIIntegrationsMetadata{
 		AutoPiUnitID:          &autoPi.UnitID,
 		AutoPiIMEI:            &autoPi.IMEI,
 		AutoPiTemplateApplied: &templateID,
+		CANProtocol:           udMd.CANProtocol,
 	}
 
-	apiInt := models.UserDeviceAPIIntegration{
+	udai := models.UserDeviceAPIIntegration{
 		UserDeviceID:  ud.ID,
 		IntegrationID: integ.Id,
 		ExternalID:    null.StringFrom(autoPi.ID),
 		Status:        models.UserDeviceAPIIntegrationStatusPending,
 		AutopiUnitID:  null.StringFrom(autoPi.UnitID),
 	}
-
-	err = apiInt.Metadata.Marshal(udMetadata)
+	err = udai.Metadata.Marshal(udaiMd)
 	if err != nil {
 		return err
 	}
 
-	if err = apiInt.Insert(ctx, tx, boil.Infer()); err != nil {
+	if err = udai.Insert(ctx, tx, boil.Infer()); err != nil {
 		return err
 	}
 
@@ -172,24 +175,25 @@ func (i *Integration) Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *b
 	// update integration record as failed if errors after this
 	defer func() {
 		if err != nil {
-			apiInt.Status = models.UserDeviceAPIIntegrationStatusFailed
+			udai.Status = models.UserDeviceAPIIntegrationStatusFailed
 			msg := err.Error()
-			udMetadata.AutoPiRegistrationError = &msg
+			udaiMd.AutoPiRegistrationError = &msg
 			ss := substatus.String()
-			udMetadata.AutoPiSubStatus = &ss
-			_ = apiInt.Metadata.Marshal(udMetadata)
-			_, _ = apiInt.Update(ctx, tx,
+			udaiMd.AutoPiSubStatus = &ss
+			_ = udai.Metadata.Marshal(udaiMd)
+			_, _ = udai.Update(ctx, tx,
 				boil.Whitelist(models.UserDeviceAPIIntegrationColumns.Status, models.UserDeviceAPIIntegrationColumns.UpdatedAt))
 			err = tx.Commit()
 		}
 	}()
 	// update the profile on autopi
+	yr := int(def.Type.Year)
 	profile := services.PatchVehicleProfile{
-		Year: int(def.Type.Year),
+		Year: &yr,
 	}
 
 	if ud.Name.Valid {
-		profile.CallName = ud.Name.String
+		profile.CallName = &ud.Name.String
 	}
 	err = i.ap.PatchVehicleProfile(autoPi.Vehicle.ID, profile)
 	if err != nil {
@@ -227,13 +231,13 @@ func (i *Integration) Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *b
 	}
 
 	ss := substatus.String() // This is either going to be AppliedTemplate or PendingTemplateConfirm, at this point.
-	udMetadata.AutoPiSubStatus = &ss
-	err = apiInt.Metadata.Marshal(udMetadata)
+	udaiMd.AutoPiSubStatus = &ss
+	err = udai.Metadata.Marshal(udaiMd)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshall user device integration metadata")
 	}
 
-	_, err = apiInt.Update(ctx, tx, boil.Whitelist(models.UserDeviceAPIIntegrationColumns.Metadata,
+	_, err = udai.Update(ctx, tx, boil.Whitelist(models.UserDeviceAPIIntegrationColumns.Metadata,
 		models.UserDeviceAPIIntegrationColumns.UpdatedAt))
 	if err != nil {
 		return errors.Wrap(err, "failed to update integration status to Pending")
