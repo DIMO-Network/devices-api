@@ -25,6 +25,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 	"github.com/DIMO-Network/shared"
+	pb_users "github.com/DIMO-Network/shared/api/users"
 	pr "github.com/DIMO-Network/shared/middleware/privilegetoken"
 	"github.com/DIMO-Network/zflogger"
 	"github.com/Shopify/sarama"
@@ -37,6 +38,7 @@ import (
 	jwtware "github.com/gofiber/jwt/v3"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store, eventService services.EventService, producer sarama.SyncProducer, s3ServiceClient *s3.Client, s3NFTServiceClient *s3.Client) {
@@ -73,6 +75,14 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, pdb.DBS, &logger)
 	autoPi := autopi.NewIntegration(pdb.DBS, ddSvc, autoPiSvc, autoPiTaskService, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &logger)
 	openAI := services.NewOpenAI(&logger, *settings)
+
+	conn, err := grpc.Dial(settings.UsersAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		logger.Err(err).Msg("failed to create users api client")
+	}
+	defer conn.Close()
+
+	usersClient := pb_users.NewUserServiceClient(conn)
 
 	redisCache := redis.NewRedisCacheService(settings.IsProduction(), redis.Settings{
 		URL:       settings.RedisURL,
@@ -139,7 +149,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		KeySetURL:            settings.JwtKeySetURL,
 		KeyRefreshInterval:   &keyRefreshInterval,
 		KeyRefreshUnknownKID: &keyRefreshUnknownKID,
-		SuccessHandler:       userDeviceController.DeviceOwnershipMiddleWare,
 	})
 
 	v1Auth := app.Group("/v1")
@@ -168,7 +177,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 
 	v1Auth.Use(jwtAuth)
-	udOwner := v1Auth.Group("/user/devices/:userDeviceID", userDeviceController.DeviceOwnershipMiddleWare)
+	middleware := controllers.NewMiddleware(settings, pdb.DBS, usersClient, &logger)
+	udOwner := v1Auth.Group("/user/devices/:userDeviceID", middleware.DeviceOwnershipMiddleware)
 
 	// user's devices
 	v1Auth.Get("/user/devices/me", userDeviceController.GetUserDevices)

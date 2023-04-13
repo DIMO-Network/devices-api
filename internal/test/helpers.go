@@ -279,62 +279,15 @@ func SetupCreateUserDeviceAPIIntegration(t *testing.T, autoPiUnitID, externalID,
 	return udapiInt
 }
 
-// SetupCreateDeviceOwnerMiddleware establish user as device owner and nft owner in DB
-func SetupCreateDeviceOwnerMiddleware(t *testing.T, deviceID, userID string, pdb db.Store) pb.UserServiceClient {
-	uDevice := models.UserDevice{
-		ID:                 deviceID,
-		UserID:             userID,
-		DeviceDefinitionID: "device" + userID,
-	}
-	err := uDevice.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
-	assert.NoError(t, err)
-
-	userClient := &FakeUserClient{Response: []userClientResp{
-		{
-			ID:      userID,
-			Address: mkAddr(1),
-		},
-	}}
-
-	nftOwner := models.VehicleNFT{
-		UserDeviceID: null.StringFrom(deviceID),
-		OwnerAddress: null.BytesFrom(common.FromHex(mkAddr(1).String())),
-	}
-	err = nftOwner.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
-	assert.NoError(t, err)
-
-	return userClient
-}
-
-// SetupCreateDeviceOwnerMiddleware establish user as nft owner only in DB
-func SetupCreateDeviceOwnerMiddlewareNFTOwnerOnly(t *testing.T, deviceID, userID string, pdb db.Store) pb.UserServiceClient {
-
-	userClient := &FakeUserClient{Response: []userClientResp{
-		{
-			ID:      userID,
-			Address: mkAddr(1),
-		},
-	}}
-
-	nftOwner := models.VehicleNFT{
-		UserDeviceID: null.StringFrom(deviceID),
-		OwnerAddress: null.BytesFrom(common.FromHex(mkAddr(1).String())),
-	}
-	err := nftOwner.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
-	assert.NoError(t, err)
-
-	return userClient
-}
-
-var mkAddr = func(i int) common.Address {
+var MkAddr = func(i int) common.Address {
 	return common.BigToAddress(big.NewInt(int64(i)))
 }
 
 type FakeUserClient struct {
-	Response []userClientResp
+	Response []UserClientResp
 }
 
-type userClientResp struct {
+type UserClientResp struct {
 	ID      string
 	Address common.Address
 }
