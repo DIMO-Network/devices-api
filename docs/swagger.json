@@ -196,6 +196,33 @@
                 }
             }
         },
+        "/autopi/unit/:unitID/commands/unclaim": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Dev-only endpoint for removing a claim. Removes the flag on-chain and clears\nthe owner in the database.",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "AutoPi unit id",
+                        "name": "unitID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
         "/autopi/unit/:unitID/is-online": {
             "get": {
                 "security": [
@@ -902,7 +929,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "adds a device to a user by decoding VIN from Smartcar. If cannot decode returns 424 or 500 if error",
+                "description": "adds a device to a user by decoding VIN from Smartcar. If cannot decode returns 424 or 500 if error. Do NOT call this if user device already exists from a different integration - it will conflict.",
                 "consumes": [
                     "application/json"
                 ],
@@ -933,6 +960,9 @@
                     "400": {
                         "description": "validation failure"
                     },
+                    "409": {
+                        "description": "VIN already exists either for different user or same user"
+                    },
                     "424": {
                         "description": "unable to decode VIN"
                     },
@@ -952,7 +982,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "adds a device to a user by decoding a VIN. If cannot decode returns 424 or 500 if error",
+                "description": "adds a device to a user by decoding a VIN. If cannot decode returns 424 or 500 if error. Can optionally include the can bus protocol.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2484,6 +2514,10 @@
         "github_com_DIMO-Network_devices-api_internal_services.UserDeviceMetadata": {
             "type": "object",
             "properties": {
+                "canProtocol": {
+                    "description": "CANProtocol is the protocol that was detected by edge-network from the autopi.",
+                    "type": "string"
+                },
                 "elasticDefinitionSynced": {
                     "type": "boolean"
                 },
@@ -3292,6 +3326,10 @@
         "internal_controllers.RegisterUserDeviceVIN": {
             "type": "object",
             "properties": {
+                "canProtocol": {
+                    "description": "CANProtocol is the protocol that was detected by edge-network from the autopi.",
+                    "type": "string"
+                },
                 "countryCode": {
                     "type": "string"
                 },

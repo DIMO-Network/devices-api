@@ -11,18 +11,17 @@ import (
 	"time"
 
 	smartcar "github.com/smartcar/go-sdk"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	pb "github.com/DIMO-Network/shared/api/users"
-	"github.com/Shopify/sarama"
-	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
@@ -34,7 +33,6 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"golang.org/x/exp/slices"
 	"golang.org/x/mod/semver"
 )
@@ -1336,7 +1334,7 @@ func (udc *UserDevicesController) CloudRepairAutoPi(c *fiber.Ctx) error {
 	return c.SendStatus(204)
 }
 
-// UnairAutoPi godoc
+// UnpairAutoPi godoc
 // @Description Submit the signature for unpairing this device from its attached AutoPi.
 // @Produce json
 // @Param userDeviceID path string true "Device id"
@@ -1588,6 +1586,73 @@ type AutoPiClaimRequest struct {
 type AutoPiPairRequest struct {
 	ExternalID string `json:"externalId"`
 	Signature  string `json:"signature"`
+}
+
+// PostUnclaimAutoPi godoc
+// @Description Dev-only endpoint for removing a claim. Removes the flag on-chain and clears
+// @Description the owner in the database.
+// @Produce json
+// @Param unitID path string true "AutoPi unit id"
+// @Success 204
+// @Security BearerAuth
+// @Router /autopi/unit/:unitID/commands/unclaim [post]
+func (udc *UserDevicesController) PostUnclaimAutoPi(c *fiber.Ctx) error {
+	userID := helpers.GetUserID(c)
+	unitID := c.Params("unitID")
+
+	logger := udc.log.With().Str("userId", userID).Str("autoPiUnitId", unitID).Str("route", c.Route().Name).Logger()
+
+	logger.Info().Msg("Got unclaim request.")
+
+	unit, err := models.FindAutopiUnit(c.Context(), udc.DBS().Reader, unitID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted, or unit ID invalid.")
+		}
+		return err
+	}
+
+	if unit.PairRequestID.Valid {
+		return fiber.NewError(fiber.StatusConflict, "Unpair device first.")
+	}
+
+	if unit.TokenID.IsZero() || !unit.EthereumAddress.Valid {
+		return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted.")
+	}
+
+	if !unit.OwnerAddress.Valid {
+		return fiber.NewError(fiber.StatusConflict, "Device not claimed.")
+	}
+
+	apToken := unit.TokenID.Int(nil)
+
+	conn, err := grpc.Dial(udc.Settings.UsersAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	client := registry.Client{
+		Producer:     udc.producer,
+		RequestTopic: "topic.transaction.request.send",
+		Contract: registry.Contract{
+			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
+			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
+			Name:    "DIMO",
+			Version: "1",
+		},
+	}
+
+	requestID := ksuid.New().String()
+
+	unit.OwnerAddress = null.Bytes{}
+	unit.ClaimMetaTransactionRequestID = null.String{}
+	unit.UnpairRequestID = null.String{}
+	if _, err := unit.Update(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
+		return err
+	}
+
+	return client.UnclaimAftermarketDeviceNode(requestID, []*big.Int{apToken})
 }
 
 // PostClaimAutoPi godoc
@@ -1920,7 +1985,6 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 var smartcarCallErr = fiber.NewError(fiber.StatusInternalServerError, "Error communicating with Smartcar.")
 
 func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logger *zerolog.Logger, tx *sql.Tx, integ *ddgrpc.Integration, ud *models.UserDevice) error {
-
 	reqBody := new(RegisterDeviceIntegrationRequest)
 	if err := c.BodyParser(reqBody); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request JSON body.")
@@ -2003,6 +2067,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 
 	year, err := udc.smartcarClient.GetYear(c.Context(), token.Access, externalID)
 	if err != nil {
+		logger.Err(err).Msg("Failed to get vehicle year from Smartcar.")
 		return smartcarCallErr
 	}
 
@@ -2012,6 +2077,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 
 	endpoints, err := udc.smartcarClient.GetEndpoints(c.Context(), token.Access, externalID)
 	if err != nil {
+		logger.Err(err).Msg("Failed to retrieve permissions from Smartcar.")
 		return smartcarCallErr
 	}
 
@@ -2019,6 +2085,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 
 	doorControl, err := udc.smartcarClient.HasDoorControl(c.Context(), token.Access, externalID)
 	if err != nil {
+		logger.Err(err).Msg("Failed to retrieve door control permissions from Smartcar.")
 		return smartcarCallErr
 	}
 
@@ -2098,181 +2165,6 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 	logger.Info().Msgf("drivly update task ID = %s", taskID)
 
 	return c.SendStatus(fiber.StatusNoContent)
-}
-
-// nolint
-func (udc *UserDevicesController) AdminVehicleDeviceLink(c *fiber.Ctx) error {
-	return nil
-}
-
-type web3UnclaimDevice struct {
-	AftermarketDeviceNode *big.Int `json:"aftermarketDeviceNode"`
-	AutoPiUnitID          string   `json:"autoPiUnitId"`
-}
-
-func (udc *UserDevicesController) AdminDeviceWeb3Unclaim(c *fiber.Ctx) error {
-	wud := web3UnclaimDevice{}
-	err := c.BodyParser(&wud)
-	if err != nil {
-		return err
-	}
-
-	type requestData struct {
-		ID   string `json:"id"`
-		To   string `json:"to"`
-		Data string `json:"data"`
-	}
-
-	reqID := ksuid.New().String()
-
-	node := wud.AftermarketDeviceNode
-
-	var unit *models.AutopiUnit
-
-	if wud.AutoPiUnitID != "" {
-		unit, err = models.FindAutopiUnit(c.Context(), udc.DBS().Reader, wud.AutoPiUnitID)
-		if err != nil {
-			return err
-		}
-
-		node = unit.TokenID.Int(nil)
-	} else {
-		unit, err = models.AutopiUnits(
-			models.AutopiUnitWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(node, 0))),
-		).One(c.Context(), udc.DBS().Reader)
-		if err != nil {
-			return err
-		}
-	}
-
-	unit.ClaimMetaTransactionRequestID = null.String{}
-	unit.OwnerAddress = null.Bytes{}
-	_, err = unit.Update(c.Context(), udc.DBS().Reader, boil.Infer())
-	if err != nil {
-		return err
-	}
-
-	abi, err := contracts.RegistryMetaData.GetAbi()
-	if err != nil {
-		return err
-	}
-
-	data, err := abi.Pack("unclaimAftermarketDeviceNode", []*big.Int{node})
-	if err != nil {
-		return err
-	}
-
-	addr := common.HexToAddress(udc.Settings.DIMORegistryAddr)
-	event := shared.CloudEvent[requestData]{
-		ID:          ksuid.New().String(),
-		Source:      "devices-api",
-		SpecVersion: "1.0",
-		Subject:     reqID,
-		Time:        time.Now(),
-		Type:        "zone.dimo.transaction.request",
-		Data: requestData{
-			ID:   reqID,
-			To:   hexutil.Encode(addr[:]),
-			Data: hexutil.Encode(data),
-		},
-	}
-
-	eventBytes, err := json.Marshal(event)
-	if err != nil {
-		return err
-	}
-
-	_, _, err = udc.producer.SendMessage(
-		&sarama.ProducerMessage{
-			Topic: "topic.transaction.request.send",
-			Key:   sarama.StringEncoder(reqID),
-			Value: sarama.ByteEncoder(eventBytes),
-		},
-	)
-
-	return err
-}
-
-func (udc *UserDevicesController) AdminDeviceWeb3Unpair(c *fiber.Ctx) error {
-	wud := web3UnclaimDevice{}
-	err := c.BodyParser(&wud)
-	if err != nil {
-		return err
-	}
-
-	type requestData struct {
-		ID   string `json:"id"`
-		To   string `json:"to"`
-		Data string `json:"data"`
-	}
-
-	reqID := ksuid.New().String()
-
-	node := wud.AftermarketDeviceNode
-
-	var unit *models.AutopiUnit
-
-	if wud.AutoPiUnitID != "" {
-		unit, err = models.FindAutopiUnit(c.Context(), udc.DBS().Reader, wud.AutoPiUnitID)
-		if err != nil {
-			return err
-		}
-
-		node = unit.TokenID.Int(nil)
-	} else {
-		unit, err = models.AutopiUnits(
-			models.AutopiUnitWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(node, 0))),
-		).One(c.Context(), udc.DBS().Reader)
-		if err != nil {
-			return err
-		}
-	}
-
-	unit.PairRequestID = null.String{}
-	_, err = unit.Update(c.Context(), udc.DBS().Reader, boil.Infer())
-	if err != nil {
-		return err
-	}
-
-	abi, err := contracts.RegistryMetaData.GetAbi()
-	if err != nil {
-		return err
-	}
-
-	data, err := abi.Pack("unpairAftermarketDeviceByDeviceNode", []*big.Int{node})
-	if err != nil {
-		return err
-	}
-
-	addr := common.HexToAddress(udc.Settings.DIMORegistryAddr)
-	event := shared.CloudEvent[requestData]{
-		ID:          ksuid.New().String(),
-		Source:      "devices-api",
-		SpecVersion: "1.0",
-		Subject:     reqID,
-		Time:        time.Now(),
-		Type:        "zone.dimo.transaction.request",
-		Data: requestData{
-			ID:   reqID,
-			To:   hexutil.Encode(addr[:]),
-			Data: hexutil.Encode(data),
-		},
-	}
-
-	eventBytes, err := json.Marshal(event)
-	if err != nil {
-		return err
-	}
-
-	_, _, err = udc.producer.SendMessage(
-		&sarama.ProducerMessage{
-			Topic: "topic.transaction.request.send",
-			Key:   sarama.StringEncoder(reqID),
-			Value: sarama.ByteEncoder(eventBytes),
-		},
-	)
-
-	return err
 }
 
 func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zerolog.Logger, tx *sql.Tx, userDeviceID string, integ *ddgrpc.Integration, ud *models.UserDevice) error {

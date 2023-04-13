@@ -231,27 +231,11 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices/:userDeviceID/commands/mint", userDeviceController.PostMintDevice).Name("PostMintDevice")
 	v1Auth.Post("/user/devices/:userDeviceID/commands/update-nft-image", userDeviceController.UpdateNFTImage)
 
-	kconf := sarama.NewConfig()
-	kconf.Version = sarama.V2_8_1_0
-
-	kclient, err := sarama.NewClient(strings.Split(settings.KafkaBrokers, ","), kconf)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to create Sarama client")
-	}
-
-	store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to create registry storage client")
-	}
-
-	ctx := context.Background()
-	err = registry.RunConsumer(ctx, kclient, &logger, store)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to create transaction listener")
-	}
-
 	v1Auth.Get("/autopi/unit/:unitID/commands/claim", userDeviceController.GetAutoPiClaimMessage)
 	v1Auth.Post("/autopi/unit/:unitID/commands/claim", userDeviceController.PostClaimAutoPi).Name("PostClaimAutoPi")
+	if !settings.IsProduction() {
+		v1Auth.Post("/autopi/unit/:unitID/commands/unclaim", userDeviceController.PostUnclaimAutoPi)
+	}
 
 	v1Auth.Get("/user/devices/:userDeviceID/autopi/commands/pair", userDeviceController.GetAutoPiPairMessage)
 	v1Auth.Post("/user/devices/:userDeviceID/autopi/commands/pair", userDeviceController.PostPairAutoPi).Name("PostPairAutoPi")
@@ -260,12 +244,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices/:userDeviceID/autopi/commands/unpair", userDeviceController.UnpairAutoPi)
 
 	v1Auth.Post("/user/devices/:userDeviceID/autopi/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
-
-	// Dev-only admin endpoints
-	if settings.IsProduction() {
-		v1Auth.Post("/admin/web3-device-unclaim", userDeviceController.AdminDeviceWeb3Unclaim)
-		v1Auth.Post("/admin/web3-device-unpair", userDeviceController.AdminDeviceWeb3Unpair)
-	}
 
 	// geofence
 	v1Auth.Post("/user/geofences", geofenceController.Create)
@@ -289,6 +267,25 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 			logger.Fatal().Err(err)
 		}
 	}()
+	// start kafka consumer for registry processor
+	kconf := sarama.NewConfig()
+	kconf.Version = sarama.V2_8_1_0
+
+	kclient, err := sarama.NewClient(strings.Split(settings.KafkaBrokers, ","), kconf)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create Sarama client")
+	}
+
+	store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create registry storage client")
+	}
+
+	ctx := context.Background()
+	err = registry.RunConsumer(ctx, kclient, &logger, store)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create transaction listener")
+	}
 	// start task consumer for autopi
 	autoPiTaskService.StartConsumer(ctx)
 	drivlyTaskService.StartConsumer(ctx)
