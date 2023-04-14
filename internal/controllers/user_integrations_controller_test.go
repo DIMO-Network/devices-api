@@ -853,7 +853,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 	apUnit.TokenID = types.NewNullDecimal(decimal.New(5, 0))
 	apUnit.EthereumAddress = null.BytesFrom(common.BigToAddress(big.NewInt(2)).Bytes())
 	apUnit.OwnerAddress = null.BytesFrom(userAddr.Bytes())
-	apUnit.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	_, err = apUnit.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
 
 	app := fiber.New()
 	app.Use(test.AuthInjectorTestHandler(userID))

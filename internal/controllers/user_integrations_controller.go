@@ -1301,31 +1301,32 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 		}
 
 		return nil
-	} else {
-		requestID := ksuid.New().String()
-
-		mtr := models.MetaTransactionRequest{
-			ID:     requestID,
-			Status: models.MetaTransactionRequestStatusUnsubmitted,
-		}
-		err = mtr.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
-		if err != nil {
-			return err
-		}
-
-		autoPiUnit.UnpairRequestID = null.String{}
-		autoPiUnit.PairRequestID = null.StringFrom(requestID)
-		_, err = autoPiUnit.Update(c.Context(), udc.DBS().Writer, boil.Infer())
-		if err != nil {
-			return err
-		}
-		err = client.PairAftermarketDeviceSignSameOwner(requestID, apToken, vehicleToken, vehicleOwnerSig)
-		if err != nil {
-			return err
-		}
-
-		return nil
 	}
+
+	// Yes, this is ugly, we'll fix it.
+	requestID := ksuid.New().String()
+
+	mtr := models.MetaTransactionRequest{
+		ID:     requestID,
+		Status: models.MetaTransactionRequestStatusUnsubmitted,
+	}
+	err = mtr.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
+	if err != nil {
+		return err
+	}
+
+	autoPiUnit.UnpairRequestID = null.String{}
+	autoPiUnit.PairRequestID = null.StringFrom(requestID)
+	_, err = autoPiUnit.Update(c.Context(), udc.DBS().Writer, boil.Infer())
+	if err != nil {
+		return err
+	}
+	err = client.PairAftermarketDeviceSignSameOwner(requestID, apToken, vehicleToken, vehicleOwnerSig)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // CloudRepairAutoPi godoc
