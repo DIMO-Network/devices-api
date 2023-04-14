@@ -1,8 +1,6 @@
 package controllers
 
 import (
-	"database/sql"
-
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/models"
@@ -10,7 +8,6 @@ import (
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 )
@@ -37,20 +34,14 @@ func (m *middleware) DeviceOwnershipMiddleware(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
 	userID := helpers.GetUserID(c)
 
-	l := m.log.With().
-		Str("userDeviceId", udi).Str("userId", userID).
-		Logger()
-
-	c.Locals("logger", l)
+	c.Locals("userDeviceId", udi)
+	c.Locals("userId", userID)
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
 		models.UserDeviceWhere.UserID.EQ(userID),
 	).Exists(c.Context(), m.DBS().Reader)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			fiber.NewError(fiber.StatusNotFound, "no device associated with user id and userDeviceID")
-		}
 		m.log.Err(err).Msg("error while checking if authenticated user owns device or corresponding nft")
 		return err
 	}
@@ -62,10 +53,10 @@ func (m *middleware) DeviceOwnershipMiddleware(c *fiber.Ctx) error {
 	user, err := m.UsersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		m.log.Err(err).Msg("Failed to retrieve user information.")
-		return err
+		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
-	if user.EthereumAddress == nil {
+	if *user.EthereumAddress == "0x0000000000000000000000000000000000000000" {
 		return fiber.NewError(fiber.StatusNotFound, "User does not have an Ethereum address and does not own device associated with userDeviceID.")
 	}
 

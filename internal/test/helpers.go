@@ -34,8 +34,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 const testDbName = "devices_api"
@@ -219,6 +217,29 @@ func SetupCreateUserDevice(t *testing.T, testUserID string, ddID string, metadat
 	return ud
 }
 
+func SetupCreateUserDeviceForMiddleware(t *testing.T, userDeviceID, userID string, ddID string, metadata *[]byte, vin string, pdb db.Store) models.UserDevice {
+	ud := models.UserDevice{
+		ID:                 userDeviceID,
+		UserID:             userID,
+		DeviceDefinitionID: ddID,
+		CountryCode:        null.StringFrom("USA"),
+		Name:               null.StringFrom("Chungus"),
+	}
+	if len(vin) == 17 {
+		ud.VinIdentifier = null.StringFrom(vin)
+		ud.VinConfirmed = true
+	}
+	if metadata == nil {
+		// note cannot import enum from services
+		md := []byte(`{"powertrainType":"ICE"}`)
+		metadata = &md
+	}
+	ud.Metadata = null.JSONFrom(*metadata)
+	err := ud.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
+	assert.NoError(t, err)
+	return ud
+}
+
 func SetupCreateAutoPiUnit(t *testing.T, userID, unitID string, deviceID *string, pdb db.Store) *models.AutopiUnit {
 	au := models.AutopiUnit{
 		AutopiUnitID:   unitID,
@@ -261,6 +282,39 @@ func SetupCreateVehicleNFT(t *testing.T, userDeviceID, vin string, tokenID *big.
 	return &vehicle
 }
 
+func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userID, userDeviceID string, tokenID *big.Int, pdb db.Store) *models.VehicleNFT {
+
+	ud := models.UserDevice{
+		ID:                 userDeviceID,
+		UserID:             userID,
+		DeviceDefinitionID: "ddID",
+		CountryCode:        null.StringFrom("USA"),
+		Name:               null.StringFrom("Chungus"),
+		VinIdentifier:      null.StringFrom("00000000000000001"),
+		VinConfirmed:       true,
+	}
+
+	err := ud.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
+	assert.NoError(t, err)
+
+	mint := models.MetaTransactionRequest{
+		ID: ksuid.New().String(),
+	}
+	err = mint.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
+	assert.NoError(t, err)
+
+	vehicle := models.VehicleNFT{
+		Vin:           "00000000000000001",
+		MintRequestID: mint.ID,
+		UserDeviceID:  null.StringFrom(userDeviceID),
+		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+		OwnerAddress:  null.BytesFrom(common.FromHex(addr.String())),
+	}
+	err = vehicle.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
+	assert.NoError(t, err)
+	return &vehicle
+}
+
 // SetupCreateUserDeviceAPIIntegration status set to Active, autoPiUnitId is optional
 func SetupCreateUserDeviceAPIIntegration(t *testing.T, autoPiUnitID, externalID, userDeviceID, integrationID string, pdb db.Store) models.UserDeviceAPIIntegration {
 	udapiInt := models.UserDeviceAPIIntegration{
@@ -296,6 +350,14 @@ func (d *FakeUserClient) GetUser(ctx context.Context, in *pb.GetUserRequest, opt
 	for _, user := range d.Response {
 		if user.ID == in.Id {
 			addr := user.Address.Hex()
+
+			if addr == "" {
+				out := &pb.User{
+					Id: user.ID,
+				}
+				return out, nil
+			}
+
 			out := &pb.User{
 				Id:              user.ID,
 				EthereumAddress: &addr,
@@ -304,7 +366,7 @@ func (d *FakeUserClient) GetUser(ctx context.Context, in *pb.GetUserRequest, opt
 		}
 	}
 
-	return nil, status.Error(codes.NotFound, "No user with that ID found.")
+	return nil, errors.New("user not found in users api mock")
 }
 
 func SetupCreateAutoPiJob(t *testing.T, jobID, deviceID, cmd, userDeviceID, state, commandResult string, pdb db.Store) *models.AutopiJob {

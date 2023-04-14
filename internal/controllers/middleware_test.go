@@ -3,119 +3,178 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"io"
+	"math/big"
 	"testing"
 
 	"github.com/DIMO-Network/devices-api/internal/test"
-	"github.com/DIMO-Network/devices-api/models"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-const (
-	validUserDeviceID   = "validUserDeviceID"
-	invalidUserDeviceID = "invalidUserDeviceID"
-	validNFTOwner       = "validNFTOwner"
-)
+const genericUserID = "genericUserID"
 
-func Middleware_UserDeviceIDTest(t *testing.T) {
+func TestMiddleware_DeviceDoesNotExist(t *testing.T) {
+
+	deviceDoesntExist := "deviceDoesntExist"
+
 	ctx := context.Background()
 	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
 	logger := test.Logger()
-	userClient := &test.FakeUserClient{Response: []test.UserClientResp{
-		{
-			ID:      testUserID,
-			Address: test.MkAddr(1),
-		},
-		{
-			ID:      validNFTOwner,
-			Address: test.MkAddr(2),
-		},
-	}}
+
+	userClient := &test.FakeUserClient{Response: []test.UserClientResp{}}
 	middleware := NewMiddleware(nil, pdb.DBS, userClient, logger)
 
 	app := test.SetupAppFiber(*logger)
-
-	grouped := app.Group("/user/devices/:userDeviceID", test.AuthInjectorTestHandler(testUserID), middleware.DeviceOwnershipMiddleware)
-	grouped.Get("/validUserDeviceID", func(c *fiber.Ctx) error {
-		udi := c.Params("userDeviceID")
-		return c.JSON(udi)
+	app.Get("/user/devices/:userDeviceID/test", test.AuthInjectorTestHandler(genericUserID), middleware.DeviceOwnershipMiddleware, func(c *fiber.Ctx) error {
+		return nil
 	})
 
-	uDevice := models.UserDevice{
-		ID:                 validUserDeviceID,
-		UserID:             testUserID,
-		DeviceDefinitionID: "deviceDefinition" + testUserID,
-	}
-	err := uDevice.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
-	assert.NoError(t, err)
-
-	nftOwner := models.VehicleNFT{
-		UserDeviceID: null.StringFrom(validNFTOwner),
-		OwnerAddress: null.BytesFrom(common.FromHex(test.MkAddr(1).String())),
-	}
-	err = nftOwner.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
-	assert.NoError(t, err)
-
-	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%+v/validUserDeviceID", validUserDeviceID), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%+v/test", deviceDoesntExist), "")
 	response, err := app.Test(request)
-	assert.Equal(t, fiber.StatusOK, response.StatusCode)
 	assert.Nil(t, err)
-
-	request = test.BuildRequest("GET", fmt.Sprintf("/user/devices/%+v/validUserDeviceID", invalidUserDeviceID), "")
-	response, err = app.Test(request)
-	assert.Equal(t, fiber.ErrNotFound, response.StatusCode)
-	assert.Nil(t, err)
-
-	request = test.BuildRequest("GET", fmt.Sprintf("/user/devices/%+v/validUserDeviceID", invalidUserDeviceID), "")
-	response, err = app.Test(request)
-	assert.Equal(t, fiber.ErrNotFound, response.StatusCode)
-	assert.Nil(t, err)
+	assert.Equal(t, response.StatusCode, fiber.StatusNotFound)
+	body, _ := io.ReadAll(response.Body)
+	assert.Equal(t, string(body), `{"code":404,"message":"user not found in users api mock"}`)
 
 	fmt.Printf("shutting down postgres at with session: %s \n", container.SessionID())
 	if err := container.Terminate(ctx); err != nil {
 		t.Fatal(err)
 	}
-
 }
 
-func Middleware_NFTOwnershipTest(t *testing.T) {
+func TestMiddleware_ExistsInUsersDevicesTable(t *testing.T) {
+
+	deviceOwner := "deviceOwner"
+
 	ctx := context.Background()
 	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
 	logger := test.Logger()
+
 	userClient := &test.FakeUserClient{Response: []test.UserClientResp{
 		{
-			ID:      validNFTOwner,
-			Address: test.MkAddr(2),
+			ID:      genericUserID,
+			Address: test.MkAddr(1),
 		},
 	}}
 	middleware := NewMiddleware(nil, pdb.DBS, userClient, logger)
 
 	app := test.SetupAppFiber(*logger)
-
-	grouped := app.Group("/user/devices/:userDeviceID", test.AuthInjectorTestHandler(validNFTOwner), middleware.DeviceOwnershipMiddleware)
-	grouped.Get("/validUserDeviceID", func(c *fiber.Ctx) error {
-		udi := c.Params("userDeviceID")
-		return c.JSON(udi)
+	app.Get("/user/devices/:userDeviceID/test", test.AuthInjectorTestHandler(genericUserID), middleware.DeviceOwnershipMiddleware, func(c *fiber.Ctx) error {
+		return nil
 	})
 
-	nftOwner := models.VehicleNFT{
-		UserDeviceID: null.StringFrom(validNFTOwner),
-		OwnerAddress: null.BytesFrom(common.FromHex(test.MkAddr(1).String())),
-	}
-	err := nftOwner.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
-	assert.NoError(t, err)
+	test.SetupCreateUserDeviceForMiddleware(t, deviceOwner, genericUserID, "deviceDefID", nil, "00000000000000001", pdb)
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%+v/validUserDeviceID", validNFTOwner), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%+v/test", deviceOwner), "")
 	response, err := app.Test(request)
-	assert.Equal(t, fiber.ErrNotFound, response.StatusCode)
 	assert.Nil(t, err)
+	assert.Equal(t, fiber.StatusOK, response.StatusCode)
 
 	fmt.Printf("shutting down postgres at with session: %s \n", container.SessionID())
 	if err := container.Terminate(ctx); err != nil {
 		t.Fatal(err)
 	}
+}
 
+func TestMiddleware_ExistsInVehicleNFTTable(t *testing.T) {
+
+	nftOwnerDeviceID := "nftOwnerDeviceID"
+
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	logger := test.Logger()
+
+	userClient := &test.FakeUserClient{Response: []test.UserClientResp{
+		{
+			ID:      nftOwnerDeviceID,
+			Address: test.MkAddr(1),
+		},
+	}}
+	middleware := NewMiddleware(nil, pdb.DBS, userClient, logger)
+
+	app := test.SetupAppFiber(*logger)
+	app.Get("/user/devices/:userDeviceID/test", test.AuthInjectorTestHandler(genericUserID), middleware.DeviceOwnershipMiddleware, func(c *fiber.Ctx) error {
+		return nil
+	})
+
+	test.SetupCreateVehicleNFTForMiddleware(t, test.MkAddr(1), genericUserID, nftOwnerDeviceID, big.NewInt(1), pdb)
+
+	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%+v/test", nftOwnerDeviceID), "")
+	response, err := app.Test(request)
+	assert.Nil(t, err)
+	assert.Equal(t, fiber.StatusOK, response.StatusCode)
+
+	fmt.Printf("shutting down postgres at with session: %s \n", container.SessionID())
+	if err := container.Terminate(ctx); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMiddleware_DeviceNotMinted(t *testing.T) {
+
+	nftOwnerDeviceID := "nftOwnerDeviceID"
+
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	logger := test.Logger()
+
+	userClient := &test.FakeUserClient{Response: []test.UserClientResp{
+		{
+			ID:      genericUserID,
+			Address: test.MkAddr(1),
+		},
+	}}
+	middleware := NewMiddleware(nil, pdb.DBS, userClient, logger)
+
+	app := test.SetupAppFiber(*logger)
+	app.Get("/user/devices/:userDeviceID/test", test.AuthInjectorTestHandler(genericUserID), middleware.DeviceOwnershipMiddleware, func(c *fiber.Ctx) error {
+		return nil
+	})
+
+	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%+v/test", nftOwnerDeviceID), "")
+	response, err := app.Test(request)
+	assert.Nil(t, err)
+	assert.Equal(t, response.StatusCode, fiber.StatusNotFound)
+	body, _ := io.ReadAll(response.Body)
+	assert.Equal(t, string(body), `{"code":404,"message":"User does not own device or nft associated with userDeviceID."}`)
+
+	fmt.Printf("shutting down postgres at with session: %s \n", container.SessionID())
+	if err := container.Terminate(ctx); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMiddleware_InvalidAddress(t *testing.T) {
+
+	nftOwnerDeviceID := "nftOwnerDeviceID"
+
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	logger := test.Logger()
+
+	userClient := &test.FakeUserClient{Response: []test.UserClientResp{
+		{
+			ID: genericUserID,
+		},
+	}}
+	middleware := NewMiddleware(nil, pdb.DBS, userClient, logger)
+
+	app := test.SetupAppFiber(*logger)
+	app.Get("/user/devices/:userDeviceID/test", test.AuthInjectorTestHandler(genericUserID), middleware.DeviceOwnershipMiddleware, func(c *fiber.Ctx) error {
+		return nil
+	})
+
+	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%+v/test", nftOwnerDeviceID), "")
+	response, err := app.Test(request)
+	assert.Nil(t, err)
+	assert.Equal(t, response.StatusCode, fiber.StatusNotFound)
+	body, _ := io.ReadAll(response.Body)
+	t.Log(string(body))
+	assert.Equal(t, string(body), `{"code":404,"message":"User does not have an Ethereum address and does not own device associated with userDeviceID."}`)
+
+	fmt.Printf("shutting down postgres at with session: %s \n", container.SessionID())
+	if err := container.Terminate(ctx); err != nil {
+		t.Fatal(err)
+	}
 }
