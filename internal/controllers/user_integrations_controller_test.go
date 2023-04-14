@@ -902,7 +902,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	s.Require().NoError(err)
 
-	method := abi.Methods["pairAftermarketDeviceSign"]
+	method := abi.Methods["pairAftermarketDeviceSign0"]
 
 	callData := ce.Data.Data
 

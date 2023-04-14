@@ -1321,6 +1321,7 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+
 	err = client.PairAftermarketDeviceSignSameOwner(requestID, apToken, vehicleToken, vehicleOwnerSig)
 	if err != nil {
 		return err

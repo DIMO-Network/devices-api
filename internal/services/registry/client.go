@@ -201,13 +201,13 @@ func (c *Client) UnclaimAftermarketDeviceNode(requestID string, aftermarketDevic
 }
 
 // function pairAftermarketDeviceSign(uint256 aftermarketDeviceNode, uint256 vehicleNode, bytes calldata signature)
-func (c *Client) PairAftermarketDeviceSignSameOwner(requestID string, aftermarketDeviceNode *big.Int, vehicleNode *big.Int, signature []byte) error {
+func (c *Client) PairAftermarketDeviceSignSameOwner(requestID string, aftermarketDeviceNode, vehicleNode *big.Int, signature []byte) error {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
 	}
 
-	data, err := abi.Pack("pairAftermarketDeviceSign", aftermarketDeviceNode, vehicleNode, signature)
+	data, err := abi.Pack("pairAftermarketDeviceSign0", aftermarketDeviceNode, vehicleNode, signature)
 	if err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func (c *Client) PairAftermarketDeviceSignSameOwner(requestID string, aftermarke
 }
 
 // function pairAftermarketDeviceSign(uint256 aftermarketDeviceNode, uint256 vehicleNode, bytes calldata aftermarketDeviceSig, bytes calldata vehicleOwnerSig)
-func (c *Client) PairAftermarketDeviceSignTwoOwners(requestID string, aftermarketDeviceNode *big.Int, vehicleNode *big.Int, aftermarketDeviceSig, vehicleOwnerSig []byte) error {
+func (c *Client) PairAftermarketDeviceSignTwoOwners(requestID string, aftermarketDeviceNode, vehicleNode *big.Int, aftermarketDeviceSig, vehicleOwnerSig []byte) error {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
@@ -231,7 +231,7 @@ func (c *Client) PairAftermarketDeviceSignTwoOwners(requestID string, aftermarke
 }
 
 // function unpairAftermarketDeviceSign(uint256 aftermarketDeviceNode, uint256 vehicleNode, bytes calldata signature)
-func (c *Client) UnPairAftermarketDeviceSign(requestID string, aftermarketDeviceNode *big.Int, vehicleNode *big.Int, signature []byte) error {
+func (c *Client) UnPairAftermarketDeviceSign(requestID string, aftermarketDeviceNode, vehicleNode *big.Int, signature []byte) error {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
