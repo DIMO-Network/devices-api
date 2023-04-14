@@ -481,7 +481,8 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 }
 
 // RegisterDeviceForUserFromSmartcar godoc
-// @Description adds a device to a user by decoding VIN from Smartcar. If cannot decode returns 424 or 500 if error. Do NOT call this if user device already exists from a different integration - it will conflict.
+// @Description adds a device to a user by decoding VIN from Smartcar. If cannot decode returns 424 or 500 if error.
+// @Description If the user device already exists from a different integration, for the same user, this will return a 200 with the full user device object
 // @Tags        user-devices
 // @Produce     json
 // @Accept      json
@@ -489,9 +490,10 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 // @Security    ApiKeyAuth
 // @Failure		400 "validation failure"
 // @Failure		424 "unable to decode VIN"
-// @Failure		409 "VIN already exists either for different user or same user"
+// @Failure		409 "VIN already exists either for different a user"
 // @Failure		500 "server error, dependency error"
 // @Success     201 {object} controllers.UserDeviceFull
+// @Success     200 {object} controllers.UserDeviceFull
 // @Security    BearerAuth
 // @Router      /user/devices/fromsmartcar [post]
 func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx) error {
@@ -533,8 +535,10 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	localLog = localLog.With().Str("vin", vin).Logger()
 
 	// duplicate vin check, only in prod. If same user has already registered this car, and are eg. trying to add autopi, client should not call this endpoint
+	isSameUserConflict := false
+	var existingUd *models.UserDevice
 	if udc.Settings.IsProduction() {
-		conflict, err := models.UserDevices(
+		existingUd, err = models.UserDevices(
 			models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
 			models.UserDeviceWhere.VinConfirmed.EQ(true),
 		).One(c.Context(), udc.DBS().Reader)
@@ -543,13 +547,13 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 			return err
 		}
 
-		if conflict != nil {
-			localLog.Error().Msgf("failed to create UD from smartcar because VIN already in use. conflict vin user_id: %s", conflict.UserID)
-			explanation := "from your user"
-			if conflict.UserID != userID {
-				explanation = "from a different user"
+		if existingUd != nil {
+			if existingUd.UserID == userID {
+				isSameUserConflict = true
+			} else {
+				localLog.Error().Msgf("failed to create UD from smartcar because VIN already in use. conflict vin user_id: %s", existingUd.UserID)
+				return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("VIN %s in use by a previously connected device", vin))
 			}
-			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("VIN %s in use by a previously connected device %s.", vin, explanation))
 		}
 	}
 	// persist token in redis, encrypted, for next step
@@ -563,6 +567,19 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	}
 	udc.redisCache.Set(c.Context(), buildSmartcarTokenKey(vin, userID), encToken, time.Hour*2)
 
+	if isSameUserConflict {
+		dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), existingUd.DeviceDefinitionID)
+		if err2 != nil {
+			return helpers.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", existingUd.DeviceDefinitionID))
+		}
+		udFull, err := builUserDeviceFull(existingUd, dd, reg.CountryCode)
+		if err != nil {
+			return err
+		}
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"userDevice": udFull,
+		})
+	}
 	// decode VIN with grpc call
 	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin)
 	if err != nil {
@@ -654,11 +671,14 @@ func (udc *UserDevicesController) createUserDevice(ctx context.Context, deviceDe
 		udc.log.Err(err).Msg("Failed emitting device creation event")
 	}
 
+	return builUserDeviceFull(&ud, dd, countryCode)
+}
+
+func builUserDeviceFull(ud *models.UserDevice, dd *ddgrpc.GetDeviceDefinitionItemResponse, countryCode string) (*UserDeviceFull, error) {
 	ddNice, err := NewDeviceDefinitionFromGRPC(dd)
 	if err != nil {
 		return nil, err
 	}
-
 	// Baby the frontend.
 	for i := range ddNice.CompatibleIntegrations {
 		ddNice.CompatibleIntegrations[i].Country = countryCode
