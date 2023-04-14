@@ -133,60 +133,6 @@ func NewUserDevicesController(settings *config.Settings, dbs func() *db.ReaderWr
 	}
 }
 
-// DeviceOwnershipMiddleWare check that authenticated user owns the userDeviceID in the path or has a confirmed Eth address that owns the corresponding NFT
-func (udc *UserDevicesController) DeviceOwnershipMiddleWare(c *fiber.Ctx) error {
-	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
-
-	userDevice, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(udi),
-		models.UserDeviceWhere.UserID.EQ(userID),
-	).One(c.Context(), udc.DBS().Reader)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		udc.log.Err(err).Msg("error while checking if authenticated user owns device or corresponding nft")
-		return err
-	}
-
-	if userDevice != nil {
-		return c.Next()
-	}
-
-	conn, err := grpc.Dial(udc.Settings.UsersAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		udc.log.Err(err).Msg("Failed to create users API client.")
-		return opaqueInternalError
-	}
-	defer conn.Close()
-
-	usersClient := pb.NewUserServiceClient(conn)
-	user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-	if err != nil {
-		udc.log.Err(err).Msg("Failed to retrieve user information.")
-		return opaqueInternalError
-	}
-
-	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address and does not own device associated with userDeviceID.")
-	}
-
-	_, err = models.VehicleNFTS(
-		models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(*user.EthereumAddress))),
-		models.VehicleNFTWhere.UserDeviceID.EQ(null.StringFrom(udi)),
-	).All(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		udc.log.Err(err).Msg("error while checking if authenticated user owns corresponding nft")
-		return err
-	}
-
-	l := udc.log.With().
-		Timestamp().
-		Str("user_device_id", udi).Str("user_id", userID).
-		Logger()
-
-	c.SetUserContext(l.WithContext(c.Context()))
-	return c.Next()
-}
-
 func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, devices []*models.UserDevice) ([]UserDeviceFull, error) {
 	apiDevices := []UserDeviceFull{}
 
