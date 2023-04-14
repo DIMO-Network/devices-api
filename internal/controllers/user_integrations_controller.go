@@ -1046,8 +1046,10 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "Device not yet claimed.")
 	}
 
-	if common.BytesToAddress(autoPiUnit.OwnerAddress.Bytes) != common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes) {
-		return fiber.NewError(fiber.StatusConflict, "AutoPi and vehicle have different owners.")
+	if udc.Settings.IsProduction() {
+		if common.BytesToAddress(autoPiUnit.OwnerAddress.Bytes) != common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes) {
+			return fiber.NewError(fiber.StatusConflict, "AutoPi and vehicle have different owners.")
+		}
 	}
 
 	apToken := autoPiUnit.TokenID.Int(nil)
@@ -1063,8 +1065,10 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
 	}
 
-	if common.HexToAddress(*user.EthereumAddress) != common.BytesToAddress(autoPiUnit.OwnerAddress.Bytes) {
-		return fiber.NewError(fiber.StatusConflict, "AutoPi claimed by another user.")
+	if udc.Settings.IsProduction() {
+		if common.HexToAddress(*user.EthereumAddress) != common.BytesToAddress(autoPiUnit.OwnerAddress.Bytes) {
+			return fiber.NewError(fiber.StatusConflict, "AutoPi claimed by another user.")
+		}
 	}
 
 	client := registry.Client{
@@ -1198,17 +1202,6 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "Vehicle not yet minted.")
 	}
 
-	if !autoPiUnit.OwnerAddress.Valid {
-		return fiber.NewError(fiber.StatusConflict, "Device not yet claimed.")
-	}
-
-	if common.BytesToAddress(autoPiUnit.OwnerAddress.Bytes) != common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes) {
-		return fiber.NewError(fiber.StatusConflict, "AutoPi and vehicle have different owners.")
-	}
-
-	apToken := autoPiUnit.TokenID.Int(nil)
-	vehicleToken := ud.R.VehicleNFT.TokenID.Int(nil)
-
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		udc.log.Err(err).Msg("Failed to retrieve user information.")
@@ -1219,9 +1212,24 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
 	}
 
-	if common.HexToAddress(*user.EthereumAddress) != common.BytesToAddress(autoPiUnit.OwnerAddress.Bytes) {
-		return fiber.NewError(fiber.StatusConflict, "AutoPi claimed by another user.")
+	userAddr := common.HexToAddress(*user.EthereumAddress)
+
+	if common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes) != userAddr {
+		return fiber.NewError(fiber.StatusForbidden, "Your wallet does not own the NFT for this vehicle.")
 	}
+
+	if !autoPiUnit.OwnerAddress.Valid {
+		return fiber.NewError(fiber.StatusConflict, "Device not yet claimed.")
+	}
+
+	if udc.Settings.IsProduction() {
+		if common.BytesToAddress(autoPiUnit.OwnerAddress.Bytes) != common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes) {
+			return fiber.NewError(fiber.StatusConflict, "AutoPi and vehicle have different owners.")
+		}
+	}
+
+	apToken := autoPiUnit.TokenID.Int(nil)
+	vehicleToken := ud.R.VehicleNFT.TokenID.Int(nil)
 
 	client := registry.Client{
 		Producer:     udc.producer,
@@ -1239,52 +1247,85 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 		VehicleNode:           vehicleToken,
 	}
 
-	realAddr := common.HexToAddress(*user.EthereumAddress)
-
 	hash, err := client.Hash(&pads)
 	if err != nil {
 		return err
 	}
 
-	sigBytes := common.FromHex(pairReq.Signature)
+	vehicleOwnerSig := pairReq.Signature
 
-	if len(sigBytes) != 65 {
-		logger.Error().Str("rawSignature", pairReq.Signature).Msg("Signature was not 65 bytes.")
+	if len(vehicleOwnerSig) != 65 {
 		return fiber.NewError(fiber.StatusBadRequest, "Signature was not 65 bytes long.")
 	}
 
-	recAddr, err := recoverAddress2(hash[:], sigBytes)
-	if err != nil {
+	if recAddr, err := recoverAddress2(hash.Bytes(), vehicleOwnerSig); err != nil {
 		return err
-	}
-
-	if recAddr != realAddr {
+	} else if recAddr != userAddr {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature.")
 	}
 
-	requestID := ksuid.New().String()
+	if common.BytesToAddress(autoPiUnit.OwnerAddress.Bytes) != common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes) {
+		// It must not be prod, and we must be trying to do a host pair.
+		aftermarketDeviceSig := pairReq.AftermarketDeviceSignature
+		if len(aftermarketDeviceSig) != 65 {
+			// Not great English.
+			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Device signature required but only %d bytes long.", len(aftermarketDeviceSig)))
+		}
 
-	mtr := models.MetaTransactionRequest{
-		ID:     requestID,
-		Status: models.MetaTransactionRequestStatusUnsubmitted,
-	}
-	err = mtr.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
-	if err != nil {
-		return err
-	}
+		if recAddr, err := recoverAddress2(hash.Bytes(), aftermarketDeviceSig); err != nil {
+			return err
+		} else if recAddr != common.BytesToAddress(autoPiUnit.EthereumAddress.Bytes) {
+			return fiber.NewError(fiber.StatusBadRequest, "Incorrect aftermarket device signature.")
+		}
 
-	autoPiUnit.UnpairRequestID = null.String{}
-	autoPiUnit.PairRequestID = null.StringFrom(requestID)
-	_, err = autoPiUnit.Update(c.Context(), udc.DBS().Writer, boil.Infer())
-	if err != nil {
-		return err
-	}
-	err = client.PairAftermarketDeviceSign(requestID, apToken, vehicleToken, sigBytes)
-	if err != nil {
-		return err
-	}
+		requestID := ksuid.New().String()
 
-	return nil
+		mtr := models.MetaTransactionRequest{
+			ID:     requestID,
+			Status: models.MetaTransactionRequestStatusUnsubmitted,
+		}
+		err = mtr.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
+		if err != nil {
+			return err
+		}
+
+		autoPiUnit.UnpairRequestID = null.String{}
+		autoPiUnit.PairRequestID = null.StringFrom(requestID)
+		_, err = autoPiUnit.Update(c.Context(), udc.DBS().Writer, boil.Infer())
+		if err != nil {
+			return err
+		}
+		err = client.PairAftermarketDeviceSignTwoOwners(requestID, apToken, vehicleToken, aftermarketDeviceSig, vehicleOwnerSig)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	} else {
+		requestID := ksuid.New().String()
+
+		mtr := models.MetaTransactionRequest{
+			ID:     requestID,
+			Status: models.MetaTransactionRequestStatusUnsubmitted,
+		}
+		err = mtr.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
+		if err != nil {
+			return err
+		}
+
+		autoPiUnit.UnpairRequestID = null.String{}
+		autoPiUnit.PairRequestID = null.StringFrom(requestID)
+		_, err = autoPiUnit.Update(c.Context(), udc.DBS().Writer, boil.Infer())
+		if err != nil {
+			return err
+		}
+		err = client.PairAftermarketDeviceSignSameOwner(requestID, apToken, vehicleToken, vehicleOwnerSig)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
 }
 
 // CloudRepairAutoPi godoc
@@ -1386,11 +1427,6 @@ func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "Vehicle not yet minted.")
 	}
 
-	if !vnft.OwnerAddress.Valid {
-		logger.Error().Msg("Vehicle minted but has no owner.")
-		return opaqueInternalError
-	}
-
 	if owner := common.BytesToAddress(vnft.OwnerAddress.Bytes); owner != realAddr {
 		logger.Error().Str("ownerAddress", owner.Hex()).Str("userAddress", realAddr.Hex()).Msg("Vehicle owner and user Ethereum address no longer match.")
 		return opaqueInternalError
@@ -1437,7 +1473,7 @@ func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 		return err
 	}
 
-	sigBytes := common.FromHex(pairReq.Signature)
+	sigBytes := pairReq.Signature
 
 	recAddr, err := recoverAddress2(hash[:], sigBytes)
 	if err != nil {
@@ -1584,8 +1620,12 @@ type AutoPiClaimRequest struct {
 }
 
 type AutoPiPairRequest struct {
-	ExternalID string `json:"externalId"`
-	Signature  string `json:"signature"`
+	ExternalID string        `json:"externalId"`
+	Signature  hexutil.Bytes `json:"signature"`
+	// AftermarketDeviceSignature is the 65-byte, hex-encoded Ethereum signature of
+	// the pairing payload by the device. Only needed if the vehicle owner and aftermarket
+	// device owner are not the same.
+	AftermarketDeviceSignature hexutil.Bytes `json:"aftermarketDeviceSignature"`
 }
 
 // PostUnclaimAutoPi godoc
