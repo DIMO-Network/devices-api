@@ -59,7 +59,7 @@ func (p *loadValuationsCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...i
 }
 
 // loadValuations iterates over user_devices with vin verified and tries pulling data from drivly in USA & CAN and vincario for rest of world
-func loadValuations(ctx context.Context, logger *zerolog.Logger, settings *config.Settings, forceSetAll bool, wmi string, pdb db.Store) error {
+func loadValuations(ctx context.Context, logger *zerolog.Logger, settings *config.Settings, wmi string, pdb db.Store) error {
 	// get all devices from DB.
 	all, err := models.UserDevices(
 		models.UserDeviceWhere.VinConfirmed.EQ(true)).
@@ -84,7 +84,7 @@ func loadValuations(ctx context.Context, logger *zerolog.Logger, settings *confi
 	statsAggr := map[services.DataPullStatusEnum]int{}
 	for _, ud := range all {
 		if ud.CountryCode.String == "USA" || ud.CountryCode.String == "CAN" || ud.CountryCode.String == "MEX" {
-			status, err := deviceDefinitionSvc.PullDrivlyData(ctx, ud.ID, ud.DeviceDefinitionID, ud.VinIdentifier.String, forceSetAll)
+			status, err := deviceDefinitionSvc.PullDrivlyData(ctx, ud.ID, ud.DeviceDefinitionID, ud.VinIdentifier.String)
 			if err != nil {
 				logger.Err(err).Str("vin", ud.VinIdentifier.String).Msg("error pulling drivly data")
 			} else {

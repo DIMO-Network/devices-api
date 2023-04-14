@@ -34,7 +34,7 @@ import (
 type DeviceDefinitionService interface {
 	FindDeviceDefinitionByMMY(ctx context.Context, mk, model string, year int) (*ddgrpc.GetDeviceDefinitionItemResponse, error)
 	UpdateDeviceDefinitionFromNHTSA(ctx context.Context, deviceDefinitionID string, vin string) error
-	PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string, forceSetAll bool) (DataPullStatusEnum, error)
+	PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string) (DataPullStatusEnum, error)
 	PullVincarioValuation(ctx context.Context, userDeiceID, deviceDefinitionID, vin string) (DataPullStatusEnum, error)
 	GetOrCreateMake(ctx context.Context, tx boil.ContextExecutor, makeName string) (*ddgrpc.DeviceMake, error)
 	GetMakeByTokenID(ctx context.Context, tokenID *big.Int) (*ddgrpc.DeviceMake, error)
@@ -398,7 +398,7 @@ const (
 
 // PullDrivlyData pulls vin info from drivly, and inserts a record with the data.
 // Will only pull if haven't in last 2 weeks. Does not re-pull VIN info, updates DD metadata, sets the device_style_id using the edmunds data pulled.
-func (d *deviceDefinitionService) PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string, forceSetVinInfo bool) (DataPullStatusEnum, error) {
+func (d *deviceDefinitionService) PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string) (DataPullStatusEnum, error) {
 	const repullWindow = time.Hour * 24 * 14
 	if len(vin) != 17 {
 		return ErrorDataPullStatus, errors.Errorf("invalid VIN %s", vin)
@@ -434,19 +434,17 @@ func (d *deviceDefinitionService) PullDrivlyData(ctx context.Context, userDevice
 		UserDeviceID:       null.StringFrom(userDeviceID),
 	}
 
-	if forceSetVinInfo {
-		// should probably move this up to top as our check for never pulled, then seperate call to get latest pull date for repullWindow check
-		if existingVINData != nil && existingVINData.VinMetadata.Valid {
-			var vinInfo map[string]interface{}
-			err = existingVINData.VinMetadata.Unmarshal(&vinInfo)
-			if err != nil {
-				return ErrorDataPullStatus, errors.Wrap(err, "unable to unmarshal vin metadata")
-			}
-			// update the device attributes via gRPC
-			err2 := d.updateDeviceDefAttrs(ctx, deviceDef, vinInfo)
-			if err2 != nil {
-				return ErrorDataPullStatus, err2
-			}
+	// should probably move this up to top as our check for never pulled, then seperate call to get latest pull date for repullWindow check
+	if existingVINData != nil && existingVINData.VinMetadata.Valid {
+		var vinInfo map[string]interface{}
+		err = existingVINData.VinMetadata.Unmarshal(&vinInfo)
+		if err != nil {
+			return ErrorDataPullStatus, errors.Wrap(err, "unable to unmarshal vin metadata")
+		}
+		// update the device attributes via gRPC
+		err2 := d.updateDeviceDefAttrs(ctx, deviceDef, vinInfo)
+		if err2 != nil {
+			return ErrorDataPullStatus, err2
 		}
 	}
 
