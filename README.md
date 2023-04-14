@@ -213,7 +213,7 @@ https://devices-api.dimo.zone/v1/documents
 
 ## gRPC library
 
-We should probably put these in the repositories of the services that own them, but we are putting this off for now. To make changes to the current suite for, e.g., the devices API, run
+To regenerate grpc code, if you make changes to the .proto files:
 
 ```
 protoc --go_out=. --go_opt=paths=source_relative \
