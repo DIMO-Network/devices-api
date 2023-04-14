@@ -155,7 +155,7 @@ func (udc *UserDevicesController) calculateRange(ctx context.Context, deviceDefi
 
 	// calculate, convert to Km
 	if rangeData.FuelTankCapGal > 0 && rangeData.Mpg > 0 {
-		fuelTankAtGal := rangeData.FuelTankCapGal * fuelPercentRemaining
+		fuelTankAtGal := rangeData.FuelTankCapGal * (fuelPercentRemaining * 0.96)
 		rangeMiles := rangeData.Mpg * fuelTankAtGal
 		rangeKm := 1.60934 * rangeMiles
 		return &rangeKm, nil

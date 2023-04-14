@@ -1391,7 +1391,7 @@ func (udc *UserDevicesController) GetRange(c *fiber.Ctx) error {
 		fuelPercentRemaining := gjson.GetBytes(udd[0].Data.JSON, "fuelPercentRemaining")
 		dataUpdatedOn := gjson.GetBytes(udd[0].Data.JSON, "timestamp").Time()
 		if fuelPercentRemaining.Exists() && rangeData.FuelTankCapGal > 0 && rangeData.Mpg > 0 {
-			fuelTankAtGal := rangeData.FuelTankCapGal * fuelPercentRemaining.Float()
+			fuelTankAtGal := rangeData.FuelTankCapGal * (fuelPercentRemaining.Float() * 0.96)
 			rangeSet := RangeSet{
 				Updated:       dataUpdatedOn.Format(time.RFC3339),
 				RangeBasis:    "MPG",
