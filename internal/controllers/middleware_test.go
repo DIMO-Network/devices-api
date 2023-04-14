@@ -9,6 +9,7 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/gofiber/fiber/v2"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -172,6 +173,47 @@ func TestMiddleware_InvalidAddress(t *testing.T) {
 	body, _ := io.ReadAll(response.Body)
 	t.Log(string(body))
 	assert.Equal(t, string(body), `{"code":404,"message":"User does not have an Ethereum address and does not own device associated with userDeviceID."}`)
+
+	fmt.Printf("shutting down postgres at with session: %s \n", container.SessionID())
+	if err := container.Terminate(ctx); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMiddleware_Locals(t *testing.T) {
+
+	deviceOwner := "deviceOwner"
+
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	logger := test.Logger()
+
+	userClient := &test.FakeUserClient{Response: []test.UserClientResp{
+		{
+			ID:      genericUserID,
+			Address: test.MkAddr(1),
+		},
+	}}
+	middleware := NewMiddleware(nil, pdb.DBS, userClient, logger)
+
+	app := test.SetupAppFiber(*logger)
+	app.Get("/user/devices/:userDeviceID/test", test.AuthInjectorTestHandler(genericUserID), middleware.DeviceOwnershipMiddleware, func(c *fiber.Ctx) error {
+		udi := c.Locals("userDeviceId")
+		userID := c.Locals("userId")
+
+		if udi != deviceOwner || userID != genericUserID {
+			return errors.New("incorrect vars from local")
+		}
+
+		return nil
+	})
+
+	test.SetupCreateUserDeviceForMiddleware(t, deviceOwner, genericUserID, "deviceDefID", nil, "00000000000000001", pdb)
+
+	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%+v/test", deviceOwner), "")
+	response, err := app.Test(request)
+	assert.Nil(t, err)
+	assert.Equal(t, fiber.StatusOK, response.StatusCode)
 
 	fmt.Printf("shutting down postgres at with session: %s \n", container.SessionID())
 	if err := container.Terminate(ctx); err != nil {
