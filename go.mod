@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/DIMO-Network/device-definitions-api v0.7.8
+	github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c
 	github.com/DIMO-Network/shared v0.9.1
 	github.com/DIMO-Network/zflogger v1.0.0-beta
 	github.com/Shopify/sarama v1.38.1
@@ -46,7 +47,6 @@ require (
 )
 
 require (
-	github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c // indirect
 	github.com/avast/retry-go v3.0.0+incompatible // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect

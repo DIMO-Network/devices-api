@@ -29,10 +29,10 @@ type Contract struct {
 	Version string
 }
 
-type requestData struct {
-	ID   string `json:"id"`
-	To   string `json:"to"`
-	Data string `json:"data"`
+type RequestData struct {
+	ID   string         `json:"id"`
+	To   common.Address `json:"to"`
+	Data hexutil.Bytes  `json:"data"`
 }
 
 // MintVehicleSign(uint256 manufacturerNode,address owner,string[] attributes,string[] infos)
@@ -201,13 +201,28 @@ func (c *Client) UnclaimAftermarketDeviceNode(requestID string, aftermarketDevic
 }
 
 // function pairAftermarketDeviceSign(uint256 aftermarketDeviceNode, uint256 vehicleNode, bytes calldata signature)
-func (c *Client) PairAftermarketDeviceSign(requestID string, aftermarketDeviceNode *big.Int, vehicleNode *big.Int, signature []byte) error {
+func (c *Client) PairAftermarketDeviceSignSameOwner(requestID string, aftermarketDeviceNode, vehicleNode *big.Int, signature []byte) error {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
 	}
 
-	data, err := abi.Pack("pairAftermarketDeviceSign", aftermarketDeviceNode, vehicleNode, signature)
+	data, err := abi.Pack("pairAftermarketDeviceSign0", aftermarketDeviceNode, vehicleNode, signature)
+	if err != nil {
+		return err
+	}
+
+	return c.sendRequest(requestID, data)
+}
+
+// function pairAftermarketDeviceSign(uint256 aftermarketDeviceNode, uint256 vehicleNode, bytes calldata aftermarketDeviceSig, bytes calldata vehicleOwnerSig)
+func (c *Client) PairAftermarketDeviceSignTwoOwners(requestID string, aftermarketDeviceNode, vehicleNode *big.Int, aftermarketDeviceSig, vehicleOwnerSig []byte) error {
+	abi, err := contracts.RegistryMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
+
+	data, err := abi.Pack("pairAftermarketDeviceSign", aftermarketDeviceNode, vehicleNode, aftermarketDeviceSig, vehicleOwnerSig)
 	if err != nil {
 		return err
 	}
@@ -216,7 +231,7 @@ func (c *Client) PairAftermarketDeviceSign(requestID string, aftermarketDeviceNo
 }
 
 // function unpairAftermarketDeviceSign(uint256 aftermarketDeviceNode, uint256 vehicleNode, bytes calldata signature)
-func (c *Client) UnPairAftermarketDeviceSign(requestID string, aftermarketDeviceNode *big.Int, vehicleNode *big.Int, signature []byte) error {
+func (c *Client) UnPairAftermarketDeviceSign(requestID string, aftermarketDeviceNode, vehicleNode *big.Int, signature []byte) error {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
@@ -231,17 +246,17 @@ func (c *Client) UnPairAftermarketDeviceSign(requestID string, aftermarketDevice
 }
 
 func (c *Client) sendRequest(requestID string, data []byte) error {
-	event := shared.CloudEvent[requestData]{
+	event := shared.CloudEvent[RequestData]{
 		ID:          ksuid.New().String(),
 		Source:      "devices-api",
 		SpecVersion: "1.0",
 		Subject:     requestID,
 		Time:        time.Now(),
 		Type:        "zone.dimo.transaction.request",
-		Data: requestData{
+		Data: RequestData{
 			ID:   requestID,
-			To:   hexutil.Encode(c.Contract.Address[:]),
-			Data: hexutil.Encode(data),
+			To:   c.Contract.Address,
+			Data: data,
 		},
 	}
 
