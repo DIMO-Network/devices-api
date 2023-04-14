@@ -46,6 +46,8 @@ message UserDevice {
   optional uint64 aftermarket_device_token_id = 6;
   repeated UserDeviceIntegration integrations = 7;
   optional string vin = 8;
+  string device_definition_id = 9;
+  optional string device_style_id = 10;
 }
 
 message UserDeviceIntegration {
