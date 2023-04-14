@@ -410,20 +410,6 @@ func (d *deviceDefinitionService) PullDrivlyData(ctx context.Context, userDevice
 	}
 	localLog := d.log.With().Str("vin", vin).Str("deviceDefinitionID", deviceDefinitionID).Logger()
 
-	client, conn, err := d.getVINDecodeGrpcClient()
-
-	if err != nil {
-		return ErrorDataPullStatus, errors.Wrap(err, "error getting grpc client")
-	}
-
-	defer conn.Close()
-
-	_, err = client.DecodeVin(ctx, &ddgrpc.DecodeVinRequest{Vin: vin})
-
-	if err != nil {
-		return ErrorDataPullStatus, errors.Wrap(err, "error pulling vin info from drivly")
-	}
-
 	existingVINData, err := models.ExternalVinData(
 		models.ExternalVinDatumWhere.Vin.EQ(vin),
 		models.ExternalVinDatumWhere.VinMetadata.IsNotNull(),

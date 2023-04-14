@@ -178,7 +178,7 @@ func TestUserDevicesController_calculateRange(t *testing.T) {
 	}, nil)
 
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, nil, &logger, deviceDefSvc, nil, &fakeEventService{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	rge, err := c.calculateRange(ctx, ddID, .70)
+	rge, err := c.calculateRange(ctx, ddID, styleID, .70)
 	require.NoError(t, err)
 	require.NotNil(t, rge)
 	assert.Equal(t, 337.9614, *rge)

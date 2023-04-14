@@ -160,7 +160,13 @@ const (
 	MpgHighway          DeviceAttributeType = "mpg_highway"
 )
 
-func GetActualDeviceDefinitionMetadataValues(dd *grpc.GetDeviceDefinitionItemResponse, deviceStyleID null.String) (float64, float64, float64) {
+type DeviceDefinitionRange struct {
+	FuelTankCapGal float64 `json:"fuel_tank_capacity_gal"`
+	Mpg            float64 `json:"mpg"`
+	MpgHwy         float64 `json:"mpg_highway"`
+}
+
+func GetActualDeviceDefinitionMetadataValues(dd *grpc.GetDeviceDefinitionItemResponse, deviceStyleID null.String) *DeviceDefinitionRange {
 
 	var fuelTankCapGal, mpg, mpgHwy float64 = 0, 0, 0
 
@@ -196,5 +202,9 @@ func GetActualDeviceDefinitionMetadataValues(dd *grpc.GetDeviceDefinitionItemRes
 		}
 	}
 
-	return fuelTankCapGal, mpg, mpgHwy
+	return &DeviceDefinitionRange{
+		FuelTankCapGal: fuelTankCapGal,
+		Mpg:            mpg,
+		MpgHwy:         mpgHwy,
+	}
 }

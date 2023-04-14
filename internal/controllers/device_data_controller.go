@@ -151,12 +151,12 @@ func (udc *UserDevicesController) calculateRange(ctx context.Context, deviceDefi
 		return nil, helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+deviceDefinitionID)
 	}
 
-	fuelTankCapGal, mpg, _ := helpers.GetActualDeviceDefinitionMetadataValues(dd, deviceStyleID)
+	rangeData := helpers.GetActualDeviceDefinitionMetadataValues(dd, deviceStyleID)
 
 	// calculate, convert to Km
-	if fuelTankCapGal > 0 && mpg > 0 {
-		fuelTankAtGal := fuelTankCapGal * fuelPercentRemaining
-		rangeMiles := mpg * fuelTankAtGal
+	if rangeData.FuelTankCapGal > 0 && rangeData.Mpg > 0 {
+		fuelTankAtGal := rangeData.FuelTankCapGal * fuelPercentRemaining
+		rangeMiles := rangeData.Mpg * fuelTankAtGal
 		rangeKm := 1.60934 * rangeMiles
 		return &rangeKm, nil
 	}
