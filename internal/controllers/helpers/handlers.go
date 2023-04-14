@@ -155,7 +155,7 @@ func ErrorHandler(c *fiber.Ctx, err error, logger zerolog.Logger, isProduction b
 type DeviceAttributeType string
 
 const (
-	MPG                 DeviceAttributeType = "mpg"
+	Mpg                 DeviceAttributeType = "mpg"
 	FuelTankCapacityGal DeviceAttributeType = "fuel_tank_capacity_gal"
 	MpgHighway          DeviceAttributeType = "mpg_highway"
 )
@@ -191,7 +191,7 @@ func GetActualDeviceDefinitionMetadataValues(dd *grpc.GetDeviceDefinitionItemRes
 			if v, err := strconv.ParseFloat(attr.Value, 32); err == nil {
 				fuelTankCapGal = v
 			}
-		case MPG:
+		case Mpg:
 			if v, err := strconv.ParseFloat(attr.Value, 32); err == nil {
 				mpg = v
 			}
