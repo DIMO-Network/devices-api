@@ -1383,39 +1383,25 @@ func (udc *UserDevicesController) GetRange(c *fiber.Ctx) error {
 		RangeSets: []RangeSet{},
 	}
 	udd := userDevice.R.UserDeviceData
-	if len(dds) > 0 && dds[0].DeviceAttributes != nil && len(udd) > 0 {
-		var fuelTankCapGal, mpg, mpgHwy float64
-		for _, attr := range dds[0].DeviceAttributes {
-			switch attr.Name {
-			case "fuel_tank_capacity_gal":
-				if v, err := strconv.ParseFloat(attr.Value, 32); err == nil {
-					fuelTankCapGal = v
-				}
-			case "mpg":
-				if v, err := strconv.ParseFloat(attr.Value, 32); err == nil {
-					mpg = v
-				}
-			case "mpg_highway":
-				if v, err := strconv.ParseFloat(attr.Value, 32); err == nil {
-					mpgHwy = v
-				}
-			}
-		}
+	if len(dds) > 0 && dds[0] != nil && len(udd) > 0 {
+
+		rangeData := helpers.GetActualDeviceDefinitionMetadataValues(dds[0], userDevice.DeviceStyleID)
+
 		sortByJSONFieldMostRecent(udd, "fuelPercentRemaining")
 		fuelPercentRemaining := gjson.GetBytes(udd[0].Data.JSON, "fuelPercentRemaining")
 		dataUpdatedOn := gjson.GetBytes(udd[0].Data.JSON, "timestamp").Time()
-		if fuelPercentRemaining.Exists() && fuelTankCapGal > 0 && mpg > 0 {
-			fuelTankAtGal := fuelTankCapGal * fuelPercentRemaining.Float()
+		if fuelPercentRemaining.Exists() && rangeData.FuelTankCapGal > 0 && rangeData.Mpg > 0 {
+			fuelTankAtGal := rangeData.FuelTankCapGal * fuelPercentRemaining.Float()
 			rangeSet := RangeSet{
 				Updated:       dataUpdatedOn.Format(time.RFC3339),
 				RangeBasis:    "MPG",
-				RangeDistance: int(mpg * fuelTankAtGal),
+				RangeDistance: int(rangeData.Mpg * fuelTankAtGal),
 				RangeUnit:     "miles",
 			}
 			deviceRange.RangeSets = append(deviceRange.RangeSets, rangeSet)
-			if mpgHwy > 0 {
+			if rangeData.MpgHwy > 0 {
 				rangeSet.RangeBasis = "MPG Highway"
-				rangeSet.RangeDistance = int(mpgHwy * fuelTankAtGal)
+				rangeSet.RangeDistance = int(rangeData.MpgHwy * fuelTankAtGal)
 				deviceRange.RangeSets = append(deviceRange.RangeSets, rangeSet)
 			}
 		}

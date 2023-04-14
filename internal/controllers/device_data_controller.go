@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/appmetrics"
@@ -18,6 +17,7 @@ import (
 	"github.com/segmentio/ksuid"
 	smartcar "github.com/smartcar/go-sdk"
 	"github.com/tidwall/gjson"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
@@ -140,41 +140,27 @@ func PrepareDeviceStatusInformation(deviceData models.UserDeviceDatumSlice, priv
 }
 
 // calculateRange returns the current estimated range based on fuel tank capacity, mpg, and fuelPercentRemaining and returns it in Kilometers
-func (udc *UserDevicesController) calculateRange(ctx context.Context, deviceDefinitionID string, fuelPercentRemaining float64) (*float64, error) {
+func (udc *UserDevicesController) calculateRange(ctx context.Context, deviceDefinitionID string, deviceStyleID null.String, fuelPercentRemaining float64) (*float64, error) {
 	if fuelPercentRemaining == 0 {
 		return nil, errors.New("fuelPercentRemaining is 0 so cannot calculate range")
 	}
+
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, deviceDefinitionID)
+
 	if err != nil {
 		return nil, helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+deviceDefinitionID)
 	}
-	if dd != nil && dd.DeviceAttributes != nil {
-		// pull out device attribute values needed for calc
-		var fuelTankCapGal, mpg float64 //mpgHwy
-		for _, attr := range dd.DeviceAttributes {
-			switch attr.Name {
-			case "fuel_tank_capacity_gal":
-				if v, err := strconv.ParseFloat(attr.Value, 32); err == nil {
-					fuelTankCapGal = v
-				}
-			case "mpg":
-				if v, err := strconv.ParseFloat(attr.Value, 32); err == nil {
-					mpg = v
-				}
-				//case "mpg_highway":
-				//	if v, err := strconv.ParseFloat(attr.Value, 32); err == nil {
-				//		mpgHwy = v
-				//	}
-			}
-		}
-		// calculate, convert to Km
-		if fuelTankCapGal > 0 && mpg > 0 {
-			fuelTankAtGal := fuelTankCapGal * fuelPercentRemaining
-			rangeMiles := mpg * fuelTankAtGal
-			rangeKm := 1.60934 * rangeMiles
-			return &rangeKm, nil
-		}
+
+	rangeData := helpers.GetActualDeviceDefinitionMetadataValues(dd, deviceStyleID)
+
+	// calculate, convert to Km
+	if rangeData.FuelTankCapGal > 0 && rangeData.Mpg > 0 {
+		fuelTankAtGal := rangeData.FuelTankCapGal * fuelPercentRemaining
+		rangeMiles := rangeData.Mpg * fuelTankAtGal
+		rangeKm := 1.60934 * rangeMiles
+		return &rangeKm, nil
 	}
+
 	return nil, nil
 }
 
@@ -208,9 +194,10 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+
 	ds := PrepareDeviceStatusInformation(deviceData, []int64{NonLocationData, CurrentLocation, AllTimeLocation})
 	if len(deviceData) > 0 && ds.Range == nil && ds.FuelPercentRemaining != nil {
-		rge, err := udc.calculateRange(c.Context(), userDevice.DeviceDefinitionID, *ds.FuelPercentRemaining)
+		rge, err := udc.calculateRange(c.Context(), userDevice.DeviceDefinitionID, userDevice.DeviceStyleID, *ds.FuelPercentRemaining)
 		if err != nil {
 			//just log
 			udc.log.Warn().Err(err).Str("deviceDefinitionID", userDevice.DeviceDefinitionID).Msg("could not get range")

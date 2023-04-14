@@ -3,7 +3,7 @@ module github.com/DIMO-Network/devices-api
 go 1.19
 
 require (
-	github.com/DIMO-Network/device-definitions-api v0.7.8
+	github.com/DIMO-Network/device-definitions-api v0.9.9
 	github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c
 	github.com/DIMO-Network/shared v0.9.1
 	github.com/DIMO-Network/zflogger v1.0.0-beta
