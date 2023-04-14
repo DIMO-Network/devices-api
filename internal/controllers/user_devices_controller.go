@@ -492,7 +492,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 
 // RegisterDeviceForUserFromSmartcar godoc
 // @Description adds a device to a user by decoding VIN from Smartcar. If cannot decode returns 424 or 500 if error.
-// @Description If the user device already exists from a different integration, for the same user, this will return a 200 with the full user device
+// @Description If the user device already exists from a different integration, for the same user, this will return a 200 with the full user device object
 // @Tags        user-devices
 // @Produce     json
 // @Accept      json
