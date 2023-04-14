@@ -543,6 +543,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	localLog = localLog.With().Str("vin", vin).Logger()
 
 	// duplicate vin check, only in prod. If same user has already registered this car, and are eg. trying to add autopi, client should not call this endpoint
+	isSameUserConflict := false
 	if udc.Settings.IsProduction() {
 		conflict, err := models.UserDevices(
 			models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
