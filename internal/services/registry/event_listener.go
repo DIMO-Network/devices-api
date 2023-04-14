@@ -6,13 +6,15 @@ import (
 
 	"github.com/DIMO-Network/shared"
 	"github.com/Shopify/sarama"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/rs/zerolog"
 )
 
 type ceLog struct {
-	Address string   `json:"address"`
-	Topics  []string `json:"topics"`
-	Data    string   `json:"data"`
+	Address common.Address `json:"address"`
+	Topics  []common.Hash  `json:"topics"`
+	Data    hexutil.Bytes  `json:"data"`
 }
 
 type ceTx struct {

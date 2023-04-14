@@ -4,6 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/DIMO-Network/devices-api/models"
+	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
+	"github.com/volatiletech/null/v8"
+
 	"math/big"
 	"testing"
 
@@ -88,8 +93,9 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_HardwareTemplate_Success() {
 
 	autoPiTokenID, _ := new(big.Int).SetString("0", 16)
 	vehicleTokenID, _ := new(big.Int).SetString("0", 16)
-
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
+	// todo: add code to test ud metadata with protocol
+	md := []byte(`{"canProtocol":"06"}`)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, &md, "", s.pdb)
 	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, &ud.ID, s.pdb)
 	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, s.pdb)
 
@@ -131,11 +137,14 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_HardwareTemplate_Success() {
 
 	err := s.integration.Pair(s.ctx, autoPiTokenID, vehicleTokenID)
 
-	assert.NoError(s.T(), err)
+	require.NoError(s.T(), err)
 	assert.Equal(s.T(), testUserID, ud.UserID)
 	assert.Equal(s.T(), unitID, autoPIUnit.AutopiUnitID)
 	assert.Equal(s.T(), vin, vehicleNFT.Vin)
-
+	udai, err := models.UserDeviceAPIIntegrations(models.UserDeviceAPIIntegrationWhere.AutopiUnitID.EQ(null.StringFrom(autoPIUnit.AutopiUnitID))).
+		One(s.ctx, s.pdb.DBS().Reader)
+	require.NoError(s.T(), err)
+	assert.Equal(s.T(), "06", gjson.GetBytes(udai.Metadata.JSON, "canProtocol").String(), "canProtocol in metadata did not match expected")
 }
 
 func (s *IntegrationTestSuite) Test_Pair_With_Make_HardwareTemplate_Success() {

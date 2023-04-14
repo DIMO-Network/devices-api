@@ -11,6 +11,8 @@ import (
 //go:generate mockgen -source smartcar_client.go -destination mocks/smartcar_client_mock.go
 
 type SmartcarClient interface {
+	// The reason redirectURI is there is the frontend wanted flexibility. It's probably a
+	// bad idea that the client can pass this in.
 	ExchangeCode(ctx context.Context, code, redirectURI string) (*smartcar.Token, error)
 	GetUserID(ctx context.Context, accessToken string) (string, error)
 	GetExternalID(ctx context.Context, accessToken string) (string, error)

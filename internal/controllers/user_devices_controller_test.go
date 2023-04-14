@@ -91,7 +91,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
-		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, s.drivlyTaskSvc, nil, s.redisClient, nil)
+		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, s.drivlyTaskSvc, nil, s.redisClient, nil, nil)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUser)
 	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUserFromVIN)
@@ -223,7 +223,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	// act request
 	const vinny = "4T3R6RFVXMU023395"
-	reg := RegisterUserDeviceVIN{VIN: vinny, CountryCode: "USA"}
+	reg := RegisterUserDeviceVIN{VIN: vinny, CountryCode: "USA", CANProtocol: "06"}
 	j, _ := json.Marshal(reg)
 
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny).Times(1).Return(&grpc.DecodeVinResponse{
@@ -259,6 +259,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	assert.NotNilf(s.T(), userDevice, "expected a user device in the database to exist")
 	assert.Equal(s.T(), s.testUserID, userDevice.UserID)
 	assert.Equal(s.T(), vinny, userDevice.VinIdentifier.String)
+	assert.Equal(s.T(), "06", gjson.GetBytes(userDevice.Metadata.JSON, "canProtocol").Str)
 }
 
 func (s *UserDevicesControllerTestSuite) TestPostWithExistingDefinitionID() {

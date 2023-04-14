@@ -41,8 +41,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -76,6 +74,7 @@ type UserDevicesController struct {
 	autoPiIntegration         *autopi.Integration
 	redisCache                redis.CacheService
 	openAI                    services.OpenAI
+	usersClient               pb.UserServiceClient
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -106,7 +105,7 @@ type Device struct {
 }
 
 // NewUserDevicesController constructor
-func NewUserDevicesController(settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService, ddIntSvc services.DeviceDefinitionIntegrationService, eventService services.EventService, smartcarClient services.SmartcarClient, smartcarTaskSvc services.SmartcarTaskService, teslaService services.TeslaService, teslaTaskService services.TeslaTaskService, cipher shared.Cipher, autoPiSvc services.AutoPiAPIService, nhtsaService services.INHTSAService, autoPiIngestRegistrar services.IngestRegistrar, deviceDefinitionRegistrar services.DeviceDefinitionRegistrar, autoPiTaskService services.AutoPiTaskService, producer sarama.SyncProducer, s3NFTClient *s3.Client, drivlyTaskService services.DrivlyTaskService, autoPi *autopi.Integration, cache redis.CacheService, openAI services.OpenAI) UserDevicesController {
+func NewUserDevicesController(settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService, ddIntSvc services.DeviceDefinitionIntegrationService, eventService services.EventService, smartcarClient services.SmartcarClient, smartcarTaskSvc services.SmartcarTaskService, teslaService services.TeslaService, teslaTaskService services.TeslaTaskService, cipher shared.Cipher, autoPiSvc services.AutoPiAPIService, nhtsaService services.INHTSAService, autoPiIngestRegistrar services.IngestRegistrar, deviceDefinitionRegistrar services.DeviceDefinitionRegistrar, autoPiTaskService services.AutoPiTaskService, producer sarama.SyncProducer, s3NFTClient *s3.Client, drivlyTaskService services.DrivlyTaskService, autoPi *autopi.Integration, cache redis.CacheService, openAI services.OpenAI, usersClient pb.UserServiceClient) UserDevicesController {
 	return UserDevicesController{
 		Settings:                  settings,
 		DBS:                       dbs,
@@ -130,6 +129,7 @@ func NewUserDevicesController(settings *config.Settings, dbs func() *db.ReaderWr
 		autoPiIntegration:         autoPi,
 		redisCache:                cache,
 		openAI:                    openAI,
+		usersClient:               usersClient,
 	}
 }
 
@@ -361,17 +361,7 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 
 	userID := helpers.GetUserID(c)
 
-	// TODO(elffjs): Really shouldn't be dialing so much.
-	conn, err := grpc.Dial(udc.Settings.UsersAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		udc.log.Err(err).Msg("Failed to create users API client.")
-		return opaqueInternalError
-	}
-	defer conn.Close()
-
-	usersClient := pb.NewUserServiceClient(conn)
-
-	user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		udc.log.Err(err).Msg("Couldn't retrieve user record.")
 		return opaqueInternalError
@@ -485,7 +475,7 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	udFull, err := udc.createUserDevice(c.Context(), *reg.DeviceDefinitionID, reg.CountryCode, userID, nil)
+	udFull, err := udc.createUserDevice(c.Context(), *reg.DeviceDefinitionID, reg.CountryCode, userID, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -497,7 +487,7 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 var opaqueInternalError = fiber.NewError(fiber.StatusInternalServerError, "Internal error.")
 
 // RegisterDeviceForUserFromVIN godoc
-// @Description adds a device to a user by decoding a VIN. If cannot decode returns 424 or 500 if error
+// @Description adds a device to a user by decoding a VIN. If cannot decode returns 424 or 500 if error. Can optionally include the can bus protocol.
 // @Tags        user-devices
 // @Produce     json
 // @Accept      json
@@ -531,7 +521,11 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		return fiber.NewError(fiber.StatusFailedDependency, "unable to decode vin")
 	}
 	// attach device def to user
-	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, reg.CountryCode, userID, &vin)
+	var udMd *services.UserDeviceMetadata
+	if reg.CANProtocol != "" {
+		udMd = &services.UserDeviceMetadata{CANProtocol: &reg.CANProtocol}
+	}
+	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, reg.CountryCode, userID, &vin, udMd)
 	if err != nil {
 		return err
 	}
@@ -643,7 +637,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	}
 
 	// attach device def to user
-	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, reg.CountryCode, userID, &vin)
+	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, reg.CountryCode, userID, &vin, nil)
 	if err != nil {
 		return err
 	}
@@ -656,7 +650,7 @@ func buildSmartcarTokenKey(vin, userID string) string {
 	return fmt.Sprintf("sc-temp-tok-%s-%s", vin, userID)
 }
 
-func (udc *UserDevicesController) createUserDevice(ctx context.Context, deviceDefID, countryCode, userID string, vin *string) (*UserDeviceFull, error) {
+func (udc *UserDevicesController) createUserDevice(ctx context.Context, deviceDefID, countryCode, userID string, vin *string, metadata *services.UserDeviceMetadata) (*UserDeviceFull, error) {
 	// attach device def to user
 	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, deviceDefID)
 	if err2 != nil {
@@ -677,6 +671,12 @@ func (udc *UserDevicesController) createUserDevice(ctx context.Context, deviceDe
 		DeviceDefinitionID: dd.DeviceDefinitionId,
 		CountryCode:        null.StringFrom(countryCode),
 		VinIdentifier:      null.StringFromPtr(vin),
+	}
+	if metadata != nil {
+		err = ud.Metadata.Marshal(metadata)
+		if err != nil {
+			udc.log.Warn().Str("func", "createUserDevice").Msg("failed to marshal user device metadata on create")
+		}
 	}
 	err = ud.Insert(ctx, tx, boil.Infer())
 	if err != nil {
@@ -1569,16 +1569,7 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 	}
 	makeTokenID := big.NewInt(int64(dd.Make.TokenId))
 
-	conn, err := grpc.Dial(udc.Settings.UsersAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		udc.log.Err(err).Msg("Failed to create users API client.")
-		return opaqueInternalError
-	}
-	defer conn.Close()
-
-	usersClient := pb.NewUserServiceClient(conn)
-
-	user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		udc.log.Err(err).Msg("Couldn't retrieve user record.")
 		return opaqueInternalError
@@ -1790,16 +1781,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	makeTokenID := big.NewInt(int64(dd.Make.TokenId))
 
-	conn, err := grpc.Dial(udc.Settings.UsersAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		udc.log.Err(err).Msg("Failed to create users API client.")
-		return opaqueInternalError
-	}
-	defer conn.Close()
-
-	usersClient := pb.NewUserServiceClient(conn)
-
-	user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		udc.log.Err(err).Msg("Couldn't retrieve user record.")
 		return opaqueInternalError
@@ -1991,6 +1973,8 @@ type RegisterUserDeviceResponse struct {
 type RegisterUserDeviceVIN struct {
 	VIN         string `json:"vin"`
 	CountryCode string `json:"countryCode"`
+	// CANProtocol is the protocol that was detected by edge-network from the autopi.
+	CANProtocol string `json:"canProtocol"`
 }
 
 type RegisterUserDeviceSmartcar struct {
