@@ -3,6 +3,7 @@ package autopi
 import (
 	"context"
 	"fmt"
+
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"

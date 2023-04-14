@@ -91,7 +91,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
-		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, s.drivlyTaskSvc, nil, s.redisClient, nil)
+		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, s.drivlyTaskSvc, nil, s.redisClient, nil, nil)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUser)
 	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUserFromVIN)
@@ -186,7 +186,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 	assert.Equal(s.T(), vinny, userDevice.VinIdentifier.String)
 }
 
-func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_Fail_DuplicateVIN() {
+func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_SameUser_DuplicateVIN() {
 	// arrange DB
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
@@ -206,10 +206,43 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_Fail_Dup
 	}, nil)
 	s.scClient.EXPECT().GetExternalID(gomock.Any(), "AA").Times(1).Return("123", nil)
 	s.scClient.EXPECT().GetVIN(gomock.Any(), "AA", "123").Times(1).Return(vinny, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
+	s.redisClient.EXPECT().Set(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID), gomock.Any(), time.Hour*2).Return(nil)
 
 	request := test.BuildRequest("POST", "/user/devices/fromsmartcar", string(j))
 	response, responseError := s.app.Test(request)
-	fmt.Println(responseError)
+	require.NoError(s.T(), responseError)
+	body, _ := io.ReadAll(response.Body)
+	// assert
+	if assert.Equal(s.T(), fiber.StatusOK, response.StatusCode) == false {
+		fmt.Println("message: " + string(body))
+	}
+}
+
+func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_Fail_DuplicateVIN() {
+	// arrange DB
+	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
+
+	// act request
+	const vinny = "4T3R6RFVXMU023395"
+	reg := RegisterUserDeviceSmartcar{Code: "XX", RedirectURI: "https://mobile-app", CountryCode: "USA"}
+	j, _ := json.Marshal(reg)
+	test.SetupCreateUserDevice(s.T(), "09098877", dd[0].DeviceDefinitionId, nil, vinny, s.pdb)
+
+	s.scClient.EXPECT().ExchangeCode(gomock.Any(), reg.Code, reg.RedirectURI).Times(1).Return(&smartcar.Token{
+		Access:        "AA",
+		AccessExpiry:  time.Now().Add(time.Hour),
+		Refresh:       "RR",
+		RefreshExpiry: time.Now().Add(time.Hour),
+		ExpiresIn:     3600,
+	}, nil)
+	s.scClient.EXPECT().GetExternalID(gomock.Any(), "AA").Times(1).Return("123", nil)
+	s.scClient.EXPECT().GetVIN(gomock.Any(), "AA", "123").Times(1).Return(vinny, nil)
+
+	request := test.BuildRequest("POST", "/user/devices/fromsmartcar", string(j))
+	response, responseError := s.app.Test(request)
+	require.NoError(s.T(), responseError)
 	body, _ := io.ReadAll(response.Body)
 	// assert
 	if assert.Equal(s.T(), fiber.StatusConflict, response.StatusCode) == false {

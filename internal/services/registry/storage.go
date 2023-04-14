@@ -10,7 +10,6 @@ import (
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -70,10 +69,9 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	switch {
 	case mtr.R.MintRequestVehicleNFT != nil:
 		for _, l1 := range data.Transaction.Logs {
-			l2 := convertLog(&l1)
-			if l2.Topics[0] == vehicleMintedEvent.ID {
+			if l1.Topics[0] == vehicleMintedEvent.ID {
 				out := new(contracts.RegistryVehicleNodeMinted)
-				err := p.parseLog(out, vehicleMintedEvent, *l2)
+				err := p.parseLog(out, vehicleMintedEvent, l1)
 				if err != nil {
 					return err
 				}
@@ -92,10 +90,9 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 	case mtr.R.ClaimMetaTransactionRequestAutopiUnit != nil:
 		for _, l1 := range data.Transaction.Logs {
-			l2 := convertLog(&l1)
-			if l2.Topics[0] == deviceClaimedEvent.ID {
+			if l1.Topics[0] == deviceClaimedEvent.ID {
 				out := new(contracts.RegistryAftermarketDeviceClaimed)
-				err := p.parseLog(out, deviceClaimedEvent, *l2)
+				err := p.parseLog(out, deviceClaimedEvent, l1)
 				if err != nil {
 					return err
 				}
@@ -111,10 +108,9 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		}
 	case mtr.R.PairRequestAutopiUnit != nil:
 		for _, l1 := range data.Transaction.Logs {
-			l2 := convertLog(&l1)
-			if l2.Topics[0] == devicePairedEvent.ID {
+			if l1.Topics[0] == devicePairedEvent.ID {
 				out := new(contracts.RegistryAftermarketDevicePaired)
-				err := p.parseLog(out, devicePairedEvent, *l2)
+				err := p.parseLog(out, devicePairedEvent, l1)
 				if err != nil {
 					return err
 				}
@@ -130,10 +126,9 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		}
 	case mtr.R.UnpairRequestAutopiUnit != nil:
 		for _, l1 := range data.Transaction.Logs {
-			l2 := convertLog(&l1)
-			if l2.Topics[0] == deviceUnpairedEvent.ID {
+			if l1.Topics[0] == deviceUnpairedEvent.ID {
 				out := new(contracts.RegistryAftermarketDeviceUnpaired)
-				err := p.parseLog(out, deviceUnpairedEvent, *l2)
+				err := p.parseLog(out, deviceUnpairedEvent, l1)
 				if err != nil {
 					return err
 				}
@@ -153,10 +148,9 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	return nil
 }
 
-func (p *proc) parseLog(out any, event abi.Event, log eth_types.Log) error {
+func (p *proc) parseLog(out any, event abi.Event, log ceLog) error {
 	if len(log.Data) > 0 {
-		err := p.ABI.UnpackIntoInterface(out, event.Name, log.Data)
-		if err != nil {
+		if err := p.ABI.UnpackIntoInterface(out, event.Name, log.Data); err != nil {
 			return err
 		}
 	}
@@ -168,26 +162,7 @@ func (p *proc) parseLog(out any, event abi.Event, log eth_types.Log) error {
 		}
 	}
 
-	err := abi.ParseTopics(out, indexed, log.Topics[1:])
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func convertLog(logIn *ceLog) *eth_types.Log {
-	topics := make([]common.Hash, len(logIn.Topics))
-	for i, t := range logIn.Topics {
-		topics[i] = common.HexToHash(t)
-	}
-
-	data := common.FromHex(logIn.Data)
-
-	return &eth_types.Log{
-		Topics: topics,
-		Data:   data,
-	}
+	return abi.ParseTopics(out, indexed, log.Topics[1:])
 }
 
 func NewProcessor(
