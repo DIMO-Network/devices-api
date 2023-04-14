@@ -38,10 +38,8 @@ func (p *loadValuationsCmd) SetFlags(f *flag.FlagSet) {
 
 func (p *loadValuationsCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	p.logger.Info().Msgf("Pull VIN info, valuations and pricing from driv.ly for USA and valuations from Vincario for EUR")
-	setAll := false
 	wmi := ""
 	if len(os.Args) > 2 {
-		setAll = os.Args[2] == "--set-all"
 		// parse out vin WMI code to filter on
 		for i, a := range os.Args {
 			if a == "--wmi" {
@@ -50,7 +48,7 @@ func (p *loadValuationsCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...i
 			}
 		}
 	}
-	err := loadValuations(ctx, &p.logger, &p.settings, setAll, wmi, p.pdb)
+	err := loadValuations(ctx, &p.logger, &p.settings, wmi, p.pdb)
 	if err != nil {
 		p.logger.Fatal().Err(err).Msg("error trying to pull valuations")
 	}
