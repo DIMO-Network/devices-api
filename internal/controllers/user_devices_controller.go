@@ -455,6 +455,10 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	if err := reg.Validate(); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
+	country := constants.FindCountry(strings.ToUpper(reg.CountryCode))
+	if country == nil {
+		return fiber.NewError(fiber.StatusBadRequest, "unsupported or invalid country: "+reg.CountryCode)
+	}
 	// decode VIN with grpc call
 	vin := strings.ToUpper(reg.VIN)
 	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin)
@@ -475,6 +479,17 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	if err != nil {
 		return err
 	}
+	// create device_integration record in definitions just in case. If we got the VIN normally means Mobile App able to decode.
+	integration, err := udc.DeviceDefIntSvc.GetAutoPiIntegration(c.Context())
+	if err != nil {
+		udc.log.Err(err).Msg("failed to get autopi integration")
+	} else if integration != nil {
+		_, err := udc.DeviceDefIntSvc.CreateDeviceDefinitionIntegration(c.Context(), integration.Id, decodeVIN.DeviceDefinitionId, country.Region)
+		if err != nil {
+			udc.log.Warn().Err(err).Msgf("failed to add device_integration for autopi and dd_id: %s", decodeVIN.DeviceDefinitionId)
+		}
+	}
+
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,
 	})
