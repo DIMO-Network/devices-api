@@ -34,9 +34,11 @@ type ContractsEventsConsumer struct {
 type EventName string
 
 const (
-	PrivilegeSet                EventName = "PrivilegeSet"
-	AftermarketDeviceNodeMinted EventName = "AftermarketDeviceNodeMinted"
-	Transfer                    EventName = "Transfer"
+	PrivilegeSet                 EventName = "PrivilegeSet"
+	AftermarketDeviceNodeMinted  EventName = "AftermarketDeviceNodeMinted"
+	Transfer                     EventName = "Transfer"
+	BeneficiarySet               EventName = "BeneficiarySet"
+	AftermarketDeviceTransferred EventName = "AftermarketDeviceTransferred"
 )
 
 func (r EventName) String() string {
@@ -119,7 +121,12 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.Raw
 			c.log.Info().Str("event", data.EventName).Msg("Event received")
 			return c.setMintedAfterMarketDevice(&data)
 		}
-		fallthrough // TODO(elffjs): Danger!
+	case BeneficiarySet.String():
+		c.log.Info().Str("event", data.EventName).Msg("Event received")
+		return c.beneficiarySet(&data)
+	case AftermarketDeviceTransferred.String():
+		c.log.Info().Str("event", data.EventName).Msg("Event received")
+		return c.clearBeneficiary(&data)
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -235,6 +242,58 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 	err = ap.Upsert(context.Background(), c.db.DBS().Writer, true, []string{cols.AutopiUnitID}, boil.Whitelist(cols.AutopiDeviceID, cols.EthereumAddress, cols.TokenID, cols.UpdatedAt), boil.Infer())
 	if err != nil {
 		c.log.Error().Err(err).Msg("Failed to insert privilege record.")
+		return err
+	}
+
+	return nil
+}
+
+func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
+	var args contracts.RegistryBeneficiarySet
+	err := json.Unmarshal(e.Arguments, &args)
+	if err != nil {
+		return err
+	}
+
+	c.log.Info().Int64("nodeID", args.NodeId.Int64()).Msgf("Aftermarket beneficiary set: %s.", args.Beneficiary)
+
+	device, err := models.AutopiUnits(
+		models.AutopiUnitWhere.AutopiUnitID.EQ(args.NodeId.String()),
+	).One(context.Background(), c.db.DBS().Reader)
+
+	cols := models.AutopiUnitColumns
+
+	device.Beneficiary = null.BytesFrom(args.Beneficiary[:])
+
+	err = device.Upsert(context.Background(), c.db.DBS().Writer, true, []string{cols.Beneficiary}, boil.Infer(), boil.Infer())
+	if err != nil {
+		c.log.Error().Err(err).Msg("Failed to set beneficiary.")
+		return err
+	}
+
+	return nil
+}
+
+func (c *ContractsEventsConsumer) clearBeneficiary(e *ContractEventData) error { // when transfer on aftermarket device comes in, we clear the beneficiary field
+	var args contracts.RegistryAftermarketDeviceTransferred
+	err := json.Unmarshal(e.Arguments, &args)
+	if err != nil {
+		return err
+	}
+
+	c.log.Info().Int64("nodeID", args.AftermarketDeviceNode.Int64()).Msg("Aftermarket device transferred. Beneficiary cleared.")
+
+	device, err := models.AutopiUnits(
+		models.AutopiUnitWhere.AutopiUnitID.EQ(args.AftermarketDeviceNode.String()),
+	).One(context.Background(), c.db.DBS().Reader)
+
+	cols := models.AutopiUnitColumns
+
+	device.Beneficiary = null.Bytes{}
+
+	err = device.Upsert(context.Background(), c.db.DBS().Writer, true, []string{cols.Beneficiary}, boil.Infer(), boil.Infer())
+	if err != nil {
+		c.log.Error().Err(err).Msg("Failed to clear beneficiary.")
 		return err
 	}
 
