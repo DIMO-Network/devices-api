@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/shared/redis"
+	"golang.org/x/exp/slices"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -164,7 +165,13 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 		return nil, helpers.GrpcErrorToFiber(err, "failed to get integrations")
 	}
 
+	seen := make([]string, 0)
 	for _, d := range devices {
+		if slices.Contains(seen, d.ID) {
+			continue
+		}
+		seen = append(seen, d.ID)
+
 		deviceDefinition, err := filterDeviceDefinition(d.DeviceDefinitionID, deviceDefinitionResponse)
 		if err != nil {
 			return nil, err
@@ -277,7 +284,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	// todo grpc call out to grpc service endpoint in the deviceDefinitionsService udc.deviceDefSvc.GetDeviceDefinitionsByIDs(c.Context(), []string{ "todo"} )
 
 	userID := helpers.GetUserID(c)
-	devices, err := models.UserDevices(
+	userOwnedDevices, err := models.UserDevices(
 		models.UserDeviceWhere.UserID.EQ(userID),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
@@ -286,6 +293,35 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	if err != nil {
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
 	}
+
+	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
+	}
+
+	addr := common.Hex2Bytes(*user.EthereumAddress)
+
+	devicesByNfts, err := models.VehicleNFTS(models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(addr))).All(c.Context(), udc.DBS().Reader)
+	if err != nil {
+		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
+	}
+
+	ownedByAddr := make([]string, len(devicesByNfts))
+	for n, d := range devicesByNfts {
+		ownedByAddr[n] = d.UserDeviceID.String
+	}
+
+	nftOwnedDevices, err := models.UserDevices(
+		models.UserDeviceWhere.ID.IN(ownedByAddr),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
+		qm.OrderBy(models.UserDeviceColumns.CreatedAt),
+	).All(c.Context(), udc.DBS().Reader)
+	if err != nil {
+		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
+	}
+
+	devices := append(userOwnedDevices, nftOwnedDevices...)
 
 	apiMyDevices, err := udc.dbDevicesToDisplay(c.Context(), devices)
 	if err != nil {
