@@ -250,8 +250,7 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 
 func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
 	var args contracts.RegistryBeneficiarySet
-	err := json.Unmarshal(e.Arguments, &args)
-	if err != nil {
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
 		return err
 	}
 
