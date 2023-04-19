@@ -14,6 +14,7 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
 	smartcar "github.com/smartcar/go-sdk"
 	"github.com/tidwall/gjson"
@@ -174,35 +175,34 @@ func (udc *UserDevicesController) calculateRange(ctx context.Context, deviceDefi
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/status [get]
 func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
-	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
-	userDevice, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(udi),
-		models.UserDeviceWhere.UserID.EQ(userID),
-	).One(c.Context(), udc.DBS().Writer)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, err.Error())
-		}
-		return err
-	}
-	deviceData, err := models.UserDeviceData(models.UserDeviceDatumWhere.UserDeviceID.EQ(userDevice.ID),
-		qm.OrderBy("updated_at asc")).All(c.Context(), udc.DBS().Reader)
-	if errors.Is(err, sql.ErrNoRows) || len(deviceData) == 0 || !deviceData[0].Data.Valid {
-		return fiber.NewError(fiber.StatusNotFound, "no status updates yet")
-	}
+	userDeviceID := c.Locals("userDeviceID").(string)
+	logger := c.Locals("logger").(*zerolog.Logger)
+
+	userDevice, err := models.FindUserDevice(c.Context(), udc.DBS().Reader, userDeviceID)
 	if err != nil {
 		return err
 	}
 
+	deviceData, err := models.UserDeviceData(
+		models.UserDeviceDatumWhere.UserDeviceID.EQ(userDevice.ID),
+		qm.OrderBy(models.UserDeviceDatumColumns.UpdatedAt),
+	).All(c.Context(), udc.DBS().Reader)
+	if err != nil {
+		return err
+	}
+
+	if len(deviceData) == 0 || !deviceData[0].Data.Valid {
+		return fiber.NewError(fiber.StatusNotFound, "no status updates yet")
+	}
+
 	ds := PrepareDeviceStatusInformation(deviceData, []int64{NonLocationData, CurrentLocation, AllTimeLocation})
-	if len(deviceData) > 0 && ds.Range == nil && ds.FuelPercentRemaining != nil {
-		rge, err := udc.calculateRange(c.Context(), userDevice.DeviceDefinitionID, userDevice.DeviceStyleID, *ds.FuelPercentRemaining)
-		if err != nil {
-			//just log
-			udc.log.Warn().Err(err).Str("deviceDefinitionID", userDevice.DeviceDefinitionID).Msg("could not get range")
+
+	if ds.Range == nil && ds.FuelPercentRemaining != nil {
+		if calcRange, err := udc.calculateRange(c.Context(), userDevice.DeviceDefinitionID, userDevice.DeviceStyleID, *ds.FuelPercentRemaining); err != nil {
+			logger.Warn().Err(err).Str("deviceDefinitionId", userDevice.DeviceDefinitionID).Msg("Could not get range.")
+		} else {
+			ds.Range = calcRange
 		}
-		ds.Range = rge
 	}
 
 	return c.JSON(ds)
