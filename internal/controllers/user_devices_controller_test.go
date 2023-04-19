@@ -266,6 +266,9 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 		Year:               dd[0].Type.Year,
 	}, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
+	apInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 10)
+	s.deviceDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Times(1).Return(apInteg, nil)
+	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), apInteg.Id, dd[0].DeviceDefinitionId, "Americas")
 	request := test.BuildRequest("POST", "/user/devices/fromvin", string(j))
 	response, responseError := s.app.Test(request)
 	fmt.Println(responseError)
