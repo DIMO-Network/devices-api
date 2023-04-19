@@ -320,7 +320,7 @@ type UsersClient struct {
 	Store map[string]*pb.User
 }
 
-func (c *UsersClient) GetUser(ctx context.Context, in *pb.GetUserRequest, opts ...grpc.CallOption) (*pb.User, error) {
+func (c *UsersClient) GetUser(_ context.Context, in *pb.GetUserRequest, _ ...grpc.CallOption) (*pb.User, error) {
 	u, ok := c.Store[in.Id]
 	if !ok {
 		return nil, status.Error(codes.NotFound, "No user with that id found.")

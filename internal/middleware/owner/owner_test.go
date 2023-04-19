@@ -135,5 +135,5 @@ func TestOwnerMiddleware(t *testing.T) {
 		})
 	}
 
-	container.Terminate(ctx)
+	require.NoError(t, container.Terminate(ctx))
 }
