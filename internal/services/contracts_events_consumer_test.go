@@ -210,6 +210,7 @@ func Test_Transfer_Event_Handled_Correctly(t *testing.T) {
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 		TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0)),
+		Beneficiary:  null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
 	}
 
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
@@ -226,6 +227,7 @@ func Test_Transfer_Event_Handled_Correctly(t *testing.T) {
 	newOner := common.BytesToAddress([]byte{uint8(3)})
 	s.assert.Equal(aUnit.OwnerAddress, null.BytesFrom(newOner.Bytes()))
 	s.assert.Equal(null.String{}, aUnit.UserID)
+	s.assert.Equal(false, aUnit.Beneficiary.Valid)
 }
 
 func Test_Ignore_Transfer_Mint_Event(t *testing.T) {
@@ -342,60 +344,78 @@ func Test_Ignore_Transfer_Unit_Not_Found(t *testing.T) {
 	s.assert.EqualError(err, "record not found as this might be a newly minted device")
 }
 
+type beneficiaryCase struct {
+	Address                   common.Address
+	Event                     ev
+	AutopiUnitTable           models.AutopiUnit
+	ExpectedBeneficiaryResult null.Bytes
+}
+type ev struct {
+	IdProxyAddress common.Address
+	NodeId         *big.Int
+	Beneficiary    common.Address
+}
+
+type autopiUnitTableMock struct {
+	OwnerAddress null.Bytes
+	TokenID      types.NullDecimal
+}
+
 func TestSetBeneficiary(t *testing.T) {
 	s := initCEventsTestHelper(t)
 	defer s.destroy()
 
-	owner := common.BigToAddress(big.NewInt(7))
-	tokenID := big.NewInt(11)
-	beneficiary := common.BigToAddress(big.NewInt(63))
-
-	autopiUnit := models.AutopiUnit{
-		OwnerAddress: null.BytesFrom(owner.Bytes()),
-		TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
-	}
-
-	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
-	s.assert.NoError(err)
-
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
-
-	ev := struct {
-		IdProxyAddress common.Address
-		NodeId         *big.Int
-		Beneficiary    common.Address
-	}{
-		IdProxyAddress: common.HexToAddress(s.settings.AftermarketDeviceContractAddress),
-		NodeId:         tokenID,
-		Beneficiary:    beneficiary,
-	}
-
-	b, err := json.Marshal(ev)
-	s.assert.NoError(err)
-
-	abi, err := contracts.RegistryMetaData.GetAbi()
-	s.assert.NoError(err)
-
-	ce := shared.CloudEvent[ContractEventData]{
-		Source: fmt.Sprintf("chain/%d", s.settings.DIMORegistryChainID),
-		Type:   "zone.dimo.contract.event",
-		Data: ContractEventData{
-			EventName:      "BeneficiarySet",
-			EventSignature: abi.Events["BeneficiarySet"].ID,
-			Arguments:      b,
+	cases := []beneficiaryCase{
+		{
+			Address: common.HexToAddress(s.settings.DIMORegistryAddr),
+			Event: ev{
+				IdProxyAddress: common.HexToAddress(s.settings.AftermarketDeviceContractAddress),
+				NodeId:         big.NewInt(11),
+				Beneficiary:    common.BigToAddress(big.NewInt(63)),
+			},
+			AutopiUnitTable: models.AutopiUnit{
+				OwnerAddress: null.BytesFrom(common.BigToAddress(big.NewInt(7)).Bytes()),
+				TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(11), 0)),
+			},
+			ExpectedBeneficiaryResult: null.BytesFrom(common.BigToAddress(big.NewInt(63)).Bytes()),
 		},
 	}
 
-	b, err = json.Marshal(ce)
-	s.assert.NoError(err)
+	for _, c := range cases {
+		err := c.AutopiUnitTable.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+		s.assert.NoError(err)
 
-	err = c.processMessage(&message.Message{Payload: b})
-	s.assert.NoError(err)
+		consumer := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
 
-	autopiUnit.Reload(s.ctx, s.pdb.DBS().Reader)
+		b, err := json.Marshal(c.Event)
+		s.assert.NoError(err)
 
-	s.assert.True(autopiUnit.Beneficiary.Valid)
-	s.assert.Equal(beneficiary.Bytes(), autopiUnit.Beneficiary.Bytes)
+		abi, err := contracts.RegistryMetaData.GetAbi()
+		s.assert.NoError(err)
+
+		ce := shared.CloudEvent[ContractEventData]{
+			Source: fmt.Sprintf("chain/%d", s.settings.DIMORegistryChainID),
+			Type:   "zone.dimo.contract.event",
+			Data: ContractEventData{
+				EventName:      "BeneficiarySet",
+				EventSignature: abi.Events["BeneficiarySet"].ID,
+				Arguments:      b,
+			},
+		}
+
+		b, err = json.Marshal(ce)
+		s.assert.NoError(err)
+
+		err = consumer.processMessage(&message.Message{Payload: b})
+		s.assert.NoError(err)
+
+		c.AutopiUnitTable.Reload(s.ctx, s.pdb.DBS().Reader)
+
+		s.assert.Equal(c.ExpectedBeneficiaryResult.Valid, c.AutopiUnitTable.Beneficiary.Valid)
+		s.assert.Equal(c.Event.Beneficiary.Bytes(), c.AutopiUnitTable.Beneficiary.Bytes)
+
+		test.TruncateTables(s.pdb.DBS().Writer.DB, t)
+	}
 }
 
 func convertTokenIDToDecimal(t string) types.Decimal {
