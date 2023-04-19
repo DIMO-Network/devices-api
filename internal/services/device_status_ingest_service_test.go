@@ -2,12 +2,13 @@ package services
 
 import (
 	"context"
-
 	"log"
 	"math/big"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/tidwall/gjson"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -249,6 +250,83 @@ func TestAutoPiStatusMerge(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.JSONEq(`{"odometer": 45.22, "latitude": 2.0, "longitude": 3.0}`, string(dat1.Data.JSON))
+}
+
+// TestAutoPiStatusWithSignals tests that the signals column is getting updated correctly merging any existing data and setting timestamps
+func TestAutoPiStatusWithSignals(t *testing.T) {
+	assert := assert.New(t)
+
+	mes := &testEventService{
+		Buffer: make([]*Event, 0),
+	}
+	deviceDefSvc := testDeviceDefSvc{}
+	autoPISvc := testAutoPISvc{}
+
+	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	// Only making use the last parameter.
+	ddID := ksuid.New().String()
+	integs, _ := deviceDefSvc.GetIntegrations(ctx)
+	integrationID := integs[0].Id
+
+	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc)
+
+	ud := test.SetupCreateUserDevice(t, "rvivanco", ddID, nil, "", pdb)
+
+	udai := models.UserDeviceAPIIntegration{
+		UserDeviceID:  ud.ID,
+		IntegrationID: integrationID,
+		Status:        models.UserDeviceAPIIntegrationStatusActive,
+	}
+
+	err := udai.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	assert.NoError(err)
+
+	tx := pdb.DBS().Writer
+
+	dat1 := models.UserDeviceDatum{
+		UserDeviceID:        ud.ID,
+		Data:                null.JSONFrom([]byte(`{"odometer": 45.22, "signal_name_version_1": 23.4}`)),
+		Signals:             null.JSONFrom([]byte(`{"signal_name_version_1": {"timestamp": "xx", "value": 23.4}}`)),
+		LastOdometerEventAt: null.TimeFrom(time.Now().Add(-10 * time.Second)),
+		IntegrationID:       integrationID,
+	}
+
+	err = dat1.Insert(ctx, tx, boil.Infer())
+	assert.NoError(err)
+
+	input := &DeviceStatusEvent{
+		Source:      "dimo/integration/" + integrationID,
+		Specversion: "1.0",
+		Subject:     ud.ID,
+		Type:        deviceStatusEventType,
+		Time:        time.Now(),
+		Data:        []byte(`{"odometer": 45.22, "signal_name_version_2": 12.3}`),
+	}
+
+	var ctxGk goka.Context
+	err = ingest.processEvent(ctxGk, input)
+	require.NoError(t, err)
+
+	err = dat1.Reload(ctx, tx)
+	require.NoError(t, err)
+
+	// validate signals were updated, or not updated, as expected
+	assert.Equal("xx", gjson.GetBytes(dat1.Signals.JSON, "signal_name_version_1.timestamp").Str, "signal 1 ts should not change and be present")
+	assert.Equal(23.4, gjson.GetBytes(dat1.Signals.JSON, "signal_name_version_1.value").Num, "signal 1 value should not change and be present")
+	// assume UTC tz
+	assert.Equal(input.Time.Format("2006-01-02T15:04:05"), gjson.GetBytes(dat1.Signals.JSON, "odometer.timestamp").Str, "odometer ts should be updated from latest event")
+	assert.Equal(45.22, gjson.GetBytes(dat1.Signals.JSON, "odometer.value").Num, "odometer value should be updated from latest event")
+
+	assert.Equal(input.Time.Format("2006-01-02T15:04:05"), gjson.GetBytes(dat1.Signals.JSON, "signal_name_version_2.timestamp").Str, "signal 2 ts should be updated from latest event")
+	assert.Equal(12.3, gjson.GetBytes(dat1.Signals.JSON, "signal_name_version_2.value").Num, "signal 2 value should be updated from latest event")
 }
 
 type testDeviceDefSvc struct {
