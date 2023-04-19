@@ -2043,9 +2043,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: adds a device to a user by decoding VIN from Smartcar. If cannot
-        decode returns 424 or 500 if error. Do NOT call this if user device already
-        exists from a different integration - it will conflict.
+      description: |-
+        adds a device to a user by decoding VIN from Smartcar. If cannot decode returns 424 or 500 if error.
+        If the user device already exists from a different integration, for the same user, this will return a 200 with the full user device
       parameters:
       - description: add device to user. all fields required
         in: body
@@ -2056,6 +2056,10 @@ paths:
       produces:
       - application/json
       responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.UserDeviceFull'
         "201":
           description: Created
           schema:
@@ -2063,7 +2067,7 @@ paths:
         "400":
           description: validation failure
         "409":
-          description: VIN already exists either for different user or same user
+          description: VIN already exists either for different a user
         "424":
           description: unable to decode VIN
         "500":

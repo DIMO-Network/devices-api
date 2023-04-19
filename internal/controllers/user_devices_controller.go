@@ -455,6 +455,10 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	if err := reg.Validate(); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
+	country := constants.FindCountry(strings.ToUpper(reg.CountryCode))
+	if country == nil {
+		return fiber.NewError(fiber.StatusBadRequest, "unsupported or invalid country: "+reg.CountryCode)
+	}
 	// decode VIN with grpc call
 	vin := strings.ToUpper(reg.VIN)
 	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin)
@@ -475,13 +479,25 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	if err != nil {
 		return err
 	}
+	// create device_integration record in definitions just in case. If we got the VIN normally means Mobile App able to decode.
+	integration, err := udc.DeviceDefIntSvc.GetAutoPiIntegration(c.Context())
+	if err != nil {
+		udc.log.Err(err).Msg("failed to get autopi integration")
+	} else if integration != nil {
+		_, err := udc.DeviceDefIntSvc.CreateDeviceDefinitionIntegration(c.Context(), integration.Id, decodeVIN.DeviceDefinitionId, country.Region)
+		if err != nil {
+			udc.log.Warn().Err(err).Msgf("failed to add device_integration for autopi and dd_id: %s", decodeVIN.DeviceDefinitionId)
+		}
+	}
+
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,
 	})
 }
 
 // RegisterDeviceForUserFromSmartcar godoc
-// @Description adds a device to a user by decoding VIN from Smartcar. If cannot decode returns 424 or 500 if error. Do NOT call this if user device already exists from a different integration - it will conflict.
+// @Description adds a device to a user by decoding VIN from Smartcar. If cannot decode returns 424 or 500 if error.
+// @Description If the user device already exists from a different integration, for the same user, this will return a 200 with the full user device object
 // @Tags        user-devices
 // @Produce     json
 // @Accept      json
@@ -489,9 +505,10 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 // @Security    ApiKeyAuth
 // @Failure		400 "validation failure"
 // @Failure		424 "unable to decode VIN"
-// @Failure		409 "VIN already exists either for different user or same user"
+// @Failure		409 "VIN already exists either for different a user"
 // @Failure		500 "server error, dependency error"
 // @Success     201 {object} controllers.UserDeviceFull
+// @Success     200 {object} controllers.UserDeviceFull
 // @Security    BearerAuth
 // @Router      /user/devices/fromsmartcar [post]
 func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx) error {
@@ -533,8 +550,10 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	localLog = localLog.With().Str("vin", vin).Logger()
 
 	// duplicate vin check, only in prod. If same user has already registered this car, and are eg. trying to add autopi, client should not call this endpoint
+	isSameUserConflict := false
+	var existingUd *models.UserDevice
 	if udc.Settings.IsProduction() {
-		conflict, err := models.UserDevices(
+		existingUd, err = models.UserDevices(
 			models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
 			models.UserDeviceWhere.VinConfirmed.EQ(true),
 		).One(c.Context(), udc.DBS().Reader)
@@ -543,13 +562,13 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 			return err
 		}
 
-		if conflict != nil {
-			localLog.Error().Msgf("failed to create UD from smartcar because VIN already in use. conflict vin user_id: %s", conflict.UserID)
-			explanation := "from your user"
-			if conflict.UserID != userID {
-				explanation = "from a different user"
+		if existingUd != nil {
+			if existingUd.UserID == userID {
+				isSameUserConflict = true
+			} else {
+				localLog.Error().Msgf("failed to create UD from smartcar because VIN already in use. conflict vin user_id: %s", existingUd.UserID)
+				return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("VIN %s in use by a previously connected device", vin))
 			}
-			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("VIN %s in use by a previously connected device %s.", vin, explanation))
 		}
 	}
 	// persist token in redis, encrypted, for next step
@@ -563,6 +582,19 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	}
 	udc.redisCache.Set(c.Context(), buildSmartcarTokenKey(vin, userID), encToken, time.Hour*2)
 
+	if isSameUserConflict {
+		dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), existingUd.DeviceDefinitionID)
+		if err2 != nil {
+			return helpers.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", existingUd.DeviceDefinitionID))
+		}
+		udFull, err := builUserDeviceFull(existingUd, dd, reg.CountryCode)
+		if err != nil {
+			return err
+		}
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"userDevice": udFull,
+		})
+	}
 	// decode VIN with grpc call
 	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin)
 	if err != nil {
@@ -654,11 +686,14 @@ func (udc *UserDevicesController) createUserDevice(ctx context.Context, deviceDe
 		udc.log.Err(err).Msg("Failed emitting device creation event")
 	}
 
+	return builUserDeviceFull(&ud, dd, countryCode)
+}
+
+func builUserDeviceFull(ud *models.UserDevice, dd *ddgrpc.GetDeviceDefinitionItemResponse, countryCode string) (*UserDeviceFull, error) {
 	ddNice, err := NewDeviceDefinitionFromGRPC(dd)
 	if err != nil {
 		return nil, err
 	}
-
 	// Baby the frontend.
 	for i := range ddNice.CompatibleIntegrations {
 		ddNice.CompatibleIntegrations[i].Country = countryCode
@@ -1363,39 +1398,25 @@ func (udc *UserDevicesController) GetRange(c *fiber.Ctx) error {
 		RangeSets: []RangeSet{},
 	}
 	udd := userDevice.R.UserDeviceData
-	if len(dds) > 0 && dds[0].DeviceAttributes != nil && len(udd) > 0 {
-		var fuelTankCapGal, mpg, mpgHwy float64
-		for _, attr := range dds[0].DeviceAttributes {
-			switch attr.Name {
-			case "fuel_tank_capacity_gal":
-				if v, err := strconv.ParseFloat(attr.Value, 32); err == nil {
-					fuelTankCapGal = v
-				}
-			case "mpg":
-				if v, err := strconv.ParseFloat(attr.Value, 32); err == nil {
-					mpg = v
-				}
-			case "mpg_highway":
-				if v, err := strconv.ParseFloat(attr.Value, 32); err == nil {
-					mpgHwy = v
-				}
-			}
-		}
+	if len(dds) > 0 && dds[0] != nil && len(udd) > 0 {
+
+		rangeData := helpers.GetActualDeviceDefinitionMetadataValues(dds[0], userDevice.DeviceStyleID)
+
 		sortByJSONFieldMostRecent(udd, "fuelPercentRemaining")
 		fuelPercentRemaining := gjson.GetBytes(udd[0].Data.JSON, "fuelPercentRemaining")
 		dataUpdatedOn := gjson.GetBytes(udd[0].Data.JSON, "timestamp").Time()
-		if fuelPercentRemaining.Exists() && fuelTankCapGal > 0 && mpg > 0 {
-			fuelTankAtGal := fuelTankCapGal * fuelPercentRemaining.Float()
+		if fuelPercentRemaining.Exists() && rangeData.FuelTankCapGal > 0 && rangeData.Mpg > 0 {
+			fuelTankAtGal := rangeData.FuelTankCapGal * fuelPercentRemaining.Float()
 			rangeSet := RangeSet{
 				Updated:       dataUpdatedOn.Format(time.RFC3339),
 				RangeBasis:    "MPG",
-				RangeDistance: int(mpg * fuelTankAtGal),
+				RangeDistance: int(rangeData.Mpg * fuelTankAtGal),
 				RangeUnit:     "miles",
 			}
 			deviceRange.RangeSets = append(deviceRange.RangeSets, rangeSet)
-			if mpgHwy > 0 {
+			if rangeData.MpgHwy > 0 {
 				rangeSet.RangeBasis = "MPG Highway"
-				rangeSet.RangeDistance = int(mpgHwy * fuelTankAtGal)
+				rangeSet.RangeDistance = int(rangeData.MpgHwy * fuelTankAtGal)
 				deviceRange.RangeSets = append(deviceRange.RangeSets, rangeSet)
 			}
 		}

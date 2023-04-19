@@ -303,15 +303,17 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 	return &pb.ValuationResponse{Total: float32(total.Total), GrowthPercentage: (float32(lastWeek.Total) / float32(total.Total)) * 100}, nil
 }
 
-func (s *userDeviceService) deviceModelToAPI(device *models.UserDevice) *pb.UserDevice {
+func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevice {
 	out := &pb.UserDevice{
-		Id:           device.ID,
-		UserId:       device.UserID,
-		OptedInAt:    nullTimeToPB(device.OptedInAt),
-		Integrations: make([]*pb.UserDeviceIntegration, len(device.R.UserDeviceAPIIntegrations)),
+		Id:                 ud.ID,
+		UserId:             ud.UserID,
+		DeviceDefinitionId: ud.DeviceDefinitionID,
+		DeviceStyleId:      ud.DeviceStyleID.Ptr(),
+		OptedInAt:          nullTimeToPB(ud.OptedInAt),
+		Integrations:       make([]*pb.UserDeviceIntegration, len(ud.R.UserDeviceAPIIntegrations)),
 	}
 
-	if vnft := device.R.VehicleNFT; vnft != nil {
+	if vnft := ud.R.VehicleNFT; vnft != nil {
 		out.TokenId = s.toUint64(vnft.TokenID)
 		if vnft.OwnerAddress.Valid {
 			out.OwnerAddress = vnft.OwnerAddress.Bytes
@@ -322,12 +324,12 @@ func (s *userDeviceService) deviceModelToAPI(device *models.UserDevice) *pb.User
 		}
 	}
 
-	for i, udai := range device.R.UserDeviceAPIIntegrations {
+	for i, udai := range ud.R.UserDeviceAPIIntegrations {
 		out.Integrations[i] = &pb.UserDeviceIntegration{Id: udai.IntegrationID, Status: udai.Status}
 	}
 
-	if device.VinConfirmed {
-		out.Vin = &device.VinIdentifier.String
+	if ud.VinConfirmed {
+		out.Vin = &ud.VinIdentifier.String
 	}
 
 	return out
