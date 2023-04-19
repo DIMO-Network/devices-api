@@ -9,6 +9,7 @@ import (
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
+	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,6 +33,8 @@ func TestOwnerMiddleware(t *testing.T) {
 
 	app := test.SetupAppFiber(*logger)
 	app.Get("/:userDeviceID", test.AuthInjectorTestHandler(userID), middleware, func(c *fiber.Ctx) error {
+		logger := c.Locals("logger").(*zerolog.Logger)
+		logger.Info().Msg("Omega croggers.")
 		return nil
 	})
 
