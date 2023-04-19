@@ -20,6 +20,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers"
+	"github.com/DIMO-Network/devices-api/internal/middleware/owner"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
@@ -175,8 +176,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 
 	v1Auth.Use(jwtAuth)
-	middleware := controllers.NewMiddleware(settings, pdb.DBS, usersClient, &logger)
-	udOwner := v1Auth.Group("/user/devices/:userDeviceID", middleware.DeviceOwnershipMiddleware)
 
 	// user's devices
 	v1Auth.Get("/user/devices/me", userDeviceController.GetUserDevices)
@@ -188,6 +187,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices/fromvin", userDeviceController.RegisterDeviceForUserFromVIN)
 	v1Auth.Post("/user/devices/fromsmartcar", userDeviceController.RegisterDeviceForUserFromSmartcar)
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
+
+	ownerMw := owner.New(pdb, usersClient, &logger)
+	udOwner := v1Auth.Group("/user/devices/:userDeviceID", ownerMw)
 
 	udOwner.Delete("/", userDeviceController.DeleteUserDevice)
 	udOwner.Patch("/vin", userDeviceController.UpdateVIN).Name("UpdateVIN")
