@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"math/big"
 
@@ -11,8 +12,10 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ericlagergren/decimal"
@@ -337,6 +340,62 @@ func Test_Ignore_Transfer_Unit_Not_Found(t *testing.T) {
 
 	err = c.processMessage(msg)
 	s.assert.EqualError(err, "record not found as this might be a newly minted device")
+}
+
+func TestSetBeneficiary(t *testing.T) {
+	s := initCEventsTestHelper(t)
+	defer s.destroy()
+
+	owner := common.BigToAddress(big.NewInt(7))
+	tokenID := big.NewInt(11)
+	beneficiary := common.BigToAddress(big.NewInt(63))
+
+	autopiUnit := models.AutopiUnit{
+		OwnerAddress: null.BytesFrom(owner.Bytes()),
+		TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+	}
+
+	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.assert.NoError(err)
+
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
+
+	ev := struct {
+		IdProxyAddress common.Address
+		NodeId         *big.Int
+		Beneficiary    common.Address
+	}{
+		IdProxyAddress: common.HexToAddress(s.settings.AftermarketDeviceContractAddress),
+		NodeId:         tokenID,
+		Beneficiary:    beneficiary,
+	}
+
+	b, err := json.Marshal(ev)
+	s.assert.NoError(err)
+
+	abi, err := contracts.RegistryMetaData.GetAbi()
+	s.assert.NoError(err)
+
+	ce := shared.CloudEvent[ContractEventData]{
+		Source: fmt.Sprintf("chain/%d", s.settings.DIMORegistryChainID),
+		Type:   "zone.dimo.contract.event",
+		Data: ContractEventData{
+			EventName:      "BeneficiarySet",
+			EventSignature: abi.Events["BeneficiarySet"].ID,
+			Arguments:      b,
+		},
+	}
+
+	b, err = json.Marshal(ce)
+	s.assert.NoError(err)
+
+	err = c.processMessage(&message.Message{Payload: b})
+	s.assert.NoError(err)
+
+	autopiUnit.Reload(s.ctx, s.pdb.DBS().Reader)
+
+	s.assert.True(autopiUnit.Beneficiary.Valid)
+	s.assert.Equal(beneficiary.Bytes(), autopiUnit.Beneficiary.Bytes)
 }
 
 func convertTokenIDToDecimal(t string) types.Decimal {
