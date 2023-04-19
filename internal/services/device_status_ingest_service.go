@@ -309,22 +309,13 @@ func mergeSignals(currentData map[string]interface{}, newData map[string]interfa
 	for k, v := range currentData {
 		merged[k] = v
 	}
+	// now iterate over new data and update any keys present in the new data with the events timestamp
 	for k, v := range newData {
 		merged[k] = map[string]interface{}{
 			"timestamp": t.Format("2006-01-02T15:04:05"),
 			"value":     v,
 		}
 	}
-	// problem is just that need to have the newData value be an object of {ts: "", value: xx},
-	// add the timestamp
-
-	//result := make(map[string]interface{})
-	//for key, value := range merged {
-	//	keyLower := strings.ToLower(key)
-	//	if strings.Contains(keyLower, "signal") {
-	//		result[key] = value
-	//	}
-	//}
 	return merged, nil
 }
 

@@ -2,12 +2,13 @@ package services
 
 import (
 	"context"
-	"github.com/tidwall/gjson"
 	"log"
 	"math/big"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/tidwall/gjson"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/constants"
