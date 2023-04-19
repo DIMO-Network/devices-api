@@ -251,6 +251,7 @@ func TestAutoPiStatusMerge(t *testing.T) {
 	assert.JSONEq(`{"odometer": 45.22, "latitude": 2.0, "longitude": 3.0}`, string(dat1.Data.JSON))
 }
 
+// TestAutoPiStatusWithSignals tests that the signals column is getting updated correctly merging any existing data and setting timestamps
 func TestAutoPiStatusWithSignals(t *testing.T) {
 	assert := assert.New(t)
 
