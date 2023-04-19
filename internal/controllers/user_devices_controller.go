@@ -284,24 +284,16 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	// todo grpc call out to grpc service endpoint in the deviceDefinitionsService udc.deviceDefSvc.GetDeviceDefinitionsByIDs(c.Context(), []string{ "todo"} )
 
 	userID := helpers.GetUserID(c)
-	userOwnedDevices, err := models.UserDevices(
-		models.UserDeviceWhere.UserID.EQ(userID),
-		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
-		qm.OrderBy(models.UserDeviceColumns.CreatedAt),
-	).All(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
-	}
-
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
 	}
 
 	addr := common.Hex2Bytes(*user.EthereumAddress)
-
-	devicesByNfts, err := models.VehicleNFTS(models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(addr))).All(c.Context(), udc.DBS().Reader)
+	devicesByNfts, err := models.VehicleNFTS(
+		qm.Select(models.VehicleNFTColumns.UserDeviceID),
+		models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(addr)),
+	).All(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
 	}
@@ -311,8 +303,9 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 		ownedByAddr[n] = d.UserDeviceID.String
 	}
 
-	nftOwnedDevices, err := models.UserDevices(
-		models.UserDeviceWhere.ID.IN(ownedByAddr),
+	devices, err := models.UserDevices(
+		models.UserDeviceWhere.UserID.EQ(userID),
+		qm.Or2(models.UserDeviceWhere.ID.IN(ownedByAddr)),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
 		qm.OrderBy(models.UserDeviceColumns.CreatedAt),
@@ -320,8 +313,6 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	if err != nil {
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
 	}
-
-	devices := append(userOwnedDevices, nftOwnedDevices...)
 
 	apiMyDevices, err := udc.dbDevicesToDisplay(c.Context(), devices)
 	if err != nil {
