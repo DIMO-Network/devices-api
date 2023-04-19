@@ -290,6 +290,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	}
 
 	addr := common.Hex2Bytes(*user.EthereumAddress)
+	// TODO(AE): could reduce db calls with a nested select in UserDevices
 	devicesByNfts, err := models.VehicleNFTS(
 		qm.Select(models.VehicleNFTColumns.UserDeviceID),
 		models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(addr)),
