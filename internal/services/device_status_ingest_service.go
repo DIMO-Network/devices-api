@@ -196,6 +196,25 @@ func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *Devi
 	}
 	datum.ErrorData = null.JSON{}
 
+	// extract signals with timestamps and persist to signals
+	existingSignalData := make(map[string]any)
+	if err := datum.Signals.Unmarshal(&existingSignalData); err != nil {
+		return err
+	}
+	// unmarshall only the event data
+	eventData := make(map[string]any)
+	err = json.Unmarshal(event.Data, &eventData)
+	if err != nil {
+		return errors.Wrap(err, "could not unmarshall event data")
+	}
+	newSignals, err := mergeSignals(existingSignalData, eventData, event.Time)
+	if err != nil {
+		return err
+	}
+	if err := datum.Signals.Marshal(newSignals); err != nil {
+		return err
+	}
+
 	if err := datum.Upsert(ctx, tx, true, userDeviceDataPrimaryKeyColumns, boil.Infer(), boil.Infer()); err != nil {
 		return fmt.Errorf("error upserting datum: %w", err)
 	}
@@ -282,6 +301,22 @@ func extractOdometer(data []byte) (float64, error) {
 	}
 
 	return *partialData.Odometer, nil
+}
+
+func mergeSignals(currentData map[string]interface{}, newData map[string]interface{}, t time.Time) (map[string]interface{}, error) {
+
+	merged := make(map[string]interface{})
+	for k, v := range currentData {
+		merged[k] = v
+	}
+	// now iterate over new data and update any keys present in the new data with the events timestamp
+	for k, v := range newData {
+		merged[k] = map[string]interface{}{
+			"timestamp": t.Format("2006-01-02T15:04:05"),
+			"value":     v,
+		}
+	}
+	return merged, nil
 }
 
 var basicVINExp = regexp.MustCompile(`^[A-Z0-9]{17}$`)
