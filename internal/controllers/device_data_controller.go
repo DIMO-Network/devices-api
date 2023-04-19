@@ -192,7 +192,7 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 	}
 
 	if len(deviceData) == 0 || !deviceData[0].Data.Valid {
-		return fiber.NewError(fiber.StatusNotFound, "no status updates yet")
+		return fiber.NewError(fiber.StatusNotFound, "No status updates yet.")
 	}
 
 	ds := PrepareDeviceStatusInformation(deviceData, []int64{NonLocationData, CurrentLocation, AllTimeLocation})
