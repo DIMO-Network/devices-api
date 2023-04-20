@@ -97,7 +97,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_HardwareTemplate_Success() {
 	md := []byte(`{"canProtocol":"06"}`)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, &md, "", s.pdb)
 	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, &ud.ID, s.pdb)
-	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, s.pdb)
+	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(deviceDefinitionID, "Ford", "F150", 2020, integration)
@@ -162,7 +162,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_Make_HardwareTemplate_Success() {
 
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
 	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, &ud.ID, s.pdb)
-	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, s.pdb)
+	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(deviceDefinitionID, "Ford", "F150", 2020, integration)
@@ -224,7 +224,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_DeviceStyle_HardwareTemplate_Su
 
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
 	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, &ud.ID, s.pdb)
-	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, s.pdb)
+	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(deviceDefinitionID, "Ford", "F150", 2020, integration)
@@ -294,7 +294,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_UserDeviceStyle_HardwareTemplate_S
 
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
 	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, &ud.ID, s.pdb)
-	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, s.pdb)
+	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(deviceDefinitionID, "Ford", "F150", 2020, integration)

@@ -6,12 +6,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/DIMO-Network/shared"
+	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/redis/mocks"
 
 	"github.com/DIMO-Network/shared/db"
@@ -65,6 +67,7 @@ type UserDevicesControllerTestSuite struct {
 	scClient        *mock_services.MockSmartcarClient
 	redisClient     *mocks.MockCacheService
 	autoPiSvc       *mock_services.MockAutoPiAPIService
+	usersClient     *mock_services.MockUserServiceClient
 }
 
 // SetupSuite starts container db
@@ -87,11 +90,12 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	autoPiTaskSvc := mock_services.NewMockAutoPiTaskService(mockCtrl)
 	s.redisClient = mocks.NewMockCacheService(mockCtrl)
 	s.autoPiSvc = mock_services.NewMockAutoPiAPIService(mockCtrl)
+	s.usersClient = mock_services.NewMockUserServiceClient(mockCtrl)
 
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
-		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, s.drivlyTaskSvc, nil, s.redisClient, nil, nil)
+		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, s.drivlyTaskSvc, nil, s.redisClient, nil, s.usersClient)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUser)
 	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUserFromVIN)
@@ -400,8 +404,13 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 	)
 	_ = test.SetupCreateAutoPiUnit(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
+
+	addr := "67B94473D81D0cd00849D563C94d0432Ac988B49"
+	_ = test.SetupCreateUserDeviceWithID(s.T(), "userID2", "device2", dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	_ = test.SetupCreateVehicleNFT(s.T(), "device2", "vin", big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
+	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*grpc.Integration{integration}, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Times(1).Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId, dd[0].DeviceDefinitionId}).Times(1).Return(dd, nil)
 
 	request := test.BuildRequest("GET", "/user/devices/me", "")
 	response, err := s.app.Test(request)
@@ -411,13 +420,16 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
 
 	result := gjson.Get(string(body), "userDevices.#.id")
-	assert.Len(s.T(), result.Array(), 1)
+	assert.Len(s.T(), result.Array(), 2)
 	for _, id := range result.Array() {
 		assert.True(s.T(), id.Exists(), "expected to find the ID")
-		assert.Equal(s.T(), ud.ID, id.String(), "expected user device ID to match")
+		if id.String() == s.testUserID {
+			assert.Equal(s.T(), ud.ID, id.String(), "expected user device ID to match")
+		}
 	}
 	assert.Equal(s.T(), integration.Id, gjson.GetBytes(body, "userDevices.0.integrations.0.integrationId").String())
 	assert.Equal(s.T(), "device123", gjson.GetBytes(body, "userDevices.0.integrations.0.externalId").String())
+	assert.Equal(s.T(), "device2                    ", gjson.GetBytes(body, "userDevices.1.id").String())
 	assert.Equal(s.T(), integration.Vendor, gjson.GetBytes(body, "userDevices.0.integrations.0.integrationVendor").String())
 }
 

@@ -214,6 +214,29 @@ func SetupCreateUserDevice(t *testing.T, testUserID string, ddID string, metadat
 	return ud
 }
 
+func SetupCreateUserDeviceWithID(t *testing.T, testUserID string, deviceID string, ddID string, metadata *[]byte, vin string, pdb db.Store) models.UserDevice {
+	ud := models.UserDevice{
+		ID:                 deviceID,
+		UserID:             testUserID,
+		DeviceDefinitionID: ddID,
+		CountryCode:        null.StringFrom("USA"),
+		Name:               null.StringFrom("Chungus"),
+	}
+	if len(vin) == 17 {
+		ud.VinIdentifier = null.StringFrom(vin)
+		ud.VinConfirmed = true
+	}
+	if metadata == nil {
+		// note cannot import enum from services
+		md := []byte(`{"powertrainType":"ICE"}`)
+		metadata = &md
+	}
+	ud.Metadata = null.JSONFrom(*metadata)
+	err := ud.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
+	assert.NoError(t, err)
+	return ud
+}
+
 func SetupCreateAutoPiUnit(t *testing.T, userID, unitID string, deviceID *string, pdb db.Store) *models.AutopiUnit {
 	au := models.AutopiUnit{
 		AutopiUnitID:   unitID,
@@ -237,7 +260,7 @@ func SetupCreateAutoPiUnitWithToken(t *testing.T, userID, unitID string, tokenID
 	return &au
 }
 
-func SetupCreateVehicleNFT(t *testing.T, userDeviceID, vin string, tokenID *big.Int, pdb db.Store) *models.VehicleNFT {
+func SetupCreateVehicleNFT(t *testing.T, userDeviceID, vin string, tokenID *big.Int, ownerAddr null.Bytes, pdb db.Store) *models.VehicleNFT {
 
 	mint := models.MetaTransactionRequest{
 		ID: ksuid.New().String(),
@@ -250,6 +273,7 @@ func SetupCreateVehicleNFT(t *testing.T, userDeviceID, vin string, tokenID *big.
 		MintRequestID: mint.ID,
 		UserDeviceID:  null.StringFrom(userDeviceID),
 		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+		OwnerAddress:  ownerAddr,
 	}
 	err = vehicle.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
 	assert.NoError(t, err)
