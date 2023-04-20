@@ -24,6 +24,7 @@ service UserDeviceService {
       returns (CreateTemplateResponse);
   rpc RegisterUserDeviceFromVIN(RegisterUserDeviceFromVINRequest)
       returns (RegisterUserDeviceFromVINResponse);
+  rpc ListDevicesForEthAddress(ListDevicesForWalletAddressRequest) returns (ListDevicesForWalletAddressResponse);
 }
 
 message GetUserDeviceByAutoPIUnitIdRequest { string id = 1; }
@@ -96,3 +97,7 @@ message RegisterUserDeviceFromVINRequest {
 message RegisterUserDeviceFromVINResponse {
   bool created = 1;
 }
+
+message ListDevicesForWalletAddressRequest { string user_address = 1; }
+
+message ListDevicesForWalletAddressResponse { repeated UserDevice user_devices = 1; }
