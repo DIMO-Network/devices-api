@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"math/big"
 
@@ -11,8 +12,10 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ericlagergren/decimal"
@@ -207,6 +210,7 @@ func Test_Transfer_Event_Handled_Correctly(t *testing.T) {
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 		TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0)),
+		Beneficiary:  null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
 	}
 
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
@@ -223,6 +227,7 @@ func Test_Transfer_Event_Handled_Correctly(t *testing.T) {
 	newOner := common.BytesToAddress([]byte{uint8(3)})
 	s.assert.Equal(aUnit.OwnerAddress, null.BytesFrom(newOner.Bytes()))
 	s.assert.Equal(null.String{}, aUnit.UserID)
+	s.assert.Equal(null.Bytes{Bytes: []byte{}}, aUnit.Beneficiary)
 }
 
 func Test_Ignore_Transfer_Mint_Event(t *testing.T) {
@@ -337,6 +342,122 @@ func Test_Ignore_Transfer_Unit_Not_Found(t *testing.T) {
 
 	err = c.processMessage(msg)
 	s.assert.EqualError(err, "record not found as this might be a newly minted device")
+}
+
+type beneficiaryCase struct {
+	Name                      string
+	Address                   common.Address
+	Event                     ev
+	AutopiUnitTable           models.AutopiUnit
+	ExpectedBeneficiaryResult null.Bytes
+}
+type ev struct {
+	IdProxyAddress common.Address
+	NodeId         *big.Int
+	Beneficiary    common.Address
+}
+
+func TestSetBeneficiary(t *testing.T) {
+	s := initCEventsTestHelper(t)
+	defer s.destroy()
+
+	cases := []beneficiaryCase{
+		{
+			Name:    "Ignore other contracts",
+			Address: common.BigToAddress(big.NewInt(2)),
+			Event: ev{
+				IdProxyAddress: common.BigToAddress(big.NewInt(2)),
+				NodeId:         big.NewInt(2),
+				Beneficiary:    common.BigToAddress(big.NewInt(2)),
+			},
+			AutopiUnitTable: models.AutopiUnit{
+				OwnerAddress: null.BytesFrom(common.BigToAddress(big.NewInt(2)).Bytes()),
+				TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(2), 0)),
+			},
+			ExpectedBeneficiaryResult: null.Bytes{Bytes: []byte{}},
+		},
+		{
+			Name:    "Go from null to explicitly set beneficiary",
+			Address: common.HexToAddress(s.settings.DIMORegistryAddr),
+			Event: ev{
+				IdProxyAddress: common.HexToAddress(s.settings.AftermarketDeviceContractAddress),
+				NodeId:         big.NewInt(1),
+				Beneficiary:    common.BigToAddress(big.NewInt(1)),
+			},
+			AutopiUnitTable: models.AutopiUnit{
+				OwnerAddress: null.BytesFrom(common.BigToAddress(big.NewInt(1)).Bytes()),
+				TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(1), 0)),
+			},
+			ExpectedBeneficiaryResult: null.BytesFrom(common.BigToAddress(big.NewInt(1)).Bytes()),
+		},
+		{
+			Name:    "Go from one explicitly set beneficiary to another",
+			Address: common.HexToAddress(s.settings.DIMORegistryAddr),
+			Event: ev{
+				IdProxyAddress: common.HexToAddress(s.settings.AftermarketDeviceContractAddress),
+				NodeId:         big.NewInt(3),
+				Beneficiary:    common.BigToAddress(big.NewInt(3)),
+			},
+			AutopiUnitTable: models.AutopiUnit{
+				OwnerAddress: null.BytesFrom(common.BigToAddress(big.NewInt(1)).Bytes()),
+				TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(3), 0)),
+				Beneficiary:  null.BytesFrom(common.BigToAddress(big.NewInt(2)).Bytes()),
+			},
+			ExpectedBeneficiaryResult: null.BytesFrom(common.BigToAddress(big.NewInt(3)).Bytes()),
+		},
+		{
+			Name:    "Go from beneficiary to explicitly cleared beneficiary",
+			Address: common.HexToAddress(s.settings.DIMORegistryAddr),
+			Event: ev{
+				IdProxyAddress: common.HexToAddress(s.settings.AftermarketDeviceContractAddress),
+				NodeId:         big.NewInt(3),
+				Beneficiary:    common.BigToAddress(big.NewInt(0)),
+			},
+			AutopiUnitTable: models.AutopiUnit{
+				OwnerAddress: null.BytesFrom(common.BigToAddress(big.NewInt(1)).Bytes()),
+				TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(3), 0)),
+				Beneficiary:  null.BytesFrom(common.BigToAddress(big.NewInt(2)).Bytes()),
+			},
+			ExpectedBeneficiaryResult: null.Bytes{Bytes: []byte{}},
+		},
+	}
+
+	for _, c := range cases {
+		err := c.AutopiUnitTable.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+		s.assert.NoError(err)
+
+		consumer := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
+
+		b, err := json.Marshal(c.Event)
+		s.assert.NoError(err)
+
+		abi, err := contracts.RegistryMetaData.GetAbi()
+		s.assert.NoError(err)
+
+		ce := shared.CloudEvent[ContractEventData]{
+			Source: fmt.Sprintf("chain/%d", s.settings.DIMORegistryChainID),
+			Type:   "zone.dimo.contract.event",
+			Data: ContractEventData{
+				Contract:       c.Address,
+				EventName:      "BeneficiarySet",
+				EventSignature: abi.Events["BeneficiarySet"].ID,
+				Arguments:      b,
+			},
+		}
+
+		b, err = json.Marshal(ce)
+		s.assert.NoError(err)
+
+		err = consumer.processMessage(&message.Message{Payload: b})
+		s.assert.NoError(err)
+
+		err = c.AutopiUnitTable.Reload(s.ctx, s.pdb.DBS().Reader)
+		s.assert.NoError(err)
+
+		s.assert.Equal(c.ExpectedBeneficiaryResult, c.AutopiUnitTable.Beneficiary)
+
+		test.TruncateTables(s.pdb.DBS().Writer.DB, t)
+	}
 }
 
 func convertTokenIDToDecimal(t string) types.Decimal {
