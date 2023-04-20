@@ -35,11 +35,10 @@ type ContractsEventsConsumer struct {
 type EventName string
 
 const (
-	PrivilegeSet                 EventName = "PrivilegeSet"
-	AftermarketDeviceNodeMinted  EventName = "AftermarketDeviceNodeMinted"
-	Transfer                     EventName = "Transfer"
-	BeneficiarySet               EventName = "BeneficiarySet"
-	AftermarketDeviceTransferred EventName = "AftermarketDeviceTransferred"
+	PrivilegeSet                EventName = "PrivilegeSet"
+	AftermarketDeviceNodeMinted EventName = "AftermarketDeviceNodeMinted"
+	Transfer                    EventName = "Transfer"
+	BeneficiarySet              EventName = "BeneficiarySet"
 )
 
 func (r EventName) String() string {
@@ -249,7 +248,6 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 }
 
 func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
-
 	var args contracts.RegistryBeneficiarySet
 	err := json.Unmarshal(e.Arguments, &args)
 	if err != nil {
@@ -268,7 +266,7 @@ func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
 	cols := models.AutopiUnitColumns
 
 	if IsZeroAddress(args.Beneficiary) {
-		device.Beneficiary = null.Bytes{Valid: false}
+		device.Beneficiary = null.Bytes{}
 	} else {
 		device.Beneficiary = null.BytesFrom(args.Beneficiary[:])
 	}

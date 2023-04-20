@@ -227,7 +227,7 @@ func Test_Transfer_Event_Handled_Correctly(t *testing.T) {
 	newOner := common.BytesToAddress([]byte{uint8(3)})
 	s.assert.Equal(aUnit.OwnerAddress, null.BytesFrom(newOner.Bytes()))
 	s.assert.Equal(null.String{}, aUnit.UserID)
-	s.assert.Equal(false, aUnit.Beneficiary.Valid)
+	s.assert.Equal(null.Bytes{Bytes: []byte{}}, aUnit.Beneficiary)
 }
 
 func Test_Ignore_Transfer_Mint_Event(t *testing.T) {
@@ -345,6 +345,7 @@ func Test_Ignore_Transfer_Unit_Not_Found(t *testing.T) {
 }
 
 type beneficiaryCase struct {
+	Name                      string
 	Address                   common.Address
 	Event                     ev
 	AutopiUnitTable           models.AutopiUnit
@@ -367,17 +368,62 @@ func TestSetBeneficiary(t *testing.T) {
 
 	cases := []beneficiaryCase{
 		{
+			Name:    "Ignore other contracts",
+			Address: common.BigToAddress(big.NewInt(2)),
+			Event: ev{
+				IdProxyAddress: common.BigToAddress(big.NewInt(2)),
+				NodeId:         big.NewInt(2),
+				Beneficiary:    common.BigToAddress(big.NewInt(2)),
+			},
+			AutopiUnitTable: models.AutopiUnit{
+				OwnerAddress: null.BytesFrom(common.BigToAddress(big.NewInt(2)).Bytes()),
+				TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(2), 0)),
+			},
+			ExpectedBeneficiaryResult: null.Bytes{Bytes: []byte{}},
+		},
+		{
+			Name:    "Go from null to explicitly set beneficiary",
 			Address: common.HexToAddress(s.settings.DIMORegistryAddr),
 			Event: ev{
 				IdProxyAddress: common.HexToAddress(s.settings.AftermarketDeviceContractAddress),
-				NodeId:         big.NewInt(11),
-				Beneficiary:    common.BigToAddress(big.NewInt(63)),
+				NodeId:         big.NewInt(1),
+				Beneficiary:    common.BigToAddress(big.NewInt(1)),
 			},
 			AutopiUnitTable: models.AutopiUnit{
-				OwnerAddress: null.BytesFrom(common.BigToAddress(big.NewInt(7)).Bytes()),
-				TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(11), 0)),
+				OwnerAddress: null.BytesFrom(common.BigToAddress(big.NewInt(1)).Bytes()),
+				TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(1), 0)),
 			},
-			ExpectedBeneficiaryResult: null.BytesFrom(common.BigToAddress(big.NewInt(63)).Bytes()),
+			ExpectedBeneficiaryResult: null.BytesFrom(common.BigToAddress(big.NewInt(1)).Bytes()),
+		},
+		{
+			Name:    "Go from one explicitly set beneficiary to another",
+			Address: common.HexToAddress(s.settings.DIMORegistryAddr),
+			Event: ev{
+				IdProxyAddress: common.HexToAddress(s.settings.AftermarketDeviceContractAddress),
+				NodeId:         big.NewInt(3),
+				Beneficiary:    common.BigToAddress(big.NewInt(3)),
+			},
+			AutopiUnitTable: models.AutopiUnit{
+				OwnerAddress: null.BytesFrom(common.BigToAddress(big.NewInt(1)).Bytes()),
+				TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(3), 0)),
+				Beneficiary:  null.BytesFrom(common.BigToAddress(big.NewInt(2)).Bytes()),
+			},
+			ExpectedBeneficiaryResult: null.BytesFrom(common.BigToAddress(big.NewInt(3)).Bytes()),
+		},
+		{
+			Name:    "Go from beneficiary to explicitly cleared beneficiary",
+			Address: common.HexToAddress(s.settings.DIMORegistryAddr),
+			Event: ev{
+				IdProxyAddress: common.HexToAddress(s.settings.AftermarketDeviceContractAddress),
+				NodeId:         big.NewInt(3),
+				Beneficiary:    common.BigToAddress(big.NewInt(0)),
+			},
+			AutopiUnitTable: models.AutopiUnit{
+				OwnerAddress: null.BytesFrom(common.BigToAddress(big.NewInt(1)).Bytes()),
+				TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(3), 0)),
+				Beneficiary:  null.BytesFrom(common.BigToAddress(big.NewInt(2)).Bytes()),
+			},
+			ExpectedBeneficiaryResult: null.Bytes{Bytes: []byte{}},
 		},
 	}
 
@@ -397,6 +443,7 @@ func TestSetBeneficiary(t *testing.T) {
 			Source: fmt.Sprintf("chain/%d", s.settings.DIMORegistryChainID),
 			Type:   "zone.dimo.contract.event",
 			Data: ContractEventData{
+				Contract:       c.Address,
 				EventName:      "BeneficiarySet",
 				EventSignature: abi.Events["BeneficiarySet"].ID,
 				Arguments:      b,
@@ -411,8 +458,7 @@ func TestSetBeneficiary(t *testing.T) {
 
 		c.AutopiUnitTable.Reload(s.ctx, s.pdb.DBS().Reader)
 
-		s.assert.Equal(c.ExpectedBeneficiaryResult.Valid, c.AutopiUnitTable.Beneficiary.Valid)
-		s.assert.Equal(c.Event.Beneficiary.Bytes(), c.AutopiUnitTable.Beneficiary.Bytes)
+		s.assert.Equal(c.ExpectedBeneficiaryResult, c.AutopiUnitTable.Beneficiary)
 
 		test.TruncateTables(s.pdb.DBS().Writer.DB, t)
 	}
