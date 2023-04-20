@@ -250,9 +250,10 @@ func (nc *NFTController) GetAftermarketDeviceNFTMetadata(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(NFTMetadataResp{
+		Name: name,
+		Description: name + ", a hardware device",
 		Image: fmt.Sprintf("%s/v1/aftermarket/device/%s/image", nc.Settings.DeploymentBaseURL, tid),
 		Attributes: []NFTAttribute{
-			{TraitType: "Name", Value: name},
 			{TraitType: "Ethereum Address", Value: common.BytesToAddress(unit.EthereumAddress.Bytes).String()},
 			{TraitType: "Serial Number", Value: unit.AutopiUnitID},
 		},
