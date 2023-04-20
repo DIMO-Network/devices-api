@@ -70,7 +70,7 @@ func (c *ContractsEventsConsumer) ProcessContractsEventsMessages(messages <-chan
 	for msg := range messages {
 		err := c.processMessage(msg)
 		if err != nil {
-			c.log.Err(err).Msg("error processing credential msg")
+			c.log.Err(err).Msg("error processing contract events messages")
 		}
 	}
 }
@@ -143,7 +143,7 @@ func (c *ContractsEventsConsumer) routeTransferEvent(e *ContractEventData) error
 		c.log.Debug().Str("event", e.EventName).Interface("fullEventData", e).Msg("Handler not provided for contract")
 	}
 
-	return errors.New("Handler not provided for contract")
+	return nil
 }
 
 func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEventData) error {
