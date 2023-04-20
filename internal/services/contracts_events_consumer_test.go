@@ -357,11 +357,6 @@ type ev struct {
 	Beneficiary    common.Address
 }
 
-type autopiUnitTableMock struct {
-	OwnerAddress null.Bytes
-	TokenID      types.NullDecimal
-}
-
 func TestSetBeneficiary(t *testing.T) {
 	s := initCEventsTestHelper(t)
 	defer s.destroy()
@@ -456,7 +451,8 @@ func TestSetBeneficiary(t *testing.T) {
 		err = consumer.processMessage(&message.Message{Payload: b})
 		s.assert.NoError(err)
 
-		c.AutopiUnitTable.Reload(s.ctx, s.pdb.DBS().Reader)
+		err = c.AutopiUnitTable.Reload(s.ctx, s.pdb.DBS().Reader)
+		s.assert.NoError(err)
 
 		s.assert.Equal(c.ExpectedBeneficiaryResult, c.AutopiUnitTable.Beneficiary)
 
