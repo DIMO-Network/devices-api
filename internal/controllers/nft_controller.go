@@ -130,6 +130,8 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 			{TraitType: "Model", Value: def.Type.Model},
 			{TraitType: "Year", Value: strconv.Itoa(int(def.Type.Year))},
 		},
+			{TraitType: "Creation Date", Value: strconv.FormatInt(nft.R.UserDevice.CreatedAt.Unix(), 10)},
+		},
 	})
 }
 
