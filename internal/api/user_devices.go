@@ -11,6 +11,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -109,6 +110,26 @@ func (s *userDeviceService) ListUserDevicesForUser(ctx context.Context, req *pb.
 	}
 
 	return &pb.ListUserDevicesForUserResponse{UserDevices: out}, nil
+}
+
+func (s *userDeviceService) ListDevicesForWalletAddress(ctx context.Context, req *pb.ListDevicesForWalletAddressRequest) (*pb.ListDevicesForWalletAddressResponse, error) {
+	vNft, err := models.VehicleNFTS(
+		models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(req.UserAddress))),
+		qm.Load(models.VehicleNFTRels.UserDevice),
+	).All(ctx, s.dbs().Reader)
+
+	if err != nil {
+		s.logger.Err(err).Str("eth address", req.UserAddress).Msg("Database failure retrieving user's devices.")
+		return nil, status.Error(codes.Internal, "Internal error.")
+	}
+
+	out := make([]*pb.UserDevice, len(vNft))
+
+	for i := 0; i < len(vNft); i++ {
+		out[i] = s.deviceModelToAPI(vNft[i].R.UserDevice)
+	}
+
+	return &pb.ListDevicesForWalletAddressResponse{UserDevices: out}, nil
 }
 
 func (s *userDeviceService) ApplyHardwareTemplate(ctx context.Context, req *pb.ApplyHardwareTemplateRequest) (*pb.ApplyHardwareTemplateResponse, error) {

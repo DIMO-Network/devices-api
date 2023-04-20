@@ -32,7 +32,7 @@ type UserDeviceServiceClient interface {
 	GetClaimedVehiclesGrowth(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ClaimedVehiclesGrowth, error)
 	CreateTemplate(ctx context.Context, in *CreateTemplateRequest, opts ...grpc.CallOption) (*CreateTemplateResponse, error)
 	RegisterUserDeviceFromVIN(ctx context.Context, in *RegisterUserDeviceFromVINRequest, opts ...grpc.CallOption) (*RegisterUserDeviceFromVINResponse, error)
-	ListDevicesForEthAddress(ctx context.Context, in *ListDevicesForWalletAddressRequest, opts ...grpc.CallOption) (*ListDevicesForWalletAddressResponse, error)
+	ListDevicesForWalletAddress(ctx context.Context, in *ListDevicesForWalletAddressRequest, opts ...grpc.CallOption) (*ListDevicesForWalletAddressResponse, error)
 }
 
 type userDeviceServiceClient struct {
@@ -124,9 +124,9 @@ func (c *userDeviceServiceClient) RegisterUserDeviceFromVIN(ctx context.Context,
 	return out, nil
 }
 
-func (c *userDeviceServiceClient) ListDevicesForEthAddress(ctx context.Context, in *ListDevicesForWalletAddressRequest, opts ...grpc.CallOption) (*ListDevicesForWalletAddressResponse, error) {
+func (c *userDeviceServiceClient) ListDevicesForWalletAddress(ctx context.Context, in *ListDevicesForWalletAddressRequest, opts ...grpc.CallOption) (*ListDevicesForWalletAddressResponse, error) {
 	out := new(ListDevicesForWalletAddressResponse)
-	err := c.cc.Invoke(ctx, "/devices.UserDeviceService/ListDevicesForEthAddress", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/devices.UserDeviceService/ListDevicesForWalletAddress", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ type UserDeviceServiceServer interface {
 	GetClaimedVehiclesGrowth(context.Context, *emptypb.Empty) (*ClaimedVehiclesGrowth, error)
 	CreateTemplate(context.Context, *CreateTemplateRequest) (*CreateTemplateResponse, error)
 	RegisterUserDeviceFromVIN(context.Context, *RegisterUserDeviceFromVINRequest) (*RegisterUserDeviceFromVINResponse, error)
-	ListDevicesForEthAddress(context.Context, *ListDevicesForWalletAddressRequest) (*ListDevicesForWalletAddressResponse, error)
+	ListDevicesForWalletAddress(context.Context, *ListDevicesForWalletAddressRequest) (*ListDevicesForWalletAddressResponse, error)
 	mustEmbedUnimplementedUserDeviceServiceServer()
 }
 
@@ -181,8 +181,8 @@ func (UnimplementedUserDeviceServiceServer) CreateTemplate(context.Context, *Cre
 func (UnimplementedUserDeviceServiceServer) RegisterUserDeviceFromVIN(context.Context, *RegisterUserDeviceFromVINRequest) (*RegisterUserDeviceFromVINResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterUserDeviceFromVIN not implemented")
 }
-func (UnimplementedUserDeviceServiceServer) ListDevicesForEthAddress(context.Context, *ListDevicesForWalletAddressRequest) (*ListDevicesForWalletAddressResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListDevicesForEthAddress not implemented")
+func (UnimplementedUserDeviceServiceServer) ListDevicesForWalletAddress(context.Context, *ListDevicesForWalletAddressRequest) (*ListDevicesForWalletAddressResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListDevicesForWalletAddress not implemented")
 }
 func (UnimplementedUserDeviceServiceServer) mustEmbedUnimplementedUserDeviceServiceServer() {}
 
@@ -359,20 +359,20 @@ func _UserDeviceService_RegisterUserDeviceFromVIN_Handler(srv interface{}, ctx c
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UserDeviceService_ListDevicesForEthAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _UserDeviceService_ListDevicesForWalletAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListDevicesForWalletAddressRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(UserDeviceServiceServer).ListDevicesForEthAddress(ctx, in)
+		return srv.(UserDeviceServiceServer).ListDevicesForWalletAddress(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/devices.UserDeviceService/ListDevicesForEthAddress",
+		FullMethod: "/devices.UserDeviceService/ListDevicesForWalletAddress",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserDeviceServiceServer).ListDevicesForEthAddress(ctx, req.(*ListDevicesForWalletAddressRequest))
+		return srv.(UserDeviceServiceServer).ListDevicesForWalletAddress(ctx, req.(*ListDevicesForWalletAddressRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -421,8 +421,8 @@ var UserDeviceService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _UserDeviceService_RegisterUserDeviceFromVIN_Handler,
 		},
 		{
-			MethodName: "ListDevicesForEthAddress",
-			Handler:    _UserDeviceService_ListDevicesForEthAddress_Handler,
+			MethodName: "ListDevicesForWalletAddress",
+			Handler:    _UserDeviceService_ListDevicesForWalletAddress_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
