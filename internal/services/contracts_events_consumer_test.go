@@ -307,7 +307,7 @@ func Test_Ignore_Transfer_Wrong_Contract(t *testing.T) {
 	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
 
 	err = c.processMessage(msg)
-	s.assert.EqualError(err, "Handler not provided for contract")
+	s.assert.NoError(err)
 }
 
 func Test_Ignore_Transfer_Unit_Not_Found(t *testing.T) {
