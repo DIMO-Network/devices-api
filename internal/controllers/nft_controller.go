@@ -40,6 +40,7 @@ type NFTController struct {
 	integSvc         services.DeviceDefinitionIntegrationService
 	smartcarTaskSvc  services.SmartcarTaskService
 	teslaTaskService services.TeslaTaskService
+	dcnService       services.DCNService
 }
 
 // NewNFTController constructor
@@ -48,6 +49,7 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 	smartcarTaskSvc services.SmartcarTaskService,
 	teslaTaskService services.TeslaTaskService,
 	integSvc services.DeviceDefinitionIntegrationService,
+	dcnSVc services.DCNService,
 ) NFTController {
 	return NFTController{
 		Settings:         settings,
@@ -58,6 +60,7 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 		smartcarTaskSvc:  smartcarTaskSvc,
 		teslaTaskService: teslaTaskService,
 		integSvc:         integSvc,
+		dcnService:       dcnSVc,
 	}
 }
 
@@ -249,6 +252,11 @@ func (nc *NFTController) GetAftermarketDeviceNFTMetadata(c *fiber.Ctx) error {
 		name = strings.Join(three, " ")
 	}
 
+	expiration, err := nc.dcnService.GetRecordExpiration("todo-what goes here?", name) // todo is the name here even the right one?
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
 	return c.JSON(NFTMetadataResp{
 		Name:        name,
 		Description: name + ", a hardware device",
@@ -258,7 +266,7 @@ func (nc *NFTController) GetAftermarketDeviceNFTMetadata(c *fiber.Ctx) error {
 			{TraitType: "Serial Number", Value: unit.AutopiUnitID},
 			{TraitType: "Created Date", Value: strconv.FormatInt(unit.CreatedAt.Unix(), 10)},
 			{TraitType: "Length", Value: "9"}, // does this change? Length of what?
-			{TraitType: "Expiration Date", Value: ""},
+			{TraitType: "Expiration Date", Value: strconv.FormatUint(expiration, 10)},
 		},
 	})
 }
