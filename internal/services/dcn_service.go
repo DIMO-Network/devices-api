@@ -2,14 +2,15 @@ package services
 
 import (
 	"fmt"
+	"io"
+	"time"
+
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/shared"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
 	"github.com/tidwall/gjson"
-	"io"
-	"time"
 )
 
 type DCNService interface {
