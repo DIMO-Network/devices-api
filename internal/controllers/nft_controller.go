@@ -256,6 +256,9 @@ func (nc *NFTController) GetAftermarketDeviceNFTMetadata(c *fiber.Ctx) error {
 		Attributes: []NFTAttribute{
 			{TraitType: "Ethereum Address", Value: common.BytesToAddress(unit.EthereumAddress.Bytes).String()},
 			{TraitType: "Serial Number", Value: unit.AutopiUnitID},
+			{TraitType: "Created Date", Value: strconv.FormatInt(unit.CreatedAt.Unix(), 10)},
+			{TraitType: "Length", Value: "9"}, // does this change? Length of what?
+			{TraitType: "Expiration Date", Value: ""},
 		},
 	})
 }
