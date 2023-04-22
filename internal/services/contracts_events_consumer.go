@@ -143,7 +143,7 @@ func (c *ContractsEventsConsumer) routeTransferEvent(e *ContractEventData) error
 		c.log.Debug().Str("event", e.EventName).Interface("fullEventData", e).Msg("Handler not provided for contract")
 	}
 
-	return nil
+	return errors.New("Handler not provided for contract")
 }
 
 func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEventData) error {
@@ -157,8 +157,8 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 	tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0))
 
 	if IsZeroAddress(args.From) {
-		c.log.Info().Str("tokenID", tkID.String()).Msg("ignoring mint event")
-		return errors.New("ignoring mint event")
+		c.log.Debug().Str("tokenID", tkID.String()).Msg("ignoring mint event")
+		return nil
 	}
 
 	apUnit, err := models.AutopiUnits(models.AutopiUnitWhere.TokenID.EQ(tkID)).One(context.Background(), c.db.DBS().Reader)
@@ -172,8 +172,8 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 	}
 
 	if !apUnit.OwnerAddress.Valid {
-		c.log.Info().Str("tokenID", tkID.String()).Msg("device has not been claimed yet")
-		return errors.New("device has not been claimed yet")
+		c.log.Debug().Str("tokenID", tkID.String()).Msg("device has not been claimed yet")
+		return nil
 	}
 
 	apUnit.UserID = null.String{}
