@@ -3,11 +3,12 @@ package registry
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
-	solsha3 "github.com/miguelmota/go-solidity-sha3"
 	"io"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto"
+	solsha3 "github.com/miguelmota/go-solidity-sha3"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/shared"
@@ -25,10 +26,8 @@ type dcnService struct {
 	//dbs        func() *db.ReaderWriter
 }
 
-const dimoWeb3URL = "https://multicall.dimo/"
-
 func NewDcnService(settings *config.Settings) DCNService {
-	client, _ := shared.NewHTTPClientWrapper(dimoWeb3URL, "", 20*time.Second, nil, true)
+	client, _ := shared.NewHTTPClientWrapper(settings.DIMOContractAPIURL, "", 20*time.Second, nil, true)
 	return &dcnService{
 		Settings:   settings,
 		httpClient: client,

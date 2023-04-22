@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/DIMO-Network/devices-api/internal/services/registry"
+
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
@@ -40,7 +42,7 @@ type NFTController struct {
 	integSvc         services.DeviceDefinitionIntegrationService
 	smartcarTaskSvc  services.SmartcarTaskService
 	teslaTaskService services.TeslaTaskService
-	dcnService       services.DCNService
+	dcnService       registry.DCNService
 }
 
 // NewNFTController constructor
@@ -49,7 +51,7 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 	smartcarTaskSvc services.SmartcarTaskService,
 	teslaTaskService services.TeslaTaskService,
 	integSvc services.DeviceDefinitionIntegrationService,
-	dcnSVc services.DCNService,
+	dcnSVc registry.DCNService,
 ) NFTController {
 	return NFTController{
 		Settings:         settings,
@@ -124,6 +126,11 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 		name = description
 	}
 
+	expiration, err := nc.dcnService.GetExpiration(name) // name here should be eg. reddy.dimo
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
 	return c.JSON(NFTMetadataResp{
 		Name:        name,
 		Description: description,
@@ -133,6 +140,7 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 			{TraitType: "Model", Value: def.Type.Model},
 			{TraitType: "Year", Value: strconv.Itoa(int(def.Type.Year))},
 			{TraitType: "Creation Date", Value: strconv.FormatInt(nft.R.UserDevice.CreatedAt.Unix(), 10)},
+			{TraitType: "Expiration Date", Value: strconv.FormatUint(expiration, 10)},
 		},
 	})
 }
@@ -252,11 +260,6 @@ func (nc *NFTController) GetAftermarketDeviceNFTMetadata(c *fiber.Ctx) error {
 		name = strings.Join(three, " ")
 	}
 
-	expiration, err := nc.dcnService.GetRecordExpiration("todo-what goes here?", name) // todo is the name here even the right one?
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-
 	return c.JSON(NFTMetadataResp{
 		Name:        name,
 		Description: name + ", a hardware device",
@@ -264,9 +267,6 @@ func (nc *NFTController) GetAftermarketDeviceNFTMetadata(c *fiber.Ctx) error {
 		Attributes: []NFTAttribute{
 			{TraitType: "Ethereum Address", Value: common.BytesToAddress(unit.EthereumAddress.Bytes).String()},
 			{TraitType: "Serial Number", Value: unit.AutopiUnitID},
-			{TraitType: "Created Date", Value: strconv.FormatInt(unit.CreatedAt.Unix(), 10)},
-			{TraitType: "Length", Value: "9"}, // does this change? Length of what?
-			{TraitType: "Expiration Date", Value: strconv.FormatUint(expiration, 10)},
 		},
 	})
 }

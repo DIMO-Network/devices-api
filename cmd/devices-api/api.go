@@ -82,7 +82,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, pdb.DBS, &logger)
 	autoPi := autopi.NewIntegration(pdb.DBS, ddSvc, autoPiSvc, autoPiTaskService, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &logger)
 	openAI := services.NewOpenAI(&logger, *settings)
-	dcnSvc := services.NewDcnService(settings)
+	dcnSvc := registry.NewDcnService(settings)
 
 	redisCache := redis.NewRedisCacheService(settings.IsProduction(), redis.Settings{
 		URL:       settings.RedisURL,
