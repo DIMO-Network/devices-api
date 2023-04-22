@@ -1,20 +1,22 @@
-package services
+package registry
 
 import (
+	"encoding/hex"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto"
+	solsha3 "github.com/miguelmota/go-solidity-sha3"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/shared"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
 	"github.com/tidwall/gjson"
 )
 
 type DCNService interface {
-	GetRecordExpiration(dcnAddress, name string) (uint64, error)
+	GetExpiration(name string) (uint64, error)
 }
 
 type dcnService struct {
@@ -33,7 +35,8 @@ func NewDcnService(settings *config.Settings) DCNService {
 	}
 }
 
-func (ds *dcnService) GetRecordExpiration(dcnAddress, name string) (uint64, error) {
+func (ds *dcnService) GetExpiration(name string) (uint64, error) {
+	const dcnAddress = "0xE9F4dfE02f895DC17E2e146e578873c9095bA293"
 	nameHash := NameHash(name)
 	reqBody := fmt.Sprintf(`{
     "network": 137,
@@ -41,21 +44,13 @@ func (ds *dcnService) GetRecordExpiration(dcnAddress, name string) (uint64, erro
           {
             "to": "%s",
             "abi": "DcnRegistry",
-            "function": "records",
-            "inputs": {
-              "node": "%s"
-            }
-          },
-          {
-            "to": "%s",
-            "abi": "DcnRegistry",
-            "function": "resolver",
+            "function": "expires",
             "inputs": {
               "node": "%s"
             }
           }
         ]    
-}`, dcnAddress, nameHash, dcnAddress, nameHash)
+}`, dcnAddress, nameHash)
 	res, err := ds.httpClient.ExecuteRequest("v1/multicall", "POST", []byte(reqBody))
 	if err != nil {
 		return 0, errors.Wrap(err, "could not get dcn records from multicall")
@@ -63,22 +58,35 @@ func (ds *dcnService) GetRecordExpiration(dcnAddress, name string) (uint64, erro
 	defer res.Body.Close() // nolint
 	respBytes, _ := io.ReadAll(res.Body)
 
-	result := gjson.GetBytes(respBytes, "outputs.0.outputs.1.expires")
+	result := gjson.GetBytes(respBytes, "outputs.0.outputs.0.expires_")
 	if !result.Exists() {
 		return 0, fmt.Errorf("unable to get expiration from multicall api")
 	}
 	return result.Uint(), nil
 }
 
-// NameHash Name of what?
-func NameHash(name string) common.Hash {
-	//node := strings.Repeat("00", 32)
-	labelHash := crypto.Keccak256Hash([]byte(name))
+// NameHash returns a hash of the vehicle Name, eg. james.eth -> hash
+func NameHash(name string) string {
+	labels := strings.Split(name, ".")
+	// todo this is not returning the expected address
+	node := strings.Repeat("00", 32)
 
-	//node = ethers.utils.solidityKeccak256(
-	//["uint256", "uint256"],
-	//[node, labelHash]
-	//);
-	// todo, this is incomplete - function _namehash in dcn.ts, token-information
-	return labelHash
+	if len(labels) > 0 {
+		for i := len(labels) - 1; i >= 0; i-- {
+			labelHash := crypto.Keccak256Hash([]byte(labels[i]))
+			solHash := solsha3.SoliditySHA3(
+				// types
+				[]string{"uint256", "uint256"},
+				// values
+				[]interface{}{
+					node, // note this is something that we overwrite each time
+					labelHash.String(),
+				},
+			)
+
+			node = hex.EncodeToString(solHash)
+		}
+	}
+
+	return node
 }
