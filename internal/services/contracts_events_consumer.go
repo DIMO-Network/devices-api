@@ -70,7 +70,7 @@ func (c *ContractsEventsConsumer) ProcessContractsEventsMessages(messages <-chan
 	for msg := range messages {
 		err := c.processMessage(msg)
 		if err != nil {
-			c.log.Err(err).Msg("error processing credential msg")
+			c.log.Err(err).Msg("error processing contract events messages")
 		}
 	}
 }
@@ -157,8 +157,8 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 	tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0))
 
 	if IsZeroAddress(args.From) {
-		c.log.Info().Str("tokenID", tkID.String()).Msg("ignoring mint event")
-		return errors.New("ignoring mint event")
+		c.log.Debug().Str("tokenID", tkID.String()).Msg("ignoring mint event")
+		return nil
 	}
 
 	apUnit, err := models.AutopiUnits(models.AutopiUnitWhere.TokenID.EQ(tkID)).One(context.Background(), c.db.DBS().Reader)
@@ -172,8 +172,8 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 	}
 
 	if !apUnit.OwnerAddress.Valid {
-		c.log.Info().Str("tokenID", tkID.String()).Msg("device has not been claimed yet")
-		return errors.New("device has not been claimed yet")
+		c.log.Debug().Str("tokenID", tkID.String()).Msg("device has not been claimed yet")
+		return nil
 	}
 
 	apUnit.UserID = null.String{}

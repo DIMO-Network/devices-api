@@ -236,13 +236,15 @@ func Test_Ignore_Transfer_Mint_Event(t *testing.T) {
 		Payload: []byte(factoryResp.payload),
 	}
 
+	tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0))
+
 	cm := common.BytesToAddress([]byte{uint8(9)})
 	autopiUnit := models.AutopiUnit{
 		UserID:       null.StringFrom("SomeID"),
 		OwnerAddress: null.BytesFrom(cm.Bytes()),
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
-		TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0)),
+		TokenID:      tkID,
 	}
 
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
@@ -251,7 +253,12 @@ func Test_Ignore_Transfer_Mint_Event(t *testing.T) {
 	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
 
 	err = c.processMessage(msg)
-	s.assert.EqualError(err, "ignoring mint event")
+	s.assert.NoError(err)
+
+	aUnit, err := models.AutopiUnits(models.AutopiUnitWhere.TokenID.EQ(tkID)).One(s.ctx, s.pdb.DBS().Reader)
+	s.assert.NoError(err)
+	s.assert.Equal(autopiUnit.OwnerAddress, aUnit.OwnerAddress)
+	s.assert.Equal(autopiUnit.UserID, aUnit.UserID)
 }
 
 func Test_Ignore_Transfer_Claims_Event(t *testing.T) {
@@ -265,11 +272,13 @@ func Test_Ignore_Transfer_Claims_Event(t *testing.T) {
 		Payload: []byte(factoryResp.payload),
 	}
 
+	tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0))
+
 	autopiUnit := models.AutopiUnit{
 		UserID:    null.StringFrom("SomeID"),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		TokenID:   types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0)),
+		TokenID:   tkID,
 	}
 
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
@@ -278,7 +287,12 @@ func Test_Ignore_Transfer_Claims_Event(t *testing.T) {
 	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
 
 	err = c.processMessage(msg)
-	s.assert.EqualError(err, "device has not been claimed yet")
+	s.assert.NoError(err)
+
+	aUnit, err := models.AutopiUnits(models.AutopiUnitWhere.TokenID.EQ(tkID)).One(s.ctx, s.pdb.DBS().Reader)
+	s.assert.NoError(err)
+	s.assert.Equal(autopiUnit.OwnerAddress, aUnit.OwnerAddress)
+	s.assert.Equal(autopiUnit.UserID, aUnit.UserID)
 }
 
 func Test_Ignore_Transfer_Wrong_Contract(t *testing.T) {
