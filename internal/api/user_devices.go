@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+
 	"fmt"
 	"strings"
 	"time"
@@ -113,13 +114,17 @@ func (s *userDeviceService) ListUserDevicesForUser(ctx context.Context, req *pb.
 }
 
 func (s *userDeviceService) ListDevicesForWalletAddress(ctx context.Context, req *pb.ListDevicesForWalletAddressRequest) (*pb.ListDevicesForWalletAddressResponse, error) {
+	if req.UserAddress == "" {
+		return nil, status.Error(codes.InvalidArgument, "Missing wallet address arguement")
+	}
 	vNft, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(req.UserAddress))),
 		qm.Load(models.VehicleNFTRels.UserDevice),
+		qm.Load(models.VehicleNFTRels.VehicleTokenAutopiUnit),
+		qm.Load(qm.Rels(models.VehicleNFTRels.UserDevice, models.UserDeviceRels.UserDeviceAPIIntegrations)),
 	).All(ctx, s.dbs().Reader)
 
 	if err != nil {
-		s.logger.Err(err).Str("eth address", req.UserAddress).Msg("Database failure retrieving user's devices.")
 		return nil, status.Error(codes.Internal, "Internal error.")
 	}
 
