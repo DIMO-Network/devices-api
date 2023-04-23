@@ -188,7 +188,7 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 
 	cols := models.AutopiUnitColumns
 
-	if _, err = apUnit.Update(ctx, c.db.DBS().Writer, boil.Whitelist(cols.UserID, cols.OwnerAddress, cols.Beneficiary)); err != nil {
+	if _, err = apUnit.Update(ctx, c.db.DBS().Writer, boil.Whitelist(cols.UserID, cols.OwnerAddress, cols.Beneficiary, cols.UpdatedAt)); err != nil {
 		c.log.Err(err).Str("tokenID", tkID.String()).Msg("error occurred transferring device")
 		return errors.New("error occurred transferring device")
 	}
