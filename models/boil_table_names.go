@@ -12,6 +12,7 @@ var TableNames = struct {
 	Geofences                 string
 	MetaTransactionRequests   string
 	NFTPrivileges             string
+	TokenTransfers            string
 	UserDeviceAPIIntegrations string
 	UserDeviceData            string
 	UserDeviceToGeofence      string
@@ -26,6 +27,7 @@ var TableNames = struct {
 	Geofences:                 "geofences",
 	MetaTransactionRequests:   "meta_transaction_requests",
 	NFTPrivileges:             "nft_privileges",
+	TokenTransfers:            "token_transfers",
 	UserDeviceAPIIntegrations: "user_device_api_integrations",
 	UserDeviceData:            "user_device_data",
 	UserDeviceToGeofence:      "user_device_to_geofence",

@@ -37,6 +37,7 @@ type AutopiUnit struct {
 	PairRequestID                 null.String       `boil:"pair_request_id" json:"pair_request_id,omitempty" toml:"pair_request_id" yaml:"pair_request_id,omitempty"`
 	UnpairRequestID               null.String       `boil:"unpair_request_id" json:"unpair_request_id,omitempty" toml:"unpair_request_id" yaml:"unpair_request_id,omitempty"`
 	VehicleTokenID                types.NullDecimal `boil:"vehicle_token_id" json:"vehicle_token_id,omitempty" toml:"vehicle_token_id" yaml:"vehicle_token_id,omitempty"`
+	Beneficiary                   null.Bytes        `boil:"beneficiary" json:"beneficiary,omitempty" toml:"beneficiary" yaml:"beneficiary,omitempty"`
 
 	R *autopiUnitR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L autopiUnitL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -55,6 +56,7 @@ var AutopiUnitColumns = struct {
 	PairRequestID                 string
 	UnpairRequestID               string
 	VehicleTokenID                string
+	Beneficiary                   string
 }{
 	AutopiUnitID:                  "autopi_unit_id",
 	AutopiDeviceID:                "autopi_device_id",
@@ -68,6 +70,7 @@ var AutopiUnitColumns = struct {
 	PairRequestID:                 "pair_request_id",
 	UnpairRequestID:               "unpair_request_id",
 	VehicleTokenID:                "vehicle_token_id",
+	Beneficiary:                   "beneficiary",
 }
 
 var AutopiUnitTableColumns = struct {
@@ -83,6 +86,7 @@ var AutopiUnitTableColumns = struct {
 	PairRequestID                 string
 	UnpairRequestID               string
 	VehicleTokenID                string
+	Beneficiary                   string
 }{
 	AutopiUnitID:                  "autopi_units.autopi_unit_id",
 	AutopiDeviceID:                "autopi_units.autopi_device_id",
@@ -96,6 +100,7 @@ var AutopiUnitTableColumns = struct {
 	PairRequestID:                 "autopi_units.pair_request_id",
 	UnpairRequestID:               "autopi_units.unpair_request_id",
 	VehicleTokenID:                "autopi_units.vehicle_token_id",
+	Beneficiary:                   "autopi_units.beneficiary",
 }
 
 // Generated where
@@ -163,6 +168,7 @@ var AutopiUnitWhere = struct {
 	PairRequestID                 whereHelpernull_String
 	UnpairRequestID               whereHelpernull_String
 	VehicleTokenID                whereHelpertypes_NullDecimal
+	Beneficiary                   whereHelpernull_Bytes
 }{
 	AutopiUnitID:                  whereHelperstring{field: "\"devices_api\".\"autopi_units\".\"autopi_unit_id\""},
 	AutopiDeviceID:                whereHelpernull_String{field: "\"devices_api\".\"autopi_units\".\"autopi_device_id\""},
@@ -176,6 +182,7 @@ var AutopiUnitWhere = struct {
 	PairRequestID:                 whereHelpernull_String{field: "\"devices_api\".\"autopi_units\".\"pair_request_id\""},
 	UnpairRequestID:               whereHelpernull_String{field: "\"devices_api\".\"autopi_units\".\"unpair_request_id\""},
 	VehicleTokenID:                whereHelpertypes_NullDecimal{field: "\"devices_api\".\"autopi_units\".\"vehicle_token_id\""},
+	Beneficiary:                   whereHelpernull_Bytes{field: "\"devices_api\".\"autopi_units\".\"beneficiary\""},
 }
 
 // AutopiUnitRels is where relationship names are stored.
@@ -256,9 +263,9 @@ func (r *autopiUnitR) GetUserDeviceAPIIntegrations() UserDeviceAPIIntegrationSli
 type autopiUnitL struct{}
 
 var (
-	autopiUnitAllColumns            = []string{"autopi_unit_id", "autopi_device_id", "user_id", "ethereum_address", "created_at", "updated_at", "token_id", "claim_meta_transaction_request_id", "owner_address", "pair_request_id", "unpair_request_id", "vehicle_token_id"}
+	autopiUnitAllColumns            = []string{"autopi_unit_id", "autopi_device_id", "user_id", "ethereum_address", "created_at", "updated_at", "token_id", "claim_meta_transaction_request_id", "owner_address", "pair_request_id", "unpair_request_id", "vehicle_token_id", "beneficiary"}
 	autopiUnitColumnsWithoutDefault = []string{"autopi_unit_id"}
-	autopiUnitColumnsWithDefault    = []string{"autopi_device_id", "user_id", "ethereum_address", "created_at", "updated_at", "token_id", "claim_meta_transaction_request_id", "owner_address", "pair_request_id", "unpair_request_id", "vehicle_token_id"}
+	autopiUnitColumnsWithDefault    = []string{"autopi_device_id", "user_id", "ethereum_address", "created_at", "updated_at", "token_id", "claim_meta_transaction_request_id", "owner_address", "pair_request_id", "unpair_request_id", "vehicle_token_id", "beneficiary"}
 	autopiUnitPrimaryKeyColumns     = []string{"autopi_unit_id"}
 	autopiUnitGeneratedColumns      = []string{}
 )

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -37,6 +38,7 @@ const (
 	PrivilegeSet                EventName = "PrivilegeSet"
 	AftermarketDeviceNodeMinted EventName = "AftermarketDeviceNodeMinted"
 	Transfer                    EventName = "Transfer"
+	BeneficiarySet              EventName = "BeneficiarySet"
 )
 
 func (r EventName) String() string {
@@ -119,7 +121,11 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.Raw
 			c.log.Info().Str("event", data.EventName).Msg("Event received")
 			return c.setMintedAfterMarketDevice(&data)
 		}
-		fallthrough // TODO(elffjs): Danger!
+	case BeneficiarySet.String():
+		if data.Contract == c.registryAddr {
+			c.log.Info().Str("event", data.EventName).Msg("Event received")
+			return c.beneficiarySet(&data)
+		}
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -178,11 +184,11 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 
 	apUnit.UserID = null.String{}
 	apUnit.OwnerAddress = null.BytesFrom(args.To.Bytes())
+	apUnit.Beneficiary = null.Bytes{}
 
 	cols := models.AutopiUnitColumns
 
-	_, err = apUnit.Update(ctx, c.db.DBS().Writer, boil.Whitelist(cols.UserID, cols.OwnerAddress))
-	if err != nil {
+	if _, err = apUnit.Update(ctx, c.db.DBS().Writer, boil.Whitelist(cols.UserID, cols.OwnerAddress, cols.Beneficiary, cols.UpdatedAt)); err != nil {
 		c.log.Err(err).Str("tokenID", tkID.String()).Msg("error occurred transferring device")
 		return errors.New("error occurred transferring device")
 	}
@@ -235,6 +241,37 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 	err = ap.Upsert(context.Background(), c.db.DBS().Writer, true, []string{cols.AutopiUnitID}, boil.Whitelist(cols.AutopiDeviceID, cols.EthereumAddress, cols.TokenID, cols.UpdatedAt), boil.Infer())
 	if err != nil {
 		c.log.Error().Err(err).Msg("Failed to insert privilege record.")
+		return err
+	}
+
+	return nil
+}
+
+func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
+	var args contracts.RegistryBeneficiarySet
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return err
+	}
+
+	c.log.Info().Int64("nodeID", args.NodeId.Int64()).Msgf("Aftermarket beneficiary set: %s.", args.Beneficiary)
+
+	device, err := models.AutopiUnits(
+		models.AutopiUnitWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(args.NodeId.Int64()), 0))),
+	).One(context.Background(), c.db.DBS().Reader)
+	if err != nil {
+		return err
+	}
+
+	cols := models.AutopiUnitColumns
+
+	if IsZeroAddress(args.Beneficiary) {
+		device.Beneficiary = null.Bytes{}
+	} else {
+		device.Beneficiary = null.BytesFrom(args.Beneficiary[:])
+	}
+
+	if _, err = device.Update(context.Background(), c.db.DBS().Writer, boil.Whitelist(cols.Beneficiary, cols.UpdatedAt)); err != nil {
+		c.log.Error().Err(err).Msg("Failed to set beneficiary.")
 		return err
 	}
 
