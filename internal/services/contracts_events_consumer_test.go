@@ -366,8 +366,8 @@ type beneficiaryCase struct {
 	ExpectedBeneficiaryResult null.Bytes
 }
 type ev struct {
-	IdProxyAddress common.Address
-	NodeId         *big.Int
+	IdProxyAddress common.Address //nolint
+	NodeId         *big.Int       //nolint
 	Beneficiary    common.Address
 }
 

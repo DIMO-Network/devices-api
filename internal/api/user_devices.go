@@ -347,6 +347,12 @@ func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevi
 
 		if amnft := vnft.R.VehicleTokenAutopiUnit; amnft != nil {
 			out.AftermarketDeviceTokenId = s.toUint64(amnft.TokenID)
+
+			if amnft.Beneficiary.Valid {
+				out.AftermarketDeviceBeneficiaryAddress = amnft.Beneficiary.Bytes
+			} else {
+				out.AftermarketDeviceBeneficiaryAddress = vnft.OwnerAddress.Bytes
+			}
 		}
 	}
 

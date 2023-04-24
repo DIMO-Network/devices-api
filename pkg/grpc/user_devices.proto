@@ -49,6 +49,7 @@ message UserDevice {
   optional string vin = 8;
   string device_definition_id = 9;
   optional string device_style_id = 10;
+  optional bytes aftermarket_device_beneficiary_address = 11;
 }
 
 message UserDeviceIntegration {
