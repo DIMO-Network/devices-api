@@ -34,6 +34,8 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const testDbName = "devices_api"
@@ -217,29 +219,6 @@ func SetupCreateUserDevice(t *testing.T, testUserID string, ddID string, metadat
 	return ud
 }
 
-func SetupCreateUserDeviceForMiddleware(t *testing.T, userDeviceID, userID string, ddID string, metadata *[]byte, vin string, pdb db.Store) models.UserDevice {
-	ud := models.UserDevice{
-		ID:                 userDeviceID,
-		UserID:             userID,
-		DeviceDefinitionID: ddID,
-		CountryCode:        null.StringFrom("USA"),
-		Name:               null.StringFrom("Chungus"),
-	}
-	if len(vin) == 17 {
-		ud.VinIdentifier = null.StringFrom(vin)
-		ud.VinConfirmed = true
-	}
-	if metadata == nil {
-		// note cannot import enum from services
-		md := []byte(`{"powertrainType":"ICE"}`)
-		metadata = &md
-	}
-	ud.Metadata = null.JSONFrom(*metadata)
-	err := ud.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
-	assert.NoError(t, err)
-	return ud
-}
-
 func SetupCreateAutoPiUnit(t *testing.T, userID, unitID string, deviceID *string, pdb db.Store) *models.AutopiUnit {
 	au := models.AutopiUnit{
 		AutopiUnitID:   unitID,
@@ -337,36 +316,16 @@ var MkAddr = func(i int) common.Address {
 	return common.BigToAddress(big.NewInt(int64(i)))
 }
 
-type FakeUserClient struct {
-	Response []UserClientResp
+type UsersClient struct {
+	Store map[string]*pb.User
 }
 
-type UserClientResp struct {
-	ID      string
-	Address common.Address
-}
-
-func (d *FakeUserClient) GetUser(ctx context.Context, in *pb.GetUserRequest, opts ...grpc.CallOption) (*pb.User, error) {
-	for _, user := range d.Response {
-		if user.ID == in.Id {
-			addr := user.Address.Hex()
-
-			if addr == "" {
-				out := &pb.User{
-					Id: user.ID,
-				}
-				return out, nil
-			}
-
-			out := &pb.User{
-				Id:              user.ID,
-				EthereumAddress: &addr,
-			}
-			return out, nil
-		}
+func (c *UsersClient) GetUser(_ context.Context, in *pb.GetUserRequest, _ ...grpc.CallOption) (*pb.User, error) {
+	u, ok := c.Store[in.Id]
+	if !ok {
+		return nil, status.Error(codes.NotFound, "No user with that id found.")
 	}
-
-	return nil, errors.New("user not found in users api mock")
+	return u, nil
 }
 
 func SetupCreateAutoPiJob(t *testing.T, jobID, deviceID, cmd, userDeviceID, state, commandResult string, pdb db.Store) *models.AutopiJob {
