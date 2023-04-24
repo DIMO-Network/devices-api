@@ -45,7 +45,7 @@ import (
 func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store, eventService services.EventService, producer sarama.SyncProducer, s3ServiceClient *s3.Client, s3NFTServiceClient *s3.Client) {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
-			return helpers.ErrorHandler(c, err, logger, settings.IsProduction())
+			return helpers.ErrorHandler(c, err, &logger, settings.IsProduction())
 		},
 		DisableStartupMessage: true,
 		ReadBufferSize:        16000,
@@ -150,7 +150,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		KeyRefreshUnknownKID: &keyRefreshUnknownKID,
 	})
 
-	v1Auth := app.Group("/v1")
+	v1Auth := app.Group("/v1", jwtAuth)
 
 	if settings.EnablePrivileges {
 		privilegeAuth := jwtware.New(jwtware.Config{
@@ -175,21 +175,15 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		vPriv.Post("/commands/frunk/open", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.OpenFrunk)
 	}
 
-	v1Auth.Use(jwtAuth)
-
 	// user's devices
 	v1Auth.Get("/user/devices/me", userDeviceController.GetUserDevices)
-
-	if settings.EnablePrivileges {
-		v1Auth.Get("/user/devices/shared", userDeviceController.GetSharedDevices)
-	}
+	v1Auth.Get("/user/devices/shared", userDeviceController.GetSharedDevices)
 
 	v1Auth.Post("/user/devices/fromvin", userDeviceController.RegisterDeviceForUserFromVIN)
 	v1Auth.Post("/user/devices/fromsmartcar", userDeviceController.RegisterDeviceForUserFromSmartcar)
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
 
-	v1Auth.Delete("/user/devices/:userDeviceID", userDeviceController.DeleteUserDevice)
-	v1Auth.Patch("/user/devices/:userDeviceID/vin", userDeviceController.UpdateVIN).Name("UpdateVIN")
+	v1Auth.Patch("/user/devices/:userDeviceID/vin", userDeviceController.UpdateVIN)
 	v1Auth.Patch("/user/devices/:userDeviceID/name", userDeviceController.UpdateName)
 	v1Auth.Patch("/user/devices/:userDeviceID/country-code", userDeviceController.UpdateCountryCode)
 	v1Auth.Patch("/user/devices/:userDeviceID/image", userDeviceController.UpdateImage)
@@ -262,7 +256,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	ownerMw := owner.New(pdb, usersClient, &logger)
 	udOwner := v1Auth.Group("/user/devices/:userDeviceID", ownerMw)
+
 	udOwner.Get("/status", userDeviceController.GetUserDeviceStatus)
+	udOwner.Delete("/", userDeviceController.DeleteUserDevice)
 
 	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService)
 

@@ -147,7 +147,7 @@ func getTestDbSettings() config.Settings {
 func SetupAppFiber(logger zerolog.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
-			return helpers.ErrorHandler(c, err, logger, false)
+			return helpers.ErrorHandler(c, err, &logger, false)
 		},
 	})
 	return app
