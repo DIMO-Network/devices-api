@@ -407,7 +407,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 
 	addr := "0x67B94473D81D0cd00849D563C94d0432Ac988B49"
 	_ = test.SetupCreateUserDeviceWithID(s.T(), "userID2", "device2", dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	_ = test.SetupCreateVehicleNFT(s.T(), "device2", "vin", big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
+	_ = test.SetupCreateVehicleNFT(s.T(), "device2", "vin", big.NewInt(1), null.BytesFrom(common.FromHex(addr)), s.pdb)
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*grpc.Integration{integration}, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId, dd[0].DeviceDefinitionId}).Times(1).Return(dd, nil)
