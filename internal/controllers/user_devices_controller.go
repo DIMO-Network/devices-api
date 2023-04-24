@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/shared/redis"
-	"golang.org/x/exp/slices"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -165,13 +164,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 		return nil, helpers.GrpcErrorToFiber(err, "failed to get integrations")
 	}
 
-	seen := make([]string, 0)
 	for _, d := range devices {
-		if slices.Contains(seen, d.ID) {
-			continue
-		}
-		seen = append(seen, d.ID)
-
 		deviceDefinition, err := filterDeviceDefinition(d.DeviceDefinitionID, deviceDefinitionResponse)
 		if err != nil {
 			return nil, err
@@ -281,36 +274,32 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 // @Security    BearerAuth
 // @Router      /user/devices/me [get]
 func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
-	// todo grpc call out to grpc service endpoint in the deviceDefinitionsService udc.deviceDefSvc.GetDeviceDefinitionsByIDs(c.Context(), []string{ "todo"} )
-
 	userID := helpers.GetUserID(c)
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
 	}
 
-	addr := common.Hex2Bytes(*user.EthereumAddress)
-	// TODO(AE): could reduce db calls with a nested select in UserDevices
-	devicesByNfts, err := models.VehicleNFTS(
-		qm.Select(models.VehicleNFTColumns.UserDeviceID),
-		models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(addr)),
-	).All(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
+	var query []qm.QueryMod
+
+	if user.EthereumAddress == nil {
+		query = []qm.QueryMod{
+			models.UserDeviceWhere.UserID.EQ(userID),
+		}
+	} else {
+		query = []qm.QueryMod{
+			qm.LeftOuterJoin(models.TableNames.VehicleNFTS + " ON " + models.VehicleNFTColumns.UserDeviceID + " = " + models.UserDeviceColumns.ID),
+			models.UserDeviceWhere.UserID.EQ(userID),
+			qm.Or2(models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.Hex2Bytes(*user.EthereumAddress)))),
+		}
 	}
 
-	ownedByAddr := make([]string, len(devicesByNfts))
-	for n, d := range devicesByNfts {
-		ownedByAddr[n] = d.UserDeviceID.String
-	}
-
-	devices, err := models.UserDevices(
-		models.UserDeviceWhere.UserID.EQ(userID),
-		qm.Or2(models.UserDeviceWhere.ID.IN(ownedByAddr)),
+	query = append(query,
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
-		qm.OrderBy(models.UserDeviceColumns.CreatedAt),
-	).All(c.Context(), udc.DBS().Reader)
+		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" + DESC"))
+
+	devices, err := models.UserDevices(query...).All(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
 	}
