@@ -223,8 +223,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Get("/autopi/task/:taskID", userDeviceController.GetAutoPiTask)
 
 	// New-style NFT mint, claim, pair.
-	v1Auth.Get("/user/devices/:userDeviceID/commands/mint", userDeviceController.GetMintDevice)
-	v1Auth.Post("/user/devices/:userDeviceID/commands/mint", userDeviceController.PostMintDevice).Name("PostMintDevice")
 	v1Auth.Post("/user/devices/:userDeviceID/commands/update-nft-image", userDeviceController.UpdateNFTImage)
 
 	v1Auth.Get("/autopi/unit/:unitID/commands/claim", userDeviceController.GetAutoPiClaimMessage)
@@ -259,6 +257,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	udOwner.Get("/status", userDeviceController.GetUserDeviceStatus)
 	udOwner.Delete("/", userDeviceController.DeleteUserDevice)
+	udOwner.Get("/commands/mint", userDeviceController.GetMintDevice)
+	udOwner.Post("/commands/mint", userDeviceController.PostMintDevice)
 
 	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService)
 
