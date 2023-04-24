@@ -449,6 +449,7 @@ func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*grpc.Integration{integration}, nil)
 
+	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: nil}, nil)
 	evID := "4"
 	s.nhtsaService.EXPECT().DecodeVIN("5YJYGDEE5MF085533").Return(&services.NHTSADecodeVINResponse{
 		Results: []services.NHTSAResult{
