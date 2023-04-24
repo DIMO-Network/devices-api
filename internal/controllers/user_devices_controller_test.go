@@ -425,7 +425,6 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 	body, _ := io.ReadAll(response.Body)
 
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-	s.T().Log(string(body))
 	result := gjson.Get(string(body), "userDevices.#.id")
 	assert.Len(s.T(), result.Array(), 2)
 	for _, id := range result.Array() {
