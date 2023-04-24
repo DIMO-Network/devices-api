@@ -438,6 +438,47 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 	assert.Equal(s.T(), "device2                    ", gjson.GetBytes(body, "userDevices.0.id").String())
 }
 
+func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
+	// arrange db, insert some user_devices
+	const (
+		// User
+		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
+		deviceID = "device1                    "
+		userID   = "userID"
+	)
+
+	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
+	ud := test.SetupCreateUserDeviceWithDeviceID(s.T(), userID, deviceID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	_ = test.SetupCreateAutoPiUnit(s.T(), userID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
+	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
+
+	addr := "67B94473D81D0cd00849D563C94d0432Ac988B49"
+
+	_ = test.SetupCreateVehicleNFT(s.T(), deviceID, "vin", big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
+
+	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
+	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*grpc.Integration{integration}, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Times(1).Return(dd, nil)
+
+	request := test.BuildRequest("GET", "/user/devices/me", "")
+	response, err := s.app.Test(request)
+	require.NoError(s.T(), err)
+	body, _ := io.ReadAll(response.Body)
+
+	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
+	result := gjson.Get(string(body), "userDevices.#.id")
+	assert.Len(s.T(), result.Array(), 1)
+
+	for _, id := range result.Array() {
+		assert.True(s.T(), id.Exists(), "expected to find the ID")
+	}
+
+	assert.Equal(s.T(), integration.Id, gjson.GetBytes(body, "userDevices.0.integrations.0.integrationId").String())
+	assert.Equal(s.T(), integration.Vendor, gjson.GetBytes(body, "userDevices.0.integrations.0.integrationVendor").String())
+	assert.Equal(s.T(), ud.ID, gjson.GetBytes(body, "userDevices.0.id").String())
+}
+
 func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 4)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Escape", 2020, integration)
