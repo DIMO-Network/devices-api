@@ -405,7 +405,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 	_ = test.SetupCreateAutoPiUnit(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
 
-	addr := "67B94473D81D0cd00849D563C94d0432Ac988B49"
+	addr := "0x67B94473D81D0cd00849D563C94d0432Ac988B49"
 	_ = test.SetupCreateUserDeviceWithID(s.T(), "userID2", "device2", dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	_ = test.SetupCreateVehicleNFT(s.T(), "device2", "vin", big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)

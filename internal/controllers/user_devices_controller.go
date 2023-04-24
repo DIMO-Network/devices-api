@@ -288,7 +288,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 		}
 	} else {
 		query = []qm.QueryMod{
-			qm.LeftOuterJoin(models.TableNames.VehicleNFTS + " ON " + models.VehicleNFTColumns.UserDeviceID + " = " + models.UserDeviceColumns.ID),
+			qm.LeftOuterJoin("devices_api." + models.TableNames.VehicleNFTS + " ON " + models.VehicleNFTColumns.UserDeviceID + " = " + models.UserDeviceColumns.ID),
 			models.UserDeviceWhere.UserID.EQ(userID),
 			qm.Or2(models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.Hex2Bytes(*user.EthereumAddress)))),
 		}
@@ -297,7 +297,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	query = append(query,
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
-		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" + DESC"))
+		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" DESC"))
 
 	devices, err := models.UserDevices(query...).All(c.Context(), udc.DBS().Reader)
 	if err != nil {
