@@ -349,9 +349,9 @@ func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevi
 			out.AftermarketDeviceTokenId = s.toUint64(amnft.TokenID)
 
 			if amnft.Beneficiary.Valid {
-				out.BeneficiaryAddress = amnft.Beneficiary.Bytes
+				out.AftermarketDeviceBeneficiaryAddress = amnft.Beneficiary.Bytes
 			} else {
-				out.BeneficiaryAddress = vnft.OwnerAddress.Bytes
+				out.AftermarketDeviceBeneficiaryAddress = vnft.OwnerAddress.Bytes
 			}
 		}
 	}
