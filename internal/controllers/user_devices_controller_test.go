@@ -428,19 +428,15 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 	s.T().Log(string(body))
 	result := gjson.Get(string(body), "userDevices.#.id")
 	assert.Len(s.T(), result.Array(), 2)
-	for n, id := range result.Array() {
-		path := fmt.Sprintf("userDevices.%d.", n)
+	for _, id := range result.Array() {
 		assert.True(s.T(), id.Exists(), "expected to find the ID")
-		if id.String() == s.testUserID {
-			assert.Equal(s.T(), ud.ID, id.String(), "expected user device ID to match")
-			assert.Equal(s.T(), integration.Id, gjson.GetBytes(body, path+"integrations.0.integrationId").String())
-			assert.Equal(s.T(), "device123", gjson.GetBytes(body, path+"integrations.0.externalId").String())
-			assert.Equal(s.T(), integration.Vendor, gjson.GetBytes(body, path+"integrations.0.integrationVendor").String())
-		}
-		if id.String() == userID2 {
-			assert.Equal(s.T(), "device2                    ", gjson.GetBytes(body, path+"id").String())
-		}
 	}
+
+	assert.Equal(s.T(), integration.Id, gjson.GetBytes(body, "userDevices.1.integrations.0.integrationId").String())
+	assert.Equal(s.T(), deviceID, gjson.GetBytes(body, "userDevices.1.integrations.0.externalId").String())
+	assert.Equal(s.T(), integration.Vendor, gjson.GetBytes(body, "userDevices.1.integrations.0.integrationVendor").String())
+	assert.Equal(s.T(), ud.ID, gjson.GetBytes(body, "userDevices.1.id").String())
+	assert.Equal(s.T(), "device2                    ", gjson.GetBytes(body, "userDevices.0.id").String())
 }
 
 func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
