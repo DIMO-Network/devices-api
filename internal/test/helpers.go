@@ -214,7 +214,7 @@ func SetupCreateUserDevice(t *testing.T, testUserID string, ddID string, metadat
 	return ud
 }
 
-func SetupCreateUserDeviceWithID(t *testing.T, testUserID string, deviceID string, ddID string, metadata *[]byte, vin string, pdb db.Store) models.UserDevice {
+func SetupCreateUserDeviceWithDeviceID(t *testing.T, testUserID string, deviceID string, ddID string, metadata *[]byte, vin string, pdb db.Store) models.UserDevice {
 	ud := models.UserDevice{
 		ID:                 deviceID,
 		UserID:             testUserID,
