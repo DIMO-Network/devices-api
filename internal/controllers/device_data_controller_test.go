@@ -15,6 +15,7 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/middleware/owner"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
@@ -60,10 +61,12 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 	autoPiTaskSvc := mock_services.NewMockAutoPiTaskService(mockCtrl)
 	drivlyTaskSvc := mock_services.NewMockDrivlyTaskService(mockCtrl)
 
+	usersClient := test.UsersClient{}
+
 	testUserID := "123123"
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &logger, deviceDefSvc, deviceDefIntSvc, &fakeEventService{}, scClient, scTaskSvc, teslaSvc, teslaTaskService, nil, nil, nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, drivlyTaskSvc, nil, nil, nil, nil)
 	app := fiber.New()
-	app.Get("/user/devices/:userDeviceID/status", test.AuthInjectorTestHandler(testUserID), c.GetUserDeviceStatus)
+	app.Get("/user/devices/:userDeviceID/status", test.AuthInjectorTestHandler(testUserID), owner.New(pdb, &usersClient, &logger), c.GetUserDeviceStatus)
 
 	t.Run("GET - device status merge autopi and smartcar", func(t *testing.T) {
 		// arrange db, insert some user_devices

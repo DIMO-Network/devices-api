@@ -101,12 +101,15 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 		s.autoPiIngest, s.deviceDefinitionRegistrar, s.autoPiTaskService, nil, nil, s.drivlyTaskSvc, nil, s.redisClient, nil, nil)
 
 	app := test.SetupAppFiber(*logger)
+
 	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.RegisterDeviceIntegration)
-	app.Post("/user2/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUser2), c.RegisterDeviceIntegration)
-	app.Get("/integrations", c.GetIntegrations)
 	app.Post("/user/devices/:userDeviceID/autopi/command", test.AuthInjectorTestHandler(testUserID), c.SendAutoPiCommand)
 	app.Get("/user/devices/:userDeviceID/autopi/command/:jobID", test.AuthInjectorTestHandler(testUserID), c.GetAutoPiCommandStatus)
+
+	app.Post("/user2/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUser2), c.RegisterDeviceIntegration)
+	app.Get("/integrations", c.GetIntegrations)
 	s.app = app
+
 }
 
 // TearDownTest after each test truncate tables

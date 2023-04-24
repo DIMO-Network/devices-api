@@ -16,9 +16,11 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/models"
+	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/docker/go-connections/nat"
 	"github.com/ericlagergren/decimal"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/pkg/errors"
@@ -31,6 +33,9 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const testDbName = "devices_api"
@@ -256,6 +261,39 @@ func SetupCreateVehicleNFT(t *testing.T, userDeviceID, vin string, tokenID *big.
 	return &vehicle
 }
 
+func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userID, userDeviceID string, tokenID *big.Int, pdb db.Store) *models.VehicleNFT {
+
+	ud := models.UserDevice{
+		ID:                 userDeviceID,
+		UserID:             userID,
+		DeviceDefinitionID: "ddID",
+		CountryCode:        null.StringFrom("USA"),
+		Name:               null.StringFrom("Chungus"),
+		VinIdentifier:      null.StringFrom("00000000000000001"),
+		VinConfirmed:       true,
+	}
+
+	err := ud.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
+	assert.NoError(t, err)
+
+	mint := models.MetaTransactionRequest{
+		ID: ksuid.New().String(),
+	}
+	err = mint.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
+	assert.NoError(t, err)
+
+	vehicle := models.VehicleNFT{
+		Vin:           "00000000000000001",
+		MintRequestID: mint.ID,
+		UserDeviceID:  null.StringFrom(userDeviceID),
+		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+		OwnerAddress:  null.BytesFrom(common.FromHex(addr.String())),
+	}
+	err = vehicle.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
+	assert.NoError(t, err)
+	return &vehicle
+}
+
 // SetupCreateUserDeviceAPIIntegration status set to Active, autoPiUnitId is optional
 func SetupCreateUserDeviceAPIIntegration(t *testing.T, autoPiUnitID, externalID, userDeviceID, integrationID string, pdb db.Store) models.UserDeviceAPIIntegration {
 	udapiInt := models.UserDeviceAPIIntegration{
@@ -272,6 +310,22 @@ func SetupCreateUserDeviceAPIIntegration(t *testing.T, autoPiUnitID, externalID,
 	err := udapiInt.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
 	assert.NoError(t, err)
 	return udapiInt
+}
+
+var MkAddr = func(i int) common.Address {
+	return common.BigToAddress(big.NewInt(int64(i)))
+}
+
+type UsersClient struct {
+	Store map[string]*pb.User
+}
+
+func (c *UsersClient) GetUser(_ context.Context, in *pb.GetUserRequest, _ ...grpc.CallOption) (*pb.User, error) {
+	u, ok := c.Store[in.Id]
+	if !ok {
+		return nil, status.Error(codes.NotFound, "No user with that id found.")
+	}
+	return u, nil
 }
 
 func SetupCreateAutoPiJob(t *testing.T, jobID, deviceID, cmd, userDeviceID, state, commandResult string, pdb db.Store) *models.AutopiJob {
