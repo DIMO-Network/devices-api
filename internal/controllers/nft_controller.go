@@ -129,6 +129,7 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 			{TraitType: "Make", Value: def.Make.Name},
 			{TraitType: "Model", Value: def.Type.Model},
 			{TraitType: "Year", Value: strconv.Itoa(int(def.Type.Year))},
+			{TraitType: "Creation Date", Value: strconv.FormatInt(nft.R.UserDevice.CreatedAt.Unix(), 10)},
 		},
 	})
 }
@@ -249,9 +250,10 @@ func (nc *NFTController) GetAftermarketDeviceNFTMetadata(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(NFTMetadataResp{
-		Image: fmt.Sprintf("%s/v1/aftermarket/device/%s/image", nc.Settings.DeploymentBaseURL, tid),
+		Name:        name,
+		Description: name + ", a hardware device",
+		Image:       fmt.Sprintf("%s/v1/aftermarket/device/%s/image", nc.Settings.DeploymentBaseURL, tid),
 		Attributes: []NFTAttribute{
-			{TraitType: "Name", Value: name},
 			{TraitType: "Ethereum Address", Value: common.BytesToAddress(unit.EthereumAddress.Bytes).String()},
 			{TraitType: "Serial Number", Value: unit.AutopiUnitID},
 		},
