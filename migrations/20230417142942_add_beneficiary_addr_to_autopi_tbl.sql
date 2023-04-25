@@ -3,7 +3,7 @@
 SET search_path = devices_api, public;
 
 ALTER TABLE autopi_units ADD COLUMN beneficiary bytea
-    CONSTRAINT autopi_units_beneficiary_address_check CHECK (length(beneficiary) = 20);
+    CONSTRAINT autopi_units_beneficiary_address_check CHECK (length(beneficiary) = 20) NOT VALID;
 
 -- +goose StatementEnd
 
