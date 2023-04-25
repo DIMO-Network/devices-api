@@ -30,8 +30,10 @@ type syncDeviceTemplatesCmd struct {
 	pdb      db.Store
 }
 
-func (*syncDeviceTemplatesCmd) Name() string     { return "sync-device-templates" }
-func (*syncDeviceTemplatesCmd) Synopsis() string { return "sync-device-templates args to stdout." }
+func (*syncDeviceTemplatesCmd) Name() string { return "sync-device-templates" }
+func (*syncDeviceTemplatesCmd) Synopsis() string {
+	return "iterate through all UD's and set the template to what our config says should be"
+}
 func (*syncDeviceTemplatesCmd) Usage() string {
 	return `sync-device-templates [] <some text>:
 	sync-device-templates args.
