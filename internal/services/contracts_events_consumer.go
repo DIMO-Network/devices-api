@@ -49,12 +49,20 @@ func (r EventName) String() string {
 const contractEventCEType = "zone.dimo.contract.event"
 
 type ContractEventData struct {
+	ChainID         int64           `json:"chainId"`
+	EventName       string          `json:"eventName"`
+	Block           Block           `json:"block,omitempty"`
 	Contract        common.Address  `json:"contract"`
 	TransactionHash common.Hash     `json:"transactionHash"`
-	Arguments       json.RawMessage `json:"arguments"`
 	EventSignature  common.Hash     `json:"eventSignature"`
-	EventName       string          `json:"eventName"`
+	Arguments       json.RawMessage `json:"arguments"`
 	// TODO(elffjs): chainID. Don't repeat this struct everywhere.
+}
+
+type Block struct {
+	Number *big.Int    `json:"number,omitempty"`
+	Hash   common.Hash `json:"hash,omitempty"`
+	Time   time.Time   `json:"time,omitempty"`
 }
 
 func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings) *ContractsEventsConsumer {
@@ -130,6 +138,7 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.Raw
 	case DCNNameChanged.String():
 		c.log.Info().Str("event", data.EventName).Msg("Event received")
 		return c.dcnNameChanged(&data)
+		// todo: also listen to NewNode, NewExpiration
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -283,6 +292,13 @@ func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
 }
 
 func (c *ContractsEventsConsumer) dcnNameChanged(e *ContractEventData) error {
+	var args contracts.FullAbiNameChanged
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return err
+	}
+	// todo persist to new table dcn_cache
+	// owner_address, nft_node_address, name, expiration, nft_node_block_create_time
+	//e.Block.Time - use the name changed block time
 
 	return nil
 }
