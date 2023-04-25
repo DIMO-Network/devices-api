@@ -66,7 +66,9 @@ func PrepareDeviceStatusInformation(deviceData models.UserDeviceDatumSlice, priv
 				fuelPercentRemaining := gjson.GetBytes(datum.Data.JSON, "fuelPercentRemaining")
 				if fuelPercentRemaining.Exists() {
 					f := fuelPercentRemaining.Float()
-					ds.FuelPercentRemaining = &f
+					if f >= 0.01 {
+						ds.FuelPercentRemaining = &f
+					}
 				}
 				batteryCapacity := gjson.GetBytes(datum.Data.JSON, "batteryCapacity")
 				if batteryCapacity.Exists() {
@@ -142,8 +144,8 @@ func PrepareDeviceStatusInformation(deviceData models.UserDeviceDatumSlice, priv
 
 // calculateRange returns the current estimated range based on fuel tank capacity, mpg, and fuelPercentRemaining and returns it in Kilometers
 func (udc *UserDevicesController) calculateRange(ctx context.Context, deviceDefinitionID string, deviceStyleID null.String, fuelPercentRemaining float64) (*float64, error) {
-	if fuelPercentRemaining == 0 {
-		return nil, errors.New("fuelPercentRemaining is 0 so cannot calculate range")
+	if fuelPercentRemaining <= 0.01 {
+		return nil, errors.New("fuelPercentRemaining lt 0.01 so cannot calculate range")
 	}
 
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, deviceDefinitionID)
