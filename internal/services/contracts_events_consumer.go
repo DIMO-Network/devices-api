@@ -39,6 +39,7 @@ const (
 	AftermarketDeviceNodeMinted EventName = "AftermarketDeviceNodeMinted"
 	Transfer                    EventName = "Transfer"
 	BeneficiarySet              EventName = "BeneficiarySet"
+	DCNNameChanged              EventName = "NameChanged"
 )
 
 func (r EventName) String() string {
@@ -126,6 +127,9 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.Raw
 			c.log.Info().Str("event", data.EventName).Msg("Event received")
 			return c.beneficiarySet(&data)
 		}
+	case DCNNameChanged.String():
+		c.log.Info().Str("event", data.EventName).Msg("Event received")
+		return c.dcnNameChanged(&data)
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -274,6 +278,11 @@ func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
 		c.log.Error().Err(err).Msg("Failed to set beneficiary.")
 		return err
 	}
+
+	return nil
+}
+
+func (c *ContractsEventsConsumer) dcnNameChanged(e *ContractEventData) error {
 
 	return nil
 }
