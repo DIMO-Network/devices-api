@@ -94,11 +94,31 @@ func (s *userDeviceService) GetUserDeviceByTokenId(ctx context.Context, req *pb.
 }
 
 func (s *userDeviceService) ListUserDevicesForUser(ctx context.Context, req *pb.ListUserDevicesForUserRequest) (*pb.ListUserDevicesForUserResponse, error) {
-	devices, err := models.UserDevices(
-		models.UserDeviceWhere.UserID.EQ(req.UserId),
+	var query []qm.QueryMod
+
+	if req.UserId == "" {
+		return nil, status.Error(codes.InvalidArgument, "missing userID paramter")
+	}
+
+	if req.EthereumAddress == "" {
+		query = []qm.QueryMod{
+			models.UserDeviceWhere.UserID.EQ(req.UserId),
+		}
+	} else {
+		query = []qm.QueryMod{
+			qm.LeftOuterJoin("devices_api." + models.TableNames.VehicleNFTS + " ON " + models.VehicleNFTColumns.UserDeviceID + " = " + models.UserDeviceColumns.ID),
+			models.UserDeviceWhere.UserID.EQ(req.UserId),
+			qm.Or2(models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(req.EthereumAddress)))),
+		}
+	}
+
+	query = append(query,
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAutopiUnit)),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-	).All(ctx, s.dbs().Reader)
+		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" DESC"),
+	)
+
+	devices, err := models.UserDevices(query...).All(ctx, s.dbs().Reader)
 	if err != nil {
 		s.logger.Err(err).Str("userId", req.UserId).Msg("Database failure retrieving user's devices.")
 		return nil, status.Error(codes.Internal, "Internal error.")
@@ -111,30 +131,6 @@ func (s *userDeviceService) ListUserDevicesForUser(ctx context.Context, req *pb.
 	}
 
 	return &pb.ListUserDevicesForUserResponse{UserDevices: out}, nil
-}
-
-func (s *userDeviceService) ListDevicesForWalletAddress(ctx context.Context, req *pb.ListDevicesForWalletAddressRequest) (*pb.ListDevicesForWalletAddressResponse, error) {
-	if req.UserAddress == "" {
-		return nil, status.Error(codes.InvalidArgument, "Missing wallet address arguement")
-	}
-	vNft, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(req.UserAddress))),
-		qm.Load(models.VehicleNFTRels.UserDevice),
-		qm.Load(models.VehicleNFTRels.VehicleTokenAutopiUnit),
-		qm.Load(qm.Rels(models.VehicleNFTRels.UserDevice, models.UserDeviceRels.UserDeviceAPIIntegrations)),
-	).All(ctx, s.dbs().Reader)
-
-	if err != nil {
-		return nil, status.Error(codes.Internal, "Internal error.")
-	}
-
-	out := make([]*pb.UserDevice, len(vNft))
-
-	for i := 0; i < len(vNft); i++ {
-		out[i] = s.deviceModelToAPI(vNft[i].R.UserDevice)
-	}
-
-	return &pb.ListDevicesForWalletAddressResponse{UserDevices: out}, nil
 }
 
 func (s *userDeviceService) ApplyHardwareTemplate(ctx context.Context, req *pb.ApplyHardwareTemplateRequest) (*pb.ApplyHardwareTemplateResponse, error) {
