@@ -1738,10 +1738,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		Str("route", c.Route().Name).
 		Logger()
 
-	userDevice, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		models.UserDeviceWhere.UserID.EQ(userID),
-	).One(c.Context(), udc.DBS().Reader)
+	userDevice, err := models.FindUserDevice(c.Context(), udc.DBS().Reader, userDeviceID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
 	}
