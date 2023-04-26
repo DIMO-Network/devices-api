@@ -11,8 +11,6 @@ import (
 	"time"
 
 	smartcar "github.com/smartcar/go-sdk"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/constants"
