@@ -364,7 +364,13 @@ func (c *ContractsEventsConsumer) dcnNewExpiration(e *ContractEventData) error {
 			NFTNodeAddress: args.Node, // todo: how do we set this?
 		}
 	}
-	dcn.Expiration = null.TimeFrom(args.Expiration) // todo figure this out
+	t := time.Unix(args.Expiration.Int64(), 0)
+	dcn.Expiration = null.TimeFrom(t)
+
+	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{"nft_node_address"}, boil.Infer(), boil.Infer())
+	if err != nil {
+		return errors.Wrapf(err, "failed to upsert dcn with node: %s", args.Node)
+	}
 
 	return nil
 }
