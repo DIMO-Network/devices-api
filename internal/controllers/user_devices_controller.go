@@ -871,7 +871,7 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 		if err != nil {
 			return err
 		}
-		if existing {
+		if udc.Settings.IsProduction() && existing {
 			return fiber.NewError(fiber.StatusConflict, "VIN already in use by another vehicle.")
 		}
 		userDevice.VinConfirmed = true
