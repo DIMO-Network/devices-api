@@ -54,6 +54,7 @@ func (f *fakeEventService) Emit(event *services.Event) error {
 type UserDevicesControllerTestSuite struct {
 	suite.Suite
 	pdb             db.Store
+	controller      *UserDevicesController
 	container       testcontainers.Container
 	ctx             context.Context
 	mockCtrl        *gomock.Controller
@@ -109,8 +110,13 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	app.Get("/user/devices/:userDeviceID/valuations", test.AuthInjectorTestHandler(s.testUserID), c.GetValuations)
 	app.Get("/user/devices/:userDeviceID/range", test.AuthInjectorTestHandler(s.testUserID), c.GetRange)
 	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID), c.RefreshUserDeviceStatus)
+	s.controller = &c
 
 	s.app = app
+}
+
+func (s *UserDevicesControllerTestSuite) SetupTest() {
+	s.controller.Settings.Environment = "prod"
 }
 
 // TearDownTest after each test truncate tables
@@ -419,6 +425,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*grpc.Integration{integration}, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId, dd[0].DeviceDefinitionId}).Times(1).Return(dd, nil)
 
+	s.controller.Settings.Environment = "dev"
 	request := test.BuildRequest("GET", "/user/devices/me", "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
@@ -446,6 +453,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
 		deviceID = "device1                    "
 		userID   = "userID"
 	)
+	s.controller.Settings.Environment = "dev"
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
