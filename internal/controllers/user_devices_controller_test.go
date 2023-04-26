@@ -6,12 +6,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/DIMO-Network/shared"
+	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/redis/mocks"
 
 	"github.com/DIMO-Network/shared/db"
@@ -52,6 +54,7 @@ func (f *fakeEventService) Emit(event *services.Event) error {
 type UserDevicesControllerTestSuite struct {
 	suite.Suite
 	pdb             db.Store
+	controller      *UserDevicesController
 	container       testcontainers.Container
 	ctx             context.Context
 	mockCtrl        *gomock.Controller
@@ -65,6 +68,7 @@ type UserDevicesControllerTestSuite struct {
 	scClient        *mock_services.MockSmartcarClient
 	redisClient     *mocks.MockCacheService
 	autoPiSvc       *mock_services.MockAutoPiAPIService
+	usersClient     *mock_services.MockUserServiceClient
 }
 
 // SetupSuite starts container db
@@ -87,11 +91,12 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	autoPiTaskSvc := mock_services.NewMockAutoPiTaskService(mockCtrl)
 	s.redisClient = mocks.NewMockCacheService(mockCtrl)
 	s.autoPiSvc = mock_services.NewMockAutoPiAPIService(mockCtrl)
+	s.usersClient = mock_services.NewMockUserServiceClient(mockCtrl)
 
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
-		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, s.drivlyTaskSvc, nil, s.redisClient, nil, nil)
+		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, s.drivlyTaskSvc, nil, s.redisClient, nil, s.usersClient)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUser)
 	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUserFromVIN)
@@ -105,8 +110,13 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	app.Get("/user/devices/:userDeviceID/valuations", test.AuthInjectorTestHandler(s.testUserID), c.GetValuations)
 	app.Get("/user/devices/:userDeviceID/range", test.AuthInjectorTestHandler(s.testUserID), c.GetRange)
 	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID), c.RefreshUserDeviceStatus)
+	s.controller = &c
 
 	s.app = app
+}
+
+func (s *UserDevicesControllerTestSuite) SetupTest() {
+	s.controller.Settings.Environment = "prod"
 }
 
 // TearDownTest after each test truncate tables
@@ -391,15 +401,71 @@ func (s *UserDevicesControllerTestSuite) TestPostInvalidDefinitionID() {
 
 func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 	// arrange db, insert some user_devices
+	const (
+		// Device 1
+		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
+		deviceID = "device1"
+
+		// Device 2
+		userID2   = "user2"
+		deviceID2 = "device2"
+	)
+
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	const (
-		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-		deviceID = "device123"
-	)
 	_ = test.SetupCreateAutoPiUnit(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
+
+	addr := "67B94473D81D0cd00849D563C94d0432Ac988B49"
+	_ = test.SetupCreateUserDeviceWithDeviceID(s.T(), userID2, deviceID2, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	_ = test.SetupCreateVehicleNFT(s.T(), deviceID2, "vin", big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
+
+	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
+	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*grpc.Integration{integration}, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId, dd[0].DeviceDefinitionId}).Times(1).Return(dd, nil)
+
+	s.controller.Settings.Environment = "dev"
+	request := test.BuildRequest("GET", "/user/devices/me", "")
+	response, err := s.app.Test(request)
+	require.NoError(s.T(), err)
+	body, _ := io.ReadAll(response.Body)
+
+	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
+	result := gjson.Get(string(body), "userDevices.#.id")
+	assert.Len(s.T(), result.Array(), 2)
+	for _, id := range result.Array() {
+		assert.True(s.T(), id.Exists(), "expected to find the ID")
+	}
+
+	assert.Equal(s.T(), integration.Id, gjson.GetBytes(body, "userDevices.1.integrations.0.integrationId").String())
+	assert.Equal(s.T(), deviceID, gjson.GetBytes(body, "userDevices.1.integrations.0.externalId").String())
+	assert.Equal(s.T(), integration.Vendor, gjson.GetBytes(body, "userDevices.1.integrations.0.integrationVendor").String())
+	assert.Equal(s.T(), ud.ID, gjson.GetBytes(body, "userDevices.1.id").String())
+	assert.Equal(s.T(), "device2                    ", gjson.GetBytes(body, "userDevices.0.id").String())
+}
+
+func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
+	// arrange db, insert some user_devices
+	const (
+		// User
+		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
+		deviceID = "device1                    "
+		userID   = "userID"
+	)
+	s.controller.Settings.Environment = "dev"
+
+	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
+	ud := test.SetupCreateUserDeviceWithDeviceID(s.T(), userID, deviceID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	_ = test.SetupCreateAutoPiUnit(s.T(), userID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
+	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
+
+	addr := "67B94473D81D0cd00849D563C94d0432Ac988B49"
+
+	_ = test.SetupCreateVehicleNFT(s.T(), deviceID, "vin", big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
+
+	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*grpc.Integration{integration}, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Times(1).Return(dd, nil)
 
@@ -409,16 +475,16 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 	body, _ := io.ReadAll(response.Body)
 
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-
 	result := gjson.Get(string(body), "userDevices.#.id")
 	assert.Len(s.T(), result.Array(), 1)
+
 	for _, id := range result.Array() {
 		assert.True(s.T(), id.Exists(), "expected to find the ID")
-		assert.Equal(s.T(), ud.ID, id.String(), "expected user device ID to match")
 	}
+
 	assert.Equal(s.T(), integration.Id, gjson.GetBytes(body, "userDevices.0.integrations.0.integrationId").String())
-	assert.Equal(s.T(), "device123", gjson.GetBytes(body, "userDevices.0.integrations.0.externalId").String())
 	assert.Equal(s.T(), integration.Vendor, gjson.GetBytes(body, "userDevices.0.integrations.0.integrationVendor").String())
+	assert.Equal(s.T(), ud.ID, gjson.GetBytes(body, "userDevices.0.id").String())
 }
 
 func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
@@ -427,6 +493,7 @@ func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*grpc.Integration{integration}, nil)
 
+	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: nil}, nil)
 	evID := "4"
 	s.nhtsaService.EXPECT().DecodeVIN("5YJYGDEE5MF085533").Return(&services.NHTSADecodeVINResponse{
 		Results: []services.NHTSAResult{

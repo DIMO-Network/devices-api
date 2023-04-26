@@ -274,15 +274,32 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 // @Security    BearerAuth
 // @Router      /user/devices/me [get]
 func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
-	// todo grpc call out to grpc service endpoint in the deviceDefinitionsService udc.deviceDefSvc.GetDeviceDefinitionsByIDs(c.Context(), []string{ "todo"} )
-
 	userID := helpers.GetUserID(c)
-	devices, err := models.UserDevices(
-		models.UserDeviceWhere.UserID.EQ(userID),
+	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
+	}
+
+	var query []qm.QueryMod
+
+	if udc.Settings.IsProduction() || user.EthereumAddress == nil {
+		query = []qm.QueryMod{
+			models.UserDeviceWhere.UserID.EQ(userID),
+		}
+	} else {
+		query = []qm.QueryMod{
+			qm.LeftOuterJoin("devices_api." + models.TableNames.VehicleNFTS + " ON " + models.VehicleNFTColumns.UserDeviceID + " = " + models.UserDeviceColumns.ID),
+			models.UserDeviceWhere.UserID.EQ(userID),
+			qm.Or2(models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.Hex2Bytes(*user.EthereumAddress)))),
+		}
+	}
+
+	query = append(query,
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
-		qm.OrderBy(models.UserDeviceColumns.CreatedAt),
-	).All(c.Context(), udc.DBS().Reader)
+		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" DESC"))
+
+	devices, err := models.UserDevices(query...).All(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
 	}
