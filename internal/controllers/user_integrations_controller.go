@@ -1672,6 +1672,7 @@ func (udc *UserDevicesController) PostUnclaimAutoPi(c *fiber.Ctx) error {
 	requestID := ksuid.New().String()
 
 	unit.OwnerAddress = null.Bytes{}
+	unit.UserID = null.String{}
 	unit.ClaimMetaTransactionRequestID = null.String{}
 	unit.UnpairRequestID = null.String{}
 	if _, err := unit.Update(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
