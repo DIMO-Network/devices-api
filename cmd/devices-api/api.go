@@ -141,9 +141,31 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// webhooks, performs signature validation
 	v1.Post(constants.AutoPiWebhookPath, webhooksController.ProcessCommand)
 
-	// secured paths
 	keyRefreshInterval := time.Hour
 	keyRefreshUnknownKID := true
+	privilegeAuth := jwtware.New(jwtware.Config{
+		KeySetURL:            settings.TokenExchangeJWTKeySetURL,
+		KeyRefreshInterval:   &keyRefreshInterval,
+		KeyRefreshUnknownKID: &keyRefreshUnknownKID,
+	})
+
+	vPriv := app.Group("/v1/vehicle/:tokenID", privilegeAuth)
+
+	tk := pr.New(pr.Config{
+		Log: &logger,
+	})
+
+	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
+
+	// vehicle command privileges
+	vPriv.Get("/status", tk.OneOf(vehicleAddr, []int64{controllers.NonLocationData, controllers.CurrentLocation, controllers.AllTimeLocation}), nftController.GetVehicleStatus)
+	vPriv.Post("/commands/doors/unlock", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.UnlockDoors)
+	vPriv.Post("/commands/doors/lock", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.LockDoors)
+	vPriv.Post("/commands/trunk/open", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.OpenTrunk)
+	vPriv.Post("/commands/frunk/open", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.OpenFrunk)
+
+	// Traditional tokens
+
 	jwtAuth := jwtware.New(jwtware.Config{
 		KeySetURL:            settings.JwtKeySetURL,
 		KeyRefreshInterval:   &keyRefreshInterval,
@@ -151,29 +173,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	})
 
 	v1Auth := app.Group("/v1", jwtAuth)
-
-	if settings.EnablePrivileges {
-		privilegeAuth := jwtware.New(jwtware.Config{
-			KeySetURL:            settings.TokenExchangeJWTKeySetURL,
-			KeyRefreshInterval:   &keyRefreshInterval,
-			KeyRefreshUnknownKID: &keyRefreshUnknownKID,
-		})
-
-		vPriv := app.Group("/v1/vehicle/:tokenID", privilegeAuth)
-
-		tk := pr.New(pr.Config{
-			Log: &logger,
-		})
-
-		vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
-
-		// vehicle command privileges
-		vPriv.Get("/status", tk.OneOf(vehicleAddr, []int64{controllers.NonLocationData, controllers.CurrentLocation, controllers.AllTimeLocation}), nftController.GetVehicleStatus)
-		vPriv.Post("/commands/doors/unlock", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.UnlockDoors)
-		vPriv.Post("/commands/doors/lock", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.LockDoors)
-		vPriv.Post("/commands/trunk/open", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.OpenTrunk)
-		vPriv.Post("/commands/frunk/open", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.OpenFrunk)
-	}
 
 	// user's devices
 	v1Auth.Get("/user/devices/me", userDeviceController.GetUserDevices)
