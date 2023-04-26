@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
+	pb_devices "github.com/DIMO-Network/devices-api/pkg/grpc"
+	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
@@ -62,11 +64,12 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 	drivlyTaskSvc := mock_services.NewMockDrivlyTaskService(mockCtrl)
 
 	usersClient := test.UsersClient{}
+	devicesClient := &test.DevicesClient{}
 
 	testUserID := "123123"
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &logger, deviceDefSvc, deviceDefIntSvc, &fakeEventService{}, scClient, scTaskSvc, teslaSvc, teslaTaskService, nil, nil, nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, drivlyTaskSvc, nil, nil, nil, nil)
 	app := fiber.New()
-	app.Get("/user/devices/:userDeviceID/status", test.AuthInjectorTestHandler(testUserID), owner.New(pdb, &usersClient, &logger), c.GetUserDeviceStatus)
+	app.Get("/user/devices/:userDeviceID/status", test.AuthInjectorTestHandler(testUserID), owner.New(pdb, &usersClient, devicesClient, &logger), c.GetUserDeviceStatus)
 
 	t.Run("GET - device status merge autopi and smartcar", func(t *testing.T) {
 		// arrange db, insert some user_devices
@@ -100,6 +103,11 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 		}
 		err = autoPiData.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 		assert.NoError(t, err)
+
+		usersClient.Store = map[string]*pb.User{}
+		devicesClient.Store = map[string]*pb_devices.UserDevice{}
+		usersClient.Store[testUserID] = &pb.User{Id: testUserID}
+		devicesClient.Store[ud.ID] = &pb_devices.UserDevice{Id: ud.ID, UserId: testUserID}
 
 		request := test.BuildRequest("GET", "/user/devices/"+ud.ID+"/status", "")
 		response, _ := app.Test(request)

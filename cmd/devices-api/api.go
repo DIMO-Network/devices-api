@@ -60,6 +60,13 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		cipher = new(shared.ROT13Cipher)
 	}
 
+	devicesConn, err := grpc.Dial(settings.DevicesAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to dial devices grpc")
+	}
+	defer devicesConn.Close()
+	deviceClient := pb.NewUserDeviceServiceClient(devicesConn)
+
 	gcon, err := grpc.Dial(settings.UsersAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed dialing users-api.")
@@ -252,7 +259,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Delete("/documents/:id", documentsController.DeleteDocument)
 	v1Auth.Get("/documents/:id/download", documentsController.DownloadDocument)
 
-	ownerMw := owner.New(pdb, usersClient, &logger)
+	ownerMw := owner.New(pdb, usersClient, deviceClient, &logger)
 	udOwner := v1Auth.Group("/user/devices/:userDeviceID", ownerMw)
 
 	udOwner.Get("/status", userDeviceController.GetUserDeviceStatus)

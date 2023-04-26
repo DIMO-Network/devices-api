@@ -6,15 +6,13 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
+	pb_devices "github.com/DIMO-Network/devices-api/pkg/grpc"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
-	"github.com/segmentio/ksuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 func TestOwnerMiddleware(t *testing.T) {
@@ -29,7 +27,8 @@ func TestOwnerMiddleware(t *testing.T) {
 	logger := test.Logger()
 
 	usersClient := &test.UsersClient{}
-	middleware := New(pdb, usersClient, logger)
+	devicesClient := &test.DevicesClient{}
+	middleware := New(pdb, usersClient, devicesClient, logger)
 
 	app := test.SetupAppFiber(*logger)
 	app.Get("/:userDeviceID", test.AuthInjectorTestHandler(userID), middleware, func(c *fiber.Ctx) error {
@@ -43,9 +42,10 @@ func TestOwnerMiddleware(t *testing.T) {
 	cases := []struct {
 		Name                string
 		UserDeviceUserID    string
-		NFTOwnerAddr        string
+		DeviceUserID        string
 		UserExists          bool
 		UserEthereumAddress string
+		DeviceOwnerAddress  string
 		ExpectedCode        int
 	}{
 		{
@@ -54,7 +54,9 @@ func TestOwnerMiddleware(t *testing.T) {
 		},
 		{
 			Name:             "UserIDMatch",
+			UserExists:       true,
 			UserDeviceUserID: userID,
+			DeviceUserID:     userID,
 			ExpectedCode:     200,
 		},
 		{
@@ -70,7 +72,7 @@ func TestOwnerMiddleware(t *testing.T) {
 		},
 		{
 			Name:                "UserIDMismatchNotMinted",
-			UserDeviceUserID:    otherUserID,
+			UserDeviceUserID:    userID,
 			UserExists:          true,
 			UserEthereumAddress: userAddr,
 			ExpectedCode:        404,
@@ -78,7 +80,8 @@ func TestOwnerMiddleware(t *testing.T) {
 		{
 			Name:                "UserIDMismatchEthereumAddressMatch",
 			UserDeviceUserID:    otherUserID,
-			NFTOwnerAddr:        userAddr,
+			DeviceUserID:        userID,
+			DeviceOwnerAddress:  userAddr,
 			UserExists:          true,
 			UserEthereumAddress: userAddr,
 			ExpectedCode:        200,
@@ -86,7 +89,7 @@ func TestOwnerMiddleware(t *testing.T) {
 		{
 			Name:                "UserIDMismatchEthereumAddressMismatch",
 			UserDeviceUserID:    otherUserID,
-			NFTOwnerAddr:        otherAddr,
+			DeviceOwnerAddress:  otherAddr,
 			UserExists:          true,
 			UserEthereumAddress: userAddr,
 			ExpectedCode:        404,
@@ -98,28 +101,8 @@ func TestOwnerMiddleware(t *testing.T) {
 			_, err := models.UserDevices().DeleteAll(ctx, pdb.DBS().Writer)
 			require.NoError(t, err)
 
-			if c.UserDeviceUserID != "" {
-				ud := models.UserDevice{ID: userDeviceID, UserID: c.UserDeviceUserID}
-				require.NoError(t, ud.Insert(ctx, pdb.DBS().Writer, boil.Infer()))
-			}
-
-			if c.NFTOwnerAddr != "" {
-				mtr := models.MetaTransactionRequest{
-					ID: ksuid.New().String(),
-				}
-
-				require.NoError(t, mtr.Insert(ctx, pdb.DBS().Writer, boil.Infer()))
-
-				vnft := models.VehicleNFT{
-					MintRequestID: mtr.ID,
-					UserDeviceID:  null.StringFrom(userDeviceID),
-					OwnerAddress:  null.BytesFrom(common.FromHex(c.NFTOwnerAddr)),
-				}
-
-				require.NoError(t, vnft.Insert(ctx, pdb.DBS().Writer, boil.Infer()))
-			}
-
 			usersClient.Store = map[string]*pb.User{}
+			devicesClient.Store = map[string]*pb_devices.UserDevice{}
 
 			if c.UserExists {
 				u := &pb.User{Id: userID}
@@ -127,6 +110,15 @@ func TestOwnerMiddleware(t *testing.T) {
 					u.EthereumAddress = &c.UserEthereumAddress
 				}
 				usersClient.Store[userID] = u
+			}
+
+			if c.DeviceUserID != "" {
+				d := &pb_devices.UserDevice{Id: userDeviceID}
+				if c.DeviceOwnerAddress != "" {
+					d.OwnerAddress = common.Hex2Bytes(c.DeviceOwnerAddress)
+				}
+				d.UserId = userID
+				devicesClient.Store[userDeviceID] = d
 			}
 
 			res, err := app.Test(request)
