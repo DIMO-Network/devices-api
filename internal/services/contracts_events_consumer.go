@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"math/big"
 	"time"
 
@@ -40,6 +41,8 @@ const (
 	Transfer                    EventName = "Transfer"
 	BeneficiarySet              EventName = "BeneficiarySet"
 	DCNNameChanged              EventName = "NameChanged"
+	DCNNewNode                  EventName = "NewNode"
+	DCNNewExpiration            EventName = "NewExpiration"
 )
 
 func (r EventName) String() string {
@@ -138,7 +141,12 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.Raw
 	case DCNNameChanged.String():
 		c.log.Info().Str("event", data.EventName).Msg("Event received")
 		return c.dcnNameChanged(&data)
-		// todo: also listen to NewNode, NewExpiration
+	case DCNNewNode.String():
+		c.log.Info().Str("event", data.EventName).Msg("Event received")
+		return c.dcnNewNode(&data)
+	case DCNNewExpiration.String():
+		c.log.Info().Str("event", data.EventName).Msg("Event received")
+		return c.dcnNewExpiration(&data)
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -296,9 +304,67 @@ func (c *ContractsEventsConsumer) dcnNameChanged(e *ContractEventData) error {
 	if err := json.Unmarshal(e.Arguments, &args); err != nil {
 		return err
 	}
-	// todo persist to new table dcn_cache
-	// owner_address, nft_node_address, name, expiration, nft_node_block_create_time
-	//e.Block.Time - use the name changed block time
+	// see if it exists first
+	// todo: will this lookup work like this with byte[32]?
+	dcn, err := models.DCNS(qm.Where("nft_node_address = ?", args.Node)).One(context.Background(), c.db.DBS().Reader)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return errors.Wrap(err, "failed to query for existing dcn")
+	}
+	if dcn == nil {
+		dcn = &models.DCN{
+			NFTNodeAddress: args.Node, // todo: how do we set this?
+		}
+	}
+	dcn.Name = null.StringFrom(args.Name)
+
+	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{"nft_node_address"}, boil.Infer(), boil.Infer())
+	if err != nil {
+		return errors.Wrapf(err, "failed to upsert dcn with name: %s", args.Name)
+	}
+
+	return nil
+}
+
+func (c *ContractsEventsConsumer) dcnNewNode(e *ContractEventData) error {
+	var args contracts.DcnRegistryNewNode
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return err
+	}
+	dcn, err := models.DCNS(qm.Where("nft_node_address = ?", args.Node)).One(context.Background(), c.db.DBS().Reader)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return errors.Wrap(err, "failed to query for existing dcn")
+	}
+	if dcn == nil {
+		dcn = &models.DCN{
+			NFTNodeAddress: args.Node, // todo: how do we set this?
+		}
+	}
+	dcn.OwnerAddress = null.BytesFrom(args.Owner.Bytes())
+	dcn.NFTNodeBlockCreateTime = null.TimeFrom(e.Block.Time)
+
+	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{"nft_node_address"}, boil.Infer(), boil.Infer())
+	if err != nil {
+		return errors.Wrapf(err, "failed to upsert dcn with node: %s", args.Node)
+	}
+
+	return nil
+}
+
+func (c *ContractsEventsConsumer) dcnNewExpiration(e *ContractEventData) error {
+	var args contracts.DcnRegistryNewExpiration
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return err
+	}
+	dcn, err := models.DCNS(qm.Where("nft_node_address = ?", args.Node)).One(context.Background(), c.db.DBS().Reader)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return errors.Wrap(err, "failed to query for existing dcn")
+	}
+	if dcn == nil {
+		dcn = &models.DCN{
+			NFTNodeAddress: args.Node, // todo: how do we set this?
+		}
+	}
+	dcn.Expiration = null.TimeFrom(args.Expiration) // todo figure this out
 
 	return nil
 }
