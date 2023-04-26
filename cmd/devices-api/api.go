@@ -173,6 +173,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	})
 
 	v1Auth := app.Group("/v1", jwtAuth)
+	ownerMw := owner.New(pdb, usersClient, &logger)
+	udOwner := v1Auth.Group("/user/devices/:userDeviceID", ownerMw)
 
 	// user's devices
 	v1Auth.Get("/user/devices/me", userDeviceController.GetUserDevices)
@@ -182,13 +184,13 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices/fromsmartcar", userDeviceController.RegisterDeviceForUserFromSmartcar)
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
 
-	v1Auth.Patch("/user/devices/:userDeviceID/vin", userDeviceController.UpdateVIN)
-	v1Auth.Patch("/user/devices/:userDeviceID/name", userDeviceController.UpdateName)
-	v1Auth.Patch("/user/devices/:userDeviceID/country-code", userDeviceController.UpdateCountryCode)
-	v1Auth.Patch("/user/devices/:userDeviceID/image", userDeviceController.UpdateImage)
-	v1Auth.Get("/user/devices/:userDeviceID/valuations", userDeviceController.GetValuations)
-	v1Auth.Get("/user/devices/:userDeviceID/offers", userDeviceController.GetOffers)
-	v1Auth.Get("/user/devices/:userDeviceID/range", userDeviceController.GetRange)
+	udOwner.Patch("/vin", userDeviceController.UpdateVIN)
+	udOwner.Patch("/name", userDeviceController.UpdateName)
+	udOwner.Patch("/country-code", userDeviceController.UpdateCountryCode)
+	udOwner.Patch("/image", userDeviceController.UpdateImage)
+	udOwner.Get("/valuations", userDeviceController.GetValuations)
+	udOwner.Get("/offers", userDeviceController.GetOffers)
+	udOwner.Get("/range", userDeviceController.GetRange)
 
 	v1Auth.Post("/user/devices/:userDeviceID/error-codes", userDeviceController.QueryDeviceErrorCodes)
 	v1Auth.Get("/user/devices/:userDeviceID/error-codes", userDeviceController.GetUserDeviceErrorCodeQueries)
@@ -250,9 +252,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/documents", documentsController.PostDocument)
 	v1Auth.Delete("/documents/:id", documentsController.DeleteDocument)
 	v1Auth.Get("/documents/:id/download", documentsController.DownloadDocument)
-
-	ownerMw := owner.New(pdb, usersClient, &logger)
-	udOwner := v1Auth.Group("/user/devices/:userDeviceID", ownerMw)
 
 	udOwner.Get("/status", userDeviceController.GetUserDeviceStatus)
 	udOwner.Delete("/", userDeviceController.DeleteUserDevice)
