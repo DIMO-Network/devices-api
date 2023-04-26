@@ -1514,13 +1514,10 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/commands/mint [get]
 func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
-	userDeviceID := c.Params("userDeviceID")
 	userID := helpers.GetUserID(c)
+	userDeviceID := c.Params("userDeviceID")
 
-	userDevice, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		models.UserDeviceWhere.UserID.EQ(userID),
-	).One(c.Context(), udc.DBS().Reader)
+	userDevice, err := models.FindUserDevice(c.Context(), udc.DBS().Reader, userDeviceID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
 	}

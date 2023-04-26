@@ -93,13 +93,6 @@ func (s *userDeviceService) GetUserDeviceByTokenId(ctx context.Context, req *pb.
 	return out, nil
 }
 
-// ListUserDevicesForUser godoc
-// @Description List devices for user and optionally those attached to user wallet addressed based on a flag
-// @Tags        user-devices
-// @Param       user_id path string true "User ID"
-// @Param       ethereum_address path string true "Ethereum Address"
-// @Success     200 {object} pb.ListUserDevicesForUserResponse
-// @Router      /UserDeviceService/ListUserDevicesForUser
 func (s *userDeviceService) ListUserDevicesForUser(ctx context.Context, req *pb.ListUserDevicesForUserRequest) (*pb.ListUserDevicesForUserResponse, error) {
 	var query []qm.QueryMod
 
