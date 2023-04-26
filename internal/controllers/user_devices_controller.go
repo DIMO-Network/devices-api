@@ -282,7 +282,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 
 	var query []qm.QueryMod
 
-	if user.EthereumAddress == nil {
+	if udc.Settings.IsProduction() || user.EthereumAddress == nil {
 		query = []qm.QueryMod{
 			models.UserDeviceWhere.UserID.EQ(userID),
 		}
