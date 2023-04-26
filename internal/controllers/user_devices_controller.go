@@ -1732,11 +1732,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
 	userID := helpers.GetUserID(c)
 
-	logger := udc.log.With().
-		Str("userId", userID).
-		Str("userDeviceId", userDeviceID).
-		Str("route", c.Route().Name).
-		Logger()
+	logger := helpers.GetLogger(c, udc.log)
 
 	userDevice, err := models.FindUserDevice(c.Context(), udc.DBS().Reader, userDeviceID)
 	if err != nil {
@@ -1760,8 +1756,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
-		udc.log.Err(err).Msg("Couldn't retrieve user record.")
-		return opaqueInternalError
+		return err
 	}
 
 	if user.EthereumAddress == nil {
@@ -1899,7 +1894,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	udc.log.Info().Str("userDeviceId", userDevice.ID).Str("requestId", requestID).Msg("Submitted metatransaction request.")
+	logger.Info().Msgf("Submitted metatransaction request %s", requestID)
 
 	return client.MintVehicleSign(requestID, makeTokenID, realAddr, []contracts.AttributeInfoPair{
 		{Attribute: "Make", Info: deviceMake},

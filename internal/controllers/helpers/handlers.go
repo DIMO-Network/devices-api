@@ -125,7 +125,7 @@ func GrpcErrorToFiber(err error, msgAppend string) error {
 	return errors.Wrap(err, msgAppend)
 }
 
-func getLogger(c *fiber.Ctx, d *zerolog.Logger) *zerolog.Logger {
+func GetLogger(c *fiber.Ctx, d *zerolog.Logger) *zerolog.Logger {
 	m := c.Locals("logger")
 	if m == nil {
 		return d
@@ -141,7 +141,7 @@ func getLogger(c *fiber.Ctx, d *zerolog.Logger) *zerolog.Logger {
 
 // ErrorHandler custom handler to log recovered errors using our logger and return json instead of string
 func ErrorHandler(c *fiber.Ctx, err error, logger *zerolog.Logger, isProduction bool) error {
-	logger = getLogger(c, logger)
+	logger = GetLogger(c, logger)
 
 	code := fiber.StatusInternalServerError // Default 500 statuscode
 
