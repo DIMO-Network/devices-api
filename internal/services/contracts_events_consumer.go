@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"math/big"
 	"time"
 
@@ -299,25 +298,26 @@ func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
 	return nil
 }
 
+// dcnNameChanged processes an event of type NameChanged. Upserts DCN record, setting the Name
 func (c *ContractsEventsConsumer) dcnNameChanged(e *ContractEventData) error {
 	var args contracts.FullAbiNameChanged
 	if err := json.Unmarshal(e.Arguments, &args); err != nil {
 		return err
 	}
 	// see if it exists first
-	// todo: will this lookup work like this with byte[32]?
-	dcn, err := models.DCNS(qm.Where("nft_node_address = ?", args.Node)).One(context.Background(), c.db.DBS().Reader)
+	dcn, err := models.DCNS(models.DCNWhere.NFTNodeAddress.EQ(args.Node[:])).One(context.Background(), c.db.DBS().Reader)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return errors.Wrap(err, "failed to query for existing dcn")
 	}
 	if dcn == nil {
 		dcn = &models.DCN{
-			NFTNodeAddress: args.Node, // todo: how do we set this?
+			NFTNodeAddress: args.Node[:],
 		}
 	}
 	dcn.Name = null.StringFrom(args.Name)
 
-	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{"nft_node_address"}, boil.Infer(), boil.Infer())
+	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{models.DCNColumns.NFTNodeAddress},
+		boil.Whitelist(models.DCNColumns.Name, models.DCNColumns.UpdatedAt), boil.Infer())
 	if err != nil {
 		return errors.Wrapf(err, "failed to upsert dcn with name: %s", args.Name)
 	}
@@ -325,24 +325,27 @@ func (c *ContractsEventsConsumer) dcnNameChanged(e *ContractEventData) error {
 	return nil
 }
 
+// dcnNewNode processes an event of type NewNode. Upserts DCN record, setting the Owner Address and Block creation time
 func (c *ContractsEventsConsumer) dcnNewNode(e *ContractEventData) error {
 	var args contracts.DcnRegistryNewNode
 	if err := json.Unmarshal(e.Arguments, &args); err != nil {
 		return err
 	}
-	dcn, err := models.DCNS(qm.Where("nft_node_address = ?", args.Node)).One(context.Background(), c.db.DBS().Reader)
+	//question: should this be an insert always?
+	dcn, err := models.DCNS(models.DCNWhere.NFTNodeAddress.EQ(args.Node[:])).One(context.Background(), c.db.DBS().Reader)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return errors.Wrap(err, "failed to query for existing dcn")
 	}
 	if dcn == nil {
 		dcn = &models.DCN{
-			NFTNodeAddress: args.Node, // todo: how do we set this?
+			NFTNodeAddress: args.Node[:],
 		}
 	}
 	dcn.OwnerAddress = null.BytesFrom(args.Owner.Bytes())
 	dcn.NFTNodeBlockCreateTime = null.TimeFrom(e.Block.Time)
 
-	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{"nft_node_address"}, boil.Infer(), boil.Infer())
+	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{models.DCNColumns.NFTNodeAddress},
+		boil.Whitelist(models.DCNColumns.OwnerAddress, models.DCNColumns.NFTNodeBlockCreateTime, models.DCNColumns.UpdatedAt), boil.Infer())
 	if err != nil {
 		return errors.Wrapf(err, "failed to upsert dcn with node: %s", args.Node)
 	}
@@ -350,24 +353,26 @@ func (c *ContractsEventsConsumer) dcnNewNode(e *ContractEventData) error {
 	return nil
 }
 
+// dcnNewExpiration processes an event of type NewExpiration. Upserts DCN record, setting the Expiration
 func (c *ContractsEventsConsumer) dcnNewExpiration(e *ContractEventData) error {
 	var args contracts.DcnRegistryNewExpiration
 	if err := json.Unmarshal(e.Arguments, &args); err != nil {
 		return err
 	}
-	dcn, err := models.DCNS(qm.Where("nft_node_address = ?", args.Node)).One(context.Background(), c.db.DBS().Reader)
+	dcn, err := models.DCNS(models.DCNWhere.NFTNodeAddress.EQ(args.Node[:])).One(context.Background(), c.db.DBS().Reader)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return errors.Wrap(err, "failed to query for existing dcn")
 	}
 	if dcn == nil {
 		dcn = &models.DCN{
-			NFTNodeAddress: args.Node, // todo: how do we set this?
+			NFTNodeAddress: args.Node[:],
 		}
 	}
 	t := time.Unix(args.Expiration.Int64(), 0)
 	dcn.Expiration = null.TimeFrom(t)
 
-	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{"nft_node_address"}, boil.Infer(), boil.Infer())
+	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{models.DCNColumns.NFTNodeAddress},
+		boil.Whitelist(models.DCNColumns.Expiration, models.DCNColumns.UpdatedAt), boil.Infer())
 	if err != nil {
 		return errors.Wrapf(err, "failed to upsert dcn with node: %s", args.Node)
 	}
