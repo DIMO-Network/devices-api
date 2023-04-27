@@ -288,9 +288,9 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 		}
 	} else {
 		query = []qm.QueryMod{
-			qm.LeftOuterJoin("devices_api." + models.TableNames.VehicleNFTS + " ON " + models.VehicleNFTColumns.UserDeviceID + " = " + models.UserDeviceColumns.ID),
+			qm.LeftOuterJoin("devices_api." + models.TableNames.VehicleNFTS + " ON " + models.VehicleNFTTableColumns.UserDeviceID + " = " + models.UserDeviceTableColumns.ID),
 			models.UserDeviceWhere.UserID.EQ(userID),
-			qm.Or2(models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.Hex2Bytes(*user.EthereumAddress)))),
+			qm.Or2(models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.HexToAddress(*user.EthereumAddress).Bytes()))),
 		}
 	}
 
