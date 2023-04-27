@@ -82,6 +82,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, pdb.DBS, &logger)
 	autoPi := autopi.NewIntegration(pdb.DBS, ddSvc, autoPiSvc, autoPiTaskService, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &logger)
 	openAI := services.NewOpenAI(&logger, *settings)
+	dcnSvc := registry.NewDcnService(settings)
 
 	redisCache := redis.NewRedisCacheService(settings.IsProduction(), redis.Settings{
 		URL:       settings.RedisURL,
@@ -130,13 +131,15 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1.Get("/device-definitions/:id/integrations", cacheHandler, deviceControllers.GetDeviceIntegrationsByID)
 	v1.Get("/device-definitions", deviceControllers.GetDeviceDefinitionByMMY)
 
-	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc)
+	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc, dcnSvc)
 	v1.Get("/vehicle/:tokenID", nftController.GetNFTMetadata)
 	v1.Get("/vehicle/:tokenID/image", nftController.GetNFTImage)
 
-	v1.Get("/aftermarket/device/:tokenID", nftController.GetAftermarketDeviceNFTMetadata)
+	v1.Get("/aftermarket/device/:tokenID", cacheHandler, nftController.GetAftermarketDeviceNFTMetadata)
 	v1.Get("/aftermarket/device/:tokenID/image", nftController.GetAftermarketDeviceNFTImage)
 	v1.Get("/manufacturer/:tokenID", nftController.GetManufacturerNFTMetadata)
+
+	v1.Get("/dcn/:nodeAddress", nftController.GetDcnNFTMetadata)
 
 	// webhooks, performs signature validation
 	v1.Post(constants.AutoPiWebhookPath, webhooksController.ProcessCommand)
@@ -173,8 +176,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	})
 
 	v1Auth := app.Group("/v1", jwtAuth)
-	ownerMw := owner.New(pdb, usersClient, &logger)
-	udOwner := v1Auth.Group("/user/devices/:userDeviceID", ownerMw)
 
 	// user's devices
 	v1Auth.Get("/user/devices/me", userDeviceController.GetUserDevices)
@@ -183,17 +184,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices/fromvin", userDeviceController.RegisterDeviceForUserFromVIN)
 	v1Auth.Post("/user/devices/fromsmartcar", userDeviceController.RegisterDeviceForUserFromSmartcar)
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
-
-	udOwner.Patch("/vin", userDeviceController.UpdateVIN)
-	udOwner.Patch("/name", userDeviceController.UpdateName)
-	udOwner.Patch("/country-code", userDeviceController.UpdateCountryCode)
-	udOwner.Patch("/image", userDeviceController.UpdateImage)
-	udOwner.Get("/valuations", userDeviceController.GetValuations)
-	udOwner.Get("/offers", userDeviceController.GetOffers)
-	udOwner.Get("/range", userDeviceController.GetRange)
-
-	udOwner.Post("/error-codes", userDeviceController.QueryDeviceErrorCodes)
-	udOwner.Get("/error-codes", userDeviceController.GetUserDeviceErrorCodeQueries)
 
 	// device integrations
 	v1Auth.Get("/user/devices/:userDeviceID/integrations/:integrationID", userDeviceController.GetUserDeviceIntegration)
@@ -253,10 +243,24 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Delete("/documents/:id", documentsController.DeleteDocument)
 	v1Auth.Get("/documents/:id/download", documentsController.DownloadDocument)
 
+	ownerMw := owner.New(pdb, usersClient, &logger)
+	udOwner := v1Auth.Group("/user/devices/:userDeviceID", ownerMw)
+
 	udOwner.Get("/status", userDeviceController.GetUserDeviceStatus)
 	udOwner.Delete("/", userDeviceController.DeleteUserDevice)
 	udOwner.Get("/commands/mint", userDeviceController.GetMintDevice)
 	udOwner.Post("/commands/mint", userDeviceController.PostMintDevice)
+
+	udOwner.Patch("/vin", userDeviceController.UpdateVIN)
+	udOwner.Patch("/name", userDeviceController.UpdateName)
+	udOwner.Patch("/country-code", userDeviceController.UpdateCountryCode)
+	udOwner.Patch("/image", userDeviceController.UpdateImage)
+	udOwner.Get("/valuations", userDeviceController.GetValuations)
+	udOwner.Get("/offers", userDeviceController.GetOffers)
+	udOwner.Get("/range", userDeviceController.GetRange)
+
+	udOwner.Post("/error-codes", userDeviceController.QueryDeviceErrorCodes)
+	udOwner.Get("/error-codes", userDeviceController.GetUserDeviceErrorCodeQueries)
 
 	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService)
 

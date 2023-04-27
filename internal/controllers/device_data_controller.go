@@ -8,13 +8,14 @@ import (
 	"sort"
 	"time"
 
+	"github.com/DIMO-Network/devices-api/internal/services"
+
 	"github.com/DIMO-Network/devices-api/internal/appmetrics"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
 	smartcar "github.com/smartcar/go-sdk"
 	"github.com/tidwall/gjson"
@@ -42,7 +43,7 @@ type GetUserDeviceErrorCodeQueriesResponseItem struct {
 	RequestedAt time.Time `json:"requestedAt"`
 }
 
-func PrepareDeviceStatusInformation(deviceData models.UserDeviceDatumSlice, privilegeIDs []int64) DeviceSnapshot {
+func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDefinitionService, deviceData models.UserDeviceDatumSlice, deviceDefinitionID string, deviceStyleID null.String, privilegeIDs []int64) DeviceSnapshot {
 	ds := DeviceSnapshot{}
 	// order the records by odometer asc so that if they both have it, the latter one replaces with more recent values.
 	sortByJSONOdometerAsc(deviceData)
@@ -139,16 +140,23 @@ func PrepareDeviceStatusInformation(deviceData models.UserDeviceDatumSlice, priv
 		}
 	}
 
+	if ds.Range == nil && ds.FuelPercentRemaining != nil {
+		calcRange, err := calculateRange(ctx, ddSvc, deviceDefinitionID, deviceStyleID, *ds.FuelPercentRemaining)
+		if err == nil {
+			ds.Range = calcRange
+		}
+	}
+
 	return ds
 }
 
 // calculateRange returns the current estimated range based on fuel tank capacity, mpg, and fuelPercentRemaining and returns it in Kilometers
-func (udc *UserDevicesController) calculateRange(ctx context.Context, deviceDefinitionID string, deviceStyleID null.String, fuelPercentRemaining float64) (*float64, error) {
+func calculateRange(ctx context.Context, ddSvc services.DeviceDefinitionService, deviceDefinitionID string, deviceStyleID null.String, fuelPercentRemaining float64) (*float64, error) {
 	if fuelPercentRemaining <= 0.01 {
 		return nil, errors.New("fuelPercentRemaining lt 0.01 so cannot calculate range")
 	}
 
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, deviceDefinitionID)
+	dd, err := ddSvc.GetDeviceDefinitionByID(ctx, deviceDefinitionID)
 
 	if err != nil {
 		return nil, helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+deviceDefinitionID)
@@ -178,7 +186,6 @@ func (udc *UserDevicesController) calculateRange(ctx context.Context, deviceDefi
 // @Router      /user/devices/{userDeviceID}/status [get]
 func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 	userDeviceID := c.Locals("userDeviceID").(string)
-	logger := c.Locals("logger").(*zerolog.Logger)
 
 	userDevice, err := models.FindUserDevice(c.Context(), udc.DBS().Reader, userDeviceID)
 	if err != nil {
@@ -197,15 +204,8 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "No status updates yet.")
 	}
 
-	ds := PrepareDeviceStatusInformation(deviceData, []int64{NonLocationData, CurrentLocation, AllTimeLocation})
-
-	if ds.Range == nil && ds.FuelPercentRemaining != nil {
-		if calcRange, err := udc.calculateRange(c.Context(), userDevice.DeviceDefinitionID, userDevice.DeviceStyleID, *ds.FuelPercentRemaining); err != nil {
-			logger.Warn().Err(err).Str("deviceDefinitionId", userDevice.DeviceDefinitionID).Msg("Could not get range.")
-		} else {
-			ds.Range = calcRange
-		}
-	}
+	ds := PrepareDeviceStatusInformation(c.Context(), udc.DeviceDefSvc, deviceData, userDevice.DeviceDefinitionID,
+		userDevice.DeviceStyleID, []int64{NonLocationData, CurrentLocation, AllTimeLocation})
 
 	return c.JSON(ds)
 }
@@ -277,13 +277,11 @@ var errorCodeRegex = regexp.MustCompile(`^.{5,8}$`)
 // @Router      /user/devices/{userDeviceID}/error-codes [post]
 func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 
 	logger := helpers.GetLogger(c, udc.log)
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
-		models.UserDeviceWhere.UserID.EQ(userID),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -344,14 +342,12 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/error-codes [get]
 func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) error {
-	udi := c.Params("userDeviceID")
 	userID := helpers.GetUserID(c)
 
 	logger := helpers.GetLogger(c, udc.log)
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.UserID.EQ(userID),
-		models.UserDeviceWhere.ID.EQ(udi),
 		qm.Load(models.UserDeviceRels.ErrorCodeQueries, qm.OrderBy(models.ErrorCodeQueryColumns.CreatedAt+" DESC")),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {

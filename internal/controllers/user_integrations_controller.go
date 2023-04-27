@@ -11,8 +11,6 @@ import (
 	"time"
 
 	smartcar "github.com/smartcar/go-sdk"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -1654,25 +1652,11 @@ func (udc *UserDevicesController) PostUnclaimAutoPi(c *fiber.Ctx) error {
 		return err
 	}
 
-	if unit.PairRequestID.Valid {
-		return fiber.NewError(fiber.StatusConflict, "Unpair device first.")
-	}
-
-	if unit.TokenID.IsZero() || !unit.EthereumAddress.Valid {
+	if unit.TokenID.IsZero() {
 		return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted.")
 	}
 
-	if !unit.OwnerAddress.Valid {
-		return fiber.NewError(fiber.StatusConflict, "Device not claimed.")
-	}
-
 	apToken := unit.TokenID.Int(nil)
-
-	conn, err := grpc.Dial(udc.Settings.UsersAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
 
 	client := registry.Client{
 		Producer:     udc.producer,
@@ -1688,6 +1672,7 @@ func (udc *UserDevicesController) PostUnclaimAutoPi(c *fiber.Ctx) error {
 	requestID := ksuid.New().String()
 
 	unit.OwnerAddress = null.Bytes{}
+	unit.UserID = null.String{}
 	unit.ClaimMetaTransactionRequestID = null.String{}
 	unit.UnpairRequestID = null.String{}
 	if _, err := unit.Update(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {

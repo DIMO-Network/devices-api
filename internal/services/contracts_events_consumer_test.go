@@ -596,3 +596,47 @@ func (s cEventsTestHelper) destroy() {
 		s.t.Fatal(err)
 	}
 }
+
+func TestVehicleTransfer(t *testing.T) {
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer container.Terminate(ctx)
+
+	logger := zerolog.Nop()
+	settings := &config.Settings{DIMORegistryChainID: 1, VehicleNFTAddress: "0x881d40237659c251811cec9c364ef91dc08d300c"}
+
+	mtr := models.MetaTransactionRequest{ID: "xdd"}
+	mtr.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+
+	nft := models.VehicleNFT{MintRequestID: "xdd", OwnerAddress: null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")), TokenID: types.NewNullDecimal(decimal.New(5, 0))}
+	nft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings)
+	err := consumer.processMessage(&message.Message{Payload: []byte(`
+	{
+		"type": "zone.dimo.contract.event",
+		"source": "chain/1",
+		"data": {
+			"contract": "0x881d40237659c251811cec9c364ef91dc08d300c",
+			"eventName": "Transfer",
+			"arguments": {
+				"from": "0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5",
+				"to": "0x4675c7e5baafbffbca748158becba61ef3b0a263",
+				"tokenId": 5
+			}
+		}
+	}
+	`)})
+	if err != nil {
+		t.Errorf("failed to process event: %v", err)
+	}
+
+	nft.Reload(ctx, pdb.DBS().Reader)
+	if !nft.OwnerAddress.Valid {
+		t.Fatal("token owner became null")
+	}
+
+	if common.BytesToAddress(nft.OwnerAddress.Bytes) != common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263") {
+		t.Errorf("expected owner to become %s, but was %s", common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263"), common.BytesToAddress(nft.OwnerAddress.Bytes))
+	}
+}

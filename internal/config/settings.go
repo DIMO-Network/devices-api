@@ -75,6 +75,7 @@ type Settings struct {
 	OpenAISecretKey                   string      `yaml:"OPENAI_SECRET_KEY"`
 	ChatGPTURL                        string      `yaml:"CHATGPT_URL"`
 	AftermarketDeviceContractAddress  string      `yaml:"AFTERMARKET_DEVICE_CONTRACT_ADDRESS"`
+	DIMOContractAPIURL                string      `yaml:"DIMO_CONTRACT_APIURL"`
 }
 
 func (s *Settings) IsProduction() bool {
