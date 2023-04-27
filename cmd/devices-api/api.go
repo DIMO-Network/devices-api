@@ -185,27 +185,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices/fromsmartcar", userDeviceController.RegisterDeviceForUserFromSmartcar)
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
 
-	// device integrations
-	v1Auth.Get("/user/devices/:userDeviceID/integrations/:integrationID", userDeviceController.GetUserDeviceIntegration)
-	v1Auth.Delete("/user/devices/:userDeviceID/integrations/:integrationID", userDeviceController.DeleteUserDeviceIntegration)
-	v1Auth.Post("/user/devices/:userDeviceID/integrations/:integrationID", userDeviceController.RegisterDeviceIntegration)
-	v1Auth.Post("/user/devices/:userDeviceID/commands/refresh", userDeviceController.RefreshUserDeviceStatus)
-
-	// Device commands.
-	v1Auth.Get("/user/devices/:userDeviceID/integrations/:integrationID/commands/:requestID", userDeviceController.GetCommandRequestStatus)
-	v1Auth.Post("/user/devices/:userDeviceID/integrations/:integrationID/commands/doors/unlock", userDeviceController.UnlockDoors)
-	v1Auth.Post("/user/devices/:userDeviceID/integrations/:integrationID/commands/doors/lock", userDeviceController.LockDoors)
-	v1Auth.Post("/user/devices/:userDeviceID/integrations/:integrationID/commands/trunk/open", userDeviceController.OpenTrunk)
-	v1Auth.Post("/user/devices/:userDeviceID/integrations/:integrationID/commands/frunk/open", userDeviceController.OpenFrunk)
-
-	// Data sharing opt-in.
-	// TODO(elffjs): Opt out.
-	v1Auth.Post("/user/devices/:userDeviceID/commands/opt-in", userDeviceController.DeviceOptIn).Name("DeviceOptIn")
-
 	v1Auth.Get("/integrations", userDeviceController.GetIntegrations)
 	// autopi specific
-	v1Auth.Post("/user/devices/:userDeviceID/autopi/command", userDeviceController.SendAutoPiCommand)
-	v1Auth.Get("/user/devices/:userDeviceID/autopi/command/:jobID", userDeviceController.GetAutoPiCommandStatus)
 	v1Auth.Get("/autopi/unit/:unitID", userDeviceController.GetAutoPiUnitInfo)
 	v1Auth.Get("/autopi/unit/:unitID/is-online", userDeviceController.GetIsAutoPiOnline)
 	// delete below line once confirmed no active apps using it.
@@ -213,22 +194,11 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/autopi/unit/:unitID/update", userDeviceController.StartAutoPiUpdateTask)
 	v1Auth.Get("/autopi/task/:taskID", userDeviceController.GetAutoPiTask)
 
-	// New-style NFT mint, claim, pair.
-	v1Auth.Post("/user/devices/:userDeviceID/commands/update-nft-image", userDeviceController.UpdateNFTImage)
-
 	v1Auth.Get("/autopi/unit/:unitID/commands/claim", userDeviceController.GetAutoPiClaimMessage)
 	v1Auth.Post("/autopi/unit/:unitID/commands/claim", userDeviceController.PostClaimAutoPi).Name("PostClaimAutoPi")
 	if !settings.IsProduction() {
 		v1Auth.Post("/autopi/unit/:unitID/commands/unclaim", userDeviceController.PostUnclaimAutoPi)
 	}
-
-	v1Auth.Get("/user/devices/:userDeviceID/autopi/commands/pair", userDeviceController.GetAutoPiPairMessage)
-	v1Auth.Post("/user/devices/:userDeviceID/autopi/commands/pair", userDeviceController.PostPairAutoPi).Name("PostPairAutoPi")
-
-	v1Auth.Get("/user/devices/:userDeviceID/autopi/commands/unpair", userDeviceController.GetAutoPiUnpairMessage)
-	v1Auth.Post("/user/devices/:userDeviceID/autopi/commands/unpair", userDeviceController.UnpairAutoPi)
-
-	v1Auth.Post("/user/devices/:userDeviceID/autopi/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
 
 	// geofence
 	v1Auth.Post("/user/geofences", geofenceController.Create)
@@ -261,6 +231,36 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	udOwner.Post("/error-codes", userDeviceController.QueryDeviceErrorCodes)
 	udOwner.Get("/error-codes", userDeviceController.GetUserDeviceErrorCodeQueries)
+
+	// New-style NFT mint, claim, pair.
+	udOwner.Post("/commands/update-nft-image", userDeviceController.UpdateNFTImage)
+
+	// device integrations
+	udOwner.Get("/integrations/:integrationID", userDeviceController.GetUserDeviceIntegration)
+	udOwner.Delete("/integrations/:integrationID", userDeviceController.DeleteUserDeviceIntegration)
+	udOwner.Post("/integrations/:integrationID", userDeviceController.RegisterDeviceIntegration)
+	udOwner.Post("/commands/refresh", userDeviceController.RefreshUserDeviceStatus)
+
+	// Device commands.
+	udOwner.Get("/integrations/:integrationID/commands/:requestID", userDeviceController.GetCommandRequestStatus)
+
+	udOwner.Post("/integrations/:integrationID/commands/doors/unlock", userDeviceController.UnlockDoors)
+	udOwner.Post("/integrations/:integrationID/commands/doors/lock", userDeviceController.LockDoors)
+	udOwner.Post("/integrations/:integrationID/commands/trunk/open", userDeviceController.OpenTrunk)
+	udOwner.Post("/integrations/:integrationID/commands/frunk/open", userDeviceController.OpenFrunk)
+
+	udOwner.Post("/commands/opt-in", userDeviceController.DeviceOptIn)
+
+	udOwner.Get("/autopi/commands/pair", userDeviceController.GetAutoPiPairMessage)
+	udOwner.Post("/autopi/commands/pair", userDeviceController.PostPairAutoPi)
+
+	udOwner.Get("/autopi/commands/unpair", userDeviceController.GetAutoPiUnpairMessage)
+	udOwner.Post("/autopi/commands/unpair", userDeviceController.UnpairAutoPi)
+
+	udOwner.Post("/autopi/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
+
+	udOwner.Post("/autopi/command", userDeviceController.SendAutoPiCommand)
+	udOwner.Get("/autopi/command/:jobID", userDeviceController.GetAutoPiCommandStatus)
 
 	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService)
 

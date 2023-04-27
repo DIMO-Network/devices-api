@@ -253,7 +253,7 @@ func (udc *UserDevicesController) SendAutoPiCommand(c *fiber.Ctx) error {
 		logger.Err(err).Msg("error finding user device autopi integration")
 		return err
 	}
-	apUnit, err := models.AutopiUnits(models.AutopiUnitWhere.AutopiDeviceID.EQ(udai.ExternalID), models.AutopiUnitWhere.UserID.EQ(null.StringFrom(userID))).
+	apUnit, err := models.AutopiUnits(models.AutopiUnitWhere.AutopiDeviceID.EQ(udai.ExternalID)).
 		One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		return err
@@ -280,7 +280,6 @@ func (udc *UserDevicesController) SendAutoPiCommand(c *fiber.Ctx) error {
 // @Param       requestID path string true "Command request ID"
 // @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/{requestID} [get]
 func (udc *UserDevicesController) GetCommandRequestStatus(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
 	requestID := c.Params("requestID")
 
 	// Don't actually validate userDeviceID or integrationID, just following a URL pattern.
@@ -295,10 +294,6 @@ func (udc *UserDevicesController) GetCommandRequestStatus(c *fiber.Ctx) error {
 		}
 		udc.log.Err(err).Msg("Failed to search for command status.")
 		return opaqueInternalError
-	}
-
-	if cr.R.UserDevice.UserID != userID {
-		return fiber.NewError(fiber.StatusNotFound, "No command request with that id found.")
 	}
 
 	dcr := CommandRequestStatusResp{
@@ -325,24 +320,16 @@ type CommandRequestStatusResp struct {
 //
 // Grabs user ID, device ID, and integration ID from Ctx.
 func (udc *UserDevicesController) handleEnqueueCommand(c *fiber.Ctx, commandPath string) error {
-	userID := helpers.GetUserID(c)
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
 
-	logger := udc.log.With().
-		Str("feature", "commands").
-		Str("userId", userID).
-		Str("userDeviceId", userDeviceID).
-		Str("integrationId", integrationID).
-		Str("commandPath", commandPath).
-		Logger()
+	logger := helpers.GetLogger(c, udc.log)
 
 	logger.Info().Msg("Received command request.")
 
 	// Checking both that the device exists and that the user owns it.
 	deviceOK, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		models.UserDeviceWhere.UserID.EQ(userID),
 	).Exists(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		logger.Err(err).Msg("Failed to search for device.")
@@ -505,7 +492,6 @@ func (udc *UserDevicesController) OpenFrunk(c *fiber.Ctx) error {
 // @Security    BearerAuth
 // @Router      /user/devices/:userDeviceID/autopi/command/:jobID [get]
 func (udc *UserDevicesController) GetAutoPiCommandStatus(c *fiber.Ctx) error {
-	_ = helpers.GetUserID(c)
 	userDeviceID := c.Params("userDeviceID")
 	jobID := c.Params("jobID")
 
@@ -517,9 +503,9 @@ func (udc *UserDevicesController) GetAutoPiCommandStatus(c *fiber.Ctx) error {
 		return err
 	}
 	if dbJob.UserDeviceID.String != userDeviceID {
-		return c.Status(fiber.StatusBadRequest).SendString("no job found")
+		return fiber.NewError(fiber.StatusNotFound, "No job found")
 	}
-	return c.Status(fiber.StatusOK).JSON(job)
+	return c.JSON(job)
 }
 
 // GetAutoPiUnitInfo godoc
@@ -961,7 +947,7 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 
 	userDeviceID := c.Params("userDeviceID")
 
-	logger := udc.log.With().Str("userId", userID).Str("userDeviceId", userDeviceID).Logger()
+	logger := helpers.GetLogger(c, udc.log)
 
 	logger.Info().Msg("Got AutoPi pair request.")
 
@@ -973,7 +959,6 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		models.UserDeviceWhere.UserID.EQ(userID),
 		qm.Load(models.UserDeviceRels.VehicleNFT),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
@@ -1102,7 +1087,7 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 
 	userDeviceID := c.Params("userDeviceID")
 
-	logger := udc.log.With().Str("userId", userID).Str("userDeviceId", userDeviceID).Str("route", c.Route().Name).Logger()
+	logger := helpers.GetLogger(c, udc.log)
 	logger.Info().Msg("Got AutoPi pair request.")
 
 	autoPiInt, err := udc.DeviceDefIntSvc.GetAutoPiIntegration(c.Context())
@@ -1123,11 +1108,6 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
-	if ud.UserID != userID {
-		// Err on the side of privacy.
-		return fiber.NewError(fiber.StatusNotFound, "No device with that id found.")
-	}
-
 	var pairReq AutoPiPairRequest
 	err = c.BodyParser(&pairReq)
 	if err != nil {
@@ -1141,8 +1121,6 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 		if err != nil {
 			return err
 		}
-
-		logger = logger.With().Str("autoPiUnitId", unitID.String()).Logger()
 
 		autoPiUnit, err = models.AutopiUnits(
 			models.AutopiUnitWhere.AutopiUnitID.EQ(unitID.String()),
@@ -1336,16 +1314,13 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Router /user/devices/:userDeviceID/autopi/commands/cloud-repair [post]
 func (udc *UserDevicesController) CloudRepairAutoPi(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
-
 	userDeviceID := c.Params("userDeviceID")
 
-	logger := udc.log.With().Str("userId", userID).Str("userDeviceId", userDeviceID).Logger()
+	logger := helpers.GetLogger(c, udc.log)
 	logger.Info().Msg("Got AutoPi pair request.")
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		models.UserDeviceWhere.UserID.EQ(userID),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAutopiUnit)),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
@@ -1399,7 +1374,7 @@ func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 
 	userDeviceID := c.Params("userDeviceID")
 
-	logger := udc.log.With().Str("userId", userID).Str("userDeviceId", userDeviceID).Logger()
+	logger := helpers.GetLogger(c, udc.log)
 	logger.Info().Msg("Got AutoPi unpair request.")
 
 	// TODO(elffjs): Is SELECT ... FOR UPDATE better here?
@@ -1411,7 +1386,6 @@ func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		models.UserDeviceWhere.UserID.EQ(userID),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAutopiUnit)),
 	).One(c.Context(), tx)
 	if err != nil {
@@ -1523,7 +1497,7 @@ func (udc *UserDevicesController) GetAutoPiUnpairMessage(c *fiber.Ctx) error {
 
 	userDeviceID := c.Params("userDeviceID")
 
-	logger := udc.log.With().Str("userId", userID).Str("userDeviceId", userDeviceID).Logger()
+	logger := helpers.GetLogger(c, udc.log)
 	logger.Info().Msg("Got AutoPi pair request.")
 
 	autoPiInt, err := udc.DeviceDefIntSvc.GetAutoPiIntegration(c.Context())
@@ -1542,11 +1516,6 @@ func (udc *UserDevicesController) GetAutoPiUnpairMessage(c *fiber.Ctx) error {
 		}
 		logger.Err(err).Msg("Database failure searching for device.")
 		return opaqueInternalError
-	}
-
-	if ud.UserID != userID {
-		// Err on the side of privacy.
-		return fiber.NewError(fiber.StatusNotFound, "No device with that id found.")
 	}
 
 	udai, err := ud.UserDeviceAPIIntegrations(models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(autoPiInt.Id)).One(c.Context(), udc.DBS().Reader)
