@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"database/sql"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"math/big"
@@ -142,23 +141,23 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 // GetDcnNFTMetadata godoc
 // @Description retrieves the DCN NFT metadata for a given node address
 // @Tags        dcn
-// @Param       nodeAddress path string true "DCN node 0x address"
+// @Param       nodeID path string true "DCN node id decimal representation"
 // @Produce     json
 // @Success     200 {object} controllers.NFTMetadataResp
 // @Failure     404
 // @Failure     400
-// @Router      /dcn/{nodeAddress} [get]
+// @Router      /dcn/{nodeID} [get]
 func (nc *NFTController) GetDcnNFTMetadata(c *fiber.Ctx) error {
-	nd := c.Params("nodeAddress")
-	nodeAddrBytes, err := hex.DecodeString(nd)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	ndStr := c.Params("nodeID")
+	ndid, ok := new(big.Int).SetString(ndStr, 10)
+	if !ok {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", ndStr))
 	}
 
-	dcn, err := models.DCNS(models.DCNWhere.NFTNodeID.EQ(nodeAddrBytes)).One(c.Context(), nc.DBS().Reader)
+	dcn, err := models.DCNS(models.DCNWhere.NFTNodeID.EQ(ndid.Bytes())).One(c.Context(), nc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "DCN not found with node address "+nd)
+			return fiber.NewError(fiber.StatusNotFound, "DCN not found with node address "+ndid.String())
 		}
 		return err
 	}

@@ -323,10 +323,20 @@ definitions:
     type: object
   internal_controllers.AutoPiPairRequest:
     properties:
+      aftermarketDeviceSignature:
+        description: |-
+          AftermarketDeviceSignature is the 65-byte, hex-encoded Ethereum signature of
+          the pairing payload by the device. Only needed if the vehicle owner and aftermarket
+          device owner are not the same.
+        items:
+          type: integer
+        type: array
       externalId:
         type: string
       signature:
-        type: string
+        items:
+          type: integer
+        type: array
     type: object
   internal_controllers.AutoPiTransactionStatus:
     properties:
@@ -1153,6 +1163,28 @@ paths:
       - BearerAuth: []
       tags:
       - integrations
+  /dcn/{nodeID}:
+    get:
+      description: retrieves the DCN NFT metadata for a given node address
+      parameters:
+      - description: DCN node id decimal representation
+        in: path
+        name: nodeID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.NFTMetadataResp'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+      tags:
+      - dcn
   /device-definitions:
     get:
       description: gets a specific device definition by make model and year
@@ -2045,7 +2077,7 @@ paths:
       - application/json
       description: |-
         adds a device to a user by decoding VIN from Smartcar. If cannot decode returns 424 or 500 if error.
-        If the user device already exists from a different integration, for the same user, this will return a 200 with the full user device
+        If the user device already exists from a different integration, for the same user, this will return a 200 with the full user device object
       parameters:
       - description: add device to user. all fields required
         in: body
