@@ -787,9 +787,8 @@ func validVINChar(r rune) bool {
 // @Router      /user/devices/{userDeviceID}/vin [patch]
 func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 
-	logger := udc.log.With().Str("route", c.Route().Name).Str("userId", userID).Str("userDeviceId", udi).Logger()
+	logger := helpers.GetLogger(c, udc.log).With().Str("route", c.Route().Name).Logger()
 
 	var req UpdateVINReq
 	if err := c.BodyParser(&req); err != nil {
@@ -843,7 +842,6 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
-		models.UserDeviceWhere.UserID.EQ(userID),
 	).One(c.Context(), tx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -938,9 +936,10 @@ func (udc *UserDevicesController) updateUSAPowertrain(ctx context.Context, userD
 // @Router      /user/devices/{userDeviceID}/name [patch]
 func (udc *UserDevicesController) UpdateName(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 
-	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi), models.UserDeviceWhere.UserID.EQ(userID),
+	logger := helpers.GetLogger(c, udc.log)
+
+	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations)).One(c.Context(), udc.DBS().Writer)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -960,7 +959,7 @@ func (udc *UserDevicesController) UpdateName(c *fiber.Ctx) error {
 
 	if err := req.validate(); err != nil {
 		if req.Name != nil {
-			udc.log.Warn().Err(err).Str("userDeviceId", udi).Str("userId", userID).Str("name", *req.Name).Msg("Proposed device name is invalid.")
+			logger.Warn().Err(err).Str("name", *req.Name).Msg("Proposed device name is invalid.")
 		}
 		return fiber.NewError(fiber.StatusBadRequest, "Name field is limited to 16 alphanumeric characters.")
 	}
@@ -997,11 +996,11 @@ func (udc *UserDevicesController) UpdateName(c *fiber.Ctx) error {
 // @Router      /user/devices/{userDeviceID}/country_code [patch]
 func (udc *UserDevicesController) UpdateCountryCode(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
-	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi), models.UserDeviceWhere.UserID.EQ(userID)).One(c.Context(), udc.DBS().Writer)
+
+	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi)).One(c.Context(), udc.DBS().Writer)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return helpers.ErrorResponseHandler(c, err, fiber.StatusNotFound)
+			return fiber.NewError(fiber.StatusNotFound, err.Error())
 		}
 		return err
 	}
@@ -1031,12 +1030,11 @@ func (udc *UserDevicesController) UpdateCountryCode(c *fiber.Ctx) error {
 // @Router      /user/devices/{userDeviceID}/image [patch]
 func (udc *UserDevicesController) UpdateImage(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 
-	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi), models.UserDeviceWhere.UserID.EQ(userID)).One(c.Context(), udc.DBS().Writer)
+	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi)).One(c.Context(), udc.DBS().Writer)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return helpers.ErrorResponseHandler(c, err, fiber.StatusNotFound)
+			return fiber.NewError(fiber.StatusNotFound, err.Error())
 		}
 		return err
 	}
@@ -1102,21 +1100,8 @@ type ValuationSet struct {
 // @Router      /user/devices/{userDeviceID}/valuations [get]
 func (udc *UserDevicesController) GetValuations(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 
-	// Ensure user is owner of user device
-	userDeviceExists, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(udi),
-		models.UserDeviceWhere.UserID.EQ(userID),
-	).Exists(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		return err
-	}
-	if !userDeviceExists {
-		return c.SendStatus(fiber.StatusForbidden)
-	}
-
-	logger := udc.log.With().Str("route", c.Route().Path).Str("userId", userID).Str("userDeviceId", udi).Logger()
+	logger := helpers.GetLogger(c, udc.log).With().Str("route", c.Route().Path).Logger()
 
 	dVal := DeviceValuation{
 		ValuationSets: []ValuationSet{},
@@ -1286,19 +1271,6 @@ type Offer struct {
 // @Router      /user/devices/{userDeviceID}/offers [get]
 func (udc *UserDevicesController) GetOffers(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
-
-	// Ensure user is owner of user device
-	userDeviceExists, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(udi),
-		models.UserDeviceWhere.UserID.EQ(userID),
-	).Exists(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		return err
-	}
-	if !userDeviceExists {
-		return c.SendStatus(fiber.StatusForbidden)
-	}
 
 	dOffer := DeviceOffer{
 		OfferSets: []OfferSet{},
@@ -1394,12 +1366,9 @@ type RangeSet struct {
 // @Router      /user/devices/{userDeviceID}/range [get]
 func (udc *UserDevicesController) GetRange(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 
-	// Ensure user is owner of user device
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
-		models.UserDeviceWhere.UserID.EQ(userID),
 		qm.Load(models.UserDeviceRels.UserDeviceData),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {

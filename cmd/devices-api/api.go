@@ -185,14 +185,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices/fromsmartcar", userDeviceController.RegisterDeviceForUserFromSmartcar)
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
 
-	v1Auth.Patch("/user/devices/:userDeviceID/vin", userDeviceController.UpdateVIN)
-	v1Auth.Patch("/user/devices/:userDeviceID/name", userDeviceController.UpdateName)
-	v1Auth.Patch("/user/devices/:userDeviceID/country-code", userDeviceController.UpdateCountryCode)
-	v1Auth.Patch("/user/devices/:userDeviceID/image", userDeviceController.UpdateImage)
-	v1Auth.Get("/user/devices/:userDeviceID/valuations", userDeviceController.GetValuations)
-	v1Auth.Get("/user/devices/:userDeviceID/offers", userDeviceController.GetOffers)
-	v1Auth.Get("/user/devices/:userDeviceID/range", userDeviceController.GetRange)
-
 	v1Auth.Post("/user/devices/:userDeviceID/error-codes", userDeviceController.QueryDeviceErrorCodes)
 	v1Auth.Get("/user/devices/:userDeviceID/error-codes", userDeviceController.GetUserDeviceErrorCodeQueries)
 
@@ -261,6 +253,14 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Delete("/", userDeviceController.DeleteUserDevice)
 	udOwner.Get("/commands/mint", userDeviceController.GetMintDevice)
 	udOwner.Post("/commands/mint", userDeviceController.PostMintDevice)
+
+	udOwner.Patch("/vin", userDeviceController.UpdateVIN)
+	udOwner.Patch("/name", userDeviceController.UpdateName)
+	udOwner.Patch("/country-code", userDeviceController.UpdateCountryCode)
+	udOwner.Patch("/image", userDeviceController.UpdateImage)
+	udOwner.Get("/valuations", userDeviceController.GetValuations)
+	udOwner.Get("/offers", userDeviceController.GetOffers)
+	udOwner.Get("/range", userDeviceController.GetRange)
 
 	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService)
 
