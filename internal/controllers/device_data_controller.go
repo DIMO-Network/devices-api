@@ -198,7 +198,7 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 	}
 
 	ds := PrepareDeviceStatusInformation(deviceData, []int64{NonLocationData, CurrentLocation, AllTimeLocation})
-
+	// todo refactor this into PrepareDeviceStatusInformation
 	if ds.Range == nil && ds.FuelPercentRemaining != nil {
 		if calcRange, err := udc.calculateRange(c.Context(), userDevice.DeviceDefinitionID, userDevice.DeviceStyleID, *ds.FuelPercentRemaining); err != nil {
 			logger.Warn().Err(err).Str("deviceDefinitionId", userDevice.DeviceDefinitionID).Msg("Could not get range.")
