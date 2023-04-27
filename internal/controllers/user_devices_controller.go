@@ -738,12 +738,10 @@ func builUserDeviceFull(ud *models.UserDevice, dd *ddgrpc.GetDeviceDefinitionIte
 // @Router      /user/devices/{userDeviceID}/commands/opt-in [post]
 func (udc *UserDevicesController) DeviceOptIn(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 
-	logger := udc.log.With().Str("routeName", c.Route().Name).Str("userId", userID).Str("userDeviceId", udi).Logger()
+	logger := helpers.GetLogger(c, udc.log)
 
 	userDevice, err := models.UserDevices(
-		models.UserDeviceWhere.UserID.EQ(userID),
 		models.UserDeviceWhere.ID.EQ(udi),
 	).One(c.Context(), udc.DBS().Writer)
 	if err != nil {
@@ -942,9 +940,6 @@ func (udc *UserDevicesController) UpdateName(c *fiber.Ctx) error {
 	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations)).One(c.Context(), udc.DBS().Writer)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, err.Error())
-		}
 		return err
 	}
 	req := &UpdateNameReq{}
@@ -1623,11 +1618,9 @@ func recoverAddress(td *signer.TypedData, signature []byte) (addr common.Address
 // @Router      /user/devices/{userDeviceId}/commands/update-nft-image [post]
 func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		models.UserDeviceWhere.UserID.EQ(userID),
 		qm.Load(models.UserDeviceRels.VehicleNFT),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
