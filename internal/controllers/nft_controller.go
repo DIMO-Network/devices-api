@@ -162,13 +162,21 @@ func (nc *NFTController) GetDcnNFTMetadata(c *fiber.Ctx) error {
 		}
 		return err
 	}
-	// todo: what if expiration or created date are null in db?
+	attrs := make([]NFTAttribute, 0)
+	if dcn.NFTNodeBlockCreateTime.Valid {
+		attrs = append(attrs, NFTAttribute{
+			TraitType: "Creation Date", Value: strconv.FormatInt(dcn.NFTNodeBlockCreateTime.Time.Unix(), 10),
+		})
+	}
+	if dcn.Expiration.Valid {
+		attrs = append(attrs, NFTAttribute{
+			TraitType: "Expiration Date", Value: strconv.FormatInt(dcn.Expiration.Time.Unix(), 10),
+		})
+	}
+
 	return c.JSON(NFTMetadataResp{
-		Name: dcn.Name.String,
-		Attributes: []NFTAttribute{
-			{TraitType: "Creation Date", Value: strconv.FormatInt(dcn.NFTNodeBlockCreateTime.Time.Unix(), 10)},
-			{TraitType: "Expiration Date", Value: strconv.FormatInt(dcn.Expiration.Time.Unix(), 10)},
-		},
+		Name:       dcn.Name.String,
+		Attributes: attrs,
 	})
 }
 
