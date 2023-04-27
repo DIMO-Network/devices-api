@@ -155,10 +155,6 @@ func TestUserDevicesController_calculateRange(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	logger := zerolog.New(os.Stdout).With().
-		Timestamp().
-		Str("app", "devices-api").
-		Logger()
 	ctx := context.Background()
 	deviceDefSvc := mock_services.NewMockDeviceDefinitionService(mockCtrl)
 
@@ -180,8 +176,7 @@ func TestUserDevicesController_calculateRange(t *testing.T) {
 		DeviceAttributes:   attrs,
 	}, nil)
 
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, nil, &logger, deviceDefSvc, nil, &fakeEventService{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	rge, err := c.calculateRange(ctx, ddID, styleID, .70)
+	rge, err := calculateRange(ctx, deviceDefSvc, ddID, styleID, .70)
 	require.NoError(t, err)
 	require.NotNil(t, rge)
 	assert.Equal(t, 337.9614, *rge)
