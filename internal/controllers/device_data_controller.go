@@ -277,7 +277,7 @@ var errorCodeRegex = regexp.MustCompile(`^.{5,8}$`)
 // @Router      /user/devices/{userDeviceID}/error-codes [post]
 func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := c.Params("userID")
+	userID := helpers.GetUserID(c)
 
 	logger := helpers.GetLogger(c, udc.log)
 
@@ -345,7 +345,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 // @Router      /user/devices/{userDeviceID}/error-codes [get]
 func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := c.Params("userID")
+	userID := helpers.GetUserID(c)
 
 	logger := helpers.GetLogger(c, udc.log)
 
