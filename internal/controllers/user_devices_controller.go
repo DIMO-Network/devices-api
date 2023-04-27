@@ -787,7 +787,6 @@ func validVINChar(r rune) bool {
 // @Router      /user/devices/{userDeviceID}/vin [patch]
 func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 
 	logger := helpers.GetLogger(c, udc.log).With().Str("route", c.Route().Name).Logger()
 
@@ -843,7 +842,6 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
-		models.UserDeviceWhere.UserID.EQ(userID),
 	).One(c.Context(), tx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -938,11 +936,10 @@ func (udc *UserDevicesController) updateUSAPowertrain(ctx context.Context, userD
 // @Router      /user/devices/{userDeviceID}/name [patch]
 func (udc *UserDevicesController) UpdateName(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 
 	logger := c.Locals("logger").(*zerolog.Logger)
 
-	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi), models.UserDeviceWhere.UserID.EQ(userID),
+	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations)).One(c.Context(), udc.DBS().Writer)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -999,9 +996,8 @@ func (udc *UserDevicesController) UpdateName(c *fiber.Ctx) error {
 // @Router      /user/devices/{userDeviceID}/country_code [patch]
 func (udc *UserDevicesController) UpdateCountryCode(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 
-	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi), models.UserDeviceWhere.UserID.EQ(userID)).One(c.Context(), udc.DBS().Writer)
+	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi)).One(c.Context(), udc.DBS().Writer)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return fiber.NewError(fiber.StatusNotFound, err.Error())
@@ -1034,9 +1030,8 @@ func (udc *UserDevicesController) UpdateCountryCode(c *fiber.Ctx) error {
 // @Router      /user/devices/{userDeviceID}/image [patch]
 func (udc *UserDevicesController) UpdateImage(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 
-	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi), models.UserDeviceWhere.UserID.EQ(userID)).One(c.Context(), udc.DBS().Writer)
+	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi)).One(c.Context(), udc.DBS().Writer)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return fiber.NewError(fiber.StatusNotFound, err.Error())
@@ -1371,11 +1366,9 @@ type RangeSet struct {
 // @Router      /user/devices/{userDeviceID}/range [get]
 func (udc *UserDevicesController) GetRange(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
-		models.UserDeviceWhere.UserID.EQ(userID),
 		qm.Load(models.UserDeviceRels.UserDeviceData),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
