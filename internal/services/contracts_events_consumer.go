@@ -374,6 +374,9 @@ func (c *ContractsEventsConsumer) dcnNameChanged(e *ContractEventData) error {
 			NFTNodeID: args.Node[:],
 		}
 	}
+	if len(args.Name) == 0 {
+		c.log.Warn().Str("handler", "dcnNameChanged").Msg("DCN Name Change argument is empty: args.name")
+	}
 	dcn.Name = null.StringFrom(args.Name)
 
 	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{models.DCNColumns.NFTNodeID},
