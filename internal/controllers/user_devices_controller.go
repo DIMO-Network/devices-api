@@ -937,7 +937,7 @@ func (udc *UserDevicesController) updateUSAPowertrain(ctx context.Context, userD
 func (udc *UserDevicesController) UpdateName(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
 
-	logger := c.Locals("logger").(*zerolog.Logger)
+	logger := helpers.GetLogger(c, udc.log)
 
 	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations)).One(c.Context(), udc.DBS().Writer)
