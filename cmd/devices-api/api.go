@@ -139,7 +139,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1.Get("/aftermarket/device/:tokenID/image", nftController.GetAftermarketDeviceNFTImage)
 	v1.Get("/manufacturer/:tokenID", nftController.GetManufacturerNFTMetadata)
 
-	v1.Get("/dcn/:nodeAddress", nftController.GetDcnNFTMetadata)
+	v1.Get("/dcn/:nodeID", nftController.GetDcnNFTMetadata)
 
 	// webhooks, performs signature validation
 	v1.Post(constants.AutoPiWebhookPath, webhooksController.ProcessCommand)
