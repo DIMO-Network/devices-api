@@ -2,11 +2,14 @@ package controllers
 
 import (
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"math/big"
 	"strconv"
 	"strings"
+
+	"github.com/DIMO-Network/devices-api/internal/services/registry"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -40,6 +43,7 @@ type NFTController struct {
 	integSvc         services.DeviceDefinitionIntegrationService
 	smartcarTaskSvc  services.SmartcarTaskService
 	teslaTaskService services.TeslaTaskService
+	dcnService       registry.DCNService
 }
 
 // NewNFTController constructor
@@ -48,6 +52,7 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 	smartcarTaskSvc services.SmartcarTaskService,
 	teslaTaskService services.TeslaTaskService,
 	integSvc services.DeviceDefinitionIntegrationService,
+	dcnSVc registry.DCNService,
 ) NFTController {
 	return NFTController{
 		Settings:         settings,
@@ -58,6 +63,7 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 		smartcarTaskSvc:  smartcarTaskSvc,
 		teslaTaskService: teslaTaskService,
 		integSvc:         integSvc,
+		dcnService:       dcnSVc,
 	}
 }
 
@@ -129,8 +135,48 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 			{TraitType: "Make", Value: def.Make.Name},
 			{TraitType: "Model", Value: def.Type.Model},
 			{TraitType: "Year", Value: strconv.Itoa(int(def.Type.Year))},
-			{TraitType: "Creation Date", Value: strconv.FormatInt(nft.R.UserDevice.CreatedAt.Unix(), 10)},
 		},
+	})
+}
+
+// GetDcnNFTMetadata godoc
+// @Description retrieves the DCN NFT metadata for a given node address
+// @Tags        dcn
+// @Param       nodeAddress path string true "DCN node 0x address"
+// @Produce     json
+// @Success     200 {object} controllers.NFTMetadataResp
+// @Failure     404
+// @Failure     400
+// @Router      /dcn/{nodeAddress} [get]
+func (nc *NFTController) GetDcnNFTMetadata(c *fiber.Ctx) error {
+	nd := c.Params("nodeAddress")
+	nodeAddrBytes, err := hex.DecodeString(nd)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	dcn, err := models.DCNS(models.DCNWhere.NFTNodeAddress.EQ(nodeAddrBytes)).One(c.Context(), nc.DBS().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fiber.NewError(fiber.StatusNotFound, "DCN not found with node address "+nd)
+		}
+		return err
+	}
+	attrs := make([]NFTAttribute, 0)
+	if dcn.NFTNodeBlockCreateTime.Valid {
+		attrs = append(attrs, NFTAttribute{
+			TraitType: "Creation Date", Value: strconv.FormatInt(dcn.NFTNodeBlockCreateTime.Time.Unix(), 10),
+		})
+	}
+	if dcn.Expiration.Valid {
+		attrs = append(attrs, NFTAttribute{
+			TraitType: "Expiration Date", Value: strconv.FormatInt(dcn.Expiration.Time.Unix(), 10),
+		})
+	}
+
+	return c.JSON(NFTMetadataResp{
+		Name:       dcn.Name.String,
+		Attributes: attrs,
 	})
 }
 

@@ -82,6 +82,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, pdb.DBS, &logger)
 	autoPi := autopi.NewIntegration(pdb.DBS, ddSvc, autoPiSvc, autoPiTaskService, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &logger)
 	openAI := services.NewOpenAI(&logger, *settings)
+	dcnSvc := registry.NewDcnService(settings)
 
 	redisCache := redis.NewRedisCacheService(settings.IsProduction(), redis.Settings{
 		URL:       settings.RedisURL,
@@ -130,13 +131,15 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1.Get("/device-definitions/:id/integrations", cacheHandler, deviceControllers.GetDeviceIntegrationsByID)
 	v1.Get("/device-definitions", deviceControllers.GetDeviceDefinitionByMMY)
 
-	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc)
+	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc, dcnSvc)
 	v1.Get("/vehicle/:tokenID", nftController.GetNFTMetadata)
 	v1.Get("/vehicle/:tokenID/image", nftController.GetNFTImage)
 
-	v1.Get("/aftermarket/device/:tokenID", nftController.GetAftermarketDeviceNFTMetadata)
+	v1.Get("/aftermarket/device/:tokenID", cacheHandler, nftController.GetAftermarketDeviceNFTMetadata)
 	v1.Get("/aftermarket/device/:tokenID/image", nftController.GetAftermarketDeviceNFTImage)
 	v1.Get("/manufacturer/:tokenID", nftController.GetManufacturerNFTMetadata)
+
+	v1.Get("/dcn/:nodeAddress", nftController.GetDcnNFTMetadata)
 
 	// webhooks, performs signature validation
 	v1.Post(constants.AutoPiWebhookPath, webhooksController.ProcessCommand)

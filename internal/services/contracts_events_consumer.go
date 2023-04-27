@@ -39,6 +39,9 @@ const (
 	AftermarketDeviceNodeMinted EventName = "AftermarketDeviceNodeMinted"
 	Transfer                    EventName = "Transfer"
 	BeneficiarySet              EventName = "BeneficiarySet"
+	DCNNameChanged              EventName = "NameChanged"
+	DCNNewNode                  EventName = "NewNode"
+	DCNNewExpiration            EventName = "NewExpiration"
 )
 
 func (r EventName) String() string {
@@ -48,12 +51,20 @@ func (r EventName) String() string {
 const contractEventCEType = "zone.dimo.contract.event"
 
 type ContractEventData struct {
+	ChainID         int64           `json:"chainId"`
+	EventName       string          `json:"eventName"`
+	Block           Block           `json:"block,omitempty"`
 	Contract        common.Address  `json:"contract"`
 	TransactionHash common.Hash     `json:"transactionHash"`
-	Arguments       json.RawMessage `json:"arguments"`
 	EventSignature  common.Hash     `json:"eventSignature"`
-	EventName       string          `json:"eventName"`
+	Arguments       json.RawMessage `json:"arguments"`
 	// TODO(elffjs): chainID. Don't repeat this struct everywhere.
+}
+
+type Block struct {
+	Number *big.Int    `json:"number,omitempty"`
+	Hash   common.Hash `json:"hash,omitempty"`
+	Time   time.Time   `json:"time,omitempty"`
 }
 
 func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings) *ContractsEventsConsumer {
@@ -126,6 +137,15 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.Raw
 			c.log.Info().Str("event", data.EventName).Msg("Event received")
 			return c.beneficiarySet(&data)
 		}
+	case DCNNameChanged.String():
+		c.log.Info().Str("event", data.EventName).Msg("Event received")
+		return c.dcnNameChanged(&data)
+	case DCNNewNode.String():
+		c.log.Info().Str("event", data.EventName).Msg("Event received")
+		return c.dcnNewNode(&data)
+	case DCNNewExpiration.String():
+		c.log.Info().Str("event", data.EventName).Msg("Event received")
+		return c.dcnNewExpiration(&data)
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -273,6 +293,88 @@ func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
 	if _, err = device.Update(context.Background(), c.db.DBS().Writer, boil.Whitelist(cols.Beneficiary, cols.UpdatedAt)); err != nil {
 		c.log.Error().Err(err).Msg("Failed to set beneficiary.")
 		return err
+	}
+
+	return nil
+}
+
+// dcnNameChanged processes an event of type NameChanged. Upserts DCN record, setting the Name
+func (c *ContractsEventsConsumer) dcnNameChanged(e *ContractEventData) error {
+	var args contracts.FullAbiNameChanged
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return err
+	}
+	// see if it exists first
+	dcn, err := models.DCNS(models.DCNWhere.NFTNodeAddress.EQ(args.Node[:])).One(context.Background(), c.db.DBS().Reader)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return errors.Wrap(err, "failed to query for existing dcn")
+	}
+	if dcn == nil {
+		dcn = &models.DCN{
+			NFTNodeAddress: args.Node[:],
+		}
+	}
+	dcn.Name = null.StringFrom(args.Name)
+
+	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{models.DCNColumns.NFTNodeAddress},
+		boil.Whitelist(models.DCNColumns.Name, models.DCNColumns.UpdatedAt), boil.Infer())
+	if err != nil {
+		return errors.Wrapf(err, "failed to upsert dcn with name: %s", args.Name)
+	}
+
+	return nil
+}
+
+// dcnNewNode processes an event of type NewNode. Upserts DCN record, setting the Owner Address and Block creation time
+func (c *ContractsEventsConsumer) dcnNewNode(e *ContractEventData) error {
+	var args contracts.DcnRegistryNewNode
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return err
+	}
+	//question: should this be an insert always?
+	dcn, err := models.DCNS(models.DCNWhere.NFTNodeAddress.EQ(args.Node[:])).One(context.Background(), c.db.DBS().Reader)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return errors.Wrap(err, "failed to query for existing dcn")
+	}
+	if dcn == nil {
+		dcn = &models.DCN{
+			NFTNodeAddress: args.Node[:],
+		}
+	}
+	dcn.OwnerAddress = null.BytesFrom(args.Owner.Bytes())
+	dcn.NFTNodeBlockCreateTime = null.TimeFrom(e.Block.Time)
+
+	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{models.DCNColumns.NFTNodeAddress},
+		boil.Whitelist(models.DCNColumns.OwnerAddress, models.DCNColumns.NFTNodeBlockCreateTime, models.DCNColumns.UpdatedAt), boil.Infer())
+	if err != nil {
+		return errors.Wrapf(err, "failed to upsert dcn with node: %s", args.Node)
+	}
+
+	return nil
+}
+
+// dcnNewExpiration processes an event of type NewExpiration. Upserts DCN record, setting the Expiration
+func (c *ContractsEventsConsumer) dcnNewExpiration(e *ContractEventData) error {
+	var args contracts.DcnRegistryNewExpiration
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return err
+	}
+	dcn, err := models.DCNS(models.DCNWhere.NFTNodeAddress.EQ(args.Node[:])).One(context.Background(), c.db.DBS().Reader)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return errors.Wrap(err, "failed to query for existing dcn")
+	}
+	if dcn == nil {
+		dcn = &models.DCN{
+			NFTNodeAddress: args.Node[:],
+		}
+	}
+	t := time.Unix(args.Expiration.Int64(), 0)
+	dcn.Expiration = null.TimeFrom(t)
+
+	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{models.DCNColumns.NFTNodeAddress},
+		boil.Whitelist(models.DCNColumns.Expiration, models.DCNColumns.UpdatedAt), boil.Infer())
+	if err != nil {
+		return errors.Wrapf(err, "failed to upsert dcn with node: %s", args.Node)
 	}
 
 	return nil

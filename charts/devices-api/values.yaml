@@ -77,6 +77,7 @@ env:
   VINCARIO_API_URL: https://api.vindecoder.eu/3.2
   CHATGPT_URL: https://api.openai.com/v1/chat/completions
   AFTERMARKET_DEVICE_CONTRACT_ADDRESS: '0xcf9af64522162da85164a714c23a7705e6e466b3'
+  DIMO_CONTRACT_APIURL: https://contracts-api.dev.dimo.zone/
 service:
   type: ClusterIP
   ports:
