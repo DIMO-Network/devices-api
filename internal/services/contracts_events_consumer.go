@@ -189,7 +189,7 @@ func (c *ContractsEventsConsumer) handleVehicleTransfer(e *ContractEventData) er
 	tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0))
 
 	if IsZeroAddress(args.From) {
-		c.log.Debug().Str("tokenID", tkID.String()).Msg("ignoring mint event")
+		c.log.Debug().Str("tokenID", tkID.String()).Msg("Ignoring mint event")
 		return nil
 	}
 
