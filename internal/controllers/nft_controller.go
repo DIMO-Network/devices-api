@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"math/big"
@@ -126,11 +127,6 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 		name = description
 	}
 
-	expiration, err := nc.dcnService.GetExpiration(name) // name here should be eg. reddy.dimo
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-
 	return c.JSON(NFTMetadataResp{
 		Name:        name,
 		Description: description,
@@ -139,8 +135,39 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 			{TraitType: "Make", Value: def.Make.Name},
 			{TraitType: "Model", Value: def.Type.Model},
 			{TraitType: "Year", Value: strconv.Itoa(int(def.Type.Year))},
-			{TraitType: "Creation Date", Value: strconv.FormatInt(nft.R.UserDevice.CreatedAt.Unix(), 10)},
-			{TraitType: "Expiration Date", Value: strconv.FormatUint(expiration, 10)},
+		},
+	})
+}
+
+// GetDcnNFTMetadata godoc
+// @Description retrieves the DCN NFT metadata for a given node address
+// @Tags        dcn
+// @Param       nodeAddress path string true "DCN node 0x address"
+// @Produce     json
+// @Success     200 {object} controllers.NFTMetadataResp
+// @Failure     404
+// @Failure     400
+// @Router      /dcn/{nodeAddress} [get]
+func (nc *NFTController) GetDcnNFTMetadata(c *fiber.Ctx) error {
+	nd := c.Params("nodeAddress")
+	nodeAddrBytes, err := hex.DecodeString(nd)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	dcn, err := models.DCNS(models.DCNWhere.NFTNodeAddress.EQ(nodeAddrBytes)).One(c.Context(), nc.DBS().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fiber.NewError(fiber.StatusNotFound, "DCN not found with node address "+nd)
+		}
+		return err
+	}
+	// todo: what if expiration or created date are null in db?
+	return c.JSON(NFTMetadataResp{
+		Name: dcn.Name.String,
+		Attributes: []NFTAttribute{
+			{TraitType: "Creation Date", Value: strconv.FormatInt(dcn.NFTNodeBlockCreateTime.Time.Unix(), 10)},
+			{TraitType: "Expiration Date", Value: strconv.FormatInt(dcn.Expiration.Time.Unix(), 10)},
 		},
 	})
 }
