@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -10,6 +11,8 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
+	"github.com/DIMO-Network/devices-api/internal/services/dex"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
@@ -21,6 +24,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
@@ -165,11 +169,67 @@ func (c *ContractsEventsConsumer) routeTransferEvent(e *ContractEventData) error
 	switch e.Contract {
 	case common.HexToAddress(c.settings.AftermarketDeviceContractAddress):
 		return c.handleAfterMarketTransferEvent(e)
+	case common.HexToAddress(c.settings.VehicleNFTAddress):
+		return c.handleVehicleTransfer(e)
 	default:
 		c.log.Debug().Str("event", e.EventName).Interface("fullEventData", e).Msg("Handler not provided for contract")
 	}
 
 	return errors.New("Handler not provided for contract")
+}
+
+func (c *ContractsEventsConsumer) handleVehicleTransfer(e *ContractEventData) error {
+	ctx := context.Background()
+	var args contracts.MultiPrivilegeTransfer
+	err := json.Unmarshal(e.Arguments, &args)
+	if err != nil {
+		return err
+	}
+
+	tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0))
+
+	if IsZeroAddress(args.From) {
+		c.log.Debug().Str("tokenID", tkID.String()).Msg("Ignoring mint event")
+		return nil
+	}
+
+	tx, err := c.db.DBS().Writer.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback() //nolint
+
+	nft, err := models.VehicleNFTS(
+		models.VehicleNFTWhere.TokenID.EQ(tkID),
+		qm.Load(models.VehicleNFTRels.UserDevice),
+	).One(ctx, tx)
+	if err != nil {
+		return err
+	}
+
+	nft.OwnerAddress = null.BytesFrom(args.To.Bytes())
+	if _, err := nft.Update(ctx, tx, boil.Whitelist(models.VehicleNFTColumns.OwnerAddress)); err != nil {
+		return err
+	}
+
+	if ud := nft.R.UserDevice; ud != nil {
+		s := dex.IDTokenSubject{
+			UserId: args.To.Hex(),
+			ConnId: "web3",
+		}
+		b, err := proto.Marshal(&s)
+		if err != nil {
+			return err
+		}
+
+		ud.UserID = base64.RawURLEncoding.EncodeToString(b)
+		if _, err := ud.Update(ctx, tx, boil.Whitelist(models.UserDeviceColumns.UserID)); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEventData) error {
