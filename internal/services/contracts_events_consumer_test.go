@@ -600,16 +600,16 @@ func (s cEventsTestHelper) destroy() {
 func TestVehicleTransfer(t *testing.T) {
 	ctx := context.Background()
 	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
-	defer container.Terminate(ctx)
+	defer container.Terminate(ctx) //nolint
 
 	logger := zerolog.Nop()
 	settings := &config.Settings{DIMORegistryChainID: 1, VehicleNFTAddress: "0x881d40237659c251811cec9c364ef91dc08d300c"}
 
 	mtr := models.MetaTransactionRequest{ID: "xdd"}
-	mtr.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	_ = mtr.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
 	nft := models.VehicleNFT{MintRequestID: "xdd", OwnerAddress: null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")), TokenID: types.NewNullDecimal(decimal.New(5, 0))}
-	nft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	_ = nft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
 	consumer := NewContractsEventsConsumer(pdb, &logger, settings)
 	err := consumer.processMessage(&message.Message{Payload: []byte(`
@@ -631,7 +631,7 @@ func TestVehicleTransfer(t *testing.T) {
 		t.Errorf("failed to process event: %v", err)
 	}
 
-	nft.Reload(ctx, pdb.DBS().Reader)
+	_ = nft.Reload(ctx, pdb.DBS().Reader)
 	if !nft.OwnerAddress.Valid {
 		t.Fatal("token owner became null")
 	}

@@ -4,6 +4,11 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"io"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/DIMO-Network/devices-api/internal/config"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
@@ -16,10 +21,6 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"io"
-	"os"
-	"testing"
-	"time"
 )
 
 func TestNFTController_GetDcnNFTMetadata(t *testing.T) {
