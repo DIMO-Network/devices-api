@@ -106,16 +106,16 @@ func (s *userDeviceService) ListUserDevicesForUser(ctx context.Context, req *pb.
 		}
 	} else {
 		query = []qm.QueryMod{
-			qm.LeftOuterJoin("devices_api." + models.TableNames.VehicleNFTS + " ON " + models.VehicleNFTColumns.UserDeviceID + " = " + models.UserDeviceColumns.ID),
+			qm.LeftOuterJoin("devices_api." + models.TableNames.VehicleNFTS + " ON " + models.VehicleNFTTableColumns.UserDeviceID + " = " + models.UserDeviceTableColumns.ID),
 			models.UserDeviceWhere.UserID.EQ(req.UserId),
-			qm.Or2(models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(req.EthereumAddress)))),
+			qm.Or2(models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.HexToAddress(req.EthereumAddress).Bytes()))),
 		}
 	}
 
 	query = append(query,
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAutopiUnit)),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" DESC"),
+		qm.OrderBy(models.UserDeviceTableColumns.CreatedAt+" DESC"),
 	)
 
 	devices, err := models.UserDevices(query...).All(ctx, s.dbs().Reader)
