@@ -185,7 +185,7 @@ func calculateRange(ctx context.Context, ddSvc services.DeviceDefinitionService,
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/status [get]
 func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
-	userDeviceID := c.Locals("userDeviceID").(string)
+	userDeviceID := c.Params("userDeviceID")
 
 	userDevice, err := models.FindUserDevice(c.Context(), udc.DBS().Reader, userDeviceID)
 	if err != nil {

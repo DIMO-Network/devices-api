@@ -177,10 +177,11 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	v1Auth := app.Group("/v1", jwtAuth)
 
-	// user's devices
+	// List user's devices.
 	v1Auth.Get("/user/devices/me", userDeviceController.GetUserDevices)
 	v1Auth.Get("/user/devices/shared", userDeviceController.GetSharedDevices)
 
+	// Device creation.
 	v1Auth.Post("/user/devices/fromvin", userDeviceController.RegisterDeviceForUserFromVIN)
 	v1Auth.Post("/user/devices/fromsmartcar", userDeviceController.RegisterDeviceForUserFromSmartcar)
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
@@ -194,9 +195,11 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/autopi/unit/:unitID/update", userDeviceController.StartAutoPiUpdateTask)
 	v1Auth.Get("/autopi/task/:taskID", userDeviceController.GetAutoPiTask)
 
+	// AutoPi claiming
 	v1Auth.Get("/autopi/unit/:unitID/commands/claim", userDeviceController.GetAutoPiClaimMessage)
 	v1Auth.Post("/autopi/unit/:unitID/commands/claim", userDeviceController.PostClaimAutoPi).Name("PostClaimAutoPi")
 	if !settings.IsProduction() {
+		// Used by mobile to test. Easy to misuse.
 		v1Auth.Post("/autopi/unit/:unitID/commands/unclaim", userDeviceController.PostUnclaimAutoPi)
 	}
 
@@ -213,6 +216,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Delete("/documents/:id", documentsController.DeleteDocument)
 	v1Auth.Get("/documents/:id/download", documentsController.DownloadDocument)
 
+	// Vehicle owner routes.
 	ownerMw := owner.New(pdb, usersClient, &logger)
 	udOwner := v1Auth.Group("/user/devices/:userDeviceID", ownerMw)
 
@@ -241,19 +245,18 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Post("/integrations/:integrationID", userDeviceController.RegisterDeviceIntegration)
 	udOwner.Post("/commands/refresh", userDeviceController.RefreshUserDeviceStatus)
 
-	// Device commands.
-	udOwner.Get("/integrations/:integrationID/commands/:requestID", userDeviceController.GetCommandRequestStatus)
-
+	// Vehicle commands.
 	udOwner.Post("/integrations/:integrationID/commands/doors/unlock", userDeviceController.UnlockDoors)
 	udOwner.Post("/integrations/:integrationID/commands/doors/lock", userDeviceController.LockDoors)
 	udOwner.Post("/integrations/:integrationID/commands/trunk/open", userDeviceController.OpenTrunk)
 	udOwner.Post("/integrations/:integrationID/commands/frunk/open", userDeviceController.OpenFrunk)
+	udOwner.Get("/integrations/:integrationID/commands/:requestID", userDeviceController.GetCommandRequestStatus)
 
 	udOwner.Post("/commands/opt-in", userDeviceController.DeviceOptIn)
 
+	// AutoPi pairing and unpairing.
 	udOwner.Get("/autopi/commands/pair", userDeviceController.GetAutoPiPairMessage)
 	udOwner.Post("/autopi/commands/pair", userDeviceController.PostPairAutoPi)
-
 	udOwner.Get("/autopi/commands/unpair", userDeviceController.GetAutoPiUnpairMessage)
 	udOwner.Post("/autopi/commands/unpair", userDeviceController.UnpairAutoPi)
 
