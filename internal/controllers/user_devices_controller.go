@@ -789,7 +789,7 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
 	userID := helpers.GetUserID(c)
 
-	logger := helpers.GetLogger(c, udc.log)
+	logger := helpers.GetLogger(c, udc.log).With().Str("route", c.Route().Name).Logger()
 
 	var req UpdateVINReq
 	if err := c.BodyParser(&req); err != nil {
