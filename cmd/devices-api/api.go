@@ -173,8 +173,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	})
 
 	v1Auth := app.Group("/v1", jwtAuth)
-	ownerMw := owner.New(pdb, usersClient, &logger)
-	udOwner := v1Auth.Group("/user/devices/:userDeviceID", ownerMw)
 
 	// user's devices
 	v1Auth.Get("/user/devices/me", userDeviceController.GetUserDevices)
@@ -183,14 +181,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices/fromvin", userDeviceController.RegisterDeviceForUserFromVIN)
 	v1Auth.Post("/user/devices/fromsmartcar", userDeviceController.RegisterDeviceForUserFromSmartcar)
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
-
-	udOwner.Patch("/vin", userDeviceController.UpdateVIN)
-	udOwner.Patch("/name", userDeviceController.UpdateName)
-	udOwner.Patch("/country-code", userDeviceController.UpdateCountryCode)
-	udOwner.Patch("/image", userDeviceController.UpdateImage)
-	udOwner.Get("/valuations", userDeviceController.GetValuations)
-	udOwner.Get("/offers", userDeviceController.GetOffers)
-	udOwner.Get("/range", userDeviceController.GetRange)
 
 	v1Auth.Post("/user/devices/:userDeviceID/error-codes", userDeviceController.QueryDeviceErrorCodes)
 	v1Auth.Get("/user/devices/:userDeviceID/error-codes", userDeviceController.GetUserDeviceErrorCodeQueries)
@@ -253,10 +243,21 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Delete("/documents/:id", documentsController.DeleteDocument)
 	v1Auth.Get("/documents/:id/download", documentsController.DownloadDocument)
 
+	ownerMw := owner.New(pdb, usersClient, &logger)
+	udOwner := v1Auth.Group("/user/devices/:userDeviceID", ownerMw)
+
 	udOwner.Get("/status", userDeviceController.GetUserDeviceStatus)
 	udOwner.Delete("/", userDeviceController.DeleteUserDevice)
 	udOwner.Get("/commands/mint", userDeviceController.GetMintDevice)
 	udOwner.Post("/commands/mint", userDeviceController.PostMintDevice)
+
+	udOwner.Patch("/vin", userDeviceController.UpdateVIN)
+	udOwner.Patch("/name", userDeviceController.UpdateName)
+	udOwner.Patch("/country-code", userDeviceController.UpdateCountryCode)
+	udOwner.Patch("/image", userDeviceController.UpdateImage)
+	udOwner.Get("/valuations", userDeviceController.GetValuations)
+	udOwner.Get("/offers", userDeviceController.GetOffers)
+	udOwner.Get("/range", userDeviceController.GetRange)
 
 	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService)
 
