@@ -424,7 +424,8 @@ func (nc *NFTController) GetVehicleStatus(c *fiber.Ctx) error {
 		return err
 	}
 
-	ds := PrepareDeviceStatusInformation(deviceData, privileges)
+	ds := PrepareDeviceStatusInformation(c.Context(), nc.deviceDefSvc, deviceData, nft.R.UserDevice.DeviceDefinitionID,
+		nft.R.UserDevice.DeviceStyleID, privileges)
 
 	return c.JSON(ds)
 }
