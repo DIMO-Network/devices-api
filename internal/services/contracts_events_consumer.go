@@ -305,18 +305,18 @@ func (c *ContractsEventsConsumer) dcnNameChanged(e *ContractEventData) error {
 		return err
 	}
 	// see if it exists first
-	dcn, err := models.DCNS(models.DCNWhere.NFTNodeAddress.EQ(args.Node[:])).One(context.Background(), c.db.DBS().Reader)
+	dcn, err := models.DCNS(models.DCNWhere.NFTNodeID.EQ(args.Node[:])).One(context.Background(), c.db.DBS().Reader)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return errors.Wrap(err, "failed to query for existing dcn")
 	}
 	if dcn == nil {
 		dcn = &models.DCN{
-			NFTNodeAddress: args.Node[:],
+			NFTNodeID: args.Node[:],
 		}
 	}
 	dcn.Name = null.StringFrom(args.Name)
 
-	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{models.DCNColumns.NFTNodeAddress},
+	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{models.DCNColumns.NFTNodeID},
 		boil.Whitelist(models.DCNColumns.Name, models.DCNColumns.UpdatedAt), boil.Infer())
 	if err != nil {
 		return errors.Wrapf(err, "failed to upsert dcn with name: %s", args.Name)
@@ -332,19 +332,19 @@ func (c *ContractsEventsConsumer) dcnNewNode(e *ContractEventData) error {
 		return err
 	}
 	//question: should this be an insert always?
-	dcn, err := models.DCNS(models.DCNWhere.NFTNodeAddress.EQ(args.Node[:])).One(context.Background(), c.db.DBS().Reader)
+	dcn, err := models.DCNS(models.DCNWhere.NFTNodeID.EQ(args.Node[:])).One(context.Background(), c.db.DBS().Reader)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return errors.Wrap(err, "failed to query for existing dcn")
 	}
 	if dcn == nil {
 		dcn = &models.DCN{
-			NFTNodeAddress: args.Node[:],
+			NFTNodeID: args.Node[:],
 		}
 	}
 	dcn.OwnerAddress = null.BytesFrom(args.Owner.Bytes())
 	dcn.NFTNodeBlockCreateTime = null.TimeFrom(e.Block.Time)
 
-	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{models.DCNColumns.NFTNodeAddress},
+	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{models.DCNColumns.NFTNodeID},
 		boil.Whitelist(models.DCNColumns.OwnerAddress, models.DCNColumns.NFTNodeBlockCreateTime, models.DCNColumns.UpdatedAt), boil.Infer())
 	if err != nil {
 		return errors.Wrapf(err, "failed to upsert dcn with node: %s", args.Node)
@@ -359,19 +359,19 @@ func (c *ContractsEventsConsumer) dcnNewExpiration(e *ContractEventData) error {
 	if err := json.Unmarshal(e.Arguments, &args); err != nil {
 		return err
 	}
-	dcn, err := models.DCNS(models.DCNWhere.NFTNodeAddress.EQ(args.Node[:])).One(context.Background(), c.db.DBS().Reader)
+	dcn, err := models.DCNS(models.DCNWhere.NFTNodeID.EQ(args.Node[:])).One(context.Background(), c.db.DBS().Reader)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return errors.Wrap(err, "failed to query for existing dcn")
 	}
 	if dcn == nil {
 		dcn = &models.DCN{
-			NFTNodeAddress: args.Node[:],
+			NFTNodeID: args.Node[:],
 		}
 	}
 	t := time.Unix(args.Expiration.Int64(), 0)
 	dcn.Expiration = null.TimeFrom(t)
 
-	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{models.DCNColumns.NFTNodeAddress},
+	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{models.DCNColumns.NFTNodeID},
 		boil.Whitelist(models.DCNColumns.Expiration, models.DCNColumns.UpdatedAt), boil.Infer())
 	if err != nil {
 		return errors.Wrapf(err, "failed to upsert dcn with node: %s", args.Node)

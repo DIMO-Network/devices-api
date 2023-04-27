@@ -155,7 +155,7 @@ func (nc *NFTController) GetDcnNFTMetadata(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	dcn, err := models.DCNS(models.DCNWhere.NFTNodeAddress.EQ(nodeAddrBytes)).One(c.Context(), nc.DBS().Reader)
+	dcn, err := models.DCNS(models.DCNWhere.NFTNodeID.EQ(nodeAddrBytes)).One(c.Context(), nc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return fiber.NewError(fiber.StatusNotFound, "DCN not found with node address "+nd)

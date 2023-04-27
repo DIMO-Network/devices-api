@@ -24,8 +24,8 @@ import (
 
 // DCN is an object representing the database table.
 type DCN struct {
+	NFTNodeID              []byte      `boil:"nft_node_id" json:"nft_node_id" toml:"nft_node_id" yaml:"nft_node_id"`
 	OwnerAddress           null.Bytes  `boil:"owner_address" json:"owner_address,omitempty" toml:"owner_address" yaml:"owner_address,omitempty"`
-	NFTNodeAddress         []byte      `boil:"nft_node_address" json:"nft_node_address" toml:"nft_node_address" yaml:"nft_node_address"`
 	Name                   null.String `boil:"name" json:"name,omitempty" toml:"name" yaml:"name,omitempty"`
 	Expiration             null.Time   `boil:"expiration" json:"expiration,omitempty" toml:"expiration" yaml:"expiration,omitempty"`
 	NFTNodeBlockCreateTime null.Time   `boil:"nft_node_block_create_time" json:"nft_node_block_create_time,omitempty" toml:"nft_node_block_create_time" yaml:"nft_node_block_create_time,omitempty"`
@@ -37,16 +37,16 @@ type DCN struct {
 }
 
 var DCNColumns = struct {
+	NFTNodeID              string
 	OwnerAddress           string
-	NFTNodeAddress         string
 	Name                   string
 	Expiration             string
 	NFTNodeBlockCreateTime string
 	CreatedAt              string
 	UpdatedAt              string
 }{
+	NFTNodeID:              "nft_node_id",
 	OwnerAddress:           "owner_address",
-	NFTNodeAddress:         "nft_node_address",
 	Name:                   "name",
 	Expiration:             "expiration",
 	NFTNodeBlockCreateTime: "nft_node_block_create_time",
@@ -55,16 +55,16 @@ var DCNColumns = struct {
 }
 
 var DCNTableColumns = struct {
+	NFTNodeID              string
 	OwnerAddress           string
-	NFTNodeAddress         string
 	Name                   string
 	Expiration             string
 	NFTNodeBlockCreateTime string
 	CreatedAt              string
 	UpdatedAt              string
 }{
+	NFTNodeID:              "dcn.nft_node_id",
 	OwnerAddress:           "dcn.owner_address",
-	NFTNodeAddress:         "dcn.nft_node_address",
 	Name:                   "dcn.name",
 	Expiration:             "dcn.expiration",
 	NFTNodeBlockCreateTime: "dcn.nft_node_block_create_time",
@@ -84,16 +84,16 @@ func (w whereHelper__byte) GT(x []byte) qm.QueryMod  { return qmhelper.Where(w.f
 func (w whereHelper__byte) GTE(x []byte) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
 
 var DCNWhere = struct {
+	NFTNodeID              whereHelper__byte
 	OwnerAddress           whereHelpernull_Bytes
-	NFTNodeAddress         whereHelper__byte
 	Name                   whereHelpernull_String
 	Expiration             whereHelpernull_Time
 	NFTNodeBlockCreateTime whereHelpernull_Time
 	CreatedAt              whereHelpertime_Time
 	UpdatedAt              whereHelpertime_Time
 }{
+	NFTNodeID:              whereHelper__byte{field: "\"devices_api\".\"dcn\".\"nft_node_id\""},
 	OwnerAddress:           whereHelpernull_Bytes{field: "\"devices_api\".\"dcn\".\"owner_address\""},
-	NFTNodeAddress:         whereHelper__byte{field: "\"devices_api\".\"dcn\".\"nft_node_address\""},
 	Name:                   whereHelpernull_String{field: "\"devices_api\".\"dcn\".\"name\""},
 	Expiration:             whereHelpernull_Time{field: "\"devices_api\".\"dcn\".\"expiration\""},
 	NFTNodeBlockCreateTime: whereHelpernull_Time{field: "\"devices_api\".\"dcn\".\"nft_node_block_create_time\""},
@@ -118,10 +118,10 @@ func (*dcnR) NewStruct() *dcnR {
 type dcnL struct{}
 
 var (
-	dcnAllColumns            = []string{"owner_address", "nft_node_address", "name", "expiration", "nft_node_block_create_time", "created_at", "updated_at"}
-	dcnColumnsWithoutDefault = []string{"nft_node_address"}
+	dcnAllColumns            = []string{"nft_node_id", "owner_address", "name", "expiration", "nft_node_block_create_time", "created_at", "updated_at"}
+	dcnColumnsWithoutDefault = []string{"nft_node_id"}
 	dcnColumnsWithDefault    = []string{"owner_address", "name", "expiration", "nft_node_block_create_time", "created_at", "updated_at"}
-	dcnPrimaryKeyColumns     = []string{"nft_node_address"}
+	dcnPrimaryKeyColumns     = []string{"nft_node_id"}
 	dcnGeneratedColumns      = []string{}
 )
 
@@ -416,7 +416,7 @@ func DCNS(mods ...qm.QueryMod) dcnQuery {
 
 // FindDCN retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindDCN(ctx context.Context, exec boil.ContextExecutor, nFTNodeAddress []byte, selectCols ...string) (*DCN, error) {
+func FindDCN(ctx context.Context, exec boil.ContextExecutor, nFTNodeID []byte, selectCols ...string) (*DCN, error) {
 	dcnObj := &DCN{}
 
 	sel := "*"
@@ -424,10 +424,10 @@ func FindDCN(ctx context.Context, exec boil.ContextExecutor, nFTNodeAddress []by
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"devices_api\".\"dcn\" where \"nft_node_address\"=$1", sel,
+		"select %s from \"devices_api\".\"dcn\" where \"nft_node_id\"=$1", sel,
 	)
 
-	q := queries.Raw(query, nFTNodeAddress)
+	q := queries.Raw(query, nFTNodeID)
 
 	err := q.Bind(ctx, exec, dcnObj)
 	if err != nil {
@@ -803,7 +803,7 @@ func (o *DCN) Delete(ctx context.Context, exec boil.ContextExecutor) (int64, err
 	}
 
 	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), dcnPrimaryKeyMapping)
-	sql := "DELETE FROM \"devices_api\".\"dcn\" WHERE \"nft_node_address\"=$1"
+	sql := "DELETE FROM \"devices_api\".\"dcn\" WHERE \"nft_node_id\"=$1"
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -900,7 +900,7 @@ func (o DCNSlice) DeleteAll(ctx context.Context, exec boil.ContextExecutor) (int
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *DCN) Reload(ctx context.Context, exec boil.ContextExecutor) error {
-	ret, err := FindDCN(ctx, exec, o.NFTNodeAddress)
+	ret, err := FindDCN(ctx, exec, o.NFTNodeID)
 	if err != nil {
 		return err
 	}
@@ -939,16 +939,16 @@ func (o *DCNSlice) ReloadAll(ctx context.Context, exec boil.ContextExecutor) err
 }
 
 // DCNExists checks if the DCN row exists.
-func DCNExists(ctx context.Context, exec boil.ContextExecutor, nFTNodeAddress []byte) (bool, error) {
+func DCNExists(ctx context.Context, exec boil.ContextExecutor, nFTNodeID []byte) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"devices_api\".\"dcn\" where \"nft_node_address\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"devices_api\".\"dcn\" where \"nft_node_id\"=$1 limit 1)"
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
 		fmt.Fprintln(writer, sql)
-		fmt.Fprintln(writer, nFTNodeAddress)
+		fmt.Fprintln(writer, nFTNodeID)
 	}
-	row := exec.QueryRowContext(ctx, sql, nFTNodeAddress)
+	row := exec.QueryRowContext(ctx, sql, nFTNodeID)
 
 	err := row.Scan(&exists)
 	if err != nil {
