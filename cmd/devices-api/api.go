@@ -192,8 +192,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Get("/offers", userDeviceController.GetOffers)
 	udOwner.Get("/range", userDeviceController.GetRange)
 
-	v1Auth.Post("/user/devices/:userDeviceID/error-codes", userDeviceController.QueryDeviceErrorCodes)
-	v1Auth.Get("/user/devices/:userDeviceID/error-codes", userDeviceController.GetUserDeviceErrorCodeQueries)
+	udOwner.Post("/error-codes", userDeviceController.QueryDeviceErrorCodes)
+	udOwner.Get("/error-codes", userDeviceController.GetUserDeviceErrorCodeQueries)
 
 	// device integrations
 	v1Auth.Get("/user/devices/:userDeviceID/integrations/:integrationID", userDeviceController.GetUserDeviceIntegration)

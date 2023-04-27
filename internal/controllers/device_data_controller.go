@@ -277,7 +277,9 @@ var errorCodeRegex = regexp.MustCompile(`^.{5,8}$`)
 // @Router      /user/devices/{userDeviceID}/error-codes [post]
 func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
+	userID := c.Params("userID")
+
+	logger := helpers.GetLogger(c, udc.log)
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
@@ -318,7 +320,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	chtResp, err := udc.openAI.GetErrorCodesDescription(dd.Type.Make, dd.Type.Model, req.ErrorCodes)
 	if err != nil {
 		appmetrics.OpenAITotalFailedCallsOps.Inc()
-		udc.log.Err(err).Interface("requestBody", req).Msg("Error occurred fetching description for error codes")
+		logger.Err(err).Interface("requestBody", req).Msg("Error occurred fetching description for error codes")
 		return err
 	}
 
@@ -327,7 +329,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 
 	if err != nil {
 		// TODO - should we return an error for this or just log it
-		udc.log.Err(err).Msg("Could not save user query response")
+		logger.Err(err).Msg("Could not save user query response")
 	}
 
 	return c.JSON(&QueryDeviceErrorCodesResponse{
@@ -343,7 +345,9 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 // @Router      /user/devices/{userDeviceID}/error-codes [get]
 func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
+	userID := c.Params("userID")
+
+	logger := helpers.GetLogger(c, udc.log)
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.UserID.EQ(userID),
@@ -354,7 +358,7 @@ func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) er
 		if errors.Is(err, sql.ErrNoRows) {
 			return fiber.NewError(fiber.StatusNotFound, "Could not find user device")
 		}
-		udc.log.Err(err).Str("userDeviceID", udi).Msg("error occurred when fetching error codes for device")
+		logger.Err(err).Msg("error occurred when fetching error codes for device")
 		return fiber.NewError(fiber.StatusInternalServerError, "error occurred fetching device error queries")
 	}
 
