@@ -553,7 +553,7 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 	var claim, pair, unpair *AutoPiTransactionStatus
 
 	var tokenID *big.Int
-	var ethereumAddress, ownerAddress *common.Address
+	var ethereumAddress, ownerAddress, beneficiaryAddress *common.Address
 
 	dbUnit, err := models.AutopiUnits(
 		models.AutopiUnitWhere.AutopiUnitID.EQ(unitID),
@@ -578,9 +578,15 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 		if dbUnit.OwnerAddress.Valid {
 			addr := common.BytesToAddress(dbUnit.OwnerAddress.Bytes)
 			ownerAddress = &addr
+			beneficiaryAddress = &addr
 			claim = &AutoPiTransactionStatus{
 				Status: models.MetaTransactionRequestStatusConfirmed,
 			}
+		}
+
+		if dbUnit.Beneficiary.Valid {
+			addr := common.BytesToAddress(dbUnit.Beneficiary.Bytes)
+			beneficiaryAddress = &addr
 		}
 
 		if req := dbUnit.R.ClaimMetaTransactionRequest; req != nil {
@@ -623,21 +629,22 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 	}
 
 	adi := AutoPiDeviceInfo{
-		IsUpdated:         unit.IsUpdated,
-		DeviceID:          unit.ID,
-		UnitID:            unit.UnitID,
-		DockerReleases:    unit.DockerReleases,
-		HwRevision:        unit.HwRevision,
-		Template:          unit.Template,
-		LastCommunication: unit.LastCommunication,
-		ReleaseVersion:    unit.Release.Version,
-		ShouldUpdate:      svc < 0,
-		TokenID:           tokenID,
-		EthereumAddress:   ethereumAddress,
-		OwnerAddress:      ownerAddress,
-		Claim:             claim,
-		Pair:              pair,
-		Unpair:            unpair,
+		IsUpdated:          unit.IsUpdated,
+		DeviceID:           unit.ID,
+		UnitID:             unit.UnitID,
+		DockerReleases:     unit.DockerReleases,
+		HwRevision:         unit.HwRevision,
+		Template:           unit.Template,
+		LastCommunication:  unit.LastCommunication,
+		ReleaseVersion:     unit.Release.Version,
+		ShouldUpdate:       svc < 0,
+		TokenID:            tokenID,
+		EthereumAddress:    ethereumAddress,
+		OwnerAddress:       ownerAddress,
+		BeneficiaryAddress: beneficiaryAddress,
+		Claim:              claim,
+		Pair:               pair,
+		Unpair:             unpair,
 	}
 	return c.JSON(adi)
 }
@@ -2395,9 +2402,10 @@ type AutoPiDeviceInfo struct {
 	ReleaseVersion    string    `json:"releaseVersion"`
 	ShouldUpdate      bool      `json:"shouldUpdate"`
 
-	TokenID         *big.Int        `json:"tokenId,omitempty"`
-	EthereumAddress *common.Address `json:"ethereumAddress,omitempty"`
-	OwnerAddress    *common.Address `json:"ownerAddress,omitempty"`
+	TokenID            *big.Int        `json:"tokenId,omitempty"`
+	EthereumAddress    *common.Address `json:"ethereumAddress,omitempty"`
+	OwnerAddress       *common.Address `json:"ownerAddress,omitempty"`
+	BeneficiaryAddress *common.Address `json:"beneficiaryAddress,omitempty"`
 
 	// Claim contains the status of the on-chain claiming meta-transaction.
 	Claim *AutoPiTransactionStatus `json:"claim,omitempty"`
