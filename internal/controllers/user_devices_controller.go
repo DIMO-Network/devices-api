@@ -78,6 +78,7 @@ type UserDevicesController struct {
 	redisCache                redis.CacheService
 	openAI                    services.OpenAI
 	usersClient               pb.UserServiceClient
+	NATSSvc                   *services.NATSService
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -108,7 +109,31 @@ type Device struct {
 }
 
 // NewUserDevicesController constructor
-func NewUserDevicesController(settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService, ddIntSvc services.DeviceDefinitionIntegrationService, eventService services.EventService, smartcarClient services.SmartcarClient, smartcarTaskSvc services.SmartcarTaskService, teslaService services.TeslaService, teslaTaskService services.TeslaTaskService, cipher shared.Cipher, autoPiSvc services.AutoPiAPIService, nhtsaService services.INHTSAService, autoPiIngestRegistrar services.IngestRegistrar, deviceDefinitionRegistrar services.DeviceDefinitionRegistrar, autoPiTaskService services.AutoPiTaskService, producer sarama.SyncProducer, s3NFTClient *s3.Client, drivlyTaskService services.DrivlyTaskService, autoPi *autopi.Integration, cache redis.CacheService, openAI services.OpenAI, usersClient pb.UserServiceClient) UserDevicesController {
+func NewUserDevicesController(settings *config.Settings,
+	dbs func() *db.ReaderWriter,
+	logger *zerolog.Logger,
+	ddSvc services.DeviceDefinitionService,
+	ddIntSvc services.DeviceDefinitionIntegrationService,
+	eventService services.EventService,
+	smartcarClient services.SmartcarClient,
+	smartcarTaskSvc services.SmartcarTaskService,
+	teslaService services.TeslaService,
+	teslaTaskService services.TeslaTaskService,
+	cipher shared.Cipher,
+	autoPiSvc services.AutoPiAPIService,
+	nhtsaService services.INHTSAService,
+	autoPiIngestRegistrar services.IngestRegistrar,
+	deviceDefinitionRegistrar services.DeviceDefinitionRegistrar,
+	autoPiTaskService services.AutoPiTaskService,
+	producer sarama.SyncProducer,
+	s3NFTClient *s3.Client,
+	drivlyTaskService services.DrivlyTaskService,
+	autoPi *autopi.Integration,
+	cache redis.CacheService,
+	openAI services.OpenAI,
+	usersClient pb.UserServiceClient,
+	natsSvc *services.NATSService,
+) UserDevicesController {
 	return UserDevicesController{
 		Settings:                  settings,
 		DBS:                       dbs,
@@ -133,6 +158,7 @@ func NewUserDevicesController(settings *config.Settings, dbs func() *db.ReaderWr
 		redisCache:                cache,
 		openAI:                    openAI,
 		usersClient:               usersClient,
+		NATSSvc:                   natsSvc,
 	}
 }
 
@@ -658,6 +684,9 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	if err != nil {
 		return err
 	}
+
+	udc.NATSSvc.JetStream.Publish(constants.ValuationTopic, []byte(vin))
+
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,
 	})
