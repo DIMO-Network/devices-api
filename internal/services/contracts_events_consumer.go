@@ -360,7 +360,7 @@ func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
 
 // dcnNameChanged processes an event of type NameChanged. Upserts DCN record, setting the Name
 func (c *ContractsEventsConsumer) dcnNameChanged(e *ContractEventData) error {
-	var args contracts.FullAbiNameChanged
+	var args DCNNameChangedContract
 	if err := json.Unmarshal(e.Arguments, &args); err != nil {
 		return err
 	}
@@ -375,7 +375,8 @@ func (c *ContractsEventsConsumer) dcnNameChanged(e *ContractEventData) error {
 		}
 	}
 	if len(args.Name) == 0 {
-		c.log.Warn().Str("handler", "dcnNameChanged").Msg("DCN Name Change argument is empty: args.name")
+		j, _ := e.Arguments.MarshalJSON()
+		c.log.Warn().Str("handler", "dcnNameChanged").Str("eventPayload", string(j)).Msg("DCN Name Change argument is empty")
 	}
 	dcn.Name = null.StringFrom(args.Name)
 
@@ -441,4 +442,12 @@ func (c *ContractsEventsConsumer) dcnNewExpiration(e *ContractEventData) error {
 	}
 
 	return nil
+}
+
+// DCNNameChangedContract represents a NameChanged event raised by the FullAbi contract.
+// Could not use abigen struct because it did not consider the underscore in the name property for serialization
+type DCNNameChangedContract struct {
+	Node [32]byte
+	Name string `json:"name_"`
+	//Raw  types.Log // Blockchain specific contextual infos
 }
