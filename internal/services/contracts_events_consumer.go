@@ -445,6 +445,7 @@ func (c *ContractsEventsConsumer) dcnNewExpiration(e *ContractEventData) error {
 }
 
 // DCNNameChangedContract represents a NameChanged event raised by the FullAbi contract.
+// Could not use abigen struct because it did not consider the underscore in the name property for serialization
 type DCNNameChangedContract struct {
 	Node [32]byte
 	Name string `json:"name_"`
