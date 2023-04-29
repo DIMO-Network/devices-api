@@ -375,7 +375,8 @@ func (c *ContractsEventsConsumer) dcnNameChanged(e *ContractEventData) error {
 		}
 	}
 	if len(args.Name) == 0 {
-		c.log.Warn().Str("handler", "dcnNameChanged").Msg("DCN Name Change argument is empty: args.name")
+		j, _ := e.Arguments.MarshalJSON()
+		c.log.Warn().Str("handler", "dcnNameChanged").Str("eventPayload", string(j)).Msg("DCN Name Change argument is empty")
 	}
 	dcn.Name = null.StringFrom(args.Name)
 
