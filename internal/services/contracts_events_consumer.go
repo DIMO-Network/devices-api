@@ -360,7 +360,7 @@ func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
 
 // dcnNameChanged processes an event of type NameChanged. Upserts DCN record, setting the Name
 func (c *ContractsEventsConsumer) dcnNameChanged(e *ContractEventData) error {
-	var args contracts.FullAbiNameChanged
+	var args DCNNameChangedContract
 	if err := json.Unmarshal(e.Arguments, &args); err != nil {
 		return err
 	}
@@ -441,4 +441,11 @@ func (c *ContractsEventsConsumer) dcnNewExpiration(e *ContractEventData) error {
 	}
 
 	return nil
+}
+
+// DCNNameChangedContract represents a NameChanged event raised by the FullAbi contract.
+type DCNNameChangedContract struct {
+	Node [32]byte
+	Name string `json:"name_"`
+	//Raw  types.Log // Blockchain specific contextual infos
 }
