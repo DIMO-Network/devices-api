@@ -2,7 +2,7 @@ replicaCount: 3
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 1.13.36
+  tag: 1.13.37
 cronJob:
   enabled: true
   schedule: 0 0 1 * *
