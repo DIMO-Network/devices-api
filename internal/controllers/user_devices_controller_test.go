@@ -18,6 +18,7 @@ import (
 
 	"github.com/DIMO-Network/shared/db"
 
+	deviceDefs "github.com/DIMO-Network/device-definitions-api/pkg"
 	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -194,6 +195,36 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 	assert.NotNilf(s.T(), userDevice, "expected a user device in the database to exist")
 	assert.Equal(s.T(), s.testUserID, userDevice.UserID)
 	assert.Equal(s.T(), vinny, userDevice.VinIdentifier.String)
+}
+
+func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_Fail_Decode() {
+	// arrange DB
+	_ = test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	// act request
+	const vinny = "4T3R6RFVXMU023395"
+	reg := RegisterUserDeviceSmartcar{Code: "XX", RedirectURI: "https://mobile-app", CountryCode: "USA"}
+	j, _ := json.Marshal(reg)
+
+	s.scClient.EXPECT().ExchangeCode(gomock.Any(), reg.Code, reg.RedirectURI).Times(1).Return(&smartcar.Token{
+		Access:        "AA",
+		AccessExpiry:  time.Now().Add(time.Hour),
+		Refresh:       "RR",
+		RefreshExpiry: time.Now().Add(time.Hour),
+		ExpiresIn:     3600,
+	}, nil)
+	s.scClient.EXPECT().GetExternalID(gomock.Any(), "AA").Times(1).Return("123", nil)
+	s.scClient.EXPECT().GetVIN(gomock.Any(), "AA", "123").Times(1).Return(vinny, nil)
+	s.redisClient.EXPECT().Set(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID), gomock.Any(), time.Hour*2).Return(nil)
+
+	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny).Times(1).Return(nil,
+		deviceDefs.ErrFailedVINDecode)
+
+	request := test.BuildRequest("POST", "/user/devices/fromsmartcar", string(j))
+	response, responseError := s.app.Test(request)
+	fmt.Println(responseError)
+
+	// assert
+	assert.Equal(s.T(), fiber.StatusFailedDependency, response.StatusCode)
 }
 
 func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_SameUser_DuplicateVIN() {

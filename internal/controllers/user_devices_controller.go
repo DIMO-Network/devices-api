@@ -17,6 +17,7 @@ import (
 
 	"github.com/DIMO-Network/shared/redis"
 
+	deviceDefs "github.com/DIMO-Network/device-definitions-api/pkg"
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -615,12 +616,18 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	// decode VIN with grpc call
 	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin)
 	if err != nil {
+		if strings.Contains(err.Error(), deviceDefs.ErrFailedVINDecode.Error()) {
+			localLog.Err(err).
+				Msg("unable to decode vin for customer request to create vehicle")
+			return fiber.NewError(fiber.StatusFailedDependency, err.Error())
+		}
 		return errors.Wrapf(err, "could not decode vin %s for country %s", vin, reg.CountryCode)
 	}
+	// in case err is nil but we don't get a valid decode
 	if len(decodeVIN.DeviceDefinitionId) == 0 {
-		localLog.Warn().
+		localLog.Err(err).
 			Msg("unable to decode vin for customer request to create vehicle")
-		return fiber.NewError(fiber.StatusFailedDependency, "unable to decode vin")
+		return fiber.NewError(fiber.StatusFailedDependency, "failed to decode vin")
 	}
 	// attach smartcar integration to device definition
 	_, err = udc.DeviceDefIntSvc.CreateDeviceDefinitionIntegration(c.Context(), smartCarIntegrationID,
