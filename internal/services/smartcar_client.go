@@ -82,7 +82,7 @@ func (e *SmartcarError) Error() string {
 }
 
 func (s *smartcarClient) ExchangeCode(ctx context.Context, code, redirectURI string) (*smartcar.Token, error) {
-	var v url.Values
+	v := url.Values{}
 	v.Set("code", code)
 	v.Set("grant_type", "authorization_code")
 	v.Set("redirect_uri", redirectURI)
