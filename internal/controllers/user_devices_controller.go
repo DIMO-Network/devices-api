@@ -132,8 +132,14 @@ func NewUserDevicesController(settings *config.Settings,
 	cache redis.CacheService,
 	openAI services.OpenAI,
 	usersClient pb.UserServiceClient,
-	natsSvc *services.NATSService,
 ) UserDevicesController {
+
+	natsSvc, err := services.NewNATSService(settings, logger)
+
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create NATS service")
+	}
+
 	return UserDevicesController{
 		Settings:                  settings,
 		DBS:                       dbs,
@@ -536,7 +542,13 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		}
 	}
 
-	udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, []byte(vin))
+	pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, []byte(vin))
+
+	if err != nil {
+		udc.log.Err(err).Msg("failed to publish to NATS")
+	} else {
+		udc.log.Info().Str("vin", vin).Str("user_id", userID).Msgf("published to NATS with ack: %+v", pubAck)
+	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,
@@ -687,7 +699,13 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		return err
 	}
 
-	udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, []byte(vin))
+	pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, []byte(vin))
+
+	if err != nil {
+		localLog.Err(err).Msg("Failed to publish to NATS.")
+	} else {
+		localLog.Info().Msgf("Published to NATS with Ack: %+v", pubAck)
+	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,

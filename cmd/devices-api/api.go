@@ -91,11 +91,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		KeyPrefix: "devices-api",
 	})
 
-	natsSvc, err := services.NewNATSService(settings, &logger)
-
 	// controllers
 	deviceControllers := controllers.NewDevicesController(settings, pdb.DBS, &logger, nhtsaSvc, ddSvc, ddIntSvc)
-	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService, smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest, deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, drivlyTaskService, autoPi, redisCache, openAI, usersClient, natsSvc)
+	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService, smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest, deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, drivlyTaskService, autoPi, redisCache, openAI, usersClient)
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
@@ -274,7 +272,11 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		valuationService := services.NewValuationService(settings, &logger, pdb, ddSvc)
 
 		go func() {
-			valuationService.ValuationConsumer(context.Background())
+			err := valuationService.ValuationConsumer(context.Background())
+
+			if err != nil {
+				logger.Fatal().Err(err).Msg("Failed to start valuation consumer")
+			}
 		}()
 	}
 
