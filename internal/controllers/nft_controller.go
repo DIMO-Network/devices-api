@@ -167,6 +167,11 @@ func (nc *NFTController) GetDcnNFTMetadata(c *fiber.Ctx) error {
 			TraitType: "Creation Date", Value: strconv.FormatInt(dcn.NFTNodeBlockCreateTime.Time.Unix(), 10),
 		})
 	}
+	if dcn.NFTNodeBlockCreateTime.Valid {
+		attrs = append(attrs, NFTAttribute{
+			TraitType: "Registration Date", Value: strconv.FormatInt(dcn.NFTNodeBlockCreateTime.Time.Unix(), 10),
+		})
+	}
 	if dcn.Expiration.Valid {
 		attrs = append(attrs, NFTAttribute{
 			TraitType: "Expiration Date", Value: strconv.FormatInt(dcn.Expiration.Time.Unix(), 10),
@@ -174,6 +179,10 @@ func (nc *NFTController) GetDcnNFTMetadata(c *fiber.Ctx) error {
 	}
 	nameArray := strings.Split(dcn.Name.String, ".")
 	nameLength := len(nameArray[0])
+
+	attrs = append(attrs, NFTAttribute{
+		TraitType: "Character Set", Value: "alphanumeric",
+	})
 
 	attrs = append(attrs, NFTAttribute{
 		TraitType: "Length", Value: strconv.Itoa(nameLength),
