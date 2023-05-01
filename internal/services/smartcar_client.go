@@ -48,21 +48,6 @@ func NewSmartcarClient(settings *config.Settings) SmartcarClient {
 	}
 }
 
-var smartcarScopes = []string{
-	"control_security",
-	"control_charge",
-	"read_engine_oil",
-	"read_battery",
-	"read_charge",
-	"control_charge",
-	"read_fuel",
-	"read_location",
-	"read_odometer",
-	"read_tires",
-	"read_vehicle_info",
-	"read_vin",
-}
-
 const smartcarDoorPermission = "control_security"
 
 var scopeToEndpoints = map[string][]string{
