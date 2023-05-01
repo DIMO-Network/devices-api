@@ -137,7 +137,7 @@ func NewUserDevicesController(settings *config.Settings,
 	natsSvc, err := services.NewNATSService(settings, logger)
 
 	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to create NATS service")
+		logger.Error().Err(err).Msg("Failed to create NATS service")
 	}
 
 	return UserDevicesController{
