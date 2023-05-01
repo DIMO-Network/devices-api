@@ -172,10 +172,22 @@ func (nc *NFTController) GetDcnNFTMetadata(c *fiber.Ctx) error {
 			TraitType: "Expiration Date", Value: strconv.FormatInt(dcn.Expiration.Time.Unix(), 10),
 		})
 	}
+	nameArray := strings.Split(dcn.Name.String, ".")
+	nameLength := len(nameArray[0])
+
+	attrs = append(attrs, NFTAttribute{
+		TraitType: "Length", Value: strconv.Itoa(nameLength),
+	})
+
+	attrs = append(attrs, NFTAttribute{
+		TraitType: "Nodehash", Value: common.Bytes2Hex(ndid.Bytes()),
+	})
 
 	return c.JSON(NFTMetadataResp{
-		Name:       dcn.Name.String,
-		Attributes: attrs,
+		Name:        dcn.Name.String,
+		Description: dcn.Name.String + ", a DCN name.",
+		Image:       fmt.Sprintf("%s/v1/dcn/%s/image", nc.Settings.DeploymentBaseURL, ndStr),
+		Attributes:  attrs,
 	})
 }
 
