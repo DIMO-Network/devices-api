@@ -128,7 +128,7 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 
 	return c.JSON(NFTMetadataResp{
 		Name:        name,
-		Description: description,
+		Description: description + ", a DIMO vehicle.",
 		Image:       fmt.Sprintf("%s/v1/vehicle/%s/image", nc.Settings.DeploymentBaseURL, ti),
 		Attributes: []NFTAttribute{
 			{TraitType: "Make", Value: def.Make.Name},
@@ -308,7 +308,7 @@ func (nc *NFTController) GetAftermarketDeviceNFTMetadata(c *fiber.Ctx) error {
 
 	return c.JSON(NFTMetadataResp{
 		Name:        name,
-		Description: name + ", a hardware device",
+		Description: name + ", a DIMO hardware device.",
 		Image:       fmt.Sprintf("%s/v1/aftermarket/device/%s/image", nc.Settings.DeploymentBaseURL, tid),
 		Attributes: []NFTAttribute{
 			{TraitType: "Ethereum Address", Value: common.BytesToAddress(unit.EthereumAddress.Bytes).String()},
