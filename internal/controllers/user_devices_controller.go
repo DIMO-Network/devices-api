@@ -550,7 +550,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	token, err := udc.smartcarClient.ExchangeCode(c.Context(), reg.Code, reg.RedirectURI)
 	if err != nil {
 		var scErr *services.SmartcarError
-		if errors.As(err, &scErr) { // err, ok := err.(*services.SmartcarError); err != nil {
+		if errors.As(err, &scErr) {
 			localLog.Error().Msgf("Failed exchanging Authorization code. Status code %d, request id %s, and body `%s`.", scErr.Code, scErr.RequestID, string(scErr.Body))
 		} else {
 			localLog.Err(err).Msg("Failed to exchange authorization code with Smartcar.")

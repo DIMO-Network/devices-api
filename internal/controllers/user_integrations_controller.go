@@ -2009,7 +2009,13 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 		var err error
 		token, err = udc.smartcarClient.ExchangeCode(c.Context(), reqBody.Code, reqBody.RedirectURI)
 		if err != nil {
-			logger.Err(err).Msg("Failed to exchange authorization code with Smartcar.")
+			var scErr *services.SmartcarError
+			if errors.As(err, &scErr) {
+				logger.Error().Msgf("Failed exchanging Authorization code. Status code %d, request id %s, and body `%s`.", scErr.Code, scErr.RequestID, string(scErr.Body))
+			} else {
+				logger.Err(err).Msg("Failed to exchange authorization code with Smartcar.")
+			}
+
 			// This may not be the user's fault, but 400 for now.
 			return fiber.NewError(fiber.StatusBadRequest, "Failed to exchange authorization code with Smartcar.")
 		}
