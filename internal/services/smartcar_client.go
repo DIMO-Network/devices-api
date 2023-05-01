@@ -2,6 +2,14 @@ package services
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/pkg/errors"
@@ -25,6 +33,8 @@ type SmartcarClient interface {
 type smartcarClient struct {
 	settings       *config.Settings
 	officialClient smartcar.Client
+	exchangeURL    string
+	httpClient     *http.Client
 }
 
 func NewSmartcarClient(settings *config.Settings) SmartcarClient {
@@ -65,14 +75,72 @@ var scopeToEndpoints = map[string][]string{
 	"read_vin":          {"/vin"},
 }
 
+type scExchangeRes struct {
+	AccessToken  string `json:"access_token"`
+	ExpiresIn    int    `json:"expires_in"`
+	RefreshToken string `json:"refresh_token"`
+	TokenType    string `json:"token_type"`
+}
+
+var scReqIDHeader = "SC-Request-Id"
+
+type SmartcarError struct {
+	RequestID string
+	Code      int
+	Body      []byte
+}
+
+func (e *SmartcarError) Error() string {
+	return fmt.Sprintf("smartcar: status code %d", e.Code)
+}
+
 func (s *smartcarClient) ExchangeCode(ctx context.Context, code, redirectURI string) (*smartcar.Token, error) {
-	params := &smartcar.AuthParams{
-		ClientID:     s.settings.SmartcarClientID,
-		ClientSecret: s.settings.SmartcarClientSecret,
-		RedirectURI:  redirectURI,
-		Scope:        smartcarScopes,
+	var v url.Values
+	v.Set("code", code)
+	v.Set("grant_type", "authorization_code")
+	v.Set("redirect_uri", redirectURI)
+
+	req, err := http.NewRequestWithContext(ctx, "POST", s.exchangeURL, strings.NewReader(v.Encode()))
+	if err != nil {
+		return nil, err
 	}
-	return s.officialClient.NewAuth(params).ExchangeCode(ctx, &smartcar.ExchangeCodeParams{Code: code})
+
+	req.Header.Set("Authorization", base64.StdEncoding.EncodeToString([]byte(s.settings.SmartcarClientID+":"+s.settings.SmartcarClientSecret)))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("User-Agent", "DIMO/1.0")
+
+	res, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer res.Body.Close()
+
+	reqID := res.Header.Get(scReqIDHeader)
+
+	bb, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return nil, &SmartcarError{
+			RequestID: reqID,
+			Code:      res.StatusCode,
+			Body:      bb,
+		}
+	}
+
+	var t scExchangeRes
+	if err := json.Unmarshal(bb, &t); err != nil {
+		return nil, err
+	}
+
+	return &smartcar.Token{
+		Access:       t.AccessToken,
+		AccessExpiry: time.Now().Add(time.Duration(t.ExpiresIn) * time.Second),
+		Refresh:      t.RefreshToken,
+	}, nil
 }
 
 func (s *smartcarClient) GetUserID(ctx context.Context, accessToken string) (string, error) {
