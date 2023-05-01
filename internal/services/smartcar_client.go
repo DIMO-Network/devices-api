@@ -43,6 +43,8 @@ func NewSmartcarClient(settings *config.Settings) SmartcarClient {
 	return &smartcarClient{
 		settings:       settings,
 		officialClient: scClient,
+		exchangeURL:    "https://auth.smartcar.com/oauth/token/",
+		httpClient:     &http.Client{Timeout: time.Duration(310) * time.Second}, // Smartcar default.
 	}
 }
 
