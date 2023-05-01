@@ -536,6 +536,8 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		}
 	}
 
+	udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, []byte(vin))
+
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,
 	})
@@ -685,7 +687,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		return err
 	}
 
-	udc.NATSSvc.JetStream.Publish(constants.ValuationTopic, []byte(vin))
+	udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, []byte(vin))
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,

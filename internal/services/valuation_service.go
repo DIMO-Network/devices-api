@@ -98,6 +98,9 @@ func (v *ValuationService) ValuationConsumer(ctx context.Context) error {
 					}
 				}
 
+				if err := msg.Ack(); err != nil {
+					v.log.Err(err).Msg("message ack failed")
+				}
 			}
 		}
 	}
