@@ -613,7 +613,13 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 			"userDevice": udFull,
 		})
 	}
+	// get info from smartcar, fine if fails
+	info, err := udc.smartcarClient.GetInfo(c.Context(), token.Access, externalID)
+	if err != nil {
+		localLog.Warn().Err(err).Msg("unable to get info from smartcar")
+	}
 	// decode VIN with grpc call
+	// todo: pass in year and model for backup in case cannot decode "knownModel", "knownYear"
 	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin)
 	if err != nil {
 		if strings.Contains(err.Error(), deviceDefs.ErrFailedVINDecode.Error()) {
