@@ -92,7 +92,7 @@ func (s *smartcarClient) ExchangeCode(ctx context.Context, code, redirectURI str
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", base64.StdEncoding.EncodeToString([]byte(s.settings.SmartcarClientID+":"+s.settings.SmartcarClientSecret)))
+	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(s.settings.SmartcarClientID+":"+s.settings.SmartcarClientSecret)))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("User-Agent", "DIMO/1.0")
 
