@@ -158,8 +158,9 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 	}, nil)
 	s.scClient.EXPECT().GetExternalID(gomock.Any(), "AA").Times(1).Return("123", nil)
 	s.scClient.EXPECT().GetVIN(gomock.Any(), "AA", "123").Times(1).Return(vinny, nil)
+	s.scClient.EXPECT().GetInfo(gomock.Any(), "AA", "123").Times(1).Return(nil, nil)
 
-	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny).Times(1).Return(&grpc.DecodeVinResponse{
+	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&grpc.DecodeVinResponse{
 		DeviceMakeId:       dd[0].Make.Id,
 		DeviceDefinitionId: dd[0].DeviceDefinitionId,
 		DeviceStyleId:      "",
@@ -215,8 +216,9 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_Fail_Dec
 	s.scClient.EXPECT().GetExternalID(gomock.Any(), "AA").Times(1).Return("123", nil)
 	s.scClient.EXPECT().GetVIN(gomock.Any(), "AA", "123").Times(1).Return(vinny, nil)
 	s.redisClient.EXPECT().Set(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID), gomock.Any(), time.Hour*2).Return(nil)
+	s.scClient.EXPECT().GetInfo(gomock.Any(), "AA", "123").Times(1).Return(nil, nil)
 
-	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny).Times(1).Return(nil,
+	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(nil,
 		deviceDefs.ErrFailedVINDecode)
 
 	request := test.BuildRequest("POST", "/user/devices/fromsmartcar", string(j))
@@ -300,7 +302,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	reg := RegisterUserDeviceVIN{VIN: vinny, CountryCode: "USA", CANProtocol: "06"}
 	j, _ := json.Marshal(reg)
 
-	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny).Times(1).Return(&grpc.DecodeVinResponse{
+	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&grpc.DecodeVinResponse{
 		DeviceMakeId:       dd[0].Make.Id,
 		DeviceDefinitionId: dd[0].DeviceDefinitionId,
 		DeviceStyleId:      "",
@@ -310,6 +312,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	apInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 10)
 	s.deviceDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Times(1).Return(apInteg, nil)
 	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), apInteg.Id, dd[0].DeviceDefinitionId, "Americas")
+
 	request := test.BuildRequest("POST", "/user/devices/fromvin", string(j))
 	response, responseError := s.app.Test(request)
 	fmt.Println(responseError)

@@ -480,7 +480,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	}
 	// decode VIN with grpc call
 	vin := strings.ToUpper(reg.VIN)
-	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, "", 0, "")
+	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, "", 0, reg.CountryCode)
 	if err != nil {
 		return errors.Wrapf(err, "could not decode vin %s for country %s", vin, reg.CountryCode)
 	}
@@ -618,6 +618,8 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	info, err := udc.smartcarClient.GetInfo(c.Context(), token.Access, externalID)
 	if err != nil {
 		localLog.Warn().Err(err).Msg("unable to get info from smartcar")
+	}
+	if info == nil {
 		info = &smartcar.Info{}
 	}
 	// decode VIN with grpc call, including any possible smartcar known info

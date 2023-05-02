@@ -128,7 +128,7 @@ func (d *deviceDefinitionService) DecodeVIN(ctx context.Context, vin string, mod
 	defer conn.Close()
 
 	resp, err2 := client.DecodeVin(ctx, &ddgrpc.DecodeVinRequest{
-		Vin:        vin, // todo we probably wanna send country for European VINs to send to other provider
+		Vin:        vin,
 		KnownModel: model,
 		KnownYear:  int32(year),
 		Country:    countryCode,
