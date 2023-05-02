@@ -125,30 +125,69 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 	})
 }
 
-func Test_sortByJSONOdometerAsc(t *testing.T) {
+func Test_sortBySignalValueDesc(t *testing.T) {
 	udd := models.UserDeviceDatumSlice{
 		&models.UserDeviceDatum{
-			UserDeviceID:  "123",
-			Data:          null.JSONFrom([]byte(`{ "odometer": 100 }`)),
+			UserDeviceID: "123",
+			Signals: null.JSONFrom([]byte(`{ "odometer": {
+    "value": 88164.32,
+    "timestamp": "2023-04-27T15:57:37"
+  }}`)),
 			CreatedAt:     time.Now(),
 			UpdatedAt:     time.Now(),
 			IntegrationID: "123",
 		},
 		&models.UserDeviceDatum{
-			UserDeviceID:  "123",
-			Data:          null.JSONFrom([]byte(`{ "odometer": 90}`)),
+			UserDeviceID: "123",
+			Signals: null.JSONFrom([]byte(`{ "odometer": {
+    "value": 88174.32,
+    "timestamp": "2023-04-27T16:57:37"
+  }}`)),
 			CreatedAt:     time.Now(),
 			UpdatedAt:     time.Now(),
 			IntegrationID: "345",
 		},
 	}
 	// validate setup is ok
-	assert.Equal(t, float64(100), gjson.GetBytes(udd[0].Data.JSON, "odometer").Float())
-	assert.Equal(t, float64(90), gjson.GetBytes(udd[1].Data.JSON, "odometer").Float())
+	assert.Equal(t, 88164.32, gjson.GetBytes(udd[0].Signals.JSON, "odometer.value").Float())
+	assert.Equal(t, 88174.32, gjson.GetBytes(udd[1].Signals.JSON, "odometer.value").Float())
 	// sort and validate
-	sortByJSONOdometerAsc(udd)
-	assert.Equal(t, float64(90), gjson.GetBytes(udd[0].Data.JSON, "odometer").Float())
-	assert.Equal(t, float64(100), gjson.GetBytes(udd[1].Data.JSON, "odometer").Float())
+	sortBySignalValueDesc(udd, "odometer")
+	assert.Equal(t, 88174.32, gjson.GetBytes(udd[0].Signals.JSON, "odometer.value").Float())
+	assert.Equal(t, 88164.32, gjson.GetBytes(udd[1].Signals.JSON, "odometer.value").Float())
+}
+
+func Test_sortBySignalTimestampDesc(t *testing.T) {
+	udd := models.UserDeviceDatumSlice{
+		&models.UserDeviceDatum{
+			UserDeviceID: "123",
+			Signals: null.JSONFrom([]byte(`{ "odometer": {
+    "value": 88164.32,
+    "timestamp": "2023-04-27T15:57:37Z"
+  }}`)),
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+			IntegrationID: "123",
+		},
+		&models.UserDeviceDatum{
+			UserDeviceID: "123",
+			Signals: null.JSONFrom([]byte(`{ "odometer": {
+    "value": 88174.32,
+    "timestamp": "2023-04-27T16:57:37Z"
+  }}`)),
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+			IntegrationID: "345",
+		},
+	}
+	// validate setup is ok
+	assert.Equal(t, 88164.32, gjson.GetBytes(udd[0].Signals.JSON, "odometer.value").Float())
+	assert.Equal(t, 88174.32, gjson.GetBytes(udd[1].Signals.JSON, "odometer.value").Float())
+	// sort and validate
+	sortBySignalTimestampDesc(udd, "odometer")
+	assert.Equal(t, 88174.32, gjson.GetBytes(udd[0].Signals.JSON, "odometer.value").Float())
+	assert.Equal(t, "2023-04-27T16:57:37Z", gjson.GetBytes(udd[0].Signals.JSON, "odometer.timestamp").Time().Format(time.RFC3339))
+	assert.Equal(t, 88164.32, gjson.GetBytes(udd[1].Signals.JSON, "odometer.value").Float())
 }
 
 func TestUserDevicesController_calculateRange(t *testing.T) {

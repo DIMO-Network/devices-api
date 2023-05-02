@@ -53,9 +53,6 @@ func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDe
 			ds.RecordUpdatedAt = &datum.UpdatedAt
 		}
 	}
-
-	// todo prefer odometer that is higher.
-	// future: prefer lat long from autopi
 	// future: if time btw UpdateAt and timestamp > 7 days, ignore property
 
 	// todo further refactor by passing in type for each option, then have switch in function below
@@ -417,8 +414,8 @@ type DeviceSnapshot struct {
 // sortBySignalValueDesc Sort user device data so the highest value is first
 func sortBySignalValueDesc(udd models.UserDeviceDatumSlice, path string) {
 	sort.Slice(udd, func(i, j int) bool {
-		fpri := gjson.GetBytes(udd[i].Data.JSON, path+"value")
-		fprj := gjson.GetBytes(udd[j].Data.JSON, path+"value")
+		fpri := gjson.GetBytes(udd[i].Signals.JSON, path+".value")
+		fprj := gjson.GetBytes(udd[j].Signals.JSON, path+".value")
 		// if one has it and the other does not, makes no difference
 		if fpri.Exists() && !fprj.Exists() {
 			return true
