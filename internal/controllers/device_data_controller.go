@@ -92,7 +92,7 @@ func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDe
 			o := chargeLimit.Get("value").Float()
 			ds.ChargeLimit = &o
 		}
-		odometer := findMostRecentSignal(deviceData, "odometer", false)
+		odometer := findMostRecentSignal(deviceData, "odometer", true)
 		if odometer.Exists() {
 			o := odometer.Get("value").Float()
 			ds.Odometer = &o
@@ -159,13 +159,16 @@ func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDe
 
 // findMostRecentSignal finds the highest value float instead of most recent, eg. for odometer
 func findMostRecentSignal(udd models.UserDeviceDatumSlice, path string, highestFloat bool) gjson.Result {
-	// todo test
+	// todo write test
 	if len(udd) == 0 {
 		return gjson.Result{}
 	}
 	if len(udd) > 1 {
-		// todo if highestFloat, sort by value inside of path object
-		sortBySignalTimestampAsc(udd, path)
+		if highestFloat {
+			sortBySignalValueDesc(udd, path)
+		} else {
+			sortBySignalTimestampDesc(udd, path)
+		}
 	}
 	return gjson.GetBytes(udd[0].Signals.JSON, path)
 }
@@ -411,22 +414,23 @@ type DeviceSnapshot struct {
 	AmbientTemp          *float64               `json:"ambientTemp,omitempty"`
 }
 
-// sortByJSONOdometerAsc Sort user device data so the highest odometer is last
-func sortByJSONOdometerAsc(udd models.UserDeviceDatumSlice) {
+// sortBySignalValueDesc Sort user device data so the highest value is first
+func sortBySignalValueDesc(udd models.UserDeviceDatumSlice, path string) {
 	sort.Slice(udd, func(i, j int) bool {
-		fpri := gjson.GetBytes(udd[i].Data.JSON, "odometer")
-		fprj := gjson.GetBytes(udd[j].Data.JSON, "odometer")
+		fpri := gjson.GetBytes(udd[i].Data.JSON, path+"value")
+		fprj := gjson.GetBytes(udd[j].Data.JSON, path+"value")
 		// if one has it and the other does not, makes no difference
 		if fpri.Exists() && !fprj.Exists() {
 			return true
 		} else if !fpri.Exists() && fprj.Exists() {
 			return false
 		}
-		return fprj.Float() > fpri.Float()
+		return fprj.Float() < fpri.Float()
 	})
 }
 
-func sortBySignalTimestampAsc(udd models.UserDeviceDatumSlice, path string) {
+// sortBySignalTimestampDesc Sort user device data so the most recent timestamp is first
+func sortBySignalTimestampDesc(udd models.UserDeviceDatumSlice, path string) {
 	sort.Slice(udd, func(i, j int) bool {
 		fpri := gjson.GetBytes(udd[i].Signals.JSON, path+".timestamp")
 		fprj := gjson.GetBytes(udd[j].Signals.JSON, path+".timestamp")
@@ -436,6 +440,6 @@ func sortBySignalTimestampAsc(udd models.UserDeviceDatumSlice, path string) {
 		} else if !fpri.Exists() && fprj.Exists() {
 			return false
 		}
-		return fprj.Time().Unix() > fpri.Time().Unix()
+		return fprj.Time().Unix() < fpri.Time().Unix()
 	})
 }
