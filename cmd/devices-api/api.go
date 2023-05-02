@@ -274,7 +274,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	if settings.IsProduction() {
 
-		valuationService := services.NewValuationService(settings, &logger, pdb, ddSvc, natsSvc)
+		valuationService := services.NewValuationService(&logger, pdb, ddSvc, natsSvc)
 
 		go func() {
 			err := valuationService.ValuationConsumer(context.Background())

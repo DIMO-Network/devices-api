@@ -1,4 +1,4 @@
-package mock_services
+package mock_services //nolint:all
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-const TEST_PORT = 8369
+const testPort = 8369
 
 func RunServerOnPort(port int) *server.Server {
 	opts := natsserver.DefaultTestOptions
@@ -24,16 +24,16 @@ func RunServerWithOptions(opts *server.Options) *server.Server {
 
 func NewMockNATSService() *services.NATSService {
 
-	s := RunServerOnPort(TEST_PORT)
+	s := RunServerOnPort(testPort)
 	defer s.Shutdown()
 
-	s.EnableJetStream(&server.JetStreamConfig{})
+	_ = s.EnableJetStream(&server.JetStreamConfig{})
 
 	time.Sleep(time.Second * 5)
 
-	sUrl := fmt.Sprintf("nats://127.0.0.1:%d", TEST_PORT)
+	sURL := fmt.Sprintf("nats://127.0.0.1:%d", testPort)
 
-	if nc, err := nats.Connect(sUrl); err != nil {
+	if nc, err := nats.Connect(sURL); err != nil {
 		panic(err)
 	} else {
 		js, err := nc.JetStream()

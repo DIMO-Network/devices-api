@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/nats-io/nats.go"
@@ -19,7 +18,7 @@ type ValuationService struct {
 	deviceDefinitionSvc DeviceDefinitionService
 }
 
-func NewValuationService(settings *config.Settings, log *zerolog.Logger, pdb db.Store, deviceDefinitionSvc DeviceDefinitionService, natsSvc *NATSService) *ValuationService {
+func NewValuationService(log *zerolog.Logger, pdb db.Store, deviceDefinitionSvc DeviceDefinitionService, natsSvc *NATSService) *ValuationService {
 
 	return &ValuationService{
 		log:                 log,

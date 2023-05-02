@@ -536,12 +536,14 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		}
 	}
 
-	pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, []byte(vin))
+	if udc.Settings.IsProduction() {
+		pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, []byte(vin))
 
-	if err != nil {
-		udc.log.Err(err).Msg("failed to publish to NATS")
-	} else {
-		udc.log.Info().Str("vin", vin).Str("user_id", userID).Msgf("published to NATS with ack: %+v", pubAck)
+		if err != nil {
+			udc.log.Err(err).Msg("failed to publish to NATS")
+		} else {
+			udc.log.Info().Str("vin", vin).Str("user_id", userID).Msgf("published to NATS with ack: %+v", pubAck)
+		}
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
@@ -693,12 +695,14 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		return err
 	}
 
-	pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, []byte(vin))
+	if udc.Settings.IsProduction() {
+		pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, []byte(vin))
 
-	if err != nil {
-		localLog.Err(err).Msg("Failed to publish to NATS.")
-	} else {
-		localLog.Info().Msgf("Published to NATS with Ack: %+v", pubAck)
+		if err != nil {
+			localLog.Err(err).Msg("Failed to publish to NATS.")
+		} else {
+			localLog.Info().Msgf("Published to NATS with Ack: %+v", pubAck)
+		}
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
