@@ -29,6 +29,7 @@ require (
 	github.com/jarcoal/httpmock v1.1.0
 	github.com/lib/pq v1.10.7
 	github.com/lovoo/goka v1.1.7
+	github.com/nats-io/nats-server/v2 v2.9.16
 	github.com/nats-io/nats.go v1.25.0
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.5.3
@@ -59,7 +60,8 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
-	github.com/nats-io/nats-server/v2 v2.9.16 // indirect
+	github.com/minio/highwayhash v1.0.2 // indirect
+	github.com/nats-io/jwt/v2 v2.4.1 // indirect
 	github.com/nats-io/nkeys v0.4.4 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
@@ -71,6 +73,7 @@ require (
 	github.com/tklauser/numcpus v0.4.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	golang.org/x/sync v0.1.0 // indirect
+	golang.org/x/time v0.3.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 )
 
