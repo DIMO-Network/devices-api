@@ -132,14 +132,8 @@ func NewUserDevicesController(settings *config.Settings,
 	cache redis.CacheService,
 	openAI services.OpenAI,
 	usersClient pb.UserServiceClient,
+	natsSvc *services.NATSService,
 ) UserDevicesController {
-
-	natsSvc, err := services.NewNATSService(settings, logger)
-
-	if err != nil {
-		logger.Error().Err(err).Msg("Failed to create NATS service")
-	}
-
 	return UserDevicesController{
 		Settings:                  settings,
 		DBS:                       dbs,

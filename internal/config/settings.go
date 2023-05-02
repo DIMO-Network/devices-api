@@ -77,7 +77,7 @@ type Settings struct {
 	AftermarketDeviceContractAddress  string      `yaml:"AFTERMARKET_DEVICE_CONTRACT_ADDRESS"`
 	NATSURL                           string      `yaml:"NATS_URL"`
 	NATSStreamName                    string      `yaml:"NATS_STREAM_NAME"`
-	NATSDataDownloadSubject           string      `yaml:"NATS_DATA_DOWNLOAD_SUBJECT"`
+	NATSValuationSubject              string      `yaml:"NATS_VALUATION_SUBJECT"`
 	NATSAckTimeout                    string      `yaml:"NATS_ACK_TIMEOUT"`
 	NATSDurableConsumer               string      `yaml:"NATS_DURABLE_CONSUMER"`
 	DIMOContractAPIURL                string      `yaml:"DIMO_CONTRACT_APIURL"`

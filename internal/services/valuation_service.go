@@ -19,16 +19,11 @@ type ValuationService struct {
 	deviceDefinitionSvc DeviceDefinitionService
 }
 
-func NewValuationService(settings *config.Settings, log *zerolog.Logger, pdb db.Store, deviceDefinitionSvc DeviceDefinitionService) *ValuationService {
-
-	NATSSvc, err := NewNATSService(settings, log)
-	if err != nil {
-		log.Fatal().Err(err).Msg("unable to create NATS service")
-	}
+func NewValuationService(settings *config.Settings, log *zerolog.Logger, pdb db.Store, deviceDefinitionSvc DeviceDefinitionService, natsSvc *NATSService) *ValuationService {
 
 	return &ValuationService{
 		log:                 log,
-		NATSSvc:             NATSSvc,
+		NATSSvc:             natsSvc,
 		pdb:                 pdb,
 		deviceDefinitionSvc: deviceDefinitionSvc,
 	}

@@ -33,8 +33,9 @@ func NewNATSService(settings *config.Settings, log *zerolog.Logger) (*NATSServic
 	_, err = js.AddStream(&nats.StreamConfig{
 		Name:      settings.NATSStreamName,
 		Retention: nats.WorkQueuePolicy,
-		Subjects:  []string{settings.NATSDataDownloadSubject},
+		Subjects:  []string{settings.NATSValuationSubject},
 	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -44,11 +45,13 @@ func NewNATSService(settings *config.Settings, log *zerolog.Logger) (*NATSServic
 		return nil, err
 	}
 
-	return &NATSService{
+	natsSvc := &NATSService{
 		log:              log,
 		JetStream:        js,
 		JetStreamName:    settings.NATSStreamName,
-		JetStreamSubject: settings.NATSDataDownloadSubject,
+		JetStreamSubject: settings.NATSValuationSubject,
 		AckTimeout:       to,
-		DurableConsumer:  settings.NATSDurableConsumer}, nil
+		DurableConsumer:  settings.NATSDurableConsumer}
+
+	return natsSvc, nil
 }
