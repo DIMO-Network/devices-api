@@ -45,94 +45,101 @@ type GetUserDeviceErrorCodeQueriesResponseItem struct {
 
 func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDefinitionService, deviceData models.UserDeviceDatumSlice, deviceDefinitionID string, deviceStyleID null.String, privilegeIDs []int64) DeviceSnapshot {
 	ds := DeviceSnapshot{}
-	// order the records by odometer asc so that if they both have it, the latter one replaces with more recent values.
-	sortByJSONOdometerAsc(deviceData)
+
+	// set the record dates to whatever most recent is
+	for _, datum := range deviceData {
+		if ds.RecordUpdatedAt == nil || ds.RecordUpdatedAt.Unix() < datum.UpdatedAt.Unix() {
+			ds.RecordCreatedAt = &datum.CreatedAt
+			ds.RecordUpdatedAt = &datum.UpdatedAt
+		}
+	}
+
+	// todo prefer odometer that is higher.
+	// future: prefer lat long from autopi
+	// future: if time btw UpdateAt and timestamp > 7 days, ignore property
+
+	// todo further refactor by passing in type for each option, then have switch in function below
+	if slices.Contains(privilegeIDs, NonLocationData) {
+		charging := findMostRecentSignal(deviceData, "charging", false)
+		if charging.Exists() {
+			c := charging.Get("value").Bool()
+			ds.Charging = &c
+		}
+		fuelPercentRemaining := findMostRecentSignal(deviceData, "fuelPercentRemaining", false)
+		if fuelPercentRemaining.Exists() {
+			f := fuelPercentRemaining.Get("value").Float()
+			if f >= 0.01 {
+				ds.FuelPercentRemaining = &f
+			}
+		}
+		batteryCapacity := findMostRecentSignal(deviceData, "batteryCapacity", false)
+		if batteryCapacity.Exists() {
+			b := batteryCapacity.Get("value").Int()
+			ds.BatteryCapacity = &b
+		}
+		oilLevel := findMostRecentSignal(deviceData, "oil", false)
+		if oilLevel.Exists() {
+			o := oilLevel.Get("value").Float()
+			ds.OilLevel = &o
+		}
+		stateOfCharge := findMostRecentSignal(deviceData, "soc", false)
+		if stateOfCharge.Exists() {
+			o := stateOfCharge.Get("value").Float()
+			ds.StateOfCharge = &o
+		}
+		chargeLimit := findMostRecentSignal(deviceData, "chargeLimit", false)
+		if chargeLimit.Exists() {
+			o := chargeLimit.Get("value").Float()
+			ds.ChargeLimit = &o
+		}
+		odometer := findMostRecentSignal(deviceData, "odometer", false)
+		if odometer.Exists() {
+			o := odometer.Get("value").Float()
+			ds.Odometer = &o
+		}
+		rangeG := findMostRecentSignal(deviceData, "range", false)
+		if rangeG.Exists() {
+			r := rangeG.Get("value").Float()
+			ds.Range = &r
+		}
+		batteryVoltage := findMostRecentSignal(deviceData, "batteryVoltage", false)
+		if batteryVoltage.Exists() {
+			bv := batteryVoltage.Get("value").Float()
+			ds.BatteryVoltage = &bv
+		}
+		ambientTemp := findMostRecentSignal(deviceData, "ambientTemp", false)
+		if ambientTemp.Exists() {
+			at := ambientTemp.Get("value").Float()
+			ds.AmbientTemp = &at
+		}
+		// TirePressure
+		tires := findMostRecentSignal(deviceData, "tires", false)
+		if tires.Exists() {
+			// weird thing here is in example payloads these are all ints, but the smartcar lib has as floats
+			ds.TirePressure = &smartcar.TirePressure{
+				FrontLeft:  tires.Get("value").Get("frontLeft").Float(),
+				FrontRight: tires.Get("value").Get("frontRight").Float(),
+				BackLeft:   tires.Get("value").Get("backLeft").Float(),
+				BackRight:  tires.Get("value").Get("backRight").Float(),
+			}
+		}
+	}
 
 	// merging data: foreach order by updatedAt desc, only set property if it exists in json data
 	for _, datum := range deviceData {
-		if datum.Data.Valid {
+		if datum.Signals.Valid {
 			// The response has the creation and update times of the most recently updated integration.
 			// For users with, e.g., both Smartcar and AutoPi this may produce confusing results.
-			ds.RecordCreatedAt = &datum.CreatedAt
-			ds.RecordUpdatedAt = &datum.UpdatedAt
 
-			// note we are assuming json property names are same accross smartcar, tesla, autopi, AND same types eg. int / float / string
-			// we could use reflection and just have single line assuming json name in struct matches what is in data
-			if slices.Contains(privilegeIDs, NonLocationData) {
-				charging := gjson.GetBytes(datum.Data.JSON, "charging")
-				if charging.Exists() {
-					c := charging.Bool()
-					ds.Charging = &c
-				}
-				fuelPercentRemaining := gjson.GetBytes(datum.Data.JSON, "fuelPercentRemaining")
-				if fuelPercentRemaining.Exists() {
-					f := fuelPercentRemaining.Float()
-					if f >= 0.01 {
-						ds.FuelPercentRemaining = &f
-					}
-				}
-				batteryCapacity := gjson.GetBytes(datum.Data.JSON, "batteryCapacity")
-				if batteryCapacity.Exists() {
-					b := batteryCapacity.Int()
-					ds.BatteryCapacity = &b
-				}
-				oilLevel := gjson.GetBytes(datum.Data.JSON, "oil")
-				if oilLevel.Exists() {
-					o := oilLevel.Float()
-					ds.OilLevel = &o
-				}
-				stateOfCharge := gjson.GetBytes(datum.Data.JSON, "soc")
-				if stateOfCharge.Exists() {
-					o := stateOfCharge.Float()
-					ds.StateOfCharge = &o
-				}
-				chargeLimit := gjson.GetBytes(datum.Data.JSON, "chargeLimit")
-				if chargeLimit.Exists() {
-					o := chargeLimit.Float()
-					ds.ChargeLimit = &o
-				}
-				odometer := gjson.GetBytes(datum.Data.JSON, "odometer")
-				if odometer.Exists() {
-					o := odometer.Float()
-					ds.Odometer = &o
-				}
-				rangeG := gjson.GetBytes(datum.Data.JSON, "range")
-				if rangeG.Exists() {
-					r := rangeG.Float()
-					ds.Range = &r
-				}
-				batteryVoltage := gjson.GetBytes(datum.Data.JSON, "batteryVoltage")
-				if batteryVoltage.Exists() {
-					bv := batteryVoltage.Float()
-					ds.BatteryVoltage = &bv
-				}
-				ambientTemp := gjson.GetBytes(datum.Data.JSON, "ambientTemp")
-				if ambientTemp.Exists() {
-					at := ambientTemp.Float()
-					ds.AmbientTemp = &at
-				}
-				// TirePressure
-				tires := gjson.GetBytes(datum.Data.JSON, "tires")
-				if tires.Exists() {
-					// weird thing here is in example payloads these are all ints, but the smartcar lib has as floats
-					ds.TirePressure = &smartcar.TirePressure{
-						FrontLeft:  tires.Get("frontLeft").Float(),
-						FrontRight: tires.Get("frontRight").Float(),
-						BackLeft:   tires.Get("backLeft").Float(),
-						BackRight:  tires.Get("backRight").Float(),
-					}
-				}
-
-			}
 			if slices.Contains(privilegeIDs, CurrentLocation) || slices.Contains(privilegeIDs, AllTimeLocation) {
-				latitude := gjson.GetBytes(datum.Data.JSON, "latitude")
+				latitude := findMostRecentSignal(deviceData, "latitude", false)
 				if latitude.Exists() {
-					l := latitude.Float()
+					l := latitude.Get("value").Float()
 					ds.Latitude = &l
 				}
-				longitude := gjson.GetBytes(datum.Data.JSON, "longitude")
+				longitude := findMostRecentSignal(deviceData, "longitude", false)
 				if longitude.Exists() {
-					l := longitude.Float()
+					l := longitude.Get("value").Float()
 					ds.Longitude = &l
 				}
 			}
@@ -148,6 +155,19 @@ func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDe
 	}
 
 	return ds
+}
+
+// findMostRecentSignal finds the highest value float instead of most recent, eg. for odometer
+func findMostRecentSignal(udd models.UserDeviceDatumSlice, path string, highestFloat bool) gjson.Result {
+	// todo test
+	if len(udd) == 0 {
+		return gjson.Result{}
+	}
+	if len(udd) > 1 {
+		// todo if highestFloat, sort by value inside of path object
+		sortBySignalTimestampAsc(udd, path)
+	}
+	return gjson.GetBytes(udd[0].Signals.JSON, path)
 }
 
 // calculateRange returns the current estimated range based on fuel tank capacity, mpg, and fuelPercentRemaining and returns it in Kilometers
@@ -335,7 +355,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	})
 }
 
-// GetUserDevicesErrorCodeQueries godoc
+// GetUserDeviceErrorCodeQueries godoc
 // @Description Returns all error codes queries for user devices
 // @Tags        user-devices
 // @Success     200 {object} controllers.GetUserDeviceErrorCodeQueriesResponse
@@ -382,7 +402,7 @@ type DeviceSnapshot struct {
 	Latitude             *float64               `json:"latitude,omitempty"`
 	Longitude            *float64               `json:"longitude,omitempty"`
 	Range                *float64               `json:"range,omitempty"`
-	StateOfCharge        *float64               `json:"soc,omitempty"` // todo: change json to match after update frontend
+	StateOfCharge        *float64               `json:"soc,omitempty"`
 	ChargeLimit          *float64               `json:"chargeLimit,omitempty"`
 	RecordUpdatedAt      *time.Time             `json:"recordUpdatedAt,omitempty"`
 	RecordCreatedAt      *time.Time             `json:"recordCreatedAt,omitempty"`
@@ -403,5 +423,19 @@ func sortByJSONOdometerAsc(udd models.UserDeviceDatumSlice) {
 			return false
 		}
 		return fprj.Float() > fpri.Float()
+	})
+}
+
+func sortBySignalTimestampAsc(udd models.UserDeviceDatumSlice, path string) {
+	sort.Slice(udd, func(i, j int) bool {
+		fpri := gjson.GetBytes(udd[i].Signals.JSON, path+".timestamp")
+		fprj := gjson.GetBytes(udd[j].Signals.JSON, path+".timestamp")
+		// if one has it and the other does not, makes no difference
+		if fpri.Exists() && !fprj.Exists() {
+			return true
+		} else if !fpri.Exists() && fprj.Exists() {
+			return false
+		}
+		return fprj.Time().Unix() > fpri.Time().Unix()
 	})
 }
