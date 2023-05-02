@@ -180,7 +180,7 @@ func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *
 		return nil, status.Errorf(codes.AlreadyExists, "VIN %s in use by a previously connected device", vin)
 	}
 
-	resp, err := s.deviceDefSvc.DecodeVIN(ctx, vin)
+	resp, err := s.deviceDefSvc.DecodeVIN(ctx, vin, "", 0, "")
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

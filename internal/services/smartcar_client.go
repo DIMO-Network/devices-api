@@ -28,6 +28,7 @@ type SmartcarClient interface {
 	HasDoorControl(ctx context.Context, accessToken string, id string) (bool, error)
 	GetVIN(ctx context.Context, accessToken string, id string) (string, error)
 	GetYear(ctx context.Context, accessToken string, id string) (int, error)
+	GetInfo(ctx context.Context, accessToken string, id string) (*smartcar.Info, error)
 }
 
 type smartcarClient struct {
@@ -235,4 +236,20 @@ func (s *smartcarClient) GetYear(ctx context.Context, accessToken string, id str
 		return 0, errors.New("nil info object")
 	}
 	return info.Year, nil
+}
+
+func (s *smartcarClient) GetInfo(ctx context.Context, accessToken string, id string) (*smartcar.Info, error) {
+	v := s.officialClient.NewVehicle(&smartcar.VehicleParams{
+		ID:          id,
+		AccessToken: accessToken,
+		UnitSystem:  smartcar.Metric,
+	})
+	info, err := v.GetInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if info == nil {
+		return nil, errors.New("nil info object")
+	}
+	return info, nil
 }

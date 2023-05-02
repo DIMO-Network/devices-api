@@ -54,18 +54,18 @@ func (mr *MockDeviceDefinitionServiceMockRecorder) CreateIntegration(ctx, integr
 }
 
 // DecodeVIN mocks base method.
-func (m *MockDeviceDefinitionService) DecodeVIN(ctx context.Context, vin string) (*grpc.DecodeVinResponse, error) {
+func (m *MockDeviceDefinitionService) DecodeVIN(ctx context.Context, vin, model string, year int, countryCode string) (*grpc.DecodeVinResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DecodeVIN", ctx, vin)
+	ret := m.ctrl.Call(m, "DecodeVIN", ctx, vin, model, year, countryCode)
 	ret0, _ := ret[0].(*grpc.DecodeVinResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DecodeVIN indicates an expected call of DecodeVIN.
-func (mr *MockDeviceDefinitionServiceMockRecorder) DecodeVIN(ctx, vin interface{}) *gomock.Call {
+func (mr *MockDeviceDefinitionServiceMockRecorder) DecodeVIN(ctx, vin, model, year, countryCode interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DecodeVIN", reflect.TypeOf((*MockDeviceDefinitionService)(nil).DecodeVIN), ctx, vin)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DecodeVIN", reflect.TypeOf((*MockDeviceDefinitionService)(nil).DecodeVIN), ctx, vin, model, year, countryCode)
 }
 
 // FindDeviceDefinitionByMMY mocks base method.
