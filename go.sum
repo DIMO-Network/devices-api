@@ -85,6 +85,10 @@ github.com/DIMO-Network/device-definitions-api v0.9.9 h1:YTyCL/JhqYAyMQ+qsMRc69R
 github.com/DIMO-Network/device-definitions-api v0.9.9/go.mod h1:BGmmbLedviQxB7TmJ+fRNtz/JMZ6k21RVDtr/INSF9M=
 github.com/DIMO-Network/device-definitions-api v1.0.1 h1:6AxDKT+aS+myuLDr4MF1/2f44y5aaa/YySLjz0wHfT8=
 github.com/DIMO-Network/device-definitions-api v1.0.1/go.mod h1:BGmmbLedviQxB7TmJ+fRNtz/JMZ6k21RVDtr/INSF9M=
+github.com/DIMO-Network/device-definitions-api v1.0.3 h1:bL33XH+iJT8Q4jpMNRBg9uKmX+nib10aoPhJrzDVbTI=
+github.com/DIMO-Network/device-definitions-api v1.0.3/go.mod h1:BGmmbLedviQxB7TmJ+fRNtz/JMZ6k21RVDtr/INSF9M=
+github.com/DIMO-Network/device-definitions-api v1.0.4 h1:0gOdbFLD4kbDDznwc/06NcpW4iVLUctbsHeh1LeWBMs=
+github.com/DIMO-Network/device-definitions-api v1.0.4/go.mod h1:BGmmbLedviQxB7TmJ+fRNtz/JMZ6k21RVDtr/INSF9M=
 github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c h1:sKuB4i3m/5NpLjO6tKyc2gSqQHmRe02sMP+pQqJNTuQ=
 github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c/go.mod h1:K5a/Iqh9iZYdMSh3UE3J+tc4aV1PxHe4Fz0ZEhZMPbg=
 github.com/DIMO-Network/shared v0.9.1 h1:F1Y6BDc3QrZK8KqZrexkjgoSGRdyiJ12rjStdM68/00=

@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	smartcar "github.com/smartcar/go-sdk"
 	"math/big"
 	"reflect"
 	"regexp"
@@ -479,7 +480,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	}
 	// decode VIN with grpc call
 	vin := strings.ToUpper(reg.VIN)
-	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin)
+	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, "", 0, "")
 	if err != nil {
 		return errors.Wrapf(err, "could not decode vin %s for country %s", vin, reg.CountryCode)
 	}
@@ -617,10 +618,10 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	info, err := udc.smartcarClient.GetInfo(c.Context(), token.Access, externalID)
 	if err != nil {
 		localLog.Warn().Err(err).Msg("unable to get info from smartcar")
+		info = &smartcar.Info{}
 	}
-	// decode VIN with grpc call
-	// todo: pass in year and model for backup in case cannot decode "knownModel", "knownYear"
-	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin)
+	// decode VIN with grpc call, including any possible smartcar known info
+	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, info.Model, info.Year, reg.CountryCode)
 	if err != nil {
 		if strings.Contains(err.Error(), deviceDefs.ErrFailedVINDecode.Error()) {
 			localLog.Err(err).

@@ -45,7 +45,7 @@ type DeviceDefinitionService interface {
 	GetIntegrationByVendor(ctx context.Context, vendor string) (*ddgrpc.Integration, error)
 	GetIntegrationByFilter(ctx context.Context, integrationType string, vendor string, style string) (*ddgrpc.Integration, error)
 	CreateIntegration(ctx context.Context, integrationType string, vendor string, style string) (*ddgrpc.Integration, error)
-	DecodeVIN(ctx context.Context, vin string) (*ddgrpc.DecodeVinResponse, error)
+	DecodeVIN(ctx context.Context, vin string, model string, year int, countryCode string) (*ddgrpc.DecodeVinResponse, error)
 }
 
 type deviceDefinitionService struct {
@@ -116,7 +116,7 @@ func (d *deviceDefinitionService) GetDeviceDefinitionsByIDs(ctx context.Context,
 	return definitions.GetDeviceDefinitions(), nil
 }
 
-func (d *deviceDefinitionService) DecodeVIN(ctx context.Context, vin string) (*ddgrpc.DecodeVinResponse, error) {
+func (d *deviceDefinitionService) DecodeVIN(ctx context.Context, vin string, model string, year int, countryCode string) (*ddgrpc.DecodeVinResponse, error) {
 	if len(vin) != 17 {
 		return nil, errors.New("VIN must be 17 chars")
 	}
@@ -128,7 +128,10 @@ func (d *deviceDefinitionService) DecodeVIN(ctx context.Context, vin string) (*d
 	defer conn.Close()
 
 	resp, err2 := client.DecodeVin(ctx, &ddgrpc.DecodeVinRequest{
-		Vin: vin, // todo we probably wanna send country for European VINs to send to other provider
+		Vin:        vin, // todo we probably wanna send country for European VINs to send to other provider
+		KnownModel: model,
+		KnownYear:  int32(year),
+		Country:    countryCode,
 	})
 
 	if err2 != nil {
@@ -347,7 +350,7 @@ func (d *deviceDefinitionService) PullVincarioValuation(ctx context.Context, use
 		qm.OrderBy("updated_at desc"), qm.Limit(1)).
 		One(context.Background(), d.dbs().Writer)
 
-		// just return if already pulled recently for this VIN, but still need to insert never pulled vin - should be uncommon scenario
+	// just return if already pulled recently for this VIN, but still need to insert never pulled vin - should be uncommon scenario
 	if existingPricingData != nil && existingPricingData.UpdatedAt.Add(repullWindow).After(time.Now()) {
 		return SkippedDataPullStatus, nil
 	}

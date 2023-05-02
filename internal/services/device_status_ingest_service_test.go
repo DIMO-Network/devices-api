@@ -344,7 +344,7 @@ func (t testDeviceDefSvc) PullVincarioValuation(ctx context.Context, userDeiceID
 }
 
 // nolint
-func (t testDeviceDefSvc) DecodeVIN(ctx context.Context, vin string) (*ddgrpc.DecodeVinResponse, error) {
+func (t testDeviceDefSvc) DecodeVIN(ctx context.Context, vin string, model string, year int, code string) (*ddgrpc.DecodeVinResponse, error) {
 	//TODO implement me
 	panic("implement me")
 }
