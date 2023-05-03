@@ -1,45 +1,66 @@
 package mock_services //nolint:all
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/nats-io/nats-server/v2/server"
-	natsserver "github.com/nats-io/nats-server/v2/test"
 	"github.com/nats-io/nats.go"
 )
 
-const testPort = 8369
+const Timeout = 2 * time.Second
 
-func RunServerOnPort(port int) *server.Server {
-	opts := natsserver.DefaultTestOptions
-	opts.Port = port
-	return RunServerWithOptions(&opts)
+func RunServer() *server.Server {
+	s := server.New(&server.Options{
+		Host:           "127.0.0.1",
+		Port:           server.RANDOM_PORT,
+		NoLog:          true,
+		NoSigs:         true,
+		MaxControlLine: 2048,
+	})
+
+	go server.Run(s) // nolint:errcheck
+
+	if !s.ReadyForConnections(10 * time.Second) {
+		panic("nats server not ready for connections")
+	}
+
+	return s
 }
 
-func RunServerWithOptions(opts *server.Options) *server.Server {
-	return natsserver.RunServer(opts)
+func waitConnected(nc *nats.Conn) {
+	timeout := time.Now().Add(Timeout)
+	for time.Now().Before(timeout) {
+		if nc.IsConnected() {
+			return
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	panic("nats server not connected")
 }
 
 func NewMockNATSService() *services.NATSService {
 
-	s := RunServerOnPort(testPort)
+	s := RunServer()
 	defer s.Shutdown()
 
-	_ = s.EnableJetStream(&server.JetStreamConfig{})
+	err := s.EnableJetStream(&server.JetStreamConfig{})
 
-	time.Sleep(time.Second * 5)
+	if err != nil {
+		panic(err)
+	}
 
-	sURL := fmt.Sprintf("nats://127.0.0.1:%d", testPort)
-
-	if nc, err := nats.Connect(sURL); err != nil {
+	if nc, err := nats.Connect("nats://" + s.Addr().String()); err != nil {
 		panic(err)
 	} else {
+
+		waitConnected(nc)
+
 		js, err := nc.JetStream()
 		if err != nil {
 			return nil
 		}
+
 		if _, err = js.AddStream(&nats.StreamConfig{
 			Name:      "test-stream",
 			Retention: nats.WorkQueuePolicy,
@@ -47,6 +68,7 @@ func NewMockNATSService() *services.NATSService {
 		}); err != nil {
 			return nil
 		}
+
 		to, err := time.ParseDuration("5s")
 		if err != nil {
 			return nil
@@ -59,8 +81,6 @@ func NewMockNATSService() *services.NATSService {
 			AckTimeout:       to,
 			DurableConsumer:  "test-durable-consumer",
 		}
-
-		defer s.Shutdown()
 		return natsSvc
 	}
 }
