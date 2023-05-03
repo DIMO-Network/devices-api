@@ -414,9 +414,9 @@ func (nc *NFTController) GetVehicleStatus(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "NFT not found.")
 	}
 
-	deviceData, err := models.UserDeviceData(models.UserDeviceDatumWhere.UserDeviceID.EQ(nft.R.UserDevice.ID),
-		qm.OrderBy("updated_at asc")).All(c.Context(), nc.DBS().Reader)
-	if errors.Is(err, sql.ErrNoRows) || len(deviceData) == 0 || !deviceData[0].Data.Valid {
+	deviceData, err := models.UserDeviceData(models.UserDeviceDatumWhere.UserDeviceID.EQ(nft.R.UserDevice.ID)).
+		All(c.Context(), nc.DBS().Reader)
+	if errors.Is(err, sql.ErrNoRows) || len(deviceData) == 0 || !deviceData[0].Signals.Valid {
 		return fiber.NewError(fiber.StatusNotFound, "no status updates yet")
 	}
 	if err != nil {

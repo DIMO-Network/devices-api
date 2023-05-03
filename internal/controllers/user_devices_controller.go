@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	smartcar "github.com/smartcar/go-sdk"
 	"math/big"
 	"reflect"
 	"regexp"
@@ -15,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	smartcar "github.com/smartcar/go-sdk"
 
 	"github.com/DIMO-Network/shared/redis"
 

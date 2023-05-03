@@ -312,7 +312,7 @@ func mergeSignals(currentData map[string]interface{}, newData map[string]interfa
 	// now iterate over new data and update any keys present in the new data with the events timestamp
 	for k, v := range newData {
 		merged[k] = map[string]interface{}{
-			"timestamp": t.Format("2006-01-02T15:04:05"),
+			"timestamp": t.Format("2006-01-02T15:04:05Z"), // utc tz RFC3339
 			"value":     v,
 		}
 	}

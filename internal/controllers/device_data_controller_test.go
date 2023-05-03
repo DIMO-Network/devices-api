@@ -81,8 +81,15 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 		_ = test.SetupCreateUserDeviceAPIIntegration(t, unitID, deviceID, ud.ID, smartCarInt.Id, pdb)
 		// SC data setup to  older
 		smartCarData := models.UserDeviceDatum{
-			UserDeviceID:        ud.ID,
-			Data:                null.JSONFrom([]byte(`{"oil": 0.6859999895095825, "range": 187.79, "tires": {"backLeft": 244, "backRight": 280, "frontLeft": 244, "frontRight": 252}, "charging": false, "latitude": 33.675048828125, "odometer": 195677.59375, "longitude": -117.85894775390625, "timestamp": "2022-05-18T16:49:37.879182265Z", "vehicleId": "0ef49636-28be-4f0f-8b08-4121137f0d5d", "fuelPercentRemaining": 0.4}`)),
+			UserDeviceID: ud.ID,
+			Signals: null.JSONFrom([]byte(`{"oil": {"value": 0.6859999895095825, "timestamp": "2023-04-27T14:57:37Z"}, 
+				"range": {"value": 187.79, "timestamp": "2023-04-27T14:57:37Z"}, 
+				"tires": {"value":{"backLeft": 244, "backRight": 280, "frontLeft": 244, "frontRight": 252}, "timestamp": "2023-04-27T14:57:37Z"}, 
+				"charging": {"value":false, "timestamp": "2023-04-27T14:57:37Z"}, 
+				"latitude": {"value":33.675048828125, "timestamp": "2023-04-27T14:57:37Z"}, 
+				"odometer": {"value":195677.59375, "timestamp": "2023-04-27T14:57:37Z"}, 
+				"longitude": {"value":-117.85894775390625, "timestamp": "2023-04-27T14:57:37Z"}
+				}`)),
 			CreatedAt:           time.Now().Add(time.Minute * -5),
 			UpdatedAt:           time.Now().Add(time.Minute * -5),
 			LastOdometerEventAt: null.TimeFrom(time.Now().Add(time.Minute * -5)),
@@ -92,8 +99,9 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 		assert.NoError(t, err)
 		// newer autopi data, expect to replace lat/long
 		autoPiData := models.UserDeviceDatum{
-			UserDeviceID:  ud.ID,
-			Data:          null.JSONFrom([]byte(`{"latitude": 33.75, "longitude": -117.91}`)),
+			UserDeviceID: ud.ID,
+			Signals: null.JSONFrom([]byte(`{"latitude": { "value": 33.75, "timestamp": "2023-04-27T15:57:37Z" },
+				"longitude": { "value": -117.91, "timestamp": "2023-04-27T15:57:37Z" } }`)),
 			CreatedAt:     time.Now().Add(time.Minute * -1),
 			UpdatedAt:     time.Now().Add(time.Minute * -1),
 			IntegrationID: autoPiInteg.Id,
@@ -125,30 +133,69 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 	})
 }
 
-func Test_sortByJSONOdometerAsc(t *testing.T) {
+func Test_sortBySignalValueDesc(t *testing.T) {
 	udd := models.UserDeviceDatumSlice{
 		&models.UserDeviceDatum{
-			UserDeviceID:  "123",
-			Data:          null.JSONFrom([]byte(`{ "odometer": 100 }`)),
+			UserDeviceID: "123",
+			Signals: null.JSONFrom([]byte(`{ "odometer": {
+    "value": 88164.32,
+    "timestamp": "2023-04-27T15:57:37Z"
+  }}`)),
 			CreatedAt:     time.Now(),
 			UpdatedAt:     time.Now(),
 			IntegrationID: "123",
 		},
 		&models.UserDeviceDatum{
-			UserDeviceID:  "123",
-			Data:          null.JSONFrom([]byte(`{ "odometer": 90}`)),
+			UserDeviceID: "123",
+			Signals: null.JSONFrom([]byte(`{ "odometer": {
+    "value": 88174.32,
+    "timestamp": "2023-04-27T16:57:37Z"
+  }}`)),
 			CreatedAt:     time.Now(),
 			UpdatedAt:     time.Now(),
 			IntegrationID: "345",
 		},
 	}
 	// validate setup is ok
-	assert.Equal(t, float64(100), gjson.GetBytes(udd[0].Data.JSON, "odometer").Float())
-	assert.Equal(t, float64(90), gjson.GetBytes(udd[1].Data.JSON, "odometer").Float())
+	assert.Equal(t, 88164.32, gjson.GetBytes(udd[0].Signals.JSON, "odometer.value").Float())
+	assert.Equal(t, 88174.32, gjson.GetBytes(udd[1].Signals.JSON, "odometer.value").Float())
 	// sort and validate
-	sortByJSONOdometerAsc(udd)
-	assert.Equal(t, float64(90), gjson.GetBytes(udd[0].Data.JSON, "odometer").Float())
-	assert.Equal(t, float64(100), gjson.GetBytes(udd[1].Data.JSON, "odometer").Float())
+	sortBySignalValueDesc(udd, "odometer")
+	assert.Equal(t, 88174.32, gjson.GetBytes(udd[0].Signals.JSON, "odometer.value").Float())
+	assert.Equal(t, 88164.32, gjson.GetBytes(udd[1].Signals.JSON, "odometer.value").Float())
+}
+
+func Test_sortBySignalTimestampDesc(t *testing.T) {
+	udd := models.UserDeviceDatumSlice{
+		&models.UserDeviceDatum{
+			UserDeviceID: "123",
+			Signals: null.JSONFrom([]byte(`{ "odometer": {
+    "value": 88164.32,
+    "timestamp": "2023-04-27T15:57:37Z"
+  }}`)),
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+			IntegrationID: "123",
+		},
+		&models.UserDeviceDatum{
+			UserDeviceID: "123",
+			Signals: null.JSONFrom([]byte(`{ "odometer": {
+    "value": 88174.32,
+    "timestamp": "2023-04-27T16:57:37Z"
+  }}`)),
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+			IntegrationID: "345",
+		},
+	}
+	// validate setup is ok
+	assert.Equal(t, 88164.32, gjson.GetBytes(udd[0].Signals.JSON, "odometer.value").Float())
+	assert.Equal(t, 88174.32, gjson.GetBytes(udd[1].Signals.JSON, "odometer.value").Float())
+	// sort and validate
+	sortBySignalTimestampDesc(udd, "odometer")
+	assert.Equal(t, 88174.32, gjson.GetBytes(udd[0].Signals.JSON, "odometer.value").Float())
+	assert.Equal(t, "2023-04-27T16:57:37Z", gjson.GetBytes(udd[0].Signals.JSON, "odometer.timestamp").Time().Format(time.RFC3339))
+	assert.Equal(t, 88164.32, gjson.GetBytes(udd[1].Signals.JSON, "odometer.value").Float())
 }
 
 func TestUserDevicesController_calculateRange(t *testing.T) {
