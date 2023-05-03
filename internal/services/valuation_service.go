@@ -14,11 +14,11 @@ import (
 type ValuationService struct {
 	log                 *zerolog.Logger
 	NATSSvc             *NATSService
-	pdb                 db.Store
+	pdb                 func() *db.ReaderWriter
 	deviceDefinitionSvc DeviceDefinitionService
 }
 
-func NewValuationService(log *zerolog.Logger, pdb db.Store, deviceDefinitionSvc DeviceDefinitionService, natsSvc *NATSService) *ValuationService {
+func NewValuationService(log *zerolog.Logger, pdb func() *db.ReaderWriter, deviceDefinitionSvc DeviceDefinitionService, natsSvc *NATSService) *ValuationService {
 
 	return &ValuationService{
 		log:                 log,
@@ -70,7 +70,7 @@ func (v *ValuationService) ValuationConsumer(ctx context.Context) error {
 				userDevice, err := models.UserDevices(
 					models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(valuationDecode.VIN)),
 					models.UserDeviceWhere.ID.EQ(valuationDecode.UserDeviceID),
-				).One(ctx, v.pdb.DBS().Reader)
+				).One(ctx, v.pdb().Reader)
 
 				if err != nil {
 					v.nak(msg, &valuationDecode)

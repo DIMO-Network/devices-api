@@ -272,18 +272,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService)
 
-	if settings.IsProduction() {
-
-		valuationService := services.NewValuationService(&logger, pdb, ddSvc, natsSvc)
-
-		go func() {
-			err := valuationService.ValuationConsumer(context.Background())
-
-			if err != nil {
-				logger.Fatal().Err(err).Msg("Failed to start valuation consumer")
-			}
-		}()
-	}
+	go startValuationConsumer(settings, pdb.DBS, &logger, ddSvc, natsSvc)
 
 	logger.Info().Msg("Server started on port " + settings.Port)
 	// Start Server from a different go routine
@@ -354,5 +343,20 @@ func startGRPCServer(settings *config.Settings, dbs func() *db.ReaderWriter,
 
 	if err := server.Serve(lis); err != nil {
 		logger.Fatal().Err(err).Msg("gRPC server terminated unexpectedly")
+	}
+}
+
+func startValuationConsumer(settings *config.Settings, pdb func() *db.ReaderWriter, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService, natsSvc *services.NATSService) {
+	if settings.IsProduction() {
+
+		valuationService := services.NewValuationService(logger, pdb, ddSvc, natsSvc)
+
+		go func() {
+			err := valuationService.ValuationConsumer(context.Background())
+
+			if err != nil {
+				logger.Fatal().Err(err).Msg("Failed to start valuation consumer")
+			}
+		}()
 	}
 }
