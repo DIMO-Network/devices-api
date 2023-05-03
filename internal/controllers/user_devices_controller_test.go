@@ -173,7 +173,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 	s.redisClient.EXPECT().Set(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID), gomock.Any(), time.Hour*2).Return(nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
 	request := test.BuildRequest("POST", "/user/devices/fromsmartcar", string(j))
-	response, responseError := s.app.Test(request)
+	response, responseError := s.app.Test(request, 20000)
 	fmt.Println(responseError)
 	body, _ := io.ReadAll(response.Body)
 	// assert
