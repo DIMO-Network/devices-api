@@ -127,6 +127,7 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 		assert.Equal(t, 195677.59375, *snapshot.Odometer)
 		assert.Equal(t, 33.75, *snapshot.Latitude, "expected autopi latitude")
 		assert.Equal(t, -117.91, *snapshot.Longitude, "expected autopi longitude")
+		assert.Equal(t, "2023-04-27T15:57:37Z", snapshot.RecordUpdatedAt.Format(time.RFC3339))
 
 		//teardown
 		test.TruncateTables(pdb.DBS().Writer.DB, t)
