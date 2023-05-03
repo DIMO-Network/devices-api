@@ -58,22 +58,27 @@ func (p *fixSignalTimestamps) Execute(ctx context.Context, _ *flag.FlagSet, _ ..
 	if err != nil {
 		return subcommands.ExitFailure
 	}
+	fmt.Printf("found %d user_device_data to process\n", len(all))
 	for _, datum := range all {
 		var data map[string]interface{}
 		err := json.Unmarshal(datum.Signals.JSON, &data)
 		if err != nil {
 			return subcommands.ExitFailure
 		}
-
+		needsUpdate := false
 		for _, value := range data {
 			if m, ok := value.(map[string]interface{}); ok {
 				if timestamp, ok := m["timestamp"].(string); ok {
 					lastCharTs := timestamp[len(timestamp)-1]
 					if string(lastCharTs) != "Z" {
 						m["timestamp"] = timestamp + "Z"
+						needsUpdate = true
 					}
 				}
 			}
+		}
+		if !needsUpdate {
+			continue
 		}
 
 		updatedJSON, err := json.Marshal(data)
@@ -91,6 +96,6 @@ func (p *fixSignalTimestamps) Execute(ctx context.Context, _ *flag.FlagSet, _ ..
 	if err != nil {
 		return subcommands.ExitFailure
 	}
-
+	fmt.Println("successfully updated")
 	return subcommands.ExitSuccess
 }
