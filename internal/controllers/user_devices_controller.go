@@ -537,12 +537,24 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	}
 
 	if udc.Settings.IsProduction() {
-		pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, []byte(vin))
+
+		message := services.ValuationDecodeCommand{
+			VIN:          vin,
+			UserDeviceID: udFull.ID,
+		}
+
+		messageBytes, err := json.Marshal(message)
 
 		if err != nil {
-			udc.log.Err(err).Msg("failed to publish to NATS")
+			udc.log.Err(err).Msg("Failed to marshal message.")
 		} else {
-			udc.log.Info().Str("vin", vin).Str("user_id", userID).Msgf("published to NATS with ack: %+v", pubAck)
+			pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, messageBytes)
+
+			if err != nil {
+				udc.log.Err(err).Msg("failed to publish to NATS")
+			} else {
+				udc.log.Info().Str("vin", vin).Str("user_id", userID).Str("user_device_id", udFull.ID).Msgf("published valuation request to NATS with Ack: %+v", pubAck)
+			}
 		}
 	}
 
@@ -696,13 +708,26 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	}
 
 	if udc.Settings.IsProduction() {
-		pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, []byte(vin))
+
+		message := services.ValuationDecodeCommand{
+			VIN:          vin,
+			UserDeviceID: udFull.ID,
+		}
+
+		messageBytes, err := json.Marshal(message)
 
 		if err != nil {
-			localLog.Err(err).Msg("Failed to publish to NATS.")
+			localLog.Err(err).Msg("Failed to marshal message.")
 		} else {
-			localLog.Info().Msgf("Published to NATS with Ack: %+v", pubAck)
+			pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, messageBytes)
+
+			if err != nil {
+				localLog.Err(err).Msg("Failed to publish to NATS.")
+			} else {
+				localLog.Info().Str("vin", vin).Str("user_id", userID).Str("user_device_id", udFull.ID).Msgf("Published valuation request to NATS with Ack: %+v", pubAck)
+			}
 		}
+
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{

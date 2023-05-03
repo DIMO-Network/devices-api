@@ -46,9 +46,10 @@ func (v *ValuationService) ValuationConsumer(ctx context.Context) error {
 		}
 
 		for _, msg := range msgs {
-			_, err := msg.Metadata()
+			mtd, err := msg.Metadata()
+
 			if err != nil {
-				v.nak(msg, "")
+				v.nak(msg, nil)
 				v.log.Info().Err(err).Msg("unable to parse metadata for message")
 				continue
 			}
@@ -58,18 +59,21 @@ func (v *ValuationService) ValuationConsumer(ctx context.Context) error {
 				return nil
 			default:
 
-				var vin string
+				var valuationDecode ValuationDecodeCommand
 
-				if err := json.Unmarshal(msg.Data, &vin); err != nil {
-					v.nak(msg, vin)
+				if err := json.Unmarshal(msg.Data, &valuationDecode); err != nil {
+					v.nak(msg, &valuationDecode)
 					v.log.Info().Err(err).Msg("unable to parse vin from message")
 					continue
 				}
 
-				userDevice, err := models.UserDevices(models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin))).One(ctx, v.pdb.DBS().Reader)
+				userDevice, err := models.UserDevices(
+					models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(valuationDecode.VIN)),
+					models.UserDeviceWhere.ID.EQ(valuationDecode.UserDeviceID),
+				).One(ctx, v.pdb.DBS().Reader)
 
 				if err != nil {
-					v.nak(msg, vin)
+					v.nak(msg, &valuationDecode)
 					v.log.Info().Err(err).Msg("unable to find user device")
 					continue
 				}
@@ -95,6 +99,8 @@ func (v *ValuationService) ValuationConsumer(ctx context.Context) error {
 				if err := msg.Ack(); err != nil {
 					v.log.Err(err).Msg("message ack failed")
 				}
+
+				v.log.Info().Str("vin", valuationDecode.VIN).Str("user_device_id", valuationDecode.UserDeviceID).Uint64("numDelivered", mtd.NumDelivered).Msg("user device valuation completed")
 			}
 		}
 	}
@@ -106,11 +112,11 @@ func (v *ValuationService) inProgress(msg *nats.Msg) {
 	}
 }
 
-func (v *ValuationService) nak(msg *nats.Msg, params string) {
+func (v *ValuationService) nak(msg *nats.Msg, params *ValuationDecodeCommand) {
 	err := msg.Nak()
-	if len(params) == 0 {
+	if params == nil {
 		v.log.Err(err).Msg("message nak failed")
 	} else {
-		v.log.Err(err).Str("vin", params).Msg("message nak failed")
+		v.log.Err(err).Str("vin", params.VIN).Str("user_device_id", params.UserDeviceID).Msg("message nak failed")
 	}
 }
