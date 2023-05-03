@@ -46,16 +46,15 @@ type GetUserDeviceErrorCodeQueriesResponseItem struct {
 func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDefinitionService, deviceData models.UserDeviceDatumSlice, deviceDefinitionID string, deviceStyleID null.String, privilegeIDs []int64) DeviceSnapshot {
 	ds := DeviceSnapshot{}
 
-	// set the record dates to whatever most recent is
+	// set the record created date to most recent one
 	for _, datum := range deviceData {
-		if ds.RecordUpdatedAt == nil || ds.RecordUpdatedAt.Unix() < datum.UpdatedAt.Unix() {
+		if ds.RecordCreatedAt == nil || ds.RecordCreatedAt.Unix() < datum.CreatedAt.Unix() {
 			ds.RecordCreatedAt = &datum.CreatedAt
-			ds.RecordUpdatedAt = &datum.UpdatedAt
 		}
 	}
 	// future: if time btw UpdateAt and timestamp > 7 days, ignore property
 
-	// todo further refactor by passing in type for each option, then have switch in function below
+	// todo further refactor by passing in type for each option, then have switch in function below, can also refactor timestamp thing
 	if slices.Contains(privilegeIDs, NonLocationData) {
 		charging := findMostRecentSignal(deviceData, "charging", false)
 		if charging.Exists() {
@@ -64,6 +63,10 @@ func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDe
 		}
 		fuelPercentRemaining := findMostRecentSignal(deviceData, "fuelPercentRemaining", false)
 		if fuelPercentRemaining.Exists() {
+			ts := fuelPercentRemaining.Get("timestamp").Time()
+			if ds.RecordUpdatedAt == nil || ds.RecordUpdatedAt.Unix() < ts.Unix() {
+				ds.RecordUpdatedAt = &ts
+			}
 			f := fuelPercentRemaining.Get("value").Float()
 			if f >= 0.01 {
 				ds.FuelPercentRemaining = &f
@@ -91,6 +94,10 @@ func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDe
 		}
 		odometer := findMostRecentSignal(deviceData, "odometer", true)
 		if odometer.Exists() {
+			ts := odometer.Get("timestamp").Time()
+			if ds.RecordUpdatedAt == nil || ds.RecordUpdatedAt.Unix() < ts.Unix() {
+				ds.RecordUpdatedAt = &ts
+			}
 			o := odometer.Get("value").Float()
 			ds.Odometer = &o
 		}
@@ -101,6 +108,10 @@ func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDe
 		}
 		batteryVoltage := findMostRecentSignal(deviceData, "batteryVoltage", false)
 		if batteryVoltage.Exists() {
+			ts := batteryVoltage.Get("timestamp").Time()
+			if ds.RecordUpdatedAt == nil || ds.RecordUpdatedAt.Unix() < ts.Unix() {
+				ds.RecordUpdatedAt = &ts
+			}
 			bv := batteryVoltage.Get("value").Float()
 			ds.BatteryVoltage = &bv
 		}
@@ -125,6 +136,10 @@ func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDe
 	if slices.Contains(privilegeIDs, CurrentLocation) || slices.Contains(privilegeIDs, AllTimeLocation) {
 		latitude := findMostRecentSignal(deviceData, "latitude", false)
 		if latitude.Exists() {
+			ts := latitude.Get("timestamp").Time()
+			if ds.RecordUpdatedAt == nil || ds.RecordUpdatedAt.Unix() < ts.Unix() {
+				ds.RecordUpdatedAt = &ts
+			}
 			l := latitude.Get("value").Float()
 			ds.Latitude = &l
 		}
