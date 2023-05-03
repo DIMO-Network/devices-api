@@ -122,25 +122,16 @@ func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDe
 		}
 	}
 
-	// merging data: foreach order by updatedAt desc, only set property if it exists in json data
-	for _, datum := range deviceData {
-		if datum.Signals.Valid {
-			// The response has the creation and update times of the most recently updated integration.
-			// For users with, e.g., both Smartcar and AutoPi this may produce confusing results.
-
-			if slices.Contains(privilegeIDs, CurrentLocation) || slices.Contains(privilegeIDs, AllTimeLocation) {
-				latitude := findMostRecentSignal(deviceData, "latitude", false)
-				if latitude.Exists() {
-					l := latitude.Get("value").Float()
-					ds.Latitude = &l
-				}
-				longitude := findMostRecentSignal(deviceData, "longitude", false)
-				if longitude.Exists() {
-					l := longitude.Get("value").Float()
-					ds.Longitude = &l
-				}
-			}
-
+	if slices.Contains(privilegeIDs, CurrentLocation) || slices.Contains(privilegeIDs, AllTimeLocation) {
+		latitude := findMostRecentSignal(deviceData, "latitude", false)
+		if latitude.Exists() {
+			l := latitude.Get("value").Float()
+			ds.Latitude = &l
+		}
+		longitude := findMostRecentSignal(deviceData, "longitude", false)
+		if longitude.Exists() {
+			l := longitude.Get("value").Float()
+			ds.Longitude = &l
 		}
 	}
 
@@ -197,7 +188,7 @@ func calculateRange(ctx context.Context, ddSvc services.DeviceDefinitionService,
 
 // GetUserDeviceStatus godoc
 // @Description Returns the latest status update for the device. May return 404 if the
-// @Description user does not have a device with the ID, or if no status updates have come
+// @Description user does not have a device with the ID, or if no status updates have come. Note this endpoint also exists under nft_controllers
 // @Tags        user-devices
 // @Produce     json
 // @Param       user_device_id path     string true "user device ID"
@@ -214,13 +205,12 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 
 	deviceData, err := models.UserDeviceData(
 		models.UserDeviceDatumWhere.UserDeviceID.EQ(userDevice.ID),
-		qm.OrderBy(models.UserDeviceDatumColumns.UpdatedAt),
 	).All(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		return err
 	}
 
-	if len(deviceData) == 0 || !deviceData[0].Data.Valid {
+	if len(deviceData) == 0 || !deviceData[0].Signals.Valid {
 		return fiber.NewError(fiber.StatusNotFound, "No status updates yet.")
 	}
 
