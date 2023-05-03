@@ -42,7 +42,7 @@ func (p *fixSignalTimestamps) Execute(ctx context.Context, _ *flag.FlagSet, _ ..
 		return subcommands.ExitFailure
 	}
 	tx, err := p.pdb.DBS().Writer.BeginTx(ctx, &sql.TxOptions{
-		Isolation: sql.LevelSerializable,
+		Isolation: sql.LevelReadCommitted,
 		ReadOnly:  false,
 	})
 	defer func(err error) {
@@ -57,6 +57,7 @@ func (p *fixSignalTimestamps) Execute(ctx context.Context, _ *flag.FlagSet, _ ..
 	}(err)
 
 	if err != nil {
+		fmt.Println("Error:", err)
 		return subcommands.ExitFailure
 	}
 	fmt.Printf("found %d user_device_data to process\n", len(all))
@@ -64,6 +65,7 @@ func (p *fixSignalTimestamps) Execute(ctx context.Context, _ *flag.FlagSet, _ ..
 		var data map[string]interface{}
 		err := json.Unmarshal(datum.Signals.JSON, &data)
 		if err != nil {
+			fmt.Println("Error:", err)
 			return subcommands.ExitFailure
 		}
 		needsUpdate := false
@@ -84,17 +86,20 @@ func (p *fixSignalTimestamps) Execute(ctx context.Context, _ *flag.FlagSet, _ ..
 
 		updatedJSON, err := json.Marshal(data)
 		if err != nil {
+			fmt.Println("Error:", err)
 			return subcommands.ExitFailure
 		}
 
 		datum.Signals = null.JSONFrom(updatedJSON)
 		_, err = datum.Update(ctx, tx, boil.Whitelist(models.UserDeviceDatumColumns.Signals, "updated_at"))
 		if err != nil {
+			fmt.Println("Error:", err)
 			return subcommands.ExitFailure
 		}
 	}
 	err = tx.Commit()
 	if err != nil {
+		fmt.Println("Error:", err)
 		return subcommands.ExitFailure
 	}
 	fmt.Println("successfully updated")
