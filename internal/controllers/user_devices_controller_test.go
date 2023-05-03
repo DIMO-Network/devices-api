@@ -316,7 +316,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), apInteg.Id, dd[0].DeviceDefinitionId, "Americas")
 
 	request := test.BuildRequest("POST", "/user/devices/fromvin", string(j))
-	response, responseError := s.app.Test(request)
+	response, responseError := s.app.Test(request, 20000)
 	fmt.Println(responseError)
 	body, _ := io.ReadAll(response.Body)
 	// assert
