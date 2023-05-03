@@ -69,7 +69,7 @@ func NewMockNATSService() *services.NATSService {
 			return nil
 		}
 
-		to, err := time.ParseDuration("5s")
+		to, err := time.ParseDuration("2s")
 		if err != nil {
 			return nil
 		}
