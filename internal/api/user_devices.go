@@ -389,7 +389,7 @@ func (s *userDeviceService) GetClaimedVehiclesGrowth(ctx context.Context, _ *emp
 	growthPercentage := float32(0)
 
 	if totalNFT > 0 {
-		growthPercentage = (float32(lastWeeksNFT.Count) / float32(totalNFT)) * 100
+		growthPercentage = (float32(totalNFT) - float32(lastWeeksNFT.Count)/float32(lastWeeksNFT.Count)) * 100
 	}
 
 	if err != nil {
