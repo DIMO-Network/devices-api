@@ -322,7 +322,7 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 
 	// todo: get an average valuation per vehicle, and multiply for whatever count of vehicles we did not get value for
 
-	return &pb.ValuationResponse{Total: float32(total.Total), GrowthPercentage: (float32(lastWeek.Total) / float32(total.Total)) * 100}, nil
+	return &pb.ValuationResponse{Total: float32(total.Total), GrowthPercentage: ((float32(total.Total) - float32(lastWeek.Total)) / float32(lastWeek.Total)) * 100}, nil
 }
 
 func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevice {
@@ -389,7 +389,7 @@ func (s *userDeviceService) GetClaimedVehiclesGrowth(ctx context.Context, _ *emp
 	growthPercentage := float32(0)
 
 	if totalNFT > 0 {
-		growthPercentage = (float32(lastWeeksNFT.Count) / float32(totalNFT)) * 100
+		growthPercentage = (float32(totalNFT) - float32(lastWeeksNFT.Count)/float32(lastWeeksNFT.Count)) * 100
 	}
 
 	if err != nil {
