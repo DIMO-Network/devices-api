@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 
@@ -414,9 +415,12 @@ func (nc *NFTController) GetVehicleStatus(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "NFT not found.")
 	}
 
-	deviceData, err := models.UserDeviceData(models.UserDeviceDatumWhere.UserDeviceID.EQ(nft.R.UserDevice.ID)).
-		All(c.Context(), nc.DBS().Reader)
-	if errors.Is(err, sql.ErrNoRows) || len(deviceData) == 0 || !deviceData[0].Signals.Valid {
+	deviceData, err := models.UserDeviceData(
+		models.UserDeviceDatumWhere.UserDeviceID.EQ(nft.R.UserDevice.ID),
+		models.UserDeviceDatumWhere.Signals.IsNotNull(),
+		models.UserDeviceDatumWhere.UpdatedAt.GT(time.Now().Add(-14*24*time.Hour)),
+	).All(c.Context(), nc.DBS().Reader)
+	if errors.Is(err, sql.ErrNoRows) || len(deviceData) == 0 {
 		return fiber.NewError(fiber.StatusNotFound, "no status updates yet")
 	}
 	if err != nil {
