@@ -54,7 +54,7 @@ const smartcarDoorPermission = "control_security"
 var scopeToEndpoints = map[string][]string{
 	"read_engine_oil":   {"/engine/oil"},
 	"read_battery":      {"/battery/capacity", "/battery"},
-	"read_charge":       {"/charge", "/battery"},
+	"read_charge":       {"/charge/limit", "/charge"},
 	"read_fuel":         {"/fuel"},
 	"read_location":     {"/location"},
 	"read_odometer":     {"/odometer"},
