@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -236,6 +237,8 @@ func (s *smartcarClient) GetYear(ctx context.Context, accessToken string, id str
 	if err != nil {
 		return 0, err
 	}
+
+	log.Println("YEAR URL " + req.URL.String())
 
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
