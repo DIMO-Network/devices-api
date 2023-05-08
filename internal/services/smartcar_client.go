@@ -35,6 +35,7 @@ type smartcarClient struct {
 	settings       *config.Settings
 	officialClient smartcar.Client
 	exchangeURL    string
+	baseURL        string
 	httpClient     *http.Client
 }
 
@@ -45,6 +46,7 @@ func NewSmartcarClient(settings *config.Settings) SmartcarClient {
 		settings:       settings,
 		officialClient: scClient,
 		exchangeURL:    "https://auth.smartcar.com/oauth/token/",
+		baseURL:        "https://api.smartcar.com/v2.0/",
 		httpClient:     &http.Client{Timeout: time.Duration(310) * time.Second}, // Smartcar default.
 	}
 }
@@ -222,20 +224,48 @@ func (s *smartcarClient) GetVIN(ctx context.Context, accessToken string, id stri
 	return vin.VIN, nil
 }
 
+type VehicleAttributesRes struct {
+	ID    string `json:"id"`
+	Make  string `json:"make"`
+	Model string `json:"model"`
+	Year  int    `json:"year"`
+}
+
 func (s *smartcarClient) GetYear(ctx context.Context, accessToken string, id string) (int, error) {
-	v := s.officialClient.NewVehicle(&smartcar.VehicleParams{
-		ID:          id,
-		AccessToken: accessToken,
-		UnitSystem:  smartcar.Metric,
-	})
-	info, err := v.GetInfo(ctx)
+	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/vehicles/%s", s.baseURL, id), nil)
 	if err != nil {
 		return 0, err
 	}
-	if info == nil {
-		return 0, errors.New("nil info object")
+
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	res, err := s.httpClient.Do(req)
+	if err != nil {
+		return 0, err
 	}
-	return info.Year, nil
+	defer res.Body.Close()
+
+	reqID := res.Header.Get(scReqIDHeader)
+
+	bb, err := io.ReadAll(res.Body)
+	if err != nil {
+		return 0, err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return 0, &SmartcarError{
+			RequestID: reqID,
+			Code:      res.StatusCode,
+			Body:      bb,
+		}
+	}
+
+	var v VehicleAttributesRes
+	if err := json.Unmarshal(bb, &v); err != nil {
+		return 0, err
+	}
+
+	return v.Year, nil
 }
 
 func (s *smartcarClient) GetInfo(ctx context.Context, accessToken string, id string) (*smartcar.Info, error) {

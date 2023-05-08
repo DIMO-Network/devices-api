@@ -2076,7 +2076,12 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 
 	year, err := udc.smartcarClient.GetYear(c.Context(), token.Access, externalID)
 	if err != nil {
-		logger.Err(err).Msg("Failed to get vehicle year from Smartcar.")
+		var scErr *services.SmartcarError
+		if errors.As(err, &scErr) {
+			logger.Error().Msgf("Failed to get vehicle year from Smartcar. Status code %d, request id %s, and body `%s`.", scErr.Code, scErr.RequestID, string(scErr.Body))
+		} else {
+			logger.Err(err).Msg("Failed to get vehicle year from Smartcar.")
+		}
 		return smartcarCallErr
 	}
 
