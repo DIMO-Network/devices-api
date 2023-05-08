@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -47,7 +46,7 @@ func NewSmartcarClient(settings *config.Settings) SmartcarClient {
 		settings:       settings,
 		officialClient: scClient,
 		exchangeURL:    "https://auth.smartcar.com/oauth/token/",
-		baseURL:        "https://api.smartcar.com/v2.0/",
+		baseURL:        "https://api.smartcar.com/v2.0",
 		httpClient:     &http.Client{Timeout: time.Duration(310) * time.Second}, // Smartcar default.
 	}
 }
@@ -237,8 +236,6 @@ func (s *smartcarClient) GetYear(ctx context.Context, accessToken string, id str
 	if err != nil {
 		return 0, err
 	}
-
-	log.Println("YEAR URL " + req.URL.String())
 
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
