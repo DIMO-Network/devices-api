@@ -5,15 +5,13 @@ SET search_path = devices_api, public;
 
 CREATE TABLE verifiable_credentials
 (
-    user_device_id char(27) primary key,
-    vin char(17) NOT NULL, 
-    token_id numeric(78, 0),
-    claims_root bytea,
-    revocation_root bytea,
-    root_of_roots bytea,
-    "state" bytea,
-    "id" bytea
+    token_id char(27) primary key,
+    x bytea not null,
+    y bytea not null,
+    d bytea not null,
+    identity varchar not null
 );
+
 -- +goose StatementEnd
 
 -- +goose Down

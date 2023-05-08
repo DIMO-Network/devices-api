@@ -2,203 +2,174 @@ package services
 
 import (
 	"context"
-	"encoding/json"
-	"io/ioutil"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/rand"
+	"fmt"
+	"io"
 	"math/big"
-	"net/http"
+	"time"
+
+	ethC "github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
+	"github.com/mr-tron/base58"
 
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
-	"github.com/gofiber/fiber"
-	"github.com/iden3/go-circuits"
-	core "github.com/iden3/go-iden3-core"
-	"github.com/iden3/go-iden3-crypto/babyjub"
-	"github.com/iden3/go-iden3-crypto/keccak256"
-	"github.com/iden3/go-merkletree-sql"
-	"github.com/iden3/go-merkletree-sql/db/memory"
-	"github.com/iden3/iden3comm/protocol"
-	"github.com/pkg/errors"
-	"github.com/volatiletech/null/v8"
+	"github.com/twinj/uuid"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-type IdentityMerkleTreeService struct {
-	dbs *db.Store
+type VerifiableCredentialService struct {
+	dbs    db.Store
+	ID     string
+	Issuer string
 }
 
-// NewIdentityMerkleTrees generates a new merkle tree service
-func NewIdentityMerkleTreeService(dbs *db.Store) *IdentityMerkleTreeService {
-	return &IdentityMerkleTreeService{
-		dbs: dbs,
+var randReader io.Reader = rand.Reader
+
+// NewVerifiableCredentialService generates vc service
+func NewVerifiableCredentialService(dbs db.Store) (*VerifiableCredentialService, error) {
+	return &VerifiableCredentialService{
+		dbs:    dbs,
+		ID:     "did:dimo_example:abfe13f712120431c276e12ecab",
+		Issuer: "dimo.zone",
+	}, nil
+}
+
+type Claim struct {
+	ID      string
+	Vin     string
+	TokenID string
+}
+
+type Proof struct {
+	TypeOfProof string
+	Created     time.Time
+	Creator     crypto.PublicKey
+	Signature   struct {
+		R, S *big.Int
 	}
 }
 
-func (imts *IdentityMerkleTreeService) CreateIdentity(ctx context.Context, userDeviceID string) error {
-
-	babyJubjubPrivKey := babyjub.NewRandPrivKey()
-	babyJubjubPubKey := babyJubjubPrivKey.Public()
-
-	revNonce := uint64(1)
-
-	authClaim, _ := core.NewClaim(core.AuthSchemaHash,
-		core.WithIndexDataInts(babyJubjubPubKey.X, babyJubjubPubKey.Y),
-		core.WithRevocationNonce(revNonce))
-
-	clt, err := merkletree.NewMerkleTree(ctx, memory.NewMemoryStorage(), 32)
-	if err != nil {
-		return err
-	}
-	ret, err := merkletree.NewMerkleTree(ctx, memory.NewMemoryStorage(), 32)
-	if err != nil {
-		return err
-	}
-	rot, err := merkletree.NewMerkleTree(ctx, memory.NewMemoryStorage(), 32)
-	if err != nil {
-		return err
-	}
-
-	hIndex, hValue, err := authClaim.HiHv()
-	if err != nil {
-		return err
-	}
-
-	clt.Add(ctx, hIndex, hValue)
-
-	state, err := merkletree.HashElems(
-		clt.Root().BigInt(),
-		ret.Root().BigInt(),
-		rot.Root().BigInt())
-	if err != nil {
-		return err
-	}
-
-	id, err := core.IdGenesisFromIdenState(core.TypeDefault, state.BigInt())
-	if err != nil {
-		return err
-	}
-
-	// store empty state-- should we add the vin claim immediately?
-	vc := models.VerifiableCredential{
-		UserDeviceID:   userDeviceID,
-		ClaimsRoot:     null.BytesFrom([]byte(clt.Root().Hex())), // TODO: type
-		RevocationRoot: null.BytesFrom([]byte(ret.Root().Hex())),
-		RootOfRoots:    null.BytesFrom([]byte(rot.Root().Hex())),
-		State:          null.BytesFrom([]byte(state.Hex())),
-		ID:             null.BytesFrom(id.Bytes()),
-	}
-	// genesisTreeState := circuits.TreeState{
-	// 	State:          state,
-	// 	ClaimsRoot:     clt.Root(),
-	// 	RevocationRoot: ret.Root(),
-	// 	RootOfRoots:    rot.Root(),
-	// }
-
-	// rot.Add(ctx, clt.Root().BigInt(), big.NewInt(0))
-
-	return vc.Insert(ctx, imts.dbs.DBS().Writer, boil.Infer())
-
+type Credential struct {
+	Context           []string
+	ID                string
+	TypeOfCredential  []string
+	Issuer            string
+	IssuanceDate      time.Time
+	CredentialSubject Claim
+	Proof             Proof
+	Status            Status
 }
 
-func createSchemaHashHex(path_to_schema_json string) (string, error) {
-	res, err := http.Get(path_to_schema_json)
-	if err != nil {
-		return "", err
-	}
-
-	if res.StatusCode >= 400 {
-		return "", errors.New("invalid request")
-	}
-
-	schemaBytes, err := ioutil.ReadAll(res.Body)
-
-	var sHash core.SchemaHash
-	h := keccak256.Hash(schemaBytes, []byte("DIMO-Vin-KYC"))
-
-	// copy in hash minus 16 characters?
-	copy(sHash[:], h[len(h)-16:])
-
-	sHashHex, err := sHash.MarshalText()
-	if err != nil {
-		return "", err
-	}
-
-	authClaim, _ := core.NewClaim(core.AuthSchemaHash)
-
-	authClaim.HiHv()
-
-	return string(sHashHex), nil
+type Status struct {
+	ID     string
+	Status string
 }
 
-func ProofRequest(c *fiber.Ctx) error {
-	var params RequestParameters
-	err := c.QueryParser(params)
+var secp256k1Prefix = []byte{0xe7, 0x01}
+
+func (vcs *VerifiableCredentialService) generateKeysFromUserData(tokenID string) (*ecdsa.PrivateKey, error) {
+	privateKey, err := ecdsa.GenerateKey(ethC.S256(), randReader)
 	if err != nil {
-		return err
+		return privateKey, err
 	}
-
-	// Generate request for basic authentication
-	var request protocol.AuthorizationRequestMessage
-
-	request.ID = "7f38a193-0918-4a48-9fac-36adfdb8b542" // ids?
-	request.ThreadID = "7f38a193-0918-4a48-9fac-36adfdb8b542"
-
-	// Add request for a specific proof
-	var mtpProofRequest protocol.ZeroKnowledgeProofRequest
-	mtpProofRequest.ID = 1
-	mtpProofRequest.CircuitID = string(circuits.AtomicQuerySigV2CircuitID)
-	mtpProofRequest.Query = map[string]interface{}{
-		"allowedIssuers": []string{"*"},
-		"credentialSubject": map[string]interface{}{
-			"vin": map[string]interface{}{
-				"$eq": params.Vin,
-			},
-		},
-		"context": "https://raw.githubusercontent.com/DIMO-Network/dimo-vin-kyc/main/dimo-vin-kyc.jsonld",
-		"type":    "DIMO-Vin-KYC",
+	v := secp256k1.CompressPubkey(privateKey.X, privateKey.Y)
+	v = append(secp256k1Prefix, v...)
+	keyEnc := "z" + base58.Encode(v)
+	identity := "did:key:" + keyEnc
+	vcData := models.VerifiableCredential{
+		TokenID:  tokenID,
+		X:        privateKey.X.Bytes(),
+		Y:        privateKey.Y.Bytes(),
+		D:        privateKey.D.Bytes(),
+		Identity: identity,
 	}
-	request.Body.Scope = append(request.Body.Scope, mtpProofRequest)
-
-	return c.JSON(request)
+	return privateKey, vcData.Insert(context.Background(), vcs.dbs.DBS().Writer, boil.Infer())
 }
 
-func CreateVinClaim(c *fiber.Ctx) error {
-	var params RequestParameters
-	err := c.QueryParser(params)
-
-	hash, err := createSchemaHashHex("https://raw.githubusercontent.com/DIMO-Network/dimo-vin-kyc/main/dimo-vin-kyc.json")
+//create credential
+func (vcs *VerifiableCredentialService) createVinCredential(vin, tokenID string) (*Credential, error) {
+	privKey, err := vcs.generateKeysFromUserData(tokenID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	// set schema
-	dimoVinKYC, err := core.NewSchemaHashFromHex(hash)
+	claim := Claim{
+		ID:      "did:uuid:" + uuid.NewV1().String(),
+		Vin:     vin,
+		TokenID: tokenID,
+	}
+	credential := Credential{
+		Context:           []string{"https://raw.githubusercontent.com/DIMO-Network/dimo-vin-kyc/main/dimo-vin-kyc.json", "https://raw.githubusercontent.com/DIMO-Network/dimo-vin-kyc/main/dimo-vin-kyc.jsonld"},
+		ID:                vcs.ID,
+		TypeOfCredential:  []string{"VerifiableCredential", "VinVerification"},
+		Issuer:            vcs.Issuer,
+		IssuanceDate:      time.Now(),
+		CredentialSubject: claim,
+	}
+	r, s, err := ecdsa.Sign(randReader, privKey, []byte(fmt.Sprintf("%v", credential)))
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	// set ID of the claim subject
-	subjectID, err := core.IDFromInt(big.NewInt(1))
-	if err != nil {
-		return err
+	//create proof
+	proof := Proof{
+		TypeOfProof: "ed25519",
+		Created:     time.Now(),
+		Creator:     privKey.PublicKey,
+		Signature: struct {
+			R *big.Int
+			S *big.Int
+		}{R: r, S: s},
 	}
-
-	// create claim
-	claim, err := core.NewClaim(dimoVinKYC, core.WithIndexID(subjectID), core.WithIndexDataBytes([]byte(params.Vin), []byte(params.TokenID)))
-	if err != nil {
-		return err
-	}
-
-	// transform claim from bytes array to json
-	claimToMarshal, err := json.Marshal(claim)
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(string(claimToMarshal))
+	//add proof
+	credential.Proof = proof
+	return &credential, nil
 }
 
-type RequestParameters struct {
-	Vin     string `json:"vin"`
-	TokenID string `json:"token_id"`
-	UserID  string `json:"user_id"`
+func (vcs *VerifiableCredentialService) VerifyCredential(tokenID string, credential Credential) (bool, error) {
+	vcUserData, err := models.VerifiableCredentials(models.VerifiableCredentialWhere.TokenID.EQ(tokenID)).One(context.Background(), vcs.dbs.DBS().Reader)
+	if err != nil {
+		return false, err
+	}
+	publicKey := ecdsa.PublicKey{
+		Curve: ethC.S256(),
+		X:     new(big.Int).SetBytes(vcUserData.X),
+		Y:     new(big.Int).SetBytes(vcUserData.Y),
+	}
+	return ecdsa.Verify(&publicKey, []byte(fmt.Sprintf("%v", credential)), credential.Proof.Signature.R, credential.Proof.Signature.S), nil
 }
+
+// //create presentation
+// func createPresentation(keyPair KeyPair, metadata PresenterMetadata, credential Credential) Presentation {
+// 	presentation := Presentation{
+// 		context:           metadata.context,
+// 		typeOfPresentaion: metadata.typeOfPresentation,
+// 		credential:        credential,
+// 	}
+
+// 	//create proof
+// 	proofOfPresentaton := Proof{
+// 		typeOfProof: "ed25519",
+// 		created:     time.Now(),
+// 		creator:     keyPair.publicKey,
+// 		signature:   ed25519.Sign(keyPair.privateKey, []byte(fmt.Sprintf("%v", presentation))),
+// 	}
+
+// 	presentation.proof = proofOfPresentaton
+
+// 	return presentation
+
+// }
+
+// //verify presentation
+// func verifyPresentation(publicKey ed25519.PublicKey, presentation Presentation) bool {
+// 	//verify if the public key is the same as in the credential
+// 	if string(publicKey) != string(presentation.proof.creator) {
+// 		return false
+// 	}
+// 	proofObj := presentation.proof
+// 	presentation.proof = Proof{}
+// 	//verify signature
+// 	return ed25519.Verify(publicKey, []byte(fmt.Sprintf("%v", presentation)), proofObj.signature)
+// }

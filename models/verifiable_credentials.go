@@ -14,83 +14,67 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/queries/qmhelper"
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"github.com/volatiletech/strmangle"
 )
 
 // VerifiableCredential is an object representing the database table.
 type VerifiableCredential struct {
-	UserDeviceID   string            `boil:"user_device_id" json:"user_device_id" toml:"user_device_id" yaml:"user_device_id"`
-	Vin            string            `boil:"vin" json:"vin" toml:"vin" yaml:"vin"`
-	TokenID        types.NullDecimal `boil:"token_id" json:"token_id,omitempty" toml:"token_id" yaml:"token_id,omitempty"`
-	ClaimsRoot     null.Bytes        `boil:"claims_root" json:"claims_root,omitempty" toml:"claims_root" yaml:"claims_root,omitempty"`
-	RevocationRoot null.Bytes        `boil:"revocation_root" json:"revocation_root,omitempty" toml:"revocation_root" yaml:"revocation_root,omitempty"`
-	RootOfRoots    null.Bytes        `boil:"root_of_roots" json:"root_of_roots,omitempty" toml:"root_of_roots" yaml:"root_of_roots,omitempty"`
-	State          types.NullDecimal `boil:"state" json:"state,omitempty" toml:"state" yaml:"state,omitempty"`
+	TokenID  string `boil:"token_id" json:"token_id" toml:"token_id" yaml:"token_id"`
+	X        []byte `boil:"x" json:"x" toml:"x" yaml:"x"`
+	Y        []byte `boil:"y" json:"y" toml:"y" yaml:"y"`
+	D        []byte `boil:"d" json:"d" toml:"d" yaml:"d"`
+	Identity string `boil:"identity" json:"identity" toml:"identity" yaml:"identity"`
 
 	R *verifiableCredentialR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L verifiableCredentialL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var VerifiableCredentialColumns = struct {
-	UserDeviceID   string
-	Vin            string
-	TokenID        string
-	ClaimsRoot     string
-	RevocationRoot string
-	RootOfRoots    string
-	State          string
+	TokenID  string
+	X        string
+	Y        string
+	D        string
+	Identity string
 }{
-	UserDeviceID:   "user_device_id",
-	Vin:            "vin",
-	TokenID:        "token_id",
-	ClaimsRoot:     "claims_root",
-	RevocationRoot: "revocation_root",
-	RootOfRoots:    "root_of_roots",
-	State:          "state",
+	TokenID:  "token_id",
+	X:        "x",
+	Y:        "y",
+	D:        "d",
+	Identity: "identity",
 }
 
 var VerifiableCredentialTableColumns = struct {
-	UserDeviceID   string
-	Vin            string
-	TokenID        string
-	ClaimsRoot     string
-	RevocationRoot string
-	RootOfRoots    string
-	State          string
+	TokenID  string
+	X        string
+	Y        string
+	D        string
+	Identity string
 }{
-	UserDeviceID:   "verifiable_credentials.user_device_id",
-	Vin:            "verifiable_credentials.vin",
-	TokenID:        "verifiable_credentials.token_id",
-	ClaimsRoot:     "verifiable_credentials.claims_root",
-	RevocationRoot: "verifiable_credentials.revocation_root",
-	RootOfRoots:    "verifiable_credentials.root_of_roots",
-	State:          "verifiable_credentials.state",
+	TokenID:  "verifiable_credentials.token_id",
+	X:        "verifiable_credentials.x",
+	Y:        "verifiable_credentials.y",
+	D:        "verifiable_credentials.d",
+	Identity: "verifiable_credentials.identity",
 }
 
 // Generated where
 
 var VerifiableCredentialWhere = struct {
-	UserDeviceID   whereHelperstring
-	Vin            whereHelperstring
-	TokenID        whereHelpertypes_NullDecimal
-	ClaimsRoot     whereHelpernull_Bytes
-	RevocationRoot whereHelpernull_Bytes
-	RootOfRoots    whereHelpernull_Bytes
-	State          whereHelpertypes_NullDecimal
+	TokenID  whereHelperstring
+	X        whereHelper__byte
+	Y        whereHelper__byte
+	D        whereHelper__byte
+	Identity whereHelperstring
 }{
-	UserDeviceID:   whereHelperstring{field: "\"devices_api\".\"verifiable_credentials\".\"user_device_id\""},
-	Vin:            whereHelperstring{field: "\"devices_api\".\"verifiable_credentials\".\"vin\""},
-	TokenID:        whereHelpertypes_NullDecimal{field: "\"devices_api\".\"verifiable_credentials\".\"token_id\""},
-	ClaimsRoot:     whereHelpernull_Bytes{field: "\"devices_api\".\"verifiable_credentials\".\"claims_root\""},
-	RevocationRoot: whereHelpernull_Bytes{field: "\"devices_api\".\"verifiable_credentials\".\"revocation_root\""},
-	RootOfRoots:    whereHelpernull_Bytes{field: "\"devices_api\".\"verifiable_credentials\".\"root_of_roots\""},
-	State:          whereHelpertypes_NullDecimal{field: "\"devices_api\".\"verifiable_credentials\".\"state\""},
+	TokenID:  whereHelperstring{field: "\"devices_api\".\"verifiable_credentials\".\"token_id\""},
+	X:        whereHelper__byte{field: "\"devices_api\".\"verifiable_credentials\".\"x\""},
+	Y:        whereHelper__byte{field: "\"devices_api\".\"verifiable_credentials\".\"y\""},
+	D:        whereHelper__byte{field: "\"devices_api\".\"verifiable_credentials\".\"d\""},
+	Identity: whereHelperstring{field: "\"devices_api\".\"verifiable_credentials\".\"identity\""},
 }
 
 // VerifiableCredentialRels is where relationship names are stored.
@@ -110,10 +94,10 @@ func (*verifiableCredentialR) NewStruct() *verifiableCredentialR {
 type verifiableCredentialL struct{}
 
 var (
-	verifiableCredentialAllColumns            = []string{"user_device_id", "vin", "token_id", "claims_root", "revocation_root", "root_of_roots", "state"}
-	verifiableCredentialColumnsWithoutDefault = []string{"user_device_id", "vin"}
-	verifiableCredentialColumnsWithDefault    = []string{"token_id", "claims_root", "revocation_root", "root_of_roots", "state"}
-	verifiableCredentialPrimaryKeyColumns     = []string{"user_device_id"}
+	verifiableCredentialAllColumns            = []string{"token_id", "x", "y", "d", "identity"}
+	verifiableCredentialColumnsWithoutDefault = []string{"token_id", "x", "y", "d", "identity"}
+	verifiableCredentialColumnsWithDefault    = []string{}
+	verifiableCredentialPrimaryKeyColumns     = []string{"token_id"}
 	verifiableCredentialGeneratedColumns      = []string{}
 )
 
@@ -408,7 +392,7 @@ func VerifiableCredentials(mods ...qm.QueryMod) verifiableCredentialQuery {
 
 // FindVerifiableCredential retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindVerifiableCredential(ctx context.Context, exec boil.ContextExecutor, userDeviceID string, selectCols ...string) (*VerifiableCredential, error) {
+func FindVerifiableCredential(ctx context.Context, exec boil.ContextExecutor, tokenID string, selectCols ...string) (*VerifiableCredential, error) {
 	verifiableCredentialObj := &VerifiableCredential{}
 
 	sel := "*"
@@ -416,10 +400,10 @@ func FindVerifiableCredential(ctx context.Context, exec boil.ContextExecutor, us
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"devices_api\".\"verifiable_credentials\" where \"user_device_id\"=$1", sel,
+		"select %s from \"devices_api\".\"verifiable_credentials\" where \"token_id\"=$1", sel,
 	)
 
-	q := queries.Raw(query, userDeviceID)
+	q := queries.Raw(query, tokenID)
 
 	err := q.Bind(ctx, exec, verifiableCredentialObj)
 	if err != nil {
@@ -771,7 +755,7 @@ func (o *VerifiableCredential) Delete(ctx context.Context, exec boil.ContextExec
 	}
 
 	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), verifiableCredentialPrimaryKeyMapping)
-	sql := "DELETE FROM \"devices_api\".\"verifiable_credentials\" WHERE \"user_device_id\"=$1"
+	sql := "DELETE FROM \"devices_api\".\"verifiable_credentials\" WHERE \"token_id\"=$1"
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -868,7 +852,7 @@ func (o VerifiableCredentialSlice) DeleteAll(ctx context.Context, exec boil.Cont
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *VerifiableCredential) Reload(ctx context.Context, exec boil.ContextExecutor) error {
-	ret, err := FindVerifiableCredential(ctx, exec, o.UserDeviceID)
+	ret, err := FindVerifiableCredential(ctx, exec, o.TokenID)
 	if err != nil {
 		return err
 	}
@@ -907,16 +891,16 @@ func (o *VerifiableCredentialSlice) ReloadAll(ctx context.Context, exec boil.Con
 }
 
 // VerifiableCredentialExists checks if the VerifiableCredential row exists.
-func VerifiableCredentialExists(ctx context.Context, exec boil.ContextExecutor, userDeviceID string) (bool, error) {
+func VerifiableCredentialExists(ctx context.Context, exec boil.ContextExecutor, tokenID string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"devices_api\".\"verifiable_credentials\" where \"user_device_id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"devices_api\".\"verifiable_credentials\" where \"token_id\"=$1 limit 1)"
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
 		fmt.Fprintln(writer, sql)
-		fmt.Fprintln(writer, userDeviceID)
+		fmt.Fprintln(writer, tokenID)
 	}
-	row := exec.QueryRowContext(ctx, sql, userDeviceID)
+	row := exec.QueryRowContext(ctx, sql, tokenID)
 
 	err := row.Scan(&exists)
 	if err != nil {
@@ -928,5 +912,5 @@ func VerifiableCredentialExists(ctx context.Context, exec boil.ContextExecutor, 
 
 // Exists checks if the VerifiableCredential row exists.
 func (o *VerifiableCredential) Exists(ctx context.Context, exec boil.ContextExecutor) (bool, error) {
-	return VerifiableCredentialExists(ctx, exec, o.UserDeviceID)
+	return VerifiableCredentialExists(ctx, exec, o.TokenID)
 }

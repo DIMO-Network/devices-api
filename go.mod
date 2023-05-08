@@ -21,20 +21,15 @@ require (
 	github.com/friendsofgo/errors v0.9.2
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/gofiber/adaptor/v2 v2.1.27
-	github.com/gofiber/fiber v1.14.6
 	github.com/gofiber/fiber/v2 v2.41.0
 	github.com/gofiber/jwt/v3 v3.2.4
 	github.com/golang-jwt/jwt/v4 v4.4.3
 	github.com/golang/mock v1.6.0
 	github.com/google/subcommands v1.2.0
-	github.com/iden3/go-circuits v1.0.3
-	github.com/iden3/go-iden3-core v1.0.2
-	github.com/iden3/go-iden3-crypto v0.0.15
-	github.com/iden3/go-merkletree-sql v1.0.2
-	github.com/iden3/iden3comm v1.0.0
 	github.com/jarcoal/httpmock v1.1.0
 	github.com/lib/pq v1.10.7
 	github.com/lovoo/goka v1.1.7
+	github.com/mr-tron/base58 v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.5.3
 	github.com/prometheus/client_golang v1.14.0
@@ -44,9 +39,9 @@ require (
 	github.com/swaggo/swag v1.8.11
 	github.com/testcontainers/testcontainers-go v0.14.0
 	github.com/tidwall/gjson v1.14.3
+	github.com/twinj/uuid v1.0.0
 	github.com/vmihailenco/taskq/v3 v3.2.8
 	github.com/volatiletech/null/v8 v8.1.2
-	github.com/volatiletech/sqlboiler v3.7.1+incompatible
 	github.com/volatiletech/sqlboiler/v4 v4.13.0
 	github.com/volatiletech/strmangle v0.0.4
 	go.uber.org/automaxprocs v1.4.0
@@ -56,36 +51,28 @@ require (
 require (
 	github.com/avast/retry-go v3.0.0+incompatible // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
-	github.com/dchest/blake512 v1.0.0 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/elastic/elastic-transport-go/v8 v8.1.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
-	github.com/gofiber/utils v0.0.10 // indirect
-	github.com/gorilla/schema v1.1.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/iden3/go-merkletree-sql/v2 v2.0.4 // indirect
-	github.com/iden3/go-rapidsnark/types v0.0.3 // indirect
-	github.com/iden3/go-schema-processor v1.1.5 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
-	github.com/mr-tron/base58 v1.2.0 // indirect
+	github.com/myesui/uuid v1.0.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
-	github.com/piprate/json-gold v0.5.1-0.20230111113000-6ddbe6e6f19f // indirect
-	github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35 // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
 	github.com/rjeczalik/notify v0.9.1 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.4.0 // indirect
-	github.com/volatiletech/null v8.0.0+incompatible // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
+	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
 )
 
 require (
