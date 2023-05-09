@@ -48,38 +48,37 @@ func NewMockNATSService(streamName string) (*services.NATSService, *server.Serve
 	if err != nil {
 		return nil, s, err
 	}
-
-	if nc, err := nats.Connect("nats://" + s.Addr().String()); err != nil {
+	nc, err := nats.Connect("nats://" + s.Addr().String())
+	if err != nil {
 		return nil, s, err
-	} else {
-
-		waitConnected(nc)
-
-		js, err := nc.JetStream()
-		if err != nil {
-			return nil, s, err
-		}
-
-		if _, err = js.AddStream(&nats.StreamConfig{
-			Name:      streamName,
-			Retention: nats.WorkQueuePolicy,
-			Subjects:  []string{"test-subject"},
-		}); err != nil {
-			return nil, s, err
-		}
-
-		to, err := time.ParseDuration("2s")
-		if err != nil {
-			return nil, s, err
-		}
-
-		natsSvc := &services.NATSService{
-			JetStream:        js,
-			JetStreamName:    streamName,
-			JetStreamSubject: "test-subject",
-			AckTimeout:       to,
-			DurableConsumer:  "test-durable-consumer",
-		}
-		return natsSvc, s, nil
 	}
+
+	waitConnected(nc)
+
+	js, err := nc.JetStream()
+	if err != nil {
+		return nil, s, err
+	}
+
+	if _, err = js.AddStream(&nats.StreamConfig{
+		Name:      streamName,
+		Retention: nats.WorkQueuePolicy,
+		Subjects:  []string{"test-subject"},
+	}); err != nil {
+		return nil, s, err
+	}
+
+	to, err := time.ParseDuration("2s")
+	if err != nil {
+		return nil, s, err
+	}
+
+	natsSvc := &services.NATSService{
+		JetStream:        js,
+		JetStreamName:    streamName,
+		JetStreamSubject: "test-subject",
+		AckTimeout:       to,
+		DurableConsumer:  "test-durable-consumer",
+	}
+	return natsSvc, s, nil
 }

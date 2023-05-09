@@ -5,11 +5,12 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"github.com/nats-io/nats-server/v2/server"
 	"io"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/nats-io/nats-server/v2/server"
 
 	"github.com/google/uuid"
 
