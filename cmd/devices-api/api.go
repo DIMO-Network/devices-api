@@ -2,16 +2,17 @@ package main
 
 import (
 	"context"
-	"github.com/DIMO-Network/devices-api/internal/middleware/metrics"
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"net"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/DIMO-Network/devices-api/internal/middleware/metrics"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"github.com/DIMO-Network/shared/redis"
 
@@ -105,7 +106,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// commenting this out b/c the library includes the path in the metrics which saturates prometheus queries - need to fork / make our own
 	//prometheus := fiberprometheus.New("devices-api")
 	//app.Use(prometheus.Middleware)
-	app.Use(metrics.HTTPMetricsPrometheusMiddleware)
+	app.Use(metrics.HTTPMetricsMiddleware)
 
 	app.Use(fiberrecover.New(fiberrecover.Config{
 		Next:              nil,
@@ -337,7 +338,7 @@ func startGRPCServer(settings *config.Settings, dbs func() *db.ReaderWriter,
 	logger.Info().Msgf("Starting gRPC server on port %s", settings.GRPCPort)
 	server := grpc.NewServer(
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
-			metrics.ValidationMiddleware(),
+			metrics.GRPCMetricsMiddleware(),
 			grpc_ctxtags.UnaryServerInterceptor(),
 			grpc_prometheus.UnaryServerInterceptor,
 		)),

@@ -9,7 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func HTTPMetricsPrometheusMiddleware(c *fiber.Ctx) error {
+func HTTPMetricsMiddleware(c *fiber.Ctx) error {
 	start := time.Now()
 	method := c.Route().Method
 

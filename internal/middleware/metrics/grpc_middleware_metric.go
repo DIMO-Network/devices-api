@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+
 	"github.com/DIMO-Network/devices-api/internal/appmetrics"
 
 	"time"
@@ -11,7 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func ValidationMiddleware() grpc.UnaryServerInterceptor {
+func GRPCMetricsMiddleware() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		startTime := time.Now()
 		resp, err := handler(ctx, req)
