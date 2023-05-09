@@ -39,48 +39,47 @@ func waitConnected(nc *nats.Conn) {
 	panic("nats server not connected")
 }
 
-func NewMockNATSService() *services.NATSService {
+func NewMockNATSService(streamName string) (*services.NATSService, *server.Server, error) {
 
 	s := RunServer()
-	defer s.Shutdown()
 
 	err := s.EnableJetStream(&server.JetStreamConfig{})
 
 	if err != nil {
-		panic(err)
+		return nil, s, err
 	}
 
 	if nc, err := nats.Connect("nats://" + s.Addr().String()); err != nil {
-		panic(err)
+		return nil, s, err
 	} else {
 
 		waitConnected(nc)
 
 		js, err := nc.JetStream()
 		if err != nil {
-			return nil
+			return nil, s, err
 		}
 
 		if _, err = js.AddStream(&nats.StreamConfig{
-			Name:      "test-stream",
+			Name:      streamName,
 			Retention: nats.WorkQueuePolicy,
 			Subjects:  []string{"test-subject"},
 		}); err != nil {
-			return nil
+			return nil, s, err
 		}
 
 		to, err := time.ParseDuration("2s")
 		if err != nil {
-			return nil
+			return nil, s, err
 		}
 
 		natsSvc := &services.NATSService{
 			JetStream:        js,
-			JetStreamName:    "test-stream",
+			JetStreamName:    streamName,
 			JetStreamSubject: "test-subject",
 			AckTimeout:       to,
 			DurableConsumer:  "test-durable-consumer",
 		}
-		return natsSvc
+		return natsSvc, s, nil
 	}
 }

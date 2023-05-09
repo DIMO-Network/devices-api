@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"github.com/nats-io/nats-server/v2/server"
 	"io"
 	"math/big"
 	"testing"
@@ -71,7 +72,10 @@ type UserDevicesControllerTestSuite struct {
 	autoPiSvc       *mock_services.MockAutoPiAPIService
 	usersClient     *mock_services.MockUserServiceClient
 	natsService     *services.NATSService
+	natsServer      *server.Server
 }
+
+const natsStreamName = "test-stream"
 
 // SetupSuite starts container db
 func (s *UserDevicesControllerTestSuite) SetupSuite() {
@@ -80,6 +84,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	logger := test.Logger()
 	mockCtrl := gomock.NewController(s.T())
 	s.mockCtrl = mockCtrl
+	var err error
 
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(mockCtrl)
 	s.deviceDefIntSvc = mock_services.NewMockDeviceDefinitionIntegrationService(mockCtrl)
@@ -94,7 +99,10 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.redisClient = mocks.NewMockCacheService(mockCtrl)
 	s.autoPiSvc = mock_services.NewMockAutoPiAPIService(mockCtrl)
 	s.usersClient = mock_services.NewMockUserServiceClient(mockCtrl)
-	s.natsService = mock_services.NewMockNATSService()
+	s.natsService, s.natsServer, err = mock_services.NewMockNATSService(natsStreamName)
+	if err != nil {
+		s.T().Fatal(err)
+	}
 
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
@@ -133,7 +141,8 @@ func (s *UserDevicesControllerTestSuite) TearDownSuite() {
 	if err := s.container.Terminate(s.ctx); err != nil {
 		s.T().Fatal(err)
 	}
-	s.mockCtrl.Finish() // might need to do mockctrl on every test, and refactor setup into one method
+	s.mockCtrl.Finish()     // might need to do mockctrl on every test, and refactor setup into one method
+	s.natsServer.Shutdown() // shuts down nats test server
 }
 
 // Test Runner
@@ -173,7 +182,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 	s.redisClient.EXPECT().Set(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID), gomock.Any(), time.Hour*2).Return(nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
 	request := test.BuildRequest("POST", "/user/devices/fromsmartcar", string(j))
-	response, responseError := s.app.Test(request, 20000)
+	response, responseError := s.app.Test(request, 10000)
 	fmt.Println(responseError)
 	body, _ := io.ReadAll(response.Body)
 	// assert
@@ -316,7 +325,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), apInteg.Id, dd[0].DeviceDefinitionId, "Americas")
 
 	request := test.BuildRequest("POST", "/user/devices/fromvin", string(j))
-	response, responseError := s.app.Test(request, 20000)
+	response, responseError := s.app.Test(request, 10000)
 	fmt.Println(responseError)
 	body, _ := io.ReadAll(response.Body)
 	// assert
@@ -335,6 +344,11 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	assert.Equal(s.T(), integration.Vendor, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Vendor)
 	assert.Equal(s.T(), integration.Type, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Type)
 	assert.Equal(s.T(), integration.Id, regUserResp.DeviceDefinition.CompatibleIntegrations[0].ID)
+
+	msg, responseError := s.natsService.JetStream.GetLastMsg(natsStreamName, s.natsService.JetStreamSubject)
+	assert.NoError(s.T(), responseError, "expected no error from nats")
+	fmt.Println("jetstream message")
+	fmt.Println(msg)
 
 	userDevice, err := models.UserDevices().One(s.ctx, s.pdb.DBS().Reader)
 	require.NoError(s.T(), err)

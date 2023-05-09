@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/nats-io/nats-server/v2/server"
 	"io"
 	"math/big"
 	"testing"
@@ -70,6 +71,7 @@ type UserIntegrationsControllerTestSuite struct {
 	redisClient               *mocks.MockCacheService
 	userClient                *mock_services.MockUserServiceClient
 	natsSvc                   *services.NATSService
+	natsServer                *server.Server
 }
 
 const testUserID = "123123"
@@ -81,6 +83,7 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 	s.pdb, s.container = test.StartContainerDatabase(s.ctx, s.T(), migrationsDirRelPath)
 
 	s.mockCtrl = gomock.NewController(s.T())
+	var err error
 
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(s.mockCtrl)
 	s.deviceDefIntSvc = mock_services.NewMockDeviceDefinitionIntegrationService(s.mockCtrl)
@@ -96,7 +99,10 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 	s.autoPiTaskService = mock_services.NewMockAutoPiTaskService(s.mockCtrl)
 	s.redisClient = mocks.NewMockCacheService(s.mockCtrl)
 	s.userClient = mock_services.NewMockUserServiceClient(s.mockCtrl)
-	s.natsSvc = mock_services.NewMockNATSService()
+	s.natsSvc, s.natsServer, err = mock_services.NewMockNATSService(natsStreamName)
+	if err != nil {
+		s.T().Fatal(err)
+	}
 
 	logger := test.Logger()
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, s.eventSvc, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), s.autopiAPISvc, nil,

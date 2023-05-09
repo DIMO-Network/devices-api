@@ -60,7 +60,10 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 	deviceDefinitionIngest := mock_services.NewMockDeviceDefinitionRegistrar(mockCtrl)
 	autoPiTaskSvc := mock_services.NewMockAutoPiTaskService(mockCtrl)
 	drivlyTaskSvc := mock_services.NewMockDrivlyTaskService(mockCtrl)
-	natsSvc := mock_services.NewMockNATSService()
+	natsSvc, natsServer, err := mock_services.NewMockNATSService(natsStreamName)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	usersClient := test.UsersClient{}
 
@@ -132,6 +135,7 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 
 		//teardown
 		test.TruncateTables(pdb.DBS().Writer.DB, t)
+		natsServer.Shutdown()
 	})
 }
 
