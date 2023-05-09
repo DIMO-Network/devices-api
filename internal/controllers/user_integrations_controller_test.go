@@ -129,6 +129,7 @@ func (s *UserIntegrationsControllerTestSuite) TearDownTest() {
 // TearDownSuite cleanup at end by terminating container
 func (s *UserIntegrationsControllerTestSuite) TearDownSuite() {
 	fmt.Printf("shutting down postgres at with session: %s \n", s.container.SessionID())
+	s.natsServer.Shutdown()
 	if err := s.container.Terminate(s.ctx); err != nil {
 		s.T().Fatal(err)
 	}

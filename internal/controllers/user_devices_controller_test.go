@@ -139,11 +139,11 @@ func (s *UserDevicesControllerTestSuite) TearDownTest() {
 // TearDownSuite cleanup at end by terminating container
 func (s *UserDevicesControllerTestSuite) TearDownSuite() {
 	fmt.Printf("shutting down postgres at with session: %s \n", s.container.SessionID())
+	s.natsServer.Shutdown() // shuts down nats test server
 	if err := s.container.Terminate(s.ctx); err != nil {
 		s.T().Fatal(err)
 	}
-	s.mockCtrl.Finish()     // might need to do mockctrl on every test, and refactor setup into one method
-	s.natsServer.Shutdown() // shuts down nats test server
+	s.mockCtrl.Finish() // might need to do mockctrl on every test, and refactor setup into one method
 }
 
 // Test Runner

@@ -64,6 +64,7 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer natsServer.Shutdown()
 
 	usersClient := test.UsersClient{}
 
@@ -135,7 +136,6 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 
 		//teardown
 		test.TruncateTables(pdb.DBS().Writer.DB, t)
-		natsServer.Shutdown()
 	})
 }
 
