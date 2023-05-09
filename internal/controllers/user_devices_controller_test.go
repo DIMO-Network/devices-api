@@ -347,8 +347,8 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 
 	msg, responseError := s.natsService.JetStream.GetLastMsg(natsStreamName, s.natsService.JetStreamSubject)
 	assert.NoError(s.T(), responseError, "expected no error from nats")
-	fmt.Println("jetstream message")
-	fmt.Println(msg)
+	vinResult := gjson.GetBytes(msg.Data, "vin")
+	assert.Equal(s.T(), vinny, vinResult.Str)
 
 	userDevice, err := models.UserDevices().One(s.ctx, s.pdb.DBS().Reader)
 	require.NoError(s.T(), err)
