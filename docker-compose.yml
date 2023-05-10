@@ -2,6 +2,12 @@
 version: '3.9'
 
 services:
+  didkit:
+    platform: linux/x86_64
+    image: ghcr.io/spruceid/didkit-http:latest
+    ports:
+      - "7777:3000"
+
   postgresql:
     image: postgres:12.9-alpine # matches version used on aws environments
     container_name: pg-devices-api
