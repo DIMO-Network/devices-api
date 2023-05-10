@@ -101,6 +101,7 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 	s.redisClient = mocks.NewMockCacheService(s.mockCtrl)
 	s.userClient = mock_services.NewMockUserServiceClient(s.mockCtrl)
 	s.natsSvc, s.natsServer, err = mock_services.NewMockNATSService(natsStreamName)
+
 	if err != nil {
 		s.T().Fatal(err)
 	}
