@@ -1,24 +1,31 @@
 package services
 
 import (
+	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"time"
 
+	"github.com/ericlagergren/decimal"
 	ethC "github.com/ethereum/go-ethereum/crypto"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/types"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/twinj/uuid"
 )
 
 type VerifiableCredentialService struct {
 	dbs        db.Store
-	ID         string
+	IssuerID   string
 	Issuer     string
 	PublicKey  ecdsa.PublicKey
 	PrivateKey ecdsa.PrivateKey
@@ -56,7 +63,7 @@ func NewVerifiableCredentialService(dbs db.Store, settings *config.Settings) (*V
 
 	return &VerifiableCredentialService{
 		dbs:        dbs,
-		ID:         "did:dimo_example:abfe13f712120431c276e12ecab",
+		IssuerID:   "did:dimo_example:abfe13f712120431c276e12ecab",
 		Issuer:     "dimo.zone",
 		PublicKey:  publicKey,
 		PrivateKey: privateKey,
@@ -66,7 +73,7 @@ func NewVerifiableCredentialService(dbs db.Store, settings *config.Settings) (*V
 type Claim struct {
 	ID      string
 	Vin     string
-	TokenID string
+	TokenID int64
 }
 
 type Proof struct {
@@ -97,15 +104,18 @@ type Status struct {
 var secp256k1Prefix = []byte{0xe7, 0x01}
 
 //create credential
-func (vcs *VerifiableCredentialService) createVinCredential(vin, tokenID string) (*Credential, error) {
+func (vcs *VerifiableCredentialService) createVinCredential(vin string, tokenID int64) error {
 	claim := Claim{
 		ID:      "did:uuid:" + uuid.NewV1().String(),
 		Vin:     vin,
 		TokenID: tokenID,
 	}
 	credential := Credential{
-		Context:           []string{"https://raw.githubusercontent.com/DIMO-Network/dimo-vin-kyc/main/dimo-vin-kyc.json", "https://raw.githubusercontent.com/DIMO-Network/dimo-vin-kyc/main/dimo-vin-kyc.jsonld"},
-		ID:                vcs.ID,
+		Context: []string{
+			"https://raw.githubusercontent.com/DIMO-Network/dimo-vin-kyc/main/dimo-vin-kyc.json",
+			"https://raw.githubusercontent.com/DIMO-Network/dimo-vin-kyc/main/dimo-vin-kyc.jsonld",
+		},
+		ID:                vcs.IssuerID,
 		TypeOfCredential:  []string{"VerifiableCredential", "VinVerification"},
 		Issuer:            vcs.Issuer,
 		IssuanceDate:      time.Now(),
@@ -113,7 +123,7 @@ func (vcs *VerifiableCredentialService) createVinCredential(vin, tokenID string)
 	}
 	r, s, err := ecdsa.Sign(rand.Reader, &vcs.PrivateKey, []byte(fmt.Sprintf("%v", credential)))
 	if err != nil {
-		return nil, err
+		return err
 	}
 	//create proof
 	proof := Proof{
@@ -127,11 +137,40 @@ func (vcs *VerifiableCredentialService) createVinCredential(vin, tokenID string)
 	}
 	//add proof
 	credential.Proof = proof
-	return &credential, nil
+
+	nft, err := models.VehicleNFTS(models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(tokenID, 0)))).One(context.Background(), vcs.dbs.DBS().Reader)
+	if err != nil {
+		return err
+	}
+
+	nft.ClaimID = null.StringFrom(claim.ID)
+
+	proofB, err := json.Marshal(proof)
+	if err != nil {
+		return err
+	}
+
+	vc := models.VerifiableCredential{
+		ClaimID: claim.ID,
+		Proof:   proofB,
+	}
+	return vc.Insert(context.Background(), vcs.dbs.DBS().Writer, boil.Infer())
 }
 
-func (vcs *VerifiableCredentialService) VerifyCredential(tokenID string, credential Credential) (bool, error) {
-	return ecdsa.Verify(&vcs.PublicKey, []byte(fmt.Sprintf("%v", credential)), credential.Proof.Signature.R, credential.Proof.Signature.S), nil
+func (vcs *VerifiableCredentialService) VerifyCredential(credential Credential) (bool, error) {
+
+	vc, err := models.VerifiableCredentials(models.VerifiableCredentialWhere.ClaimID.EQ(credential.CredentialSubject.ID)).One(context.Background(), vcs.dbs.DBS().Reader)
+	if err != nil {
+		return false, err
+	}
+
+	var proof Proof
+	err = json.Unmarshal(vc.Proof, &proof)
+	if err != nil {
+		return false, err
+	}
+
+	return ecdsa.Verify(&vcs.PublicKey, []byte(fmt.Sprintf("%v", credential)), proof.Signature.R, proof.Signature.S), nil
 }
 
 // //create presentation
