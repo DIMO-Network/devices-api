@@ -193,6 +193,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
 
 	v1Auth.Get("/integrations", userDeviceController.GetIntegrations)
+	v1Auth.Get("/integration/:tokenID", userDeviceController.GetIntegrationNFTMetadata)
 	// autopi specific
 	v1Auth.Get("/autopi/unit/:unitID", userDeviceController.GetAutoPiUnitInfo)
 	v1Auth.Get("/autopi/unit/:unitID/is-online", userDeviceController.GetIsAutoPiOnline)
