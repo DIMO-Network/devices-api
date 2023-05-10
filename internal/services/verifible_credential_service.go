@@ -1,39 +1,65 @@
 package services
 
 import (
-	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"encoding/base64"
 	"fmt"
-	"io"
 	"math/big"
 	"time"
 
 	ethC "github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/secp256k1"
-	"github.com/mr-tron/base58"
 
-	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/twinj/uuid"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 type VerifiableCredentialService struct {
-	dbs    db.Store
-	ID     string
-	Issuer string
+	dbs        db.Store
+	ID         string
+	Issuer     string
+	PublicKey  ecdsa.PublicKey
+	PrivateKey ecdsa.PrivateKey
 }
 
-var randReader io.Reader = rand.Reader
-
 // NewVerifiableCredentialService generates vc service
-func NewVerifiableCredentialService(dbs db.Store) (*VerifiableCredentialService, error) {
+func NewVerifiableCredentialService(dbs db.Store, settings *config.Settings) (*VerifiableCredentialService, error) {
+	xb, err := base64.RawURLEncoding.DecodeString(settings.DIMOKeyX)
+	if err != nil {
+		return nil, err
+	}
+	x := new(big.Int).SetBytes(xb)
+
+	yb, err := base64.RawURLEncoding.DecodeString(settings.DIMOKeyY)
+	if err != nil {
+		return nil, err
+	}
+	y := new(big.Int).SetBytes(yb)
+
+	db, err := base64.RawURLEncoding.DecodeString(settings.DIMOKeyD)
+	if err != nil {
+		return nil, err
+	}
+	d := new(big.Int).SetBytes(db)
+
+	publicKey := ecdsa.PublicKey{
+		Curve: ethC.S256(),
+		X:     x,
+		Y:     y,
+	}
+	privateKey := ecdsa.PrivateKey{
+		PublicKey: publicKey,
+		D:         d,
+	}
+
 	return &VerifiableCredentialService{
-		dbs:    dbs,
-		ID:     "did:dimo_example:abfe13f712120431c276e12ecab",
-		Issuer: "dimo.zone",
+		dbs:        dbs,
+		ID:         "did:dimo_example:abfe13f712120431c276e12ecab",
+		Issuer:     "dimo.zone",
+		PublicKey:  publicKey,
+		PrivateKey: privateKey,
 	}, nil
 }
 
@@ -70,31 +96,8 @@ type Status struct {
 
 var secp256k1Prefix = []byte{0xe7, 0x01}
 
-func (vcs *VerifiableCredentialService) generateKeysFromUserData(tokenID string) (*ecdsa.PrivateKey, error) {
-	privateKey, err := ecdsa.GenerateKey(ethC.S256(), randReader)
-	if err != nil {
-		return privateKey, err
-	}
-	v := secp256k1.CompressPubkey(privateKey.X, privateKey.Y)
-	v = append(secp256k1Prefix, v...)
-	keyEnc := "z" + base58.Encode(v)
-	identity := "did:key:" + keyEnc
-	vcData := models.VerifiableCredential{
-		TokenID:  tokenID,
-		X:        privateKey.X.Bytes(),
-		Y:        privateKey.Y.Bytes(),
-		D:        privateKey.D.Bytes(),
-		Identity: identity,
-	}
-	return privateKey, vcData.Insert(context.Background(), vcs.dbs.DBS().Writer, boil.Infer())
-}
-
 //create credential
 func (vcs *VerifiableCredentialService) createVinCredential(vin, tokenID string) (*Credential, error) {
-	privKey, err := vcs.generateKeysFromUserData(tokenID)
-	if err != nil {
-		return nil, err
-	}
 	claim := Claim{
 		ID:      "did:uuid:" + uuid.NewV1().String(),
 		Vin:     vin,
@@ -108,7 +111,7 @@ func (vcs *VerifiableCredentialService) createVinCredential(vin, tokenID string)
 		IssuanceDate:      time.Now(),
 		CredentialSubject: claim,
 	}
-	r, s, err := ecdsa.Sign(randReader, privKey, []byte(fmt.Sprintf("%v", credential)))
+	r, s, err := ecdsa.Sign(rand.Reader, &vcs.PrivateKey, []byte(fmt.Sprintf("%v", credential)))
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +119,7 @@ func (vcs *VerifiableCredentialService) createVinCredential(vin, tokenID string)
 	proof := Proof{
 		TypeOfProof: "ed25519",
 		Created:     time.Now(),
-		Creator:     privKey.PublicKey,
+		Creator:     vcs.PublicKey,
 		Signature: struct {
 			R *big.Int
 			S *big.Int
@@ -128,16 +131,7 @@ func (vcs *VerifiableCredentialService) createVinCredential(vin, tokenID string)
 }
 
 func (vcs *VerifiableCredentialService) VerifyCredential(tokenID string, credential Credential) (bool, error) {
-	vcUserData, err := models.VerifiableCredentials(models.VerifiableCredentialWhere.TokenID.EQ(tokenID)).One(context.Background(), vcs.dbs.DBS().Reader)
-	if err != nil {
-		return false, err
-	}
-	publicKey := ecdsa.PublicKey{
-		Curve: ethC.S256(),
-		X:     new(big.Int).SetBytes(vcUserData.X),
-		Y:     new(big.Int).SetBytes(vcUserData.Y),
-	}
-	return ecdsa.Verify(&publicKey, []byte(fmt.Sprintf("%v", credential)), credential.Proof.Signature.R, credential.Proof.Signature.S), nil
+	return ecdsa.Verify(&vcs.PublicKey, []byte(fmt.Sprintf("%v", credential)), credential.Proof.Signature.R, credential.Proof.Signature.S), nil
 }
 
 // //create presentation

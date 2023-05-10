@@ -76,6 +76,9 @@ type Settings struct {
 	ChatGPTURL                        string      `yaml:"CHATGPT_URL"`
 	AftermarketDeviceContractAddress  string      `yaml:"AFTERMARKET_DEVICE_CONTRACT_ADDRESS"`
 	DIMOContractAPIURL                string      `yaml:"DIMO_CONTRACT_APIURL"`
+	DIMOKeyX                          string      `yaml:"DIMO_KEY_X"`
+	DIMOKeyY                          string      `yaml:"DIMO_KEY_Y"`
+	DIMOKeyD                          string      `yaml:"DIMO_KEY_D"`
 }
 
 func (s *Settings) IsProduction() bool {
