@@ -220,12 +220,14 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 
 	deviceData, err := models.UserDeviceData(
 		models.UserDeviceDatumWhere.UserDeviceID.EQ(userDevice.ID),
+		models.UserDeviceDatumWhere.Signals.IsNotNull(),
+		models.UserDeviceDatumWhere.UpdatedAt.GT(time.Now().Add(-14*24*time.Hour)),
 	).All(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		return err
 	}
 
-	if len(deviceData) == 0 || !deviceData[0].Signals.Valid {
+	if len(deviceData) == 0 {
 		return fiber.NewError(fiber.StatusNotFound, "No status updates yet.")
 	}
 

@@ -2074,16 +2074,6 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 		}
 	}
 
-	year, err := udc.smartcarClient.GetYear(c.Context(), token.Access, externalID)
-	if err != nil {
-		logger.Err(err).Msg("Failed to get vehicle year from Smartcar.")
-		return smartcarCallErr
-	}
-
-	if err := udc.fixSmartcarDeviceYear(c.Context(), logger, tx, integ, ud, year); err != nil {
-		logger.Err(err).Msg("Failed to correct Smartcar device definition year.")
-	}
-
 	endpoints, err := udc.smartcarClient.GetEndpoints(c.Context(), token.Access, externalID)
 	if err != nil {
 		logger.Err(err).Msg("Failed to retrieve permissions from Smartcar.")
@@ -2306,51 +2296,6 @@ func fixTeslaDeviceDefinition(ctx context.Context, logger *zerolog.Logger, ddSvc
 		if err != nil {
 			return err
 		}
-	}
-
-	return nil
-}
-
-// fixSmartcarDeviceYear tries to use the MMY provided by Smartcar to at least correct the year of
-// the device definition used by the device.
-//
-// We do not attempt to create any new entries in integrations, device_definitions, or
-// device_integrations. This seems too dangerous to me.
-func (udc *UserDevicesController) fixSmartcarDeviceYear(ctx context.Context, logger *zerolog.Logger, _ boil.ContextExecutor, integ *ddgrpc.Integration, ud *models.UserDevice, year int) error {
-
-	deviceDefinitionResponse, err := udc.DeviceDefSvc.GetDeviceDefinitionsByIDs(ctx, []string{ud.DeviceDefinitionID})
-
-	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ud.DeviceDefinitionID)
-	}
-
-	dd := deviceDefinitionResponse[0]
-
-	if int(dd.Type.Year) != year {
-		logger.Warn().Msgf("Device was attached to year %d but should be %d.", dd.Type.Year, year)
-		region := ""
-		if countryRecord := constants.FindCountry(ud.CountryCode.String); countryRecord != nil {
-			region = countryRecord.Region
-		}
-		// todo gprc pull by MMY from from device-defintions
-		newDD, err := udc.DeviceDefSvc.FindDeviceDefinitionByMMY(ctx, dd.Make.Name, dd.Type.Model, year)
-
-		if err != nil {
-			return fmt.Errorf("grpc error: %w", err)
-		}
-
-		if newDD == nil {
-			return fmt.Errorf("no device definition %s, %s, %d", dd.Make.Name, dd.Type.Model, year)
-		}
-
-		if len(newDD.DeviceIntegrations) == 0 {
-			return fmt.Errorf("correct device definition %s has no integration %s for region %s", newDD.DeviceDefinitionId, integ.Id, region)
-		}
-
-		// todo: validate with james
-		//if err := ud.SetDeviceDefinition(ctx, exec, false, newDD); err != nil {
-		//	return fmt.Errorf("failed switching device definition to %s: %w", newDD.DeviceDefinitionID, err)
-		//}
 	}
 
 	return nil

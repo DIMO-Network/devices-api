@@ -640,3 +640,63 @@ func TestVehicleTransfer(t *testing.T) {
 		t.Errorf("expected owner to become %s, but was %s", common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263"), common.BytesToAddress(nft.OwnerAddress.Bytes))
 	}
 }
+
+func Test_NFTPrivileges_Cleared_On_Vehicle_Transfer(t *testing.T) {
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer container.Terminate(ctx) //nolint
+
+	logger := zerolog.Nop()
+	settings := &config.Settings{DIMORegistryChainID: 1, VehicleNFTAddress: "0x881d40237659c251811cec9c364ef91dc08d300c"}
+
+	mtr := models.MetaTransactionRequest{ID: "xdd"}
+	_ = mtr.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+
+	tkID := types.NewNullDecimal(decimal.New(5, 0))
+	ownerAddress := null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5"))
+
+	nftPriv := models.NFTPrivilege{
+		TokenID:         types.Decimal(tkID),
+		ContractAddress: common.BytesToAddress([]byte{uint8(1)}).Bytes(),
+		Privilege:       1,
+		UserAddress:     ownerAddress.Bytes,
+		Expiry:          time.Now(),
+	}
+	_ = nftPriv.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+
+	nft := models.VehicleNFT{MintRequestID: "xdd", OwnerAddress: ownerAddress, TokenID: tkID}
+	_ = nft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings)
+	err := consumer.processMessage(&message.Message{Payload: []byte(`
+	{
+		"type": "zone.dimo.contract.event",
+		"source": "chain/1",
+		"data": {
+			"contract": "0x881d40237659c251811cec9c364ef91dc08d300c",
+			"eventName": "Transfer",
+			"arguments": {
+				"from": "0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5",
+				"to": "0x4675c7e5baafbffbca748158becba61ef3b0a263",
+				"tokenId": 5
+			}
+		}
+	}
+	`)})
+	if err != nil {
+		t.Errorf("failed to process event: %v", err)
+	}
+
+	_ = nft.Reload(ctx, pdb.DBS().Reader)
+	if !nft.OwnerAddress.Valid {
+		t.Fatal("token owner became null")
+	}
+
+	if common.BytesToAddress(nft.OwnerAddress.Bytes) != common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263") {
+		t.Errorf("expected owner to become %s, but was %s", common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263"), common.BytesToAddress(nft.OwnerAddress.Bytes))
+	}
+
+	nftPrivileges, err := models.NFTPrivileges().All(ctx, pdb.DBS().Reader)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(nftPrivileges))
+}

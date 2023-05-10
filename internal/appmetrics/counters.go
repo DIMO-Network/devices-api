@@ -49,4 +49,38 @@ var (
 		Help:    "Response duration of OpenAI ChatGPT in seconds",
 		Buckets: []float64{0.1, 0.15, 0.2, 0.25, 0.3, 0.5, 0.7, 0.9, 10},
 	}, []string{"status"})
+
+	GRPCRequestCount = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "devices_api_grpc_request_count",
+			Help: "The total number of requests served by the GRPC Server",
+		},
+		[]string{"method", "status"},
+	)
+
+	GRPCResponseTime = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "devices_api_grpc_response_time",
+			Help:    "The response time distribution of the GRPC Server",
+			Buckets: []float64{0.1, 0.25, 0.5, 1, 2.5, 5, 10},
+		},
+		[]string{"method", "status"},
+	)
+
+	HTTPRequestCount = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "devices_api_http_request_count",
+			Help: "The total number of requests served by the Http Server",
+		},
+		[]string{"method", "path", "status"},
+	)
+
+	HTTPResponseTime = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "devices_api_http_response_time",
+			Help:    "The response time distribution of the Http Server",
+			Buckets: []float64{0.1, 0.25, 0.5, 1, 2.5, 5, 10},
+		},
+		[]string{"method", "path", "status"},
+	)
 )

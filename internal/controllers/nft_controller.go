@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 
@@ -128,7 +129,7 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 
 	return c.JSON(NFTMetadataResp{
 		Name:        name,
-		Description: description,
+		Description: description + ", a DIMO vehicle.",
 		Image:       fmt.Sprintf("%s/v1/vehicle/%s/image", nc.Settings.DeploymentBaseURL, ti),
 		Attributes: []NFTAttribute{
 			{TraitType: "Make", Value: def.Make.Name},
@@ -167,15 +168,36 @@ func (nc *NFTController) GetDcnNFTMetadata(c *fiber.Ctx) error {
 			TraitType: "Creation Date", Value: strconv.FormatInt(dcn.NFTNodeBlockCreateTime.Time.Unix(), 10),
 		})
 	}
+	if dcn.NFTNodeBlockCreateTime.Valid {
+		attrs = append(attrs, NFTAttribute{
+			TraitType: "Registration Date", Value: strconv.FormatInt(dcn.NFTNodeBlockCreateTime.Time.Unix(), 10),
+		})
+	}
 	if dcn.Expiration.Valid {
 		attrs = append(attrs, NFTAttribute{
 			TraitType: "Expiration Date", Value: strconv.FormatInt(dcn.Expiration.Time.Unix(), 10),
 		})
 	}
+	nameArray := strings.Split(dcn.Name.String, ".")
+	nameLength := len(nameArray[0])
+
+	attrs = append(attrs, NFTAttribute{
+		TraitType: "Character Set", Value: "alphanumeric",
+	})
+
+	attrs = append(attrs, NFTAttribute{
+		TraitType: "Length", Value: strconv.Itoa(nameLength),
+	})
+
+	attrs = append(attrs, NFTAttribute{
+		TraitType: "Nodehash", Value: common.Bytes2Hex(ndid.Bytes()),
+	})
 
 	return c.JSON(NFTMetadataResp{
-		Name:       dcn.Name.String,
-		Attributes: attrs,
+		Name:        dcn.Name.String,
+		Description: dcn.Name.String + ", a DCN name.",
+		Image:       fmt.Sprintf("%s/v1/dcn/%s/image", nc.Settings.DeploymentBaseURL, ndStr),
+		Attributes:  attrs,
 	})
 }
 
@@ -296,7 +318,7 @@ func (nc *NFTController) GetAftermarketDeviceNFTMetadata(c *fiber.Ctx) error {
 
 	return c.JSON(NFTMetadataResp{
 		Name:        name,
-		Description: name + ", a hardware device",
+		Description: name + ", a DIMO hardware device.",
 		Image:       fmt.Sprintf("%s/v1/aftermarket/device/%s/image", nc.Settings.DeploymentBaseURL, tid),
 		Attributes: []NFTAttribute{
 			{TraitType: "Ethereum Address", Value: common.BytesToAddress(unit.EthereumAddress.Bytes).String()},
@@ -414,9 +436,12 @@ func (nc *NFTController) GetVehicleStatus(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "NFT not found.")
 	}
 
-	deviceData, err := models.UserDeviceData(models.UserDeviceDatumWhere.UserDeviceID.EQ(nft.R.UserDevice.ID)).
-		All(c.Context(), nc.DBS().Reader)
-	if errors.Is(err, sql.ErrNoRows) || len(deviceData) == 0 || !deviceData[0].Signals.Valid {
+	deviceData, err := models.UserDeviceData(
+		models.UserDeviceDatumWhere.UserDeviceID.EQ(nft.R.UserDevice.ID),
+		models.UserDeviceDatumWhere.Signals.IsNotNull(),
+		models.UserDeviceDatumWhere.UpdatedAt.GT(time.Now().Add(-14*24*time.Hour)),
+	).All(c.Context(), nc.DBS().Reader)
+	if errors.Is(err, sql.ErrNoRows) || len(deviceData) == 0 {
 		return fiber.NewError(fiber.StatusNotFound, "no status updates yet")
 	}
 	if err != nil {
