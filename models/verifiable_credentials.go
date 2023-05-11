@@ -23,58 +23,37 @@ import (
 
 // VerifiableCredential is an object representing the database table.
 type VerifiableCredential struct {
-	TokenID  string `boil:"token_id" json:"token_id" toml:"token_id" yaml:"token_id"`
-	X        []byte `boil:"x" json:"x" toml:"x" yaml:"x"`
-	Y        []byte `boil:"y" json:"y" toml:"y" yaml:"y"`
-	D        []byte `boil:"d" json:"d" toml:"d" yaml:"d"`
-	Identity string `boil:"identity" json:"identity" toml:"identity" yaml:"identity"`
+	ClaimID string `boil:"claim_id" json:"claim_id" toml:"claim_id" yaml:"claim_id"`
+	Proof   []byte `boil:"proof" json:"proof" toml:"proof" yaml:"proof"`
 
 	R *verifiableCredentialR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L verifiableCredentialL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var VerifiableCredentialColumns = struct {
-	TokenID  string
-	X        string
-	Y        string
-	D        string
-	Identity string
+	ClaimID string
+	Proof   string
 }{
-	TokenID:  "token_id",
-	X:        "x",
-	Y:        "y",
-	D:        "d",
-	Identity: "identity",
+	ClaimID: "claim_id",
+	Proof:   "proof",
 }
 
 var VerifiableCredentialTableColumns = struct {
-	TokenID  string
-	X        string
-	Y        string
-	D        string
-	Identity string
+	ClaimID string
+	Proof   string
 }{
-	TokenID:  "verifiable_credentials.token_id",
-	X:        "verifiable_credentials.x",
-	Y:        "verifiable_credentials.y",
-	D:        "verifiable_credentials.d",
-	Identity: "verifiable_credentials.identity",
+	ClaimID: "verifiable_credentials.claim_id",
+	Proof:   "verifiable_credentials.proof",
 }
 
 // Generated where
 
 var VerifiableCredentialWhere = struct {
-	TokenID  whereHelperstring
-	X        whereHelper__byte
-	Y        whereHelper__byte
-	D        whereHelper__byte
-	Identity whereHelperstring
+	ClaimID whereHelperstring
+	Proof   whereHelper__byte
 }{
-	TokenID:  whereHelperstring{field: "\"devices_api\".\"verifiable_credentials\".\"token_id\""},
-	X:        whereHelper__byte{field: "\"devices_api\".\"verifiable_credentials\".\"x\""},
-	Y:        whereHelper__byte{field: "\"devices_api\".\"verifiable_credentials\".\"y\""},
-	D:        whereHelper__byte{field: "\"devices_api\".\"verifiable_credentials\".\"d\""},
-	Identity: whereHelperstring{field: "\"devices_api\".\"verifiable_credentials\".\"identity\""},
+	ClaimID: whereHelperstring{field: "\"devices_api\".\"verifiable_credentials\".\"claim_id\""},
+	Proof:   whereHelper__byte{field: "\"devices_api\".\"verifiable_credentials\".\"proof\""},
 }
 
 // VerifiableCredentialRels is where relationship names are stored.
@@ -94,10 +73,10 @@ func (*verifiableCredentialR) NewStruct() *verifiableCredentialR {
 type verifiableCredentialL struct{}
 
 var (
-	verifiableCredentialAllColumns            = []string{"token_id", "x", "y", "d", "identity"}
-	verifiableCredentialColumnsWithoutDefault = []string{"token_id", "x", "y", "d", "identity"}
+	verifiableCredentialAllColumns            = []string{"claim_id", "proof"}
+	verifiableCredentialColumnsWithoutDefault = []string{"claim_id", "proof"}
 	verifiableCredentialColumnsWithDefault    = []string{}
-	verifiableCredentialPrimaryKeyColumns     = []string{"token_id"}
+	verifiableCredentialPrimaryKeyColumns     = []string{"claim_id"}
 	verifiableCredentialGeneratedColumns      = []string{}
 )
 
@@ -392,7 +371,7 @@ func VerifiableCredentials(mods ...qm.QueryMod) verifiableCredentialQuery {
 
 // FindVerifiableCredential retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindVerifiableCredential(ctx context.Context, exec boil.ContextExecutor, tokenID string, selectCols ...string) (*VerifiableCredential, error) {
+func FindVerifiableCredential(ctx context.Context, exec boil.ContextExecutor, claimID string, selectCols ...string) (*VerifiableCredential, error) {
 	verifiableCredentialObj := &VerifiableCredential{}
 
 	sel := "*"
@@ -400,10 +379,10 @@ func FindVerifiableCredential(ctx context.Context, exec boil.ContextExecutor, to
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"devices_api\".\"verifiable_credentials\" where \"token_id\"=$1", sel,
+		"select %s from \"devices_api\".\"verifiable_credentials\" where \"claim_id\"=$1", sel,
 	)
 
-	q := queries.Raw(query, tokenID)
+	q := queries.Raw(query, claimID)
 
 	err := q.Bind(ctx, exec, verifiableCredentialObj)
 	if err != nil {
@@ -755,7 +734,7 @@ func (o *VerifiableCredential) Delete(ctx context.Context, exec boil.ContextExec
 	}
 
 	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), verifiableCredentialPrimaryKeyMapping)
-	sql := "DELETE FROM \"devices_api\".\"verifiable_credentials\" WHERE \"token_id\"=$1"
+	sql := "DELETE FROM \"devices_api\".\"verifiable_credentials\" WHERE \"claim_id\"=$1"
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -852,7 +831,7 @@ func (o VerifiableCredentialSlice) DeleteAll(ctx context.Context, exec boil.Cont
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *VerifiableCredential) Reload(ctx context.Context, exec boil.ContextExecutor) error {
-	ret, err := FindVerifiableCredential(ctx, exec, o.TokenID)
+	ret, err := FindVerifiableCredential(ctx, exec, o.ClaimID)
 	if err != nil {
 		return err
 	}
@@ -891,16 +870,16 @@ func (o *VerifiableCredentialSlice) ReloadAll(ctx context.Context, exec boil.Con
 }
 
 // VerifiableCredentialExists checks if the VerifiableCredential row exists.
-func VerifiableCredentialExists(ctx context.Context, exec boil.ContextExecutor, tokenID string) (bool, error) {
+func VerifiableCredentialExists(ctx context.Context, exec boil.ContextExecutor, claimID string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"devices_api\".\"verifiable_credentials\" where \"token_id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"devices_api\".\"verifiable_credentials\" where \"claim_id\"=$1 limit 1)"
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
 		fmt.Fprintln(writer, sql)
-		fmt.Fprintln(writer, tokenID)
+		fmt.Fprintln(writer, claimID)
 	}
-	row := exec.QueryRowContext(ctx, sql, tokenID)
+	row := exec.QueryRowContext(ctx, sql, claimID)
 
 	err := row.Scan(&exists)
 	if err != nil {
@@ -912,5 +891,5 @@ func VerifiableCredentialExists(ctx context.Context, exec boil.ContextExecutor, 
 
 // Exists checks if the VerifiableCredential row exists.
 func (o *VerifiableCredential) Exists(ctx context.Context, exec boil.ContextExecutor) (bool, error) {
-	return VerifiableCredentialExists(ctx, exec, o.TokenID)
+	return VerifiableCredentialExists(ctx, exec, o.ClaimID)
 }
