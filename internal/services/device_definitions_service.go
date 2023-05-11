@@ -46,6 +46,7 @@ type DeviceDefinitionService interface {
 	GetIntegrationByFilter(ctx context.Context, integrationType string, vendor string, style string) (*ddgrpc.Integration, error)
 	CreateIntegration(ctx context.Context, integrationType string, vendor string, style string) (*ddgrpc.Integration, error)
 	DecodeVIN(ctx context.Context, vin string, model string, year int, countryCode string) (*ddgrpc.DecodeVinResponse, error)
+	GetIntegrationByTokenID(ctx context.Context, tokenID uint64) (*ddgrpc.Integration, error)
 }
 
 type deviceDefinitionService struct {
@@ -185,6 +186,22 @@ func (d *deviceDefinitionService) GetIntegrationByID(ctx context.Context, id str
 	}
 	if integration == nil {
 		return nil, fmt.Errorf("no integration with id %s found in the %d existing", id, len(allIntegrations))
+	}
+
+	return integration, nil
+}
+
+// GetIntegrationByID get integration from grpc by NFT tokenID
+func (d *deviceDefinitionService) GetIntegrationByTokenID(ctx context.Context, tokenID uint64) (*ddgrpc.Integration, error) {
+	definitionsClient, conn, err := d.getDeviceDefsGrpcClient()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	integration, err := definitionsClient.GetIntegrationByTokenID(ctx, &ddgrpc.GetIntegrationByTokenIDRequest{TokenId: tokenID})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to call grpc endpoint GetIntegrationByTokenID")
 	}
 
 	return integration, nil

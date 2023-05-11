@@ -604,6 +604,28 @@
                 }
             }
         },
+        "/integration/:tokenID": {
+            "get": {
+                "description": "gets an integration using its tokenID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "integrations"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_controllers.NFTMetadataResp"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/integrations": {
             "get": {
                 "security": [
@@ -1734,7 +1756,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns the latest status update for the device. May return 404 if the\nuser does not have a device with the ID, or if no status updates have come",
+                "description": "Returns the latest status update for the device. May return 404 if the\nuser does not have a device with the ID, or if no status updates have come. Note this endpoint also exists under nft_controllers",
                 "produces": [
                     "application/json"
                 ],
@@ -2596,6 +2618,10 @@
                 "style": {
                     "type": "string"
                 },
+                "token_id": {
+                    "description": "token_id can have a 0 value, which means it has not yet been minted and no token id has been assigned. This case should be checked for and handled.",
+                    "type": "integer"
+                },
                 "type": {
                     "type": "string"
                 },
@@ -2645,6 +2671,12 @@
         "internal_controllers.AutoPiDeviceInfo": {
             "type": "object",
             "properties": {
+                "beneficiaryAddress": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
                 "claim": {
                     "description": "Claim contains the status of the on-chain claiming meta-transaction.",
                     "allOf": [
@@ -2900,7 +2932,6 @@
                     "type": "string"
                 },
                 "soc": {
-                    "description": "todo: change json to match after update frontend",
                     "type": "number"
                 },
                 "tirePressure": {
