@@ -75,6 +75,11 @@ type Settings struct {
 	OpenAISecretKey                   string      `yaml:"OPENAI_SECRET_KEY"`
 	ChatGPTURL                        string      `yaml:"CHATGPT_URL"`
 	AftermarketDeviceContractAddress  string      `yaml:"AFTERMARKET_DEVICE_CONTRACT_ADDRESS"`
+	NATSURL                           string      `yaml:"NATS_URL"`
+	NATSStreamName                    string      `yaml:"NATS_STREAM_NAME"`
+	NATSValuationSubject              string      `yaml:"NATS_VALUATION_SUBJECT"`
+	NATSAckTimeout                    string      `yaml:"NATS_ACK_TIMEOUT"`
+	NATSDurableConsumer               string      `yaml:"NATS_DURABLE_CONSUMER"`
 	DIMOContractAPIURL                string      `yaml:"DIMO_CONTRACT_APIURL"`
 }
 
