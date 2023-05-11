@@ -70,7 +70,6 @@ type UserDevicesController struct {
 	nhtsaService              services.INHTSAService
 	autoPiIngestRegistrar     services.IngestRegistrar
 	autoPiTaskService         services.AutoPiTaskService
-	drivlyTaskService         services.DrivlyTaskService
 	s3                        *s3.Client
 	producer                  sarama.SyncProducer
 	deviceDefinitionRegistrar services.DeviceDefinitionRegistrar
@@ -127,7 +126,6 @@ func NewUserDevicesController(settings *config.Settings,
 	autoPiTaskService services.AutoPiTaskService,
 	producer sarama.SyncProducer,
 	s3NFTClient *s3.Client,
-	drivlyTaskService services.DrivlyTaskService,
 	autoPi *autopi.Integration,
 	cache redis.CacheService,
 	openAI services.OpenAI,
@@ -152,7 +150,6 @@ func NewUserDevicesController(settings *config.Settings,
 		autoPiTaskService:         autoPiTaskService,
 		s3:                        s3NFTClient,
 		producer:                  producer,
-		drivlyTaskService:         drivlyTaskService,
 		deviceDefinitionRegistrar: deviceDefinitionRegistrar,
 		autoPiIntegration:         autoPi,
 		redisCache:                cache,

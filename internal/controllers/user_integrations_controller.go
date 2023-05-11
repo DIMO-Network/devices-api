@@ -2155,14 +2155,6 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 
 	logger.Info().Msg("Finished Smartcar device registration.")
 
-	// fire off task to get drivly data
-	taskID, err = udc.drivlyTaskService.StartDrivlyUpdate(ud.DeviceDefinitionID, ud.ID, vin)
-	if err != nil {
-		logger.Err(err).Msg("Failed to emit task drivly event task.")
-	}
-
-	logger.Info().Msgf("drivly update task ID = %s", taskID)
-
 	return c.SendStatus(fiber.StatusNoContent)
 }
 

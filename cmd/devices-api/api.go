@@ -83,7 +83,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	autoPiIngest := services.NewIngestRegistrar(services.AutoPi, producer)
 	deviceDefinitionRegistrar := services.NewDeviceDefinitionRegistrar(producer, settings)
 	autoPiTaskService := services.NewAutoPiTaskService(settings, autoPiSvc, pdb.DBS, logger)
-	drivlyTaskService := services.NewDrivlyTaskService(settings, ddSvc, logger)
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, pdb.DBS, &logger)
 	autoPi := autopi.NewIntegration(pdb.DBS, ddSvc, autoPiSvc, autoPiTaskService, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &logger)
 	openAI := services.NewOpenAI(&logger, *settings)
@@ -103,7 +102,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// controllers
 	deviceControllers := controllers.NewDevicesController(settings, pdb.DBS, &logger, nhtsaSvc, ddSvc, ddIntSvc)
-	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService, smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest, deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, drivlyTaskService, autoPi, redisCache, openAI, usersClient, natsSvc)
+	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService, smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest, deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient, natsSvc)
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
@@ -308,7 +307,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 	// start task consumer for autopi
 	autoPiTaskService.StartConsumer(ctx)
-	drivlyTaskService.StartConsumer(ctx)
 
 	c := make(chan os.Signal, 1)                    // Create channel to signify a signal being sent with length of 1
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM) // When an interrupt or termination signal is sent, notify the channel
