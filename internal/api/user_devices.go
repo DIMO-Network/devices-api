@@ -328,7 +328,7 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 	}
 
 	if !lastWeek.Total.IsZero() {
-		growthPercentage = ((totalValuation - lastWeek.Total.Float64) / lastWeek.Total.Float64) * 100
+		growthPercentage = ((lastWeek.Total.Float64) / totalValuation) * 100
 	}
 
 	// todo: get an average valuation per vehicle, and multiply for whatever count of vehicles we did not get value for
