@@ -30,7 +30,6 @@ import (
 
 type VerifiableCredentialService struct {
 	dbs                db.Store
-	IssuerID           string
 	Issuer             string
 	PublicKey          ecdsa.PublicKey
 	PrivateKey         ecdsa.PrivateKey
@@ -89,7 +88,6 @@ func NewVerifiableCredentialService(dbs db.Store, settings *config.Settings) (Ve
 
 	return VerifiableCredentialService{
 		dbs:                dbs,
-		IssuerID:           "did:dimo_example:abfe13f712120431c276e12ecab",
 		Issuer:             issuer,
 		PublicKey:          publicKey,
 		PrivateKey:         privateKey,
