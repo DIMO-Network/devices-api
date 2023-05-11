@@ -221,7 +221,7 @@ func (udc *UserDevicesController) GetIntegrations(c *fiber.Ctx) error {
 }
 
 // GetIntegrationByTokenID godoc
-// @Description gets an integration using it's tokenID
+// @Description gets an integration using its tokenID
 // @Tags        integrations
 // @Produce     json
 // @Success     200 {array} ddgrpc.Integration
