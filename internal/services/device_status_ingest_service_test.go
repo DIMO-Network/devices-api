@@ -337,9 +337,9 @@ func (t testDeviceDefSvc) GetDeviceDefinitionByID(ctx context.Context, id string
 	return dd[0], err
 }
 
-func (t testDeviceDefSvc) GetIntegrationByTokenID(ctx context.Context, tokenId uint64) (*ddgrpc.Integration, error) {
-	in, err := t.GetIntegrationByTokenID(ctx, tokenId)
-	return in, err
+func (t testDeviceDefSvc) GetIntegrationByTokenID(ctx context.Context, tokenID uint64) (*ddgrpc.Integration, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 // nolint
