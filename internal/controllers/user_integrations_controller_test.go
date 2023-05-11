@@ -337,10 +337,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 	)
 	// original device def
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).Times(2).Return(dd, nil)
-	// fixup device def with correct year
-	// s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), "Ford", model, 2022).Return(dd2[0], nil)
-	// fixed up device definition
-	// s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).Return(dd2, nil)
 
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := s.app.Test(request)
