@@ -190,7 +190,7 @@ func (nc *NFTController) GetDcnNFTMetadata(c *fiber.Ctx) error {
 	})
 
 	attrs = append(attrs, NFTAttribute{
-		TraitType: "Nodehash", Value: common.Bytes2Hex(ndid.Bytes()),
+		TraitType: "Nodehash", Value: "0x" + common.Bytes2Hex(ndid.Bytes()),
 	})
 
 	return c.JSON(NFTMetadataResp{
