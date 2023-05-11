@@ -225,7 +225,6 @@ func (udc *UserDevicesController) GetIntegrations(c *fiber.Ctx) error {
 // @Tags        integrations
 // @Produce     json
 // @Success     200 {array} ddgrpc.Integration
-// @Security    BearerAuth
 // @Router      /integration/:tokenID [get]
 func (udc *UserDevicesController) GetIntegrationNFTMetadata(c *fiber.Ctx) error {
 	tokenID := c.Params("tokenID")
