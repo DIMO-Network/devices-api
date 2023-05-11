@@ -201,6 +201,32 @@ func (nc *NFTController) GetDcnNFTMetadata(c *fiber.Ctx) error {
 	})
 }
 
+// GetIntegrationByTokenID godoc
+// @Description gets an integration using its tokenID
+// @Tags        integrations
+// @Produce     json
+// @Success     200 {array} controllers.NFTMetadataResp
+// @Router      /integration/:tokenID [get]
+func (nc *NFTController) GetIntegrationNFTMetadata(c *fiber.Ctx) error {
+	tokenID := c.Params("tokenID")
+
+	uTokenID, err := strconv.ParseUint(tokenID, 10, 64)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid tokenID provided")
+	}
+
+	integration, err := nc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), uTokenID)
+	if err != nil {
+		return helpers.GrpcErrorToFiber(err, "failed to get integration")
+	}
+
+	return c.JSON(NFTMetadataResp{
+		Name:        integration.Vendor,
+		Description: fmt.Sprintf("%s, a DIMO integration", integration.Vendor),
+		Attributes:  []NFTAttribute{},
+	})
+}
+
 type NFTMetadataResp struct {
 	Name        string         `json:"name,omitempty"`
 	Description string         `json:"description,omitempty"`
