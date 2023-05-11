@@ -303,7 +303,7 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 						) as evd;`
 
 	type Result struct {
-		Total float64 `boil:"total"`
+		Total null.Float64 `boil:"total"`
 	}
 	var total Result
 	var lastWeek Result
@@ -320,9 +320,23 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 		return nil, status.Error(codes.Internal, "Internal error.")
 	}
 
+	totalValuation := 0.0
+	growthPercentage := 0.0
+
+	if !total.Total.IsZero() {
+		totalValuation = total.Total.Float64
+	}
+
+	if !lastWeek.Total.IsZero() {
+		growthPercentage = ((lastWeek.Total.Float64) / totalValuation) * 100
+	}
+
 	// todo: get an average valuation per vehicle, and multiply for whatever count of vehicles we did not get value for
 
-	return &pb.ValuationResponse{Total: float32(total.Total), GrowthPercentage: ((float32(total.Total) - float32(lastWeek.Total)) / float32(lastWeek.Total)) * 100}, nil
+	return &pb.ValuationResponse{
+		Total:            float32(totalValuation),
+		GrowthPercentage: float32(growthPercentage),
+	}, nil
 }
 
 func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevice {

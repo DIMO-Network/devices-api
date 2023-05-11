@@ -188,8 +188,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 	const vin = "CARVIN"
 	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
-	// corrected after query smartcar
-	dd2 := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2022, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 
 	const smartCarUserID = "smartCarUserId"
@@ -213,10 +211,10 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 
 			data := event.Data.(services.UserDeviceIntegrationEvent)
 
-			assert.Equal(s.T(), dd2[0].DeviceDefinitionId, data.Device.DeviceDefinitionID)
-			assert.Equal(s.T(), dd2[0].Make.Name, data.Device.Make)
-			assert.Equal(s.T(), dd2[0].Type.Model, data.Device.Model)
-			assert.Equal(s.T(), int(dd2[0].Type.Year), data.Device.Year)
+			assert.Equal(s.T(), dd[0].DeviceDefinitionId, data.Device.DeviceDefinitionID)
+			assert.Equal(s.T(), dd[0].Make.Name, data.Device.Make)
+			assert.Equal(s.T(), dd[0].Type.Model, data.Device.Model)
+			assert.Equal(s.T(), int(dd[0].Type.Year), data.Device.Year)
 			assert.Equal(s.T(), "CARVIN", data.Device.VIN)
 			assert.Equal(s.T(), ud.ID, data.Device.ID)
 
@@ -230,9 +228,9 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 		IntegrationID:      integration.Id,
 		UserDeviceID:       ud.ID,
 		DeviceDefinitionID: ud.DeviceDefinitionID,
-		Make:               dd2[0].Make.Name,
-		Model:              dd2[0].Type.Model,
-		Year:               int(dd2[0].Type.Year),
+		Make:               dd[0].Make.Name,
+		Model:              dd[0].Type.Model,
+		Year:               int(dd[0].Type.Year),
 		Region:             "Americas",
 	}).Return(nil)
 
@@ -242,7 +240,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 	s.scClient.EXPECT().GetEndpoints(gomock.Any(), "myAccess", "smartcar-idx").Return([]string{"/", "/vin"}, nil)
 	s.scClient.EXPECT().HasDoorControl(gomock.Any(), "myAccess", "smartcar-idx").Return(false, nil)
 	// return a different year than original to fix up device definition id
-	s.scClient.EXPECT().GetYear(gomock.Any(), "myAccess", "smartcar-idx").Return(2022, nil)
 	s.drivlyTaskSvc.EXPECT().StartDrivlyUpdate(dd[0].DeviceDefinitionId, ud.ID, "CARVIN").Return("task-id-123", nil)
 
 	oUdai := &models.UserDeviceAPIIntegration{}
@@ -254,10 +251,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 	)
 	// original device def
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).Times(2).Return(dd, nil)
-	// fixup device def with correct year
-	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), "Ford", model, 2022).Return(dd2[0], nil)
-	// fixed up device definition
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).Return(dd2, nil)
 
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := s.app.Test(request)
@@ -282,8 +275,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 	const vin = "CARVIN"
 	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
-	// corrected after query smartcar
-	dd2 := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2022, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	ud.VinIdentifier = null.StringFrom(vin)
 	ud.VinConfirmed = true
@@ -318,10 +309,10 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 
 			data := event.Data.(services.UserDeviceIntegrationEvent)
 
-			assert.Equal(s.T(), dd2[0].DeviceDefinitionId, data.Device.DeviceDefinitionID)
-			assert.Equal(s.T(), dd2[0].Make.Name, data.Device.Make)
-			assert.Equal(s.T(), dd2[0].Type.Model, data.Device.Model)
-			assert.Equal(s.T(), int(dd2[0].Type.Year), data.Device.Year)
+			assert.Equal(s.T(), dd[0].DeviceDefinitionId, data.Device.DeviceDefinitionID)
+			assert.Equal(s.T(), dd[0].Make.Name, data.Device.Make)
+			assert.Equal(s.T(), dd[0].Type.Model, data.Device.Model)
+			assert.Equal(s.T(), int(dd[0].Type.Year), data.Device.Year)
 			assert.Equal(s.T(), "CARVIN", data.Device.VIN)
 			assert.Equal(s.T(), ud.ID, data.Device.ID)
 
@@ -335,9 +326,9 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 		IntegrationID:      integration.Id,
 		UserDeviceID:       ud.ID,
 		DeviceDefinitionID: ud.DeviceDefinitionID,
-		Make:               dd2[0].Make.Name,
-		Model:              dd2[0].Type.Model,
-		Year:               int(dd2[0].Type.Year),
+		Make:               dd[0].Make.Name,
+		Model:              dd[0].Type.Model,
+		Year:               int(dd[0].Type.Year),
 		Region:             "Americas",
 	}).Return(nil)
 
@@ -346,7 +337,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 	s.scClient.EXPECT().GetEndpoints(gomock.Any(), token.Access, "smartcar-idx").Return([]string{"/", "/vin"}, nil)
 	s.scClient.EXPECT().HasDoorControl(gomock.Any(), token.Access, "smartcar-idx").Return(false, nil)
 	// return a different year than original to fix up device definition id
-	s.scClient.EXPECT().GetYear(gomock.Any(), token.Access, "smartcar-idx").Return(2022, nil)
 	s.drivlyTaskSvc.EXPECT().StartDrivlyUpdate(dd[0].DeviceDefinitionId, ud.ID, vin).Return("task-id-123", nil)
 
 	oUdai := &models.UserDeviceAPIIntegration{}
@@ -358,10 +348,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 	)
 	// original device def
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).Times(2).Return(dd, nil)
-	// fixup device def with correct year
-	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), "Ford", model, 2022).Return(dd2[0], nil)
-	// fixed up device definition
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).Return(dd2, nil)
 
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := s.app.Test(request)
