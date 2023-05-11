@@ -220,32 +220,6 @@ func (udc *UserDevicesController) GetIntegrations(c *fiber.Ctx) error {
 	})
 }
 
-// GetIntegrationByTokenID godoc
-// @Description gets an integration using it's tokenID
-// @Tags        integrations
-// @Produce     json
-// @Success     200 {array} ddgrpc.Integration
-// @Router      /integration/:tokenID [get]
-func (udc *UserDevicesController) GetIntegrationNFTMetadata(c *fiber.Ctx) error {
-	tokenID := c.Params("tokenID")
-
-	uTokenID, err := strconv.ParseUint(tokenID, 10, 64)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "failed to get integration")
-	}
-
-	integration, err := udc.DeviceDefSvc.GetIntegrationByTokenID(c.Context(), uTokenID)
-	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "failed to get integration")
-	}
-
-	return c.JSON(NFTMetadataResp{
-		Name:        integration.Vendor,
-		Description: fmt.Sprintf("%s, a DIMO integration", integration.Vendor),
-		Attributes:  []NFTAttribute{},
-	})
-}
-
 // SendAutoPiCommand godoc
 // @Description Closed off in prod. Submit a raw autopi command to unit. Device must be registered with autopi before this can be used
 // @Tags        integrations
