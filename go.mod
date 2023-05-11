@@ -30,6 +30,7 @@ require (
 	github.com/lib/pq v1.10.7
 	github.com/lovoo/goka v1.1.7
 	github.com/mr-tron/base58 v1.2.0
+	github.com/piprate/json-gold v0.5.0
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.5.3
 	github.com/prometheus/client_golang v1.14.0
@@ -62,6 +63,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/myesui/uuid v1.0.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
+	github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35 // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
 	github.com/rjeczalik/notify v0.9.1 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
