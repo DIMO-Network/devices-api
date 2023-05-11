@@ -78,6 +78,7 @@ type UserDevicesController struct {
 	redisCache                redis.CacheService
 	openAI                    services.OpenAI
 	usersClient               pb.UserServiceClient
+	credentialSvc             services.VCService
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -108,7 +109,7 @@ type Device struct {
 }
 
 // NewUserDevicesController constructor
-func NewUserDevicesController(settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService, ddIntSvc services.DeviceDefinitionIntegrationService, eventService services.EventService, smartcarClient services.SmartcarClient, smartcarTaskSvc services.SmartcarTaskService, teslaService services.TeslaService, teslaTaskService services.TeslaTaskService, cipher shared.Cipher, autoPiSvc services.AutoPiAPIService, nhtsaService services.INHTSAService, autoPiIngestRegistrar services.IngestRegistrar, deviceDefinitionRegistrar services.DeviceDefinitionRegistrar, autoPiTaskService services.AutoPiTaskService, producer sarama.SyncProducer, s3NFTClient *s3.Client, drivlyTaskService services.DrivlyTaskService, autoPi *autopi.Integration, cache redis.CacheService, openAI services.OpenAI, usersClient pb.UserServiceClient) UserDevicesController {
+func NewUserDevicesController(settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService, ddIntSvc services.DeviceDefinitionIntegrationService, eventService services.EventService, smartcarClient services.SmartcarClient, smartcarTaskSvc services.SmartcarTaskService, teslaService services.TeslaService, teslaTaskService services.TeslaTaskService, cipher shared.Cipher, autoPiSvc services.AutoPiAPIService, nhtsaService services.INHTSAService, autoPiIngestRegistrar services.IngestRegistrar, deviceDefinitionRegistrar services.DeviceDefinitionRegistrar, autoPiTaskService services.AutoPiTaskService, producer sarama.SyncProducer, s3NFTClient *s3.Client, drivlyTaskService services.DrivlyTaskService, autoPi *autopi.Integration, cache redis.CacheService, openAI services.OpenAI, usersClient pb.UserServiceClient, credentialSvc services.VCService) UserDevicesController {
 	return UserDevicesController{
 		Settings:                  settings,
 		DBS:                       dbs,
@@ -133,6 +134,7 @@ func NewUserDevicesController(settings *config.Settings, dbs func() *db.ReaderWr
 		redisCache:                cache,
 		openAI:                    openAI,
 		usersClient:               usersClient,
+		credentialSvc:             credentialSvc,
 	}
 }
 
@@ -1879,6 +1881,13 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}
 
 	logger.Info().Msgf("Submitted metatransaction request %s", requestID)
+
+	credentialID, err := udc.credentialSvc.CreateVinCredential(userDevice.VinIdentifier.String, makeTokenID)
+	if err != nil {
+		return err
+	}
+
+	logger.Info().Msgf("Issued verifiable credential %s", credentialID)
 
 	return client.MintVehicleSign(requestID, makeTokenID, realAddr, []contracts.AttributeInfoPair{
 		{Attribute: "Make", Info: deviceMake},

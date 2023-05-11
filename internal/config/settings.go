@@ -79,6 +79,8 @@ type Settings struct {
 	DIMOKeyX                          string      `yaml:"DIMO_KEY_X"`
 	DIMOKeyY                          string      `yaml:"DIMO_KEY_Y"`
 	DIMOKeyD                          string      `yaml:"DIMO_KEY_D"`
+	NFTAddress                        string      `yaml:"NFT_ADDRESS"`
+	ChainID                           int64       `yaml:"CHAIN_ID"`
 }
 
 func (s *Settings) IsProduction() bool {

@@ -1,21 +1,26 @@
 package services
 
+//go:generate mockgen -source verifible_credential_service.go -destination mocks/verifible_credential_service_mock.go
+
 import (
 	"context"
-	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"time"
 
-	"github.com/ericlagergren/decimal"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethC "github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
+	"github.com/mr-tron/base58"
+	"github.com/piprate/json-gold/ld"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/types"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
@@ -24,30 +29,42 @@ import (
 )
 
 type VerifiableCredentialService struct {
-	dbs        db.Store
-	IssuerID   string
-	Issuer     string
-	PublicKey  ecdsa.PublicKey
-	PrivateKey ecdsa.PrivateKey
+	dbs                db.Store
+	IssuerID           string
+	Issuer             string
+	PublicKey          ecdsa.PublicKey
+	PrivateKey         ecdsa.PrivateKey
+	KeyEnc             string
+	VerificationMethod string
+	NFTAddress         common.Address
+	ChainID            *big.Int
+}
+
+var secp256k1Prefix = []byte{0xe7, 0x01}
+var period byte = '.'
+
+type VCService interface {
+	CreateVinCredential(vin string, tokenID *big.Int) (string, error)
 }
 
 // NewVerifiableCredentialService generates vc service
-func NewVerifiableCredentialService(dbs db.Store, settings *config.Settings) (*VerifiableCredentialService, error) {
+func NewVerifiableCredentialService(dbs db.Store, settings *config.Settings) (VerifiableCredentialService, error) {
 	xb, err := base64.RawURLEncoding.DecodeString(settings.DIMOKeyX)
 	if err != nil {
-		return nil, err
+		return VerifiableCredentialService{}, err
 	}
+
 	x := new(big.Int).SetBytes(xb)
 
 	yb, err := base64.RawURLEncoding.DecodeString(settings.DIMOKeyY)
 	if err != nil {
-		return nil, err
+		return VerifiableCredentialService{}, err
 	}
 	y := new(big.Int).SetBytes(yb)
 
 	db, err := base64.RawURLEncoding.DecodeString(settings.DIMOKeyD)
 	if err != nil {
-		return nil, err
+		return VerifiableCredentialService{}, err
 	}
 	d := new(big.Int).SetBytes(db)
 
@@ -61,148 +78,119 @@ func NewVerifiableCredentialService(dbs db.Store, settings *config.Settings) (*V
 		D:         d,
 	}
 
-	return &VerifiableCredentialService{
-		dbs:        dbs,
-		IssuerID:   "did:dimo_example:abfe13f712120431c276e12ecab",
-		Issuer:     "dimo.zone",
-		PublicKey:  publicKey,
-		PrivateKey: privateKey,
+	v := secp256k1.CompressPubkey(x, y)
+	v = append(secp256k1Prefix, v...)
+
+	keyEnc := "z" + base58.Encode(v)
+	issuer := "did:key:" + keyEnc
+
+	chainID := big.NewInt(settings.ChainID)
+	nftAddr := common.HexToAddress(settings.NFTAddress)
+
+	return VerifiableCredentialService{
+		dbs:                dbs,
+		IssuerID:           "did:dimo_example:abfe13f712120431c276e12ecab",
+		Issuer:             issuer,
+		PublicKey:          publicKey,
+		PrivateKey:         privateKey,
+		KeyEnc:             keyEnc,
+		VerificationMethod: issuer + "#" + keyEnc,
+		NFTAddress:         nftAddr,
+		ChainID:            chainID,
 	}, nil
 }
 
-type Claim struct {
-	ID      string
-	Vin     string
-	TokenID int64
-}
+//CreateVinCredential creates and signs credential using vin and tokenID
+func (vcs VerifiableCredentialService) CreateVinCredential(vin string, tokenID *big.Int) (string, error) {
+	issuanceDate := time.Now().UTC().Format(time.RFC3339)
+	credentialID := "urn:uuid:" + uuid.NewV1().String()
+	proc := ld.NewJsonLdProcessor()
+	options := ld.NewJsonLdOptions("")
+	options.Format = "application/n-quads"
+	options.Algorithm = ld.AlgorithmURDNA2015
 
-type Proof struct {
-	TypeOfProof string
-	Created     time.Time
-	Creator     crypto.PublicKey
-	Signature   struct {
-		R, S *big.Int
-	}
-}
-
-type Credential struct {
-	Context           []string
-	ID                string
-	TypeOfCredential  []string
-	Issuer            string
-	IssuanceDate      time.Time
-	CredentialSubject Claim
-	Proof             Proof
-	Status            Status
-}
-
-type Status struct {
-	ID     string
-	Status string
-}
-
-var secp256k1Prefix = []byte{0xe7, 0x01}
-
-//create credential
-func (vcs *VerifiableCredentialService) createVinCredential(vin string, tokenID int64) error {
-	claim := Claim{
-		ID:      "did:uuid:" + uuid.NewV1().String(),
-		Vin:     vin,
-		TokenID: tokenID,
-	}
-	credential := Credential{
-		Context: []string{
-			"https://raw.githubusercontent.com/DIMO-Network/dimo-vin-kyc/main/dimo-vin-kyc.json",
-			"https://raw.githubusercontent.com/DIMO-Network/dimo-vin-kyc/main/dimo-vin-kyc.jsonld",
+	credential := map[string]any{
+		"@context": []any{
+			"https://www.w3.org/2018/credentials/v1",
+			"https://schema.org/",
 		},
-		ID:                vcs.IssuerID,
-		TypeOfCredential:  []string{"VerifiableCredential", "VinVerification"},
-		Issuer:            vcs.Issuer,
-		IssuanceDate:      time.Now(),
-		CredentialSubject: claim,
-	}
-	r, s, err := ecdsa.Sign(rand.Reader, &vcs.PrivateKey, []byte(fmt.Sprintf("%v", credential)))
-	if err != nil {
-		return err
-	}
-	//create proof
-	proof := Proof{
-		TypeOfProof: "ed25519",
-		Created:     time.Now(),
-		Creator:     vcs.PublicKey,
-		Signature: struct {
-			R *big.Int
-			S *big.Int
-		}{R: r, S: s},
-	}
-	//add proof
-	credential.Proof = proof
-
-	nft, err := models.VehicleNFTS(models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(tokenID, 0)))).One(context.Background(), vcs.dbs.DBS().Reader)
-	if err != nil {
-		return err
+		"id":           credentialID,
+		"type":         []any{"VerifiableCredential", "Vehicle"},
+		"issuer":       vcs.Issuer,
+		"issuanceDate": issuanceDate,
+		"credentialSubject": map[string]any{
+			"id":                          fmt.Sprintf("did:nft:%d_erc721:%s_%d", vcs.ChainID, hexutil.Encode(vcs.NFTAddress[:]), tokenID),
+			"vehicleIdentificationNumber": vin,
+		},
 	}
 
-	nft.ClaimID = null.StringFrom(claim.ID)
+	proof := map[string]any{
+		"@context":           "https://www.w3.org/2018/credentials/v1",
+		"type":               "EcdsaSecp256k1Signature2019",
+		"proofPurpose":       "assertionMethod",
+		"verificationMethod": vcs.VerificationMethod,
+		"created":            issuanceDate,
+	}
 
-	proofB, err := json.Marshal(proof)
+	docNorm, err := proc.Normalize(credential, options)
 	if err != nil {
-		return err
+		return credentialID, err
+	}
+	docNormStr := docNorm.(string)
+
+	preProofNorm, err := proc.Normalize(proof, options)
+	if err != nil {
+		return credentialID, err
+	}
+
+	preProofNormStr := preProofNorm.(string)
+	preProofDigest := sha256.Sum256([]byte(preProofNormStr))
+	docDigest := sha256.Sum256([]byte(docNormStr))
+	digest := append(preProofDigest[:], docDigest[:]...)
+	header := map[string]any{
+		"alg":  "ES256K",
+		"crit": []any{"b64"},
+		"b64":  false,
+	}
+
+	hb, _ := json.Marshal(header)
+	hb64 := make([]byte, base64.RawURLEncoding.EncodedLen(len(hb)))
+	base64.RawURLEncoding.Encode(hb64, hb)
+
+	jw2 := append(hb64, period)
+	jw2 = append(jw2, digest...)
+	enddig := sha256.Sum256(jw2)
+
+	r, s, err := ecdsa.Sign(rand.Reader, &vcs.PrivateKey, enddig[:])
+	if err != nil {
+		return credentialID, err
+	}
+
+	outb := make([]byte, 64)
+	r.FillBytes(outb[:32])
+	s.FillBytes(outb[32:])
+
+	proof["jws"] = string(hb64) + ".." + base64.RawURLEncoding.EncodeToString(outb)
+	credential["proof"] = proof
+	bj, err := json.MarshalIndent(credential, "", "  ")
+	if err != nil {
+		return credentialID, err
+	}
+
+	nft, err := models.VehicleNFTS(models.VehicleNFTWhere.Vin.EQ(vin)).One(context.Background(), vcs.dbs.DBS().Reader)
+	if err != nil {
+		return credentialID, err
+	}
+	nft.ClaimID = null.StringFrom(credentialID)
+	_, err = nft.Update(context.Background(), vcs.dbs.DBS().Writer, boil.Infer())
+	if err != nil {
+		return credentialID, err
 	}
 
 	vc := models.VerifiableCredential{
-		ClaimID: claim.ID,
-		Proof:   proofB,
+		ClaimID: credentialID,
+		Proof:   bj,
 	}
-	return vc.Insert(context.Background(), vcs.dbs.DBS().Writer, boil.Infer())
+
+	return credentialID, vc.Insert(context.Background(), vcs.dbs.DBS().Writer, boil.Infer())
 }
-
-func (vcs *VerifiableCredentialService) VerifyCredential(credential Credential) (bool, error) {
-
-	vc, err := models.VerifiableCredentials(models.VerifiableCredentialWhere.ClaimID.EQ(credential.CredentialSubject.ID)).One(context.Background(), vcs.dbs.DBS().Reader)
-	if err != nil {
-		return false, err
-	}
-
-	var proof Proof
-	err = json.Unmarshal(vc.Proof, &proof)
-	if err != nil {
-		return false, err
-	}
-
-	return ecdsa.Verify(&vcs.PublicKey, []byte(fmt.Sprintf("%v", credential)), proof.Signature.R, proof.Signature.S), nil
-}
-
-// //create presentation
-// func createPresentation(keyPair KeyPair, metadata PresenterMetadata, credential Credential) Presentation {
-// 	presentation := Presentation{
-// 		context:           metadata.context,
-// 		typeOfPresentaion: metadata.typeOfPresentation,
-// 		credential:        credential,
-// 	}
-
-// 	//create proof
-// 	proofOfPresentaton := Proof{
-// 		typeOfProof: "ed25519",
-// 		created:     time.Now(),
-// 		creator:     keyPair.publicKey,
-// 		signature:   ed25519.Sign(keyPair.privateKey, []byte(fmt.Sprintf("%v", presentation))),
-// 	}
-
-// 	presentation.proof = proofOfPresentaton
-
-// 	return presentation
-
-// }
-
-// //verify presentation
-// func verifyPresentation(publicKey ed25519.PublicKey, presentation Presentation) bool {
-// 	//verify if the public key is the same as in the credential
-// 	if string(publicKey) != string(presentation.proof.creator) {
-// 		return false
-// 	}
-// 	proofObj := presentation.proof
-// 	presentation.proof = Proof{}
-// 	//verify signature
-// 	return ed25519.Verify(publicKey, []byte(fmt.Sprintf("%v", presentation)), proofObj.signature)
-// }
