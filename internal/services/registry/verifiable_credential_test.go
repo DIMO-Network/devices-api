@@ -81,6 +81,6 @@ func (s *CredentialTestSuite) TestVerifiableCredential(t *testing.T) {
 	vc, err := models.VerifiableCredentials(models.VerifiableCredentialWhere.ClaimID.EQ(credentialID)).One(context.Background(), s.pdb.DBS().Reader)
 	require.NoError(s.T(), err)
 
-	assert.NotEqual(s.T(), vc.Proof, []byte{})
+	assert.NotEqual(s.T(), vc.Credential, []byte{})
 
 }

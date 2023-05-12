@@ -155,8 +155,8 @@ func (p *proc) CreateVinCredential(vin string, tokenID *big.Int) (string, error)
 	}
 
 	vc := models.VerifiableCredential{
-		ClaimID: credentialID,
-		Proof:   bj,
+		ClaimID:    credentialID,
+		Credential: bj,
 	}
 
 	return credentialID, vc.Insert(context.Background(), p.DB().Writer, boil.Infer())
