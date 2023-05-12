@@ -23,45 +23,49 @@ import (
 
 // VerifiableCredential is an object representing the database table.
 type VerifiableCredential struct {
-	ClaimID string `boil:"claim_id" json:"claim_id" toml:"claim_id" yaml:"claim_id"`
-	Proof   []byte `boil:"proof" json:"proof" toml:"proof" yaml:"proof"`
+	ClaimID    string `boil:"claim_id" json:"claim_id" toml:"claim_id" yaml:"claim_id"`
+	Credential []byte `boil:"credential" json:"credential" toml:"credential" yaml:"credential"`
 
 	R *verifiableCredentialR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L verifiableCredentialL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var VerifiableCredentialColumns = struct {
-	ClaimID string
-	Proof   string
+	ClaimID    string
+	Credential string
 }{
-	ClaimID: "claim_id",
-	Proof:   "proof",
+	ClaimID:    "claim_id",
+	Credential: "credential",
 }
 
 var VerifiableCredentialTableColumns = struct {
-	ClaimID string
-	Proof   string
+	ClaimID    string
+	Credential string
 }{
-	ClaimID: "verifiable_credentials.claim_id",
-	Proof:   "verifiable_credentials.proof",
+	ClaimID:    "verifiable_credentials.claim_id",
+	Credential: "verifiable_credentials.credential",
 }
 
 // Generated where
 
 var VerifiableCredentialWhere = struct {
-	ClaimID whereHelperstring
-	Proof   whereHelper__byte
+	ClaimID    whereHelperstring
+	Credential whereHelper__byte
 }{
-	ClaimID: whereHelperstring{field: "\"devices_api\".\"verifiable_credentials\".\"claim_id\""},
-	Proof:   whereHelper__byte{field: "\"devices_api\".\"verifiable_credentials\".\"proof\""},
+	ClaimID:    whereHelperstring{field: "\"devices_api\".\"verifiable_credentials\".\"claim_id\""},
+	Credential: whereHelper__byte{field: "\"devices_api\".\"verifiable_credentials\".\"credential\""},
 }
 
 // VerifiableCredentialRels is where relationship names are stored.
 var VerifiableCredentialRels = struct {
-}{}
+	Claim string
+}{
+	Claim: "Claim",
+}
 
 // verifiableCredentialR is where relationships are stored.
 type verifiableCredentialR struct {
+	Claim *VehicleNFT `boil:"Claim" json:"Claim" toml:"Claim" yaml:"Claim"`
 }
 
 // NewStruct creates a new relationship struct
@@ -69,12 +73,19 @@ func (*verifiableCredentialR) NewStruct() *verifiableCredentialR {
 	return &verifiableCredentialR{}
 }
 
+func (r *verifiableCredentialR) GetClaim() *VehicleNFT {
+	if r == nil {
+		return nil
+	}
+	return r.Claim
+}
+
 // verifiableCredentialL is where Load methods for each relationship are stored.
 type verifiableCredentialL struct{}
 
 var (
-	verifiableCredentialAllColumns            = []string{"claim_id", "proof"}
-	verifiableCredentialColumnsWithoutDefault = []string{"claim_id", "proof"}
+	verifiableCredentialAllColumns            = []string{"claim_id", "credential"}
+	verifiableCredentialColumnsWithoutDefault = []string{"claim_id", "credential"}
 	verifiableCredentialColumnsWithDefault    = []string{}
 	verifiableCredentialPrimaryKeyColumns     = []string{"claim_id"}
 	verifiableCredentialGeneratedColumns      = []string{}
@@ -356,6 +367,188 @@ func (q verifiableCredentialQuery) Exists(ctx context.Context, exec boil.Context
 	}
 
 	return count > 0, nil
+}
+
+// Claim pointed to by the foreign key.
+func (o *VerifiableCredential) Claim(mods ...qm.QueryMod) vehicleNFTQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"claim_id\" = ?", o.ClaimID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	return VehicleNFTS(queryMods...)
+}
+
+// LoadClaim allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (verifiableCredentialL) LoadClaim(ctx context.Context, e boil.ContextExecutor, singular bool, maybeVerifiableCredential interface{}, mods queries.Applicator) error {
+	var slice []*VerifiableCredential
+	var object *VerifiableCredential
+
+	if singular {
+		var ok bool
+		object, ok = maybeVerifiableCredential.(*VerifiableCredential)
+		if !ok {
+			object = new(VerifiableCredential)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeVerifiableCredential)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeVerifiableCredential))
+			}
+		}
+	} else {
+		s, ok := maybeVerifiableCredential.(*[]*VerifiableCredential)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeVerifiableCredential)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeVerifiableCredential))
+			}
+		}
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &verifiableCredentialR{}
+		}
+		if !queries.IsNil(object.ClaimID) {
+			args = append(args, object.ClaimID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &verifiableCredentialR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ClaimID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.ClaimID) {
+				args = append(args, obj.ClaimID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`devices_api.vehicle_nfts`),
+		qm.WhereIn(`devices_api.vehicle_nfts.claim_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load VehicleNFT")
+	}
+
+	var resultSlice []*VehicleNFT
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice VehicleNFT")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for vehicle_nfts")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for vehicle_nfts")
+	}
+
+	if len(vehicleNFTAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Claim = foreign
+		if foreign.R == nil {
+			foreign.R = &vehicleNFTR{}
+		}
+		foreign.R.ClaimVerifiableCredential = object
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.ClaimID, foreign.ClaimID) {
+				local.R.Claim = foreign
+				if foreign.R == nil {
+					foreign.R = &vehicleNFTR{}
+				}
+				foreign.R.ClaimVerifiableCredential = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// SetClaim of the verifiableCredential to the related item.
+// Sets o.R.Claim to related.
+// Adds o to related.R.ClaimVerifiableCredential.
+func (o *VerifiableCredential) SetClaim(ctx context.Context, exec boil.ContextExecutor, insert bool, related *VehicleNFT) error {
+	var err error
+	if insert {
+		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"devices_api\".\"verifiable_credentials\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"claim_id"}),
+		strmangle.WhereClause("\"", "\"", 2, verifiableCredentialPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ClaimID, o.ClaimID}
+
+	if boil.IsDebug(ctx) {
+		writer := boil.DebugWriterFrom(ctx)
+		fmt.Fprintln(writer, updateQuery)
+		fmt.Fprintln(writer, values)
+	}
+	if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.ClaimID, related.ClaimID)
+	if o.R == nil {
+		o.R = &verifiableCredentialR{
+			Claim: related,
+		}
+	} else {
+		o.R.Claim = related
+	}
+
+	if related.R == nil {
+		related.R = &vehicleNFTR{
+			ClaimVerifiableCredential: o,
+		}
+	} else {
+		related.R.ClaimVerifiableCredential = o
+	}
+
+	return nil
 }
 
 // VerifiableCredentials retrieves all the records using an executor.

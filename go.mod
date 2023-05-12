@@ -15,6 +15,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.15.10
 	github.com/aws/aws-sdk-go-v2/service/kms v1.20.7
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.26.11
+	github.com/btcsuite/btcd/btcutil v1.1.3
 	github.com/burdiyan/kafkautil v0.0.0-20190131162249-eaf83ed22d5b
 	github.com/docker/go-connections v0.4.0
 	github.com/elastic/go-elasticsearch/v8 v8.4.0
@@ -29,7 +30,7 @@ require (
 	github.com/jarcoal/httpmock v1.1.0
 	github.com/lib/pq v1.10.7
 	github.com/lovoo/goka v1.1.7
-	github.com/mr-tron/base58 v1.2.0
+	github.com/piprate/json-gold v0.5.0
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.5.3
 	github.com/prometheus/client_golang v1.14.0
@@ -39,7 +40,6 @@ require (
 	github.com/swaggo/swag v1.8.11
 	github.com/testcontainers/testcontainers-go v0.14.0
 	github.com/tidwall/gjson v1.14.3
-	github.com/twinj/uuid v1.0.0
 	github.com/vmihailenco/taskq/v3 v3.2.8
 	github.com/volatiletech/null/v8 v8.1.2
 	github.com/volatiletech/sqlboiler/v4 v4.13.0
@@ -60,8 +60,8 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
-	github.com/myesui/uuid v1.0.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
+	github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35 // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
 	github.com/rjeczalik/notify v0.9.1 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
@@ -72,7 +72,6 @@ require (
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
-	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
 )
 
 require (

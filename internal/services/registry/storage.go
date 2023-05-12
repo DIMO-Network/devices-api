@@ -2,7 +2,9 @@ package registry
 
 import (
 	"context"
+	"math/big"
 
+	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
 	"github.com/DIMO-Network/devices-api/models"
@@ -19,6 +21,7 @@ import (
 
 type StatusProcessor interface {
 	Handle(ctx context.Context, data *ceData) error
+	CreateVinCredential(vin string, tokenID *big.Int) (string, error)
 }
 
 type proc struct {
@@ -26,6 +29,7 @@ type proc struct {
 	DB     func() *db.ReaderWriter
 	Logger *zerolog.Logger
 	ap     *autopi.Integration
+	issuer issuerCredentials
 }
 
 func (p *proc) Handle(ctx context.Context, data *ceData) error {
@@ -84,6 +88,13 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				}
 
 				logger.Info().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msg("Vehicle minted.")
+
+				credentialID, err := p.CreateVinCredential(mtr.R.MintRequestVehicleNFT.Vin, out.TokenId)
+				if err != nil {
+					return err
+				}
+
+				logger.Info().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msgf("Issued verifiable credential %s", credentialID)
 			}
 		}
 		// Other soon.
@@ -169,15 +180,23 @@ func NewProcessor(
 	db func() *db.ReaderWriter,
 	logger *zerolog.Logger,
 	ap *autopi.Integration,
+	settings *config.Settings,
 ) (StatusProcessor, error) {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return nil, err
 	}
+
+	credentials, err := IssuerCredentials(settings)
+	if err != nil {
+		return nil, err
+	}
+
 	return &proc{
 		ABI:    abi,
 		DB:     db,
 		Logger: logger,
 		ap:     ap,
+		issuer: credentials,
 	}, nil
 }

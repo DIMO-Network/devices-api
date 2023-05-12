@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ericlagergren/decimal"
 	"github.com/google/uuid"
 
 	"github.com/DIMO-Network/shared"
@@ -42,7 +41,6 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -96,12 +94,11 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.redisClient = mocks.NewMockCacheService(mockCtrl)
 	s.autoPiSvc = mock_services.NewMockAutoPiAPIService(mockCtrl)
 	s.usersClient = mock_services.NewMockUserServiceClient(mockCtrl)
-	s.credentialSvc = mock_services.NewMockVCService(mockCtrl)
 
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
-		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, s.drivlyTaskSvc, nil, s.redisClient, nil, s.usersClient, s.credentialSvc)
+		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, s.drivlyTaskSvc, nil, s.redisClient, nil, s.usersClient)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUser)
 	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUserFromVIN)
@@ -1015,56 +1012,4 @@ func TestEIP712Recover(t *testing.T) {
 		realAddr := common.HexToAddress("0x969602c4f39D345Cbe47E7fe0dd8F1f16f984D65")
 		assert.Equal(t, realAddr, addr)
 	}
-}
-
-func (s *UserDevicesControllerTestSuite) TestVerifiableCredential() {
-
-	ctx := context.Background()
-	vin := "1G6AL1RY2K0111939"
-	tokenID := big.NewInt(3)
-	userDeviceID := "userDeviceID1"
-	mtxReq := ksuid.New().String()
-	deviceID := ksuid.New().String()
-
-	udd := models.UserDevice{
-		ID:                 deviceID,
-		UserID:             userDeviceID,
-		DeviceDefinitionID: "deviceDefID",
-	}
-	err := udd.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
-	require.NoError(s.T(), err)
-
-	tx := models.MetaTransactionRequest{
-		ID:     mtxReq,
-		Status: "Confirmed",
-	}
-	err = tx.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
-	require.NoError(s.T(), err)
-
-	nft := models.VehicleNFT{
-		MintRequestID: mtxReq,
-		UserDeviceID:  null.StringFrom(deviceID),
-		Vin:           vin,
-		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
-		OwnerAddress:  null.BytesFrom(common.Hex2Bytes("ab8438a18d83d41847dffbdc6101d37c69c9a2fc")),
-	}
-
-	err = nft.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
-	require.NoError(s.T(), err)
-
-	vcService, err := services.NewVerifiableCredentialService(s.pdb, &config.Settings{
-		DIMOKeyX:   "_4Gd-u8E8gkWzMn1RSr-VYGkC0gcGKo8fPiSGZsZy4I",
-		DIMOKeyY:   "r_diIyolZTjxcLYbe2JPFphMZzdNXQfE1Hg4h7K4ypM",
-		DIMOKeyD:   "2pN28-5VmEavX46XWszjasN0kx4ha3wQ6w6hGqD8o0k",
-		NFTAddress: "0xba5738a18d83d41847dffbdc6101d37c69c9b0cf",
-		ChainID:    137})
-	require.NoError(s.T(), err)
-
-	credentialID, err := vcService.CreateVinCredential(vin, tokenID)
-
-	vc, err := models.VerifiableCredentials(models.VerifiableCredentialWhere.ClaimID.EQ(credentialID)).One(context.Background(), s.pdb.DBS().Reader)
-	require.NoError(s.T(), err)
-
-	assert.NotEqual(s.T(), vc.Proof, []byte{})
-
 }
