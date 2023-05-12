@@ -10,7 +10,7 @@ CREATE TABLE verifiable_credentials
     claim_id varchar 
         CONSTRAINT vehicle_nfts_credential_id_pkey PRIMARY KEY
         CONSTRAINT vehicle_nfts_credential_id_fkey REFERENCES vehicle_nfts(claim_id),
-    proof bytea not null
+    "credential" bytea not null
 );
 
 -- +goose StatementEnd

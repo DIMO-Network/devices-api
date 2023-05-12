@@ -1,6 +1,4 @@
-package services
-
-//go:generate mockgen -source verifible_credential_service.go -destination mocks/verifible_credential_service_mock.go
+package registry
 
 import (
 	"context"
@@ -13,26 +11,23 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/btcsuite/btcd/btcutil/base58"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	ethC "github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
-	"github.com/mr-tron/base58"
+	"github.com/google/uuid"
 	"github.com/piprate/json-gold/ld"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared/db"
-	"github.com/twinj/uuid"
 )
 
-type VerifiableCredentialService struct {
-	dbs                db.Store
+type issuerCredentials struct {
 	Issuer             string
-	PublicKey          ecdsa.PublicKey
-	PrivateKey         ecdsa.PrivateKey
+	PrivateKey         *ecdsa.PrivateKey
 	KeyEnc             string
 	VerificationMethod string
 	NFTAddress         common.Address
@@ -42,66 +37,37 @@ type VerifiableCredentialService struct {
 var secp256k1Prefix = []byte{0xe7, 0x01}
 var period byte = '.'
 
-type VCService interface {
-	CreateVinCredential(vin string, tokenID *big.Int) (string, error)
-}
-
-// NewVerifiableCredentialService generates vc service
-func NewVerifiableCredentialService(dbs db.Store, settings *config.Settings) (VerifiableCredentialService, error) {
-	xb, err := base64.RawURLEncoding.DecodeString(settings.DIMOKeyX)
-	if err != nil {
-		return VerifiableCredentialService{}, err
-	}
-
-	x := new(big.Int).SetBytes(xb)
-
-	yb, err := base64.RawURLEncoding.DecodeString(settings.DIMOKeyY)
-	if err != nil {
-		return VerifiableCredentialService{}, err
-	}
-	y := new(big.Int).SetBytes(yb)
-
+func IssuerCredentials(settings *config.Settings) (issuerCredentials, error) {
 	db, err := base64.RawURLEncoding.DecodeString(settings.DIMOKeyD)
 	if err != nil {
-		return VerifiableCredentialService{}, err
+		return issuerCredentials{}, err
 	}
-	d := new(big.Int).SetBytes(db)
-
-	publicKey := ecdsa.PublicKey{
-		Curve: ethC.S256(),
-		X:     x,
-		Y:     y,
-	}
-	privateKey := ecdsa.PrivateKey{
-		PublicKey: publicKey,
-		D:         d,
+	privateKey, err := crypto.ToECDSA(db)
+	if err != nil {
+		return issuerCredentials{}, err
 	}
 
-	v := secp256k1.CompressPubkey(x, y)
+	v := secp256k1.CompressPubkey(privateKey.X, privateKey.Y)
 	v = append(secp256k1Prefix, v...)
 
 	keyEnc := "z" + base58.Encode(v)
 	issuer := "did:key:" + keyEnc
 
-	chainID := big.NewInt(settings.ChainID)
-	nftAddr := common.HexToAddress(settings.NFTAddress)
-
-	return VerifiableCredentialService{
-		dbs:                dbs,
+	return issuerCredentials{
 		Issuer:             issuer,
-		PublicKey:          publicKey,
 		PrivateKey:         privateKey,
 		KeyEnc:             keyEnc,
 		VerificationMethod: issuer + "#" + keyEnc,
-		NFTAddress:         nftAddr,
-		ChainID:            chainID,
+		NFTAddress:         common.HexToAddress(settings.DIMORegistryAddr),
+		ChainID:            big.NewInt(settings.DIMORegistryChainID),
 	}, nil
+
 }
 
 //CreateVinCredential creates and signs credential using vin and tokenID
-func (vcs VerifiableCredentialService) CreateVinCredential(vin string, tokenID *big.Int) (string, error) {
+func (p *proc) CreateVinCredential(vin string, tokenID *big.Int) (string, error) {
 	issuanceDate := time.Now().UTC().Format(time.RFC3339)
-	credentialID := "urn:uuid:" + uuid.NewV1().String()
+	credentialID := "urn:uuid:" + uuid.New().String()
 	proc := ld.NewJsonLdProcessor()
 	options := ld.NewJsonLdOptions("")
 	options.Format = "application/n-quads"
@@ -114,10 +80,10 @@ func (vcs VerifiableCredentialService) CreateVinCredential(vin string, tokenID *
 		},
 		"id":           credentialID,
 		"type":         []any{"VerifiableCredential", "Vehicle"},
-		"issuer":       vcs.Issuer,
+		"issuer":       p.issuer.Issuer,
 		"issuanceDate": issuanceDate,
 		"credentialSubject": map[string]any{
-			"id":                          fmt.Sprintf("did:nft:%d_erc721:%s_%d", vcs.ChainID, hexutil.Encode(vcs.NFTAddress[:]), tokenID),
+			"id":                          fmt.Sprintf("did:nft:%d_erc721:%s_%d", p.issuer.ChainID, hexutil.Encode(p.issuer.NFTAddress[:]), tokenID),
 			"vehicleIdentificationNumber": vin,
 		},
 	}
@@ -126,7 +92,7 @@ func (vcs VerifiableCredentialService) CreateVinCredential(vin string, tokenID *
 		"@context":           "https://www.w3.org/2018/credentials/v1",
 		"type":               "EcdsaSecp256k1Signature2019",
 		"proofPurpose":       "assertionMethod",
-		"verificationMethod": vcs.VerificationMethod,
+		"verificationMethod": p.issuer.VerificationMethod,
 		"created":            issuanceDate,
 	}
 
@@ -151,7 +117,10 @@ func (vcs VerifiableCredentialService) CreateVinCredential(vin string, tokenID *
 		"b64":  false,
 	}
 
-	hb, _ := json.Marshal(header)
+	hb, err := json.Marshal(header)
+	if err != nil {
+		return credentialID, err
+	}
 	hb64 := make([]byte, base64.RawURLEncoding.EncodedLen(len(hb)))
 	base64.RawURLEncoding.Encode(hb64, hb)
 
@@ -159,7 +128,7 @@ func (vcs VerifiableCredentialService) CreateVinCredential(vin string, tokenID *
 	jw2 = append(jw2, digest...)
 	enddig := sha256.Sum256(jw2)
 
-	r, s, err := ecdsa.Sign(rand.Reader, &vcs.PrivateKey, enddig[:])
+	r, s, err := ecdsa.Sign(rand.Reader, p.issuer.PrivateKey, enddig[:])
 	if err != nil {
 		return credentialID, err
 	}
@@ -175,20 +144,20 @@ func (vcs VerifiableCredentialService) CreateVinCredential(vin string, tokenID *
 		return credentialID, err
 	}
 
-	nft, err := models.VehicleNFTS(models.VehicleNFTWhere.Vin.EQ(vin)).One(context.Background(), vcs.dbs.DBS().Reader)
+	nft, err := models.VehicleNFTS(models.VehicleNFTWhere.Vin.EQ(vin)).One(context.Background(), p.DB().Reader)
 	if err != nil {
 		return credentialID, err
 	}
 	nft.ClaimID = null.StringFrom(credentialID)
-	_, err = nft.Update(context.Background(), vcs.dbs.DBS().Writer, boil.Infer())
+	_, err = nft.Update(context.Background(), p.DB().Writer, boil.Infer())
 	if err != nil {
 		return credentialID, err
 	}
 
 	vc := models.VerifiableCredential{
-		ClaimID: credentialID,
-		Proof:   bj,
+		ClaimID:    credentialID,
+		Credential: bj,
 	}
 
-	return credentialID, vc.Insert(context.Background(), vcs.dbs.DBS().Writer, boil.Infer())
+	return credentialID, vc.Insert(context.Background(), p.DB().Writer, boil.Infer())
 }
