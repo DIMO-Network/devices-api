@@ -2,11 +2,13 @@ package controllers
 
 import (
 	"database/sql"
+	_ "embed"
 	"fmt"
 	"io"
 	"math/big"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
@@ -44,7 +46,11 @@ type NFTController struct {
 	smartcarTaskSvc  services.SmartcarTaskService
 	teslaTaskService services.TeslaTaskService
 	dcnService       registry.DCNService
+	dcnTmpl          *template.Template
 }
+
+//go:embed dcn.svg
+var dcnImageTemplate string
 
 // NewNFTController constructor
 func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, s3 *s3.Client,
@@ -54,6 +60,8 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 	integSvc services.DeviceDefinitionIntegrationService,
 	dcnSVc registry.DCNService,
 ) NFTController {
+	dcn, _ := template.New("dcn_image").Parse(dcnImageTemplate)
+
 	return NFTController{
 		Settings:         settings,
 		DBS:              dbs,
@@ -64,6 +72,7 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 		teslaTaskService: teslaTaskService,
 		integSvc:         integSvc,
 		dcnService:       dcnSVc,
+		dcnTmpl:          dcn,
 	}
 }
 
@@ -199,6 +208,36 @@ func (nc *NFTController) GetDcnNFTMetadata(c *fiber.Ctx) error {
 		Image:       fmt.Sprintf("%s/v1/dcn/%s/image", nc.Settings.DeploymentBaseURL, ndStr),
 		Attributes:  attrs,
 	})
+}
+
+// GetDCNNFTImage godoc
+// @Description retrieves the DCN NFT metadata for a given node address
+// @Tags        dcn
+// @Param       nodeID path string true "DCN node id decimal representation"
+// @Produce     image/svg+xml
+// @Success     200 {object} controllers.NFTMetadataResp
+// @Failure     404
+// @Failure     400
+// @Router      /dcn/{nodeID}/image [get]
+func (nc *NFTController) GetDCNNFTImage(c *fiber.Ctx) error {
+	ndStr := c.Params("nodeID")
+	ndid, ok := new(big.Int).SetString(ndStr, 10)
+	if !ok {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", ndStr))
+	}
+
+	dcn, err := models.DCNS(models.DCNWhere.NFTNodeID.EQ(ndid.Bytes())).One(c.Context(), nc.DBS().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fiber.NewError(fiber.StatusNotFound, "DCN not found with node address "+ndid.String())
+		}
+		return err
+	}
+
+	c.Set("Content-Type", "image/svg+xml")
+
+	nc.dcnTmpl.Execute(c, struct{ Name string }{dcn.Name.String})
+	return nil
 }
 
 // GetIntegrationByTokenID godoc
