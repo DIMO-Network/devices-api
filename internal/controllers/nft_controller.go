@@ -618,7 +618,6 @@ func (nc *NFTController) GetVinCredential(c *fiber.Ctx) error {
 		models.VehicleNFTWhere.TokenID.EQ(tid),
 		qm.Load(models.VehicleNFTRels.ClaimVerifiableCredential),
 	).One(c.Context(), nc.DBS().Reader)
-
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return fiber.NewError(fiber.StatusNotFound, "NFT not found.")
@@ -631,5 +630,5 @@ func (nc *NFTController) GetVinCredential(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Credential associated with NFT not found.")
 	}
 
-	return c.Send(nft.R.ClaimVerifiableCredential.Proof)
+	return c.Send(nft.R.ClaimVerifiableCredential.Credential)
 }
