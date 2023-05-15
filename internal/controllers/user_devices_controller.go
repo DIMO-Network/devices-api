@@ -587,6 +587,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 	if err := reg.Validate(); err != nil {
+		localLog.Error().Msgf("Smartcar device creation input invalid, code %q.", reg.Code)
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 	country := constants.FindCountry(reg.CountryCode)
