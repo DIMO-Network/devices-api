@@ -281,21 +281,30 @@ func (s *userDeviceService) GetUserDeviceByAutoPIUnitId(ctx context.Context, req
 }
 
 func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *emptypb.Empty) (*pb.ValuationResponse, error) {
-	query := `select sum(evd.retail_price) as total from
+
+	euroToUsd := 1.10
+
+	query := `select sum(evd.retail_price) as totalRetail,
+					 sum(evd.drivly_price) as totalDrivly,
+					 from
                              (
 								select distinct on (vin) vin, 
 														pricing_metadata, 
-														jsonb_path_query(evd.pricing_metadata, '$.retail.kelley.book')::decimal as retail_price, 
+														jsonb_path_query(evd.pricing_metadata, '$.retail.kelley.book')::decimal as retail_price,
+														jsonb_path_query(evd.vincario_metadata, '$.market_price.price_avg')::decimal as drivly_price,
 														created_at
        							from external_vin_data evd 
 								order by vin, created_at desc
 							) as evd;`
 
-	queryGrowth := `select sum(evd.retail_price) as total from
+	queryGrowth := `select sum(evd.retail_price) as totalRetail,
+					 sum(evd.drivly_price) as totalDrivly,
+					 from
 						(
 							select distinct on (vin) vin, 
 													pricing_metadata, 
 													jsonb_path_query(evd.pricing_metadata, '$.retail.kelley.book')::decimal as retail_price, 
+													jsonb_path_query(evd.vincario_metadata, '$.market_price.price_avg')::decimal as drivly_price,
 													created_at
 							from external_vin_data evd 
 							where created_at > current_date - 7
@@ -303,7 +312,8 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 						) as evd;`
 
 	type Result struct {
-		Total null.Float64 `boil:"total"`
+		TotalRetail null.Float64 `boil:"totalRetail"`
+		TotalDrivly null.Float64 `boil:"totalDrivly"`
 	}
 	var total Result
 	var lastWeek Result
@@ -323,12 +333,27 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 	totalValuation := 0.0
 	growthPercentage := 0.0
 
-	if !total.Total.IsZero() {
-		totalValuation = total.Total.Float64
+	if !total.TotalRetail.IsZero() {
+		totalValuation = total.TotalRetail.Float64
 	}
 
-	if !lastWeek.Total.IsZero() {
-		growthPercentage = ((lastWeek.Total.Float64) / totalValuation) * 100
+	if !total.TotalDrivly.IsZero() {
+		totalValuation += total.TotalDrivly.Float64 * euroToUsd
+	}
+
+	if totalValuation > 0 {
+
+		totalLastWeek := 0.0
+
+		if !lastWeek.TotalRetail.IsZero() {
+			totalLastWeek = lastWeek.TotalRetail.Float64
+		}
+
+		if !lastWeek.TotalDrivly.IsZero() {
+			totalLastWeek += lastWeek.TotalDrivly.Float64 * euroToUsd
+		}
+
+		growthPercentage = (totalLastWeek / totalValuation) * 100
 	}
 
 	// todo: get an average valuation per vehicle, and multiply for whatever count of vehicles we did not get value for
