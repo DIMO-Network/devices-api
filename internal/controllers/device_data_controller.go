@@ -349,13 +349,13 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 		return err
 	}
 
-	chtJson, err := json.Marshal(chtResp)
+	chtJSON, err := json.Marshal(chtResp)
 	if err != nil {
 		logger.Err(err).Interface("requestBody", req).Msg("Error occurred fetching description for error codes")
 		return fiber.NewError(fiber.StatusInternalServerError, "Error occurred fetching description for error codes")
 	}
 
-	q := &models.ErrorCodeQuery{ID: ksuid.New().String(), UserDeviceID: udi, ErrorCodes: req.ErrorCodes, CodesQueryResponse: null.JSONFrom(chtJson)}
+	q := &models.ErrorCodeQuery{ID: ksuid.New().String(), UserDeviceID: udi, ErrorCodes: req.ErrorCodes, CodesQueryResponse: null.JSONFrom(chtJSON)}
 	err = q.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
 
 	if err != nil {

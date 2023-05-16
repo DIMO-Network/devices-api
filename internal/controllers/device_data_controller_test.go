@@ -355,12 +355,12 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 		response, _ := app.Test(request)
 		body, _ := io.ReadAll(response.Body)
 
-		chtJson, err := json.Marshal(chatGptResp)
+		chtJSON, err := json.Marshal(chatGptResp)
 		assert.NoError(t, err)
 
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 		assert.Equal(t,
-			fmt.Sprintf(`{"message":%s}`, chtJson),
+			fmt.Sprintf(`{"message":%s}`, chtJSON),
 			string(body),
 		)
 
@@ -637,12 +637,12 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 		response, _ := app.Test(request)
 		body, _ := io.ReadAll(response.Body)
 
-		chtJson, err := json.Marshal(chatGptResp)
+		chtJSON, err := json.Marshal(chatGptResp)
 		assert.NoError(t, err)
 
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 		assert.Equal(t,
-			fmt.Sprintf(`{"message":%s}`, chtJson),
+			fmt.Sprintf(`{"message":%s}`, chtJSON),
 			string(body),
 		)
 
