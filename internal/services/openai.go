@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,12 +13,13 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/appmetrics"
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
 )
 
 type OpenAI interface {
-	GetErrorCodesDescription(make, model string, errorCodes []string) (string, error)
+	GetErrorCodesDescription(make, model string, errorCodes []string) ([]ErrorCodesResponse, error)
 }
 
 type openAI struct {
@@ -51,6 +51,11 @@ type ChatGPTResponse struct {
 	Choices []ChatGPTResponseChoices
 }
 
+type ErrorCodesResponse struct {
+	Code        string `json:"code"`
+	Description string `json:"description"`
+}
+
 func NewOpenAI(logger *zerolog.Logger, c config.Settings) OpenAI {
 	return &openAI{
 		chatGptURL: c.ChatGPTURL,
@@ -72,6 +77,7 @@ func (o *openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+o.token)
 
@@ -108,26 +114,27 @@ func (o *openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 	return cResp, nil
 }
 
-func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []string) (string, error) {
+func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []string) ([]ErrorCodesResponse, error) {
 	codes := strings.Join(errorCodes, ", ")
+
 	req := fmt.Sprintf(`{
 		"model": "gpt-3.5-turbo",
 		"messages": [
 			{
 				"role": "user", 
-				"content": "Briefly summarize for me, in order, what the following error codes mean for a %s %s. The error codes are %s."}]
+				"content": "A %s %s is returning error codes %s. Respond only with a line for each code, in the format 'code:explanation \n'"}]
 	  		}
 	  `, make, model, codes)
 
 	r, err := o.askChatGPT(strings.NewReader(req))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	appmetrics.OpenAITotalTokensUsedOps.Add(float64(r.Usage.TotalTokens))
 
 	if len(r.Choices) == 0 {
-		return "", errors.New("could not fetch description for error codes")
+		return nil, errors.New("could not fetch description for error codes")
 	}
 
 	c := r.Choices[0]
@@ -135,5 +142,16 @@ func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []strin
 		o.logger.Error().Interface("rawResponse", r).Msg("Unexpected finish_reason from ChatGPT.")
 	}
 
-	return strings.Trim(c.Message.Content, "\n"), nil
+	resp := []ErrorCodesResponse{}
+
+	codesResp := strings.Split(r.Choices[0].Message.Content, "\n")
+	for _, code := range codesResp {
+		cc := strings.Split(code, ":")
+		resp = append(resp, ErrorCodesResponse{
+			Code:        cc[0],
+			Description: cc[1],
+		})
+	}
+
+	return resp, nil
 }

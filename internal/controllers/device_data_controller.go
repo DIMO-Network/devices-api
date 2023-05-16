@@ -3,12 +3,14 @@ package controllers
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"sort"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/segmentio/ksuid"
 
 	"github.com/DIMO-Network/devices-api/internal/appmetrics"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -16,7 +18,6 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
-	"github.com/segmentio/ksuid"
 	smartcar "github.com/smartcar/go-sdk"
 	"github.com/tidwall/gjson"
 	"github.com/volatiletech/null/v8"
@@ -30,7 +31,7 @@ type QueryDeviceErrorCodesReq struct {
 }
 
 type QueryDeviceErrorCodesResponse struct {
-	Message string `json:"message"`
+	Message []services.ErrorCodesResponse `json:"message"`
 }
 
 type GetUserDeviceErrorCodeQueriesResponse struct {
@@ -306,7 +307,6 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
 
 	logger := helpers.GetLogger(c, udc.log)
-
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
 	).One(c.Context(), udc.DBS().Reader)
@@ -349,7 +349,13 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 		return err
 	}
 
-	q := &models.ErrorCodeQuery{ID: ksuid.New().String(), UserDeviceID: udi, ErrorCodes: req.ErrorCodes, QueryResponse: chtResp}
+	chtJson, err := json.Marshal(chtResp)
+	if err != nil {
+		logger.Err(err).Interface("requestBody", req).Msg("Error occurred fetching description for error codes")
+		return fiber.NewError(fiber.StatusInternalServerError, "Error occurred fetching description for error codes")
+	}
+
+	q := &models.ErrorCodeQuery{ID: ksuid.New().String(), UserDeviceID: udi, ErrorCodes: req.ErrorCodes, CodesQueryResponse: null.JSONFrom(chtJson)}
 	err = q.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
 
 	if err != nil {

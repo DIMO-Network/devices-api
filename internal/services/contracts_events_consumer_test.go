@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"math/big"
 
 	"fmt"
@@ -101,8 +100,6 @@ func TestProcessContractsEventsMessages(t *testing.T) {
 		ExpiresAt:   time.Unix(args.expiresAt, 0).UTC(),
 		PrivilegeID: args.privilegeID,
 	}
-
-	log.Println(actual.ExpiresAt, "actual time", expected.ExpiresAt, "expected")
 
 	s.assert.Equal(expected, actual, "Event was persisted properly")
 }
