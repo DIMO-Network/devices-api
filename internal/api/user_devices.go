@@ -32,6 +32,11 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// Euro to USD conversion rate, used for calculating the price of the device, hardcoded for now
+const (
+	euroToUsd float64 = 1.10
+)
+
 func NewUserDeviceService(dbs func() *db.ReaderWriter, settings *config.Settings, hardwareTemplateService autopi.HardwareTemplateService, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, eventService services.EventService) pb.UserDeviceServiceServer {
 	return &userDeviceService{dbs: dbs,
 		logger:                  logger,
@@ -282,29 +287,27 @@ func (s *userDeviceService) GetUserDeviceByAutoPIUnitId(ctx context.Context, req
 
 func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *emptypb.Empty) (*pb.ValuationResponse, error) {
 
-	euroToUsd := 1.10
-
 	query := `select sum(evd.retail_price) as totalRetail,
-					 sum(evd.drivly_price) as totalDrivly,
+					 sum(evd.vincario_price) as totalVincario,
 					 from
                              (
 								select distinct on (vin) vin, 
 														pricing_metadata, 
 														jsonb_path_query(evd.pricing_metadata, '$.retail.kelley.book')::decimal as retail_price,
-														jsonb_path_query(evd.vincario_metadata, '$.market_price.price_avg')::decimal as drivly_price,
+														jsonb_path_query(evd.vincario_metadata, '$.market_price.price_avg')::decimal as vincario_price,
 														created_at
        							from external_vin_data evd 
 								order by vin, created_at desc
 							) as evd;`
 
 	queryGrowth := `select sum(evd.retail_price) as totalRetail,
-					 sum(evd.drivly_price) as totalDrivly,
+					 sum(evd.vincario_price) as totalVincario,
 					 from
 						(
 							select distinct on (vin) vin, 
 													pricing_metadata, 
 													jsonb_path_query(evd.pricing_metadata, '$.retail.kelley.book')::decimal as retail_price, 
-													jsonb_path_query(evd.vincario_metadata, '$.market_price.price_avg')::decimal as drivly_price,
+													jsonb_path_query(evd.vincario_metadata, '$.market_price.price_avg')::decimal as vincario_price,
 													created_at
 							from external_vin_data evd 
 							where created_at > current_date - 7
@@ -312,8 +315,8 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 						) as evd;`
 
 	type Result struct {
-		TotalRetail null.Float64 `boil:"totalRetail"`
-		TotalDrivly null.Float64 `boil:"totalDrivly"`
+		TotalRetail   null.Float64 `boil:"totalRetail"`
+		TotalVincario null.Float64 `boil:"totalVincario"`
 	}
 	var total Result
 	var lastWeek Result
@@ -337,8 +340,8 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 		totalValuation = total.TotalRetail.Float64
 	}
 
-	if !total.TotalDrivly.IsZero() {
-		totalValuation += total.TotalDrivly.Float64 * euroToUsd
+	if !total.TotalVincario.IsZero() {
+		totalValuation += total.TotalVincario.Float64 * euroToUsd
 	}
 
 	if totalValuation > 0 {
@@ -349,8 +352,8 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 			totalLastWeek = lastWeek.TotalRetail.Float64
 		}
 
-		if !lastWeek.TotalDrivly.IsZero() {
-			totalLastWeek += lastWeek.TotalDrivly.Float64 * euroToUsd
+		if !lastWeek.TotalVincario.IsZero() {
+			totalLastWeek += lastWeek.TotalVincario.Float64 * euroToUsd
 		}
 
 		growthPercentage = (totalLastWeek / totalValuation) * 100
