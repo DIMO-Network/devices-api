@@ -1788,9 +1788,24 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	logger := helpers.GetLogger(c, udc.log)
 
-	userDevice, err := models.FindUserDevice(c.Context(), udc.DBS().Reader, userDeviceID)
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
+	).One(c.Context(), udc.DBS().Reader.DB)
 	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
+		if err == sql.ErrNoRows {
+			return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
+		}
+		return err
+	}
+
+	if vnft := userDevice.R.VehicleNFT; vnft != nil {
+		switch vnft.R.MintRequest.Status {
+		case "Confirmed":
+			return fiber.NewError(fiber.StatusConflict, "Vehicle already minted.")
+		default:
+			return fiber.NewError(fiber.StatusConflict, "Minting in process.")
+		}
 	}
 
 	if !userDevice.VinConfirmed {
