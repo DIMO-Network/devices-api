@@ -618,6 +618,10 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		localLog.Err(err).Msg("Failed to retrieve VIN from Smartcar.")
 		return smartcarCallErr
 	}
+	if len(vin) != 17 {
+		localLog.Error().Msgf("invalid VIN returned from smartcar: %s", vin)
+		return smartcarCallErr
+	}
 	localLog = localLog.With().Str("vin", vin).Logger()
 
 	// duplicate vin check, only in prod. If same user has already registered this car, and are eg. trying to add autopi, client should not call this endpoint
