@@ -54,22 +54,20 @@ func (udc *DocumentsController) GetDocuments(c *fiber.Ctx) error {
 		Bucket: aws.String(udc.settings.AWSDocumentsBucketName),
 		Prefix: aws.String(folder),
 	})
-
-	documents := []DocumentResponse{}
-
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "the bucket does not exist")
 	}
 
+	documents := []DocumentResponse{}
+
 	for _, item := range response.Contents {
-		responseItem, err := udc.s3Client.GetObject(c.Context(),
-			&s3.GetObjectInput{
+		responseItem, err := udc.s3Client.HeadObject(c.Context(),
+			&s3.HeadObjectInput{
 				Bucket: aws.String(udc.settings.AWSDocumentsBucketName),
 				Key:    aws.String(*item.Key),
 			})
-
 		if err != nil {
-			return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
+			return err
 		}
 
 		documents = append(documents, DocumentResponse{
@@ -101,12 +99,11 @@ func (udc *DocumentsController) GetDocumentByID(c *fiber.Ctx) error {
 	fileID := c.Params("id")
 	folder := resolveFolderKey(userID, fileID)
 
-	response, err := udc.s3Client.GetObject(c.Context(),
-		&s3.GetObjectInput{
+	response, err := udc.s3Client.HeadObject(c.Context(),
+		&s3.HeadObjectInput{
 			Bucket: aws.String(udc.settings.AWSDocumentsBucketName),
 			Key:    aws.String(folder),
 		})
-
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("no document with id %s found", fileID))
 	}
@@ -137,12 +134,16 @@ func (udc *DocumentsController) GetDocumentByID(c *fiber.Ctx) error {
 // @Security    BearerAuth
 // @Router      /documents [post]
 func (udc *DocumentsController) PostDocument(c *fiber.Ctx) error {
-
 	userID := helpers.GetUserID(c)
-	file, err := c.FormFile("file")
+
 	documentName := c.FormValue("name")
 	documentType := c.FormValue("type")
 	udi := c.FormValue("userDeviceID")
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid file.")
+	}
 
 	if len(udi) > 0 {
 		// Validate if user devices exists
@@ -150,7 +151,6 @@ func (udc *DocumentsController) PostDocument(c *fiber.Ctx) error {
 			models.UserDeviceWhere.UserID.EQ(userID),
 			models.UserDeviceWhere.ID.EQ(udi),
 		).Exists(c.Context(), udc.DBS().Writer)
-
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
@@ -158,10 +158,6 @@ func (udc *DocumentsController) PostDocument(c *fiber.Ctx) error {
 		if !exists {
 			return fiber.NewError(fiber.StatusNotFound, "Device not found.")
 		}
-	}
-
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid file.")
 	}
 
 	if err := DocumentTypeEnum(documentType).IsValid(); err != nil {

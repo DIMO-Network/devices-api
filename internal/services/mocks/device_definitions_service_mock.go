@@ -143,6 +143,21 @@ func (mr *MockDeviceDefinitionServiceMockRecorder) GetIntegrationByID(ctx, id in
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIntegrationByID", reflect.TypeOf((*MockDeviceDefinitionService)(nil).GetIntegrationByID), ctx, id)
 }
 
+// GetIntegrationByTokenID mocks base method.
+func (m *MockDeviceDefinitionService) GetIntegrationByTokenID(ctx context.Context, tokenID uint64) (*grpc.Integration, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetIntegrationByTokenID", ctx, tokenID)
+	ret0, _ := ret[0].(*grpc.Integration)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetIntegrationByTokenID indicates an expected call of GetIntegrationByTokenID.
+func (mr *MockDeviceDefinitionServiceMockRecorder) GetIntegrationByTokenID(ctx, tokenID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIntegrationByTokenID", reflect.TypeOf((*MockDeviceDefinitionService)(nil).GetIntegrationByTokenID), ctx, tokenID)
+}
+
 // GetIntegrationByVendor mocks base method.
 func (m *MockDeviceDefinitionService) GetIntegrationByVendor(ctx context.Context, vendor string) (*grpc.Integration, error) {
 	m.ctrl.T.Helper()

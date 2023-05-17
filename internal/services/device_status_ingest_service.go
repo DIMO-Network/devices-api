@@ -94,12 +94,6 @@ func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *Devi
 		return err
 	}
 
-	tx, err := i.db().Writer.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("error beginning transaction: %w", err)
-	}
-	defer tx.Rollback() //nolint
-
 	device, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(
@@ -110,7 +104,7 @@ func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *Devi
 			models.UserDeviceRels.UserDeviceData,
 			models.UserDeviceDatumWhere.IntegrationID.EQ(integration.Id),
 		),
-	).One(ctx, tx)
+	).One(ctx, i.db().Reader)
 	if err != nil {
 		return fmt.Errorf("failed to find device: %w", err)
 	}
@@ -136,7 +130,7 @@ func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *Devi
 	apiIntegration := device.R.UserDeviceAPIIntegrations[0]
 	if apiIntegration.Status != models.UserDeviceAPIIntegrationStatusActive {
 		apiIntegration.Status = models.UserDeviceAPIIntegrationStatusActive
-		if _, err := apiIntegration.Update(ctx, tx, boil.Infer()); err != nil {
+		if _, err := apiIntegration.Update(ctx, i.db().Writer, boil.Infer()); err != nil {
 			return fmt.Errorf("failed to update API integration: %w", err)
 		}
 
@@ -215,12 +209,8 @@ func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *Devi
 		return err
 	}
 
-	if err := datum.Upsert(ctx, tx, true, userDeviceDataPrimaryKeyColumns, boil.Infer(), boil.Infer()); err != nil {
+	if err := datum.Upsert(ctx, i.db().Writer, true, userDeviceDataPrimaryKeyColumns, boil.Infer(), boil.Infer()); err != nil {
 		return fmt.Errorf("error upserting datum: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("error committing transaction: %w", err)
 	}
 
 	switch integration.Vendor {

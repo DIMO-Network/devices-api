@@ -65,6 +65,7 @@ func loadValuations(ctx context.Context, logger *zerolog.Logger, settings *confi
 	if err != nil {
 		return err
 	}
+
 	if len(wmi) == 3 {
 		wmi = strings.ToUpper(wmi)
 		logger.Info().Msgf("WMI filter set: %s", wmi)

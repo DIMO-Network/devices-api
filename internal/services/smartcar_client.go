@@ -27,7 +27,6 @@ type SmartcarClient interface {
 	GetEndpoints(ctx context.Context, accessToken string, id string) ([]string, error)
 	HasDoorControl(ctx context.Context, accessToken string, id string) (bool, error)
 	GetVIN(ctx context.Context, accessToken string, id string) (string, error)
-	GetYear(ctx context.Context, accessToken string, id string) (int, error)
 	GetInfo(ctx context.Context, accessToken string, id string) (*smartcar.Info, error)
 }
 
@@ -35,6 +34,7 @@ type smartcarClient struct {
 	settings       *config.Settings
 	officialClient smartcar.Client
 	exchangeURL    string
+	baseURL        string
 	httpClient     *http.Client
 }
 
@@ -45,6 +45,7 @@ func NewSmartcarClient(settings *config.Settings) SmartcarClient {
 		settings:       settings,
 		officialClient: scClient,
 		exchangeURL:    "https://auth.smartcar.com/oauth/token/",
+		baseURL:        "https://api.smartcar.com/v2.0",
 		httpClient:     &http.Client{Timeout: time.Duration(310) * time.Second}, // Smartcar default.
 	}
 }
@@ -54,7 +55,7 @@ const smartcarDoorPermission = "control_security"
 var scopeToEndpoints = map[string][]string{
 	"read_engine_oil":   {"/engine/oil"},
 	"read_battery":      {"/battery/capacity", "/battery"},
-	"read_charge":       {"/charge", "/battery"},
+	"read_charge":       {"/charge/limit", "/charge"},
 	"read_fuel":         {"/fuel"},
 	"read_location":     {"/location"},
 	"read_odometer":     {"/odometer"},
@@ -220,22 +221,6 @@ func (s *smartcarClient) GetVIN(ctx context.Context, accessToken string, id stri
 		return "", errors.New("nil VIN object")
 	}
 	return vin.VIN, nil
-}
-
-func (s *smartcarClient) GetYear(ctx context.Context, accessToken string, id string) (int, error) {
-	v := s.officialClient.NewVehicle(&smartcar.VehicleParams{
-		ID:          id,
-		AccessToken: accessToken,
-		UnitSystem:  smartcar.Metric,
-	})
-	info, err := v.GetInfo(ctx)
-	if err != nil {
-		return 0, err
-	}
-	if info == nil {
-		return 0, errors.New("nil info object")
-	}
-	return info.Year, nil
 }
 
 func (s *smartcarClient) GetInfo(ctx context.Context, accessToken string, id string) (*smartcar.Info, error) {

@@ -338,6 +338,12 @@ func (t testDeviceDefSvc) GetDeviceDefinitionByID(ctx context.Context, id string
 }
 
 // nolint
+func (t testDeviceDefSvc) GetIntegrationByTokenID(ctx context.Context, tokenID uint64) (*ddgrpc.Integration, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+// nolint
 func (t testDeviceDefSvc) PullVincarioValuation(ctx context.Context, userDeiceID, deviceDefinitionID, vin string) (DataPullStatusEnum, error) {
 	//TODO implement me
 	panic("implement me")

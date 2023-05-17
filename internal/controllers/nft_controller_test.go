@@ -71,7 +71,13 @@ func TestNFTController_GetDcnNFTMetadata(t *testing.T) {
 		fmt.Println(string(body))
 
 		assert.Equal(t, "reddy.dimo", gjson.GetBytes(body, "name").String())
+		assert.Equal(t, "reddy.dimo, a DCN name.", gjson.GetBytes(body, "description").String())
+		assert.Equal(t, "/v1/dcn/25188615033903404929663096463794904537890497498749865140845237535414961167487/image", gjson.GetBytes(body, "image").String())
 		assert.Equal(t, "Creation Date", gjson.GetBytes(body, "attributes.0.trait_type").String())
-		assert.Equal(t, "Expiration Date", gjson.GetBytes(body, "attributes.1.trait_type").String())
+		assert.Equal(t, "Registration Date", gjson.GetBytes(body, "attributes.1.trait_type").String())
+		assert.Equal(t, "Expiration Date", gjson.GetBytes(body, "attributes.2.trait_type").String())
+		assert.Equal(t, "Character Set", gjson.GetBytes(body, "attributes.3.trait_type").String())
+		assert.Equal(t, "Length", gjson.GetBytes(body, "attributes.4.trait_type").String())
+		assert.Equal(t, "Nodehash", gjson.GetBytes(body, "attributes.5.trait_type").String())
 	})
 }

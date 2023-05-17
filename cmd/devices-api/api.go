@@ -9,6 +9,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/DIMO-Network/devices-api/internal/middleware/metrics"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+
 	"github.com/DIMO-Network/shared/redis"
 
 	"github.com/DIMO-Network/shared/db"
@@ -78,11 +83,15 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	autoPiIngest := services.NewIngestRegistrar(services.AutoPi, producer)
 	deviceDefinitionRegistrar := services.NewDeviceDefinitionRegistrar(producer, settings)
 	autoPiTaskService := services.NewAutoPiTaskService(settings, autoPiSvc, pdb.DBS, logger)
-	drivlyTaskService := services.NewDrivlyTaskService(settings, ddSvc, logger)
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, pdb.DBS, &logger)
 	autoPi := autopi.NewIntegration(pdb.DBS, ddSvc, autoPiSvc, autoPiTaskService, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &logger)
 	openAI := services.NewOpenAI(&logger, *settings)
 	dcnSvc := registry.NewDcnService(settings)
+
+	natsSvc, err := services.NewNATSService(settings, &logger)
+	if err != nil {
+		logger.Error().Err(err).Msg("unable to create NATS service")
+	}
 
 	redisCache := redis.NewRedisCacheService(settings.IsProduction(), redis.Settings{
 		URL:       settings.RedisURL,
@@ -93,7 +102,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// controllers
 	deviceControllers := controllers.NewDevicesController(settings, pdb.DBS, &logger, nhtsaSvc, ddSvc, ddIntSvc)
-	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService, smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest, deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, drivlyTaskService, autoPi, redisCache, openAI, usersClient)
+	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService, smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest, deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient, natsSvc)
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
@@ -101,6 +110,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// commenting this out b/c the library includes the path in the metrics which saturates prometheus queries - need to fork / make our own
 	//prometheus := fiberprometheus.New("devices-api")
 	//app.Use(prometheus.Middleware)
+	app.Use(metrics.HTTPMetricsMiddleware)
 
 	app.Use(fiberrecover.New(fiberrecover.Config{
 		Next:              nil,
@@ -140,7 +150,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1.Get("/manufacturer/:tokenID", nftController.GetManufacturerNFTMetadata)
 
 	v1.Get("/dcn/:nodeID", nftController.GetDcnNFTMetadata)
-
+	v1.Get("/dcn/:nodeID/image", nftController.GetDCNNFTImage)
+	v1.Get("/integration/:tokenID", nftController.GetIntegrationNFTMetadata)
 	// webhooks, performs signature validation
 	v1.Post(constants.AutoPiWebhookPath, webhooksController.ProcessCommand)
 
@@ -267,6 +278,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService)
 
+	go startValuationConsumer(settings, pdb.DBS, &logger, ddSvc, natsSvc)
+
 	logger.Info().Msg("Server started on port " + settings.Port)
 	// Start Server from a different go routine
 	go func() {
@@ -295,7 +308,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 	// start task consumer for autopi
 	autoPiTaskService.StartConsumer(ctx)
-	drivlyTaskService.StartConsumer(ctx)
 
 	c := make(chan os.Signal, 1)                    // Create channel to signify a signal being sent with length of 1
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM) // When an interrupt or termination signal is sent, notify the channel
@@ -330,11 +342,34 @@ func startGRPCServer(settings *config.Settings, dbs func() *db.ReaderWriter,
 	}
 
 	logger.Info().Msgf("Starting gRPC server on port %s", settings.GRPCPort)
-	server := grpc.NewServer()
+	server := grpc.NewServer(
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			metrics.GRPCMetricsMiddleware(),
+			grpc_ctxtags.UnaryServerInterceptor(),
+			grpc_prometheus.UnaryServerInterceptor,
+		)),
+		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+	)
+
 	pb.RegisterUserDeviceServiceServer(server, api.NewUserDeviceService(dbs, settings, hardwareTemplateService, logger, deviceDefSvc, eventService))
 	pb.RegisterAftermarketDeviceServiceServer(server, api.NewAftermarketDeviceService(dbs, logger))
 
 	if err := server.Serve(lis); err != nil {
 		logger.Fatal().Err(err).Msg("gRPC server terminated unexpectedly")
+	}
+}
+
+func startValuationConsumer(settings *config.Settings, pdb func() *db.ReaderWriter, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService, natsSvc *services.NATSService) {
+	if settings.IsProduction() {
+
+		valuationService := services.NewValuationService(logger, pdb, ddSvc, natsSvc)
+
+		go func() {
+			err := valuationService.ValuationConsumer(context.Background())
+
+			if err != nil {
+				logger.Fatal().Err(err).Msg("Failed to start valuation consumer")
+			}
+		}()
 	}
 }
