@@ -394,14 +394,14 @@ func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) er
 	queries := []GetUserDeviceErrorCodeQueriesResponseItem{}
 
 	for _, erc := range userDevice.R.ErrorCodeQueries {
-		ercJson := []services.ErrorCodesResponse{}
-		if err := erc.CodesQueryResponse.Unmarshal(&ercJson); err != nil {
+		ercJSON := []services.ErrorCodesResponse{}
+		if err := erc.CodesQueryResponse.Unmarshal(&ercJSON); err != nil {
 			return err
 		}
 
 		queries = append(queries, GetUserDeviceErrorCodeQueriesResponseItem{
 			Codes:                 erc.ErrorCodes,
-			ErrorCodesDescription: ercJson,
+			ErrorCodesDescription: ercJSON,
 			RequestedAt:           erc.CreatedAt,
 		})
 	}
