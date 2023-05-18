@@ -28,7 +28,6 @@ type ErrorCodeQuery struct {
 	ID                 string            `boil:"id" json:"id" toml:"id" yaml:"id"`
 	UserDeviceID       string            `boil:"user_device_id" json:"user_device_id" toml:"user_device_id" yaml:"user_device_id"`
 	ErrorCodes         types.StringArray `boil:"error_codes" json:"error_codes" toml:"error_codes" yaml:"error_codes"`
-	QueryResponse      string            `boil:"query_response" json:"query_response" toml:"query_response" yaml:"query_response"`
 	CreatedAt          time.Time         `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt          time.Time         `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CodesQueryResponse null.JSON         `boil:"codes_query_response" json:"codes_query_response,omitempty" toml:"codes_query_response" yaml:"codes_query_response,omitempty"`
@@ -41,7 +40,6 @@ var ErrorCodeQueryColumns = struct {
 	ID                 string
 	UserDeviceID       string
 	ErrorCodes         string
-	QueryResponse      string
 	CreatedAt          string
 	UpdatedAt          string
 	CodesQueryResponse string
@@ -49,7 +47,6 @@ var ErrorCodeQueryColumns = struct {
 	ID:                 "id",
 	UserDeviceID:       "user_device_id",
 	ErrorCodes:         "error_codes",
-	QueryResponse:      "query_response",
 	CreatedAt:          "created_at",
 	UpdatedAt:          "updated_at",
 	CodesQueryResponse: "codes_query_response",
@@ -59,7 +56,6 @@ var ErrorCodeQueryTableColumns = struct {
 	ID                 string
 	UserDeviceID       string
 	ErrorCodes         string
-	QueryResponse      string
 	CreatedAt          string
 	UpdatedAt          string
 	CodesQueryResponse string
@@ -67,7 +63,6 @@ var ErrorCodeQueryTableColumns = struct {
 	ID:                 "error_code_queries.id",
 	UserDeviceID:       "error_code_queries.user_device_id",
 	ErrorCodes:         "error_code_queries.error_codes",
-	QueryResponse:      "error_code_queries.query_response",
 	CreatedAt:          "error_code_queries.created_at",
 	UpdatedAt:          "error_code_queries.updated_at",
 	CodesQueryResponse: "error_code_queries.codes_query_response",
@@ -100,7 +95,6 @@ var ErrorCodeQueryWhere = struct {
 	ID                 whereHelperstring
 	UserDeviceID       whereHelperstring
 	ErrorCodes         whereHelpertypes_StringArray
-	QueryResponse      whereHelperstring
 	CreatedAt          whereHelpertime_Time
 	UpdatedAt          whereHelpertime_Time
 	CodesQueryResponse whereHelpernull_JSON
@@ -108,7 +102,6 @@ var ErrorCodeQueryWhere = struct {
 	ID:                 whereHelperstring{field: "\"devices_api\".\"error_code_queries\".\"id\""},
 	UserDeviceID:       whereHelperstring{field: "\"devices_api\".\"error_code_queries\".\"user_device_id\""},
 	ErrorCodes:         whereHelpertypes_StringArray{field: "\"devices_api\".\"error_code_queries\".\"error_codes\""},
-	QueryResponse:      whereHelperstring{field: "\"devices_api\".\"error_code_queries\".\"query_response\""},
 	CreatedAt:          whereHelpertime_Time{field: "\"devices_api\".\"error_code_queries\".\"created_at\""},
 	UpdatedAt:          whereHelpertime_Time{field: "\"devices_api\".\"error_code_queries\".\"updated_at\""},
 	CodesQueryResponse: whereHelpernull_JSON{field: "\"devices_api\".\"error_code_queries\".\"codes_query_response\""},
@@ -142,8 +135,8 @@ func (r *errorCodeQueryR) GetUserDevice() *UserDevice {
 type errorCodeQueryL struct{}
 
 var (
-	errorCodeQueryAllColumns            = []string{"id", "user_device_id", "error_codes", "query_response", "created_at", "updated_at", "codes_query_response"}
-	errorCodeQueryColumnsWithoutDefault = []string{"id", "user_device_id", "error_codes", "query_response"}
+	errorCodeQueryAllColumns            = []string{"id", "user_device_id", "error_codes", "created_at", "updated_at", "codes_query_response"}
+	errorCodeQueryColumnsWithoutDefault = []string{"id", "user_device_id", "error_codes"}
 	errorCodeQueryColumnsWithDefault    = []string{"created_at", "updated_at", "codes_query_response"}
 	errorCodeQueryPrimaryKeyColumns     = []string{"id"}
 	errorCodeQueryGeneratedColumns      = []string{}

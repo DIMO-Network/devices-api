@@ -687,16 +687,29 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 
 		erCodes := []string{"P0017", "P0016"}
 
+		chatGptResp := []services.ErrorCodesResponse{
+			{
+				Code:        "P0017",
+				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+			},
+			{
+				Code:        "P0016",
+				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+			},
+		}
+		chtJSON, err := json.Marshal(chatGptResp)
+		assert.NoError(t, err)
+
 		currTime := time.Now().UTC().Truncate(time.Microsecond)
 		erCodeQuery := models.ErrorCodeQuery{
-			ID:            ksuid.New().String(),
-			UserDeviceID:  ud.ID,
-			ErrorCodes:    erCodes,
-			QueryResponse: "1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
-			CreatedAt:     currTime,
+			ID:                 ksuid.New().String(),
+			UserDeviceID:       ud.ID,
+			ErrorCodes:         erCodes,
+			CodesQueryResponse: null.JSONFrom(chtJSON),
+			CreatedAt:          currTime,
 		}
 
-		err := erCodeQuery.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+		err = erCodeQuery.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 		assert.NoError(t, err)
 
 		request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/error-codes", ud.ID), "")
@@ -706,7 +719,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 
 		assert.JSONEq(t,
-			fmt.Sprintf(`{"queries":[{"errorCodes":["P0017","P0016"],"description":"1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.", "requestedAt":"%s"}]}`, currTime.Format(time.RFC3339Nano)),
+			fmt.Sprintf(`{"queries":[{"errorCodes":["P0017","P0016"],"errorCodesDescription":%s, "requestedAt":"%s"}]}`, string(chtJSON), currTime.Format(time.RFC3339Nano)),
 			string(body),
 		)
 

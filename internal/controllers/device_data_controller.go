@@ -39,9 +39,9 @@ type GetUserDeviceErrorCodeQueriesResponse struct {
 }
 
 type GetUserDeviceErrorCodeQueriesResponseItem struct {
-	Codes       []string  `json:"errorCodes"`
-	Description string    `json:"description"`
-	RequestedAt time.Time `json:"requestedAt"`
+	Codes                 []string                      `json:"errorCodes"`
+	ErrorCodesDescription []services.ErrorCodesResponse `json:"errorCodesDescription"`
+	RequestedAt           time.Time                     `json:"requestedAt"`
 }
 
 func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDefinitionService, deviceData models.UserDeviceDatumSlice, deviceDefinitionID string, deviceStyleID null.String, privilegeIDs []int64) DeviceSnapshot {
@@ -394,10 +394,15 @@ func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) er
 	queries := []GetUserDeviceErrorCodeQueriesResponseItem{}
 
 	for _, erc := range userDevice.R.ErrorCodeQueries {
+		ercJson := []services.ErrorCodesResponse{}
+		if err := erc.CodesQueryResponse.Unmarshal(&ercJson); err != nil {
+			return err
+		}
+
 		queries = append(queries, GetUserDeviceErrorCodeQueriesResponseItem{
-			Codes:       erc.ErrorCodes,
-			Description: erc.QueryResponse,
-			RequestedAt: erc.CreatedAt,
+			Codes:                 erc.ErrorCodes,
+			ErrorCodesDescription: ercJson,
+			RequestedAt:           erc.CreatedAt,
 		})
 	}
 
