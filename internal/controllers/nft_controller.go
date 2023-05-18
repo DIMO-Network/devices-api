@@ -236,7 +236,11 @@ func (nc *NFTController) GetDCNNFTImage(c *fiber.Ctx) error {
 
 	c.Set("Content-Type", "image/svg+xml")
 
-	nc.dcnTmpl.Execute(c, struct{ Name string }{dcn.Name.String})
+	err = nc.dcnTmpl.Execute(c, struct{ Name string }{dcn.Name.String})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
