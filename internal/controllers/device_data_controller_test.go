@@ -719,7 +719,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 
 		assert.JSONEq(t,
-			fmt.Sprintf(`{"queries":[{"errorCodes":["P0017","P0016"],"errorCodesDescription":%s, "requestedAt":"%s"}]}`, string(chtJSON), currTime.Format(time.RFC3339Nano)),
+			fmt.Sprintf(`{"queries":[{"errorCodesDescription":%s, "requestedAt":"%s"}]}`, string(chtJSON), currTime.Format(time.RFC3339Nano)),
 			string(body),
 		)
 

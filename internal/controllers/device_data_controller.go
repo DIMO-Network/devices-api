@@ -39,7 +39,6 @@ type GetUserDeviceErrorCodeQueriesResponse struct {
 }
 
 type GetUserDeviceErrorCodeQueriesResponseItem struct {
-	Codes                 []string                      `json:"errorCodes"`
 	ErrorCodesDescription []services.ErrorCodesResponse `json:"errorCodesDescription"`
 	RequestedAt           time.Time                     `json:"requestedAt"`
 }
@@ -400,7 +399,6 @@ func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) er
 		}
 
 		queries = append(queries, GetUserDeviceErrorCodeQueriesResponseItem{
-			Codes:                 erc.ErrorCodes,
 			ErrorCodesDescription: ercJSON,
 			RequestedAt:           erc.CreatedAt,
 		})
