@@ -288,7 +288,7 @@ func (s *userDeviceService) GetUserDeviceByAutoPIUnitId(ctx context.Context, req
 func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *emptypb.Empty) (*pb.ValuationResponse, error) {
 
 	query := `select sum(evd.retail_price) as totalRetail,
-					 sum(evd.vincario_price) as totalVincario,
+					 sum(evd.vincario_price) as totalVincario
 					 from
                              (
 								select distinct on (vin) vin, 
@@ -301,7 +301,7 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 							) as evd;`
 
 	queryGrowth := `select sum(evd.retail_price) as totalRetail,
-					 sum(evd.vincario_price) as totalVincario,
+					 sum(evd.vincario_price) as totalVincario
 					 from
 						(
 							select distinct on (vin) vin, 
