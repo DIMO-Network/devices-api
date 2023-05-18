@@ -31,7 +31,7 @@ type QueryDeviceErrorCodesReq struct {
 }
 
 type QueryDeviceErrorCodesResponse struct {
-	Message []services.ErrorCodesResponse `json:"message"`
+	ErrorCodes []services.ErrorCodesResponse `json:"errorCodes"`
 }
 
 type GetUserDeviceErrorCodeQueriesResponse struct {
@@ -364,7 +364,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(&QueryDeviceErrorCodesResponse{
-		Message: chtResp,
+		ErrorCodes: chtResp,
 	})
 }
 

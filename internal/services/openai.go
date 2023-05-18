@@ -142,9 +142,9 @@ func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []strin
 		o.logger.Error().Interface("rawResponse", r).Msg("Unexpected finish_reason from ChatGPT.")
 	}
 
-	resp := []ErrorCodesResponse{}
+	codesResp := strings.SplitN(r.Choices[0].Message.Content, "\n", len(errorCodes))
 
-	codesResp := strings.Split(r.Choices[0].Message.Content, "\n")
+	resp := []ErrorCodesResponse{}
 	for _, code := range codesResp {
 		cc := strings.Split(code, ":")
 		resp = append(resp, ErrorCodesResponse{

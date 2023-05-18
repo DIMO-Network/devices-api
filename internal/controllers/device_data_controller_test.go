@@ -360,7 +360,7 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 		assert.Equal(t,
-			fmt.Sprintf(`{"message":%s}`, chtJSON),
+			fmt.Sprintf(`{"errorCodes":%s}`, chtJSON),
 			string(body),
 		)
 
@@ -642,7 +642,7 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 		assert.Equal(t,
-			fmt.Sprintf(`{"message":%s}`, chtJSON),
+			fmt.Sprintf(`{"errorCodes":%s}`, chtJSON),
 			string(body),
 		)
 
