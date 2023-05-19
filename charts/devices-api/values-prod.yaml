@@ -2,7 +2,7 @@ replicaCount: 3
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 1.14.8
+  tag: 1.14.11
 cronJob:
   enabled: true
   schedule: 0 0 1 * *
@@ -12,8 +12,8 @@ env:
   LOG_LEVEL: info
   DB_PORT: '5432'
   DB_NAME: devices_api
-  DB_MAX_OPEN_CONNECTIONS: '50'
-  DB_MAX_IDLE_CONNECTIONS: '15'
+  DB_MAX_OPEN_CONNECTIONS: '100'
+  DB_MAX_IDLE_CONNECTIONS: '30'
   SERVICE_NAME: devices-api
   JWT_KEY_SET_URL: https://auth.dimo.zone/keys
   DEPLOYMENT_BASE_URL: https://devices-api.dimo.zone
