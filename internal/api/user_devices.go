@@ -287,8 +287,8 @@ func (s *userDeviceService) GetUserDeviceByAutoPIUnitId(ctx context.Context, req
 
 func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *emptypb.Empty) (*pb.ValuationResponse, error) {
 
-	query := `select sum(evd.retail_price) as totalRetail,
-					 sum(evd.vincario_price) as totalVincario,
+	query := `select sum(evd.retail_price) as total_retail,
+					 sum(evd.vincario_price) as total_vincario
 					 from
                              (
 								select distinct on (vin) vin, 
@@ -300,8 +300,8 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 								order by vin, created_at desc
 							) as evd;`
 
-	queryGrowth := `select sum(evd.retail_price) as totalRetail,
-					 sum(evd.vincario_price) as totalVincario,
+	queryGrowth := `select sum(evd.retail_price) as total_retail,
+					 sum(evd.vincario_price) as total_vincario
 					 from
 						(
 							select distinct on (vin) vin, 
@@ -315,8 +315,8 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 						) as evd;`
 
 	type Result struct {
-		TotalRetail   null.Float64 `boil:"totalRetail"`
-		TotalVincario null.Float64 `boil:"totalVincario"`
+		TotalRetail   null.Float64 `boil:"total_retail"`
+		TotalVincario null.Float64 `boil:"total_vincario"`
 	}
 	var total Result
 	var lastWeek Result
@@ -333,29 +333,19 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 		return nil, status.Error(codes.Internal, "Internal error.")
 	}
 
-	totalValuation := 0.0
+	totalValuation := total.TotalRetail.Float64 // 0 by default
 	growthPercentage := 0.0
-
-	if !total.TotalRetail.IsZero() {
-		totalValuation = total.TotalRetail.Float64
-	}
 
 	if !total.TotalVincario.IsZero() {
 		totalValuation += total.TotalVincario.Float64 * euroToUsd
 	}
 
 	if totalValuation > 0 {
-
-		totalLastWeek := 0.0
-
-		if !lastWeek.TotalRetail.IsZero() {
-			totalLastWeek = lastWeek.TotalRetail.Float64
-		}
+		totalLastWeek := lastWeek.TotalRetail.Float64
 
 		if !lastWeek.TotalVincario.IsZero() {
 			totalLastWeek += lastWeek.TotalVincario.Float64 * euroToUsd
 		}
-
 		growthPercentage = (totalLastWeek / totalValuation) * 100
 	}
 

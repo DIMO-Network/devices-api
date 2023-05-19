@@ -1193,6 +1193,28 @@ paths:
           description: Not Found
       tags:
       - dcn
+  /dcn/{nodeID}/image:
+    get:
+      description: retrieves the DCN NFT metadata for a given node address
+      parameters:
+      - description: DCN node id decimal representation
+        in: path
+        name: nodeID
+        required: true
+        type: string
+      produces:
+      - image/svg+xml
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.NFTMetadataResp'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+      tags:
+      - dcn
   /device-definitions:
     get:
       description: gets a specific device definition by make model and year
