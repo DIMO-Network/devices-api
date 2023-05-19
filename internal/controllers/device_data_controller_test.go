@@ -361,7 +361,7 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 		assert.Equal(t,
-			fmt.Sprintf(`{"errorCodes":%s}`, chtJSON),
+			fmt.Sprintf(`{"clearedAt":"%s","errorCodes":%s}`, null.Time{}.Time.UTC().Format(time.RFC3339Nano), chtJSON),
 			string(body),
 		)
 
@@ -643,7 +643,7 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 		assert.Equal(t,
-			fmt.Sprintf(`{"errorCodes":%s}`, chtJSON),
+			fmt.Sprintf(`{"clearedAt":"%s","errorCodes":%s}`, null.Time{}.Time.UTC().Format(time.RFC3339Nano), chtJSON),
 			string(body),
 		)
 
@@ -805,11 +805,79 @@ func TestUserDevicesController_ClearUserDeviceErrorCodeQuery(t *testing.T) {
 		).One(ctx, pdb.DBS().Reader)
 		assert.NoError(t, err)
 
-		//  currTime.Format(time.RFC3339Nano)
+		currTime := errCodeQuery.ClearedAt.Time.UTC()
+
 		assert.JSONEq(t,
-			fmt.Sprintf(`{"errorCodes":%s, "clearedAt":"%v"}`, string(errCodeQuery.CodesQueryResponse.JSON), errCodeQuery.ClearedAt.Time),
+			fmt.Sprintf(`{"errorCodes":%s, "clearedAt":"%s"}`, string(errCodeQuery.CodesQueryResponse.JSON), currTime.Format(time.RFC3339Nano)),
 			string(body),
 		)
+
+		//teardown
+		test.TruncateTables(pdb.DBS().Writer.DB, t)
+	})
+}
+
+func TestUserDevicesController_ErrorOnAllErrorCodesCleared(t *testing.T) {
+	mockDeps := createMockDependencies(t)
+	defer mockDeps.mockCtrl.Finish()
+
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	testUserID := "123123"
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.nhtsaService, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, mockDeps.autoPiTaskSvc, nil, nil, nil, nil, mockDeps.openAISvc, nil, nil)
+	app := fiber.New()
+	app.Post("/user/devices/:userDeviceID/error-codes/clear", test.AuthInjectorTestHandler(testUserID), c.ClearUserDeviceErrorCodeQuery)
+
+	t.Run("POST - clear last saved error code response for current user devices", func(t *testing.T) {
+		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
+		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
+
+		testData := []struct {
+			Codes      []string
+			OpenAIResp []services.ErrorCodesResponse
+		}{
+			{
+				Codes: []string{"P0017"},
+				OpenAIResp: []services.ErrorCodesResponse{
+					{
+						Code:        "P0017",
+						Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+					},
+				},
+			},
+		}
+
+		for _, tData := range testData {
+			chtJSON, err := json.Marshal(tData.OpenAIResp)
+			assert.NoError(t, err)
+
+			currTime := time.Now().UTC().Truncate(time.Microsecond)
+			erCodeQuery := models.ErrorCodeQuery{
+				ID:                 ksuid.New().String(),
+				UserDeviceID:       ud.ID,
+				ErrorCodes:         tData.Codes,
+				CodesQueryResponse: null.JSONFrom(chtJSON),
+				CreatedAt:          currTime,
+				ClearedAt:          null.TimeFrom(currTime),
+			}
+
+			err = erCodeQuery.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+			assert.NoError(t, err)
+		}
+
+		request := test.BuildRequest("POST", fmt.Sprintf("/user/devices/%s/error-codes/clear", ud.ID), "")
+		response, _ := app.Test(request)
+		body, _ := io.ReadAll(response.Body)
+
+		assert.Equal(t, fiber.StatusBadRequest, response.StatusCode)
+		assert.Equal(t, string(body), "all error codes already cleared")
 
 		//teardown
 		test.TruncateTables(pdb.DBS().Writer.DB, t)

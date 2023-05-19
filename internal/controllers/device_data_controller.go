@@ -415,40 +415,12 @@ func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) er
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/error-codes/clear [post]
 func (udc *UserDevicesController) ClearUserDeviceErrorCodeQuery(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
 	udi := c.Params("userDeviceID")
 
 	logger := helpers.GetLogger(c, udc.log)
 
-	userDeviceExists, err := models.UserDevices(
-		models.UserDeviceWhere.UserID.EQ(userID),
-		models.UserDeviceWhere.ID.EQ(udi),
-	).Exists(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, err.Error())
-		}
-
-		logger.Err(err).Msg("error occurred when fetching error codes for device")
-		return fiber.NewError(fiber.StatusInternalServerError, "error occurred updating device error queries")
-	}
-
-	if !userDeviceExists {
-		return fiber.NewError(fiber.StatusUnauthorized, "error, user does not own device")
-	}
-
-	/*
-		// TODO - I'm not so sure clearing the last item without any input from the caller is such a good idea based on the UI on figma
-
-		req := &ClearUserDeviceErrorCodeQueryReq{}
-		   	if err := c.BodyParser(req); err != nil {
-		   		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
-		   	}
-	*/
-
 	errCodeQuery, err := models.ErrorCodeQueries(
 		models.ErrorCodeQueryWhere.UserDeviceID.EQ(udi),
-		models.ErrorCodeQueryWhere.ClearedAt.IsNull(),
 		qm.OrderBy(models.ErrorCodeQueryColumns.CreatedAt+" DESC"),
 		qm.Limit(1),
 	).One(c.Context(), udc.DBS().Reader)
@@ -457,7 +429,11 @@ func (udc *UserDevicesController) ClearUserDeviceErrorCodeQuery(c *fiber.Ctx) er
 		return fiber.NewError(fiber.StatusInternalServerError, "error occurred fetching device error queries")
 	}
 
-	errCodeQuery.ClearedAt = null.TimeFrom(time.Now())
+	if errCodeQuery.ClearedAt.Valid {
+		return fiber.NewError(fiber.StatusBadRequest, "all error codes already cleared")
+	}
+
+	errCodeQuery.ClearedAt = null.TimeFrom(time.Now().UTC().Truncate(time.Microsecond))
 	if _, err = errCodeQuery.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.ErrorCodeQueryColumns.ClearedAt)); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "error occurred updating device error queries")
 	}
