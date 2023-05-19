@@ -254,6 +254,7 @@ type deps struct {
 	openAISvc              *mock_services.MockOpenAI
 	logger                 zerolog.Logger
 	mockCtrl               *gomock.Controller
+	credentialSvc          *mock_services.MockVCService
 }
 
 func createMockDependencies(t *testing.T) deps {
@@ -271,6 +272,7 @@ func createMockDependencies(t *testing.T) deps {
 	deviceDefinitionIngest := mock_services.NewMockDeviceDefinitionRegistrar(mockCtrl)
 	autoPiTaskSvc := mock_services.NewMockAutoPiTaskService(mockCtrl)
 	openAISvc := mock_services.NewMockOpenAI(mockCtrl)
+	credentialSvc := mock_services.NewMockVCService(mockCtrl)
 
 	logger := zerolog.New(os.Stdout).With().
 		Timestamp().
@@ -291,6 +293,7 @@ func createMockDependencies(t *testing.T) deps {
 		openAISvc:              openAISvc,
 		logger:                 logger,
 		mockCtrl:               mockCtrl,
+		credentialSvc:          credentialSvc,
 	}
 
 }
