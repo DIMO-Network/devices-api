@@ -40,8 +40,8 @@ type GetUserDeviceErrorCodeQueriesResponse struct {
 }
 
 type GetUserDeviceErrorCodeQueriesResponseItem struct {
-	ErrorCodesDescription []services.ErrorCodesResponse `json:"errorCodesDescription"`
-	RequestedAt           time.Time                     `json:"requestedAt"`
+	ErrorCodes  []services.ErrorCodesResponse `json:"errorCodes"`
+	RequestedAt time.Time                     `json:"requestedAt"`
 }
 
 func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDefinitionService, deviceData models.UserDeviceDatumSlice, deviceDefinitionID string, deviceStyleID null.String, privilegeIDs []int64) DeviceSnapshot {
@@ -355,7 +355,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Error occurred fetching description for error codes")
 	}
 
-	q := &models.ErrorCodeQuery{ID: ksuid.New().String(), UserDeviceID: udi, ErrorCodes: req.ErrorCodes, CodesQueryResponse: null.JSONFrom(chtJSON)}
+	q := &models.ErrorCodeQuery{ID: ksuid.New().String(), UserDeviceID: udi, CodesQueryResponse: null.JSONFrom(chtJSON)}
 	err = q.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
 
 	if err != nil {
@@ -400,8 +400,8 @@ func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) er
 		}
 
 		queries = append(queries, GetUserDeviceErrorCodeQueriesResponseItem{
-			ErrorCodesDescription: ercJSON,
-			RequestedAt:           erc.CreatedAt,
+			ErrorCodes:  ercJSON,
+			RequestedAt: erc.CreatedAt,
 		})
 	}
 

@@ -3,8 +3,10 @@ package registry
 import (
 	"context"
 
+	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
+	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
@@ -22,10 +24,12 @@ type StatusProcessor interface {
 }
 
 type proc struct {
-	ABI    *abi.ABI
-	DB     func() *db.ReaderWriter
-	Logger *zerolog.Logger
-	ap     *autopi.Integration
+	ABI      *abi.ABI
+	DB       func() *db.ReaderWriter
+	Logger   *zerolog.Logger
+	ap       *autopi.Integration
+	issuer   *issuer.Issuer
+	settings *config.Settings
 }
 
 func (p *proc) Handle(ctx context.Context, data *ceData) error {
@@ -84,6 +88,19 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				}
 
 				logger.Info().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msg("Vehicle minted.")
+
+				if !p.settings.IsProduction() {
+					if mtr.R.MintRequestVehicleNFT.Vin == "" {
+						logger.Error().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msgf("Minted vehicle with blank VIN, no credential issued.")
+						return nil
+					}
+					vcID, err := p.issuer.VIN(mtr.R.MintRequestVehicleNFT.Vin, out.TokenId)
+					if err != nil {
+						return err
+					}
+
+					logger.Info().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msgf("Issued verifiable credential %s", vcID)
+				}
 			}
 		}
 		// Other soon.
@@ -169,15 +186,20 @@ func NewProcessor(
 	db func() *db.ReaderWriter,
 	logger *zerolog.Logger,
 	ap *autopi.Integration,
+	issuer *issuer.Issuer,
+	settings *config.Settings,
 ) (StatusProcessor, error) {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return nil, err
 	}
+
 	return &proc{
-		ABI:    abi,
-		DB:     db,
-		Logger: logger,
-		ap:     ap,
+		ABI:      abi,
+		DB:       db,
+		Logger:   logger,
+		ap:       ap,
+		issuer:   issuer,
+		settings: settings,
 	}, nil
 }

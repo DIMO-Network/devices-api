@@ -320,6 +320,40 @@
                 }
             }
         },
+        "/dcn/{nodeID}/image": {
+            "get": {
+                "description": "retrieves the DCN NFT metadata for a given node address",
+                "produces": [
+                    "image/svg+xml"
+                ],
+                "tags": [
+                    "dcn"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "DCN node id decimal representation",
+                        "name": "nodeID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.NFTMetadataResp"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
+            }
+        },
         "/device-definitions": {
             "get": {
                 "description": "gets a specific device definition by make model and year",

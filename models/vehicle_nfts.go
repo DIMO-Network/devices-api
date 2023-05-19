@@ -30,6 +30,7 @@ type VehicleNFT struct {
 	Vin           string            `boil:"vin" json:"vin" toml:"vin" yaml:"vin"`
 	TokenID       types.NullDecimal `boil:"token_id" json:"token_id,omitempty" toml:"token_id" yaml:"token_id,omitempty"`
 	OwnerAddress  null.Bytes        `boil:"owner_address" json:"owner_address,omitempty" toml:"owner_address" yaml:"owner_address,omitempty"`
+	ClaimID       null.String       `boil:"claim_id" json:"claim_id,omitempty" toml:"claim_id" yaml:"claim_id,omitempty"`
 
 	R *vehicleNFTR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L vehicleNFTL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -41,12 +42,14 @@ var VehicleNFTColumns = struct {
 	Vin           string
 	TokenID       string
 	OwnerAddress  string
+	ClaimID       string
 }{
 	MintRequestID: "mint_request_id",
 	UserDeviceID:  "user_device_id",
 	Vin:           "vin",
 	TokenID:       "token_id",
 	OwnerAddress:  "owner_address",
+	ClaimID:       "claim_id",
 }
 
 var VehicleNFTTableColumns = struct {
@@ -55,12 +58,14 @@ var VehicleNFTTableColumns = struct {
 	Vin           string
 	TokenID       string
 	OwnerAddress  string
+	ClaimID       string
 }{
 	MintRequestID: "vehicle_nfts.mint_request_id",
 	UserDeviceID:  "vehicle_nfts.user_device_id",
 	Vin:           "vehicle_nfts.vin",
 	TokenID:       "vehicle_nfts.token_id",
 	OwnerAddress:  "vehicle_nfts.owner_address",
+	ClaimID:       "vehicle_nfts.claim_id",
 }
 
 // Generated where
@@ -71,20 +76,24 @@ var VehicleNFTWhere = struct {
 	Vin           whereHelperstring
 	TokenID       whereHelpertypes_NullDecimal
 	OwnerAddress  whereHelpernull_Bytes
+	ClaimID       whereHelpernull_String
 }{
 	MintRequestID: whereHelperstring{field: "\"devices_api\".\"vehicle_nfts\".\"mint_request_id\""},
 	UserDeviceID:  whereHelpernull_String{field: "\"devices_api\".\"vehicle_nfts\".\"user_device_id\""},
 	Vin:           whereHelperstring{field: "\"devices_api\".\"vehicle_nfts\".\"vin\""},
 	TokenID:       whereHelpertypes_NullDecimal{field: "\"devices_api\".\"vehicle_nfts\".\"token_id\""},
 	OwnerAddress:  whereHelpernull_Bytes{field: "\"devices_api\".\"vehicle_nfts\".\"owner_address\""},
+	ClaimID:       whereHelpernull_String{field: "\"devices_api\".\"vehicle_nfts\".\"claim_id\""},
 }
 
 // VehicleNFTRels is where relationship names are stored.
 var VehicleNFTRels = struct {
+	Claim                  string
 	MintRequest            string
 	UserDevice             string
 	VehicleTokenAutopiUnit string
 }{
+	Claim:                  "Claim",
 	MintRequest:            "MintRequest",
 	UserDevice:             "UserDevice",
 	VehicleTokenAutopiUnit: "VehicleTokenAutopiUnit",
@@ -92,6 +101,7 @@ var VehicleNFTRels = struct {
 
 // vehicleNFTR is where relationships are stored.
 type vehicleNFTR struct {
+	Claim                  *VerifiableCredential   `boil:"Claim" json:"Claim" toml:"Claim" yaml:"Claim"`
 	MintRequest            *MetaTransactionRequest `boil:"MintRequest" json:"MintRequest" toml:"MintRequest" yaml:"MintRequest"`
 	UserDevice             *UserDevice             `boil:"UserDevice" json:"UserDevice" toml:"UserDevice" yaml:"UserDevice"`
 	VehicleTokenAutopiUnit *AutopiUnit             `boil:"VehicleTokenAutopiUnit" json:"VehicleTokenAutopiUnit" toml:"VehicleTokenAutopiUnit" yaml:"VehicleTokenAutopiUnit"`
@@ -100,6 +110,13 @@ type vehicleNFTR struct {
 // NewStruct creates a new relationship struct
 func (*vehicleNFTR) NewStruct() *vehicleNFTR {
 	return &vehicleNFTR{}
+}
+
+func (r *vehicleNFTR) GetClaim() *VerifiableCredential {
+	if r == nil {
+		return nil
+	}
+	return r.Claim
 }
 
 func (r *vehicleNFTR) GetMintRequest() *MetaTransactionRequest {
@@ -127,9 +144,9 @@ func (r *vehicleNFTR) GetVehicleTokenAutopiUnit() *AutopiUnit {
 type vehicleNFTL struct{}
 
 var (
-	vehicleNFTAllColumns            = []string{"mint_request_id", "user_device_id", "vin", "token_id", "owner_address"}
+	vehicleNFTAllColumns            = []string{"mint_request_id", "user_device_id", "vin", "token_id", "owner_address", "claim_id"}
 	vehicleNFTColumnsWithoutDefault = []string{"mint_request_id", "vin"}
-	vehicleNFTColumnsWithDefault    = []string{"user_device_id", "token_id", "owner_address"}
+	vehicleNFTColumnsWithDefault    = []string{"user_device_id", "token_id", "owner_address", "claim_id"}
 	vehicleNFTPrimaryKeyColumns     = []string{"mint_request_id"}
 	vehicleNFTGeneratedColumns      = []string{}
 )
@@ -412,6 +429,17 @@ func (q vehicleNFTQuery) Exists(ctx context.Context, exec boil.ContextExecutor) 
 	return count > 0, nil
 }
 
+// Claim pointed to by the foreign key.
+func (o *VehicleNFT) Claim(mods ...qm.QueryMod) verifiableCredentialQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"claim_id\" = ?", o.ClaimID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	return VerifiableCredentials(queryMods...)
+}
+
 // MintRequest pointed to by the foreign key.
 func (o *VehicleNFT) MintRequest(mods ...qm.QueryMod) metaTransactionRequestQuery {
 	queryMods := []qm.QueryMod{
@@ -443,6 +471,130 @@ func (o *VehicleNFT) VehicleTokenAutopiUnit(mods ...qm.QueryMod) autopiUnitQuery
 	queryMods = append(queryMods, mods...)
 
 	return AutopiUnits(queryMods...)
+}
+
+// LoadClaim allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (vehicleNFTL) LoadClaim(ctx context.Context, e boil.ContextExecutor, singular bool, maybeVehicleNFT interface{}, mods queries.Applicator) error {
+	var slice []*VehicleNFT
+	var object *VehicleNFT
+
+	if singular {
+		var ok bool
+		object, ok = maybeVehicleNFT.(*VehicleNFT)
+		if !ok {
+			object = new(VehicleNFT)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeVehicleNFT)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeVehicleNFT))
+			}
+		}
+	} else {
+		s, ok := maybeVehicleNFT.(*[]*VehicleNFT)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeVehicleNFT)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeVehicleNFT))
+			}
+		}
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &vehicleNFTR{}
+		}
+		if !queries.IsNil(object.ClaimID) {
+			args = append(args, object.ClaimID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &vehicleNFTR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ClaimID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.ClaimID) {
+				args = append(args, obj.ClaimID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`devices_api.verifiable_credentials`),
+		qm.WhereIn(`devices_api.verifiable_credentials.claim_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load VerifiableCredential")
+	}
+
+	var resultSlice []*VerifiableCredential
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice VerifiableCredential")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for verifiable_credentials")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for verifiable_credentials")
+	}
+
+	if len(verifiableCredentialAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Claim = foreign
+		if foreign.R == nil {
+			foreign.R = &verifiableCredentialR{}
+		}
+		foreign.R.ClaimVehicleNFT = object
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.ClaimID, foreign.ClaimID) {
+				local.R.Claim = foreign
+				if foreign.R == nil {
+					foreign.R = &verifiableCredentialR{}
+				}
+				foreign.R.ClaimVehicleNFT = local
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadMintRequest allows an eager lookup of values, cached into the
@@ -803,6 +955,75 @@ func (vehicleNFTL) LoadVehicleTokenAutopiUnit(ctx context.Context, e boil.Contex
 		}
 	}
 
+	return nil
+}
+
+// SetClaim of the vehicleNFT to the related item.
+// Sets o.R.Claim to related.
+// Adds o to related.R.ClaimVehicleNFT.
+func (o *VehicleNFT) SetClaim(ctx context.Context, exec boil.ContextExecutor, insert bool, related *VerifiableCredential) error {
+	var err error
+	if insert {
+		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"devices_api\".\"vehicle_nfts\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"claim_id"}),
+		strmangle.WhereClause("\"", "\"", 2, vehicleNFTPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ClaimID, o.MintRequestID}
+
+	if boil.IsDebug(ctx) {
+		writer := boil.DebugWriterFrom(ctx)
+		fmt.Fprintln(writer, updateQuery)
+		fmt.Fprintln(writer, values)
+	}
+	if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.ClaimID, related.ClaimID)
+	if o.R == nil {
+		o.R = &vehicleNFTR{
+			Claim: related,
+		}
+	} else {
+		o.R.Claim = related
+	}
+
+	if related.R == nil {
+		related.R = &verifiableCredentialR{
+			ClaimVehicleNFT: o,
+		}
+	} else {
+		related.R.ClaimVehicleNFT = o
+	}
+
+	return nil
+}
+
+// RemoveClaim relationship.
+// Sets o.R.Claim to nil.
+// Removes o from all passed in related items' relationships struct.
+func (o *VehicleNFT) RemoveClaim(ctx context.Context, exec boil.ContextExecutor, related *VerifiableCredential) error {
+	var err error
+
+	queries.SetScanner(&o.ClaimID, nil)
+	if _, err = o.Update(ctx, exec, boil.Whitelist("claim_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Claim = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	related.R.ClaimVehicleNFT = nil
 	return nil
 }
 
