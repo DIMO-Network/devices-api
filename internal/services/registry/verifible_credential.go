@@ -38,7 +38,7 @@ var secp256k1Prefix = []byte{0xe7, 0x01}
 var period byte = '.'
 
 func IssuerCredentials(settings *config.Settings) (issuerCredentials, error) {
-	db, err := base64.RawURLEncoding.DecodeString(settings.DIMOKeyD)
+	db, err := base64.RawURLEncoding.DecodeString(settings.IssuerPrivateKey)
 	if err != nil {
 		return issuerCredentials{}, err
 	}
@@ -64,7 +64,7 @@ func IssuerCredentials(settings *config.Settings) (issuerCredentials, error) {
 
 }
 
-//CreateVinCredential creates and signs credential using vin and tokenID
+// CreateVinCredential creates and signs credential using vin and tokenID
 func (p *proc) CreateVinCredential(vin string, tokenID *big.Int) (string, error) {
 	issuanceDate := time.Now().UTC().Format(time.RFC3339)
 	credentialID := "urn:uuid:" + uuid.New().String()

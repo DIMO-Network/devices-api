@@ -71,9 +71,8 @@ func (s *CredentialTestSuite) TestVerifiableCredential(t *testing.T) {
 	require.NoError(s.T(), err)
 
 	processor, err := NewProcessor(s.pdb.DBS, nil, nil, &config.Settings{
-		DIMOKeyD:   "2pN28-5VmEavX46XWszjasN0kx4ha3wQ6w6hGqD8o0k",
-		NFTAddress: "0xba5738a18d83d41847dffbdc6101d37c69c9b0cf",
-		ChainID:    137})
+		IssuerPrivateKey: "2pN28-5VmEavX46XWszjasN0kx4ha3wQ6w6hGqD8o0k",
+	})
 	require.NoError(s.T(), err)
 
 	credentialID, err := processor.CreateVinCredential(vin, tokenID)

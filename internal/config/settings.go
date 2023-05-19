@@ -81,9 +81,10 @@ type Settings struct {
 	NATSAckTimeout                    string      `yaml:"NATS_ACK_TIMEOUT"`
 	NATSDurableConsumer               string      `yaml:"NATS_DURABLE_CONSUMER"`
 	DIMOContractAPIURL                string      `yaml:"DIMO_CONTRACT_APIURL"`
-	DIMOKeyD                          string      `yaml:"DIMO_KEY_D"`
-	NFTAddress                        string      `yaml:"NFT_ADDRESS"`
-	ChainID                           int64       `yaml:"CHAIN_ID"`
+
+	// IssuerPrivateKey is a base64-encoded secp256k1 private key, used to sign
+	// VIN verifiable credentials.
+	IssuerPrivateKey string `yaml:"ISSUER_PRIVATE_KEY"`
 }
 
 func (s *Settings) IsProduction() bool {
