@@ -18,6 +18,7 @@ var TableNames = struct {
 	UserDeviceToGeofence      string
 	UserDevices               string
 	VehicleNFTS               string
+	VerifiableCredentials     string
 }{
 	AutopiJobs:                "autopi_jobs",
 	AutopiUnits:               "autopi_units",
@@ -33,4 +34,5 @@ var TableNames = struct {
 	UserDeviceToGeofence:      "user_device_to_geofence",
 	UserDevices:               "user_devices",
 	VehicleNFTS:               "vehicle_nfts",
+	VerifiableCredentials:     "verifiable_credentials",
 }
