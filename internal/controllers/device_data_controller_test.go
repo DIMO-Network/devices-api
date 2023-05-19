@@ -27,7 +27,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 const migrationsDirRelPath = "../../migrations"
@@ -654,7 +653,7 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 		ddd := null.JSONFrom([]byte(
 			`[{"code": "P0113", "description": "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat."}]`,
 		))
-		assert.Equal(t, errCodeResp.ErrorCodes, types.StringArray{"P0017", "P0016"})
+
 		assert.Equal(t, errCodeResp.CodesQueryResponse, ddd)
 
 		//teardown
@@ -685,8 +684,6 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
 		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
 
-		erCodes := []string{"P0017", "P0016"}
-
 		chatGptResp := []services.ErrorCodesResponse{
 			{
 				Code:        "P0017",
@@ -704,7 +701,6 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 		erCodeQuery := models.ErrorCodeQuery{
 			ID:                 ksuid.New().String(),
 			UserDeviceID:       ud.ID,
-			ErrorCodes:         erCodes,
 			CodesQueryResponse: null.JSONFrom(chtJSON),
 			CreatedAt:          currTime,
 		}
@@ -719,7 +715,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 
 		assert.JSONEq(t,
-			fmt.Sprintf(`{"queries":[{"errorCodesDescription":%s, "requestedAt":"%s"}]}`, string(chtJSON), currTime.Format(time.RFC3339Nano)),
+			fmt.Sprintf(`{"queries":[{"errorCodes":%s, "requestedAt":"%s"}]}`, string(chtJSON), currTime.Format(time.RFC3339Nano)),
 			string(body),
 		)
 

@@ -19,18 +19,16 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/queries/qmhelper"
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"github.com/volatiletech/strmangle"
 )
 
 // ErrorCodeQuery is an object representing the database table.
 type ErrorCodeQuery struct {
-	ID                 string            `boil:"id" json:"id" toml:"id" yaml:"id"`
-	UserDeviceID       string            `boil:"user_device_id" json:"user_device_id" toml:"user_device_id" yaml:"user_device_id"`
-	ErrorCodes         types.StringArray `boil:"error_codes" json:"error_codes" toml:"error_codes" yaml:"error_codes"`
-	CreatedAt          time.Time         `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt          time.Time         `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CodesQueryResponse null.JSON         `boil:"codes_query_response" json:"codes_query_response,omitempty" toml:"codes_query_response" yaml:"codes_query_response,omitempty"`
+	ID                 string    `boil:"id" json:"id" toml:"id" yaml:"id"`
+	UserDeviceID       string    `boil:"user_device_id" json:"user_device_id" toml:"user_device_id" yaml:"user_device_id"`
+	CreatedAt          time.Time `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt          time.Time `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CodesQueryResponse null.JSON `boil:"codes_query_response" json:"codes_query_response,omitempty" toml:"codes_query_response" yaml:"codes_query_response,omitempty"`
 
 	R *errorCodeQueryR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L errorCodeQueryL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -39,14 +37,12 @@ type ErrorCodeQuery struct {
 var ErrorCodeQueryColumns = struct {
 	ID                 string
 	UserDeviceID       string
-	ErrorCodes         string
 	CreatedAt          string
 	UpdatedAt          string
 	CodesQueryResponse string
 }{
 	ID:                 "id",
 	UserDeviceID:       "user_device_id",
-	ErrorCodes:         "error_codes",
 	CreatedAt:          "created_at",
 	UpdatedAt:          "updated_at",
 	CodesQueryResponse: "codes_query_response",
@@ -55,14 +51,12 @@ var ErrorCodeQueryColumns = struct {
 var ErrorCodeQueryTableColumns = struct {
 	ID                 string
 	UserDeviceID       string
-	ErrorCodes         string
 	CreatedAt          string
 	UpdatedAt          string
 	CodesQueryResponse string
 }{
 	ID:                 "error_code_queries.id",
 	UserDeviceID:       "error_code_queries.user_device_id",
-	ErrorCodes:         "error_code_queries.error_codes",
 	CreatedAt:          "error_code_queries.created_at",
 	UpdatedAt:          "error_code_queries.updated_at",
 	CodesQueryResponse: "error_code_queries.codes_query_response",
@@ -70,38 +64,15 @@ var ErrorCodeQueryTableColumns = struct {
 
 // Generated where
 
-type whereHelpertypes_StringArray struct{ field string }
-
-func (w whereHelpertypes_StringArray) EQ(x types.StringArray) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.EQ, x)
-}
-func (w whereHelpertypes_StringArray) NEQ(x types.StringArray) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.NEQ, x)
-}
-func (w whereHelpertypes_StringArray) LT(x types.StringArray) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelpertypes_StringArray) LTE(x types.StringArray) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelpertypes_StringArray) GT(x types.StringArray) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelpertypes_StringArray) GTE(x types.StringArray) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
-
 var ErrorCodeQueryWhere = struct {
 	ID                 whereHelperstring
 	UserDeviceID       whereHelperstring
-	ErrorCodes         whereHelpertypes_StringArray
 	CreatedAt          whereHelpertime_Time
 	UpdatedAt          whereHelpertime_Time
 	CodesQueryResponse whereHelpernull_JSON
 }{
 	ID:                 whereHelperstring{field: "\"devices_api\".\"error_code_queries\".\"id\""},
 	UserDeviceID:       whereHelperstring{field: "\"devices_api\".\"error_code_queries\".\"user_device_id\""},
-	ErrorCodes:         whereHelpertypes_StringArray{field: "\"devices_api\".\"error_code_queries\".\"error_codes\""},
 	CreatedAt:          whereHelpertime_Time{field: "\"devices_api\".\"error_code_queries\".\"created_at\""},
 	UpdatedAt:          whereHelpertime_Time{field: "\"devices_api\".\"error_code_queries\".\"updated_at\""},
 	CodesQueryResponse: whereHelpernull_JSON{field: "\"devices_api\".\"error_code_queries\".\"codes_query_response\""},
@@ -135,8 +106,8 @@ func (r *errorCodeQueryR) GetUserDevice() *UserDevice {
 type errorCodeQueryL struct{}
 
 var (
-	errorCodeQueryAllColumns            = []string{"id", "user_device_id", "error_codes", "created_at", "updated_at", "codes_query_response"}
-	errorCodeQueryColumnsWithoutDefault = []string{"id", "user_device_id", "error_codes"}
+	errorCodeQueryAllColumns            = []string{"id", "user_device_id", "created_at", "updated_at", "codes_query_response"}
+	errorCodeQueryColumnsWithoutDefault = []string{"id", "user_device_id"}
 	errorCodeQueryColumnsWithDefault    = []string{"created_at", "updated_at", "codes_query_response"}
 	errorCodeQueryPrimaryKeyColumns     = []string{"id"}
 	errorCodeQueryGeneratedColumns      = []string{}
