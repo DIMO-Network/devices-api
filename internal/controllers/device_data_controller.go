@@ -31,6 +31,7 @@ type QueryDeviceErrorCodesReq struct {
 }
 
 type QueryDeviceErrorCodesResponse struct {
+	ClearedAt  time.Time                     `json:"clearedAt"`
 	ErrorCodes []services.ErrorCodesResponse `json:"errorCodes"`
 }
 
@@ -405,6 +406,71 @@ func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) er
 	}
 
 	return c.JSON(GetUserDeviceErrorCodeQueriesResponse{Queries: queries})
+}
+
+// ClearUserDeviceErrorCodeQuery godoc
+// @Description Clear user device error codes
+// @Tags        user-devices
+// @Success     200 {object} controllers.QueryDeviceErrorCodesResponse
+// @Security    BearerAuth
+// @Router      /user/devices/{userDeviceID}/error-codes/clear [post]
+func (udc *UserDevicesController) ClearUserDeviceErrorCodeQuery(c *fiber.Ctx) error {
+	userID := helpers.GetUserID(c)
+	udi := c.Params("userDeviceID")
+
+	logger := helpers.GetLogger(c, udc.log)
+
+	userDeviceExists, err := models.UserDevices(
+		models.UserDeviceWhere.UserID.EQ(userID),
+		models.UserDeviceWhere.ID.EQ(udi),
+	).Exists(c.Context(), udc.DBS().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fiber.NewError(fiber.StatusNotFound, err.Error())
+		}
+
+		logger.Err(err).Msg("error occurred when fetching error codes for device")
+		return fiber.NewError(fiber.StatusInternalServerError, "error occurred updating device error queries")
+	}
+
+	if !userDeviceExists {
+		return fiber.NewError(fiber.StatusUnauthorized, "error, user does not own device")
+	}
+
+	/*
+		// TODO - I'm not so sure clearing the last item without any input from the caller is such a good idea based on the UI on figma
+
+		req := &ClearUserDeviceErrorCodeQueryReq{}
+		   	if err := c.BodyParser(req); err != nil {
+		   		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
+		   	}
+	*/
+
+	errCodeQuery, err := models.ErrorCodeQueries(
+		models.ErrorCodeQueryWhere.UserDeviceID.EQ(udi),
+		models.ErrorCodeQueryWhere.ClearedAt.IsNull(),
+		qm.OrderBy(models.ErrorCodeQueryColumns.CreatedAt+" DESC"),
+		qm.Limit(1),
+	).One(c.Context(), udc.DBS().Reader)
+	if err != nil {
+		logger.Err(err).Msg("error occurred when fetching error codes for device")
+		return fiber.NewError(fiber.StatusInternalServerError, "error occurred fetching device error queries")
+	}
+
+	errCodeQuery.ClearedAt = null.TimeFrom(time.Now())
+	if _, err = errCodeQuery.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.ErrorCodeQueryColumns.ClearedAt)); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "error occurred updating device error queries")
+	}
+
+	errorCodeResp := []services.ErrorCodesResponse{}
+	if err := errCodeQuery.CodesQueryResponse.Unmarshal(&errorCodeResp); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "error occurred updating device error queries")
+	}
+
+	return c.JSON(&QueryDeviceErrorCodesResponse{
+		ErrorCodes: errorCodeResp,
+		ClearedAt:  errCodeQuery.ClearedAt.Time,
+	})
 }
 
 // DeviceSnapshot is the response object for device status endpoint
