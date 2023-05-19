@@ -7,6 +7,7 @@ package mock_services
 import (
 	reflect "reflect"
 
+	services "github.com/DIMO-Network/devices-api/internal/services"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -34,10 +35,10 @@ func (m *MockOpenAI) EXPECT() *MockOpenAIMockRecorder {
 }
 
 // GetErrorCodesDescription mocks base method.
-func (m *MockOpenAI) GetErrorCodesDescription(make, model string, errorCodes []string) (string, error) {
+func (m *MockOpenAI) GetErrorCodesDescription(make, model string, errorCodes []string) ([]services.ErrorCodesResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetErrorCodesDescription", make, model, errorCodes)
-	ret0, _ := ret[0].(string)
+	ret0, _ := ret[0].([]services.ErrorCodesResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/middleware/owner"
+	"github.com/DIMO-Network/devices-api/internal/services"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
@@ -26,7 +27,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 const migrationsDirRelPath = "../../migrations"
@@ -338,7 +338,13 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 			}, nil).
 			AnyTimes()
 
-		chatGptResp := "1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat."
+		chatGptResp := []services.ErrorCodesResponse{
+			{
+				Code:        "P0113",
+				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+			},
+		}
+
 		mockDeps.openAISvc.
 			EXPECT().
 			GetErrorCodesDescription(gomock.Eq("Toyota"), gomock.Eq("Camry"), gomock.Eq(req.ErrorCodes)).
@@ -351,9 +357,12 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 		response, _ := app.Test(request)
 		body, _ := io.ReadAll(response.Body)
 
+		chtJSON, err := json.Marshal(chatGptResp)
+		assert.NoError(t, err)
+
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 		assert.Equal(t,
-			fmt.Sprintf(`{"message":"%s"}`, chatGptResp),
+			fmt.Sprintf(`{"errorCodes":%s}`, chtJSON),
 			string(body),
 		)
 
@@ -363,7 +372,6 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 }
 
 func TestUserDevicesController_ShouldErrorOnTooManyErrorCodes(t *testing.T) {
-
 	mockDeps := createMockDependencies(t)
 	defer mockDeps.mockCtrl.Finish()
 
@@ -406,7 +414,12 @@ func TestUserDevicesController_ShouldErrorOnTooManyErrorCodes(t *testing.T) {
 			}, nil).
 			AnyTimes()
 
-		chatGptResp := "1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat."
+		chatGptResp := []services.ErrorCodesResponse{
+			{
+				Code:        "P0113",
+				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+			},
+		}
 		mockDeps.openAISvc.
 			EXPECT().
 			GetErrorCodesDescription(gomock.Eq("Toyota"), gomock.Eq("Camry"), gomock.Eq(req.ErrorCodes)).
@@ -470,7 +483,12 @@ func TestUserDevicesController_ShouldErrorInvalidErrorCodes(t *testing.T) {
 			}, nil).
 			AnyTimes()
 
-		chatGptResp := "1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat."
+		chatGptResp := []services.ErrorCodesResponse{
+			{
+				Code:        "P0113",
+				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+			},
+		}
 		mockDeps.openAISvc.
 			EXPECT().
 			GetErrorCodesDescription(gomock.Eq("Toyota"), gomock.Eq("Camry"), gomock.Eq(req.ErrorCodes)).
@@ -534,7 +552,12 @@ func TestUserDevicesController_ShouldErrorOnEmptyErrorCodes(t *testing.T) {
 			}, nil).
 			AnyTimes()
 
-		chatGptResp := "1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat."
+		chatGptResp := []services.ErrorCodesResponse{
+			{
+				Code:        "P0113",
+				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+			},
+		}
 		mockDeps.openAISvc.
 			EXPECT().
 			GetErrorCodesDescription(gomock.Eq("Toyota"), gomock.Eq("Camry"), gomock.Eq(req.ErrorCodes)).
@@ -598,7 +621,12 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 			}, nil).
 			AnyTimes()
 
-		chatGptResp := "1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat."
+		chatGptResp := []services.ErrorCodesResponse{
+			{
+				Code:        "P0113",
+				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+			},
+		}
 		mockDeps.openAISvc.
 			EXPECT().
 			GetErrorCodesDescription(gomock.Eq("Toyota"), gomock.Eq("Camry"), gomock.Eq(req.ErrorCodes)).
@@ -611,9 +639,12 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 		response, _ := app.Test(request)
 		body, _ := io.ReadAll(response.Body)
 
+		chtJSON, err := json.Marshal(chatGptResp)
+		assert.NoError(t, err)
+
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 		assert.Equal(t,
-			fmt.Sprintf(`{"message":"%s"}`, chatGptResp),
+			fmt.Sprintf(`{"errorCodes":%s}`, chtJSON),
 			string(body),
 		)
 
@@ -622,8 +653,11 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 		).One(ctx, pdb.DBS().Reader)
 		assert.NoError(t, err)
 
-		assert.Equal(t, errCodeResp.ErrorCodes, types.StringArray{"P0017", "P0016"})
-		assert.Equal(t, errCodeResp.QueryResponse, chatGptResp)
+		ddd := null.JSONFrom([]byte(
+			`[{"code": "P0113", "description": "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat."}]`,
+		))
+
+		assert.Equal(t, errCodeResp.CodesQueryResponse, ddd)
 
 		//teardown
 		test.TruncateTables(pdb.DBS().Writer.DB, t)
@@ -653,18 +687,28 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
 		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
 
-		erCodes := []string{"P0017", "P0016"}
+		chatGptResp := []services.ErrorCodesResponse{
+			{
+				Code:        "P0017",
+				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+			},
+			{
+				Code:        "P0016",
+				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+			},
+		}
+		chtJSON, err := json.Marshal(chatGptResp)
+		assert.NoError(t, err)
 
 		currTime := time.Now().UTC().Truncate(time.Microsecond)
 		erCodeQuery := models.ErrorCodeQuery{
-			ID:            ksuid.New().String(),
-			UserDeviceID:  ud.ID,
-			ErrorCodes:    erCodes,
-			QueryResponse: "1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
-			CreatedAt:     currTime,
+			ID:                 ksuid.New().String(),
+			UserDeviceID:       ud.ID,
+			CodesQueryResponse: null.JSONFrom(chtJSON),
+			CreatedAt:          currTime,
 		}
 
-		err := erCodeQuery.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+		err = erCodeQuery.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 		assert.NoError(t, err)
 
 		request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/error-codes", ud.ID), "")
@@ -674,7 +718,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 
 		assert.JSONEq(t,
-			fmt.Sprintf(`{"queries":[{"errorCodes":["P0017","P0016"],"description":"1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.", "requestedAt":"%s"}]}`, currTime.Format(time.RFC3339Nano)),
+			fmt.Sprintf(`{"queries":[{"errorCodes":%s, "requestedAt":"%s"}]}`, string(chtJSON), currTime.Format(time.RFC3339Nano)),
 			string(body),
 		)
 
