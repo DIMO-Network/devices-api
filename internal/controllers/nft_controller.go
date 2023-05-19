@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"bytes"
 	"database/sql"
 	_ "embed"
 	"fmt"
@@ -236,11 +237,12 @@ func (nc *NFTController) GetDCNNFTImage(c *fiber.Ctx) error {
 
 	c.Set("Content-Type", "image/svg+xml")
 
-	err = nc.dcnTmpl.Execute(c, struct{ Name string }{dcn.Name.String})
-	if err != nil {
+	var b bytes.Buffer
+	if err = nc.dcnTmpl.Execute(&b, struct{ Name string }{dcn.Name.String}); err != nil {
 		return err
 	}
-	return nil
+
+	return c.Send(b.Bytes())
 }
 
 // GetIntegrationNFTMetadata godoc
