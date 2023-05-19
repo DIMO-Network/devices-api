@@ -315,8 +315,8 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 						) as evd;`
 
 	type Result struct {
-		TotalRetail   float64 `boil:"total_retail"`
-		TotalVincario float64 `boil:"total_vincario"`
+		TotalRetail   null.Float64 `boil:"total_retail"`
+		TotalVincario null.Float64 `boil:"total_vincario"`
 	}
 	var total Result
 	var lastWeek Result
@@ -333,29 +333,19 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 		return nil, status.Error(codes.Internal, "Internal error.")
 	}
 
-	totalValuation := 0.0
+	totalValuation := total.TotalRetail.Float64 // 0 by default
 	growthPercentage := 0.0
 
-	if total.TotalRetail > 0 {
-		totalValuation = total.TotalRetail
-	}
-
-	if total.TotalVincario > 0 {
-		totalValuation += total.TotalVincario * euroToUsd
+	if !total.TotalVincario.IsZero() {
+		totalValuation += total.TotalVincario.Float64 * euroToUsd
 	}
 
 	if totalValuation > 0 {
+		totalLastWeek := lastWeek.TotalRetail.Float64
 
-		totalLastWeek := 0.0
-
-		if lastWeek.TotalRetail > 0 {
-			totalLastWeek = lastWeek.TotalRetail
+		if !lastWeek.TotalVincario.IsZero() {
+			totalLastWeek += lastWeek.TotalVincario.Float64 * euroToUsd
 		}
-
-		if lastWeek.TotalVincario > 0 {
-			totalLastWeek += lastWeek.TotalVincario * euroToUsd
-		}
-
 		growthPercentage = (totalLastWeek / totalValuation) * 100
 	}
 
