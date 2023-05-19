@@ -155,7 +155,7 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int) (id string, err error) {
 	if err != nil {
 		return "", err
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint
 
 	vc := models.VerifiableCredential{
 		ClaimID:    id,
