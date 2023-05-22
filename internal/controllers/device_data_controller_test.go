@@ -363,7 +363,7 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 		assert.Equal(t,
-			fmt.Sprintf(`{"clearedAt":"%s","errorCodes":%s}`, null.Time{}.Time.UTC().Format(time.RFC3339Nano), chtJSON),
+			fmt.Sprintf(`{"errorCodes":%s}`, chtJSON),
 			string(body),
 		)
 
@@ -645,7 +645,7 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 		assert.Equal(t,
-			fmt.Sprintf(`{"clearedAt":"%s","errorCodes":%s}`, null.Time{}.Time.UTC().Format(time.RFC3339Nano), chtJSON),
+			fmt.Sprintf(`{"errorCodes":%s}`, chtJSON),
 			string(body),
 		)
 
@@ -873,8 +873,8 @@ func TestUserDevicesController_ErrorOnAllErrorCodesCleared(t *testing.T) {
 		response, _ := app.Test(request)
 		body, _ := io.ReadAll(response.Body)
 
-		assert.Equal(t, fiber.StatusBadRequest, response.StatusCode)
-		assert.Equal(t, string(body), "all error codes already cleared")
+		assert.Equal(t, response.StatusCode, fiber.StatusBadRequest)
+		assert.Equal(t, "all error codes already cleared", string(body))
 
 		//teardown
 		test.TruncateTables(pdb.DBS().Writer.DB, t)

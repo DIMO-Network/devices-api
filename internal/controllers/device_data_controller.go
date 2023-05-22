@@ -31,7 +31,7 @@ type QueryDeviceErrorCodesReq struct {
 }
 
 type QueryDeviceErrorCodesResponse struct {
-	ClearedAt  time.Time                     `json:"clearedAt"`
+	ClearedAt  *time.Time                    `json:"clearedAt,omitempty"`
 	ErrorCodes []services.ErrorCodesResponse `json:"errorCodes"`
 }
 
@@ -42,6 +42,7 @@ type GetUserDeviceErrorCodeQueriesResponse struct {
 type GetUserDeviceErrorCodeQueriesResponseItem struct {
 	ErrorCodes  []services.ErrorCodesResponse `json:"errorCodes"`
 	RequestedAt time.Time                     `json:"requestedAt"`
+	ClearedAt   *time.Time                    `json:"clearedAt,omitempty"`
 }
 
 func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDefinitionService, deviceData models.UserDeviceDatumSlice, deviceDefinitionID string, deviceStyleID null.String, privilegeIDs []int64) DeviceSnapshot {
@@ -399,10 +400,16 @@ func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) er
 			return err
 		}
 
-		queries = append(queries, GetUserDeviceErrorCodeQueriesResponseItem{
+		userDeviceresp := GetUserDeviceErrorCodeQueriesResponseItem{
 			ErrorCodes:  ercJSON,
 			RequestedAt: erc.CreatedAt,
-		})
+		}
+
+		/* if !erc.ClearedAt.Valid {
+			userDeviceresp.ClearedAt =
+		} */
+
+		queries = append(queries, userDeviceresp)
 	}
 
 	return c.JSON(GetUserDeviceErrorCodeQueriesResponse{Queries: queries})
@@ -445,7 +452,7 @@ func (udc *UserDevicesController) ClearUserDeviceErrorCodeQuery(c *fiber.Ctx) er
 
 	return c.JSON(&QueryDeviceErrorCodesResponse{
 		ErrorCodes: errorCodeResp,
-		ClearedAt:  errCodeQuery.ClearedAt.Time,
+		ClearedAt:  &errCodeQuery.ClearedAt.Time,
 	})
 }
 
