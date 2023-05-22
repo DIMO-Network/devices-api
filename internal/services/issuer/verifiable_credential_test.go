@@ -1,12 +1,10 @@
-package registry
+package issuer
 
 import (
 	"context"
+	"encoding/base64"
 	"math/big"
 
-	"testing"
-
-	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
@@ -35,8 +33,7 @@ func (s *CredentialTestSuite) SetupSuite() {
 	s.pdb, s.container = test.StartContainerDatabase(context.Background(), s.T(), migrationsDirRelPath)
 }
 
-func (s *CredentialTestSuite) TestVerifiableCredential(t *testing.T) {
-
+func (s *CredentialTestSuite) TestVerifiableCredential() {
 	ctx := context.Background()
 	vin := "1G6AL1RY2K0111939"
 	tokenID := big.NewInt(3)
@@ -70,17 +67,22 @@ func (s *CredentialTestSuite) TestVerifiableCredential(t *testing.T) {
 	err = nft.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
 	require.NoError(s.T(), err)
 
-	processor, err := NewProcessor(s.pdb.DBS, nil, nil, &config.Settings{
-		DIMOKeyD:   "2pN28-5VmEavX46XWszjasN0kx4ha3wQ6w6hGqD8o0k",
-		NFTAddress: "0xba5738a18d83d41847dffbdc6101d37c69c9b0cf",
-		ChainID:    137})
+	pk, err := base64.RawURLEncoding.DecodeString("2pN28-5VmEavX46XWszjasN0kx4ha3wQ6w6hGqD8o0k")
 	require.NoError(s.T(), err)
 
-	credentialID, err := processor.CreateVinCredential(vin, tokenID)
+	iss, err := New(Config{
+		PrivateKey:        pk,
+		ChainID:           big.NewInt(137),
+		VehicleNFTAddress: common.HexToAddress("00f1"),
+		DBS:               s.pdb,
+	})
+	s.Require().NoError(err)
+
+	credentialID, err := iss.VIN(vin, tokenID)
+	s.Require().NoError(err)
 
 	vc, err := models.VerifiableCredentials(models.VerifiableCredentialWhere.ClaimID.EQ(credentialID)).One(context.Background(), s.pdb.DBS().Reader)
 	require.NoError(s.T(), err)
 
 	assert.NotEqual(s.T(), vc.Credential, []byte{})
-
 }

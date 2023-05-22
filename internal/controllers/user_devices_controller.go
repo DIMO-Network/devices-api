@@ -70,7 +70,6 @@ type UserDevicesController struct {
 	nhtsaService              services.INHTSAService
 	autoPiIngestRegistrar     services.IngestRegistrar
 	autoPiTaskService         services.AutoPiTaskService
-	drivlyTaskService         services.DrivlyTaskService
 	s3                        *s3.Client
 	producer                  sarama.SyncProducer
 	deviceDefinitionRegistrar services.DeviceDefinitionRegistrar
@@ -78,6 +77,7 @@ type UserDevicesController struct {
 	redisCache                redis.CacheService
 	openAI                    services.OpenAI
 	usersClient               pb.UserServiceClient
+	NATSSvc                   *services.NATSService
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -108,7 +108,30 @@ type Device struct {
 }
 
 // NewUserDevicesController constructor
-func NewUserDevicesController(settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService, ddIntSvc services.DeviceDefinitionIntegrationService, eventService services.EventService, smartcarClient services.SmartcarClient, smartcarTaskSvc services.SmartcarTaskService, teslaService services.TeslaService, teslaTaskService services.TeslaTaskService, cipher shared.Cipher, autoPiSvc services.AutoPiAPIService, nhtsaService services.INHTSAService, autoPiIngestRegistrar services.IngestRegistrar, deviceDefinitionRegistrar services.DeviceDefinitionRegistrar, autoPiTaskService services.AutoPiTaskService, producer sarama.SyncProducer, s3NFTClient *s3.Client, drivlyTaskService services.DrivlyTaskService, autoPi *autopi.Integration, cache redis.CacheService, openAI services.OpenAI, usersClient pb.UserServiceClient) UserDevicesController {
+func NewUserDevicesController(settings *config.Settings,
+	dbs func() *db.ReaderWriter,
+	logger *zerolog.Logger,
+	ddSvc services.DeviceDefinitionService,
+	ddIntSvc services.DeviceDefinitionIntegrationService,
+	eventService services.EventService,
+	smartcarClient services.SmartcarClient,
+	smartcarTaskSvc services.SmartcarTaskService,
+	teslaService services.TeslaService,
+	teslaTaskService services.TeslaTaskService,
+	cipher shared.Cipher,
+	autoPiSvc services.AutoPiAPIService,
+	nhtsaService services.INHTSAService,
+	autoPiIngestRegistrar services.IngestRegistrar,
+	deviceDefinitionRegistrar services.DeviceDefinitionRegistrar,
+	autoPiTaskService services.AutoPiTaskService,
+	producer sarama.SyncProducer,
+	s3NFTClient *s3.Client,
+	autoPi *autopi.Integration,
+	cache redis.CacheService,
+	openAI services.OpenAI,
+	usersClient pb.UserServiceClient,
+	natsSvc *services.NATSService,
+) UserDevicesController {
 	return UserDevicesController{
 		Settings:                  settings,
 		DBS:                       dbs,
@@ -127,12 +150,12 @@ func NewUserDevicesController(settings *config.Settings, dbs func() *db.ReaderWr
 		autoPiTaskService:         autoPiTaskService,
 		s3:                        s3NFTClient,
 		producer:                  producer,
-		drivlyTaskService:         drivlyTaskService,
 		deviceDefinitionRegistrar: deviceDefinitionRegistrar,
 		autoPiIntegration:         autoPi,
 		redisCache:                cache,
 		openAI:                    openAI,
 		usersClient:               usersClient,
+		NATSSvc:                   natsSvc,
 	}
 }
 
@@ -510,6 +533,28 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		}
 	}
 
+	if udc.Settings.IsProduction() {
+
+		message := services.ValuationDecodeCommand{
+			VIN:          vin,
+			UserDeviceID: udFull.ID,
+		}
+
+		messageBytes, err := json.Marshal(message)
+
+		if err != nil {
+			udc.log.Err(err).Msg("Failed to marshal message.")
+		} else {
+			pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, messageBytes)
+
+			if err != nil {
+				udc.log.Err(err).Msg("failed to publish to NATS")
+			} else {
+				udc.log.Info().Str("vin", vin).Str("user_id", userID).Str("user_device_id", udFull.ID).Msgf("published valuation request to NATS with Ack: %+v", pubAck)
+			}
+		}
+	}
+
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,
 	})
@@ -542,6 +587,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 	if err := reg.Validate(); err != nil {
+		localLog.Error().Msgf("Smartcar device creation input invalid, code %q.", reg.Code)
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 	country := constants.FindCountry(reg.CountryCode)
@@ -570,6 +616,10 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	vin, err := udc.smartcarClient.GetVIN(c.Context(), token.Access, externalID)
 	if err != nil {
 		localLog.Err(err).Msg("Failed to retrieve VIN from Smartcar.")
+		return smartcarCallErr
+	}
+	if len(vin) != 17 {
+		localLog.Error().Msgf("invalid VIN returned from smartcar: %s", vin)
 		return smartcarCallErr
 	}
 	localLog = localLog.With().Str("vin", vin).Logger()
@@ -658,6 +708,30 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	if err != nil {
 		return err
 	}
+
+	if udc.Settings.IsProduction() {
+
+		message := services.ValuationDecodeCommand{
+			VIN:          vin,
+			UserDeviceID: udFull.ID,
+		}
+
+		messageBytes, err := json.Marshal(message)
+
+		if err != nil {
+			localLog.Err(err).Msg("Failed to marshal message.")
+		} else {
+			pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, messageBytes)
+
+			if err != nil {
+				localLog.Err(err).Msg("Failed to publish to NATS.")
+			} else {
+				localLog.Info().Str("vin", vin).Str("user_id", userID).Str("user_device_id", udFull.ID).Msgf("Published valuation request to NATS with Ack: %+v", pubAck)
+			}
+		}
+
+	}
+
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,
 	})
@@ -1718,9 +1792,24 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	logger := helpers.GetLogger(c, udc.log)
 
-	userDevice, err := models.FindUserDevice(c.Context(), udc.DBS().Reader, userDeviceID)
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
+	).One(c.Context(), udc.DBS().Reader.DB)
 	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
+		if err == sql.ErrNoRows {
+			return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
+		}
+		return err
+	}
+
+	if vnft := userDevice.R.VehicleNFT; vnft != nil {
+		switch vnft.R.MintRequest.Status {
+		case "Confirmed":
+			return fiber.NewError(fiber.StatusConflict, "Vehicle already minted.")
+		default:
+			return fiber.NewError(fiber.StatusConflict, "Minting in process.")
+		}
 	}
 
 	if !userDevice.VinConfirmed {

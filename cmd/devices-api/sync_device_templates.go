@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -25,9 +24,10 @@ import (
 )
 
 type syncDeviceTemplatesCmd struct {
-	logger   zerolog.Logger
-	settings config.Settings
-	pdb      db.Store
+	logger             zerolog.Logger
+	settings           config.Settings
+	pdb                db.Store
+	moveFromTemplateID *string
 }
 
 func (*syncDeviceTemplatesCmd) Name() string { return "sync-device-templates" }
@@ -40,21 +40,14 @@ func (*syncDeviceTemplatesCmd) Usage() string {
   `
 }
 
-// nolint
 func (p *syncDeviceTemplatesCmd) SetFlags(f *flag.FlagSet) {
-
+	p.moveFromTemplateID = f.String("move-from-template", "10", "By default only moves devices in template 10, specify this to change or 0 for any")
 }
 
 func (p *syncDeviceTemplatesCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	moveFromTemplateID := "10" // default
-	if len(os.Args) > 2 {
-		// parse out custom move from template ID option
-		for i, a := range os.Args {
-			if a == "--move-from-template" {
-				moveFromTemplateID = os.Args[i+1]
-				break
-			}
-		}
+	if p.moveFromTemplateID != nil {
+		moveFromTemplateID = *p.moveFromTemplateID
 	}
 
 	p.logger.Info().Msgf("starting syncing device templates based on device definition setting."+

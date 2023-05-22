@@ -58,14 +58,14 @@ var VerifiableCredentialWhere = struct {
 
 // VerifiableCredentialRels is where relationship names are stored.
 var VerifiableCredentialRels = struct {
-	Claim string
+	ClaimVehicleNFT string
 }{
-	Claim: "Claim",
+	ClaimVehicleNFT: "ClaimVehicleNFT",
 }
 
 // verifiableCredentialR is where relationships are stored.
 type verifiableCredentialR struct {
-	Claim *VehicleNFT `boil:"Claim" json:"Claim" toml:"Claim" yaml:"Claim"`
+	ClaimVehicleNFT *VehicleNFT `boil:"ClaimVehicleNFT" json:"ClaimVehicleNFT" toml:"ClaimVehicleNFT" yaml:"ClaimVehicleNFT"`
 }
 
 // NewStruct creates a new relationship struct
@@ -73,11 +73,11 @@ func (*verifiableCredentialR) NewStruct() *verifiableCredentialR {
 	return &verifiableCredentialR{}
 }
 
-func (r *verifiableCredentialR) GetClaim() *VehicleNFT {
+func (r *verifiableCredentialR) GetClaimVehicleNFT() *VehicleNFT {
 	if r == nil {
 		return nil
 	}
-	return r.Claim
+	return r.ClaimVehicleNFT
 }
 
 // verifiableCredentialL is where Load methods for each relationship are stored.
@@ -369,8 +369,8 @@ func (q verifiableCredentialQuery) Exists(ctx context.Context, exec boil.Context
 	return count > 0, nil
 }
 
-// Claim pointed to by the foreign key.
-func (o *VerifiableCredential) Claim(mods ...qm.QueryMod) vehicleNFTQuery {
+// ClaimVehicleNFT pointed to by the foreign key.
+func (o *VerifiableCredential) ClaimVehicleNFT(mods ...qm.QueryMod) vehicleNFTQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"claim_id\" = ?", o.ClaimID),
 	}
@@ -380,9 +380,9 @@ func (o *VerifiableCredential) Claim(mods ...qm.QueryMod) vehicleNFTQuery {
 	return VehicleNFTS(queryMods...)
 }
 
-// LoadClaim allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (verifiableCredentialL) LoadClaim(ctx context.Context, e boil.ContextExecutor, singular bool, maybeVerifiableCredential interface{}, mods queries.Applicator) error {
+// LoadClaimVehicleNFT allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (verifiableCredentialL) LoadClaimVehicleNFT(ctx context.Context, e boil.ContextExecutor, singular bool, maybeVerifiableCredential interface{}, mods queries.Applicator) error {
 	var slice []*VerifiableCredential
 	var object *VerifiableCredential
 
@@ -413,10 +413,7 @@ func (verifiableCredentialL) LoadClaim(ctx context.Context, e boil.ContextExecut
 		if object.R == nil {
 			object.R = &verifiableCredentialR{}
 		}
-		if !queries.IsNil(object.ClaimID) {
-			args = append(args, object.ClaimID)
-		}
-
+		args = append(args, object.ClaimID)
 	} else {
 	Outer:
 		for _, obj := range slice {
@@ -430,10 +427,7 @@ func (verifiableCredentialL) LoadClaim(ctx context.Context, e boil.ContextExecut
 				}
 			}
 
-			if !queries.IsNil(obj.ClaimID) {
-				args = append(args, obj.ClaimID)
-			}
-
+			args = append(args, obj.ClaimID)
 		}
 	}
 
@@ -480,22 +474,21 @@ func (verifiableCredentialL) LoadClaim(ctx context.Context, e boil.ContextExecut
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.Claim = foreign
+		object.R.ClaimVehicleNFT = foreign
 		if foreign.R == nil {
 			foreign.R = &vehicleNFTR{}
 		}
-		foreign.R.ClaimVerifiableCredential = object
-		return nil
+		foreign.R.Claim = object
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
 			if queries.Equal(local.ClaimID, foreign.ClaimID) {
-				local.R.Claim = foreign
+				local.R.ClaimVehicleNFT = foreign
 				if foreign.R == nil {
 					foreign.R = &vehicleNFTR{}
 				}
-				foreign.R.ClaimVerifiableCredential = local
+				foreign.R.Claim = local
 				break
 			}
 		}
@@ -504,49 +497,76 @@ func (verifiableCredentialL) LoadClaim(ctx context.Context, e boil.ContextExecut
 	return nil
 }
 
-// SetClaim of the verifiableCredential to the related item.
-// Sets o.R.Claim to related.
-// Adds o to related.R.ClaimVerifiableCredential.
-func (o *VerifiableCredential) SetClaim(ctx context.Context, exec boil.ContextExecutor, insert bool, related *VehicleNFT) error {
+// SetClaimVehicleNFT of the verifiableCredential to the related item.
+// Sets o.R.ClaimVehicleNFT to related.
+// Adds o to related.R.Claim.
+func (o *VerifiableCredential) SetClaimVehicleNFT(ctx context.Context, exec boil.ContextExecutor, insert bool, related *VehicleNFT) error {
 	var err error
+
 	if insert {
+		queries.Assign(&related.ClaimID, o.ClaimID)
+
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
 			return errors.Wrap(err, "failed to insert into foreign table")
 		}
+	} else {
+		updateQuery := fmt.Sprintf(
+			"UPDATE \"devices_api\".\"vehicle_nfts\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 1, []string{"claim_id"}),
+			strmangle.WhereClause("\"", "\"", 2, vehicleNFTPrimaryKeyColumns),
+		)
+		values := []interface{}{o.ClaimID, related.MintRequestID}
+
+		if boil.IsDebug(ctx) {
+			writer := boil.DebugWriterFrom(ctx)
+			fmt.Fprintln(writer, updateQuery)
+			fmt.Fprintln(writer, values)
+		}
+		if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+			return errors.Wrap(err, "failed to update foreign table")
+		}
+
+		queries.Assign(&related.ClaimID, o.ClaimID)
 	}
 
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"devices_api\".\"verifiable_credentials\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"claim_id"}),
-		strmangle.WhereClause("\"", "\"", 2, verifiableCredentialPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ClaimID, o.ClaimID}
-
-	if boil.IsDebug(ctx) {
-		writer := boil.DebugWriterFrom(ctx)
-		fmt.Fprintln(writer, updateQuery)
-		fmt.Fprintln(writer, values)
-	}
-	if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	queries.Assign(&o.ClaimID, related.ClaimID)
 	if o.R == nil {
 		o.R = &verifiableCredentialR{
-			Claim: related,
+			ClaimVehicleNFT: related,
 		}
 	} else {
-		o.R.Claim = related
+		o.R.ClaimVehicleNFT = related
 	}
 
 	if related.R == nil {
 		related.R = &vehicleNFTR{
-			ClaimVerifiableCredential: o,
+			Claim: o,
 		}
 	} else {
-		related.R.ClaimVerifiableCredential = o
+		related.R.Claim = o
 	}
+	return nil
+}
+
+// RemoveClaimVehicleNFT relationship.
+// Sets o.R.ClaimVehicleNFT to nil.
+// Removes o from all passed in related items' relationships struct.
+func (o *VerifiableCredential) RemoveClaimVehicleNFT(ctx context.Context, exec boil.ContextExecutor, related *VehicleNFT) error {
+	var err error
+
+	queries.SetScanner(&related.ClaimID, nil)
+	if _, err = related.Update(ctx, exec, boil.Whitelist("claim_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.ClaimVehicleNFT = nil
+	}
+
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	related.R.Claim = nil
 
 	return nil
 }

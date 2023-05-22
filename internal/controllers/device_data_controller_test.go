@@ -16,6 +16,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/middleware/owner"
+	"github.com/DIMO-Network/devices-api/internal/services"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
@@ -26,7 +27,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 const migrationsDirRelPath = "../../migrations"
@@ -59,12 +59,16 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 	autoPiIngest := mock_services.NewMockIngestRegistrar(mockCtrl)
 	deviceDefinitionIngest := mock_services.NewMockDeviceDefinitionRegistrar(mockCtrl)
 	autoPiTaskSvc := mock_services.NewMockAutoPiTaskService(mockCtrl)
-	drivlyTaskSvc := mock_services.NewMockDrivlyTaskService(mockCtrl)
+	natsSvc, natsServer, err := mock_services.NewMockNATSService(natsStreamName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer natsServer.Shutdown()
 
 	usersClient := test.UsersClient{}
 
 	testUserID := "123123"
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &logger, deviceDefSvc, deviceDefIntSvc, &fakeEventService{}, scClient, scTaskSvc, teslaSvc, teslaTaskService, nil, nil, nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, drivlyTaskSvc, nil, nil, nil, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &logger, deviceDefSvc, deviceDefIntSvc, &fakeEventService{}, scClient, scTaskSvc, teslaSvc, teslaTaskService, nil, nil, nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, nil, nil, nil, nil, natsSvc)
 	app := fiber.New()
 	app.Get("/user/devices/:userDeviceID/status", test.AuthInjectorTestHandler(testUserID), owner.New(pdb, &usersClient, &logger), c.GetUserDeviceStatus)
 
@@ -127,6 +131,7 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 		assert.Equal(t, 195677.59375, *snapshot.Odometer)
 		assert.Equal(t, 33.75, *snapshot.Latitude, "expected autopi latitude")
 		assert.Equal(t, -117.91, *snapshot.Longitude, "expected autopi longitude")
+		assert.Equal(t, "2023-04-27T15:57:37Z", snapshot.RecordUpdatedAt.Format(time.RFC3339))
 
 		//teardown
 		test.TruncateTables(pdb.DBS().Writer.DB, t)
@@ -205,6 +210,11 @@ func TestUserDevicesController_calculateRange(t *testing.T) {
 	ctx := context.Background()
 	deviceDefSvc := mock_services.NewMockDeviceDefinitionService(mockCtrl)
 
+	logger := zerolog.New(os.Stdout).With().
+		Timestamp().
+		Str("app", "devices-api").
+		Logger()
+
 	ddID := ksuid.New().String()
 	styleID := null.StringFrom(ksuid.New().String())
 	attrs := []*grpc.DeviceTypeAttribute{
@@ -223,7 +233,8 @@ func TestUserDevicesController_calculateRange(t *testing.T) {
 		DeviceAttributes:   attrs,
 	}, nil)
 
-	rge, err := calculateRange(ctx, deviceDefSvc, ddID, styleID, .70)
+	_ = NewUserDevicesController(&config.Settings{Port: "3000"}, nil, &logger, deviceDefSvc, nil, &fakeEventService{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	rge, err := calculateRange(ctx, deviceDefSvc, ddID, styleID, .7)
 	require.NoError(t, err)
 	require.NotNil(t, rge)
 	assert.Equal(t, 337.9614, *rge)
@@ -240,7 +251,6 @@ type deps struct {
 	autoPiIngest           *mock_services.MockIngestRegistrar
 	deviceDefinitionIngest *mock_services.MockDeviceDefinitionRegistrar
 	autoPiTaskSvc          *mock_services.MockAutoPiTaskService
-	drivlyTaskSvc          *mock_services.MockDrivlyTaskService
 	openAISvc              *mock_services.MockOpenAI
 	logger                 zerolog.Logger
 	mockCtrl               *gomock.Controller
@@ -261,7 +271,6 @@ func createMockDependencies(t *testing.T) deps {
 	autoPiIngest := mock_services.NewMockIngestRegistrar(mockCtrl)
 	deviceDefinitionIngest := mock_services.NewMockDeviceDefinitionRegistrar(mockCtrl)
 	autoPiTaskSvc := mock_services.NewMockAutoPiTaskService(mockCtrl)
-	drivlyTaskSvc := mock_services.NewMockDrivlyTaskService(mockCtrl)
 	openAISvc := mock_services.NewMockOpenAI(mockCtrl)
 	credentialSvc := mock_services.NewMockVCService(mockCtrl)
 
@@ -281,7 +290,6 @@ func createMockDependencies(t *testing.T) deps {
 		autoPiIngest:           autoPiIngest,
 		deviceDefinitionIngest: deviceDefinitionIngest,
 		autoPiTaskSvc:          autoPiTaskSvc,
-		drivlyTaskSvc:          drivlyTaskSvc,
 		openAISvc:              openAISvc,
 		logger:                 logger,
 		mockCtrl:               mockCtrl,
@@ -305,7 +313,7 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 	}()
 
 	testUserID := "123123"
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.nhtsaService, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, mockDeps.autoPiTaskSvc, nil, nil, mockDeps.drivlyTaskSvc, nil, nil, mockDeps.openAISvc, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.nhtsaService, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, mockDeps.autoPiTaskSvc, nil, nil, nil, nil, mockDeps.openAISvc, nil, nil)
 	app := fiber.New()
 	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID), c.QueryDeviceErrorCodes)
 
@@ -330,7 +338,13 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 			}, nil).
 			AnyTimes()
 
-		chatGptResp := "1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat."
+		chatGptResp := []services.ErrorCodesResponse{
+			{
+				Code:        "P0113",
+				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+			},
+		}
+
 		mockDeps.openAISvc.
 			EXPECT().
 			GetErrorCodesDescription(gomock.Eq("Toyota"), gomock.Eq("Camry"), gomock.Eq(req.ErrorCodes)).
@@ -343,9 +357,12 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 		response, _ := app.Test(request)
 		body, _ := io.ReadAll(response.Body)
 
+		chtJSON, err := json.Marshal(chatGptResp)
+		assert.NoError(t, err)
+
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 		assert.Equal(t,
-			fmt.Sprintf(`{"message":"%s"}`, chatGptResp),
+			fmt.Sprintf(`{"errorCodes":%s}`, chtJSON),
 			string(body),
 		)
 
@@ -355,7 +372,6 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 }
 
 func TestUserDevicesController_ShouldErrorOnTooManyErrorCodes(t *testing.T) {
-
 	mockDeps := createMockDependencies(t)
 	defer mockDeps.mockCtrl.Finish()
 
@@ -368,7 +384,7 @@ func TestUserDevicesController_ShouldErrorOnTooManyErrorCodes(t *testing.T) {
 	}()
 
 	testUserID := "123123"
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.nhtsaService, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, mockDeps.autoPiTaskSvc, nil, nil, mockDeps.drivlyTaskSvc, nil, nil, mockDeps.openAISvc, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.nhtsaService, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, mockDeps.autoPiTaskSvc, nil, nil, nil, nil, mockDeps.openAISvc, nil, nil)
 	app := fiber.New()
 	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID), c.QueryDeviceErrorCodes)
 
@@ -398,7 +414,12 @@ func TestUserDevicesController_ShouldErrorOnTooManyErrorCodes(t *testing.T) {
 			}, nil).
 			AnyTimes()
 
-		chatGptResp := "1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat."
+		chatGptResp := []services.ErrorCodesResponse{
+			{
+				Code:        "P0113",
+				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+			},
+		}
 		mockDeps.openAISvc.
 			EXPECT().
 			GetErrorCodesDescription(gomock.Eq("Toyota"), gomock.Eq("Camry"), gomock.Eq(req.ErrorCodes)).
@@ -436,7 +457,7 @@ func TestUserDevicesController_ShouldErrorInvalidErrorCodes(t *testing.T) {
 	}()
 
 	testUserID := "123123"
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.nhtsaService, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, mockDeps.autoPiTaskSvc, nil, nil, mockDeps.drivlyTaskSvc, nil, nil, mockDeps.openAISvc, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.nhtsaService, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, mockDeps.autoPiTaskSvc, nil, nil, nil, nil, mockDeps.openAISvc, nil, nil)
 	app := fiber.New()
 	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID), c.QueryDeviceErrorCodes)
 
@@ -462,7 +483,12 @@ func TestUserDevicesController_ShouldErrorInvalidErrorCodes(t *testing.T) {
 			}, nil).
 			AnyTimes()
 
-		chatGptResp := "1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat."
+		chatGptResp := []services.ErrorCodesResponse{
+			{
+				Code:        "P0113",
+				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+			},
+		}
 		mockDeps.openAISvc.
 			EXPECT().
 			GetErrorCodesDescription(gomock.Eq("Toyota"), gomock.Eq("Camry"), gomock.Eq(req.ErrorCodes)).
@@ -500,7 +526,7 @@ func TestUserDevicesController_ShouldErrorOnEmptyErrorCodes(t *testing.T) {
 	}()
 
 	testUserID := "123123"
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.nhtsaService, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, mockDeps.autoPiTaskSvc, nil, nil, mockDeps.drivlyTaskSvc, nil, nil, mockDeps.openAISvc, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.nhtsaService, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, mockDeps.autoPiTaskSvc, nil, nil, nil, nil, mockDeps.openAISvc, nil, nil)
 	app := fiber.New()
 	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID), c.QueryDeviceErrorCodes)
 
@@ -526,7 +552,12 @@ func TestUserDevicesController_ShouldErrorOnEmptyErrorCodes(t *testing.T) {
 			}, nil).
 			AnyTimes()
 
-		chatGptResp := "1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat."
+		chatGptResp := []services.ErrorCodesResponse{
+			{
+				Code:        "P0113",
+				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+			},
+		}
 		mockDeps.openAISvc.
 			EXPECT().
 			GetErrorCodesDescription(gomock.Eq("Toyota"), gomock.Eq("Camry"), gomock.Eq(req.ErrorCodes)).
@@ -564,7 +595,7 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 	}()
 
 	testUserID := "123123"
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.nhtsaService, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, mockDeps.autoPiTaskSvc, nil, nil, mockDeps.drivlyTaskSvc, nil, nil, mockDeps.openAISvc, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.nhtsaService, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, mockDeps.autoPiTaskSvc, nil, nil, nil, nil, mockDeps.openAISvc, nil, nil)
 	app := fiber.New()
 	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID), c.QueryDeviceErrorCodes)
 
@@ -590,7 +621,12 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 			}, nil).
 			AnyTimes()
 
-		chatGptResp := "1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat."
+		chatGptResp := []services.ErrorCodesResponse{
+			{
+				Code:        "P0113",
+				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+			},
+		}
 		mockDeps.openAISvc.
 			EXPECT().
 			GetErrorCodesDescription(gomock.Eq("Toyota"), gomock.Eq("Camry"), gomock.Eq(req.ErrorCodes)).
@@ -603,9 +639,12 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 		response, _ := app.Test(request)
 		body, _ := io.ReadAll(response.Body)
 
+		chtJSON, err := json.Marshal(chatGptResp)
+		assert.NoError(t, err)
+
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 		assert.Equal(t,
-			fmt.Sprintf(`{"message":"%s"}`, chatGptResp),
+			fmt.Sprintf(`{"errorCodes":%s}`, chtJSON),
 			string(body),
 		)
 
@@ -614,8 +653,11 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 		).One(ctx, pdb.DBS().Reader)
 		assert.NoError(t, err)
 
-		assert.Equal(t, errCodeResp.ErrorCodes, types.StringArray{"P0017", "P0016"})
-		assert.Equal(t, errCodeResp.QueryResponse, chatGptResp)
+		ddd := null.JSONFrom([]byte(
+			`[{"code": "P0113", "description": "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat."}]`,
+		))
+
+		assert.Equal(t, errCodeResp.CodesQueryResponse, ddd)
 
 		//teardown
 		test.TruncateTables(pdb.DBS().Writer.DB, t)
@@ -635,7 +677,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 	}()
 
 	testUserID := "123123"
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.nhtsaService, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, mockDeps.autoPiTaskSvc, nil, nil, mockDeps.drivlyTaskSvc, nil, nil, mockDeps.openAISvc, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.nhtsaService, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, mockDeps.autoPiTaskSvc, nil, nil, nil, nil, mockDeps.openAISvc, nil, nil)
 	app := fiber.New()
 	app.Get("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID), c.GetUserDeviceErrorCodeQueries)
 
@@ -645,18 +687,28 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
 		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
 
-		erCodes := []string{"P0017", "P0016"}
+		chatGptResp := []services.ErrorCodesResponse{
+			{
+				Code:        "P0017",
+				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+			},
+			{
+				Code:        "P0016",
+				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+			},
+		}
+		chtJSON, err := json.Marshal(chatGptResp)
+		assert.NoError(t, err)
 
 		currTime := time.Now().UTC().Truncate(time.Microsecond)
 		erCodeQuery := models.ErrorCodeQuery{
-			ID:            ksuid.New().String(),
-			UserDeviceID:  ud.ID,
-			ErrorCodes:    erCodes,
-			QueryResponse: "1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
-			CreatedAt:     currTime,
+			ID:                 ksuid.New().String(),
+			UserDeviceID:       ud.ID,
+			CodesQueryResponse: null.JSONFrom(chtJSON),
+			CreatedAt:          currTime,
 		}
 
-		err := erCodeQuery.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+		err = erCodeQuery.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 		assert.NoError(t, err)
 
 		request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/error-codes", ud.ID), "")
@@ -666,7 +718,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 
 		assert.JSONEq(t,
-			fmt.Sprintf(`{"queries":[{"errorCodes":["P0017","P0016"],"description":"1. P0113 - Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.", "requestedAt":"%s"}]}`, currTime.Format(time.RFC3339Nano)),
+			fmt.Sprintf(`{"queries":[{"errorCodes":%s, "requestedAt":"%s"}]}`, string(chtJSON), currTime.Format(time.RFC3339Nano)),
 			string(body),
 		)
 

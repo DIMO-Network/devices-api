@@ -175,3 +175,8 @@ type AutoPiCommandJob struct {
 	LastUpdated  *time.Time           `json:"lastUpdated"`
 	Result       *AutoPiCommandResult `json:"result,omitempty"`
 }
+
+type ValuationDecodeCommand struct {
+	VIN          string `json:"vin"`
+	UserDeviceID string `json:"userDeviceId"`
+}

@@ -3,12 +3,14 @@ package controllers
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"sort"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/segmentio/ksuid"
 
 	"github.com/DIMO-Network/devices-api/internal/appmetrics"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -16,7 +18,6 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
-	"github.com/segmentio/ksuid"
 	smartcar "github.com/smartcar/go-sdk"
 	"github.com/tidwall/gjson"
 	"github.com/volatiletech/null/v8"
@@ -30,7 +31,7 @@ type QueryDeviceErrorCodesReq struct {
 }
 
 type QueryDeviceErrorCodesResponse struct {
-	Message string `json:"message"`
+	ErrorCodes []services.ErrorCodesResponse `json:"errorCodes"`
 }
 
 type GetUserDeviceErrorCodeQueriesResponse struct {
@@ -38,9 +39,8 @@ type GetUserDeviceErrorCodeQueriesResponse struct {
 }
 
 type GetUserDeviceErrorCodeQueriesResponseItem struct {
-	Codes       []string  `json:"errorCodes"`
-	Description string    `json:"description"`
-	RequestedAt time.Time `json:"requestedAt"`
+	ErrorCodes  []services.ErrorCodesResponse `json:"errorCodes"`
+	RequestedAt time.Time                     `json:"requestedAt"`
 }
 
 func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDefinitionService, deviceData models.UserDeviceDatumSlice, deviceDefinitionID string, deviceStyleID null.String, privilegeIDs []int64) DeviceSnapshot {
@@ -220,12 +220,14 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 
 	deviceData, err := models.UserDeviceData(
 		models.UserDeviceDatumWhere.UserDeviceID.EQ(userDevice.ID),
+		models.UserDeviceDatumWhere.Signals.IsNotNull(),
+		models.UserDeviceDatumWhere.UpdatedAt.GT(time.Now().Add(-14*24*time.Hour)),
 	).All(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		return err
 	}
 
-	if len(deviceData) == 0 || !deviceData[0].Signals.Valid {
+	if len(deviceData) == 0 {
 		return fiber.NewError(fiber.StatusNotFound, "No status updates yet.")
 	}
 
@@ -304,7 +306,6 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
 
 	logger := helpers.GetLogger(c, udc.log)
-
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
 	).One(c.Context(), udc.DBS().Reader)
@@ -347,7 +348,13 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 		return err
 	}
 
-	q := &models.ErrorCodeQuery{ID: ksuid.New().String(), UserDeviceID: udi, ErrorCodes: req.ErrorCodes, QueryResponse: chtResp}
+	chtJSON, err := json.Marshal(chtResp)
+	if err != nil {
+		logger.Err(err).Interface("requestBody", req).Msg("Error occurred fetching description for error codes")
+		return fiber.NewError(fiber.StatusInternalServerError, "Error occurred fetching description for error codes")
+	}
+
+	q := &models.ErrorCodeQuery{ID: ksuid.New().String(), UserDeviceID: udi, CodesQueryResponse: null.JSONFrom(chtJSON)}
 	err = q.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
 
 	if err != nil {
@@ -356,7 +363,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(&QueryDeviceErrorCodesResponse{
-		Message: chtResp,
+		ErrorCodes: chtResp,
 	})
 }
 
@@ -386,9 +393,13 @@ func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) er
 	queries := []GetUserDeviceErrorCodeQueriesResponseItem{}
 
 	for _, erc := range userDevice.R.ErrorCodeQueries {
+		ercJSON := []services.ErrorCodesResponse{}
+		if err := erc.CodesQueryResponse.Unmarshal(&ercJSON); err != nil {
+			return err
+		}
+
 		queries = append(queries, GetUserDeviceErrorCodeQueriesResponseItem{
-			Codes:       erc.ErrorCodes,
-			Description: erc.QueryResponse,
+			ErrorCodes:  ercJSON,
 			RequestedAt: erc.CreatedAt,
 		})
 	}

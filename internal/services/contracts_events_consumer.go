@@ -200,6 +200,15 @@ func (c *ContractsEventsConsumer) handleVehicleTransfer(e *ContractEventData) er
 
 	defer tx.Rollback() //nolint
 
+	rowsAff, err := models.NFTPrivileges(
+		models.NFTPrivilegeWhere.TokenID.EQ(types.Decimal(tkID)),
+	).DeleteAll(ctx, tx)
+	if err != nil {
+		return err
+	}
+
+	c.log.Info().Str("tokenId", tkID.String()).Msgf("Cleared %d privileges upon vehicle transfer.", rowsAff)
+
 	nft, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.TokenID.EQ(tkID),
 		qm.Load(models.VehicleNFTRels.UserDevice),
