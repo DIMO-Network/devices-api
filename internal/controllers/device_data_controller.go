@@ -304,15 +304,14 @@ var errorCodeRegex = regexp.MustCompile(`^.{5,8}$`)
 // @Param       userDeviceID path string true "user device id"
 // @Param       queryDeviceErrorCodes body controllers.QueryDeviceErrorCodesReq true "error codes"
 // @Success     200 {object} controllers.QueryDeviceErrorCodesResponse
+// @Failure     404 {object} helpers.ErrorRes "Vehicle not found"
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/error-codes [post]
 func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
 
 	logger := helpers.GetLogger(c, udc.log)
-	ud, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(udi),
-	).One(c.Context(), udc.DBS().Reader)
+	ud, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi)).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return fiber.NewError(fiber.StatusNotFound, "No device with that id found.")
@@ -376,6 +375,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 // @Tags        error-codes
 // @Param       userDeviceID path string true "user device id"
 // @Success     200 {object} controllers.GetUserDeviceErrorCodeQueriesResponse
+// @Failure     404 {object} helpers.ErrorRes "Vehicle not found"
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/error-codes [get]
 func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) error {
@@ -419,6 +419,8 @@ func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) er
 // @Summary     Mark the most recent set of error codes as having been cleared.
 // @Tags        error-codes
 // @Success     200 {object} controllers.QueryDeviceErrorCodesResponse
+// @Failure     429 {object} helpers.ErrorRes "Last query already cleared"
+// @Failure     404 {object} helpers.ErrorRes "Vehicle not found"
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/error-codes/clear [post]
 func (udc *UserDevicesController) ClearUserDeviceErrorCodeQuery(c *fiber.Ctx) error {

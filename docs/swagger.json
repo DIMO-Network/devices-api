@@ -1378,6 +1378,12 @@
                         "schema": {
                             "$ref": "#/definitions/internal_controllers.GetUserDeviceErrorCodeQueriesResponse"
                         }
+                    },
+                    "404": {
+                        "description": "Vehicle not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
+                        }
                     }
                 }
             },
@@ -1415,6 +1421,12 @@
                         "schema": {
                             "$ref": "#/definitions/internal_controllers.QueryDeviceErrorCodesResponse"
                         }
+                    },
+                    "404": {
+                        "description": "Vehicle not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
+                        }
                     }
                 }
             }
@@ -1435,6 +1447,18 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/internal_controllers.QueryDeviceErrorCodesResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vehicle not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
+                        }
+                    },
+                    "429": {
+                        "description": "Last query already cleared",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
                         }
                     }
                 }
@@ -2389,6 +2413,17 @@
             "type": "object",
             "properties": {
                 "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "message": {
                     "type": "string"
                 }
             }
