@@ -42,7 +42,7 @@ type GetUserDeviceErrorCodeQueriesResponse struct {
 type GetUserDeviceErrorCodeQueriesResponseItem struct {
 	ErrorCodes  []services.ErrorCodesResponse `json:"errorCodes"`
 	RequestedAt time.Time                     `json:"requestedAt"`
-	ClearedAt   *time.Time                    `json:"clearedAt,omitempty"`
+	ClearedAt   *time.Time                    `json:"clearedAt"`
 }
 
 func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDefinitionService, deviceData models.UserDeviceDatumSlice, deviceDefinitionID string, deviceStyleID null.String, privilegeIDs []int64) DeviceSnapshot {
@@ -403,11 +403,8 @@ func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) er
 		userDeviceresp := GetUserDeviceErrorCodeQueriesResponseItem{
 			ErrorCodes:  ercJSON,
 			RequestedAt: erc.CreatedAt,
+			ClearedAt:   erc.ClearedAt.Ptr(),
 		}
-
-		/* if !erc.ClearedAt.Valid {
-			userDeviceresp.ClearedAt =
-		} */
 
 		queries = append(queries, userDeviceresp)
 	}
@@ -433,7 +430,7 @@ func (udc *UserDevicesController) ClearUserDeviceErrorCodeQuery(c *fiber.Ctx) er
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		logger.Err(err).Msg("error occurred when fetching error codes for device")
-		return fiber.NewError(fiber.StatusInternalServerError, "error occurred fetching device error queries")
+		return fiber.NewError(fiber.StatusBadRequest, "error occurred fetching device error queries")
 	}
 
 	if errCodeQuery.ClearedAt.Valid {

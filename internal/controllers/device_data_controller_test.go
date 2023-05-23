@@ -718,8 +718,21 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 
+		resp := GetUserDeviceErrorCodeQueriesResponse{
+			Queries: []GetUserDeviceErrorCodeQueriesResponseItem{
+				{
+					ErrorCodes:  chatGptResp,
+					RequestedAt: currTime,
+					ClearedAt:   erCodeQuery.ClearedAt.Ptr(),
+				},
+			},
+		}
+
+		expectedBody, err := json.Marshal(resp)
+		assert.NoError(t, err)
+
 		assert.JSONEq(t,
-			fmt.Sprintf(`{"queries":[{"errorCodes":%s, "requestedAt":"%s"}]}`, string(chtJSON), currTime.Format(time.RFC3339Nano)),
+			string(expectedBody),
 			string(body),
 		)
 
