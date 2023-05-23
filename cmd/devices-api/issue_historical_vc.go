@@ -30,7 +30,7 @@ func (*issueHistorialCredentialCmd) Usage() string {
 }
 
 // nolint
-func (p *issueHistorialCredentialCmd) SetFlags(f *flag.FlagSet) {
+func (hcmd *issueHistorialCredentialCmd) SetFlags(f *flag.FlagSet) {
 
 }
 
