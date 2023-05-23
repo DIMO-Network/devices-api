@@ -16,6 +16,6 @@ ALTER TABLE vehicle_nfts ADD COLUMN claim_id varchar
 -- +goose StatementBegin
 SET search_path = devices_api, public;
 
-DROP TABLE verifiable_credentials;
 ALTER TABLE vehicle_nfts DROP COLUMN claim_id;
+DROP TABLE verifiable_credentials;
 -- +goose StatementEnd

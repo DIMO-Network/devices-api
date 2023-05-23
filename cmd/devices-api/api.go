@@ -176,7 +176,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// vehicle command privileges
 	vPriv.Get("/status", tk.OneOf(vehicleAddr, []int64{controllers.NonLocationData, controllers.CurrentLocation, controllers.AllTimeLocation}), nftController.GetVehicleStatus)
-	vPriv.Get("/vin-credential", tk.OneOf(vehicleAddr, []int64{controllers.VinCredential}), nftController.GetVinCredential)
+	if !settings.IsProduction() {
+		vPriv.Get("/vin-credential", tk.OneOf(vehicleAddr, []int64{controllers.VinCredential}), nftController.GetVinCredential)
+	}
 	vPriv.Post("/commands/doors/unlock", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.UnlockDoors)
 	vPriv.Post("/commands/doors/lock", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.LockDoors)
 	vPriv.Post("/commands/trunk/open", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.OpenTrunk)
