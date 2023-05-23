@@ -725,5 +725,6 @@ func (nc *NFTController) GetVinCredential(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Credential associated with NFT not found.")
 	}
 
+	c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 	return c.Send(nft.R.Claim.Credential)
 }
