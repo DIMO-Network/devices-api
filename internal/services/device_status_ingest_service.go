@@ -17,6 +17,7 @@ import (
 	"github.com/DIMO-Network/shared/db"
 	"github.com/gofiber/fiber/v2"
 	"github.com/lovoo/goka"
+	gocache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
@@ -37,6 +38,7 @@ type DeviceStatusIngestService struct {
 	deviceDefSvc DeviceDefinitionService
 	integrations []*grpc.Integration
 	autoPiSvc    AutoPiAPIService
+	memoryCache  *gocache.Cache
 }
 
 func NewDeviceStatusIngestService(db func() *db.ReaderWriter, log *zerolog.Logger, eventService EventService, ddSvc DeviceDefinitionService, autoPiSvc AutoPiAPIService) *DeviceStatusIngestService {
@@ -45,6 +47,7 @@ func NewDeviceStatusIngestService(db func() *db.ReaderWriter, log *zerolog.Logge
 	if err != nil {
 		log.Fatal().Err(err).Msg("Couldn't retrieve global integration list.")
 	}
+	c := gocache.New(30*time.Minute, 60*time.Minute) // band-aid on top of band-aids
 
 	return &DeviceStatusIngestService{
 		db:           db,
@@ -53,6 +56,7 @@ func NewDeviceStatusIngestService(db func() *db.ReaderWriter, log *zerolog.Logge
 		eventService: eventService,
 		integrations: integrations,
 		autoPiSvc:    autoPiSvc,
+		memoryCache:  c,
 	}
 }
 
@@ -94,19 +98,28 @@ func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *Devi
 		return err
 	}
 
-	device, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(
-			models.UserDeviceRels.UserDeviceAPIIntegrations,
-			models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integration.Id),
-		),
-		qm.Load(
-			models.UserDeviceRels.UserDeviceData,
-			models.UserDeviceDatumWhere.IntegrationID.EQ(integration.Id),
-		),
-	).One(ctx, i.db().Reader)
-	if err != nil {
-		return fmt.Errorf("failed to find device: %w", err)
+	device := &models.UserDevice{}
+	get, found := i.memoryCache.Get(userDeviceID + "_" + integration.Id)
+
+	if found {
+		device = get.(*models.UserDevice)
+	} else {
+		device, err = models.UserDevices(
+			models.UserDeviceWhere.ID.EQ(userDeviceID),
+			qm.Load(
+				models.UserDeviceRels.UserDeviceAPIIntegrations,
+				models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integration.Id),
+			),
+			qm.Load(
+				models.UserDeviceRels.UserDeviceData,
+				models.UserDeviceDatumWhere.IntegrationID.EQ(integration.Id),
+			),
+		).One(ctx, i.db().Reader)
+
+		if err != nil {
+			return fmt.Errorf("failed to find device: %w", err)
+		}
+		i.memoryCache.Set(userDeviceID+"_"+integration.Id, device, 30*time.Minute)
 	}
 
 	i.vinFraudMonitor(ctxGk, event, device)
@@ -140,6 +153,7 @@ func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *Devi
 				return fmt.Errorf("failed to update status when calling autopi api for deviceId: %s", apiIntegration.ExternalID.String)
 			}
 		}
+		i.memoryCache.Delete(userDeviceID + "_" + integration.Id)
 	}
 
 	// Null for most AutoPis.
@@ -165,6 +179,7 @@ func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *Devi
 	} else {
 		// Insert a new record.
 		datum = &models.UserDeviceDatum{UserDeviceID: userDeviceID, IntegrationID: integration.Id}
+		i.memoryCache.Delete(userDeviceID + "_" + integration.Id)
 	}
 
 	i.processOdometer(datum, newOdometer, device, dd, integration.Id)
