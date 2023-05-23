@@ -27,12 +27,12 @@ import (
 )
 
 type QueryDeviceErrorCodesReq struct {
-	ErrorCodes []string `json:"errorCodes"`
+	ErrorCodes []string `json:"errorCodes" example:"P0106,P0279"`
 }
 
 type QueryDeviceErrorCodesResponse struct {
-	ClearedAt  *time.Time                    `json:"clearedAt,omitempty"`
 	ErrorCodes []services.ErrorCodesResponse `json:"errorCodes"`
+	ClearedAt  *time.Time                    `json:"clearedAt"`
 }
 
 type GetUserDeviceErrorCodeQueriesResponse struct {
@@ -41,8 +41,10 @@ type GetUserDeviceErrorCodeQueriesResponse struct {
 
 type GetUserDeviceErrorCodeQueriesResponseItem struct {
 	ErrorCodes  []services.ErrorCodesResponse `json:"errorCodes"`
-	RequestedAt time.Time                     `json:"requestedAt"`
-	ClearedAt   *time.Time                    `json:"clearedAt"`
+	RequestedAt time.Time                     `json:"requestedAt" example:"2023-05-23T12:56:36Z"`
+	// ClearedAt is the time at which the user cleared the codes from this query.
+	// May be null.
+	ClearedAt *time.Time `json:"clearedAt" example:"2023-05-23T12:57:05Z"`
 }
 
 func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDefinitionService, deviceData models.UserDeviceDatumSlice, deviceDefinitionID string, deviceStyleID null.String, privilegeIDs []int64) DeviceSnapshot {
@@ -297,9 +299,9 @@ func (udc *UserDevicesController) RefreshUserDeviceStatus(c *fiber.Ctx) error {
 var errorCodeRegex = regexp.MustCompile(`^.{5,8}$`)
 
 // QueryDeviceErrorCodes godoc
-// @Description Queries chatgpt for user device error codes
-// @Tags        user-devices
-// @Param       user_device_id path string true "user device ID"
+// @Summary     Obtain, store, and return descriptions for a list of error codes from this vehicle.
+// @Tags        error-codes
+// @Param       userDeviceID path string true "user device id"
 // @Param       queryDeviceErrorCodes body controllers.QueryDeviceErrorCodesReq true "error codes"
 // @Success     200 {object} controllers.QueryDeviceErrorCodesResponse
 // @Security    BearerAuth
@@ -370,8 +372,9 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 }
 
 // GetUserDeviceErrorCodeQueries godoc
-// @Description Returns all error codes queries for user devices
-// @Tags        user-devices
+// @Summary List all error code queries made for this vehicle.
+// @Tags        error-codes
+// @Param       userDeviceID path string true "user device id"
 // @Success     200 {object} controllers.GetUserDeviceErrorCodeQueriesResponse
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/error-codes [get]
@@ -413,8 +416,8 @@ func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) er
 }
 
 // ClearUserDeviceErrorCodeQuery godoc
-// @Description Clear user device error codes
-// @Tags        user-devices
+// @Summary     Mark the most recent set of error codes as having been cleared.
+// @Tags        error-codes
 // @Success     200 {object} controllers.QueryDeviceErrorCodesResponse
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/error-codes/clear [post]

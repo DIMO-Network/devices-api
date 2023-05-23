@@ -202,8 +202,10 @@ definitions:
   github_com_DIMO-Network_devices-api_internal_services.ErrorCodesResponse:
     properties:
       code:
+        example: P0148
         type: string
       description:
+        example: Fuel delivery error
         type: string
     type: object
   github_com_DIMO-Network_devices-api_internal_services.PowertrainType:
@@ -561,12 +563,17 @@ definitions:
   internal_controllers.GetUserDeviceErrorCodeQueriesResponseItem:
     properties:
       clearedAt:
+        description: |-
+          ClearedAt is the time at which the user cleared the codes from this query.
+          May be null.
+        example: "2023-05-23T12:57:05Z"
         type: string
       errorCodes:
         items:
           $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.ErrorCodesResponse'
         type: array
       requestedAt:
+        example: "2023-05-23T12:56:36Z"
         type: string
     type: object
   internal_controllers.GetUserDeviceIntegrationResponse:
@@ -737,6 +744,9 @@ definitions:
   internal_controllers.QueryDeviceErrorCodesReq:
     properties:
       errorCodes:
+        example:
+        - P0106
+        - P0279
         items:
           type: string
         type: array
@@ -1758,7 +1768,12 @@ paths:
       - user-devices
   /user/devices/{userDeviceID}/error-codes:
     get:
-      description: Returns all error codes queries for user devices
+      parameters:
+      - description: user device id
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
       responses:
         "200":
           description: OK
@@ -1766,14 +1781,14 @@ paths:
             $ref: '#/definitions/internal_controllers.GetUserDeviceErrorCodeQueriesResponse'
       security:
       - BearerAuth: []
+      summary: List all error code queries made for this vehicle.
       tags:
-      - user-devices
+      - error-codes
     post:
-      description: Queries chatgpt for user device error codes
       parameters:
-      - description: user device ID
+      - description: user device id
         in: path
-        name: user_device_id
+        name: userDeviceID
         required: true
         type: string
       - description: error codes
@@ -1789,11 +1804,12 @@ paths:
             $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesResponse'
       security:
       - BearerAuth: []
+      summary: Obtain, store, and return descriptions for a list of error codes from
+        this vehicle.
       tags:
-      - user-devices
+      - error-codes
   /user/devices/{userDeviceID}/error-codes/clear:
     post:
-      description: Clear user device error codes
       responses:
         "200":
           description: OK
@@ -1801,8 +1817,9 @@ paths:
             $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesResponse'
       security:
       - BearerAuth: []
+      summary: Mark the most recent set of error codes as having been cleared.
       tags:
-      - user-devices
+      - error-codes
   /user/devices/{userDeviceID}/image:
     patch:
       consumes:
