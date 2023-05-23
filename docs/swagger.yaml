@@ -2508,6 +2508,27 @@ paths:
           description: Not Found
       tags:
       - permission
+  /vehicle/{tokenId}/vin-credential:
+    get:
+      description: Returns the vin credential for the vehicle with a given token id.
+      parameters:
+      - description: token id
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+      tags:
+      - permission
 securityDefinitions:
   BearerAuth:
     in: header
