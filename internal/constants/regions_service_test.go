@@ -26,6 +26,19 @@ func TestFindRegionForCountry(t *testing.T) {
 			},
 		},
 		{
+			name:        "find existing country",
+			countryCode: "UKR",
+			want: &CountryInfo{
+				Name:          "Ukraine",
+				Alpha3:        "UKR",
+				Alpha2:        "UA",
+				Region:        "Europe",
+				SubRegion:     "Eastern Europe",
+				RegionCode:    150,
+				SubRegionCode: 151,
+			},
+		},
+		{
 			name:        "non existing country returns nil",
 			countryCode: "CAC",
 			want:        nil,

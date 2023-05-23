@@ -359,8 +359,8 @@
     "region": "Europe",
     "sub_region": "Eastern Europe",
     "intermediate_region": "",
-    "region_code": "150",
-    "sub_region_code": "151",
+    "region_code": 150,
+    "sub_region_code": 151,
     "intermediate_region_code": ""
   },
   {

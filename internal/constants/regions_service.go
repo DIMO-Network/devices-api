@@ -14,7 +14,7 @@ var countriesJSON string
 
 // FindCountry finds country by 3 digit country code and returns info including region. returns nil if nothing found
 func FindCountry(countryCode string) *CountryInfo {
-	countryCode = strings.ToUpper(countryCode)
+	countryCode = strings.TrimSpace(strings.ToUpper(countryCode))
 	cj := gjson.Get(countriesJSON, fmt.Sprintf("#(alpha_3==%q)", countryCode))
 	if !cj.Exists() {
 		return nil
@@ -23,6 +23,7 @@ func FindCountry(countryCode string) *CountryInfo {
 
 	err := json.Unmarshal([]byte(cj.String()), c)
 	if err != nil {
+		fmt.Printf(`"level":"error", "message":"%s"\n`, err.Error())
 		return nil
 	}
 	return c
