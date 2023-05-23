@@ -1410,6 +1410,27 @@
                 }
             }
         },
+        "/user/devices/{userDeviceID}/error-codes/clear": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Clear user device error codes",
+                "tags": [
+                    "user-devices"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.QueryDeviceErrorCodesResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/user/devices/{userDeviceID}/image": {
             "patch": {
                 "security": [
@@ -2590,6 +2611,17 @@
                 }
             }
         },
+        "github_com_DIMO-Network_devices-api_internal_services.ErrorCodesResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_DIMO-Network_devices-api_internal_services.PowertrainType": {
             "type": "string",
             "enum": [
@@ -3092,13 +3124,13 @@
         "internal_controllers.GetUserDeviceErrorCodeQueriesResponseItem": {
             "type": "object",
             "properties": {
-                "description": {
+                "clearedAt": {
                     "type": "string"
                 },
                 "errorCodes": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_services.ErrorCodesResponse"
                     }
                 },
                 "requestedAt": {
@@ -3343,8 +3375,14 @@
         "internal_controllers.QueryDeviceErrorCodesResponse": {
             "type": "object",
             "properties": {
-                "message": {
+                "clearedAt": {
                     "type": "string"
+                },
+                "errorCodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_services.ErrorCodesResponse"
+                    }
                 }
             }
         },

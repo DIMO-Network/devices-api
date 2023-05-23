@@ -199,6 +199,13 @@ definitions:
         description: VehicleType PASSENGER CAR, from NHTSA
         type: string
     type: object
+  github_com_DIMO-Network_devices-api_internal_services.ErrorCodesResponse:
+    properties:
+      code:
+        type: string
+      description:
+        type: string
+    type: object
   github_com_DIMO-Network_devices-api_internal_services.PowertrainType:
     enum:
     - ICE
@@ -553,11 +560,11 @@ definitions:
     type: object
   internal_controllers.GetUserDeviceErrorCodeQueriesResponseItem:
     properties:
-      description:
+      clearedAt:
         type: string
       errorCodes:
         items:
-          type: string
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.ErrorCodesResponse'
         type: array
       requestedAt:
         type: string
@@ -736,8 +743,12 @@ definitions:
     type: object
   internal_controllers.QueryDeviceErrorCodesResponse:
     properties:
-      message:
+      clearedAt:
         type: string
+      errorCodes:
+        items:
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.ErrorCodesResponse'
+        type: array
     type: object
   internal_controllers.RangeSet:
     properties:
@@ -1771,6 +1782,18 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesReq'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesResponse'
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/{userDeviceID}/error-codes/clear:
+    post:
+      description: Clear user device error codes
       responses:
         "200":
           description: OK
