@@ -52,8 +52,8 @@ type ChatGPTResponse struct {
 }
 
 type ErrorCodesResponse struct {
-	Code        string `json:"code"`
-	Description string `json:"description"`
+	Code        string `json:"code" example:"P0148"`
+	Description string `json:"description" example:"Fuel delivery error"`
 }
 
 func NewOpenAI(logger *zerolog.Logger, c config.Settings) OpenAI {

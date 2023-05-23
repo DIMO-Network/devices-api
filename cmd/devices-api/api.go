@@ -250,6 +250,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	udOwner.Post("/error-codes", userDeviceController.QueryDeviceErrorCodes)
 	udOwner.Get("/error-codes", userDeviceController.GetUserDeviceErrorCodeQueries)
+	udOwner.Post("/error-codes/clear", userDeviceController.ClearUserDeviceErrorCodeQuery)
 
 	// New-style NFT mint, claim, pair.
 	udOwner.Post("/commands/update-nft-image", userDeviceController.UpdateNFTImage)

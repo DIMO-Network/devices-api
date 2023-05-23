@@ -1359,15 +1359,30 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns all error codes queries for user devices",
                 "tags": [
-                    "user-devices"
+                    "error-codes"
+                ],
+                "summary": "List all error code queries made for this vehicle.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "user device id",
+                        "name": "userDeviceID",
+                        "in": "path",
+                        "required": true
+                    }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/internal_controllers.GetUserDeviceErrorCodeQueriesResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vehicle not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
                         }
                     }
                 }
@@ -1378,15 +1393,15 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Queries chatgpt for user device error codes",
                 "tags": [
-                    "user-devices"
+                    "error-codes"
                 ],
+                "summary": "Obtain, store, and return descriptions for a list of error codes from this vehicle.",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "user device ID",
-                        "name": "user_device_id",
+                        "description": "user device id",
+                        "name": "userDeviceID",
                         "in": "path",
                         "required": true
                     },
@@ -1405,6 +1420,45 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/internal_controllers.QueryDeviceErrorCodesResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vehicle not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/devices/{userDeviceID}/error-codes/clear": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "error-codes"
+                ],
+                "summary": "Mark the most recent set of error codes as having been cleared.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.QueryDeviceErrorCodesResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vehicle not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
+                        }
+                    },
+                    "429": {
+                        "description": "Last query already cleared",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
                         }
                     }
                 }
@@ -2395,6 +2449,17 @@
                 }
             }
         },
+        "github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_DIMO-Network_devices-api_internal_services.AutoPiCommandJob": {
             "type": "object",
             "properties": {
@@ -2626,10 +2691,12 @@
             "type": "object",
             "properties": {
                 "code": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "P0148"
                 },
                 "description": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Fuel delivery error"
                 }
             }
         },
@@ -3135,6 +3202,11 @@
         "internal_controllers.GetUserDeviceErrorCodeQueriesResponseItem": {
             "type": "object",
             "properties": {
+                "clearedAt": {
+                    "description": "ClearedAt is the time at which the user cleared the codes from this query.\nMay be null.",
+                    "type": "string",
+                    "example": "2023-05-23T12:57:05Z"
+                },
                 "errorCodes": {
                     "type": "array",
                     "items": {
@@ -3142,7 +3214,8 @@
                     }
                 },
                 "requestedAt": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2023-05-23T12:56:36Z"
                 }
             }
         },
@@ -3376,13 +3449,20 @@
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "example": [
+                        "P0106",
+                        "P0279"
+                    ]
                 }
             }
         },
         "internal_controllers.QueryDeviceErrorCodesResponse": {
             "type": "object",
             "properties": {
+                "clearedAt": {
+                    "type": "string"
+                },
                 "errorCodes": {
                     "type": "array",
                     "items": {

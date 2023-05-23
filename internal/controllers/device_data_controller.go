@@ -27,11 +27,12 @@ import (
 )
 
 type QueryDeviceErrorCodesReq struct {
-	ErrorCodes []string `json:"errorCodes"`
+	ErrorCodes []string `json:"errorCodes" example:"P0106,P0279"`
 }
 
 type QueryDeviceErrorCodesResponse struct {
 	ErrorCodes []services.ErrorCodesResponse `json:"errorCodes"`
+	ClearedAt  *time.Time                    `json:"clearedAt"`
 }
 
 type GetUserDeviceErrorCodeQueriesResponse struct {
@@ -40,7 +41,10 @@ type GetUserDeviceErrorCodeQueriesResponse struct {
 
 type GetUserDeviceErrorCodeQueriesResponseItem struct {
 	ErrorCodes  []services.ErrorCodesResponse `json:"errorCodes"`
-	RequestedAt time.Time                     `json:"requestedAt"`
+	RequestedAt time.Time                     `json:"requestedAt" example:"2023-05-23T12:56:36Z"`
+	// ClearedAt is the time at which the user cleared the codes from this query.
+	// May be null.
+	ClearedAt *time.Time `json:"clearedAt" example:"2023-05-23T12:57:05Z"`
 }
 
 func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDefinitionService, deviceData models.UserDeviceDatumSlice, deviceDefinitionID string, deviceStyleID null.String, privilegeIDs []int64) DeviceSnapshot {
@@ -295,20 +299,19 @@ func (udc *UserDevicesController) RefreshUserDeviceStatus(c *fiber.Ctx) error {
 var errorCodeRegex = regexp.MustCompile(`^.{5,8}$`)
 
 // QueryDeviceErrorCodes godoc
-// @Description Queries chatgpt for user device error codes
-// @Tags        user-devices
-// @Param       user_device_id path string true "user device ID"
+// @Summary     Obtain, store, and return descriptions for a list of error codes from this vehicle.
+// @Tags        error-codes
+// @Param       userDeviceID path string true "user device id"
 // @Param       queryDeviceErrorCodes body controllers.QueryDeviceErrorCodesReq true "error codes"
 // @Success     200 {object} controllers.QueryDeviceErrorCodesResponse
+// @Failure     404 {object} helpers.ErrorRes "Vehicle not found"
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/error-codes [post]
 func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
 
 	logger := helpers.GetLogger(c, udc.log)
-	ud, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(udi),
-	).One(c.Context(), udc.DBS().Reader)
+	ud, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi)).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return fiber.NewError(fiber.StatusNotFound, "No device with that id found.")
@@ -368,9 +371,11 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 }
 
 // GetUserDeviceErrorCodeQueries godoc
-// @Description Returns all error codes queries for user devices
-// @Tags        user-devices
+// @Summary List all error code queries made for this vehicle.
+// @Tags        error-codes
+// @Param       userDeviceID path string true "user device id"
 // @Success     200 {object} controllers.GetUserDeviceErrorCodeQueriesResponse
+// @Failure     404 {object} helpers.ErrorRes "Vehicle not found"
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/error-codes [get]
 func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) error {
@@ -398,13 +403,59 @@ func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) er
 			return err
 		}
 
-		queries = append(queries, GetUserDeviceErrorCodeQueriesResponseItem{
+		userDeviceresp := GetUserDeviceErrorCodeQueriesResponseItem{
 			ErrorCodes:  ercJSON,
 			RequestedAt: erc.CreatedAt,
-		})
+			ClearedAt:   erc.ClearedAt.Ptr(),
+		}
+
+		queries = append(queries, userDeviceresp)
 	}
 
 	return c.JSON(GetUserDeviceErrorCodeQueriesResponse{Queries: queries})
+}
+
+// ClearUserDeviceErrorCodeQuery godoc
+// @Summary     Mark the most recent set of error codes as having been cleared.
+// @Tags        error-codes
+// @Success     200 {object} controllers.QueryDeviceErrorCodesResponse
+// @Failure     429 {object} helpers.ErrorRes "Last query already cleared"
+// @Failure     404 {object} helpers.ErrorRes "Vehicle not found"
+// @Security    BearerAuth
+// @Router      /user/devices/{userDeviceID}/error-codes/clear [post]
+func (udc *UserDevicesController) ClearUserDeviceErrorCodeQuery(c *fiber.Ctx) error {
+	udi := c.Params("userDeviceID")
+
+	logger := helpers.GetLogger(c, udc.log)
+
+	errCodeQuery, err := models.ErrorCodeQueries(
+		models.ErrorCodeQueryWhere.UserDeviceID.EQ(udi),
+		qm.OrderBy(models.ErrorCodeQueryColumns.CreatedAt+" DESC"),
+		qm.Limit(1),
+	).One(c.Context(), udc.DBS().Reader)
+	if err != nil {
+		logger.Err(err).Msg("error occurred when fetching error codes for device")
+		return fiber.NewError(fiber.StatusBadRequest, "error occurred fetching device error queries")
+	}
+
+	if errCodeQuery.ClearedAt.Valid {
+		return fiber.NewError(fiber.StatusBadRequest, "all error codes already cleared")
+	}
+
+	errCodeQuery.ClearedAt = null.TimeFrom(time.Now().UTC().Truncate(time.Microsecond))
+	if _, err = errCodeQuery.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.ErrorCodeQueryColumns.ClearedAt)); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "error occurred updating device error queries")
+	}
+
+	errorCodeResp := []services.ErrorCodesResponse{}
+	if err := errCodeQuery.CodesQueryResponse.Unmarshal(&errorCodeResp); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "error occurred updating device error queries")
+	}
+
+	return c.JSON(&QueryDeviceErrorCodesResponse{
+		ErrorCodes: errorCodeResp,
+		ClearedAt:  &errCodeQuery.ClearedAt.Time,
+	})
 }
 
 // DeviceSnapshot is the response object for device status endpoint
