@@ -271,6 +271,56 @@ func (nc *NFTController) GetIntegrationNFTMetadata(c *fiber.Ctx) error {
 	})
 }
 
+// GetIntegrationNFTMetadata godoc
+// @Description gets the payload for to mint virtual device given an integration token ID
+// @Tags        integrations
+// @Produce     json
+// @Success     200 {array} controllers.GetVirtualDeviceMintingPayloadResponse
+// @Router      /integration/:tokenID/mint-virtual-device [get]
+func (nc *NFTController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) error {
+	tokenID := c.Params("tokenID")
+
+	uTokenID, err := strconv.ParseUint(tokenID, 10, 64)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid tokenID provided")
+	}
+
+	integration, err := nc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), uTokenID)
+	if err != nil {
+		return helpers.GrpcErrorToFiber(err, "failed to get integration")
+	}
+
+	return c.JSON(NFTMetadataResp{
+		Name:        integration.Vendor,
+		Description: fmt.Sprintf("%s, a DIMO integration", integration.Vendor),
+		Attributes:  []NFTAttribute{},
+	})
+}
+
+type GetVirtualDeviceMintingPayloadResponse struct {
+	Types struct {
+		EIP712Domain []struct {
+			Name string `json:"name"`
+			Type string `json:"type"`
+		} `json:"EIP712Domain"`
+		MintVirtualDeviceSign []struct {
+			Name string `json:"name"`
+			Type string `json:"type"`
+		} `json:"MintVirtualDeviceSign"`
+	} `json:"types"`
+	PrimaryType string `json:"name"`
+	Domain      struct {
+		Name              string         `json:"name"`
+		Version           string         `json:"version"`
+		ChainID           string         `json:"chainId"`
+		VerifyingContract common.Address `json:"verifyingContract"`
+	}
+	Message struct {
+		IntegrationNode string `json:"integrationNode"`
+		VehicleNode     string `json:"vehicleNode"`
+	}
+}
+
 type NFTMetadataResp struct {
 	Name        string         `json:"name,omitempty"`
 	Description string         `json:"description,omitempty"`

@@ -155,6 +155,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1.Get("/dcn/:nodeID", nftController.GetDcnNFTMetadata)
 	v1.Get("/dcn/:nodeID/image", nftController.GetDCNNFTImage)
 	v1.Get("/integration/:tokenID", nftController.GetIntegrationNFTMetadata)
+	v1.Get("/integration/:tokenID/mint-virtual-device", nftController.GetVirtualDeviceMintingPayload)
 	// webhooks, performs signature validation
 	v1.Post(constants.AutoPiWebhookPath, webhooksController.ProcessCommand)
 
