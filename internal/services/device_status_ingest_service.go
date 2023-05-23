@@ -89,6 +89,7 @@ func (i *DeviceStatusIngestService) processMessage(ctx goka.Context, event *Devi
 
 var userDeviceDataPrimaryKeyColumns = []string{models.UserDeviceDatumColumns.UserDeviceID, models.UserDeviceDatumColumns.IntegrationID}
 
+// processEvent handles the device data status update so we have a latest snapshot. This should all be refactored to device data api.
 func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *DeviceStatusEvent) error {
 	ctx := context.Background()
 	userDeviceID := event.Subject
@@ -122,7 +123,7 @@ func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *Devi
 		i.memoryCache.Set(userDeviceID+"_"+integration.Id, device, 30*time.Minute)
 	}
 
-	i.vinFraudMonitor(ctxGk, event, device)
+	i.vinFraudMonitor(ctxGk, event, device) // techdebt: we could get rid of this - nobody using it
 
 	if len(device.R.UserDeviceAPIIntegrations) == 0 {
 		return fmt.Errorf("can't find API integration for device %s and integration %s", userDeviceID, integration.Id)
@@ -139,7 +140,7 @@ func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *Devi
 
 	dd := deviceDefinitionResponse[0]
 
-	// update status to Active if not alrady set
+	// update status to Active if not already set
 	apiIntegration := device.R.UserDeviceAPIIntegrations[0]
 	if apiIntegration.Status != models.UserDeviceAPIIntegrationStatusActive {
 		apiIntegration.Status = models.UserDeviceAPIIntegrationStatusActive
@@ -156,6 +157,7 @@ func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *Devi
 		i.memoryCache.Delete(userDeviceID + "_" + integration.Id)
 	}
 
+	// techdebt: could likely get rid of this with tweak in app so that people just see that data came through - not specific to odometer
 	// Null for most AutoPis.
 	var newOdometer null.Float64
 	if o, err := extractOdometer(event.Data); err == nil {
