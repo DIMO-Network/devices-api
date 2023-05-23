@@ -47,6 +47,7 @@ require (
 	github.com/tidwall/gjson v1.14.3
 	github.com/vmihailenco/taskq/v3 v3.2.8
 	github.com/volatiletech/null/v8 v8.1.2
+	github.com/volatiletech/sqlboiler v3.7.1+incompatible
 	github.com/volatiletech/sqlboiler/v4 v4.13.0
 	github.com/volatiletech/strmangle v0.0.4
 	go.uber.org/automaxprocs v1.5.1
@@ -81,6 +82,7 @@ require (
 	github.com/tinylib/msgp v1.1.8 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.4.0 // indirect
+	github.com/volatiletech/null v8.0.0+incompatible // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	golang.org/x/sync v0.2.0 // indirect
 	golang.org/x/time v0.3.0 // indirect

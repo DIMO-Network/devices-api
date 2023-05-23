@@ -89,6 +89,7 @@ func main() {
 		startWebAPI(logger, &settings, pdb, eventService, deps.getKafkaProducer(), deps.getS3ServiceClient(ctx), deps.getS3NFTServiceClient(ctx))
 	} else {
 
+		subcommands.Register(&issueHistorialCredentialCmd{logger: logger, settings: settings, pdb: pdb}, "issue-historical-vc")
 		subcommands.Register(&migrateDBCmd{logger: logger, settings: settings}, "database")
 		subcommands.Register(&generateEventCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "events")
 		subcommands.Register(&setCommandCompatibilityCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
