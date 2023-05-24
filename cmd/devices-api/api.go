@@ -144,7 +144,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1.Get("/device-definitions/:id/integrations", cacheHandler, deviceControllers.GetDeviceIntegrationsByID)
 	v1.Get("/device-definitions", deviceControllers.GetDeviceDefinitionByMMY)
 
-	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc, dcnSvc)
+	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc, dcnSvc, usersClient)
 	v1.Get("/vehicle/:tokenID", nftController.GetNFTMetadata)
 	v1.Get("/vehicle/:tokenID/image", nftController.GetNFTImage)
 
@@ -155,7 +155,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1.Get("/dcn/:nodeID", nftController.GetDcnNFTMetadata)
 	v1.Get("/dcn/:nodeID/image", nftController.GetDCNNFTImage)
 	v1.Get("/integration/:tokenID", nftController.GetIntegrationNFTMetadata)
-	v1.Get("/integration/:tokenID/mint-virtual-device", nftController.GetVirtualDeviceMintingPayload)
+
 	// webhooks, performs signature validation
 	v1.Post(constants.AutoPiWebhookPath, webhooksController.ProcessCommand)
 
@@ -230,6 +230,10 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/documents", documentsController.PostDocument)
 	v1Auth.Delete("/documents/:id", documentsController.DeleteDocument)
 	v1Auth.Get("/documents/:id/download", documentsController.DownloadDocument)
+
+	// Virtual Device Minting
+	v1Auth.Get("/integration/:tokenID/mint-virtual-device", nftController.GetVirtualDeviceMintingPayload)
+	v1Auth.Post("/integration/:tokenID/mint-virtual-device", nftController.SignVirtualDeviceMintingPayload)
 
 	// Vehicle owner routes.
 	ownerMw := owner.New(pdb, usersClient, &logger)
@@ -317,7 +321,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 			},
 		)
 		if err != nil {
-			logger.Fatal().Err(err).Msg("Failed to create issuer.")
+			// logger.Fatal().Err(err).Msg("Failed to create issuer.")
 		}
 
 		store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, issuer, settings)
