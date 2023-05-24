@@ -45,11 +45,12 @@ func NewVirtualDeviceController(
 	settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, integSvc services.DeviceDefinitionIntegrationService, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient,
 ) VirtualDeviceController {
 	return VirtualDeviceController{
-		Settings:    settings,
-		DBS:         dbs,
-		log:         logger,
-		integSvc:    integSvc,
-		usersClient: usersClient,
+		Settings:     settings,
+		DBS:          dbs,
+		log:          logger,
+		integSvc:     integSvc,
+		usersClient:  usersClient,
+		deviceDefSvc: deviceDefSvc,
 	}
 }
 
