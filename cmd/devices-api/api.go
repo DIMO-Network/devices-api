@@ -321,7 +321,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 			},
 		)
 		if err != nil {
-			// logger.Fatal().Err(err).Msg("Failed to create issuer.")
+			logger.Fatal().Err(err).Msg("Failed to create issuer.")
 		}
 
 		store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, issuer, settings)
