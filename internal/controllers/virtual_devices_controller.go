@@ -81,7 +81,7 @@ func (vc *VirtualDeviceController) getVirtualDeviceMintPayload(tokenID int64, ve
 	}
 }
 
-// GetIntegrationNFTMetadata godoc
+// GetVirtualDeviceMintingPayload godoc
 // @Description gets the payload for to mint virtual device given an integration token ID
 // @Tags        integrations
 // @Produce     json
@@ -132,7 +132,7 @@ func (vc *VirtualDeviceController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) 
 	return c.JSON(response)
 }
 
-// GetIntegrationNFTMetadata godoc
+// SignVirtualDeviceMintingPayload godoc
 // @Description validate signed signature for vehicle minting
 // @Tags        integrations
 // @Produce     json
