@@ -1,7 +1,12 @@
 package owner
 
 import (
+	"context"
+	"database/sql"
+	"errors"
+
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
+	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
@@ -15,14 +20,14 @@ import (
 
 var errNotFound = fiber.NewError(fiber.StatusNotFound, "Device not found.")
 
-// New creates a new middleware handler that checks whether a user is authorized to access
+// UserDeviceOwner creates a new middleware handler that checks whether a user is authorized to access
 // a user device. For the middleware to allow the request to proceed:
 //
 //   - The request must have a valid JWT, identifying a user.
 //   - There must be a userDeviceID path parameter, and that device must exist.
 //   - Either the user owns the device, or the user's account has an Ethereum address that
 //     owns the corresponding NFT.
-func New(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logger) fiber.Handler {
+func UserDeviceOwner(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		userID := helpers.GetUserID(c)
 		udi := c.Params("userDeviceID")
@@ -65,5 +70,55 @@ func New(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logger)
 		}
 
 		return errNotFound
+	}
+}
+
+// AutoPiOwner creates a new middleware handler that checks whether an autopi is paired.
+// For the middleware to allow the request to proceed:
+//
+//   - The request must have a valid JWT, identifying a user.
+//   - There must be a unitID path parameter, and that autopi must exist.
+//   - Either the device has not been paired on chain (anyone can access the endpoint) or
+//     the user has an address on file that is either the owner of the AutoPi or the owner
+//     of the paired vehicle.
+func AutoPiOwner(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		userID := helpers.GetUserID(c)
+		unitID := c.Params("unitID")
+		valid, unitID := services.ValidateAndCleanUUID(unitID)
+		if !valid {
+			return fiber.NewError(fiber.StatusBadRequest, "Unit id is not a valid UUID.")
+		}
+
+		log := logger.With().Str("userId", userID).Str("autoPiUnitId", unitID).Logger()
+		c.Locals("userID", userID)
+		c.Locals("unitID", unitID)
+		c.Locals("logger", &logger)
+
+		autopiUnit, err := models.FindAutopiUnit(c.Context(), dbs.DBS().Reader, unitID)
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			log.Err(err).Msg("autopi not found")
+			return errNotFound
+		case err != nil:
+			log.Err(err).Msg("unable to query database")
+			return err
+		}
+
+		if !autopiUnit.PairRequestID.IsZero() && autopiUnit.UnpairRequestID.IsZero() {
+			usr, err := usersClient.GetUser(context.Background(), &pb.GetUserRequest{Id: userID})
+			if err != nil {
+				return err
+			}
+
+			userAddr := common.HexToAddress(usr.GetEthereumAddress())
+			if (userAddr != common.BytesToAddress(autopiUnit.EthereumAddress.Bytes)) &&
+				(userAddr != common.BytesToAddress(autopiUnit.OwnerAddress.Bytes)) {
+				log.Info().Msg("user is not owner of paired vehicle or autopi")
+				return errors.New("user is not owner of paired vehicle or autopi")
+			}
+		}
+
+		return nil
 	}
 }

@@ -204,12 +204,17 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
 
 	v1Auth.Get("/integrations", userDeviceController.GetIntegrations)
-	// autopi specific
-	v1Auth.Get("/autopi/unit/:unitID", userDeviceController.GetAutoPiUnitInfo)
-	v1Auth.Get("/autopi/unit/:unitID/is-online", userDeviceController.GetIsAutoPiOnline)
+
+	// Autopi specific routes.
+	apOwnerMw := owner.AutoPiOwner(pdb, usersClient, &logger)
+	apOwner := v1Auth.Group("/autopi/unit/:unitID", apOwnerMw)
+
+	apOwner.Get("", userDeviceController.GetAutoPiUnitInfo)
+	apOwner.Get("/is-online", userDeviceController.GetIsAutoPiOnline)
+	apOwner.Post("/update", userDeviceController.StartAutoPiUpdateTask)
 	// delete below line once confirmed no active apps using it.
 	v1Auth.Get("/autopi/unit/is-online/:unitID", userDeviceController.GetIsAutoPiOnline) // this one is deprecated
-	v1Auth.Post("/autopi/unit/:unitID/update", userDeviceController.StartAutoPiUpdateTask)
+
 	v1Auth.Get("/autopi/task/:taskID", userDeviceController.GetAutoPiTask)
 
 	// AutoPi claiming
@@ -234,8 +239,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Get("/documents/:id/download", documentsController.DownloadDocument)
 
 	// Vehicle owner routes.
-	ownerMw := owner.New(pdb, usersClient, &logger)
-	udOwner := v1Auth.Group("/user/devices/:userDeviceID", ownerMw)
+	udOwnerMw := owner.UserDeviceOwner(pdb, usersClient, &logger)
+	udOwner := v1Auth.Group("/user/devices/:userDeviceID", udOwnerMw)
 
 	udOwner.Get("/status", userDeviceController.GetUserDeviceStatus)
 	udOwner.Delete("/", userDeviceController.DeleteUserDevice)
