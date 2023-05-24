@@ -109,6 +109,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
+	virtualDeviceController := controllers.NewVirtualDeviceController(settings, pdb.DBS, &logger, ddIntSvc, ddSvc, usersClient)
 
 	// commenting this out b/c the library includes the path in the metrics which saturates prometheus queries - need to fork / make our own
 	//prometheus := fiberprometheus.New("devices-api")
@@ -144,7 +145,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1.Get("/device-definitions/:id/integrations", cacheHandler, deviceControllers.GetDeviceIntegrationsByID)
 	v1.Get("/device-definitions", deviceControllers.GetDeviceDefinitionByMMY)
 
-	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc, dcnSvc, usersClient)
+	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc, dcnSvc)
 	v1.Get("/vehicle/:tokenID", nftController.GetNFTMetadata)
 	v1.Get("/vehicle/:tokenID/image", nftController.GetNFTImage)
 
@@ -232,8 +233,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Get("/documents/:id/download", documentsController.DownloadDocument)
 
 	// Virtual Device Minting
-	v1Auth.Get("/integration/:tokenID/mint-virtual-device", nftController.GetVirtualDeviceMintingPayload)
-	v1Auth.Post("/integration/:tokenID/mint-virtual-device", nftController.SignVirtualDeviceMintingPayload)
+	v1Auth.Get("/integration/:tokenID/mint-virtual-device", virtualDeviceController.GetVirtualDeviceMintingPayload)
+	v1Auth.Post("/integration/:tokenID/mint-virtual-device", virtualDeviceController.SignVirtualDeviceMintingPayload)
 
 	// Vehicle owner routes.
 	ownerMw := owner.New(pdb, usersClient, &logger)

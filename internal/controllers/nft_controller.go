@@ -4,11 +4,8 @@ import (
 	"bytes"
 	"database/sql"
 	_ "embed"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"math/big"
 	"strconv"
 	"strings"
@@ -23,7 +20,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/go-mnemonic"
-	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	pr "github.com/DIMO-Network/shared/middleware/privilegetoken"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -31,9 +27,6 @@ import (
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/crypto"
-	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -55,15 +48,6 @@ type NFTController struct {
 	teslaTaskService services.TeslaTaskService
 	dcnService       registry.DCNService
 	dcnTmpl          *template.Template
-	usersClient      pb.UserServiceClient
-}
-
-type SignVirtualDeviceMintingPayloadRequest struct {
-	VehicleNode int `json:"vehicleNode"`
-	Credentials struct {
-		AuthorizationCode string `json:"authorizationCode"`
-	} `json:"credentials"`
-	OwnerSignature string `json:"ownerSignature"`
 }
 
 //go:embed dcn.svg
@@ -76,7 +60,6 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 	teslaTaskService services.TeslaTaskService,
 	integSvc services.DeviceDefinitionIntegrationService,
 	dcnSVc registry.DCNService,
-	usersClient pb.UserServiceClient,
 ) NFTController {
 	dcn, _ := template.New("dcn_image").Parse(dcnImageTemplate)
 
@@ -91,7 +74,6 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 		integSvc:         integSvc,
 		dcnService:       dcnSVc,
 		dcnTmpl:          dcn,
-		usersClient:      usersClient,
 	}
 }
 
@@ -287,158 +269,6 @@ func (nc *NFTController) GetIntegrationNFTMetadata(c *fiber.Ctx) error {
 		Description: fmt.Sprintf("%s, a DIMO integration", integration.Vendor),
 		Attributes:  []NFTAttribute{},
 	})
-}
-
-func (nc *NFTController) getVirtualDeviceMintPayload(tokenID int64, vehicleNode int64) *signer.TypedData {
-	return &signer.TypedData{
-		Types: signer.Types{
-			"EIP712Domain": []signer.Type{
-				{Name: "name", Type: "string"},
-				{Name: "version", Type: "string"},
-				{Name: "chainId", Type: "uint256"},
-				{Name: "verifyingContract", Type: "address"},
-			},
-			"MintDevice": {
-				{Name: "integrationNode", Type: "uint256"},
-				{Name: "vehicleNode", Type: "uint256"},
-			},
-		},
-		PrimaryType: "MintVirtualDeviceSign",
-		Domain: signer.TypedDataDomain{
-			Name:              "DIMO",
-			Version:           "1",
-			ChainId:           math.NewHexOrDecimal256(nc.Settings.DeviceMintingChainID),
-			VerifyingContract: nc.Settings.DeviceMintingVerifyingContract,
-		},
-		Message: signer.TypedDataMessage{
-			"integrationNode": math.NewHexOrDecimal256(tokenID),
-			"vehicleNode":     math.NewHexOrDecimal256(vehicleNode),
-		},
-	}
-}
-
-// GetIntegrationNFTMetadata godoc
-// @Description gets the payload for to mint virtual device given an integration token ID
-// @Tags        integrations
-// @Produce     json
-// @Success     200 {array} signer.TypedData
-// @Router      /integration/:tokenID/mint-virtual-device [get]
-func (nc *NFTController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) error {
-	tokenID := c.Params("tokenID")
-	vehicleNode := c.Query("vehicle_id")
-	userID := helpers.GetUserID(c)
-
-	uTokenID, err := strconv.ParseUint(tokenID, 10, 64)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid tokenID provided")
-	}
-
-	user, err := nc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{
-		Id: userID,
-	})
-	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "could not get user info")
-	}
-
-	integration, err := nc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), uTokenID)
-	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "failed to get integration")
-	}
-
-	vid, err := strconv.ParseInt(vehicleNode, 10, 64)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicleNode provided")
-	}
-	vnID := types.NewNullDecimal(decimal.New(vid, 0))
-	vehicleNFT, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(vnID),
-		models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.HexToAddress(*user.EthereumAddress).Bytes())),
-	).Exists(c.Context(), nc.DBS().Reader)
-	if err != nil {
-		nc.log.Error().Err(err).Str("vehicleNode", vehicleNode).Str("tokenID", tokenID).Msg("Could not fetch minting payload for device")
-		return fiber.NewError(fiber.StatusInternalServerError, "error generating device mint payload")
-	}
-
-	if !vehicleNFT {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicleNode provided")
-	}
-
-	response := nc.getVirtualDeviceMintPayload(int64(integration.TokenId), vid)
-
-	return c.JSON(response)
-}
-
-// GetIntegrationNFTMetadata godoc
-// @Description validate signed signature for vehicle minting
-// @Tags        integrations
-// @Produce     json
-// @Success     200 {array} controllers.GetVirtualDeviceMintingPayloadResponse
-// @Router      /integration/:tokenID/mint-virtual-device [post]
-func (nc *NFTController) SignVirtualDeviceMintingPayload(c *fiber.Ctx) error {
-	tokenID := c.Params("tokenID")
-	vehicleNode := c.Query("vehicle_id")
-	userID := helpers.GetUserID(c)
-
-	req := &SignVirtualDeviceMintingPayloadRequest{}
-	if err := c.BodyParser(req); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
-	}
-
-	signature, err := hex.DecodeString(req.OwnerSignature)
-	if err != nil {
-		log.Println("invalid hex string", err)
-		return fiber.NewError(fiber.StatusBadRequest, "invalid signature provided")
-	}
-
-	if len(signature) != 65 {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid signature provided")
-	}
-
-	uTokenID, err := strconv.ParseUint(tokenID, 10, 64)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid tokenID provided")
-	}
-
-	integration, err := nc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), uTokenID)
-	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "failed to get integration")
-	}
-
-	user, err := nc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{
-		Id: userID,
-	})
-	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "could not get user info")
-	}
-
-	vid, err := strconv.ParseInt(vehicleNode, 10, 64)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicle id provided")
-	}
-
-	rawPayload := nc.getVirtualDeviceMintPayload(int64(integration.TokenId), vid)
-	payloadJSON, err := json.Marshal(rawPayload)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
-	}
-
-	hash := crypto.Keccak256Hash(payloadJSON)
-
-	sigPublicKey, err := crypto.Ecrecover(hash.Bytes(), signature)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Couldn't not verify signature.")
-	}
-
-	pubKey, err := crypto.UnmarshalPubkey(sigPublicKey)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Couldn't not verify signature.")
-	}
-
-	payloadVerified := bytes.Equal(crypto.PubkeyToAddress(*pubKey).Bytes(), common.HexToAddress(*user.EthereumAddress).Bytes())
-	if !payloadVerified {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature provided")
-	}
-	return c.Send([]byte("signature is valid"))
 }
 
 type NFTMetadataResp struct {
