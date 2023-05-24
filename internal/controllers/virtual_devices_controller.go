@@ -136,7 +136,7 @@ func (vc *VirtualDeviceController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) 
 // @Description validate signed signature for vehicle minting
 // @Tags        integrations
 // @Produce     json
-// @Success     200 {array} controllers.GetVirtualDeviceMintingPayloadResponse
+// @Success     200 {array}
 // @Router      /integration/:tokenID/mint-virtual-device [post]
 func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx) error {
 	tokenID := c.Params("tokenID")
