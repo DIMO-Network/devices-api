@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"log"
 	"strconv"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -54,7 +53,7 @@ func NewVirtualDeviceController(
 	}
 }
 
-func (vc *VirtualDeviceController) getVirtualDeviceMintPayload(tokenID int64, vehicleNode int64) *signer.TypedData {
+func (vc *VirtualDeviceController) getVirtualDeviceMintPayload(integrationID int64, vehicleNode int64) *signer.TypedData {
 	return &signer.TypedData{
 		Types: signer.Types{
 			"EIP712Domain": []signer.Type{
@@ -76,7 +75,7 @@ func (vc *VirtualDeviceController) getVirtualDeviceMintPayload(tokenID int64, ve
 			VerifyingContract: vc.Settings.DeviceMintingVerifyingContract,
 		},
 		Message: signer.TypedDataMessage{
-			"integrationNode": math.NewHexOrDecimal256(tokenID),
+			"integrationNode": math.NewHexOrDecimal256(integrationID),
 			"vehicleNode":     math.NewHexOrDecimal256(vehicleNode),
 		},
 	}
@@ -102,12 +101,17 @@ func (vc *VirtualDeviceController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) 
 		Id: userID,
 	})
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "could not get user info")
+		vc.log.Debug().AnErr("GetUser Grpc", err).Msg("error occurred when fetching user")
+		return fiber.NewError(fiber.StatusUnauthorized, "error occurred when fetching user")
+	}
+
+	if user.EthereumAddress == nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "User does not have an Ethereum address on file.")
 	}
 
 	integration, err := vc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), uTokenID)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "failed to get integration")
+		return fiber.NewError(fiber.StatusBadRequest, "failed to get integration")
 	}
 
 	vid, err := strconv.ParseInt(vehicleNode, 10, 64)
@@ -125,7 +129,7 @@ func (vc *VirtualDeviceController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) 
 	}
 
 	if !vehicleNFT {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicleNode provided")
+		return fiber.NewError(fiber.StatusBadRequest, "user does not own vehicle node")
 	}
 
 	response := vc.getVirtualDeviceMintPayload(int64(integration.TokenId), vid)
@@ -151,7 +155,6 @@ func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx)
 
 	signature, err := hex.DecodeString(req.OwnerSignature)
 	if err != nil {
-		log.Println("invalid hex string", err)
 		return fiber.NewError(fiber.StatusBadRequest, "invalid signature provided")
 	}
 
