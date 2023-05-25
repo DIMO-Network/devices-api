@@ -339,7 +339,7 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 			}, nil).
 			AnyTimes()
 
-		chatGptResp := []services.ErrorCodesResponse{
+		openAIResp := []services.ErrorCodesResponse{
 			{
 				Code:        "P0113",
 				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
@@ -349,7 +349,7 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 		mockDeps.openAISvc.
 			EXPECT().
 			GetErrorCodesDescription(gomock.Eq("Toyota"), gomock.Eq("Camry"), gomock.Eq(req.ErrorCodes)).
-			Return(chatGptResp, nil).
+			Return(openAIResp, nil).
 			AnyTimes()
 
 		j, _ := json.Marshal(req)
@@ -358,13 +358,16 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 		response, _ := app.Test(request)
 		body, _ := io.ReadAll(response.Body)
 
+		chatGptResp := QueryDeviceErrorCodesResponse{
+			ErrorCodes: openAIResp,
+		}
 		chtJSON, err := json.Marshal(chatGptResp)
 		assert.NoError(t, err)
 
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 		assert.Equal(t,
-			fmt.Sprintf(`{"errorCodes":%s}`, chtJSON),
-			string(body),
+			chtJSON,
+			body,
 		)
 
 		//teardown
@@ -622,7 +625,7 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 			}, nil).
 			AnyTimes()
 
-		chatGptResp := []services.ErrorCodesResponse{
+		openAIResp := []services.ErrorCodesResponse{
 			{
 				Code:        "P0113",
 				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
@@ -631,7 +634,7 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 		mockDeps.openAISvc.
 			EXPECT().
 			GetErrorCodesDescription(gomock.Eq("Toyota"), gomock.Eq("Camry"), gomock.Eq(req.ErrorCodes)).
-			Return(chatGptResp, nil).
+			Return(openAIResp, nil).
 			AnyTimes()
 
 		j, _ := json.Marshal(req)
@@ -640,13 +643,16 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 		response, _ := app.Test(request)
 		body, _ := io.ReadAll(response.Body)
 
+		chatGptResp := QueryDeviceErrorCodesResponse{
+			ErrorCodes: openAIResp,
+		}
 		chtJSON, err := json.Marshal(chatGptResp)
 		assert.NoError(t, err)
 
 		assert.Equal(t, fiber.StatusOK, response.StatusCode)
 		assert.Equal(t,
-			fmt.Sprintf(`{"errorCodes":%s}`, chtJSON),
-			string(body),
+			chtJSON,
+			body,
 		)
 
 		errCodeResp, err := models.ErrorCodeQueries(
