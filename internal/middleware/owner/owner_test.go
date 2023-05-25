@@ -29,7 +29,7 @@ func TestUserDeviceOwnerMiddleware(t *testing.T) {
 	logger := test.Logger()
 
 	usersClient := &test.UsersClient{}
-	middleware := UserDeviceOwner(pdb, usersClient, logger)
+	middleware := UserDevice(pdb, usersClient, logger)
 
 	app := test.SetupAppFiber(*logger)
 	app.Get("/:userDeviceID", test.AuthInjectorTestHandler(userID), middleware, func(c *fiber.Ctx) error {
@@ -150,7 +150,7 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 	logger := test.Logger()
 
 	usersClient := &test.UsersClient{}
-	middleware := AutoPiOwner(pdb, usersClient, logger)
+	middleware := AutoPi(pdb, usersClient, logger)
 
 	app := test.SetupAppFiber(*logger)
 	app.Get("/:unitID", test.AuthInjectorTestHandler(userID), middleware, func(c *fiber.Ctx) error {
