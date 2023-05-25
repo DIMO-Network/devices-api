@@ -128,7 +128,7 @@ func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []strin
 
 	r, err := o.askChatGPT(strings.NewReader(req))
 	if err != nil {
-		return nil, errors.New("A temporary error occurred checking for your error codes, please try again.")
+		return nil, errors.New("a temporary error occurred checking for your error codes, please try again")
 	}
 
 	appmetrics.OpenAITotalTokensUsedOps.Add(float64(r.Usage.TotalTokens))
