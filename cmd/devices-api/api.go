@@ -233,8 +233,10 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Get("/documents/:id/download", documentsController.DownloadDocument)
 
 	// Virtual Device Minting
-	v1Auth.Get("/integration/:tokenID/mint-virtual-device", virtualDeviceController.GetVirtualDeviceMintingPayload)
-	v1Auth.Post("/integration/:tokenID/mint-virtual-device", virtualDeviceController.SignVirtualDeviceMintingPayload)
+	if settings.VirtualDeviceMintingEnabled {
+		v1Auth.Get("/integration/:tokenID/mint-virtual-device/:vehicleID", virtualDeviceController.GetVirtualDeviceMintingPayload)
+		v1Auth.Post("/integration/:tokenID/mint-virtual-device/:vehicleID", virtualDeviceController.SignVirtualDeviceMintingPayload)
+	}
 
 	// Vehicle owner routes.
 	ownerMw := owner.New(pdb, usersClient, &logger)

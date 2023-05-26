@@ -86,8 +86,7 @@ type Settings struct {
 	// VIN verifiable credentials.
 	IssuerPrivateKey string `yaml:"ISSUER_PRIVATE_KEY"`
 
-	DeviceMintingChainID           int64  `yaml:"DEVICE_MINTING_CHAIN_ID"`
-	DeviceMintingVerifyingContract string `yaml:"DEVICE_MINTING_VERIFYING_CONTRACT"`
+	VirtualDeviceMintingEnabled bool `yaml:"VIRTUAL_DEVICE_MINTING_ENABLED"`
 }
 
 func (s *Settings) IsProduction() bool {

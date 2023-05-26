@@ -519,12 +519,12 @@ func BuildDeviceDefinitionGRPC(deviceDefinitionID string, mk string, model strin
 	return []*ddgrpc.GetDeviceDefinitionItemResponse{rp}
 }
 
-func BuildGetUserGRPC(id string, email *string, ethereum_address *string, referred_by *users.UserReferrer) *pb.User {
+func BuildGetUserGRPC(id string, email *string, ethereumAddress *string, referredBy *users.UserReferrer) *pb.User {
 	return &pb.User{
 		Id:              id,
-		EthereumAddress: ethereum_address,
+		EthereumAddress: ethereumAddress,
 		EmailAddress:    email,
-		ReferredBy:      referred_by,
+		ReferredBy:      referredBy,
 	}
 }
 
@@ -540,7 +540,7 @@ func GenerateWallet() (*ecdsa.PrivateKey, *common.Address, error) {
 }
 
 // BuildIntegrationForGRPCRequest includes tokenID when creating mock integration
-func BuildIntegrationForGRPCRequest(autoPiDefaultTemplateID int, bevTemplateID int, tokenID uint64) *ddgrpc.Integration {
+func BuildIntegrationForGRPCRequest(autoPiDefaultTemplateID int, tokenID uint64) *ddgrpc.Integration {
 	integration := &ddgrpc.Integration{
 		Id:                      ksuid.New().String(),
 		Type:                    constants.IntegrationTypeHardware,

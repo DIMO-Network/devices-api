@@ -62,7 +62,7 @@ func (vc *VirtualDeviceController) getVirtualDeviceMintPayload(integrationID int
 				{Name: "chainId", Type: "uint256"},
 				{Name: "verifyingContract", Type: "address"},
 			},
-			"MintDevice": {
+			"MintVirtualDeviceSign": {
 				{Name: "integrationNode", Type: "uint256"},
 				{Name: "vehicleNode", Type: "uint256"},
 			},
@@ -71,8 +71,8 @@ func (vc *VirtualDeviceController) getVirtualDeviceMintPayload(integrationID int
 		Domain: signer.TypedDataDomain{
 			Name:              "DIMO",
 			Version:           "1",
-			ChainId:           math.NewHexOrDecimal256(vc.Settings.DeviceMintingChainID),
-			VerifyingContract: vc.Settings.DeviceMintingVerifyingContract,
+			ChainId:           math.NewHexOrDecimal256(vc.Settings.DIMORegistryChainID),
+			VerifyingContract: vc.Settings.DIMORegistryAddr,
 		},
 		Message: signer.TypedDataMessage{
 			"integrationNode": math.NewHexOrDecimal256(integrationID),
@@ -89,7 +89,7 @@ func (vc *VirtualDeviceController) getVirtualDeviceMintPayload(integrationID int
 // @Router      /integration/:tokenID/mint-virtual-device [get]
 func (vc *VirtualDeviceController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) error {
 	tokenID := c.Params("tokenID")
-	vehicleNode := c.Query("vehicle_id")
+	vehicleNode := c.Params("vehicleID")
 	userID := helpers.GetUserID(c)
 
 	uTokenID, err := strconv.ParseUint(tokenID, 10, 64)
@@ -101,8 +101,8 @@ func (vc *VirtualDeviceController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) 
 		Id: userID,
 	})
 	if err != nil {
-		vc.log.Debug().AnErr("GetUser Grpc", err).Msg("error occurred when fetching user")
-		return fiber.NewError(fiber.StatusUnauthorized, "error occurred when fetching user")
+		vc.log.Debug().Err(err).Msg("error occurred when fetching user")
+		return helpers.GrpcErrorToFiber(err, "error occurred when fetching user")
 	}
 
 	if user.EthereumAddress == nil {
@@ -111,7 +111,7 @@ func (vc *VirtualDeviceController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) 
 
 	integration, err := vc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), uTokenID)
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "failed to get integration")
+		return helpers.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
 	vid, err := strconv.ParseInt(vehicleNode, 10, 64)
@@ -129,7 +129,7 @@ func (vc *VirtualDeviceController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) 
 	}
 
 	if !vehicleNFT {
-		return fiber.NewError(fiber.StatusBadRequest, "user does not own vehicle node")
+		return fiber.NewError(fiber.StatusNotFound, "user does not own vehicle node")
 	}
 
 	response := vc.getVirtualDeviceMintPayload(int64(integration.TokenId), vid)
@@ -145,7 +145,7 @@ func (vc *VirtualDeviceController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) 
 // @Router      /integration/:tokenID/mint-virtual-device [post]
 func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx) error {
 	tokenID := c.Params("tokenID")
-	vehicleNode := c.Query("vehicle_id")
+	vehicleNode := c.Params("vehicleID")
 	userID := helpers.GetUserID(c)
 
 	req := &SignVirtualDeviceMintingPayloadRequest{}
@@ -176,7 +176,7 @@ func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx)
 		Id: userID,
 	})
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "could not get user info")
+		return helpers.GrpcErrorToFiber(err, "error occurred when fetching user")
 	}
 
 	vid, err := strconv.ParseInt(vehicleNode, 10, 64)

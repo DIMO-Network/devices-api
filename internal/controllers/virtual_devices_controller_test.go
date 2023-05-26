@@ -96,7 +96,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload()
 	user := test.BuildGetUserGRPC(testUserID, &email, &eth, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
-	integrations := test.BuildIntegrationForGRPCRequest(10, 0, uint64(1))
+	integrations := test.BuildIntegrationForGRPCRequest(10, uint64(1))
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(integrations, nil)
 
 	_ = test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
@@ -178,7 +178,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_V
 	user := test.BuildGetUserGRPC(testUserID, &email, &eth, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
-	integrations := test.BuildIntegrationForGRPCRequest(10, 0, uint64(1))
+	integrations := test.BuildIntegrationForGRPCRequest(10, uint64(1))
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(integrations, nil)
 
 	request := test.BuildRequest("GET", fmt.Sprintf("/v1/integration/%d/mint-virtual-device?vehicle_id=%d", 1, 57), "")
@@ -209,7 +209,7 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload(
 	user := test.BuildGetUserGRPC(testUserID, &email, &eth, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
-	integrations := test.BuildIntegrationForGRPCRequest(10, 0, uint64(1))
+	integrations := test.BuildIntegrationForGRPCRequest(10, uint64(1))
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(integrations, nil)
 
 	_ = test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
