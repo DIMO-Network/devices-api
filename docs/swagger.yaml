@@ -47,6 +47,13 @@ definitions:
       id:
         type: string
     type: object
+  github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes:
+    properties:
+      code:
+        type: integer
+      message:
+        type: string
+    type: object
   github_com_DIMO-Network_devices-api_internal_services.AutoPiCommandJob:
     properties:
       commandJobId:
@@ -197,6 +204,15 @@ definitions:
         type: string
       vehicle_type:
         description: VehicleType PASSENGER CAR, from NHTSA
+        type: string
+    type: object
+  github_com_DIMO-Network_devices-api_internal_services.ErrorCodesResponse:
+    properties:
+      code:
+        example: P0148
+        type: string
+      description:
+        example: Fuel delivery error
         type: string
     type: object
   github_com_DIMO-Network_devices-api_internal_services.PowertrainType:
@@ -553,13 +569,18 @@ definitions:
     type: object
   internal_controllers.GetUserDeviceErrorCodeQueriesResponseItem:
     properties:
-      description:
+      clearedAt:
+        description: |-
+          ClearedAt is the time at which the user cleared the codes from this query.
+          May be null.
+        example: "2023-05-23T12:57:05Z"
         type: string
       errorCodes:
         items:
-          type: string
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.ErrorCodesResponse'
         type: array
       requestedAt:
+        example: "2023-05-23T12:56:36Z"
         type: string
     type: object
   internal_controllers.GetUserDeviceIntegrationResponse:
@@ -730,14 +751,21 @@ definitions:
   internal_controllers.QueryDeviceErrorCodesReq:
     properties:
       errorCodes:
+        example:
+        - P0106
+        - P0279
         items:
           type: string
         type: array
     type: object
   internal_controllers.QueryDeviceErrorCodesResponse:
     properties:
-      message:
+      clearedAt:
         type: string
+      errorCodes:
+        items:
+          $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.ErrorCodesResponse'
+        type: array
     type: object
   internal_controllers.RangeSet:
     properties:
@@ -1747,22 +1775,31 @@ paths:
       - user-devices
   /user/devices/{userDeviceID}/error-codes:
     get:
-      description: Returns all error codes queries for user devices
+      parameters:
+      - description: user device id
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
       responses:
         "200":
           description: OK
           schema:
             $ref: '#/definitions/internal_controllers.GetUserDeviceErrorCodeQueriesResponse'
+        "404":
+          description: Vehicle not found
+          schema:
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes'
       security:
       - BearerAuth: []
+      summary: List all error code queries made for this vehicle.
       tags:
-      - user-devices
+      - error-codes
     post:
-      description: Queries chatgpt for user device error codes
       parameters:
-      - description: user device ID
+      - description: user device id
         in: path
-        name: user_device_id
+        name: userDeviceID
         required: true
         type: string
       - description: error codes
@@ -1776,10 +1813,36 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesResponse'
+        "404":
+          description: Vehicle not found
+          schema:
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes'
       security:
       - BearerAuth: []
+      summary: Obtain, store, and return descriptions for a list of error codes from
+        this vehicle.
       tags:
-      - user-devices
+      - error-codes
+  /user/devices/{userDeviceID}/error-codes/clear:
+    post:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesResponse'
+        "404":
+          description: Vehicle not found
+          schema:
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes'
+        "429":
+          description: Last query already cleared
+          schema:
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes'
+      security:
+      - BearerAuth: []
+      summary: Mark the most recent set of error codes as having been cleared.
+      tags:
+      - error-codes
   /user/devices/{userDeviceID}/image:
     patch:
       consumes:
@@ -2441,6 +2504,27 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/internal_controllers.DeviceSnapshot'
+        "404":
+          description: Not Found
+      tags:
+      - permission
+  /vehicle/{tokenId}/vin-credential:
+    get:
+      description: Returns the vin credential for the vehicle with a given token id.
+      parameters:
+      - description: token id
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
         "404":
           description: Not Found
       tags:

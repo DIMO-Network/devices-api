@@ -52,8 +52,8 @@ type ChatGPTResponse struct {
 }
 
 type ErrorCodesResponse struct {
-	Code        string `json:"code"`
-	Description string `json:"description"`
+	Code        string `json:"code" example:"P0148"`
+	Description string `json:"description" example:"Fuel delivery error"`
 }
 
 func NewOpenAI(logger *zerolog.Logger, c config.Settings) OpenAI {
@@ -128,7 +128,7 @@ func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []strin
 
 	r, err := o.askChatGPT(strings.NewReader(req))
 	if err != nil {
-		return nil, err
+		return nil, errors.New("a temporary error occurred checking for your error codes, please try again")
 	}
 
 	appmetrics.OpenAITotalTokensUsedOps.Add(float64(r.Usage.TotalTokens))

@@ -178,6 +178,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// vehicle command privileges
 	vPriv.Get("/status", tk.OneOf(vehicleAddr, []int64{controllers.NonLocationData, controllers.CurrentLocation, controllers.AllTimeLocation}), nftController.GetVehicleStatus)
+	if !settings.IsProduction() {
+		vPriv.Get("/vin-credential", tk.OneOf(vehicleAddr, []int64{controllers.VinCredential}), nftController.GetVinCredential)
+	}
 	vPriv.Post("/commands/doors/unlock", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.UnlockDoors)
 	vPriv.Post("/commands/doors/lock", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.LockDoors)
 	vPriv.Post("/commands/trunk/open", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.OpenTrunk)
@@ -259,6 +262,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	udOwner.Post("/error-codes", userDeviceController.QueryDeviceErrorCodes)
 	udOwner.Get("/error-codes", userDeviceController.GetUserDeviceErrorCodeQueries)
+	udOwner.Post("/error-codes/clear", userDeviceController.ClearUserDeviceErrorCodeQuery)
 
 	// New-style NFT mint, claim, pair.
 	udOwner.Post("/commands/update-nft-image", userDeviceController.UpdateNFTImage)

@@ -139,6 +139,11 @@ func GetLogger(c *fiber.Ctx, d *zerolog.Logger) *zerolog.Logger {
 	return l
 }
 
+type ErrorRes struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
 // ErrorHandler custom handler to log recovered errors using our logger and return json instead of string
 func ErrorHandler(c *fiber.Ctx, err error, logger *zerolog.Logger, isProduction bool) error {
 	logger = GetLogger(c, logger)
@@ -162,9 +167,9 @@ func ErrorHandler(c *fiber.Ctx, err error, logger *zerolog.Logger, isProduction 
 		err = fiber.NewError(fiber.StatusInternalServerError, "Internal error")
 	}
 
-	return c.Status(code).JSON(fiber.Map{
-		"code":    code,
-		"message": err.Error(),
+	return c.Status(code).JSON(ErrorRes{
+		Code:    code,
+		Message: err.Error(),
 	})
 }
 

@@ -29,6 +29,7 @@ type ErrorCodeQuery struct {
 	CreatedAt          time.Time `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt          time.Time `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CodesQueryResponse null.JSON `boil:"codes_query_response" json:"codes_query_response,omitempty" toml:"codes_query_response" yaml:"codes_query_response,omitempty"`
+	ClearedAt          null.Time `boil:"cleared_at" json:"cleared_at,omitempty" toml:"cleared_at" yaml:"cleared_at,omitempty"`
 
 	R *errorCodeQueryR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L errorCodeQueryL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -40,12 +41,14 @@ var ErrorCodeQueryColumns = struct {
 	CreatedAt          string
 	UpdatedAt          string
 	CodesQueryResponse string
+	ClearedAt          string
 }{
 	ID:                 "id",
 	UserDeviceID:       "user_device_id",
 	CreatedAt:          "created_at",
 	UpdatedAt:          "updated_at",
 	CodesQueryResponse: "codes_query_response",
+	ClearedAt:          "cleared_at",
 }
 
 var ErrorCodeQueryTableColumns = struct {
@@ -54,12 +57,14 @@ var ErrorCodeQueryTableColumns = struct {
 	CreatedAt          string
 	UpdatedAt          string
 	CodesQueryResponse string
+	ClearedAt          string
 }{
 	ID:                 "error_code_queries.id",
 	UserDeviceID:       "error_code_queries.user_device_id",
 	CreatedAt:          "error_code_queries.created_at",
 	UpdatedAt:          "error_code_queries.updated_at",
 	CodesQueryResponse: "error_code_queries.codes_query_response",
+	ClearedAt:          "error_code_queries.cleared_at",
 }
 
 // Generated where
@@ -70,12 +75,14 @@ var ErrorCodeQueryWhere = struct {
 	CreatedAt          whereHelpertime_Time
 	UpdatedAt          whereHelpertime_Time
 	CodesQueryResponse whereHelpernull_JSON
+	ClearedAt          whereHelpernull_Time
 }{
 	ID:                 whereHelperstring{field: "\"devices_api\".\"error_code_queries\".\"id\""},
 	UserDeviceID:       whereHelperstring{field: "\"devices_api\".\"error_code_queries\".\"user_device_id\""},
 	CreatedAt:          whereHelpertime_Time{field: "\"devices_api\".\"error_code_queries\".\"created_at\""},
 	UpdatedAt:          whereHelpertime_Time{field: "\"devices_api\".\"error_code_queries\".\"updated_at\""},
 	CodesQueryResponse: whereHelpernull_JSON{field: "\"devices_api\".\"error_code_queries\".\"codes_query_response\""},
+	ClearedAt:          whereHelpernull_Time{field: "\"devices_api\".\"error_code_queries\".\"cleared_at\""},
 }
 
 // ErrorCodeQueryRels is where relationship names are stored.
@@ -106,9 +113,9 @@ func (r *errorCodeQueryR) GetUserDevice() *UserDevice {
 type errorCodeQueryL struct{}
 
 var (
-	errorCodeQueryAllColumns            = []string{"id", "user_device_id", "created_at", "updated_at", "codes_query_response"}
+	errorCodeQueryAllColumns            = []string{"id", "user_device_id", "created_at", "updated_at", "codes_query_response", "cleared_at"}
 	errorCodeQueryColumnsWithoutDefault = []string{"id", "user_device_id"}
-	errorCodeQueryColumnsWithDefault    = []string{"created_at", "updated_at", "codes_query_response"}
+	errorCodeQueryColumnsWithDefault    = []string{"created_at", "updated_at", "codes_query_response", "cleared_at"}
 	errorCodeQueryPrimaryKeyColumns     = []string{"id"}
 	errorCodeQueryGeneratedColumns      = []string{}
 )
