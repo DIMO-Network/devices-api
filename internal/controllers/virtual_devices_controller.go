@@ -1,9 +1,6 @@
 package controllers
 
 import (
-	"bytes"
-	"encoding/hex"
-	"encoding/json"
 	"strconv"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -62,7 +59,7 @@ func (vc *VirtualDeviceController) getVirtualDeviceMintPayload(integrationID int
 				{Name: "chainId", Type: "uint256"},
 				{Name: "verifyingContract", Type: "address"},
 			},
-			"MintVirtualDeviceSign": {
+			"MintVirtualDeviceSign": []signer.Type{
 				{Name: "integrationNode", Type: "uint256"},
 				{Name: "vehicleNode", Type: "uint256"},
 			},
@@ -153,11 +150,7 @@ func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx)
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
 	}
 
-	signature, err := hex.DecodeString(req.OwnerSignature)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid signature provided")
-	}
-
+	signature := common.FromHex(req.OwnerSignature)
 	if len(signature) != 65 {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid signature provided")
 	}
@@ -185,26 +178,34 @@ func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx)
 	}
 
 	rawPayload := vc.getVirtualDeviceMintPayload(int64(integration.TokenId), vid)
-	payloadJSON, err := json.Marshal(rawPayload)
+
+	hash, _, err := signer.TypedDataAndHash(*rawPayload)
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
+		vc.log.Err(err).Msg("Error occurred creating has of payload")
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
 	}
 
-	hash := crypto.Keccak256Hash(payloadJSON)
+	signature[64] -= 27
 
-	sigPublicKey, err := crypto.Ecrecover(hash.Bytes(), signature)
+	pub, err := crypto.Ecrecover(hash, signature)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Couldn't not verify signature.")
+		vc.log.Err(err).Msg("Error occurred while trying to recover public key from signature")
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
 	}
 
-	pubKey, err := crypto.UnmarshalPubkey(sigPublicKey)
+	pubRaw, err := crypto.UnmarshalPubkey(pub)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Couldn't not verify signature.")
+		vc.log.Err(err).Msg("Error occurred marshalling recovered public public key")
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
 	}
 
-	payloadVerified := bytes.Equal(crypto.PubkeyToAddress(*pubKey).Bytes(), common.HexToAddress(*user.EthereumAddress).Bytes())
+	addr := crypto.PubkeyToAddress(*pubRaw)
+
+	payloadVerified := addr == common.HexToAddress(*user.EthereumAddress)
+
 	if !payloadVerified {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature provided")
 	}
+
 	return c.Send([]byte("signature is valid"))
 }

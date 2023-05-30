@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,8 +13,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang/mock/gomock"
 	"github.com/segmentio/ksuid"
@@ -24,6 +22,9 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 )
+
+var signature = "0x80312cd950310f5bdf7095b1aecac23dc44879a6e8a879a2b7935ed79516e5b80667759a75c21cfd1471f0a0064b74a8ad2eb8b3c3dea7ef597e8a94e2b6a93e1b"
+var userEthAddress = "0xd64E249A06ee6263d989e43aBFe12748a2506f88"
 
 type VirtualDevicesControllerTestSuite struct {
 	suite.Suite
@@ -55,13 +56,14 @@ func (s *VirtualDevicesControllerTestSuite) SetupSuite() {
 	}
 
 	logger := test.Logger()
-	c := NewVirtualDeviceController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefIntSvc, s.deviceDefSvc, s.userClient)
+
+	c := NewVirtualDeviceController(&config.Settings{Port: "3000", DIMORegistryChainID: 80001, DIMORegistryAddr: common.HexToAddress("0x4De1bCf2B7E851E31216fC07989caA902A604784").Hex()}, s.pdb.DBS, logger, s.deviceDefIntSvc, s.deviceDefSvc, s.userClient)
 	s.vdc = c
 
 	app := test.SetupAppFiber(*logger)
 
-	app.Post("/v1/integration/:tokenID/mint-virtual-device", test.AuthInjectorTestHandler(testUserID), c.SignVirtualDeviceMintingPayload)
-	app.Get("/v1/integration/:tokenID/mint-virtual-device", test.AuthInjectorTestHandler(testUserID), c.GetVirtualDeviceMintingPayload)
+	app.Post("/v1/virtual-device/mint/:tokenID/:vehicleID", test.AuthInjectorTestHandler(testUserID), c.SignVirtualDeviceMintingPayload)
+	app.Get("/v1/virtual-device/mint/:tokenID/:vehicleID", test.AuthInjectorTestHandler(testUserID), c.GetVirtualDeviceMintingPayload)
 
 	s.app = app
 }
@@ -104,7 +106,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload()
 	udID := ksuid.New().String()
 	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, testUserID, udID, 57, s.pdb)
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/integration/%d/mint-virtual-device?vehicle_id=%d", 1, 57), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
@@ -121,14 +123,14 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload()
 func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_UserNotFound() {
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(nil, errors.New("User not found"))
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/integration/%d/mint-virtual-device?vehicle_id=%d", 1, 57), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
 	body, _ := io.ReadAll(response.Body)
 
-	assert.Equal(s.T(), fiber.StatusUnauthorized, response.StatusCode)
-	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"error occurred when fetching user"}`, fiber.StatusUnauthorized)), body)
+	assert.Equal(s.T(), fiber.StatusInternalServerError, response.StatusCode)
+	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"error occurred when fetching user: User not found"}`, fiber.StatusInternalServerError)), body)
 }
 
 func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_NoEthereumAddressForUser() {
@@ -136,7 +138,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_N
 	user := test.BuildGetUserGRPC(testUserID, &email, nil, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/integration/%d/mint-virtual-device?vehicle_id=%d", 1, 57), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
@@ -158,14 +160,14 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_N
 
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(nil, errors.New("could not find integration"))
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/integration/%d/mint-virtual-device?vehicle_id=%d", 1, 57), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
 	body, _ := io.ReadAll(response.Body)
 
-	assert.Equal(s.T(), fiber.StatusBadRequest, response.StatusCode)
-	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"failed to get integration"}`, fiber.StatusBadRequest)), body)
+	assert.Equal(s.T(), fiber.StatusInternalServerError, response.StatusCode)
+	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"failed to get integration: could not find integration"}`, fiber.StatusInternalServerError)), body)
 }
 
 func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_VehicleNodeNotOwnedByUserEthAddress() {
@@ -181,30 +183,20 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_V
 	integrations := test.BuildIntegrationForGRPCRequest(10, uint64(1))
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(integrations, nil)
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/integration/%d/mint-virtual-device?vehicle_id=%d", 1, 57), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
 	body, _ := io.ReadAll(response.Body)
 
-	assert.Equal(s.T(), fiber.StatusBadRequest, response.StatusCode)
-	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"user does not own vehicle node"}`, fiber.StatusBadRequest)), body)
-}
-
-func mockPayloadSignerHelper(privateKey *ecdsa.PrivateKey, payload []byte, t *testing.T) string {
-	hash := crypto.Keccak256Hash(payload)
-	signature, err := crypto.Sign(hash.Bytes(), privateKey)
-	assert.NoError(t, err)
-
-	return hexutil.Encode(signature)
+	assert.Equal(s.T(), fiber.StatusNotFound, response.StatusCode)
+	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"user does not own vehicle node"}`, fiber.StatusNotFound)), body)
 }
 
 func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload() {
-	pk, addr, err := test.GenerateWallet()
-	assert.NoError(s.T(), err)
-
 	email := "some@email.com"
-	eth := addr.Hex()
+	eth := userEthAddress
+	addr := common.HexToAddress(userEthAddress)
 
 	user := test.BuildGetUserGRPC(testUserID, &email, &eth, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
@@ -215,22 +207,17 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload(
 	_ = test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
 
 	udID := ksuid.New().String()
-	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, testUserID, udID, 57, s.pdb)
+	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), addr, testUserID, udID, 57, s.pdb)
 
-	rawExpectedResp := s.vdc.getVirtualDeviceMintPayload(int64(1), int64(57))
-	pJSON, err := json.Marshal(rawExpectedResp)
-	assert.NoError(s.T(), err)
-
-	sig := mockPayloadSignerHelper(pk, pJSON, s.T())
 	req := fmt.Sprintf(`{
 		"vehicleNode": %d,
 		"credentials": {
 			"authorizationCode": "a4d04dad-2b65-4778-94b7-f04996e89907"
 		},
 		"ownerSignature": "%s"
-	}`, 57, sig[2:])
+	}`, 57, signature)
 
-	request := test.BuildRequest("POST", fmt.Sprintf("/v1/integration/%d/mint-virtual-device?vehicle_id=%d", 1, 57), req)
+	request := test.BuildRequest("POST", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), req)
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
@@ -248,7 +235,7 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload_
 		},
 		"ownerSignature": "%s"
 	}`, 57, "Bad Signature")
-	request := test.BuildRequest("POST", fmt.Sprintf("/v1/integration/%d/mint-virtual-device?vehicle_id=%d", 1, 57), req)
+	request := test.BuildRequest("POST", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), req)
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
@@ -266,7 +253,7 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload_
 		},
 		"ownerSignature": "%s"
 	}`, 57, "1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8")
-	request := test.BuildRequest("POST", fmt.Sprintf("/v1/integration/%d/mint-virtual-device?vehicle_id=%d", 1, 57), req)
+	request := test.BuildRequest("POST", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), req)
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
