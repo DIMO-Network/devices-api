@@ -122,7 +122,7 @@ func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []strin
 		"messages": [
 			{
 				"role": "user", 
-				"content": "A %s %s is returning error codes %s. Respond only with a line for each code, in the format 'code:explanation \n'"}]
+				"content": "A %s %s is returning error codes %s. Explain each code in the format 'code:explanation \n'"}]
 	  		}
 	  `, make, model, codes)
 
