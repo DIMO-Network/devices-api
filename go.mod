@@ -53,6 +53,7 @@ require (
 )
 
 require (
+	github.com/MicahParks/keyfunc/v2 v2.0.3 // indirect
 	github.com/avast/retry-go v3.0.0+incompatible // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
 	github.com/deckarep/golang-set/v2 v2.1.0 // indirect
@@ -181,6 +182,7 @@ require (
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/spec v0.20.9 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
+	github.com/gofiber/contrib/jwt v1.0.0
 	github.com/gofiber/jwt/v3 v3.3.10
 	github.com/gofrs/uuid v4.3.0+incompatible // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect

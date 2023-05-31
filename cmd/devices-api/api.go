@@ -39,6 +39,7 @@ import (
 	"github.com/DIMO-Network/zflogger"
 	"github.com/Shopify/sarama"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	jwtware2 "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cache"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -186,10 +187,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// Traditional tokens
 
-	jwtAuth := jwtware.New(jwtware.Config{
-		KeySetURL:            settings.JwtKeySetURL,
-		KeyRefreshInterval:   &keyRefreshInterval,
-		KeyRefreshUnknownKID: &keyRefreshUnknownKID,
+	jwtAuth := jwtware2.New(jwtware2.Config{
+		JWKSetURLs: []string{settings.JwtKeySetURL},
 	})
 
 	v1Auth := app.Group("/v1", jwtAuth)
