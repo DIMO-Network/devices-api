@@ -39,12 +39,11 @@ import (
 	"github.com/DIMO-Network/zflogger"
 	"github.com/Shopify/sarama"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	jwtware2 "github.com/gofiber/contrib/jwt"
+	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cache"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	fiberrecover "github.com/gofiber/fiber/v2/middleware/recover"
-	jwtware "github.com/gofiber/jwt/v3"
 	"github.com/gofiber/swagger"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
@@ -159,12 +158,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// webhooks, performs signature validation
 	v1.Post(constants.AutoPiWebhookPath, webhooksController.ProcessCommand)
 
-	keyRefreshInterval := time.Hour
-	keyRefreshUnknownKID := true
 	privilegeAuth := jwtware.New(jwtware.Config{
-		KeySetURL:            settings.TokenExchangeJWTKeySetURL,
-		KeyRefreshInterval:   &keyRefreshInterval,
-		KeyRefreshUnknownKID: &keyRefreshUnknownKID,
+		JWKSetURLs: []string{settings.TokenExchangeJWTKeySetURL},
 	})
 
 	vPriv := app.Group("/v1/vehicle/:tokenID", privilegeAuth)
@@ -187,7 +182,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// Traditional tokens
 
-	jwtAuth := jwtware2.New(jwtware2.Config{
+	jwtAuth := jwtware.New(jwtware.Config{
 		JWKSetURLs: []string{settings.JwtKeySetURL},
 	})
 
