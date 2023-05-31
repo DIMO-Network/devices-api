@@ -24,6 +24,7 @@ require (
 	github.com/gofiber/fiber/v2 v2.46.0
 	github.com/gofiber/swagger v0.1.12
 	github.com/golang-jwt/jwt/v4 v4.4.3
+	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/golang/mock v1.6.0
 	github.com/google/subcommands v1.2.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
@@ -62,7 +63,6 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
-	github.com/golang-jwt/jwt/v5 v5.0.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
