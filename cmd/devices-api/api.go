@@ -40,11 +40,11 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	jwtware "github.com/gofiber/contrib/jwt"
-	"github.com/gofiber/contrib/swagger"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cache"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	fiberrecover "github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/swagger"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -138,7 +138,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	v1 := app.Group("/v1")
 
-	v1.Get("/swagger/*", swagger.New(swagger.Config{BasePath: "/swagger", FilePath: "./docs/swagger.json"}))
+	v1.Get("/swagger/*", swagger.HandlerDefault)
 	// Device Definitions
 	v1.Get("/device-definitions/:id", cacheHandler, deviceControllers.GetDeviceDefinitionByID)
 	v1.Get("/device-definitions/:id/integrations", cacheHandler, deviceControllers.GetDeviceIntegrationsByID)
