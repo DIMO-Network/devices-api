@@ -158,7 +158,13 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// webhooks, performs signature validation
 	v1.Post(constants.AutoPiWebhookPath, webhooksController.ProcessCommand)
 
-	privilegeAuth := jwtware.New(jwtware.Config{JWKSetURLs: []string{settings.TokenExchangeJWTKeySetURL}})
+	keyRefreshInterval := time.Hour
+	keyRefreshUnknownKID := true
+	privilegeAuth := jwtware.New(jwtware.Config{
+		KeySetURL:            settings.TokenExchangeJWTKeySetURL,
+		KeyRefreshInterval:   &keyRefreshInterval,
+		KeyRefreshUnknownKID: &keyRefreshUnknownKID,
+	})
 
 	vPriv := app.Group("/v1/vehicle/:tokenID", privilegeAuth)
 
@@ -180,7 +186,11 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// Traditional tokens
 
-	jwtAuth := jwtware.New(jwtware.Config{JWKSetURLs: []string{settings.JwtKeySetURL}})
+	jwtAuth := jwtware.New(jwtware.Config{
+		KeySetURL:            settings.JwtKeySetURL,
+		KeyRefreshInterval:   &keyRefreshInterval,
+		KeyRefreshUnknownKID: &keyRefreshUnknownKID,
+	})
 
 	v1Auth := app.Group("/v1", jwtAuth)
 
