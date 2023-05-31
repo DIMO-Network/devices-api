@@ -138,7 +138,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	v1 := app.Group("/v1")
 
-	v1.Get("/swagger/*", swagger.New())
+	v1.Get("/swagger/*", swagger.New(swagger.Config{BasePath: "/swagger", FilePath: "./docs/swagger.json"}))
 	// Device Definitions
 	v1.Get("/device-definitions/:id", cacheHandler, deviceControllers.GetDeviceDefinitionByID)
 	v1.Get("/device-definitions/:id/integrations", cacheHandler, deviceControllers.GetDeviceIntegrationsByID)
