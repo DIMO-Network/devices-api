@@ -122,7 +122,7 @@ func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []strin
 		"messages": [
 			{
 				"role": "user", 
-				"content": "A %s %s is returning error codes %s. Explain each code in the format 'code:explanation \n'"}]
+				"content": "A %s %s is returning error codes %s. Explain each code on a newline, in the format 'code:explanation'"}]
 	  		}
 	  `, make, model, codes)
 
@@ -145,8 +145,14 @@ func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []strin
 	codesResp := strings.Split(r.Choices[0].Message.Content, "\n")
 
 	resp := []ErrorCodesResponse{}
+
 	for _, code := range codesResp {
+		if code == "" {
+			continue
+		}
+
 		cc := strings.SplitN(code, ":", 2)
+
 		resp = append(resp, ErrorCodesResponse{
 			Code:        cc[0],
 			Description: strings.TrimSpace(cc[1]),
