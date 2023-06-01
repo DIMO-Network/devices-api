@@ -73,7 +73,7 @@ func UserDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.
 	}
 }
 
-// AutoPiOwner creates a new middleware handler that checks whether an autopi is paired.
+// AutoPi creates a new middleware handler that checks whether an autopi is paired.
 // For the middleware to allow the request to proceed:
 //
 //   - The request must have a valid JWT, identifying a user.
