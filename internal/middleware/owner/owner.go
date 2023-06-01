@@ -102,28 +102,36 @@ func AutoPi(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logg
 				return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted, or unit ID invalid.")
 			}
 			logger.Err(err).Msg("Database failure searching for AutoPi.")
-			return fiber.NewError(fiber.StatusInternalServerError, "Internal error.")
+			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
 
-		// if unit has not been paired or has been unpaired
-		if autopiUnit.PairRequestID.IsZero() || !autopiUnit.UnpairRequestID.IsZero() {
+		// if tokenID is empty, device has not beel paired
+		if autopiUnit.TokenID.IsZero() {
 			logger.Info().Msg("AutoPi is not paired, anyone can access endpoint.")
-			return nil
+			return c.Next()
 		}
 
 		usr, err := usersClient.GetUser(context.Background(), &pb.GetUserRequest{Id: userID})
 		if err != nil {
-			return err
+			if s, ok := status.FromError(err); ok && s.Code() == codes.NotFound {
+				logger.Info().Msg("user not found")
+				return fiber.NewError(fiber.StatusNotFound, "User not found.")
+			}
+			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		}
+
+		if usr.EthereumAddress == nil {
+			logger.Info().Msg("user does not have valid eth addr")
+			return fiber.NewError(fiber.StatusForbidden, "user does not have a valid ethereum address")
 		}
 
 		userAddr := common.HexToAddress(usr.GetEthereumAddress())
-
 		if (userAddr != common.BytesToAddress(autopiUnit.EthereumAddress.Bytes)) &&
 			(userAddr != common.BytesToAddress(autopiUnit.OwnerAddress.Bytes)) {
-			logger.Info().Msg("User is not owner of paired vehicle or AutoPi.")
-			return errors.New("user address does not match")
+			logger.Info().Msg("user is not owner of paired vehicle or AutoPi.")
+			return fiber.NewError(fiber.StatusForbidden, "user is not owner of paired vehicle or AutoPi")
 		}
 
-		return nil
+		return c.Next()
 	}
 }

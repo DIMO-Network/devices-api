@@ -7,6 +7,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
 	pb "github.com/DIMO-Network/shared/api/users"
+	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
@@ -15,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 func TestUserDeviceOwnerMiddleware(t *testing.T) {
@@ -142,8 +144,6 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 	userID := "louxUser"
 	userAddr := "1ABC7154748d1ce5144478cdeB574ae244b939B5"
 	unitID := "4a12c37b-b662-4fad-68e6-7e74f9ce658c"
-	pairRequestID := "pair-req-1"
-	unpairRequestID := "unpair-req-1"
 
 	ctx := context.Background()
 	pdb, container := test.StartContainerDatabase(ctx, t, "../../../migrations")
@@ -168,8 +168,7 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 		UserEthAddr     string
 		AutoPiEthAddr   string
 		AutoPiOwnerAddr string
-		PairReqID       string
-		UnpairReqID     string
+		TokenID         int
 		ExpectedCode    int
 	}{
 		{
@@ -186,33 +185,26 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 			Name:         "AutoPiPairedAddrsDontMatch",
 			UserID:       userID,
 			AutoPiUnitID: unitID,
-			PairReqID:    pairRequestID,
 			UserEthAddr:  userAddr,
-			ExpectedCode: 500,
-		},
-		{
-			Name:         "AutoPiUnPaired",
-			UserID:       userID,
-			AutoPiUnitID: unitID,
-			UnpairReqID:  unpairRequestID,
-			ExpectedCode: 200,
+			TokenID:      1,
+			ExpectedCode: 403,
 		},
 		{
 			Name:          "AutoPiPairedEthAddrMatches",
 			UserID:        userID,
 			AutoPiUnitID:  unitID,
-			PairReqID:     pairRequestID,
 			AutoPiEthAddr: userAddr,
 			UserEthAddr:   userAddr,
+			TokenID:       1,
 			ExpectedCode:  200,
 		},
 		{
 			Name:            "AutoPiPairedOwnerAddrMatches",
 			UserID:          userID,
 			AutoPiUnitID:    unitID,
-			PairReqID:       pairRequestID,
 			AutoPiOwnerAddr: userAddr,
 			UserEthAddr:     userAddr,
+			TokenID:         1,
 			ExpectedCode:    200,
 		},
 	}
@@ -229,6 +221,7 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 				var apOwnr null.Bytes
 				var pairReq null.String
 				var unpairReq null.String
+				var tknID types.NullDecimal
 				if c.AutoPiEthAddr != "" {
 					apEth = null.BytesFrom(common.FromHex(c.AutoPiEthAddr))
 				}
@@ -237,22 +230,9 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 					apOwnr = null.BytesFrom(common.FromHex(c.AutoPiOwnerAddr))
 				}
 
-				if c.PairReqID != "" {
-					pairReq = null.StringFrom(c.PairReqID)
-					p := models.MetaTransactionRequest{
-						ID:     c.PairReqID,
-						Status: "Confirmed",
-					}
-					require.NoError(t, p.Insert(ctx, pdb.DBS().Writer, boil.Infer()))
-				}
-
-				if c.UnpairReqID != "" {
-					unpairReq = null.StringFrom(c.UnpairReqID)
-					up := models.MetaTransactionRequest{
-						ID:     c.UnpairReqID,
-						Status: "Confirmed",
-					}
-					require.NoError(t, up.Insert(ctx, pdb.DBS().Writer, boil.Infer()))
+				if c.TokenID > 0 {
+					tknID = types.NewNullDecimal(decimal.New(int64(c.TokenID), 0))
+					t.Log(tknID)
 				}
 
 				ap := models.AutopiUnit{
@@ -261,6 +241,7 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 					OwnerAddress:    apOwnr,
 					PairRequestID:   pairReq,
 					UnpairRequestID: unpairReq,
+					TokenID:         tknID,
 				}
 				require.NoError(t, ap.Insert(ctx, pdb.DBS().Writer, boil.Infer()))
 
