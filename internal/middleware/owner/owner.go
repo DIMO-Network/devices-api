@@ -90,7 +90,7 @@ func AutoPi(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logg
 			return fiber.NewError(fiber.StatusBadRequest, "Unit id is not a valid UUID.")
 		}
 
-		logger := logger.With().Str("userId", userID).Str("unitID", unitID).Logger()
+		logger := logger.With().Str("userId", userID).Str("unitId", unitID).Logger()
 		c.Locals("userID", userID)
 		c.Locals("unitID", unitID)
 		c.Locals("logger", &logger)
