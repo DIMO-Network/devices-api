@@ -166,8 +166,8 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 		UserID          string
 		AutoPiUnitID    string
 		UserEthAddr     string
-		AutoPiEthAddr   string
 		AutoPiOwnerAddr string
+		VehicleNFTAddr  string
 		TokenID         int
 		ExpectedCode    int
 	}{
@@ -190,13 +190,13 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 			ExpectedCode: 403,
 		},
 		{
-			Name:          "AutoPiPairedEthAddrMatches",
-			UserID:        userID,
-			AutoPiUnitID:  unitID,
-			AutoPiEthAddr: userAddr,
-			UserEthAddr:   userAddr,
-			TokenID:       1,
-			ExpectedCode:  200,
+			Name:           "AutoPiVehicleNFTAddrMatches",
+			UserID:         userID,
+			AutoPiUnitID:   unitID,
+			VehicleNFTAddr: userAddr,
+			UserEthAddr:    userAddr,
+			TokenID:        1,
+			ExpectedCode:   200,
 		},
 		{
 			Name:            "AutoPiPairedOwnerAddrMatches",
@@ -213,17 +213,33 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 		t.Run(c.Name, func(t *testing.T) {
 			_, err := models.AutopiUnits().DeleteAll(ctx, pdb.DBS().Writer)
 			require.NoError(t, err)
+			_, err = models.VehicleNFTS().DeleteAll(ctx, pdb.DBS().Writer)
+			require.NoError(t, err)
 			_, err = models.MetaTransactionRequests().DeleteAll(ctx, pdb.DBS().Writer)
 			require.NoError(t, err)
-			if c.AutoPiUnitID != "" {
 
+			if c.AutoPiUnitID != "" {
 				var apEth null.Bytes
 				var apOwnr null.Bytes
 				var pairReq null.String
 				var unpairReq null.String
 				var tknID types.NullDecimal
-				if c.AutoPiEthAddr != "" {
-					apEth = null.BytesFrom(common.FromHex(c.AutoPiEthAddr))
+				if c.VehicleNFTAddr != "" {
+					mtxReq := "abcdefghijklmnopqrstuvwxyz1"
+					mtr := models.MetaTransactionRequest{
+						ID:     mtxReq,
+						Status: models.MetaTransactionRequestStatusConfirmed,
+					}
+					err = mtr.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+					require.NoError(t, err)
+
+					vnft := models.VehicleNFT{
+						MintRequestID: mtxReq,
+						TokenID:       types.NewNullDecimal(decimal.New(int64(c.TokenID), 0)),
+						OwnerAddress:  null.BytesFrom(common.Hex2Bytes(c.VehicleNFTAddr)),
+					}
+					err := vnft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+					require.NoError(t, err)
 				}
 
 				if c.AutoPiOwnerAddr != "" {

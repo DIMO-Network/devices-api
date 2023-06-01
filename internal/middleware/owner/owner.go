@@ -14,6 +14,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -126,10 +127,17 @@ func AutoPi(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logg
 		}
 
 		userAddr := common.HexToAddress(usr.GetEthereumAddress())
-		if (userAddr != common.BytesToAddress(autopiUnit.EthereumAddress.Bytes)) &&
-			(userAddr != common.BytesToAddress(autopiUnit.OwnerAddress.Bytes)) {
-			logger.Info().Msg("user is not owner of paired vehicle or AutoPi.")
-			return fiber.NewError(fiber.StatusForbidden, "user is not owner of paired vehicle or AutoPi")
+
+		if userAddr != common.BytesToAddress(autopiUnit.OwnerAddress.Bytes) {
+			if nftOwner, err := models.VehicleNFTS(
+				models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(autopiUnit.TokenID.Big)),
+				models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(*usr.EthereumAddress))),
+			).Exists(c.Context(), dbs.DBS().Reader); err != nil {
+				return err
+			} else if !nftOwner {
+				logger.Info().Msg("user is not owner of paired vehicle or AutoPi.")
+				return fiber.NewError(fiber.StatusForbidden, "user is not owner of paired vehicle or AutoPi")
+			}
 		}
 
 		return c.Next()
