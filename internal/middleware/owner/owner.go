@@ -20,7 +20,7 @@ import (
 
 var errNotFound = fiber.NewError(fiber.StatusNotFound, "Device not found.")
 
-// UserDeviceOwner creates a new middleware handler that checks whether a user is authorized to access
+// UserDevice creates a new middleware handler that checks whether a user is authorized to access
 // a user device. For the middleware to allow the request to proceed:
 //
 //   - The request must have a valid JWT, identifying a user.
