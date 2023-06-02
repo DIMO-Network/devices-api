@@ -80,7 +80,7 @@ func (vc *VirtualDeviceController) getVirtualDeviceMintPayload(integrationID, ve
 	}
 }
 
-func (vc *VirtualDeviceController) verifyUserAndNFTExist(ctx context.Context, user *pb.User, vehicleNode int64, integrationNode string) error {
+func (vc *VirtualDeviceController) verifyUserAddressAndNFTExist(ctx context.Context, user *pb.User, vehicleNode int64, integrationNode string) error {
 	if user.EthereumAddress == nil {
 		return fiber.NewError(fiber.StatusUnauthorized, "User does not have an Ethereum address on file.")
 	}
@@ -133,7 +133,7 @@ func (vc *VirtualDeviceController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) 
 		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicleNode provided")
 	}
 
-	if err = vc.verifyUserAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
+	if err = vc.verifyUserAddressAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
 		return err
 	}
 
@@ -187,7 +187,7 @@ func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx)
 		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicle id provided")
 	}
 
-	if err = vc.verifyUserAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
+	if err = vc.verifyUserAddressAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
 		return err
 	}
 
