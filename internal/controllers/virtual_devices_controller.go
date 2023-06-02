@@ -264,8 +264,7 @@ func (vc *VirtualDeviceController) sendVirtualDeviceMintPayload(ctx context.Cont
 		VirtualDeviceSig:  virtSig,
 	}
 
-	client.MintVirtualDeviceSign(requestID, mvt)
-	return nil
+	return client.MintVirtualDeviceSign(requestID, mvt)
 }
 
 func generateRandomNumber() int {
