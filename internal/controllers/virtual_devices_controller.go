@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"log"
 	"strconv"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -138,6 +139,7 @@ func (vc *VirtualDeviceController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) 
 	}
 
 	integration, err := vc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), integrationNode)
+	log.Println("avbbbbbbbbb", integration)
 	if err != nil {
 		return helpers.GrpcErrorToFiber(err, "failed to get integration")
 	}
@@ -192,6 +194,7 @@ func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx)
 	}
 
 	integration, err := vc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), integrationNode)
+	log.Println("dddsfjfsdfj", integration)
 	if err != nil {
 		return helpers.GrpcErrorToFiber(err, "failed to get integration")
 	}
