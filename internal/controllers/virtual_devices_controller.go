@@ -1,18 +1,22 @@
 package controllers
 
 import (
+	"context"
 	"log"
+	"math/big"
 	"math/rand"
 	"strconv"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	registryContract "github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/models"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
-	"github.com/DIMO-Network/test-instance/pkg/grpc"
+	"github.com/Shopify/sarama"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -20,6 +24,7 @@ import (
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
+	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
@@ -32,6 +37,7 @@ type VirtualDeviceController struct {
 	deviceDefSvc  services.DeviceDefinitionService
 	usersClient   pb.UserServiceClient
 	virtDeviceSvc services.VirtualDeviceInstanceService
+	producer      sarama.SyncProducer
 }
 
 type SignVirtualDeviceMintingPayloadRequest struct {
@@ -43,7 +49,7 @@ type SignVirtualDeviceMintingPayloadRequest struct {
 }
 
 func NewVirtualDeviceController(
-	settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, integSvc services.DeviceDefinitionIntegrationService, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient, virtDeviceSvc services.VirtualDeviceInstanceService,
+	settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, integSvc services.DeviceDefinitionIntegrationService, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient, virtDeviceSvc services.VirtualDeviceInstanceService, producer sarama.SyncProducer,
 ) VirtualDeviceController {
 	return VirtualDeviceController{
 		Settings:      settings,
@@ -53,6 +59,7 @@ func NewVirtualDeviceController(
 		usersClient:   usersClient,
 		deviceDefSvc:  deviceDefSvc,
 		virtDeviceSvc: virtDeviceSvc,
+		producer:      producer,
 	}
 }
 
@@ -153,6 +160,7 @@ func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx)
 
 	req := &SignVirtualDeviceMintingPayloadRequest{}
 	if err := c.BodyParser(req); err != nil {
+		log.Println(err)
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
 	}
 
@@ -206,20 +214,58 @@ func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx)
 	}
 
 	addr := crypto.PubkeyToAddress(*pubRaw)
-
-	payloadVerified := addr == common.HexToAddress(*user.EthereumAddress)
+	userAddr := common.HexToAddress(*user.EthereumAddress)
+	payloadVerified := addr == userAddr
 
 	if !payloadVerified {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature provided")
 	}
 
-	childKeyNumber := generateRandomNumber()
-	vv, _ := vc.virtDeviceSvc.GetAddress(c.Context(), &grpc.GetAddressRequest{
-		ChildNumber: uint32(childKeyNumber),
-	})
-	log.Println(childKeyNumber, "dddddd", vv)
+	err = vc.sendVirtualDeviceMintPayload(c.Context(), hash, req.VehicleNode, integration.TokenId, userAddr, signature)
+	if err != nil {
+		vc.log.Err(err).Msg("virtual device minting request failed")
+		return fiber.NewError(fiber.StatusInternalServerError, "virtual device minting request failed")
+	}
 
-	return c.Send([]byte("signature is valid"))
+	return c.Send([]byte("virtual device mint request successful"))
+}
+
+func (vc *VirtualDeviceController) sendVirtualDeviceMintPayload(ctx context.Context, hash []byte, vehicleNode int, intTokenID uint64, userAddr common.Address, signature []byte) error {
+	childKeyNumber := generateRandomNumber()
+	virtSig, err := vc.virtDeviceSvc.SignHash(ctx, uint32(childKeyNumber), hash)
+	if err != nil {
+		vc.log.Err(err).
+			Str("function-name", "SyntheticWallet.SignHash").
+			Bytes("Hash", hash).
+			Int("childKeyNumber", childKeyNumber).
+			Msg("Error occurred signing message hash")
+		return err
+	}
+
+	client := registry.Client{
+		Producer:     vc.producer,
+		RequestTopic: "topic.transaction.request.send",
+		Contract: registry.Contract{
+			ChainID: big.NewInt(vc.Settings.DIMORegistryChainID),
+			Address: common.HexToAddress(vc.Settings.DIMORegistryAddr),
+			Name:    "DIMO",
+			Version: "1",
+		},
+	}
+
+	requestID := ksuid.New().String()
+
+	vNode := new(big.Int).SetInt64(int64(vehicleNode))
+	mvt := registryContract.MintVirtualDeviceInput{
+		IntegrationNode:   new(big.Int).SetUint64(intTokenID),
+		VehicleNode:       vNode,
+		VehicleOwnerSig:   signature,
+		VirtualDeviceAddr: userAddr,
+		VirtualDeviceSig:  virtSig,
+	}
+
+	client.MintVirtualDeviceSign(requestID, mvt)
+	return nil
 }
 
 func generateRandomNumber() int {

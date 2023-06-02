@@ -59,7 +59,7 @@ func GeoDecodeLatLong(lat, lng float64, googleAPIKey string) (*MapsGeocodeResp, 
 		}
 		return &r, nil
 	}
-	return nil, fmt.Errorf("No results found")
+	return nil, fmt.Errorf("no results found")
 }
 
 type MapsGeocodeResp struct {

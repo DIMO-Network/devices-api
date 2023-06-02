@@ -57,7 +57,7 @@ func (s *VirtualDevicesControllerTestSuite) SetupSuite() {
 
 	logger := test.Logger()
 
-	c := NewVirtualDeviceController(&config.Settings{Port: "3000", DIMORegistryChainID: 80001, DIMORegistryAddr: common.HexToAddress("0x4De1bCf2B7E851E31216fC07989caA902A604784").Hex()}, s.pdb.DBS, logger, s.deviceDefIntSvc, s.deviceDefSvc, s.userClient, nil)
+	c := NewVirtualDeviceController(&config.Settings{Port: "3000", DIMORegistryChainID: 80001, DIMORegistryAddr: common.HexToAddress("0x4De1bCf2B7E851E31216fC07989caA902A604784").Hex()}, s.pdb.DBS, logger, s.deviceDefIntSvc, s.deviceDefSvc, s.userClient, nil, nil)
 	s.vdc = c
 
 	app := test.SetupAppFiber(*logger)

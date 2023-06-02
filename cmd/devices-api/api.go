@@ -110,7 +110,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
-	virtualDeviceController := controllers.NewVirtualDeviceController(settings, pdb.DBS, &logger, ddIntSvc, ddSvc, usersClient, virtDeviceSvc)
+	virtualDeviceController := controllers.NewVirtualDeviceController(settings, pdb.DBS, &logger, ddIntSvc, ddSvc, usersClient, virtDeviceSvc, producer)
 
 	// commenting this out b/c the library includes the path in the metrics which saturates prometheus queries - need to fork / make our own
 	//prometheus := fiberprometheus.New("devices-api")
@@ -161,7 +161,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// webhooks, performs signature validation
 	v1.Post(constants.AutoPiWebhookPath, webhooksController.ProcessCommand)
 
-	privilegeAuth := jwtware.New(jwtware.Config{JWKSetURLs: []string{settings.TokenExchangeJWTKeySetURL}})
+	privilegeAuth := jwtware.New(jwtware.Config{
+		JWKSetURLs: []string{settings.TokenExchangeJWTKeySetURL},
+	})
 
 	vPriv := app.Group("/v1/vehicle/:tokenID", privilegeAuth)
 
@@ -183,7 +185,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// Traditional tokens
 
-	jwtAuth := jwtware.New(jwtware.Config{JWKSetURLs: []string{settings.JwtKeySetURL}})
+	jwtAuth := jwtware.New(jwtware.Config{
+		JWKSetURLs: []string{settings.JwtKeySetURL},
+	})
 
 	v1Auth := app.Group("/v1", jwtAuth)
 
