@@ -50,7 +50,7 @@ func NewVirtualDeviceController(
 	}
 }
 
-func (vc *VirtualDeviceController) getVirtualDeviceMintPayload(integrationID int64, vehicleNode int64) *signer.TypedData {
+func (vc *VirtualDeviceController) getVirtualDeviceMintPayload(integrationID, vehicleNode int64) *signer.TypedData {
 	return &signer.TypedData{
 		Types: signer.Types{
 			"EIP712Domain": []signer.Type{
