@@ -11,7 +11,6 @@ import (
 )
 
 type VirtualDeviceInstanceService interface {
-	GetAddress(ctx context.Context, req *pbvirt.GetAddressRequest) (*pbvirt.GetAddressResponse, error)
 	SignHash(ctx context.Context, childNumber uint32, hash []byte) ([]byte, error)
 }
 
@@ -25,16 +24,6 @@ func NewVirtualDeviceInstanceService(DBS func() *db.ReaderWriter, settings *conf
 		dbs:                           DBS,
 		virtualDeviceInstanceGRPCAddr: settings.VirtualDeviceInstanceGrpcAddr,
 	}
-}
-
-func (v *virtualDeviceInstanceService) GetAddress(ctx context.Context, req *pbvirt.GetAddressRequest) (*pbvirt.GetAddressResponse, error) {
-	_, conn, err := v.getVirtualDeviceGrpcClient()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	return nil, nil
 }
 
 func (v *virtualDeviceInstanceService) SignHash(ctx context.Context, childNumber uint32, hash []byte) ([]byte, error) {
