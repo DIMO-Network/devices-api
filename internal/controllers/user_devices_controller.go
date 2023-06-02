@@ -385,13 +385,16 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 
 			nft, err := models.VehicleNFTS(
 				models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(priv.TokenID.Big)),
-				qm.Load(models.VehicleNFTRels.UserDevice),
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
 				if err == sql.ErrNoRows {
 					continue
 				}
 				return err
+			}
+
+			if !nft.UserDeviceID.Valid {
+				continue
 			}
 
 			ud, err := models.UserDevices(

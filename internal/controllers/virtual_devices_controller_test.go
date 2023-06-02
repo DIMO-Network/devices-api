@@ -62,8 +62,8 @@ func (s *VirtualDevicesControllerTestSuite) SetupSuite() {
 
 	app := test.SetupAppFiber(*logger)
 
-	app.Post("/v1/virtual-device/mint/:tokenID/:vehicleID", test.AuthInjectorTestHandler(testUserID), c.SignVirtualDeviceMintingPayload)
-	app.Get("/v1/virtual-device/mint/:tokenID/:vehicleID", test.AuthInjectorTestHandler(testUserID), c.GetVirtualDeviceMintingPayload)
+	app.Post("/v1/virtual-device/mint/:integrationNode/:vehicleID", test.AuthInjectorTestHandler(testUserID), c.SignVirtualDeviceMintingPayload)
+	app.Get("/v1/virtual-device/mint/:integrationNode/:vehicleID", test.AuthInjectorTestHandler(testUserID), c.GetVirtualDeviceMintingPayload)
 
 	s.app = app
 }
@@ -159,6 +159,9 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_N
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(nil, errors.New("could not find integration"))
+
+	udID := ksuid.New().String()
+	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, testUserID, udID, 57, s.pdb)
 
 	request := test.BuildRequest("GET", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
