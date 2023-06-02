@@ -1,7 +1,10 @@
 package controllers
 
 import (
+	"log"
+	"math/rand"
 	"strconv"
+	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
@@ -9,6 +12,7 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/test-instance/pkg/grpc"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -21,12 +25,13 @@ import (
 )
 
 type VirtualDeviceController struct {
-	Settings     *config.Settings
-	DBS          func() *db.ReaderWriter
-	log          *zerolog.Logger
-	integSvc     services.DeviceDefinitionIntegrationService
-	deviceDefSvc services.DeviceDefinitionService
-	usersClient  pb.UserServiceClient
+	Settings      *config.Settings
+	DBS           func() *db.ReaderWriter
+	log           *zerolog.Logger
+	integSvc      services.DeviceDefinitionIntegrationService
+	deviceDefSvc  services.DeviceDefinitionService
+	usersClient   pb.UserServiceClient
+	virtDeviceSvc services.VirtualDeviceInstanceService
 }
 
 type SignVirtualDeviceMintingPayloadRequest struct {
@@ -38,15 +43,16 @@ type SignVirtualDeviceMintingPayloadRequest struct {
 }
 
 func NewVirtualDeviceController(
-	settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, integSvc services.DeviceDefinitionIntegrationService, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient,
+	settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, integSvc services.DeviceDefinitionIntegrationService, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient, virtDeviceSvc services.VirtualDeviceInstanceService,
 ) VirtualDeviceController {
 	return VirtualDeviceController{
-		Settings:     settings,
-		DBS:          dbs,
-		log:          logger,
-		integSvc:     integSvc,
-		usersClient:  usersClient,
-		deviceDefSvc: deviceDefSvc,
+		Settings:      settings,
+		DBS:           dbs,
+		log:           logger,
+		integSvc:      integSvc,
+		usersClient:   usersClient,
+		deviceDefSvc:  deviceDefSvc,
+		virtDeviceSvc: virtDeviceSvc,
 	}
 }
 
@@ -207,5 +213,18 @@ func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx)
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature provided")
 	}
 
+	childKeyNumber := generateRandomNumber()
+	vv, _ := vc.virtDeviceSvc.GetAddress(c.Context(), &grpc.GetAddressRequest{
+		ChildNumber: uint32(childKeyNumber),
+	})
+	log.Println(childKeyNumber, "dddddd", vv)
+
 	return c.Send([]byte("signature is valid"))
+}
+
+func generateRandomNumber() int {
+	rand.Seed(time.Now().UnixNano())
+	min := 1
+	max := 1000
+	return rand.Intn(max-min+1) + min
 }
