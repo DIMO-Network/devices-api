@@ -229,8 +229,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	if settings.VirtualDeviceMintingEnabled {
 		v1Mint := v1Auth.Group("/virtual-device")
 
-		v1Mint.Get("/mint/:tokenID/:vehicleID", virtualDeviceController.GetVirtualDeviceMintingPayload)
-		v1Mint.Post("/mint/:tokenID/:vehicleID", virtualDeviceController.SignVirtualDeviceMintingPayload)
+		v1Mint.Get("/mint/:integrationNode/:vehicleID", virtualDeviceController.GetVirtualDeviceMintingPayload)
+		v1Mint.Post("/mint/:integrationNode/:vehicleID", virtualDeviceController.SignVirtualDeviceMintingPayload)
 	}
 
 	// Vehicle owner routes.
