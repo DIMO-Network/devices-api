@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"strconv"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -16,6 +17,7 @@ import (
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
+	"github.com/savsgio/gotils/bytes"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
@@ -78,6 +80,28 @@ func (vc *VirtualDeviceController) getVirtualDeviceMintPayload(integrationID, ve
 	}
 }
 
+func (vc *VirtualDeviceController) verifyUserAndNFTExist(ctx context.Context, user *pb.User, vehicleNode int64, integrationNode string) error {
+	if user.EthereumAddress == nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "User does not have an Ethereum address on file.")
+	}
+
+	vnID := types.NewNullDecimal(decimal.New(vehicleNode, 0))
+	vehicleNFT, err := models.VehicleNFTS(
+		models.VehicleNFTWhere.TokenID.EQ(vnID),
+		models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.HexToAddress(*user.EthereumAddress).Bytes())),
+	).Exists(ctx, vc.DBS().Reader)
+	if err != nil {
+		vc.log.Error().Err(err).Int64("vehicleNode", vehicleNode).Str("integrationNode", integrationNode).Msg("Could not fetch minting payload for device")
+		return fiber.NewError(fiber.StatusInternalServerError, "error generating device mint payload")
+	}
+
+	if !vehicleNFT {
+		return fiber.NewError(fiber.StatusNotFound, "user does not own vehicle node")
+	}
+
+	return nil
+}
+
 // GetVirtualDeviceMintingPayload godoc
 // @Description gets the payload for to mint virtual device given an integration token ID
 // @Tags        integrations
@@ -104,31 +128,18 @@ func (vc *VirtualDeviceController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) 
 		return helpers.GrpcErrorToFiber(err, "error occurred when fetching user")
 	}
 
-	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusUnauthorized, "User does not have an Ethereum address on file.")
+	vid, err := strconv.ParseInt(vehicleNode, 10, 64)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicleNode provided")
+	}
+
+	if err = vc.verifyUserAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
+		return err
 	}
 
 	integration, err := vc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), integrationNode)
 	if err != nil {
 		return helpers.GrpcErrorToFiber(err, "failed to get integration")
-	}
-
-	vid, err := strconv.ParseInt(vehicleNode, 10, 64)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicleNode provided")
-	}
-	vnID := types.NewNullDecimal(decimal.New(vid, 0))
-	vehicleNFT, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(vnID),
-		models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.HexToAddress(*user.EthereumAddress).Bytes())),
-	).Exists(c.Context(), vc.DBS().Reader)
-	if err != nil {
-		vc.log.Error().Err(err).Str("vehicleNode", vehicleNode).Str("integrationNode", rawIntegrationNode).Msg("Could not fetch minting payload for device")
-		return fiber.NewError(fiber.StatusInternalServerError, "error generating device mint payload")
-	}
-
-	if !vehicleNFT {
-		return fiber.NewError(fiber.StatusNotFound, "user does not own vehicle node")
 	}
 
 	response := vc.getVirtualDeviceMintPayload(int64(integration.TokenId), vid)
@@ -164,11 +175,6 @@ func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx)
 		return fiber.NewError(fiber.StatusBadRequest, "invalid integrationNode provided")
 	}
 
-	integration, err := vc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), integrationNode)
-	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "failed to get integration")
-	}
-
 	user, err := vc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{
 		Id: userID,
 	})
@@ -180,6 +186,17 @@ func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicle id provided")
 	}
+
+	if err = vc.verifyUserAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
+		return err
+	}
+
+	integration, err := vc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), integrationNode)
+	if err != nil {
+		return helpers.GrpcErrorToFiber(err, "failed to get integration")
+	}
+
+	userAddr := common.HexToAddress(*user.EthereumAddress)
 
 	rawPayload := vc.getVirtualDeviceMintPayload(int64(integration.TokenId), vid)
 
@@ -203,9 +220,7 @@ func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx)
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
 	}
 
-	addr := crypto.PubkeyToAddress(*pubRaw)
-
-	payloadVerified := addr == common.HexToAddress(*user.EthereumAddress)
+	payloadVerified := bytes.Equal(crypto.PubkeyToAddress(*pubRaw).Bytes(), userAddr.Bytes())
 
 	if !payloadVerified {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature provided")

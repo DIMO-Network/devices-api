@@ -160,6 +160,9 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_N
 
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(nil, errors.New("could not find integration"))
 
+	udID := ksuid.New().String()
+	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, testUserID, udID, 57, s.pdb)
+
 	request := test.BuildRequest("GET", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
