@@ -92,7 +92,7 @@ func (vc *VirtualDeviceController) getVirtualDeviceMintPayload(integrationID, ve
 	}
 }
 
-func (vc *VirtualDeviceController) verifyUserAndNFTExist(ctx context.Context, user *pb.User, vehicleNode int64, integrationNode string) error {
+func (vc *VirtualDeviceController) verifyUserAddressAndNFTExist(ctx context.Context, user *pb.User, vehicleNode int64, integrationNode string) error {
 	if user.EthereumAddress == nil {
 		return fiber.NewError(fiber.StatusUnauthorized, "User does not have an Ethereum address on file.")
 	}
@@ -145,11 +145,12 @@ func (vc *VirtualDeviceController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) 
 		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicleNode provided")
 	}
 
-	if err = vc.verifyUserAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
+	if err = vc.verifyUserAddressAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
 		return err
 	}
 
 	integration, err := vc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), integrationNode)
+	log.Println("avbbbbbbbbb", integration)
 	if err != nil {
 		return helpers.GrpcErrorToFiber(err, "failed to get integration")
 	}
@@ -180,6 +181,7 @@ func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx)
 
 	signature := common.FromHex(req.OwnerSignature)
 	if len(signature) != 65 {
+		log.Println("aaaaaa")
 		return fiber.NewError(fiber.StatusBadRequest, "invalid signature provided")
 	}
 
@@ -200,11 +202,12 @@ func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx)
 		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicle id provided")
 	}
 
-	if err = vc.verifyUserAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
+	if err = vc.verifyUserAddressAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
 		return err
 	}
 
 	integration, err := vc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), integrationNode)
+
 	if err != nil {
 		return helpers.GrpcErrorToFiber(err, "failed to get integration")
 	}
@@ -234,7 +237,6 @@ func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx)
 	}
 
 	payloadVerified := bytes.Equal(crypto.PubkeyToAddress(*pubRaw).Bytes(), userAddr.Bytes())
-
 	if !payloadVerified {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature provided")
 	}

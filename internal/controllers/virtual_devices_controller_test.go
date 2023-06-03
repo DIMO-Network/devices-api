@@ -183,9 +183,6 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_V
 	user := test.BuildGetUserGRPC(testUserID, &email, &eth, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
-	integrations := test.BuildIntegrationForGRPCRequest(10, uint64(1))
-	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(integrations, nil)
-
 	request := test.BuildRequest("GET", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
