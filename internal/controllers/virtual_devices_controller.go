@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"log"
 	"math/big"
 	"math/rand"
 	"strconv"
@@ -150,7 +149,6 @@ func (vc *VirtualDeviceController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) 
 	}
 
 	integration, err := vc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), integrationNode)
-	log.Println("avbbbbbbbbb", integration)
 	if err != nil {
 		return helpers.GrpcErrorToFiber(err, "failed to get integration")
 	}
@@ -175,13 +173,11 @@ func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx)
 
 	req := &SignVirtualDeviceMintingPayloadRequest{}
 	if err := c.BodyParser(req); err != nil {
-		log.Println(err)
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
 	}
 
 	signature := common.FromHex(req.OwnerSignature)
 	if len(signature) != 65 {
-		log.Println("aaaaaa")
 		return fiber.NewError(fiber.StatusBadRequest, "invalid signature provided")
 	}
 
