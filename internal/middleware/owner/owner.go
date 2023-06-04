@@ -1,7 +1,6 @@
 package owner
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 
@@ -99,45 +98,42 @@ func AutoPi(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logg
 		autopiUnit, err := models.FindAutopiUnit(c.Context(), dbs.DBS().Reader, unitID)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				logger.Info().Msg("AutoPi not minted, or unit ID invalid.")
 				return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted, or unit ID invalid.")
 			}
-			logger.Err(err).Msg("Database failure searching for AutoPi.")
-			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+			return err
 		}
 
-		// if tokenID is empty, device has not beel paired
-		if autopiUnit.TokenID.IsZero() {
-			logger.Info().Msg("AutoPi is not paired, anyone can access endpoint.")
+		// If token_id is null, device is not paired.
+		// Also short-circuit the address checks if user is the "web2 owner".
+		if autopiUnit.TokenID.IsZero() || autopiUnit.UserID.Valid && autopiUnit.UserID.String == userID {
 			return c.Next()
 		}
 
-		usr, err := usersClient.GetUser(context.Background(), &pb.GetUserRequest{Id: userID})
+		user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 		if err != nil {
-			if s, ok := status.FromError(err); ok && s.Code() == codes.NotFound {
-				logger.Info().Msg("user not found")
-				return fiber.NewError(fiber.StatusNotFound, "User not found.")
-			}
-			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+			return helpers.GrpcErrorToFiber(err, "Error retrieving user")
 		}
 
-		if usr.EthereumAddress == nil {
-			logger.Info().Msg("user does not have valid eth addr")
+		if user.EthereumAddress == nil {
 			return fiber.NewError(fiber.StatusForbidden, "user does not have a valid ethereum address")
 		}
 
-		userAddr := common.HexToAddress(usr.GetEthereumAddress())
+		userAddr := common.HexToAddress(*user.EthereumAddress)
+		apOwner := common.BytesToAddress(autopiUnit.OwnerAddress.Bytes)
 
-		if userAddr != common.BytesToAddress(autopiUnit.OwnerAddress.Bytes) {
-			if nftOwner, err := models.VehicleNFTS(
-				models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(autopiUnit.TokenID.Big)),
-				models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(*usr.EthereumAddress))),
-			).Exists(c.Context(), dbs.DBS().Reader); err != nil {
-				return err
-			} else if !nftOwner {
-				logger.Info().Msg("user is not owner of paired vehicle or AutoPi.")
-				return fiber.NewError(fiber.StatusForbidden, "user is not owner of paired vehicle or AutoPi")
-			}
+		if userAddr == apOwner {
+			return c.Next()
+		}
+
+		ownsVehicle, err := models.VehicleNFTS(
+			models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(autopiUnit.TokenID.Big)),
+			models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(userAddr.Bytes())),
+		).Exists(c.Context(), dbs.DBS().Reader)
+		if err != nil {
+			return err
+		}
+		if !ownsVehicle {
+			return fiber.NewError(fiber.StatusForbidden, "user is not owner of paired vehicle or AutoPi")
 		}
 
 		return c.Next()
