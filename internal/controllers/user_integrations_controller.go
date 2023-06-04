@@ -643,68 +643,16 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 // @Security    BearerAuth
 // @Router      /autopi/unit/:unitID/is-online [get]
 func (udc *UserDevicesController) GetIsAutoPiOnline(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
-	unitID := c.Params("unitID")
-
-	valid, unitID := services.ValidateAndCleanUUID(unitID)
-	if !valid {
-		return fiber.NewError(fiber.StatusBadRequest, "Unit id is not a valid UUID.")
-	}
-
-	logger := udc.log.With().Str("userId", userID).Str("autoPiUnitId", unitID).Logger()
+	unitID := c.Locals("unitID").(string)
+	logger := c.Locals("logger").(*zerolog.Logger)
 
 	var userDeviceID string
 
 	// Create a record, using information from the AutoPi API, if necessary.
 	autopiUnit, err := models.FindAutopiUnit(c.Context(), udc.DBS().Reader, unitID)
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
-		logger.Info().Msg("Creating AutoPi record.")
-
-		apiUnit, err := udc.autoPiSvc.GetDeviceByUnitID(unitID)
-		if err != nil {
-			logger.Err(err).Msg("Failed to retrieve device from AutoPi API.")
-			return fiber.NewError(fiber.StatusInternalServerError, "AutoPi API error.")
-		}
-
-		var maybeAddr null.Bytes
-
-		if strAddr := apiUnit.EthereumAddress; common.IsHexAddress(strAddr) {
-			maybeAddr = null.BytesFrom(common.FromHex(strAddr))
-		} else {
-			logger.Warn().Str("address", apiUnit.EthereumAddress).Msg("Invalid device Ethereum address from AutoPi.")
-		}
-
-		autopiUnit = &models.AutopiUnit{
-			AutopiUnitID:    unitID,
-			AutopiDeviceID:  null.StringFrom(apiUnit.ID),
-			EthereumAddress: maybeAddr,
-		}
-
-		err = autopiUnit.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
-		if err != nil {
-			logger.Err(err).Msg("Failed to insert new AutoPi record.")
-			return opaqueInternalError
-		}
-	case err != nil:
+	if err != nil {
 		logger.Err(err).Msg("Failed searching for AutoPi in database.")
 		return opaqueInternalError
-	default:
-		if uid := autopiUnit.UserID; uid.Valid && uid.String != userID {
-			logger.Warn().Err(err).Str("ownerUserId", uid.String).Msg("Attempting to poll AutoPi owned by another user.")
-			return fiber.NewError(fiber.StatusForbidden, "AutoPi belongs to another user.")
-		}
-
-		// This does not return an error if it doesn't find a row; instead, udai will be nil.
-		udai, err := udc.autoPiSvc.GetUserDeviceIntegrationByUnitID(c.Context(), unitID)
-		if err != nil {
-			logger.Err(err).Msg("Failed to look up AutoPi pairing record.")
-			return opaqueInternalError
-		}
-
-		if udai != nil {
-			userDeviceID = udai.UserDeviceID
-		}
 	}
 
 	// send command without webhook since we'll just query the jobid
@@ -754,26 +702,8 @@ func (udc *UserDevicesController) GetIsAutoPiOnline(c *fiber.Ctx) error {
 // @Security    BearerAuth
 // @Router      /autopi/unit/:unitID/update [post]
 func (udc *UserDevicesController) StartAutoPiUpdateTask(c *fiber.Ctx) error {
-	unitID := c.Params("unitID") // save in task
-	v, unitID := services.ValidateAndCleanUUID(unitID)
-	if !v {
-		return c.SendStatus(fiber.StatusBadRequest)
-	}
+	unitID := c.Locals("unitID").(string)
 	userID := helpers.GetUserID(c)
-	deviceID := ""
-
-	// check if unitId has already been assigned to a different user - don't allow querying in this case
-	autopiUnit, err := models.FindAutopiUnit(c.Context(), udc.DBS().Reader, unitID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return err
-	}
-
-	if autopiUnit != nil {
-		if autopiUnit.UserID != null.StringFrom(userID) {
-			return c.SendStatus(fiber.StatusForbidden)
-		}
-		deviceID = autopiUnit.AutopiDeviceID.String
-	}
 
 	// check if device already updated
 	unit, err := udc.autoPiSvc.GetDeviceByUnitID(unitID)
@@ -783,6 +713,7 @@ func (udc *UserDevicesController) StartAutoPiUpdateTask(c *fiber.Ctx) error {
 		}
 		return err
 	}
+
 	if unit.IsUpdated {
 		return c.JSON(services.AutoPiTask{
 			TaskID:      "0",
@@ -791,23 +722,9 @@ func (udc *UserDevicesController) StartAutoPiUpdateTask(c *fiber.Ctx) error {
 			Code:        200,
 		})
 	}
-	if len(deviceID) == 0 {
-		deviceID = unit.ID
-	}
-	// insert autopi unit if not claimed
-	if autopiUnit == nil {
-		autopiUnit = &models.AutopiUnit{
-			AutopiUnitID:   unitID,
-			AutopiDeviceID: null.StringFrom(deviceID),
-			UserID:         null.StringFrom(userID),
-		}
-		err = autopiUnit.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
-		if err != nil {
-			return err
-		}
-	}
+
 	// fire off task
-	taskID, err := udc.autoPiTaskService.StartAutoPiUpdate(deviceID, userID, unitID)
+	taskID, err := udc.autoPiTaskService.StartAutoPiUpdate(unit.ID, userID, unitID)
 	if err != nil {
 		return err
 	}
