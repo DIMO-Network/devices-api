@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"log"
 	"strconv"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -23,16 +22,15 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
-type VirtualDeviceController struct {
+type SyntheticDevicesController struct {
 	Settings     *config.Settings
-	DBS          func() *db.ReaderWriter
+	DBS          db.Store
 	log          *zerolog.Logger
-	integSvc     services.DeviceDefinitionIntegrationService
 	deviceDefSvc services.DeviceDefinitionService
 	usersClient  pb.UserServiceClient
 }
 
-type SignVirtualDeviceMintingPayloadRequest struct {
+type SyntheticDeviceMintingRequest struct {
 	VehicleNode int `json:"vehicleNode"`
 	Credentials struct {
 		AuthorizationCode string `json:"authorizationCode"`
@@ -41,19 +39,18 @@ type SignVirtualDeviceMintingPayloadRequest struct {
 }
 
 func NewVirtualDeviceController(
-	settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, integSvc services.DeviceDefinitionIntegrationService, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient,
-) VirtualDeviceController {
-	return VirtualDeviceController{
+	settings *config.Settings, dbs db.Store, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient,
+) SyntheticDevicesController {
+	return SyntheticDevicesController{
 		Settings:     settings,
 		DBS:          dbs,
 		log:          logger,
-		integSvc:     integSvc,
 		usersClient:  usersClient,
 		deviceDefSvc: deviceDefSvc,
 	}
 }
 
-func (vc *VirtualDeviceController) getVirtualDeviceMintPayload(integrationID, vehicleNode int64) *signer.TypedData {
+func (vc *SyntheticDevicesController) getVirtualDeviceMintPayload(integrationID, vehicleNode int64) *signer.TypedData {
 	return &signer.TypedData{
 		Types: signer.Types{
 			"EIP712Domain": []signer.Type{
@@ -81,7 +78,7 @@ func (vc *VirtualDeviceController) getVirtualDeviceMintPayload(integrationID, ve
 	}
 }
 
-func (vc *VirtualDeviceController) verifyUserAddressAndNFTExist(ctx context.Context, user *pb.User, vehicleNode int64, integrationNode string) error {
+func (vc *SyntheticDevicesController) verifyUserAddressAndNFTExist(ctx context.Context, user *pb.User, vehicleNode int64, integrationNode string) error {
 	if user.EthereumAddress == nil {
 		return fiber.NewError(fiber.StatusUnauthorized, "User does not have an Ethereum address on file.")
 	}
@@ -90,7 +87,7 @@ func (vc *VirtualDeviceController) verifyUserAddressAndNFTExist(ctx context.Cont
 	vehicleNFT, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.TokenID.EQ(vnID),
 		models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.HexToAddress(*user.EthereumAddress).Bytes())),
-	).Exists(ctx, vc.DBS().Reader)
+	).Exists(ctx, vc.DBS.DBS().Reader)
 	if err != nil {
 		vc.log.Error().Err(err).Int64("vehicleNode", vehicleNode).Str("integrationNode", integrationNode).Msg("Could not fetch minting payload for device")
 		return fiber.NewError(fiber.StatusInternalServerError, "error generating device mint payload")
@@ -103,17 +100,17 @@ func (vc *VirtualDeviceController) verifyUserAddressAndNFTExist(ctx context.Cont
 	return nil
 }
 
-// GetVirtualDeviceMintingPayload godoc
-// @Description gets the payload for to mint virtual device given an integration token ID
+// GetSyntheticDeviceMintingMessage godoc
+// @Description Gets the synthetic device minting payload for the user to sign and submit.
 // @Tags        integrations
 // @Produce     json
-// @Param       integrationNode path int true "token ID"
-// @Param       vehicleID path int true "vehicle ID"
+// @Param       integrationNode path int true "integration node id"
+// @Param       vehicleNode path int true "vehicle node id"
 // @Success     200 {array} signer.TypedData
-// @Router      /mint/:integrationNode/:vehicleID [get]
-func (vc *VirtualDeviceController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) error {
+// @Router      synthetic/device/mint/:integrationNode/:vehicleNode [get]
+func (vc *SyntheticDevicesController) GetSyntheticDeviceMintingMessage(c *fiber.Ctx) error {
 	rawIntegrationNode := c.Params("integrationNode")
-	vehicleNode := c.Params("vehicleID")
+	vehicleNode := c.Params("vehicleNode")
 	userID := helpers.GetUserID(c)
 
 	integrationNode, err := strconv.ParseUint(rawIntegrationNode, 10, 64)
@@ -139,7 +136,6 @@ func (vc *VirtualDeviceController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) 
 	}
 
 	integration, err := vc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), integrationNode)
-	log.Println("avbbbbbbbbb", integration)
 	if err != nil {
 		return helpers.GrpcErrorToFiber(err, "failed to get integration")
 	}
@@ -149,20 +145,20 @@ func (vc *VirtualDeviceController) GetVirtualDeviceMintingPayload(c *fiber.Ctx) 
 	return c.JSON(response)
 }
 
-// SignVirtualDeviceMintingPayload godoc
-// @Description validate signed signature for vehicle minting
+// MintSyntheticDevice godoc
+// @Description Validate and submit to the blockchain a synthetic device minting request.
 // @Tags        integrations
 // @Produce     json
 // @Param       integrationNode path int true "token ID"
-// @Param       vehicleID path int true "vehicle ID"
+// @Param       vehicleNode path int true "vehicle ID"
 // @Success     200 {array}
-// @Router      /mint/:integrationNode/:vehicleID [post]
-func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx) error {
+// @Router      synthetic/device/mint/:integrationNode/:vehicleNode [post]
+func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	rawIntegrationNode := c.Params("integrationNode")
-	vehicleNode := c.Params("vehicleID")
+	vehicleNode := c.Params("vehicleNode")
 	userID := helpers.GetUserID(c)
 
-	req := &SignVirtualDeviceMintingPayloadRequest{}
+	req := &SyntheticDeviceMintingRequest{}
 	if err := c.BodyParser(req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
 	}
@@ -194,7 +190,6 @@ func (vc *VirtualDeviceController) SignVirtualDeviceMintingPayload(c *fiber.Ctx)
 	}
 
 	integration, err := vc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), integrationNode)
-	log.Println("dddsfjfsdfj", integration)
 	if err != nil {
 		return helpers.GrpcErrorToFiber(err, "failed to get integration")
 	}
