@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"database/sql"
 	"fmt"
 	"math/big"
@@ -16,11 +17,13 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/shared/api/users"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/docker/go-connections/nat"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
@@ -285,7 +288,7 @@ func SetupCreateVehicleNFT(t *testing.T, userDeviceID, vin string, tokenID *big.
 	return &vehicle
 }
 
-func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userID, userDeviceID string, tokenID *big.Int, pdb db.Store) *models.VehicleNFT {
+func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userID, userDeviceID string, tokenID int64, pdb db.Store) *models.VehicleNFT {
 
 	ud := models.UserDevice{
 		ID:                 userDeviceID,
@@ -310,7 +313,7 @@ func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userI
 		Vin:           "00000000000000001",
 		MintRequestID: mint.ID,
 		UserDeviceID:  null.StringFrom(userDeviceID),
-		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+		TokenID:       types.NewNullDecimal(decimal.New(tokenID, 0)),
 		OwnerAddress:  null.BytesFrom(common.FromHex(addr.String())),
 	}
 	err = vehicle.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
@@ -514,4 +517,38 @@ func BuildDeviceDefinitionGRPC(deviceDefinitionID string, mk string, model strin
 	}
 
 	return []*ddgrpc.GetDeviceDefinitionItemResponse{rp}
+}
+
+func BuildGetUserGRPC(id string, email *string, ethereumAddress *string, referredBy *users.UserReferrer) *pb.User {
+	return &pb.User{
+		Id:              id,
+		EthereumAddress: ethereumAddress,
+		EmailAddress:    email,
+		ReferredBy:      referredBy,
+	}
+}
+
+func GenerateWallet() (*ecdsa.PrivateKey, *common.Address, error) {
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	userAddr := crypto.PubkeyToAddress(privateKey.PublicKey)
+
+	return privateKey, &userAddr, nil
+}
+
+// BuildIntegrationForGRPCRequest includes tokenID when creating mock integration
+func BuildIntegrationForGRPCRequest(autoPiDefaultTemplateID int, tokenID uint64) *ddgrpc.Integration {
+	integration := &ddgrpc.Integration{
+		Id:                      ksuid.New().String(),
+		Type:                    constants.IntegrationTypeHardware,
+		Style:                   constants.IntegrationStyleAddon,
+		Vendor:                  constants.AutoPiVendor,
+		AutoPiDefaultTemplateId: int32(autoPiDefaultTemplateID),
+		TokenId:                 tokenID,
+	}
+
+	return integration
 }

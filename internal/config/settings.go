@@ -85,6 +85,8 @@ type Settings struct {
 	// IssuerPrivateKey is a base64-encoded secp256k1 private key, used to sign
 	// VIN verifiable credentials.
 	IssuerPrivateKey string `yaml:"ISSUER_PRIVATE_KEY"`
+
+	SyntheticDevicesEnabled bool `yaml:"SYNTHETIC_DEVICES_ENABLED"`
 }
 
 func (s *Settings) IsProduction() bool {

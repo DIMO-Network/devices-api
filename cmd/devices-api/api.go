@@ -109,6 +109,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
+	virtualDeviceController := controllers.NewVirtualDeviceController(settings, pdb, &logger, ddSvc, usersClient)
 
 	// commenting this out b/c the library includes the path in the metrics which saturates prometheus queries - need to fork / make our own
 	//prometheus := fiberprometheus.New("devices-api")
@@ -155,6 +156,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1.Get("/dcn/:nodeID", nftController.GetDcnNFTMetadata)
 	v1.Get("/dcn/:nodeID/image", nftController.GetDCNNFTImage)
 	v1.Get("/integration/:tokenID", nftController.GetIntegrationNFTMetadata)
+
 	// webhooks, performs signature validation
 	v1.Post(constants.AutoPiWebhookPath, webhooksController.ProcessCommand)
 
@@ -232,6 +234,13 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/documents", documentsController.PostDocument)
 	v1Auth.Delete("/documents/:id", documentsController.DeleteDocument)
 	v1Auth.Get("/documents/:id/download", documentsController.DownloadDocument)
+
+	if settings.SyntheticDevicesEnabled {
+		sdAuth := v1Auth.Group("/synthetic/device")
+
+		sdAuth.Get("/mint/:integrationNode/:vehicleNode", virtualDeviceController.GetSyntheticDeviceMintingMessage)
+		sdAuth.Post("/mint/:integrationNode/:vehicleNode", virtualDeviceController.MintSyntheticDevice)
+	}
 
 	// Vehicle owner routes.
 	udOwnerMw := owner.UserDevice(pdb, usersClient, &logger)
