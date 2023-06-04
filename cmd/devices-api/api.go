@@ -206,6 +206,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	apOwner.Get("/", userDeviceController.GetAutoPiUnitInfo)
 	apOwner.Get("/is-online", userDeviceController.GetIsAutoPiOnline)
 	apOwner.Post("/update", userDeviceController.StartAutoPiUpdateTask)
+
 	// delete below line once confirmed no active apps using it.
 	v1Auth.Get("/autopi/unit/is-online/:unitID", userDeviceController.GetIsAutoPiOnline) // this one is deprecated
 

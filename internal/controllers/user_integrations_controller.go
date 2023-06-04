@@ -519,35 +519,20 @@ func (udc *UserDevicesController) GetAutoPiCommandStatus(c *fiber.Ctx) error {
 func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 	const minimumAutoPiRelease = "v1.22.8" // correct semver has leading v
 
-	rawUnitID := c.Params("unitID")
-	v, unitID := services.ValidateAndCleanUUID(rawUnitID)
-	if !v {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Invalid serial number: %q", rawUnitID))
-	}
-	userID := helpers.GetUserID(c)
-	// check if unitId has already been assigned to a different user - don't allow querying in this case
-	udai, _ := udc.autoPiSvc.GetUserDeviceIntegrationByUnitID(c.Context(), unitID)
-	if udai != nil {
-		if udai.R.UserDevice.UserID != userID {
-			udc.log.Warn().Str("userID", userID).Str("autopiUnitID", unitID).
-				Msg("failed to validate autopi unit belongs to user for get info")
-			return fiber.NewError(fiber.StatusForbidden, "AutoPi owned by another user.")
-		}
-	}
+	unitID := c.Locals("unitID").(string)
 
+	// This is hitting AutoPi.
 	unit, err := udc.autoPiSvc.GetDeviceByUnitID(unitID)
 	if err != nil {
 		if errors.Is(err, services.ErrNotFound) {
-			return fiber.ErrNotFound
+			return fiber.NewError(fiber.StatusNotFound, "AutoPi has no record of this unit.")
 		}
 		return err
 	}
 
-	svc := semver.Compare("v"+unit.Release.Version, minimumAutoPiRelease)
-
-	//If you are not in prod, do not require an update.
-	if udc.Settings.Environment != "prod" {
-		svc = 0
+	shouldUpdate := false
+	if udc.Settings.IsProduction() {
+		shouldUpdate = semver.Compare("v"+unit.Release.Version, minimumAutoPiRelease) < 0
 	}
 
 	var claim, pair, unpair *AutoPiTransactionStatus
@@ -637,7 +622,7 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 		Template:           unit.Template,
 		LastCommunication:  unit.LastCommunication,
 		ReleaseVersion:     unit.Release.Version,
-		ShouldUpdate:       svc < 0,
+		ShouldUpdate:       shouldUpdate,
 		TokenID:            tokenID,
 		EthereumAddress:    ethereumAddress,
 		OwnerAddress:       ownerAddress,
