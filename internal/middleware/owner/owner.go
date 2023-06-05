@@ -105,7 +105,7 @@ func AutoPi(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logg
 
 		// If token_id is null, device is not paired.
 		// Also short-circuit the address checks if user is the "web2 owner".
-		if autopiUnit.TokenID.IsZero() || autopiUnit.UserID.Valid && autopiUnit.UserID.String == userID {
+		if autopiUnit.VehicleTokenID.IsZero() || autopiUnit.UserID.Valid && autopiUnit.UserID.String == userID {
 			return c.Next()
 		}
 
