@@ -6,12 +6,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"math/big"
 	"testing"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/contracts"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
+	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/test"
+	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	smock "github.com/Shopify/sarama/mocks"
@@ -31,15 +34,15 @@ var mockProducer *smock.SyncProducer
 
 type VirtualDevicesControllerTestSuite struct {
 	suite.Suite
-	pdb              db.Store
-	container        testcontainers.Container
-	ctx              context.Context
-	mockCtrl         *gomock.Controller
-	app              *fiber.App
-	deviceDefSvc     *mock_services.MockDeviceDefinitionService
-	userClient       *mock_services.MockUserServiceClient
-	sdc              SyntheticDevicesController
-	virtDeviceSigSvc *mock_services.MockVirtualDeviceInstanceService
+	pdb                   db.Store
+	container             testcontainers.Container
+	ctx                   context.Context
+	mockCtrl              *gomock.Controller
+	app                   *fiber.App
+	deviceDefSvc          *mock_services.MockDeviceDefinitionService
+	userClient            *mock_services.MockUserServiceClient
+	sdc                   SyntheticDevicesController
+	syntheticDeviceSigSvc *mock_services.MockSyntheticWalletInstanceService
 }
 
 // SetupSuite starts container db
@@ -52,9 +55,22 @@ func (s *VirtualDevicesControllerTestSuite) SetupSuite() {
 
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(s.mockCtrl)
 	s.userClient = mock_services.NewMockUserServiceClient(s.mockCtrl)
-	s.virtDeviceSigSvc = mock_services.NewMockVirtualDeviceInstanceService(s.mockCtrl)
+	s.syntheticDeviceSigSvc = mock_services.NewMockSyntheticWalletInstanceService(s.mockCtrl)
 
 	mockProducer = smock.NewSyncProducer(s.T(), nil)
+
+	mockSettings := &config.Settings{Port: "3000", DIMORegistryChainID: 80001, DIMORegistryAddr: common.HexToAddress("0x4De1bCf2B7E851E31216fC07989caA902A604784").Hex()}
+
+	client := registry.Client{
+		Producer:     mockProducer,
+		RequestTopic: "topic.transaction.request.send",
+		Contract: registry.Contract{
+			ChainID: big.NewInt(mockSettings.DIMORegistryChainID),
+			Address: common.HexToAddress(mockSettings.DIMORegistryAddr),
+			Name:    "DIMO",
+			Version: "1",
+		},
+	}
 
 	if err != nil {
 		s.T().Fatal(err)
@@ -62,7 +78,7 @@ func (s *VirtualDevicesControllerTestSuite) SetupSuite() {
 
 	logger := test.Logger()
 
-	c := NewSyntheticDevicesController(&config.Settings{Port: "3000", DIMORegistryChainID: 80001, DIMORegistryAddr: common.HexToAddress("0x4De1bCf2B7E851E31216fC07989caA902A604784").Hex()}, s.pdb.DBS, logger, s.deviceDefSvc, s.userClient, s.virtDeviceSigSvc, mockProducer)
+	c := NewSyntheticDevicesController(mockSettings, s.pdb.DBS, logger, s.deviceDefSvc, s.userClient, s.syntheticDeviceSigSvc, client)
 	s.sdc = c
 
 	app := test.SetupAppFiber(*logger)
@@ -202,6 +218,7 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload(
 	email := "some@email.com"
 	eth := userEthAddress
 	addr := common.HexToAddress(userEthAddress)
+	deviceEthAddr := common.HexToAddress("11")
 
 	user := test.BuildGetUserGRPC(testUserID, &email, &eth, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
@@ -214,15 +231,15 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload(
 	udID := ksuid.New().String()
 	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), addr, testUserID, udID, 57, s.pdb)
 
-	s.virtDeviceSigSvc.EXPECT().SignHash(gomock.Any(), gomock.Any(), gomock.Any())
+	vehicleSig := common.HexToAddress("20").Hash().Bytes()
+	s.syntheticDeviceSigSvc.EXPECT().SignHash(gomock.Any(), gomock.Any(), gomock.Any()).Return(vehicleSig, nil).AnyTimes()
+	s.syntheticDeviceSigSvc.EXPECT().GetAddress(gomock.Any(), gomock.Any()).Return(deviceEthAddr.Bytes(), nil).AnyTimes()
 
 	var kb []byte
 	mockProducer.ExpectSendMessageWithCheckerFunctionAndSucceed(func(val []byte) error {
 		kb = val
 		return nil
 	})
-
-	log.Println(string(kb))
 
 	req := fmt.Sprintf(`{
 		"vehicleNode": %d,
@@ -239,7 +256,50 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload(
 	body, _ := io.ReadAll(response.Body)
 
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
+
+	mockProducer.Close()
+
 	assert.Equal(s.T(), "virtual device mint request successful", string(body))
+
+	var me shared.CloudEvent[registry.RequestData]
+
+	err = json.Unmarshal(kb, &me)
+	s.Require().NoError(err)
+
+	abi, err := contracts.RegistryMetaData.GetAbi()
+	s.Require().NoError(err)
+
+	method := abi.Methods["mintVirtualDeviceSign"]
+
+	callData := me.Data.Data
+
+	s.EqualValues(method.ID, callData[:4])
+
+	o, err := method.Inputs.Unpack(callData[4:])
+	s.Require().NoError(err)
+
+	actualMnInput := o[0].(struct {
+		IntegrationNode   *big.Int       "json:\"integrationNode\""
+		VehicleNode       *big.Int       "json:\"vehicleNode\""
+		VirtualDeviceSig  []uint8        "json:\"virtualDeviceSig\""
+		VehicleOwnerSig   []uint8        "json:\"vehicleOwnerSig\""
+		VirtualDeviceAddr common.Address "json:\"virtualDeviceAddr\""
+		AttrInfoPairs     []struct {
+			Attribute string "json:\"attribute\""
+			Info      string "json:\"info\""
+		} "json:\"attrInfoPairs\""
+	})
+
+	expectedMnInput := contracts.MintVirtualDeviceInput{
+		IntegrationNode:   new(big.Int).SetUint64(1),
+		VehicleNode:       new(big.Int).SetUint64(57),
+		VehicleOwnerSig:   common.FromHex(signature),
+		VirtualDeviceAddr: deviceEthAddr,
+		VirtualDeviceSig:  vehicleSig,
+	}
+
+	assert.ObjectsAreEqual(expectedMnInput, actualMnInput)
+
 }
 
 func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload_BadSignatureFailure() {

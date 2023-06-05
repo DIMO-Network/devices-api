@@ -8,14 +8,13 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
-	registryContract "github.com/DIMO-Network/devices-api/internal/contracts"
+	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/models"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
-	"github.com/Shopify/sarama"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -30,13 +29,13 @@ import (
 )
 
 type SyntheticDevicesController struct {
-	Settings     *config.Settings
-	DBS          func() *db.ReaderWriter
-	log          *zerolog.Logger
-	deviceDefSvc services.DeviceDefinitionService
-	usersClient  pb.UserServiceClient
-	walletSvc    services.SyntheticWalletInstanceService
-	producer     sarama.SyncProducer
+	Settings       *config.Settings
+	DBS            func() *db.ReaderWriter
+	log            *zerolog.Logger
+	deviceDefSvc   services.DeviceDefinitionService
+	usersClient    pb.UserServiceClient
+	walletSvc      services.SyntheticWalletInstanceService
+	registryClient registry.Client
 }
 
 type MintSyntheticDeviceRequest struct {
@@ -48,16 +47,16 @@ type MintSyntheticDeviceRequest struct {
 }
 
 func NewSyntheticDevicesController(
-	settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient, walletSvc services.SyntheticWalletInstanceService, producer sarama.SyncProducer,
+	settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient, walletSvc services.SyntheticWalletInstanceService, registryClient registry.Client,
 ) SyntheticDevicesController {
 	return SyntheticDevicesController{
-		Settings:     settings,
-		DBS:          dbs,
-		log:          logger,
-		usersClient:  usersClient,
-		deviceDefSvc: deviceDefSvc,
-		walletSvc:    walletSvc,
-		producer:     producer,
+		Settings:       settings,
+		DBS:            dbs,
+		log:            logger,
+		usersClient:    usersClient,
+		deviceDefSvc:   deviceDefSvc,
+		walletSvc:      walletSvc,
+		registryClient: registryClient,
 	}
 }
 
@@ -176,8 +175,8 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
 	}
 
-	signature := common.FromHex(req.OwnerSignature)
-	if len(signature) != 65 {
+	ownerSignature := common.FromHex(req.OwnerSignature)
+	if len(ownerSignature) != 65 {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid signature provided")
 	}
 
@@ -203,7 +202,6 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	integration, err := vc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), integrationNode)
-
 	if err != nil {
 		return helpers.GrpcErrorToFiber(err, "failed to get integration")
 	}
@@ -218,9 +216,9 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
 	}
 
-	signature[64] -= 27
+	ownerSignature[64] -= 27
 
-	pub, err := crypto.Ecrecover(hash, signature)
+	pub, err := crypto.Ecrecover(hash, ownerSignature)
 	if err != nil {
 		vc.log.Err(err).Msg("Error occurred while trying to recover public key from signature")
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
@@ -237,7 +235,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature provided")
 	}
 
-	err = vc.sendVirtualDeviceMintPayload(c.Context(), hash, req.VehicleNode, integration.TokenId, userAddr, signature)
+	err = vc.sendVirtualDeviceMintPayload(c.Context(), hash, req.VehicleNode, integration.TokenId, userAddr, ownerSignature)
 	if err != nil {
 		vc.log.Err(err).Msg("virtual device minting request failed")
 		return fiber.NewError(fiber.StatusInternalServerError, "virtual device minting request failed")
@@ -246,8 +244,18 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	return c.Send([]byte("virtual device mint request successful"))
 }
 
-func (vc *SyntheticDevicesController) sendVirtualDeviceMintPayload(ctx context.Context, hash []byte, vehicleNode int, intTokenID uint64, userAddr common.Address, signature []byte) error {
+func (vc *SyntheticDevicesController) sendVirtualDeviceMintPayload(ctx context.Context, hash []byte, vehicleNode int, intTokenID uint64, userAddr common.Address, ownerSignature []byte) error {
 	childKeyNumber := generateRandomNumber()
+
+	syntheticDeviceAddr, err := vc.walletSvc.GetAddress(ctx, uint32(childKeyNumber))
+	if err != nil {
+		vc.log.Err(err).
+			Str("function-name", "SyntheticWallet.GetAddress").
+			Int("childKeyNumber", childKeyNumber).
+			Msg("Error occurred getting synthetic wallet address")
+		return err
+	}
+
 	virtSig, err := vc.walletSvc.SignHash(ctx, uint32(childKeyNumber), hash)
 	if err != nil {
 		vc.log.Err(err).
@@ -258,29 +266,18 @@ func (vc *SyntheticDevicesController) sendVirtualDeviceMintPayload(ctx context.C
 		return err
 	}
 
-	client := registry.Client{
-		Producer:     vc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(vc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(vc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
 	requestID := ksuid.New().String()
 
 	vNode := new(big.Int).SetInt64(int64(vehicleNode))
-	mvt := registryContract.MintVirtualDeviceInput{
+	mvt := contracts.MintVirtualDeviceInput{
 		IntegrationNode:   new(big.Int).SetUint64(intTokenID),
 		VehicleNode:       vNode,
-		VehicleOwnerSig:   signature,
-		VirtualDeviceAddr: userAddr,
+		VehicleOwnerSig:   ownerSignature,
+		VirtualDeviceAddr: common.BytesToAddress(syntheticDeviceAddr),
 		VirtualDeviceSig:  virtSig,
 	}
 
-	return client.MintVirtualDeviceSign(requestID, mvt)
+	return vc.registryClient.MintVirtualDeviceSign(requestID, mvt)
 }
 
 func generateRandomNumber() int {
