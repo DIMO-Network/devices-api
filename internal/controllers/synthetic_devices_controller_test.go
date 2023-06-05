@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"testing"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -13,6 +14,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
+	smock "github.com/Shopify/sarama/mocks"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang/mock/gomock"
@@ -25,18 +27,19 @@ import (
 
 var signature = "0x80312cd950310f5bdf7095b1aecac23dc44879a6e8a879a2b7935ed79516e5b80667759a75c21cfd1471f0a0064b74a8ad2eb8b3c3dea7ef597e8a94e2b6a93e1b"
 var userEthAddress = "0xd64E249A06ee6263d989e43aBFe12748a2506f88"
+var mockProducer *smock.SyncProducer
 
 type VirtualDevicesControllerTestSuite struct {
 	suite.Suite
-	pdb             db.Store
-	container       testcontainers.Container
-	ctx             context.Context
-	mockCtrl        *gomock.Controller
-	app             *fiber.App
-	deviceDefSvc    *mock_services.MockDeviceDefinitionService
-	userClient      *mock_services.MockUserServiceClient
-	deviceDefIntSvc *mock_services.MockDeviceDefinitionIntegrationService
-	vdc             SyntheticDevicesController
+	pdb              db.Store
+	container        testcontainers.Container
+	ctx              context.Context
+	mockCtrl         *gomock.Controller
+	app              *fiber.App
+	deviceDefSvc     *mock_services.MockDeviceDefinitionService
+	userClient       *mock_services.MockUserServiceClient
+	sdc              SyntheticDevicesController
+	virtDeviceSigSvc *mock_services.MockVirtualDeviceInstanceService
 }
 
 // SetupSuite starts container db
@@ -48,8 +51,10 @@ func (s *VirtualDevicesControllerTestSuite) SetupSuite() {
 	var err error
 
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(s.mockCtrl)
-	s.deviceDefIntSvc = mock_services.NewMockDeviceDefinitionIntegrationService(s.mockCtrl)
 	s.userClient = mock_services.NewMockUserServiceClient(s.mockCtrl)
+	s.virtDeviceSigSvc = mock_services.NewMockVirtualDeviceInstanceService(s.mockCtrl)
+
+	mockProducer = smock.NewSyncProducer(s.T(), nil)
 
 	if err != nil {
 		s.T().Fatal(err)
@@ -57,13 +62,13 @@ func (s *VirtualDevicesControllerTestSuite) SetupSuite() {
 
 	logger := test.Logger()
 
-	c := NewVirtualDeviceController(&config.Settings{Port: "3000", DIMORegistryChainID: 80001, DIMORegistryAddr: common.HexToAddress("0x4De1bCf2B7E851E31216fC07989caA902A604784").Hex()}, s.pdb, logger, s.deviceDefSvc, s.userClient)
-	s.vdc = c
+	c := NewSyntheticDevicesController(&config.Settings{Port: "3000", DIMORegistryChainID: 80001, DIMORegistryAddr: common.HexToAddress("0x4De1bCf2B7E851E31216fC07989caA902A604784").Hex()}, s.pdb.DBS, logger, s.deviceDefSvc, s.userClient, s.virtDeviceSigSvc, mockProducer)
+	s.sdc = c
 
 	app := test.SetupAppFiber(*logger)
 
-	app.Post("/v1/synthetic/device/mint/:integrationNode/:vehicleNode", test.AuthInjectorTestHandler(testUserID), c.MintSyntheticDevice)
-	app.Get("/v1/synthetic/device/mint/:integrationNode/:vehicleNode", test.AuthInjectorTestHandler(testUserID), c.GetSyntheticDeviceMintingMessage)
+	app.Post("/v1/virtual-device/mint/:integrationNode/:vehicleID", test.AuthInjectorTestHandler(testUserID), c.MintSyntheticDevice)
+	app.Get("/v1/virtual-device/mint/:integrationNode/:vehicleID", test.AuthInjectorTestHandler(testUserID), c.GetSyntheticDeviceMintingPayload)
 
 	s.app = app
 }
@@ -106,13 +111,13 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload()
 	udID := ksuid.New().String()
 	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, testUserID, udID, 57, s.pdb)
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
 	body, _ := io.ReadAll(response.Body)
 
-	rawExpectedResp := s.vdc.getVirtualDeviceMintPayload(int64(1), int64(57))
+	rawExpectedResp := s.sdc.getEIP712(int64(1), int64(57))
 	expectedRespJSON, err := json.Marshal(rawExpectedResp)
 	assert.NoError(s.T(), err)
 
@@ -123,7 +128,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload()
 func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_UserNotFound() {
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(nil, errors.New("User not found"))
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
@@ -138,7 +143,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_N
 	user := test.BuildGetUserGRPC(testUserID, &email, nil, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
@@ -163,7 +168,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_N
 	udID := ksuid.New().String()
 	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, testUserID, udID, 57, s.pdb)
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
@@ -183,7 +188,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_V
 	user := test.BuildGetUserGRPC(testUserID, &email, &eth, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
@@ -209,6 +214,16 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload(
 	udID := ksuid.New().String()
 	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), addr, testUserID, udID, 57, s.pdb)
 
+	s.virtDeviceSigSvc.EXPECT().SignHash(gomock.Any(), gomock.Any(), gomock.Any())
+
+	var kb []byte
+	mockProducer.ExpectSendMessageWithCheckerFunctionAndSucceed(func(val []byte) error {
+		kb = val
+		return nil
+	})
+
+	log.Println(string(kb))
+
 	req := fmt.Sprintf(`{
 		"vehicleNode": %d,
 		"credentials": {
@@ -217,14 +232,14 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload(
 		"ownerSignature": "%s"
 	}`, 57, signature)
 
-	request := test.BuildRequest("POST", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), req)
+	request := test.BuildRequest("POST", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), req)
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
 	body, _ := io.ReadAll(response.Body)
 
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-	assert.Equal(s.T(), "signature is valid", string(body))
+	assert.Equal(s.T(), "virtual device mint request successful", string(body))
 }
 
 func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload_BadSignatureFailure() {
@@ -235,7 +250,7 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload_
 		},
 		"ownerSignature": "%s"
 	}`, 57, "Bad Signature")
-	request := test.BuildRequest("POST", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), req)
+	request := test.BuildRequest("POST", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), req)
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
@@ -253,7 +268,7 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload_
 		},
 		"ownerSignature": "%s"
 	}`, 57, "1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8")
-	request := test.BuildRequest("POST", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), req)
+	request := test.BuildRequest("POST", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), req)
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 

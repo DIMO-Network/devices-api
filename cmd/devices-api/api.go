@@ -110,7 +110,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
-	virtualDeviceController := controllers.NewVirtualDeviceController(settings, pdb, &logger, ddSvc, usersClient, virtDeviceSvc, producer)
+	syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, virtDeviceSvc, producer)
 
 	// commenting this out b/c the library includes the path in the metrics which saturates prometheus queries - need to fork / make our own
 	//prometheus := fiberprometheus.New("devices-api")
@@ -239,8 +239,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	if settings.SyntheticDevicesEnabled {
 		sdAuth := v1Auth.Group("/synthetic/device")
 
-		sdAuth.Get("/mint/:integrationNode/:vehicleNode", virtualDeviceController.GetSyntheticDeviceMintingMessage)
-		sdAuth.Post("/mint/:integrationNode/:vehicleNode", virtualDeviceController.MintSyntheticDevice)
+		sdAuth.Get("/mint/:integrationNode/:vehicleNode", syntheticController.GetSyntheticDeviceMintingPayload)
+		sdAuth.Post("/mint/:integrationNode/:vehicleNode", syntheticController.MintSyntheticDevice)
 	}
 
 	// Vehicle owner routes.
