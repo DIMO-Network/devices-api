@@ -30,13 +30,13 @@ import (
 )
 
 type SyntheticDevicesController struct {
-	Settings      *config.Settings
-	DBS           func() *db.ReaderWriter
-	log           *zerolog.Logger
-	deviceDefSvc  services.DeviceDefinitionService
-	usersClient   pb.UserServiceClient
-	virtDeviceSvc services.SyntheticWalletInstanceService
-	producer      sarama.SyncProducer
+	Settings     *config.Settings
+	DBS          func() *db.ReaderWriter
+	log          *zerolog.Logger
+	deviceDefSvc services.DeviceDefinitionService
+	usersClient  pb.UserServiceClient
+	walletSvc    services.SyntheticWalletInstanceService
+	producer     sarama.SyncProducer
 }
 
 type MintSyntheticDeviceRequest struct {
@@ -48,16 +48,16 @@ type MintSyntheticDeviceRequest struct {
 }
 
 func NewSyntheticDevicesController(
-	settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient, virtDeviceSvc services.SyntheticWalletInstanceService, producer sarama.SyncProducer,
+	settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient, walletSvc services.SyntheticWalletInstanceService, producer sarama.SyncProducer,
 ) SyntheticDevicesController {
 	return SyntheticDevicesController{
-		Settings:      settings,
-		DBS:           dbs,
-		log:           logger,
-		usersClient:   usersClient,
-		deviceDefSvc:  deviceDefSvc,
-		virtDeviceSvc: virtDeviceSvc,
-		producer:      producer,
+		Settings:     settings,
+		DBS:          dbs,
+		log:          logger,
+		usersClient:  usersClient,
+		deviceDefSvc: deviceDefSvc,
+		walletSvc:    walletSvc,
+		producer:     producer,
 	}
 }
 
@@ -248,7 +248,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 func (vc *SyntheticDevicesController) sendVirtualDeviceMintPayload(ctx context.Context, hash []byte, vehicleNode int, intTokenID uint64, userAddr common.Address, signature []byte) error {
 	childKeyNumber := generateRandomNumber()
-	virtSig, err := vc.virtDeviceSvc.SignHash(ctx, uint32(childKeyNumber), hash)
+	virtSig, err := vc.walletSvc.SignHash(ctx, uint32(childKeyNumber), hash)
 	if err != nil {
 		vc.log.Err(err).
 			Str("function-name", "SyntheticWallet.SignHash").
