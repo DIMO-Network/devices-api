@@ -510,9 +510,10 @@ func nullTimeToPB(t null.Time) *timestamppb.Timestamp {
 }
 
 func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.VinCredentialRequest) (*pb.VinCredentialResponse, error) {
+	logger := s.logger.With().Str("vin", req.Vin).Logger()
 	pk, err := base64.RawURLEncoding.DecodeString(s.settings.IssuerPrivateKey)
 	if err != nil {
-		s.logger.Err(err).Msg("Couldn't parse issuer private key.")
+		logger.Err(err).Msg("Couldn't parse issuer private key.")
 		return nil, err
 	}
 
@@ -525,7 +526,7 @@ func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.VinC
 		},
 	)
 	if err != nil {
-		s.logger.Err(err).Msg("Failed to create issuer.")
+		logger.Err(err).Msg("Failed to create issuer.")
 		return nil, err
 	}
 
@@ -533,14 +534,14 @@ func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.VinC
 	if *req.ExpiresAt != "" {
 		exp, err = time.Parse(time.RFC3339, *req.ExpiresAt)
 		if err != nil {
-			s.logger.Err(err).Msg("Failed to parse credential experation date.")
+			logger.Err(err).Msg("Failed to parse credential experation date.")
 			return nil, err
 		}
 	}
 
 	credID, err := issuer.VIN(req.Vin, big.NewInt(int64(req.TokenId)), exp.UTC())
 	if err != nil {
-		s.logger.Err(err).Msg("Failed to create vin credential.")
+		logger.Err(err).Msg("Failed to create vin credential.")
 		return nil, err
 	}
 	return &pb.VinCredentialResponse{
