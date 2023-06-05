@@ -67,8 +67,8 @@ func (s *VirtualDevicesControllerTestSuite) SetupSuite() {
 
 	app := test.SetupAppFiber(*logger)
 
-	app.Post("/v1/synthetic/device/mint/:integrationNode/:vehicleID", test.AuthInjectorTestHandler(testUserID), c.MintSyntheticDevice)
-	app.Get("/v1/synthetic/device/mint/:integrationNode/:vehicleID", test.AuthInjectorTestHandler(testUserID), c.GetSyntheticDeviceMintingPayload)
+	app.Post("/v1/synthetic/device/mint/:integrationNode/:vehicleNode", test.AuthInjectorTestHandler(testUserID), c.MintSyntheticDevice)
+	app.Get("/v1/synthetic/device/mint/:integrationNode/:vehicleNode", test.AuthInjectorTestHandler(testUserID), c.GetSyntheticDeviceMintingPayload)
 
 	s.app = app
 }

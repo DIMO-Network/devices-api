@@ -35,7 +35,7 @@ type SyntheticDevicesController struct {
 	log           *zerolog.Logger
 	deviceDefSvc  services.DeviceDefinitionService
 	usersClient   pb.UserServiceClient
-	virtDeviceSvc services.VirtualDeviceInstanceService
+	virtDeviceSvc services.SyntheticWalletInstanceService
 	producer      sarama.SyncProducer
 }
 
@@ -48,7 +48,7 @@ type MintSyntheticDeviceRequest struct {
 }
 
 func NewSyntheticDevicesController(
-	settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient, virtDeviceSvc services.VirtualDeviceInstanceService, producer sarama.SyncProducer,
+	settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient, virtDeviceSvc services.SyntheticWalletInstanceService, producer sarama.SyncProducer,
 ) SyntheticDevicesController {
 	return SyntheticDevicesController{
 		Settings:      settings,

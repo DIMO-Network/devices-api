@@ -5,35 +5,35 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/shared/db"
-	pbvirt "github.com/DIMO-Network/synthetic-wallet-instance/pkg/grpc"
+	pb "github.com/DIMO-Network/synthetic-wallet-instance/pkg/grpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-type VirtualDeviceInstanceService interface {
+type SyntheticWalletInstanceService interface {
 	SignHash(ctx context.Context, childNumber uint32, hash []byte) ([]byte, error)
 }
 
-type virtualDeviceInstanceService struct {
-	dbs                           func() *db.ReaderWriter
-	virtualDeviceInstanceGRPCAddr string
+type syntheticWalletInstanceService struct {
+	dbs         func() *db.ReaderWriter
+	serviceAddr string
 }
 
-func NewVirtualDeviceInstanceService(DBS func() *db.ReaderWriter, settings *config.Settings) VirtualDeviceInstanceService {
-	return &virtualDeviceInstanceService{
-		dbs:                           DBS,
-		virtualDeviceInstanceGRPCAddr: settings.VirtualDeviceInstanceGrpcAddr,
+func NewSyntheticWalletInstanceService(DBS func() *db.ReaderWriter, settings *config.Settings) SyntheticWalletInstanceService {
+	return &syntheticWalletInstanceService{
+		dbs:         DBS,
+		serviceAddr: settings.SyntheticWalletGRPCAddr,
 	}
 }
 
-func (v *virtualDeviceInstanceService) SignHash(ctx context.Context, childNumber uint32, hash []byte) ([]byte, error) {
+func (v *syntheticWalletInstanceService) SignHash(ctx context.Context, childNumber uint32, hash []byte) ([]byte, error) {
 	client, conn, err := v.getVirtualDeviceGrpcClient()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	res, err := client.SignHash(ctx, &pbvirt.SignHashRequest{
+	res, err := client.SignHash(ctx, &pb.SignHashRequest{
 		ChildNumber: childNumber,
 		Hash:        hash,
 	})
@@ -46,11 +46,11 @@ func (v *virtualDeviceInstanceService) SignHash(ctx context.Context, childNumber
 }
 
 // getDeviceDefsIntGrpcClient instanties new connection with client to dd service. You must defer conn.close from returned connection
-func (v *virtualDeviceInstanceService) getVirtualDeviceGrpcClient() (pbvirt.SyntheticWalletClient, *grpc.ClientConn, error) {
-	conn, err := grpc.Dial(v.virtualDeviceInstanceGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func (v *syntheticWalletInstanceService) getVirtualDeviceGrpcClient() (pb.SyntheticWalletClient, *grpc.ClientConn, error) {
+	conn, err := grpc.Dial(v.serviceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, conn, err
 	}
-	virtualDeviceClient := pbvirt.NewSyntheticWalletClient(conn)
+	virtualDeviceClient := pb.NewSyntheticWalletClient(conn)
 	return virtualDeviceClient, conn, nil
 }
