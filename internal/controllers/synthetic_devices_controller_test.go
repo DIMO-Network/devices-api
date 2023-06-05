@@ -67,8 +67,8 @@ func (s *VirtualDevicesControllerTestSuite) SetupSuite() {
 
 	app := test.SetupAppFiber(*logger)
 
-	app.Post("/v1/virtual-device/mint/:integrationNode/:vehicleID", test.AuthInjectorTestHandler(testUserID), c.MintSyntheticDevice)
-	app.Get("/v1/virtual-device/mint/:integrationNode/:vehicleID", test.AuthInjectorTestHandler(testUserID), c.GetSyntheticDeviceMintingPayload)
+	app.Post("/v1/synthetic/device/mint/:integrationNode/:vehicleID", test.AuthInjectorTestHandler(testUserID), c.MintSyntheticDevice)
+	app.Get("/v1/synthetic/device/mint/:integrationNode/:vehicleID", test.AuthInjectorTestHandler(testUserID), c.GetSyntheticDeviceMintingPayload)
 
 	s.app = app
 }
@@ -111,7 +111,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload()
 	udID := ksuid.New().String()
 	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, testUserID, udID, 57, s.pdb)
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
@@ -128,7 +128,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload()
 func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_UserNotFound() {
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(nil, errors.New("User not found"))
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
@@ -143,7 +143,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_N
 	user := test.BuildGetUserGRPC(testUserID, &email, nil, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
@@ -168,7 +168,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_N
 	udID := ksuid.New().String()
 	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, testUserID, udID, 57, s.pdb)
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
@@ -188,7 +188,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_V
 	user := test.BuildGetUserGRPC(testUserID, &email, &eth, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
@@ -232,7 +232,7 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload(
 		"ownerSignature": "%s"
 	}`, 57, signature)
 
-	request := test.BuildRequest("POST", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), req)
+	request := test.BuildRequest("POST", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), req)
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
@@ -250,7 +250,7 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload_
 		},
 		"ownerSignature": "%s"
 	}`, 57, "Bad Signature")
-	request := test.BuildRequest("POST", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), req)
+	request := test.BuildRequest("POST", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), req)
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
@@ -268,7 +268,7 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload_
 		},
 		"ownerSignature": "%s"
 	}`, 57, "1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8")
-	request := test.BuildRequest("POST", fmt.Sprintf("/v1/virtual-device/mint/%d/%d", 1, 57), req)
+	request := test.BuildRequest("POST", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), req)
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
 
