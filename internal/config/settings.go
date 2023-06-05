@@ -17,8 +17,6 @@ type Settings struct {
 	DeploymentBaseURL                 string      `yaml:"DEPLOYMENT_BASE_URL"`
 	SmartcarClientID                  string      `yaml:"SMARTCAR_CLIENT_ID"`
 	SmartcarClientSecret              string      `yaml:"SMARTCAR_CLIENT_SECRET"`
-	SmartcarTestMode                  bool        `yaml:"SMARTCAR_TEST_MODE"`
-	SmartcarWebhookID                 string      `yaml:"SMARTCAR_WEBHOOK_ID"`
 	RedisURL                          string      `yaml:"REDIS_URL"`
 	RedisPassword                     string      `yaml:"REDIS_PASSWORD"`
 	RedisTLS                          bool        `yaml:"REDIS_TLS"`
@@ -34,12 +32,10 @@ type Settings struct {
 	EventsTopic                       string      `yaml:"EVENTS_TOPIC"`
 	ElasticSearchAppSearchHost        string      `yaml:"ELASTIC_SEARCH_APP_SEARCH_HOST"`
 	ElasticSearchAppSearchToken       string      `yaml:"ELASTIC_SEARCH_APP_SEARCH_TOKEN"`
-	DeviceDataIndexName               string      `yaml:"DEVICE_DATA_INDEX_NAME"`
 	AWSRegion                         string      `yaml:"AWS_REGION"`
 	KMSKeyID                          string      `yaml:"KMS_KEY_ID"`
 	AutoPiAPIToken                    string      `yaml:"AUTO_PI_API_TOKEN"`
 	AutoPiAPIURL                      string      `yaml:"AUTO_PI_API_URL"`
-	SmartcarManagementToken           string      `yaml:"SMARTCAR_MANAGEMENT_TOKEN"`
 	CIOSiteID                         string      `yaml:"CIO_SITE_ID"`
 	CIOApiKey                         string      `yaml:"CIO_API_KEY"`
 	AWSDocumentsBucketName            string      `yaml:"AWS_DOCUMENTS_BUCKET_NAME"`
@@ -49,7 +45,6 @@ type Settings struct {
 	DocumentsAWSEndpoint              string      `yaml:"DOCUMENTS_AWS_ENDPOINT"`
 	NFTAWSAccessKeyID                 string      `yaml:"NFT_AWS_ACCESS_KEY_ID"`
 	NFTAWSSecretsAccessKey            string      `yaml:"NFT_AWS_SECRET_ACCESS_KEY"`
-	IPFSNodeEndpoint                  string      `yaml:"IPFS_NODE_ENDPOINT"`
 	DrivlyAPIKey                      string      `yaml:"DRIVLY_API_KEY"`
 	DrivlyVINAPIURL                   string      `yaml:"DRIVLY_VIN_API_URL"`
 	DrivlyOfferAPIURL                 string      `yaml:"DRIVLY_OFFER_API_URL"`
