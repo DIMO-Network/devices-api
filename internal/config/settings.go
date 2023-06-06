@@ -30,8 +30,6 @@ type Settings struct {
 	TaskCredentialTopic               string      `yaml:"TASK_CREDENTIAL_TOPIC"`
 	TaskStatusTopic                   string      `yaml:"TASK_STATUS_TOPIC"`
 	EventsTopic                       string      `yaml:"EVENTS_TOPIC"`
-	ElasticSearchAppSearchHost        string      `yaml:"ELASTIC_SEARCH_APP_SEARCH_HOST"`
-	ElasticSearchAppSearchToken       string      `yaml:"ELASTIC_SEARCH_APP_SEARCH_TOKEN"`
 	AWSRegion                         string      `yaml:"AWS_REGION"`
 	KMSKeyID                          string      `yaml:"KMS_KEY_ID"`
 	AutoPiAPIToken                    string      `yaml:"AUTO_PI_API_TOKEN"`
