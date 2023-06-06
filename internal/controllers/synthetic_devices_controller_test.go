@@ -31,6 +31,7 @@ import (
 var signature = "0x80312cd950310f5bdf7095b1aecac23dc44879a6e8a879a2b7935ed79516e5b80667759a75c21cfd1471f0a0064b74a8ad2eb8b3c3dea7ef597e8a94e2b6a93e1b"
 var userEthAddress = "0xd64E249A06ee6263d989e43aBFe12748a2506f88"
 var mockProducer *smock.SyncProducer
+var mockUserID = ksuid.New().String()
 
 type VirtualDevicesControllerTestSuite struct {
 	suite.Suite
@@ -83,8 +84,8 @@ func (s *VirtualDevicesControllerTestSuite) SetupSuite() {
 
 	app := test.SetupAppFiber(*logger)
 
-	app.Post("/v1/synthetic/device/mint/:integrationNode/:vehicleNode", test.AuthInjectorTestHandler(testUserID), c.MintSyntheticDevice)
-	app.Get("/v1/synthetic/device/mint/:integrationNode/:vehicleNode", test.AuthInjectorTestHandler(testUserID), c.GetSyntheticDeviceMintingPayload)
+	app.Post("/v1/synthetic/device/mint/:integrationNode/:vehicleNode", test.AuthInjectorTestHandler(mockUserID), c.MintSyntheticDevice)
+	app.Get("/v1/synthetic/device/mint/:integrationNode/:vehicleNode", test.AuthInjectorTestHandler(mockUserID), c.GetSyntheticDeviceMintingPayload)
 
 	s.app = app
 }
@@ -116,7 +117,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload()
 	email := "some@email.com"
 	eth := addr.Hex()
 
-	user := test.BuildGetUserGRPC(testUserID, &email, &eth, &users.UserReferrer{})
+	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
 	integrations := test.BuildIntegrationForGRPCRequest(10, uint64(1))
@@ -125,7 +126,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload()
 	_ = test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
 
 	udID := ksuid.New().String()
-	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, testUserID, udID, 57, s.pdb)
+	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, 57, s.pdb)
 
 	request := test.BuildRequest("GET", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
@@ -156,7 +157,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_U
 
 func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_NoEthereumAddressForUser() {
 	email := "some@email.com"
-	user := test.BuildGetUserGRPC(testUserID, &email, nil, &users.UserReferrer{})
+	user := test.BuildGetUserGRPC(mockUserID, &email, nil, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
 	request := test.BuildRequest("GET", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), "")
@@ -176,13 +177,13 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_N
 	eth := addr.Hex()
 	email := "some@email.com"
 
-	user := test.BuildGetUserGRPC(testUserID, &email, &eth, &users.UserReferrer{})
+	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(nil, errors.New("could not find integration"))
 
 	udID := ksuid.New().String()
-	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, testUserID, udID, 57, s.pdb)
+	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, 57, s.pdb)
 
 	request := test.BuildRequest("GET", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), "")
 	response, err := s.app.Test(request)
@@ -201,7 +202,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_V
 	eth := addr.Hex()
 	email := "some@email.com"
 
-	user := test.BuildGetUserGRPC(testUserID, &email, &eth, &users.UserReferrer{})
+	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
 	request := test.BuildRequest("GET", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), "")
@@ -220,7 +221,7 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload(
 	addr := common.HexToAddress(userEthAddress)
 	deviceEthAddr := common.HexToAddress("11")
 
-	user := test.BuildGetUserGRPC(testUserID, &email, &eth, &users.UserReferrer{})
+	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
 	integrations := test.BuildIntegrationForGRPCRequest(10, uint64(1))
@@ -229,7 +230,7 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload(
 	_ = test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
 
 	udID := ksuid.New().String()
-	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), addr, testUserID, udID, 57, s.pdb)
+	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), addr, mockUserID, udID, 57, s.pdb)
 
 	vehicleSig := common.HexToAddress("20").Hash().Bytes()
 	s.syntheticDeviceSigSvc.EXPECT().SignHash(gomock.Any(), gomock.Any(), gomock.Any()).Return(vehicleSig, nil).AnyTimes()

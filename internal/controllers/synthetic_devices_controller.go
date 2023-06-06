@@ -158,7 +158,7 @@ func (vc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber.
 }
 
 // MintSyntheticDevice godoc
-// @Description Submit a metatra
+// @Description Submit a metadata
 // @Tags        integrations
 // @Produce     json
 // @Param       integrationNode path int true "token ID"
