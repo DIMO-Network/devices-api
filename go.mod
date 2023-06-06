@@ -176,7 +176,6 @@ require (
 	github.com/RichardKnop/machinery v1.10.6
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
-	github.com/customerio/go-customerio/v3 v3.4.1
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/ethereum/go-ethereum v1.12.0
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
