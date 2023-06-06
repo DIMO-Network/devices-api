@@ -6,17 +6,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 const (
@@ -29,11 +26,6 @@ type TaskStatusListener struct {
 	db           func() *db.ReaderWriter
 	log          *zerolog.Logger
 	DeviceDefSvc DeviceDefinitionService
-	cio          CIOClient
-}
-
-type CIOClient interface {
-	Track(customerID string, eventName string, data map[string]interface{}) error
 }
 
 type TaskStatusData struct {
@@ -44,8 +36,8 @@ type TaskStatusData struct {
 	Status        string `json:"status"`
 }
 
-func NewTaskStatusListener(db func() *db.ReaderWriter, log *zerolog.Logger, cio CIOClient, ddSvc DeviceDefinitionService) *TaskStatusListener {
-	return &TaskStatusListener{db: db, log: log, cio: cio, DeviceDefSvc: ddSvc}
+func NewTaskStatusListener(db func() *db.ReaderWriter, log *zerolog.Logger, ddSvc DeviceDefinitionService) *TaskStatusListener {
+	return &TaskStatusListener{db: db, log: log, DeviceDefSvc: ddSvc}
 }
 
 func (i *TaskStatusListener) ProcessTaskUpdates(messages <-chan *message.Message) {
@@ -102,13 +94,10 @@ func (i *TaskStatusListener) processSmartcarPollStatusEvent(event *shared.CloudE
 	udai, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID),
-		qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
 	).One(ctx, i.db().Writer)
 	if err != nil {
 		return fmt.Errorf("couldn't find device integration for device %s and integration %s: %w", userDeviceID, integrationID, err)
 	}
-
-	userDevice := udai.R.UserDevice
 
 	i.log.Info().Str("userDeviceId", userDeviceID).Msg("Setting Smartcar integration to failed because credentials have changed.")
 
@@ -117,35 +106,10 @@ func (i *TaskStatusListener) processSmartcarPollStatusEvent(event *shared.CloudE
 		// TODO: Delete credentials entry?
 		udai.TaskID = null.String{}
 	}
+
 	udai.Status = models.UserDeviceAPIIntegrationStatusAuthenticationFailure
-	if _, err := udai.Update(context.Background(), i.db().Writer, boil.Infer()); err != nil {
-		return err
-	}
-
-	deviceDefinitionResponse, err := i.DeviceDefSvc.GetDeviceDefinitionsByIDs(ctx, []string{userDevice.DeviceDefinitionID})
-
-	if err != nil {
-		return helpers.GrpcErrorToFiber(err, fmt.Sprintf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID))
-	}
-
-	if len(deviceDefinitionResponse) == 0 {
-		return fiber.NewError(fiber.StatusBadRequest, "could not find device definition id: "+userDevice.DeviceDefinitionID)
-	}
-
-	dd := deviceDefinitionResponse[0]
-	data := map[string]interface{}{
-		"deviceId":     userDeviceID,
-		"make_name":    dd.Make.Name,
-		"model_name":   dd.Type.Model,
-		"model_year":   dd.Type.Year,
-		"country_code": userDevice.CountryCode.String,
-	}
-
-	if err := i.cio.Track(userDevice.UserID, "smartcar.Reauth.Required", data); err != nil {
-		i.log.Err(err).Str("userId", userDevice.UserID).Str("userDeviceId", userDeviceID).Msg("Failed to emit reauthentication Customer.io event.")
-	}
-
-	return nil
+	_, err = udai.Update(context.Background(), i.db().Writer, boil.Infer())
+	return err
 }
 
 func (i *TaskStatusListener) processTeslaPollStatusEvent(event *shared.CloudEvent[TaskStatusData]) error {
@@ -168,13 +132,10 @@ func (i *TaskStatusListener) processTeslaPollStatusEvent(event *shared.CloudEven
 	udai, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID),
-		qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
 	).One(ctx, i.db().Writer)
 	if err != nil {
 		return fmt.Errorf("couldn't find device integration for device %s and integration %s: %w", userDeviceID, integrationID, err)
 	}
-
-	userDevice := udai.R.UserDevice
 
 	i.log.Info().Str("userDeviceId", userDeviceID).Msg("Setting Tesla integration to failed because credentials have changed.")
 
@@ -184,28 +145,9 @@ func (i *TaskStatusListener) processTeslaPollStatusEvent(event *shared.CloudEven
 		udai.TaskID = null.String{}
 	}
 	udai.Status = models.UserDeviceAPIIntegrationStatusAuthenticationFailure
-	if _, err := udai.Update(context.Background(), i.db().Writer, boil.Infer()); err != nil {
-		return err
-	}
 
-	dd, err := i.DeviceDefSvc.GetDeviceDefinitionByID(ctx, userDevice.DeviceDefinitionID)
-	if err != nil {
-		return helpers.GrpcErrorToFiber(err, fmt.Sprintf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID))
-	}
-
-	data := map[string]interface{}{
-		"deviceId":     userDeviceID,
-		"make_name":    dd.Make.Name,
-		"model_name":   dd.Type.Model,
-		"model_year":   dd.Type.Year,
-		"country_code": userDevice.CountryCode.String,
-	}
-
-	if err := i.cio.Track(userDevice.UserID, "tesla.Reauth.Required", data); err != nil {
-		i.log.Err(err).Str("userId", userDevice.UserID).Str("userDeviceId", userDeviceID).Msg("Failed to emit reauthentication Customer.io event.")
-	}
-
-	return nil
+	_, err = udai.Update(context.Background(), i.db().Writer, boil.Infer())
+	return err
 }
 
 func (i *TaskStatusListener) processCommandStatusEvent(event *shared.CloudEvent[TaskStatusData]) error {

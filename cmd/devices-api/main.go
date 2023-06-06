@@ -20,7 +20,6 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/burdiyan/kafkautil"
-	"github.com/customerio/go-customerio/v3"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/gofiber/fiber/v2/middleware/pprof"
@@ -232,16 +231,11 @@ func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, p
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Could not start credential update consumer")
 	}
-	cio := customerio.NewTrackClient(
-		settings.CIOSiteID,
-		settings.CIOApiKey,
-		customerio.WithRegion(customerio.RegionUS),
-	)
 
 	nhtsaSvc := services.NewNHTSAService()
 	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, nhtsaSvc, settings)
 
-	taskStatusService := services.NewTaskStatusListener(pdb.DBS, &logger, cio, ddSvc)
+	taskStatusService := services.NewTaskStatusListener(pdb.DBS, &logger, ddSvc)
 	consumer.Start(context.Background(), taskStatusService.ProcessTaskUpdates)
 
 	logger.Info().Msg("Task status consumer started")

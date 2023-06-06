@@ -36,8 +36,6 @@ type Settings struct {
 	KMSKeyID                          string      `yaml:"KMS_KEY_ID"`
 	AutoPiAPIToken                    string      `yaml:"AUTO_PI_API_TOKEN"`
 	AutoPiAPIURL                      string      `yaml:"AUTO_PI_API_URL"`
-	CIOSiteID                         string      `yaml:"CIO_SITE_ID"`
-	CIOApiKey                         string      `yaml:"CIO_API_KEY"`
 	AWSDocumentsBucketName            string      `yaml:"AWS_DOCUMENTS_BUCKET_NAME"`
 	NFTS3Bucket                       string      `yaml:"NFT_S3_BUCKET"`
 	DocumentsAWSAccessKeyID           string      `yaml:"DOCUMENTS_AWS_ACCESS_KEY_ID"`
