@@ -142,8 +142,10 @@ func TestUserDeviceOwnerMiddleware(t *testing.T) {
 
 func TestAutoPiOwnerMiddleware(t *testing.T) {
 	userID := "louxUser"
-	userAddr := "1ABC7154748d1ce5144478cdeB574ae244b939B5"
+	userAddr := "0x9eaD03F7136Fc6b4bDb0780B00a1c14aE5A8B6d0"
 	unitID := "4a12c37b-b662-4fad-68e6-7e74f9ce658c"
+	mtxReqID := "meta-tx-id"
+	vin := "vin"
 
 	ctx := context.Background()
 	pdb, container := test.StartContainerDatabase(ctx, t, "../../../migrations")
@@ -162,50 +164,49 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 	request := test.BuildRequest("GET", "/"+unitID, "")
 
 	cases := []struct {
-		Name            string
-		UserID          string
-		AutoPiUnitID    string
-		UserEthAddr     string
-		AutoPiOwnerAddr string
-		VehicleNFTAddr  string
-		TokenID         int
-		ExpectedCode    int
+		Name               string
+		AutoPiVehicleToken types.NullDecimal
+		AutoPiUserID       null.String
+		AutoPiUnitID       string
+		UserEthAddr        *string
+		vNFTAddr           string
+		ExpectedCode       int
 	}{
 		{
-			Name:         "NoDevice",
+			Name:         "AutoPi not minted, or unit ID invalid.",
 			ExpectedCode: 404,
 		},
 		{
-			Name:         "AutoPiNotPaired",
-			UserID:       userID,
-			AutoPiUnitID: unitID,
+			Name:         "Token ID is null, device is not paired",
 			ExpectedCode: 200,
-		},
-		{
-			Name:         "AutoPiPairedAddrsDontMatch",
-			UserID:       userID,
 			AutoPiUnitID: unitID,
-			UserEthAddr:  userAddr,
-			TokenID:      1,
-			ExpectedCode: 403,
 		},
 		{
-			Name:           "AutoPiVehicleNFTAddrMatches",
-			UserID:         userID,
-			AutoPiUnitID:   unitID,
-			VehicleNFTAddr: userAddr,
-			UserEthAddr:    userAddr,
-			TokenID:        1,
-			ExpectedCode:   200,
+			Name:         "Check if user is web2 owner",
+			ExpectedCode: 200,
+			AutoPiUnitID: unitID,
+			AutoPiUserID: null.StringFrom(userID),
 		},
 		{
-			Name:            "AutoPiPairedOwnerAddrMatches",
-			UserID:          userID,
-			AutoPiUnitID:    unitID,
-			AutoPiOwnerAddr: userAddr,
-			UserEthAddr:     userAddr,
-			TokenID:         1,
-			ExpectedCode:    200,
+			Name:               "user does not have a valid ethereum address",
+			ExpectedCode:       403,
+			AutoPiVehicleToken: types.NewNullDecimal(decimal.New(int64(1), 0)),
+			AutoPiUnitID:       unitID,
+		},
+		{
+			Name:               "user is not owner of paired vehicle or AutoPi",
+			ExpectedCode:       403,
+			AutoPiVehicleToken: types.NewNullDecimal(decimal.New(int64(1), 0)),
+			AutoPiUnitID:       unitID,
+			UserEthAddr:        &userAddr,
+		},
+		{
+			Name:               "user is owner",
+			ExpectedCode:       200,
+			AutoPiVehicleToken: types.NewNullDecimal(decimal.New(int64(1), 0)),
+			AutoPiUnitID:       unitID,
+			UserEthAddr:        &userAddr,
+			vNFTAddr:           userAddr,
 		},
 	}
 
@@ -218,56 +219,38 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 			_, err = models.MetaTransactionRequests().DeleteAll(ctx, pdb.DBS().Writer)
 			require.NoError(t, err)
 
-			if c.AutoPiUnitID != "" {
-				var apEth null.Bytes
-				var apOwnr null.Bytes
-				var pairReq null.String
-				var unpairReq null.String
-				var tknID types.NullDecimal
-				if c.VehicleNFTAddr != "" {
-					mtxReq := "abcdefghijklmnopqrstuvwxyz1"
-					mtr := models.MetaTransactionRequest{
-						ID:     mtxReq,
-						Status: models.MetaTransactionRequestStatusConfirmed,
-					}
-					err = mtr.Insert(ctx, pdb.DBS().Writer, boil.Infer())
-					require.NoError(t, err)
-
-					vnft := models.VehicleNFT{
-						MintRequestID: mtxReq,
-						TokenID:       types.NewNullDecimal(decimal.New(int64(c.TokenID), 0)),
-						OwnerAddress:  null.BytesFrom(common.Hex2Bytes(c.VehicleNFTAddr)),
-					}
-					err := vnft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
-					require.NoError(t, err)
-				}
-
-				if c.AutoPiOwnerAddr != "" {
-					apOwnr = null.BytesFrom(common.FromHex(c.AutoPiOwnerAddr))
-				}
-
-				if c.TokenID > 0 {
-					tknID = types.NewNullDecimal(decimal.New(int64(c.TokenID), 0))
-					t.Log(tknID)
-				}
-
-				ap := models.AutopiUnit{
-					AutopiUnitID:    c.AutoPiUnitID,
-					EthereumAddress: apEth,
-					OwnerAddress:    apOwnr,
-					PairRequestID:   pairReq,
-					UnpairRequestID: unpairReq,
-					TokenID:         tknID,
-				}
-				require.NoError(t, ap.Insert(ctx, pdb.DBS().Writer, boil.Infer()))
-
-				usersClient.Store = map[string]*pb.User{}
-				u := &pb.User{Id: userID}
-				if c.UserEthAddr != "" {
-					u.EthereumAddress = &c.UserEthAddr
-				}
-				usersClient.Store[userID] = u
+			mtx := models.MetaTransactionRequest{
+				ID:     mtxReqID,
+				Status: "Confirmed",
 			}
+			err = mtx.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+			require.NoError(t, err)
+
+			vnft := models.VehicleNFT{
+				MintRequestID: mtxReqID,
+				Vin:           vin,
+				TokenID:       c.AutoPiVehicleToken,
+			}
+
+			if c.vNFTAddr != "" {
+				vnft.OwnerAddress = null.BytesFrom(common.FromHex(c.vNFTAddr))
+			}
+
+			err = vnft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+			require.NoError(t, err)
+
+			ap := models.AutopiUnit{
+				AutopiUnitID:   c.AutoPiUnitID,
+				VehicleTokenID: c.AutoPiVehicleToken,
+				UserID:         c.AutoPiUserID,
+			}
+			err = ap.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+			require.NoError(t, err)
+
+			usersClient.Store = map[string]*pb.User{}
+			u := &pb.User{Id: userID}
+			u.EthereumAddress = c.UserEthAddr
+			usersClient.Store[userID] = u
 
 			t.Log(c.Name)
 			res, err := app.Test(request)
