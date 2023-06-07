@@ -11,9 +11,11 @@ import (
 	"github.com/tidwall/gjson"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
+	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/shared"
 	"github.com/lovoo/goka"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
@@ -90,7 +92,13 @@ func TestIngestDeviceStatus(t *testing.T) {
 	integs, _ := deviceDefSvc.GetIntegrations(ctx)
 	integrationID := integs[0].Id
 
-	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc)
+	settings, err := shared.LoadConfig[config.Settings]("settings.yaml")
+	if err != nil {
+		logger.Fatal().Err(err).Msg("could not load settings")
+	}
+
+	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc, &settings)
+
 	ud := test.SetupCreateUserDevice(t, "dylan", ksuid.New().String(), nil, "", pdb)
 
 	udai := models.UserDeviceAPIIntegration{
@@ -98,7 +106,7 @@ func TestIngestDeviceStatus(t *testing.T) {
 		IntegrationID: integrationID,
 		Status:        models.UserDeviceAPIIntegrationStatusPendingFirstData,
 	}
-	err := udai.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	err = udai.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 	assert.NoError(t, err)
 
 	testCases := []struct {
@@ -208,7 +216,12 @@ func TestAutoPiStatusMerge(t *testing.T) {
 	integs, _ := deviceDefSvc.GetIntegrations(ctx)
 	integrationID := integs[0].Id
 
-	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc)
+	settings, err := shared.LoadConfig[config.Settings]("settings.yaml")
+	if err != nil {
+		logger.Fatal().Err(err).Msg("could not load settings")
+	}
+
+	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc, &settings)
 
 	ud := test.SetupCreateUserDevice(t, "dylan", ddID, nil, "", pdb)
 
@@ -218,7 +231,7 @@ func TestAutoPiStatusMerge(t *testing.T) {
 		Status:        models.UserDeviceAPIIntegrationStatusActive,
 	}
 
-	err := udai.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	err = udai.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 	assert.NoError(err)
 
 	tx := pdb.DBS().Writer
@@ -276,7 +289,12 @@ func TestAutoPiStatusWithSignals(t *testing.T) {
 	integs, _ := deviceDefSvc.GetIntegrations(ctx)
 	integrationID := integs[0].Id
 
-	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc)
+	settings, err := shared.LoadConfig[config.Settings]("settings.yaml")
+	if err != nil {
+		logger.Fatal().Err(err).Msg("could not load settings")
+	}
+
+	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc, &settings)
 
 	ud := test.SetupCreateUserDevice(t, "rvivanco", ddID, nil, "", pdb)
 
@@ -286,7 +304,7 @@ func TestAutoPiStatusWithSignals(t *testing.T) {
 		Status:        models.UserDeviceAPIIntegrationStatusActive,
 	}
 
-	err := udai.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	err = udai.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 	assert.NoError(err)
 
 	tx := pdb.DBS().Writer

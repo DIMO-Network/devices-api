@@ -74,7 +74,7 @@ func (s *CredentialTestSuite) TestVerifiableCredential() {
 		PrivateKey:        pk,
 		ChainID:           big.NewInt(137),
 		VehicleNFTAddress: common.HexToAddress("00f1"),
-		DBS:               s.pdb,
+		DBS:               s.pdb.DBS,
 	})
 	s.Require().NoError(err)
 

@@ -2,19 +2,24 @@ package services
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/appmetrics"
+	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
+	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/lovoo/goka"
 	gocache "github.com/patrickmn/go-cache"
@@ -39,15 +44,33 @@ type DeviceStatusIngestService struct {
 	integrations []*grpc.Integration
 	autoPiSvc    AutoPiAPIService
 	memoryCache  *gocache.Cache
+	issuer       *issuer.Issuer
 }
 
-func NewDeviceStatusIngestService(db func() *db.ReaderWriter, log *zerolog.Logger, eventService EventService, ddSvc DeviceDefinitionService, autoPiSvc AutoPiAPIService) *DeviceStatusIngestService {
+func NewDeviceStatusIngestService(db func() *db.ReaderWriter, log *zerolog.Logger, eventService EventService, ddSvc DeviceDefinitionService, autoPiSvc AutoPiAPIService, settings *config.Settings) *DeviceStatusIngestService {
 	// Cache the list of integrations.
 	integrations, err := ddSvc.GetIntegrations(context.Background())
 	if err != nil {
 		log.Fatal().Err(err).Msg("Couldn't retrieve global integration list.")
 	}
 	c := gocache.New(30*time.Minute, 60*time.Minute) // band-aid on top of band-aids
+
+	pk, err := base64.RawURLEncoding.DecodeString(settings.IssuerPrivateKey)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Couldn't parse issuer private key.")
+	}
+
+	issuer, err := issuer.New(
+		issuer.Config{
+			PrivateKey:        pk,
+			ChainID:           big.NewInt(settings.DIMORegistryChainID),
+			VehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
+			DBS:               db,
+		},
+	)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to create issuer.")
+	}
 
 	return &DeviceStatusIngestService{
 		db:           db,
@@ -57,6 +80,7 @@ func NewDeviceStatusIngestService(db func() *db.ReaderWriter, log *zerolog.Logge
 		integrations: integrations,
 		autoPiSvc:    autoPiSvc,
 		memoryCache:  c,
+		issuer:       issuer,
 	}
 }
 
