@@ -14,10 +14,12 @@ import (
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/test"
+	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	smock "github.com/Shopify/sarama/mocks"
+	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang/mock/gomock"
@@ -26,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 var signature = "0x80312cd950310f5bdf7095b1aecac23dc44879a6e8a879a2b7935ed79516e5b80667759a75c21cfd1471f0a0064b74a8ad2eb8b3c3dea7ef597e8a94e2b6a93e1b"
@@ -224,8 +227,8 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload(
 	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
-	integrations := test.BuildIntegrationForGRPCRequest(10, uint64(1))
-	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(integrations, nil)
+	integration := test.BuildIntegrationForGRPCRequest(10, uint64(1))
+	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(integration, nil)
 
 	_ = test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
 
@@ -299,8 +302,17 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload(
 		VirtualDeviceSig:  vehicleSig,
 	}
 
-	assert.ObjectsAreEqual(expectedMnInput, actualMnInput)
+	vnID := types.NewDecimal(decimal.New(57, 0))
+	syntDevice, err := models.SyntheticDevices(
+		models.SyntheticDeviceWhere.VehicleTokenID.EQ(vnID),
+		models.SyntheticDeviceWhere.IntegrationID.EQ(integration.Id),
+	).One(s.ctx, s.pdb.DBS().Reader)
+	assert.NoError(s.T(), err)
 
+	assert.Equal(s.T(), syntDevice.IntegrationID, integration.Id)
+	assert.Equal(s.T(), syntDevice.VehicleTokenID, vnID)
+
+	assert.ObjectsAreEqual(expectedMnInput, actualMnInput)
 }
 
 func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload_BadSignatureFailure() {
