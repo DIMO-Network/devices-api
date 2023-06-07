@@ -379,8 +379,6 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/error-codes [get]
 func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
-
 	logger := helpers.GetLogger(c, udc.log)
 	
 	userDeviceID := c.Params("userDeviceID")
