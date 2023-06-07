@@ -260,7 +260,7 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload(
 
 	mockProducer.Close()
 
-	assert.Equal(s.T(), "virtual device mint request successful", string(body))
+	assert.Equal(s.T(), "synthetic device mint request successful", string(body))
 
 	var me shared.CloudEvent[registry.RequestData]
 

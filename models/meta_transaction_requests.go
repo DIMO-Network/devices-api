@@ -83,20 +83,23 @@ var MetaTransactionRequestRels = struct {
 	ClaimMetaTransactionRequestAutopiUnit string
 	PairRequestAutopiUnit                 string
 	UnpairRequestAutopiUnit               string
+	MintRequestSyntheticDevice            string
 	MintRequestVehicleNFT                 string
 }{
 	ClaimMetaTransactionRequestAutopiUnit: "ClaimMetaTransactionRequestAutopiUnit",
 	PairRequestAutopiUnit:                 "PairRequestAutopiUnit",
 	UnpairRequestAutopiUnit:               "UnpairRequestAutopiUnit",
+	MintRequestSyntheticDevice:            "MintRequestSyntheticDevice",
 	MintRequestVehicleNFT:                 "MintRequestVehicleNFT",
 }
 
 // metaTransactionRequestR is where relationships are stored.
 type metaTransactionRequestR struct {
-	ClaimMetaTransactionRequestAutopiUnit *AutopiUnit `boil:"ClaimMetaTransactionRequestAutopiUnit" json:"ClaimMetaTransactionRequestAutopiUnit" toml:"ClaimMetaTransactionRequestAutopiUnit" yaml:"ClaimMetaTransactionRequestAutopiUnit"`
-	PairRequestAutopiUnit                 *AutopiUnit `boil:"PairRequestAutopiUnit" json:"PairRequestAutopiUnit" toml:"PairRequestAutopiUnit" yaml:"PairRequestAutopiUnit"`
-	UnpairRequestAutopiUnit               *AutopiUnit `boil:"UnpairRequestAutopiUnit" json:"UnpairRequestAutopiUnit" toml:"UnpairRequestAutopiUnit" yaml:"UnpairRequestAutopiUnit"`
-	MintRequestVehicleNFT                 *VehicleNFT `boil:"MintRequestVehicleNFT" json:"MintRequestVehicleNFT" toml:"MintRequestVehicleNFT" yaml:"MintRequestVehicleNFT"`
+	ClaimMetaTransactionRequestAutopiUnit *AutopiUnit      `boil:"ClaimMetaTransactionRequestAutopiUnit" json:"ClaimMetaTransactionRequestAutopiUnit" toml:"ClaimMetaTransactionRequestAutopiUnit" yaml:"ClaimMetaTransactionRequestAutopiUnit"`
+	PairRequestAutopiUnit                 *AutopiUnit      `boil:"PairRequestAutopiUnit" json:"PairRequestAutopiUnit" toml:"PairRequestAutopiUnit" yaml:"PairRequestAutopiUnit"`
+	UnpairRequestAutopiUnit               *AutopiUnit      `boil:"UnpairRequestAutopiUnit" json:"UnpairRequestAutopiUnit" toml:"UnpairRequestAutopiUnit" yaml:"UnpairRequestAutopiUnit"`
+	MintRequestSyntheticDevice            *SyntheticDevice `boil:"MintRequestSyntheticDevice" json:"MintRequestSyntheticDevice" toml:"MintRequestSyntheticDevice" yaml:"MintRequestSyntheticDevice"`
+	MintRequestVehicleNFT                 *VehicleNFT      `boil:"MintRequestVehicleNFT" json:"MintRequestVehicleNFT" toml:"MintRequestVehicleNFT" yaml:"MintRequestVehicleNFT"`
 }
 
 // NewStruct creates a new relationship struct
@@ -123,6 +126,13 @@ func (r *metaTransactionRequestR) GetUnpairRequestAutopiUnit() *AutopiUnit {
 		return nil
 	}
 	return r.UnpairRequestAutopiUnit
+}
+
+func (r *metaTransactionRequestR) GetMintRequestSyntheticDevice() *SyntheticDevice {
+	if r == nil {
+		return nil
+	}
+	return r.MintRequestSyntheticDevice
 }
 
 func (r *metaTransactionRequestR) GetMintRequestVehicleNFT() *VehicleNFT {
@@ -452,6 +462,17 @@ func (o *MetaTransactionRequest) UnpairRequestAutopiUnit(mods ...qm.QueryMod) au
 	queryMods = append(queryMods, mods...)
 
 	return AutopiUnits(queryMods...)
+}
+
+// MintRequestSyntheticDevice pointed to by the foreign key.
+func (o *MetaTransactionRequest) MintRequestSyntheticDevice(mods ...qm.QueryMod) syntheticDeviceQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"mint_request_id\" = ?", o.ID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	return SyntheticDevices(queryMods...)
 }
 
 // MintRequestVehicleNFT pointed to by the foreign key.
@@ -816,6 +837,123 @@ func (metaTransactionRequestL) LoadUnpairRequestAutopiUnit(ctx context.Context, 
 	return nil
 }
 
+// LoadMintRequestSyntheticDevice allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (metaTransactionRequestL) LoadMintRequestSyntheticDevice(ctx context.Context, e boil.ContextExecutor, singular bool, maybeMetaTransactionRequest interface{}, mods queries.Applicator) error {
+	var slice []*MetaTransactionRequest
+	var object *MetaTransactionRequest
+
+	if singular {
+		var ok bool
+		object, ok = maybeMetaTransactionRequest.(*MetaTransactionRequest)
+		if !ok {
+			object = new(MetaTransactionRequest)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeMetaTransactionRequest)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeMetaTransactionRequest))
+			}
+		}
+	} else {
+		s, ok := maybeMetaTransactionRequest.(*[]*MetaTransactionRequest)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeMetaTransactionRequest)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeMetaTransactionRequest))
+			}
+		}
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &metaTransactionRequestR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &metaTransactionRequestR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`devices_api.synthetic_devices`),
+		qm.WhereIn(`devices_api.synthetic_devices.mint_request_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load SyntheticDevice")
+	}
+
+	var resultSlice []*SyntheticDevice
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice SyntheticDevice")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for synthetic_devices")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for synthetic_devices")
+	}
+
+	if len(syntheticDeviceAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.MintRequestSyntheticDevice = foreign
+		if foreign.R == nil {
+			foreign.R = &syntheticDeviceR{}
+		}
+		foreign.R.MintRequest = object
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.ID == foreign.MintRequestID {
+				local.R.MintRequestSyntheticDevice = foreign
+				if foreign.R == nil {
+					foreign.R = &syntheticDeviceR{}
+				}
+				foreign.R.MintRequest = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadMintRequestVehicleNFT allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-1 relationship.
 func (metaTransactionRequestL) LoadMintRequestVehicleNFT(ctx context.Context, e boil.ContextExecutor, singular bool, maybeMetaTransactionRequest interface{}, mods queries.Applicator) error {
@@ -1152,6 +1290,56 @@ func (o *MetaTransactionRequest) RemoveUnpairRequestAutopiUnit(ctx context.Conte
 
 	related.R.UnpairRequest = nil
 
+	return nil
+}
+
+// SetMintRequestSyntheticDevice of the metaTransactionRequest to the related item.
+// Sets o.R.MintRequestSyntheticDevice to related.
+// Adds o to related.R.MintRequest.
+func (o *MetaTransactionRequest) SetMintRequestSyntheticDevice(ctx context.Context, exec boil.ContextExecutor, insert bool, related *SyntheticDevice) error {
+	var err error
+
+	if insert {
+		related.MintRequestID = o.ID
+
+		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	} else {
+		updateQuery := fmt.Sprintf(
+			"UPDATE \"devices_api\".\"synthetic_devices\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 1, []string{"mint_request_id"}),
+			strmangle.WhereClause("\"", "\"", 2, syntheticDevicePrimaryKeyColumns),
+		)
+		values := []interface{}{o.ID, related.VehicleTokenID, related.IntegrationID}
+
+		if boil.IsDebug(ctx) {
+			writer := boil.DebugWriterFrom(ctx)
+			fmt.Fprintln(writer, updateQuery)
+			fmt.Fprintln(writer, values)
+		}
+		if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+			return errors.Wrap(err, "failed to update foreign table")
+		}
+
+		related.MintRequestID = o.ID
+	}
+
+	if o.R == nil {
+		o.R = &metaTransactionRequestR{
+			MintRequestSyntheticDevice: related,
+		}
+	} else {
+		o.R.MintRequestSyntheticDevice = related
+	}
+
+	if related.R == nil {
+		related.R = &syntheticDeviceR{
+			MintRequest: o,
+		}
+	} else {
+		related.R.MintRequest = o
+	}
 	return nil
 }
 

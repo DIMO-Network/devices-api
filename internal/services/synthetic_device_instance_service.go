@@ -16,9 +16,8 @@ type SyntheticWalletInstanceService interface {
 }
 
 type syntheticWalletInstanceService struct {
-	dbs         func() *db.ReaderWriter
-	serviceAddr string
-	grpc        grpcClient
+	dbs  func() *db.ReaderWriter
+	grpc *grpcClient
 }
 
 type grpcClient struct {
@@ -31,17 +30,17 @@ func NewSyntheticWalletInstanceService(DBS func() *db.ReaderWriter, settings *co
 	if err != nil {
 		return nil, err
 	}
+
 	virtualDeviceClient := pb.NewSyntheticWalletClient(conn)
 
-	grpc := grpcClient{
+	grpc := &grpcClient{
 		conn:   conn,
 		client: virtualDeviceClient,
 	}
 
 	return &syntheticWalletInstanceService{
-		dbs:         DBS,
-		serviceAddr: settings.SyntheticWalletGRPCAddr,
-		grpc:        grpc,
+		dbs:  DBS,
+		grpc: grpc,
 	}, nil
 }
 
@@ -50,11 +49,11 @@ func (v *syntheticWalletInstanceService) GetAddress(ctx context.Context, childNu
 		ChildNumber: childNumber,
 	})
 
-	defer v.grpc.conn.Close()
-
 	if err != nil {
 		return nil, err
 	}
+
+	defer v.grpc.conn.Close()
 
 	return res.Address, nil
 }
@@ -65,11 +64,11 @@ func (v *syntheticWalletInstanceService) SignHash(ctx context.Context, childNumb
 		Hash:        hash,
 	})
 
-	defer v.grpc.conn.Close()
-
 	if err != nil {
 		return nil, err
 	}
+
+	defer v.grpc.conn.Close()
 
 	return res.Signature, nil
 }

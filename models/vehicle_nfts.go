@@ -88,23 +88,26 @@ var VehicleNFTWhere = struct {
 
 // VehicleNFTRels is where relationship names are stored.
 var VehicleNFTRels = struct {
-	Claim                  string
-	MintRequest            string
-	UserDevice             string
-	VehicleTokenAutopiUnit string
+	Claim                        string
+	MintRequest                  string
+	UserDevice                   string
+	VehicleTokenAutopiUnit       string
+	VehicleTokenSyntheticDevices string
 }{
-	Claim:                  "Claim",
-	MintRequest:            "MintRequest",
-	UserDevice:             "UserDevice",
-	VehicleTokenAutopiUnit: "VehicleTokenAutopiUnit",
+	Claim:                        "Claim",
+	MintRequest:                  "MintRequest",
+	UserDevice:                   "UserDevice",
+	VehicleTokenAutopiUnit:       "VehicleTokenAutopiUnit",
+	VehicleTokenSyntheticDevices: "VehicleTokenSyntheticDevices",
 }
 
 // vehicleNFTR is where relationships are stored.
 type vehicleNFTR struct {
-	Claim                  *VerifiableCredential   `boil:"Claim" json:"Claim" toml:"Claim" yaml:"Claim"`
-	MintRequest            *MetaTransactionRequest `boil:"MintRequest" json:"MintRequest" toml:"MintRequest" yaml:"MintRequest"`
-	UserDevice             *UserDevice             `boil:"UserDevice" json:"UserDevice" toml:"UserDevice" yaml:"UserDevice"`
-	VehicleTokenAutopiUnit *AutopiUnit             `boil:"VehicleTokenAutopiUnit" json:"VehicleTokenAutopiUnit" toml:"VehicleTokenAutopiUnit" yaml:"VehicleTokenAutopiUnit"`
+	Claim                        *VerifiableCredential   `boil:"Claim" json:"Claim" toml:"Claim" yaml:"Claim"`
+	MintRequest                  *MetaTransactionRequest `boil:"MintRequest" json:"MintRequest" toml:"MintRequest" yaml:"MintRequest"`
+	UserDevice                   *UserDevice             `boil:"UserDevice" json:"UserDevice" toml:"UserDevice" yaml:"UserDevice"`
+	VehicleTokenAutopiUnit       *AutopiUnit             `boil:"VehicleTokenAutopiUnit" json:"VehicleTokenAutopiUnit" toml:"VehicleTokenAutopiUnit" yaml:"VehicleTokenAutopiUnit"`
+	VehicleTokenSyntheticDevices SyntheticDeviceSlice    `boil:"VehicleTokenSyntheticDevices" json:"VehicleTokenSyntheticDevices" toml:"VehicleTokenSyntheticDevices" yaml:"VehicleTokenSyntheticDevices"`
 }
 
 // NewStruct creates a new relationship struct
@@ -138,6 +141,13 @@ func (r *vehicleNFTR) GetVehicleTokenAutopiUnit() *AutopiUnit {
 		return nil
 	}
 	return r.VehicleTokenAutopiUnit
+}
+
+func (r *vehicleNFTR) GetVehicleTokenSyntheticDevices() SyntheticDeviceSlice {
+	if r == nil {
+		return nil
+	}
+	return r.VehicleTokenSyntheticDevices
 }
 
 // vehicleNFTL is where Load methods for each relationship are stored.
@@ -471,6 +481,20 @@ func (o *VehicleNFT) VehicleTokenAutopiUnit(mods ...qm.QueryMod) autopiUnitQuery
 	queryMods = append(queryMods, mods...)
 
 	return AutopiUnits(queryMods...)
+}
+
+// VehicleTokenSyntheticDevices retrieves all the synthetic_device's SyntheticDevices with an executor via vehicle_token_id column.
+func (o *VehicleNFT) VehicleTokenSyntheticDevices(mods ...qm.QueryMod) syntheticDeviceQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"devices_api\".\"synthetic_devices\".\"vehicle_token_id\"=?", o.TokenID),
+	)
+
+	return SyntheticDevices(queryMods...)
 }
 
 // LoadClaim allows an eager lookup of values, cached into the
@@ -958,6 +982,120 @@ func (vehicleNFTL) LoadVehicleTokenAutopiUnit(ctx context.Context, e boil.Contex
 	return nil
 }
 
+// LoadVehicleTokenSyntheticDevices allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (vehicleNFTL) LoadVehicleTokenSyntheticDevices(ctx context.Context, e boil.ContextExecutor, singular bool, maybeVehicleNFT interface{}, mods queries.Applicator) error {
+	var slice []*VehicleNFT
+	var object *VehicleNFT
+
+	if singular {
+		var ok bool
+		object, ok = maybeVehicleNFT.(*VehicleNFT)
+		if !ok {
+			object = new(VehicleNFT)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeVehicleNFT)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeVehicleNFT))
+			}
+		}
+	} else {
+		s, ok := maybeVehicleNFT.(*[]*VehicleNFT)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeVehicleNFT)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeVehicleNFT))
+			}
+		}
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &vehicleNFTR{}
+		}
+		args = append(args, object.TokenID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &vehicleNFTR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.TokenID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.TokenID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`devices_api.synthetic_devices`),
+		qm.WhereIn(`devices_api.synthetic_devices.vehicle_token_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load synthetic_devices")
+	}
+
+	var resultSlice []*SyntheticDevice
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice synthetic_devices")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on synthetic_devices")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for synthetic_devices")
+	}
+
+	if len(syntheticDeviceAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.VehicleTokenSyntheticDevices = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &syntheticDeviceR{}
+			}
+			foreign.R.VehicleToken = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.TokenID, foreign.VehicleTokenID) {
+				local.R.VehicleTokenSyntheticDevices = append(local.R.VehicleTokenSyntheticDevices, foreign)
+				if foreign.R == nil {
+					foreign.R = &syntheticDeviceR{}
+				}
+				foreign.R.VehicleToken = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetClaim of the vehicleNFT to the related item.
 // Sets o.R.Claim to related.
 // Adds o to related.R.ClaimVehicleNFT.
@@ -1214,6 +1352,59 @@ func (o *VehicleNFT) RemoveVehicleTokenAutopiUnit(ctx context.Context, exec boil
 
 	related.R.VehicleToken = nil
 
+	return nil
+}
+
+// AddVehicleTokenSyntheticDevices adds the given related objects to the existing relationships
+// of the vehicle_nft, optionally inserting them as new records.
+// Appends related to o.R.VehicleTokenSyntheticDevices.
+// Sets related.R.VehicleToken appropriately.
+func (o *VehicleNFT) AddVehicleTokenSyntheticDevices(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*SyntheticDevice) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.VehicleTokenID, o.TokenID)
+			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"devices_api\".\"synthetic_devices\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"vehicle_token_id"}),
+				strmangle.WhereClause("\"", "\"", 2, syntheticDevicePrimaryKeyColumns),
+			)
+			values := []interface{}{o.TokenID, rel.VehicleTokenID, rel.IntegrationID}
+
+			if boil.IsDebug(ctx) {
+				writer := boil.DebugWriterFrom(ctx)
+				fmt.Fprintln(writer, updateQuery)
+				fmt.Fprintln(writer, values)
+			}
+			if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.VehicleTokenID, o.TokenID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &vehicleNFTR{
+			VehicleTokenSyntheticDevices: related,
+		}
+	} else {
+		o.R.VehicleTokenSyntheticDevices = append(o.R.VehicleTokenSyntheticDevices, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &syntheticDeviceR{
+				VehicleToken: o,
+			}
+		} else {
+			rel.R.VehicleToken = o
+		}
+	}
 	return nil
 }
 
