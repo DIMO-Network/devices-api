@@ -126,7 +126,7 @@ func AutoPi(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logg
 		}
 
 		ownsVehicle, err := models.VehicleNFTS(
-			models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(autopiUnit.TokenID.Big)),
+			models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(autopiUnit.VehicleTokenID.Big)),
 			models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(userAddr.Bytes())),
 		).Exists(c.Context(), dbs.DBS().Reader)
 		if err != nil {
