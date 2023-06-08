@@ -147,7 +147,7 @@ func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *Devi
 		i.memoryCache.Set(userDeviceID+"_"+integration.Id, device, 30*time.Minute)
 	}
 
-	i.vinFraudMonitor(ctxGk, event, device) // techdebt: we could get rid of this - nobody using it
+	i.vinCredentialer(ctxGk, event, device)
 
 	if len(device.R.UserDeviceAPIIntegrations) == 0 {
 		return fmt.Errorf("can't find API integration for device %s and integration %s", userDeviceID, integration.Id)
@@ -388,14 +388,14 @@ func (i *DeviceStatusIngestService) getIntegrationFromEvent(event *DeviceStatusE
 	return nil, fmt.Errorf("no matching integration found in DB for event source: %s", event.Source)
 }
 
-func (i *DeviceStatusIngestService) vinFraudMonitor(ctx goka.Context, event *DeviceStatusEvent, device *models.UserDevice) {
+// here ae here
+func (i *DeviceStatusIngestService) vinCredentialer(ctx goka.Context, event *DeviceStatusEvent, device *models.UserDevice) {
 	if !device.VinConfirmed {
 		// Nothing to compare with.
 		return
 	}
 
 	storedVIN := device.VinIdentifier.String
-
 	observedVIN, err := extractVIN(event.Data)
 	if err != nil {
 		// This could get noisy. Even for vehicles that do transmit VIN, it may not be in every record.
@@ -403,25 +403,73 @@ func (i *DeviceStatusIngestService) vinFraudMonitor(ctx goka.Context, event *Dev
 		return
 	}
 
-	// Check the group table for this vehicle. Its presence indicates that we've already logged a warning.
-	if val := ctx.Value(); val != nil {
+	tkn, ok := device.R.VehicleNFT.TokenID.Big.Int64()
+	if !ok {
+		i.log.Err(errors.New("invalid tokenID")).Str("userDeviceId", event.Subject).Msg("credential not issued")
 		return
 	}
 
-	if observedVIN != storedVIN {
-		record := &shared.CloudEvent[RegisteredVIN]{
-			ID:      ksuid.New().String(),
-			Time:    time.Now(),
-			Subject: event.Subject,
-			Type:    "zone.dimo.device.vin.validation",
-			Data:    RegisteredVIN{},
+	issuanceWk := currentIssuanceweek()
+	issueCred := observedVIN == storedVIN
+
+	val := ctx.Value()
+	if val != nil {
+		record, ok := val.(*shared.CloudEvent[RegisteredVIN])
+		if !ok {
+			i.log.Err(errors.New("unrecognized record format")).Str("userDeviceId", event.Subject).Msg("unable to parse record from table")
+			return
 		}
 
-		i.log.Info().Str("userDeviceId", event.Subject).Str("observedVin", observedVIN).Str("storedVin", storedVIN).Msg("Detected potential VIN fraud.")
+		if record.Data.IssuanceWeek < issuanceWk {
+			if !issueCred {
+				// eventually may want to revoke here
+				return
+			}
 
-		ctx.SetValue(record)
+			_, err = i.issuer.VIN(observedVIN, big.NewInt(tkn))
+			if err != nil {
+				i.log.Err(err).Str("userDeviceId", event.Subject).Msg("error issuing vin credential")
+			}
+			record.Data.CredentialIssued = true
+			record.Data.IssuanceWeek = issuanceWk
+			ctx.SetValue(record)
+
+		}
+
+		return
 	}
+
+	record := &shared.CloudEvent[RegisteredVIN]{
+		ID:      ksuid.New().String(),
+		Time:    time.Now(),
+		Subject: event.Subject,
+		Type:    "zone.dimo.device.vin.validation",
+		Data: RegisteredVIN{
+			IssuanceWeek:     issuanceWk,
+			CredentialIssued: issueCred,
+		},
+	}
+
+	if !issueCred {
+		i.log.Info().Str("userDeviceId", event.Subject).Str("observedVin", observedVIN).Str("storedVin", storedVIN).Msg("Detected potential VIN fraud.")
+		return
+	}
+
+	_, err = i.issuer.VIN(observedVIN, big.NewInt(tkn))
+	if err != nil {
+		i.log.Err(err).Str("userDeviceId", event.Subject).Msg("error issuing vin credential")
+	}
+
+	ctx.SetValue(record)
 }
+
+func currentIssuanceweek() int {
+	sinceStart := time.Now().Sub(time.Date(2022, time.January, 31, 5, 0, 0, 0, time.UTC))
+	weekNum := int(sinceStart.Truncate(weekDuration) / weekDuration)
+	return weekNum
+}
+
+var weekDuration = 7 * 24 * time.Hour
 
 type odometerEventDevice struct {
 	ID    string `json:"id"`
@@ -448,5 +496,6 @@ type DeviceStatusEvent struct {
 }
 
 type RegisteredVIN struct {
-	// The body serves no purpose at the moment.
+	IssuanceWeek     int
+	CredentialIssued bool
 }
