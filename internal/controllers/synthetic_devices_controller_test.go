@@ -280,15 +280,15 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload(
 	s.Require().NoError(err)
 
 	actualMnInput := o[0].(struct {
-		IntegrationNode   *big.Int       "json:\"integrationNode\""
-		VehicleNode       *big.Int       "json:\"vehicleNode\""
-		VirtualDeviceSig  []uint8        "json:\"virtualDeviceSig\""
-		VehicleOwnerSig   []uint8        "json:\"vehicleOwnerSig\""
-		VirtualDeviceAddr common.Address "json:\"virtualDeviceAddr\""
+		IntegrationNode   *big.Int       `json:"integrationNode"`
+		VehicleNode       *big.Int       `json:"vehicleNode"`
+		VirtualDeviceSig  []uint8        `json:"virtualDeviceSig"`
+		VehicleOwnerSig   []uint8        `json:"vehicleOwnerSig"`
+		VirtualDeviceAddr common.Address `json:"virtualDeviceAddr"`
 		AttrInfoPairs     []struct {
-			Attribute string "json:\"attribute\""
-			Info      string "json:\"info\""
-		} "json:\"attrInfoPairs\""
+			Attribute string `json:"attribute"`
+			Info      string `json:"info"`
+		} `json:"attrInfoPairs"`
 	})
 
 	expectedMnInput := contracts.MintVirtualDeviceInput{

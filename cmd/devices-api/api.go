@@ -252,7 +252,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Get("/documents/:id/download", documentsController.DownloadDocument)
 
 	if settings.SyntheticDevicesEnabled {
-		log.Println("hsdfhdsjfsdfsdjfkds")
 		sdAuth := v1Auth.Group("/synthetic/device")
 
 		sdAuth.Get("/mint/:integrationNode/:vehicleNode", syntheticController.GetSyntheticDeviceMintingPayload)
