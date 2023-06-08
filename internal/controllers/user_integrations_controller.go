@@ -42,7 +42,6 @@ import (
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/integrations/{integrationID} [get]
 func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
 	deviceExists, err := models.UserDevices(

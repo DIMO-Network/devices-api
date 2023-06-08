@@ -209,18 +209,18 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	apOwner.Get("/is-online", userDeviceController.GetIsAutoPiOnline)
 	apOwner.Post("/update", userDeviceController.StartAutoPiUpdateTask)
 
+	// AutoPi claiming
+	apOwner.Get("/commands/claim", userDeviceController.GetAutoPiClaimMessage)
+	apOwner.Post("/commands/claim", userDeviceController.PostClaimAutoPi).Name("PostClaimAutoPi")
+	if !settings.IsProduction() {
+		// Used by mobile to test. Easy to misuse.
+		apOwner.Post("/commands/unclaim", userDeviceController.PostUnclaimAutoPi)
+	}
+
 	// delete below line once confirmed no active apps using it.
 	v1Auth.Get("/autopi/unit/is-online/:unitID", userDeviceController.GetIsAutoPiOnline) // this one is deprecated
 
 	v1Auth.Get("/autopi/task/:taskID", userDeviceController.GetAutoPiTask)
-
-	// AutoPi claiming
-	v1Auth.Get("/autopi/unit/:unitID/commands/claim", userDeviceController.GetAutoPiClaimMessage)
-	v1Auth.Post("/autopi/unit/:unitID/commands/claim", userDeviceController.PostClaimAutoPi).Name("PostClaimAutoPi")
-	if !settings.IsProduction() {
-		// Used by mobile to test. Easy to misuse.
-		v1Auth.Post("/autopi/unit/:unitID/commands/unclaim", userDeviceController.PostUnclaimAutoPi)
-	}
 
 	// geofence
 	v1Auth.Post("/user/geofences", geofenceController.Create)
