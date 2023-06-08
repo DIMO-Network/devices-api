@@ -49,11 +49,17 @@ message UserDevice {
   string device_definition_id = 9;
   optional string device_style_id = 10;
   optional bytes aftermarket_device_beneficiary_address = 11;
+  optional VinCredential latest_active_vin_credential = 12;
 }
 
 message UserDeviceIntegration {
   string id = 1;
   string status = 2; // This is not great, but getting tied to the list seems worse. We may regret this.
+}
+
+message VinCredential {
+  string id = 1;
+  google.protobuf.Timestamp expiration = 2;
 }
 
 message UserDeviceAutoPIUnitResponse {
