@@ -68,6 +68,17 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		cipher = new(shared.ROT13Cipher)
 	}
 
+	registryClient := registry.Client{
+		Producer:     producer,
+		RequestTopic: "topic.transaction.request.send",
+		Contract: registry.Contract{
+			ChainID: big.NewInt(settings.DIMORegistryChainID),
+			Address: common.HexToAddress(settings.DIMORegistryAddr),
+			Name:    "DIMO",
+			Version: "1",
+		},
+	}
+
 	gcon, err := grpc.Dial(settings.UsersAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed dialing users-api.")
@@ -91,6 +102,10 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	openAI := services.NewOpenAI(&logger, *settings)
 	dcnSvc := registry.NewDcnService(settings)
 
+	syntheticDeviceSvc, err := services.NewSyntheticWalletInstanceService(pdb.DBS, settings)
+	if err != nil {
+		logger.Error().Err(err).Msg("unable to create Synthetic Device service")
+	}
 	natsSvc, err := services.NewNATSService(settings, &logger)
 	if err != nil {
 		logger.Error().Err(err).Msg("unable to create NATS service")
@@ -109,7 +124,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
-	virtualDeviceController := controllers.NewVirtualDeviceController(settings, pdb, &logger, ddSvc, usersClient)
+	syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, syntheticDeviceSvc, registryClient)
 
 	// commenting this out b/c the library includes the path in the metrics which saturates prometheus queries - need to fork / make our own
 	//prometheus := fiberprometheus.New("devices-api")
@@ -238,8 +253,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	if settings.SyntheticDevicesEnabled {
 		sdAuth := v1Auth.Group("/synthetic/device")
 
-		sdAuth.Get("/mint/:integrationNode/:vehicleNode", virtualDeviceController.GetSyntheticDeviceMintingMessage)
-		sdAuth.Post("/mint/:integrationNode/:vehicleNode", virtualDeviceController.MintSyntheticDevice)
+		sdAuth.Get("/mint/:integrationNode/:vehicleNode", syntheticController.GetSyntheticDeviceMintingPayload)
+		sdAuth.Post("/mint/:integrationNode/:vehicleNode", syntheticController.MintSyntheticDevice)
 	}
 
 	// Vehicle owner routes.
