@@ -46,7 +46,6 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
 	deviceExists, err := models.UserDevices(
-		models.UserDeviceWhere.UserID.EQ(userID),
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 	).Exists(c.Context(), udc.DBS().Reader)
 	if err != nil {
@@ -174,7 +173,6 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 
 	device, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		models.UserDeviceWhere.UserID.EQ(userID),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
 	).One(c.Context(), tx)
 	if err != nil {
@@ -786,11 +784,6 @@ func (udc *UserDevicesController) GetAutoPiClaimMessage(c *fiber.Ctx) error {
 		}
 		logger.Err(err).Msg("Database failure searching for AutoPi.")
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal error.")
-	}
-
-	if unit.UserID.Valid && unit.UserID.String != userID {
-		logger.Error().Str("existingUserId", unit.UserID.String).Msg("AutoPi already attached to another user.")
-		return fiber.NewError(fiber.StatusForbidden, "AutoPi paired to another user.")
 	}
 
 	if unit.OwnerAddress.Valid {
@@ -1593,10 +1586,6 @@ func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal error.")
 	}
 
-	if unit.UserID.Valid && unit.UserID.String != userID {
-		return fiber.NewError(fiber.StatusForbidden, "AutoPi paired to another user.")
-	}
-
 	if unit.TokenID.IsZero() || !unit.EthereumAddress.Valid {
 		return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted.")
 	}
@@ -1715,7 +1704,6 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 	defer tx.Rollback() //nolint
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		models.UserDeviceWhere.UserID.EQ(userID),
 	).One(c.Context(), tx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

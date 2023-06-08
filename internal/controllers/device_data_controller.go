@@ -256,7 +256,6 @@ func (udc *UserDevicesController) RefreshUserDeviceStatus(c *fiber.Ctx) error {
 	// in SQLBoiler.
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
-		models.UserDeviceWhere.UserID.EQ(userID),
 		qm.Load(models.UserDeviceRels.UserDeviceData),
 		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceData)),
 	).One(c.Context(), udc.DBS().Reader)
