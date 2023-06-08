@@ -235,6 +235,9 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature provided")
 	}
 
+	// Yikes!
+	ownerSignature[64] += 27
+
 	err = vc.sendVirtualDeviceMintPayload(c.Context(), hash, req.VehicleNode, integration.TokenId, ownerSignature)
 	if err != nil {
 		vc.log.Err(err).Msg("virtual device minting request failed")

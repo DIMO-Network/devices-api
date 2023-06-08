@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	"log"
 	"math/big"
 	"net"
 	"os"
