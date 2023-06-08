@@ -60,8 +60,18 @@ type userDeviceService struct {
 func (s *userDeviceService) GetUserDevice(ctx context.Context, req *pb.GetUserDeviceRequest) (*pb.UserDevice, error) {
 	dbDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(req.Id),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAutopiUnit)),
+		qm.Load(
+			qm.Rels(models.UserDeviceRels.VehicleNFT,
+				models.VehicleNFTRels.VehicleTokenAutopiUnit),
+		),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
+		qm.Load(
+			qm.Rels(
+				models.UserDeviceRels.VehicleNFT,
+				models.VehicleNFTRels.Claim,
+				models.VerifiableCredentialRels.ClaimVehicleNFT,
+			),
+		),
 	).One(ctx, s.dbs().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -381,6 +391,13 @@ func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevi
 			} else {
 				out.AftermarketDeviceBeneficiaryAddress = vnft.OwnerAddress.Bytes
 			}
+		}
+	}
+
+	if vc := ud.R.VehicleNFT.R.Claim; vc != nil {
+		out.LatestActiveVinCredential = &pb.VinCredential{
+			Id:         vc.ClaimID,
+			Expiration: timestamppb.New(vc.ExpirationDate),
 		}
 	}
 
