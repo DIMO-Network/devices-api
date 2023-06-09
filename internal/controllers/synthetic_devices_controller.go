@@ -249,14 +249,20 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
-	// Add a transaction here to cover both meta and synth
+	tx, err := vc.DBS().Writer.DB.BeginTx(c.Context(), nil)
+	if err != nil {
+		vc.log.Err(err).Msg("error creating database transaction")
+		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
+	}
+
 	requestID := ksuid.New().String()
 	metaReq := &models.MetaTransactionRequest{
 		ID:     requestID,
 		Status: models.MetaTransactionRequestStatusUnsubmitted,
 	}
 
-	if err = metaReq.Insert(context.Background(), vc.DBS().Writer, boil.Infer()); err != nil {
+	if err = metaReq.Insert(context.Background(), tx, boil.Infer()); err != nil {
+		tx.Rollback()
 		vc.log.Err(err).Msg("error occurred creating meta transaction request")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
@@ -270,10 +276,13 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		MintRequestID:     requestID,
 	}
 
-	if err = syntheticDevice.Insert(context.Background(), vc.DBS().Writer, boil.Infer()); err != nil {
+	if err = syntheticDevice.Insert(context.Background(), tx, boil.Infer()); err != nil {
+		tx.Rollback()
 		vc.log.Err(err).Msg("error occurred saving synthetic device")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
+
+	tx.Commit()
 
 	return c.Send([]byte("synthetic device mint request successful"))
 }
