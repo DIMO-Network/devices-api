@@ -53,8 +53,6 @@ func (v *syntheticWalletInstanceService) GetAddress(ctx context.Context, childNu
 		return nil, err
 	}
 
-	defer v.grpc.conn.Close()
-
 	return res.Address, nil
 }
 
@@ -67,8 +65,6 @@ func (v *syntheticWalletInstanceService) SignHash(ctx context.Context, childNumb
 	if err != nil {
 		return nil, err
 	}
-
-	defer v.grpc.conn.Close()
 
 	return res.Signature, nil
 }

@@ -103,7 +103,9 @@ func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDe
 				ds.RecordUpdatedAt = &ts
 			}
 			o := odometer.Get("value").Float()
-			ds.Odometer = &o
+			if isOdometerValid(o) {
+				ds.Odometer = &o
+			}
 		}
 		rangeG := findMostRecentSignal(deviceData, "range", false)
 		if rangeG.Exists() {
@@ -180,6 +182,17 @@ func findMostRecentSignal(udd models.UserDeviceDatumSlice, path string, highestF
 	return gjson.GetBytes(udd[0].Signals.JSON, path)
 }
 
+// isOdometerValid encapsulates logic to decide whether to return odometer
+func isOdometerValid(odometer float64) bool {
+	if odometer <= 100 {
+		return false
+	}
+	if odometer == 65539 || odometer == 65538 {
+		return false
+	}
+	return true
+}
+
 // calculateRange returns the current estimated range based on fuel tank capacity, mpg, and fuelPercentRemaining and returns it in Kilometers
 func calculateRange(ctx context.Context, ddSvc services.DeviceDefinitionService, deviceDefinitionID string, deviceStyleID null.String, fuelPercentRemaining float64) (*float64, error) {
 	if fuelPercentRemaining <= 0.01 {
@@ -251,14 +264,11 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 // @Router      /user/devices/{userDeviceID}/commands/refresh [post]
 func (udc *UserDevicesController) RefreshUserDeviceStatus(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 	// We could probably do a smarter join here, but it's unclear to me how to handle that
 	// in SQLBoiler.
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
-		models.UserDeviceWhere.UserID.EQ(userID),
 		qm.Load(models.UserDeviceRels.UserDeviceData),
-		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceData)),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -379,12 +389,12 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/error-codes [get]
 func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
-
 	logger := helpers.GetLogger(c, udc.log)
+	
+	userDeviceID := c.Params("userDeviceID")
 
 	userDevice, err := models.UserDevices(
-		models.UserDeviceWhere.UserID.EQ(userID),
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(models.UserDeviceRels.ErrorCodeQueries, qm.OrderBy(models.ErrorCodeQueryColumns.CreatedAt+" DESC")),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
