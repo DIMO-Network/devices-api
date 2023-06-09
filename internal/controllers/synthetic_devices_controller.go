@@ -262,7 +262,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	if err = metaReq.Insert(context.Background(), tx, boil.Infer()); err != nil {
-		tx.Rollback()
+		tx.Rollback() // nolint
 		vc.log.Err(err).Msg("error occurred creating meta transaction request")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
@@ -277,12 +277,12 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	if err = syntheticDevice.Insert(context.Background(), tx, boil.Infer()); err != nil {
-		tx.Rollback()
+		tx.Rollback() // nolint
 		vc.log.Err(err).Msg("error occurred saving synthetic device")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
-	tx.Commit()
+	tx.Commit() // nolint
 
 	return c.Send([]byte("synthetic device mint request successful"))
 }
