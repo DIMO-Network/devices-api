@@ -140,8 +140,8 @@ type syntheticDeviceL struct{}
 
 var (
 	syntheticDeviceAllColumns            = []string{"vehicle_token_id", "integration_id", "mint_request_id", "wallet_child_number", "wallet_address"}
-	syntheticDeviceColumnsWithoutDefault = []string{"vehicle_token_id", "integration_id", "mint_request_id", "wallet_address"}
-	syntheticDeviceColumnsWithDefault    = []string{"wallet_child_number"}
+	syntheticDeviceColumnsWithoutDefault = []string{"vehicle_token_id", "integration_id", "mint_request_id", "wallet_child_number", "wallet_address"}
+	syntheticDeviceColumnsWithDefault    = []string{}
 	syntheticDevicePrimaryKeyColumns     = []string{"vehicle_token_id", "integration_id"}
 	syntheticDeviceGeneratedColumns      = []string{}
 )

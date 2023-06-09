@@ -4,10 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"math/big"
-	"math/rand"
 	"strconv"
-	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
@@ -28,6 +27,7 @@ import (
 	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
@@ -47,6 +47,10 @@ type MintSyntheticDeviceRequest struct {
 		AuthorizationCode string `json:"authorizationCode"`
 	} `json:"credentials"`
 	OwnerSignature string `json:"ownerSignature"`
+}
+
+type SyntheticDeviceSequence struct {
+	NextVal int `boil:"nextval"`
 }
 
 func NewSyntheticDevicesController(
@@ -199,11 +203,6 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicle id provided")
 	}
 
-	vehicleNFT, err := vc.verifyUserAddressAndNFTExist(c.Context(), user, vid, rawIntegrationNode)
-	if err != nil {
-		return err
-	}
-
 	integration, err := vc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), integrationNode)
 	if err != nil {
 		return helpers.GrpcErrorToFiber(err, "failed to get integration")
@@ -238,11 +237,27 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature provided")
 	}
 
-	childKeyNumber := generateRandomNumber()
+	childKeyNumber, err := vc.generateRandomNumber(c.Context())
+	if err != nil {
+		vc.log.Err(err).Msg("failed to generate sequence from database")
+		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
+	}
 
-	syntheticDeviceAddr, err := vc.sendVirtualDeviceMintPayload(c.Context(), hash, req.VehicleNode, integration.TokenId, ownerSignature, childKeyNumber)
+	syntheticDeviceAddr, err := vc.sendVirtualDeviceMintPayload(c.Context(), hash, req.VehicleNode, integration.TokenId, ownerSignature, *childKeyNumber)
 	if err != nil {
 		vc.log.Err(err).Msg("synthetic device minting request failed")
+		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
+	}
+
+	// Add a transaction here to cover both meta and synth
+	requestID := ksuid.New().String()
+	metaReq := &models.MetaTransactionRequest{
+		ID:     requestID,
+		Status: models.MetaTransactionRequestStatusUnsubmitted,
+	}
+
+	if err = metaReq.Insert(context.Background(), vc.DBS().Writer, boil.Infer()); err != nil {
+		vc.log.Err(err).Msg("error occurred creating meta transaction request")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
@@ -250,9 +265,9 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	syntheticDevice := &models.SyntheticDevice{
 		VehicleTokenID:    vnID,
 		IntegrationID:     integration.Id,
-		WalletChildNumber: childKeyNumber,
+		WalletChildNumber: *childKeyNumber,
 		WalletAddress:     syntheticDeviceAddr,
-		MintRequestID:     vehicleNFT.MintRequestID,
+		MintRequestID:     requestID,
 	}
 
 	if err = syntheticDevice.Insert(context.Background(), vc.DBS().Writer, boil.Infer()); err != nil {
@@ -297,9 +312,14 @@ func (vc *SyntheticDevicesController) sendVirtualDeviceMintPayload(ctx context.C
 	return syntheticDeviceAddr, vc.registryClient.MintVirtualDeviceSign(requestID, mvt)
 }
 
-func generateRandomNumber() int {
-	rand.Seed(time.Now().UnixNano())
-	min := 1
-	max := 1000
-	return rand.Intn(max-min+1) + min
+func (vc *SyntheticDevicesController) generateRandomNumber(ctx context.Context) (*int, error) {
+	seq := SyntheticDeviceSequence{}
+
+	qry := fmt.Sprintf("SELECT nextval('%s.synthetic_devices_serial_sequence');", vc.Settings.DB.Name)
+	err := queries.Raw(qry).Bind(ctx, vc.DBS().Reader, &seq)
+	if err != nil {
+		return nil, err
+	}
+
+	return &seq.NextVal, nil
 }

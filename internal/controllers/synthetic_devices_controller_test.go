@@ -64,6 +64,7 @@ func (s *VirtualDevicesControllerTestSuite) SetupSuite() {
 	mockProducer = smock.NewSyncProducer(s.T(), nil)
 
 	mockSettings := &config.Settings{Port: "3000", DIMORegistryChainID: 80001, DIMORegistryAddr: common.HexToAddress("0x4De1bCf2B7E851E31216fC07989caA902A604784").Hex()}
+	mockSettings.DB.Name = "devices_api"
 
 	client := registry.Client{
 		Producer:     mockProducer,
@@ -218,7 +219,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_V
 	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"user does not own vehicle node"}`, fiber.StatusNotFound)), body)
 }
 
-func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload() {
+func (s *VirtualDevicesControllerTestSuite) Test_MintSyntheticDevice() {
 	email := "some@email.com"
 	eth := userEthAddress
 	addr := common.HexToAddress(userEthAddress)
@@ -313,6 +314,14 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload(
 	assert.Equal(s.T(), syntDevice.VehicleTokenID, vnID)
 
 	assert.ObjectsAreEqual(expectedMnInput, actualMnInput)
+
+	metaTrxReq, err := models.MetaTransactionRequests(
+		models.MetaTransactionRequestWhere.ID.EQ(syntDevice.MintRequestID),
+		models.MetaTransactionRequestWhere.Status.EQ(models.MetaTransactionRequestStatusUnsubmitted),
+	).Exists(s.ctx, s.pdb.DBS().Reader)
+	assert.NoError(s.T(), err)
+
+	assert.Equal(s.T(), metaTrxReq, true)
 }
 
 func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload_BadSignatureFailure() {
@@ -349,4 +358,18 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload_
 
 	assert.Equal(s.T(), fiber.StatusBadRequest, response.StatusCode)
 	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"invalid signature provided"}`, fiber.StatusBadRequest)), body)
+}
+
+func (s *VirtualDevicesControllerTestSuite) Test_Synthetic_Device_Sequence() {
+	childKeyNumber, err := s.sdc.generateRandomNumber(s.ctx)
+	assert.NoError(s.T(), err)
+
+	startSeq := 2 // We start from 2 because the initial mint test would have generated sequence 1 already
+
+	assert.Equal(s.T(), startSeq, *childKeyNumber)
+
+	childKeyNumber, err = s.sdc.generateRandomNumber(s.ctx)
+	assert.NoError(s.T(), err)
+
+	assert.Equal(s.T(), startSeq+1, *childKeyNumber)
 }
