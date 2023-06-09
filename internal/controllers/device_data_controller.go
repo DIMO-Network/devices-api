@@ -184,7 +184,10 @@ func findMostRecentSignal(udd models.UserDeviceDatumSlice, path string, highestF
 
 // isOdometerValid encapsulates logic to decide whether to return odometer
 func isOdometerValid(odometer float64) bool {
-	return odometer >= 100
+	if odometer < 100.0 {
+		return false
+	}
+	return true
 }
 
 // calculateRange returns the current estimated range based on fuel tank capacity, mpg, and fuelPercentRemaining and returns it in Kilometers
@@ -384,7 +387,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 // @Router      /user/devices/{userDeviceID}/error-codes [get]
 func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) error {
 	logger := helpers.GetLogger(c, udc.log)
-
+	
 	userDeviceID := c.Params("userDeviceID")
 
 	userDevice, err := models.UserDevices(
