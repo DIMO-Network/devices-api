@@ -184,10 +184,7 @@ func findMostRecentSignal(udd models.UserDeviceDatumSlice, path string, highestF
 
 // isOdometerValid encapsulates logic to decide whether to return odometer
 func isOdometerValid(odometer float64) bool {
-	if odometer < 100.0 {
-		return false
-	}
-	return true
+	return odometer >= 100
 }
 
 // calculateRange returns the current estimated range based on fuel tank capacity, mpg, and fuelPercentRemaining and returns it in Kilometers
