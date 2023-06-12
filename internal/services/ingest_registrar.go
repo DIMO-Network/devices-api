@@ -10,9 +10,6 @@ import (
 	"time"
 )
 
-const ingestSmartcarRegistrationTopic = "table.device.integration.smartcar"
-const smartcarRegistrationEventType = "zone.dimo.device.integration.smartcar.register"
-
 const ingestAutoPiRegistrationTopic = "table.device.integration.autopi"
 const autoPiRegistrationEventType = "zone.dimo.device.integration.autopi.register"
 
@@ -22,17 +19,9 @@ type IngestRegistrar interface {
 	Deregister(externalID, userDeviceID, integrationID string) error
 }
 
-func NewIngestRegistrar(integrationType IntegrationTypeEnum, producer sarama.SyncProducer) IngestRegistrar {
-	eventType := ""
-	ingestTopic := ""
-	switch integrationType {
-	case Smartcar:
-		eventType = smartcarRegistrationEventType
-		ingestTopic = ingestSmartcarRegistrationTopic
-	case AutoPi:
-		eventType = autoPiRegistrationEventType
-		ingestTopic = ingestAutoPiRegistrationTopic
-	}
+func NewIngestRegistrar(producer sarama.SyncProducer) IngestRegistrar {
+	eventType := autoPiRegistrationEventType
+	ingestTopic := ingestAutoPiRegistrationTopic
 
 	return &ingestRegistrar{eventType: eventType, ingestTopic: ingestTopic, Producer: producer}
 }
