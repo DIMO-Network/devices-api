@@ -18,11 +18,10 @@ import (
 //go:generate mockgen -source smartcar_client.go -destination mocks/smartcar_client_mock.go
 
 type smartcarClient struct {
-	settings       *config.Settings
-	officialClient smartcar.Client
-	exchangeURL    string
-	baseURL        string
-	httpClient     *http.Client
+	settings    *config.Settings
+	exchangeURL string
+	baseURL     string
+	httpClient  *http.Client
 }
 
 func New() *smartcarClient {
@@ -62,13 +61,13 @@ type scExchangeRes struct {
 
 var scReqIDHeader = "SC-Request-Id"
 
-type SmartcarError struct {
+type Error struct {
 	RequestID string
 	Code      int
 	Body      []byte
 }
 
-func (e *SmartcarError) Error() string {
+func (e *Error) Error() string {
 	return fmt.Sprintf("smartcar: status code %d", e.Code)
 }
 
@@ -100,7 +99,7 @@ func (s *smartcarClient) ExchangeCode(ctx context.Context, code, redirectURI str
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return nil, &SmartcarError{
+		return nil, &Error{
 			RequestID: res.Header.Get(scReqIDHeader),
 			Code:      res.StatusCode,
 			Body:      bb,
@@ -197,7 +196,7 @@ func (s *smartcarClient) do(ctx context.Context, accessToken string, path string
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return &SmartcarError{
+		return &Error{
 			RequestID: res.Header.Get(scReqIDHeader),
 			Code:      res.StatusCode,
 			Body:      bb,

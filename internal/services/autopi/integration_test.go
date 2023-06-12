@@ -96,7 +96,10 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_HardwareTemplate_Success() {
 	// todo: add code to test ud metadata with protocol
 	md := []byte(`{"canProtocol":"06"}`)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, &md, "", s.pdb)
-	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, &ud.ID, s.pdb)
+
+	_, apAddr, _ := test.GenerateWallet()
+
+	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
 	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
@@ -127,6 +130,18 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_HardwareTemplate_Success() {
 
 	s.ap.EXPECT().CommandSyncDevice(gomock.Any(), autoPiMock.UnitID, autoPiMock.ID, ud.ID).Times(1).Return(autoPICommandResponseMock, nil)
 	s.apReg.EXPECT().Register(autoPiMock.UnitID, ud.ID, integration.Id).Times(1).Return(nil)
+	s.apReg.EXPECT().Register2(&services.AftermarketDeviceVehicleMapping{
+		AftermarketDevice: services.AftermarketDeviceVehicleMappingAftermarketDevice{
+			Address:       *apAddr,
+			Token:         autoPiTokenID,
+			Serial:        unitID,
+			IntegrationID: integration.Id,
+		},
+		Vehicle: services.AftermarketDeviceVehicleMappingVehicle{
+			Token:        vehicleTokenID,
+			UserDeviceID: ud.ID,
+		},
+	}).Times(1).Return(nil)
 
 	taskID := ksuid.New().String()
 
@@ -160,8 +175,9 @@ func (s *IntegrationTestSuite) Test_Pair_With_Make_HardwareTemplate_Success() {
 	autoPiTokenID, _ := new(big.Int).SetString("0", 16)
 	vehicleTokenID, _ := new(big.Int).SetString("0", 16)
 
+	_, apAddr, _ := test.GenerateWallet()
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
-	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, &ud.ID, s.pdb)
+	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
 	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
@@ -192,6 +208,18 @@ func (s *IntegrationTestSuite) Test_Pair_With_Make_HardwareTemplate_Success() {
 
 	s.ap.EXPECT().CommandSyncDevice(gomock.Any(), autoPiMock.UnitID, autoPiMock.ID, ud.ID).Times(1).Return(autoPICommandResponseMock, nil)
 	s.apReg.EXPECT().Register(autoPiMock.UnitID, ud.ID, integration.Id).Times(1).Return(nil)
+	s.apReg.EXPECT().Register2(&services.AftermarketDeviceVehicleMapping{
+		AftermarketDevice: services.AftermarketDeviceVehicleMappingAftermarketDevice{
+			Address:       *apAddr,
+			Token:         autoPiTokenID,
+			Serial:        unitID,
+			IntegrationID: integration.Id,
+		},
+		Vehicle: services.AftermarketDeviceVehicleMappingVehicle{
+			Token:        vehicleTokenID,
+			UserDeviceID: ud.ID,
+		},
+	}).Times(1).Return(nil)
 
 	taskID := ksuid.New().String()
 
@@ -223,7 +251,9 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_DeviceStyle_HardwareTemplate_Su
 	vehicleTokenID, _ := new(big.Int).SetString("0", 16)
 
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
-	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, &ud.ID, s.pdb)
+
+	_, apAddr, _ := test.GenerateWallet()
+	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
 	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
@@ -263,6 +293,18 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_DeviceStyle_HardwareTemplate_Su
 
 	s.ap.EXPECT().CommandSyncDevice(gomock.Any(), autoPiMock.UnitID, autoPiMock.ID, ud.ID).Times(1).Return(autoPICommandResponseMock, nil)
 	s.apReg.EXPECT().Register(autoPiMock.UnitID, ud.ID, integration.Id).Times(1).Return(nil)
+	s.apReg.EXPECT().Register2(&services.AftermarketDeviceVehicleMapping{
+		AftermarketDevice: services.AftermarketDeviceVehicleMappingAftermarketDevice{
+			Address:       *apAddr,
+			Token:         autoPiTokenID,
+			Serial:        unitID,
+			IntegrationID: integration.Id,
+		},
+		Vehicle: services.AftermarketDeviceVehicleMappingVehicle{
+			Token:        vehicleTokenID,
+			UserDeviceID: ud.ID,
+		},
+	}).Times(1).Return(nil)
 
 	taskID := ksuid.New().String()
 
@@ -292,8 +334,9 @@ func (s *IntegrationTestSuite) Test_Pair_With_UserDeviceStyle_HardwareTemplate_S
 	autoPiTokenID, _ := new(big.Int).SetString("0", 16)
 	vehicleTokenID, _ := new(big.Int).SetString("0", 16)
 
+	_, apAddr, _ := test.GenerateWallet()
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
-	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, &ud.ID, s.pdb)
+	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
 	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
@@ -324,6 +367,18 @@ func (s *IntegrationTestSuite) Test_Pair_With_UserDeviceStyle_HardwareTemplate_S
 
 	s.ap.EXPECT().CommandSyncDevice(gomock.Any(), autoPiMock.UnitID, autoPiMock.ID, ud.ID).Times(1).Return(autoPICommandResponseMock, nil)
 	s.apReg.EXPECT().Register(autoPiMock.UnitID, ud.ID, integration.Id).Times(1).Return(nil)
+	s.apReg.EXPECT().Register2(&services.AftermarketDeviceVehicleMapping{
+		AftermarketDevice: services.AftermarketDeviceVehicleMappingAftermarketDevice{
+			Address:       *apAddr,
+			Token:         autoPiTokenID,
+			Serial:        unitID,
+			IntegrationID: integration.Id,
+		},
+		Vehicle: services.AftermarketDeviceVehicleMappingVehicle{
+			Token:        vehicleTokenID,
+			UserDeviceID: ud.ID,
+		},
+	}).Times(1).Return(nil)
 
 	taskID := ksuid.New().String()
 
