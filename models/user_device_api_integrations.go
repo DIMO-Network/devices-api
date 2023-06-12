@@ -30,12 +30,12 @@ type UserDeviceAPIIntegration struct {
 	AccessToken     null.String `boil:"access_token" json:"access_token,omitempty" toml:"access_token" yaml:"access_token,omitempty"`
 	AccessExpiresAt null.Time   `boil:"access_expires_at" json:"access_expires_at,omitempty" toml:"access_expires_at" yaml:"access_expires_at,omitempty"`
 	RefreshToken    null.String `boil:"refresh_token" json:"refresh_token,omitempty" toml:"refresh_token" yaml:"refresh_token,omitempty"`
-	ExternalID      null.String `boil:"external_id" json:"external_id,omitempty" toml:"external_id" yaml:"external_id,omitempty"`
 	CreatedAt       time.Time   `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt       time.Time   `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	Metadata        null.JSON   `boil:"metadata" json:"metadata,omitempty" toml:"metadata" yaml:"metadata,omitempty"`
 	TaskID          null.String `boil:"task_id" json:"task_id,omitempty" toml:"task_id" yaml:"task_id,omitempty"`
 	AutopiUnitID    null.String `boil:"autopi_unit_id" json:"autopi_unit_id,omitempty" toml:"autopi_unit_id" yaml:"autopi_unit_id,omitempty"`
+	ExternalID      null.String `boil:"external_id" json:"external_id,omitempty" toml:"external_id" yaml:"external_id,omitempty"`
 
 	R *userDeviceAPIIntegrationR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userDeviceAPIIntegrationL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -48,12 +48,12 @@ var UserDeviceAPIIntegrationColumns = struct {
 	AccessToken     string
 	AccessExpiresAt string
 	RefreshToken    string
-	ExternalID      string
 	CreatedAt       string
 	UpdatedAt       string
 	Metadata        string
 	TaskID          string
 	AutopiUnitID    string
+	ExternalID      string
 }{
 	UserDeviceID:    "user_device_id",
 	IntegrationID:   "integration_id",
@@ -61,12 +61,12 @@ var UserDeviceAPIIntegrationColumns = struct {
 	AccessToken:     "access_token",
 	AccessExpiresAt: "access_expires_at",
 	RefreshToken:    "refresh_token",
-	ExternalID:      "external_id",
 	CreatedAt:       "created_at",
 	UpdatedAt:       "updated_at",
 	Metadata:        "metadata",
 	TaskID:          "task_id",
 	AutopiUnitID:    "autopi_unit_id",
+	ExternalID:      "external_id",
 }
 
 var UserDeviceAPIIntegrationTableColumns = struct {
@@ -76,12 +76,12 @@ var UserDeviceAPIIntegrationTableColumns = struct {
 	AccessToken     string
 	AccessExpiresAt string
 	RefreshToken    string
-	ExternalID      string
 	CreatedAt       string
 	UpdatedAt       string
 	Metadata        string
 	TaskID          string
 	AutopiUnitID    string
+	ExternalID      string
 }{
 	UserDeviceID:    "user_device_api_integrations.user_device_id",
 	IntegrationID:   "user_device_api_integrations.integration_id",
@@ -89,12 +89,12 @@ var UserDeviceAPIIntegrationTableColumns = struct {
 	AccessToken:     "user_device_api_integrations.access_token",
 	AccessExpiresAt: "user_device_api_integrations.access_expires_at",
 	RefreshToken:    "user_device_api_integrations.refresh_token",
-	ExternalID:      "user_device_api_integrations.external_id",
 	CreatedAt:       "user_device_api_integrations.created_at",
 	UpdatedAt:       "user_device_api_integrations.updated_at",
 	Metadata:        "user_device_api_integrations.metadata",
 	TaskID:          "user_device_api_integrations.task_id",
 	AutopiUnitID:    "user_device_api_integrations.autopi_unit_id",
+	ExternalID:      "user_device_api_integrations.external_id",
 }
 
 // Generated where
@@ -106,12 +106,12 @@ var UserDeviceAPIIntegrationWhere = struct {
 	AccessToken     whereHelpernull_String
 	AccessExpiresAt whereHelpernull_Time
 	RefreshToken    whereHelpernull_String
-	ExternalID      whereHelpernull_String
 	CreatedAt       whereHelpertime_Time
 	UpdatedAt       whereHelpertime_Time
 	Metadata        whereHelpernull_JSON
 	TaskID          whereHelpernull_String
 	AutopiUnitID    whereHelpernull_String
+	ExternalID      whereHelpernull_String
 }{
 	UserDeviceID:    whereHelperstring{field: "\"devices_api\".\"user_device_api_integrations\".\"user_device_id\""},
 	IntegrationID:   whereHelperstring{field: "\"devices_api\".\"user_device_api_integrations\".\"integration_id\""},
@@ -119,12 +119,12 @@ var UserDeviceAPIIntegrationWhere = struct {
 	AccessToken:     whereHelpernull_String{field: "\"devices_api\".\"user_device_api_integrations\".\"access_token\""},
 	AccessExpiresAt: whereHelpernull_Time{field: "\"devices_api\".\"user_device_api_integrations\".\"access_expires_at\""},
 	RefreshToken:    whereHelpernull_String{field: "\"devices_api\".\"user_device_api_integrations\".\"refresh_token\""},
-	ExternalID:      whereHelpernull_String{field: "\"devices_api\".\"user_device_api_integrations\".\"external_id\""},
 	CreatedAt:       whereHelpertime_Time{field: "\"devices_api\".\"user_device_api_integrations\".\"created_at\""},
 	UpdatedAt:       whereHelpertime_Time{field: "\"devices_api\".\"user_device_api_integrations\".\"updated_at\""},
 	Metadata:        whereHelpernull_JSON{field: "\"devices_api\".\"user_device_api_integrations\".\"metadata\""},
 	TaskID:          whereHelpernull_String{field: "\"devices_api\".\"user_device_api_integrations\".\"task_id\""},
 	AutopiUnitID:    whereHelpernull_String{field: "\"devices_api\".\"user_device_api_integrations\".\"autopi_unit_id\""},
+	ExternalID:      whereHelpernull_String{field: "\"devices_api\".\"user_device_api_integrations\".\"external_id\""},
 }
 
 // UserDeviceAPIIntegrationRels is where relationship names are stored.
@@ -165,9 +165,9 @@ func (r *userDeviceAPIIntegrationR) GetAutopiUnit() *AutopiUnit {
 type userDeviceAPIIntegrationL struct{}
 
 var (
-	userDeviceAPIIntegrationAllColumns            = []string{"user_device_id", "integration_id", "status", "access_token", "access_expires_at", "refresh_token", "external_id", "created_at", "updated_at", "metadata", "task_id", "autopi_unit_id"}
+	userDeviceAPIIntegrationAllColumns            = []string{"user_device_id", "integration_id", "status", "access_token", "access_expires_at", "refresh_token", "created_at", "updated_at", "metadata", "task_id", "autopi_unit_id", "external_id"}
 	userDeviceAPIIntegrationColumnsWithoutDefault = []string{"user_device_id", "integration_id", "status"}
-	userDeviceAPIIntegrationColumnsWithDefault    = []string{"access_token", "access_expires_at", "refresh_token", "external_id", "created_at", "updated_at", "metadata", "task_id", "autopi_unit_id"}
+	userDeviceAPIIntegrationColumnsWithDefault    = []string{"access_token", "access_expires_at", "refresh_token", "created_at", "updated_at", "metadata", "task_id", "autopi_unit_id", "external_id"}
 	userDeviceAPIIntegrationPrimaryKeyColumns     = []string{"user_device_id", "integration_id"}
 	userDeviceAPIIntegrationGeneratedColumns      = []string{}
 )
