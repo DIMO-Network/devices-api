@@ -149,7 +149,7 @@ func (vc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber.
 		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicleNode provided")
 	}
 
-	if _, err = vc.verifyUserAddressAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
+	if _, err := vc.verifyUserAddressAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
 		return err
 	}
 
@@ -201,6 +201,10 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	vid, err := strconv.ParseInt(vehicleNode, 10, 64)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicle id provided")
+	}
+
+	if _, err = vc.verifyUserAddressAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
+		return err
 	}
 
 	integration, err := vc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), integrationNode)
