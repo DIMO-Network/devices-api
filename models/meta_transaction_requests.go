@@ -1311,7 +1311,7 @@ func (o *MetaTransactionRequest) SetMintRequestSyntheticDevice(ctx context.Conte
 			strmangle.SetParamNames("\"", "\"", 1, []string{"mint_request_id"}),
 			strmangle.WhereClause("\"", "\"", 2, syntheticDevicePrimaryKeyColumns),
 		)
-		values := []interface{}{o.ID, related.TokenID, related.IntegrationID}
+		values := []interface{}{o.ID, related.VehicleTokenID, related.IntegrationTokenID}
 
 		if boil.IsDebug(ctx) {
 			writer := boil.DebugWriterFrom(ctx)

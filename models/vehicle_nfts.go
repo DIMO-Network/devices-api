@@ -88,26 +88,26 @@ var VehicleNFTWhere = struct {
 
 // VehicleNFTRels is where relationship names are stored.
 var VehicleNFTRels = struct {
-	Claim                  string
-	MintRequest            string
-	UserDevice             string
-	VehicleTokenAutopiUnit string
-	TokenSyntheticDevices  string
+	Claim                        string
+	MintRequest                  string
+	UserDevice                   string
+	VehicleTokenAutopiUnit       string
+	VehicleTokenSyntheticDevices string
 }{
-	Claim:                  "Claim",
-	MintRequest:            "MintRequest",
-	UserDevice:             "UserDevice",
-	VehicleTokenAutopiUnit: "VehicleTokenAutopiUnit",
-	TokenSyntheticDevices:  "TokenSyntheticDevices",
+	Claim:                        "Claim",
+	MintRequest:                  "MintRequest",
+	UserDevice:                   "UserDevice",
+	VehicleTokenAutopiUnit:       "VehicleTokenAutopiUnit",
+	VehicleTokenSyntheticDevices: "VehicleTokenSyntheticDevices",
 }
 
 // vehicleNFTR is where relationships are stored.
 type vehicleNFTR struct {
-	Claim                  *VerifiableCredential   `boil:"Claim" json:"Claim" toml:"Claim" yaml:"Claim"`
-	MintRequest            *MetaTransactionRequest `boil:"MintRequest" json:"MintRequest" toml:"MintRequest" yaml:"MintRequest"`
-	UserDevice             *UserDevice             `boil:"UserDevice" json:"UserDevice" toml:"UserDevice" yaml:"UserDevice"`
-	VehicleTokenAutopiUnit *AutopiUnit             `boil:"VehicleTokenAutopiUnit" json:"VehicleTokenAutopiUnit" toml:"VehicleTokenAutopiUnit" yaml:"VehicleTokenAutopiUnit"`
-	TokenSyntheticDevices  SyntheticDeviceSlice    `boil:"TokenSyntheticDevices" json:"TokenSyntheticDevices" toml:"TokenSyntheticDevices" yaml:"TokenSyntheticDevices"`
+	Claim                        *VerifiableCredential   `boil:"Claim" json:"Claim" toml:"Claim" yaml:"Claim"`
+	MintRequest                  *MetaTransactionRequest `boil:"MintRequest" json:"MintRequest" toml:"MintRequest" yaml:"MintRequest"`
+	UserDevice                   *UserDevice             `boil:"UserDevice" json:"UserDevice" toml:"UserDevice" yaml:"UserDevice"`
+	VehicleTokenAutopiUnit       *AutopiUnit             `boil:"VehicleTokenAutopiUnit" json:"VehicleTokenAutopiUnit" toml:"VehicleTokenAutopiUnit" yaml:"VehicleTokenAutopiUnit"`
+	VehicleTokenSyntheticDevices SyntheticDeviceSlice    `boil:"VehicleTokenSyntheticDevices" json:"VehicleTokenSyntheticDevices" toml:"VehicleTokenSyntheticDevices" yaml:"VehicleTokenSyntheticDevices"`
 }
 
 // NewStruct creates a new relationship struct
@@ -143,11 +143,11 @@ func (r *vehicleNFTR) GetVehicleTokenAutopiUnit() *AutopiUnit {
 	return r.VehicleTokenAutopiUnit
 }
 
-func (r *vehicleNFTR) GetTokenSyntheticDevices() SyntheticDeviceSlice {
+func (r *vehicleNFTR) GetVehicleTokenSyntheticDevices() SyntheticDeviceSlice {
 	if r == nil {
 		return nil
 	}
-	return r.TokenSyntheticDevices
+	return r.VehicleTokenSyntheticDevices
 }
 
 // vehicleNFTL is where Load methods for each relationship are stored.
@@ -483,15 +483,15 @@ func (o *VehicleNFT) VehicleTokenAutopiUnit(mods ...qm.QueryMod) autopiUnitQuery
 	return AutopiUnits(queryMods...)
 }
 
-// TokenSyntheticDevices retrieves all the synthetic_device's SyntheticDevices with an executor via token_id column.
-func (o *VehicleNFT) TokenSyntheticDevices(mods ...qm.QueryMod) syntheticDeviceQuery {
+// VehicleTokenSyntheticDevices retrieves all the synthetic_device's SyntheticDevices with an executor via vehicle_token_id column.
+func (o *VehicleNFT) VehicleTokenSyntheticDevices(mods ...qm.QueryMod) syntheticDeviceQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"devices_api\".\"synthetic_devices\".\"token_id\"=?", o.TokenID),
+		qm.Where("\"devices_api\".\"synthetic_devices\".\"vehicle_token_id\"=?", o.TokenID),
 	)
 
 	return SyntheticDevices(queryMods...)
@@ -982,9 +982,9 @@ func (vehicleNFTL) LoadVehicleTokenAutopiUnit(ctx context.Context, e boil.Contex
 	return nil
 }
 
-// LoadTokenSyntheticDevices allows an eager lookup of values, cached into the
+// LoadVehicleTokenSyntheticDevices allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (vehicleNFTL) LoadTokenSyntheticDevices(ctx context.Context, e boil.ContextExecutor, singular bool, maybeVehicleNFT interface{}, mods queries.Applicator) error {
+func (vehicleNFTL) LoadVehicleTokenSyntheticDevices(ctx context.Context, e boil.ContextExecutor, singular bool, maybeVehicleNFT interface{}, mods queries.Applicator) error {
 	var slice []*VehicleNFT
 	var object *VehicleNFT
 
@@ -1039,7 +1039,7 @@ func (vehicleNFTL) LoadTokenSyntheticDevices(ctx context.Context, e boil.Context
 
 	query := NewQuery(
 		qm.From(`devices_api.synthetic_devices`),
-		qm.WhereIn(`devices_api.synthetic_devices.token_id in ?`, args...),
+		qm.WhereIn(`devices_api.synthetic_devices.vehicle_token_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1070,24 +1070,24 @@ func (vehicleNFTL) LoadTokenSyntheticDevices(ctx context.Context, e boil.Context
 		}
 	}
 	if singular {
-		object.R.TokenSyntheticDevices = resultSlice
+		object.R.VehicleTokenSyntheticDevices = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
 				foreign.R = &syntheticDeviceR{}
 			}
-			foreign.R.Token = object
+			foreign.R.VehicleToken = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.TokenID, foreign.TokenID) {
-				local.R.TokenSyntheticDevices = append(local.R.TokenSyntheticDevices, foreign)
+			if queries.Equal(local.TokenID, foreign.VehicleTokenID) {
+				local.R.VehicleTokenSyntheticDevices = append(local.R.VehicleTokenSyntheticDevices, foreign)
 				if foreign.R == nil {
 					foreign.R = &syntheticDeviceR{}
 				}
-				foreign.R.Token = local
+				foreign.R.VehicleToken = local
 				break
 			}
 		}
@@ -1355,25 +1355,25 @@ func (o *VehicleNFT) RemoveVehicleTokenAutopiUnit(ctx context.Context, exec boil
 	return nil
 }
 
-// AddTokenSyntheticDevices adds the given related objects to the existing relationships
+// AddVehicleTokenSyntheticDevices adds the given related objects to the existing relationships
 // of the vehicle_nft, optionally inserting them as new records.
-// Appends related to o.R.TokenSyntheticDevices.
-// Sets related.R.Token appropriately.
-func (o *VehicleNFT) AddTokenSyntheticDevices(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*SyntheticDevice) error {
+// Appends related to o.R.VehicleTokenSyntheticDevices.
+// Sets related.R.VehicleToken appropriately.
+func (o *VehicleNFT) AddVehicleTokenSyntheticDevices(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*SyntheticDevice) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.TokenID, o.TokenID)
+			queries.Assign(&rel.VehicleTokenID, o.TokenID)
 			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"devices_api\".\"synthetic_devices\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"token_id"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"vehicle_token_id"}),
 				strmangle.WhereClause("\"", "\"", 2, syntheticDevicePrimaryKeyColumns),
 			)
-			values := []interface{}{o.TokenID, rel.TokenID, rel.IntegrationID}
+			values := []interface{}{o.TokenID, rel.VehicleTokenID, rel.IntegrationTokenID}
 
 			if boil.IsDebug(ctx) {
 				writer := boil.DebugWriterFrom(ctx)
@@ -1384,25 +1384,25 @@ func (o *VehicleNFT) AddTokenSyntheticDevices(ctx context.Context, exec boil.Con
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.TokenID, o.TokenID)
+			queries.Assign(&rel.VehicleTokenID, o.TokenID)
 		}
 	}
 
 	if o.R == nil {
 		o.R = &vehicleNFTR{
-			TokenSyntheticDevices: related,
+			VehicleTokenSyntheticDevices: related,
 		}
 	} else {
-		o.R.TokenSyntheticDevices = append(o.R.TokenSyntheticDevices, related...)
+		o.R.VehicleTokenSyntheticDevices = append(o.R.VehicleTokenSyntheticDevices, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &syntheticDeviceR{
-				Token: o,
+				VehicleToken: o,
 			}
 		} else {
-			rel.R.Token = o
+			rel.R.VehicleToken = o
 		}
 	}
 	return nil

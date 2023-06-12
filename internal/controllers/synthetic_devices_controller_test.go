@@ -305,12 +305,12 @@ func (s *VirtualDevicesControllerTestSuite) Test_MintSyntheticDevice() {
 
 	vnID := types.NewDecimal(decimal.New(57, 0))
 	syntDevice, err := models.SyntheticDevices(
-		models.SyntheticDeviceWhere.TokenID.EQ(vnID),
-		models.SyntheticDeviceWhere.IntegrationID.EQ(integration.Id),
+		models.SyntheticDeviceWhere.VehicleTokenID.EQ(vnID),
+		models.SyntheticDeviceWhere.IntegrationTokenID.EQ(types.NewDecimal(decimal.New(1, 0))),
 	).One(s.ctx, s.pdb.DBS().Reader)
 	assert.NoError(s.T(), err)
 
-	assert.Equal(s.T(), syntDevice.IntegrationID, integration.Id)
+	assert.Equal(s.T(), syntDevice.IntegrationTokenID, types.NewDecimal(decimal.New(1, 0)))
 	assert.Equal(s.T(), syntDevice.TokenID, vnID)
 
 	assert.ObjectsAreEqual(expectedMnInput, actualMnInput)

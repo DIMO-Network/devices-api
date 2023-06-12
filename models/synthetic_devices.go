@@ -24,42 +24,47 @@ import (
 
 // SyntheticDevice is an object representing the database table.
 type SyntheticDevice struct {
-	TokenID           types.Decimal `boil:"token_id" json:"token_id" toml:"token_id" yaml:"token_id"`
-	IntegrationID     string        `boil:"integration_id" json:"integration_id" toml:"integration_id" yaml:"integration_id"`
-	MintRequestID     string        `boil:"mint_request_id" json:"mint_request_id" toml:"mint_request_id" yaml:"mint_request_id"`
-	WalletChildNumber int           `boil:"wallet_child_number" json:"wallet_child_number" toml:"wallet_child_number" yaml:"wallet_child_number"`
-	WalletAddress     []byte        `boil:"wallet_address" json:"wallet_address" toml:"wallet_address" yaml:"wallet_address"`
+	VehicleTokenID     types.Decimal     `boil:"vehicle_token_id" json:"vehicle_token_id" toml:"vehicle_token_id" yaml:"vehicle_token_id"`
+	IntegrationTokenID types.Decimal     `boil:"integration_token_id" json:"integration_token_id" toml:"integration_token_id" yaml:"integration_token_id"`
+	MintRequestID      string            `boil:"mint_request_id" json:"mint_request_id" toml:"mint_request_id" yaml:"mint_request_id"`
+	WalletChildNumber  int               `boil:"wallet_child_number" json:"wallet_child_number" toml:"wallet_child_number" yaml:"wallet_child_number"`
+	WalletAddress      []byte            `boil:"wallet_address" json:"wallet_address" toml:"wallet_address" yaml:"wallet_address"`
+	TokenID            types.NullDecimal `boil:"token_id" json:"token_id,omitempty" toml:"token_id" yaml:"token_id,omitempty"`
 
 	R *syntheticDeviceR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L syntheticDeviceL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var SyntheticDeviceColumns = struct {
-	TokenID           string
-	IntegrationID     string
-	MintRequestID     string
-	WalletChildNumber string
-	WalletAddress     string
+	VehicleTokenID     string
+	IntegrationTokenID string
+	MintRequestID      string
+	WalletChildNumber  string
+	WalletAddress      string
+	TokenID            string
 }{
-	TokenID:           "token_id",
-	IntegrationID:     "integration_id",
-	MintRequestID:     "mint_request_id",
-	WalletChildNumber: "wallet_child_number",
-	WalletAddress:     "wallet_address",
+	VehicleTokenID:     "vehicle_token_id",
+	IntegrationTokenID: "integration_token_id",
+	MintRequestID:      "mint_request_id",
+	WalletChildNumber:  "wallet_child_number",
+	WalletAddress:      "wallet_address",
+	TokenID:            "token_id",
 }
 
 var SyntheticDeviceTableColumns = struct {
-	TokenID           string
-	IntegrationID     string
-	MintRequestID     string
-	WalletChildNumber string
-	WalletAddress     string
+	VehicleTokenID     string
+	IntegrationTokenID string
+	MintRequestID      string
+	WalletChildNumber  string
+	WalletAddress      string
+	TokenID            string
 }{
-	TokenID:           "synthetic_devices.token_id",
-	IntegrationID:     "synthetic_devices.integration_id",
-	MintRequestID:     "synthetic_devices.mint_request_id",
-	WalletChildNumber: "synthetic_devices.wallet_child_number",
-	WalletAddress:     "synthetic_devices.wallet_address",
+	VehicleTokenID:     "synthetic_devices.vehicle_token_id",
+	IntegrationTokenID: "synthetic_devices.integration_token_id",
+	MintRequestID:      "synthetic_devices.mint_request_id",
+	WalletChildNumber:  "synthetic_devices.wallet_child_number",
+	WalletAddress:      "synthetic_devices.wallet_address",
+	TokenID:            "synthetic_devices.token_id",
 }
 
 // Generated where
@@ -88,32 +93,34 @@ func (w whereHelperint) NIN(slice []int) qm.QueryMod {
 }
 
 var SyntheticDeviceWhere = struct {
-	TokenID           whereHelpertypes_Decimal
-	IntegrationID     whereHelperstring
-	MintRequestID     whereHelperstring
-	WalletChildNumber whereHelperint
-	WalletAddress     whereHelper__byte
+	VehicleTokenID     whereHelpertypes_Decimal
+	IntegrationTokenID whereHelpertypes_Decimal
+	MintRequestID      whereHelperstring
+	WalletChildNumber  whereHelperint
+	WalletAddress      whereHelper__byte
+	TokenID            whereHelpertypes_NullDecimal
 }{
-	TokenID:           whereHelpertypes_Decimal{field: "\"devices_api\".\"synthetic_devices\".\"token_id\""},
-	IntegrationID:     whereHelperstring{field: "\"devices_api\".\"synthetic_devices\".\"integration_id\""},
-	MintRequestID:     whereHelperstring{field: "\"devices_api\".\"synthetic_devices\".\"mint_request_id\""},
-	WalletChildNumber: whereHelperint{field: "\"devices_api\".\"synthetic_devices\".\"wallet_child_number\""},
-	WalletAddress:     whereHelper__byte{field: "\"devices_api\".\"synthetic_devices\".\"wallet_address\""},
+	VehicleTokenID:     whereHelpertypes_Decimal{field: "\"devices_api\".\"synthetic_devices\".\"vehicle_token_id\""},
+	IntegrationTokenID: whereHelpertypes_Decimal{field: "\"devices_api\".\"synthetic_devices\".\"integration_token_id\""},
+	MintRequestID:      whereHelperstring{field: "\"devices_api\".\"synthetic_devices\".\"mint_request_id\""},
+	WalletChildNumber:  whereHelperint{field: "\"devices_api\".\"synthetic_devices\".\"wallet_child_number\""},
+	WalletAddress:      whereHelper__byte{field: "\"devices_api\".\"synthetic_devices\".\"wallet_address\""},
+	TokenID:            whereHelpertypes_NullDecimal{field: "\"devices_api\".\"synthetic_devices\".\"token_id\""},
 }
 
 // SyntheticDeviceRels is where relationship names are stored.
 var SyntheticDeviceRels = struct {
-	MintRequest string
-	Token       string
+	MintRequest  string
+	VehicleToken string
 }{
-	MintRequest: "MintRequest",
-	Token:       "Token",
+	MintRequest:  "MintRequest",
+	VehicleToken: "VehicleToken",
 }
 
 // syntheticDeviceR is where relationships are stored.
 type syntheticDeviceR struct {
-	MintRequest *MetaTransactionRequest `boil:"MintRequest" json:"MintRequest" toml:"MintRequest" yaml:"MintRequest"`
-	Token       *VehicleNFT             `boil:"Token" json:"Token" toml:"Token" yaml:"Token"`
+	MintRequest  *MetaTransactionRequest `boil:"MintRequest" json:"MintRequest" toml:"MintRequest" yaml:"MintRequest"`
+	VehicleToken *VehicleNFT             `boil:"VehicleToken" json:"VehicleToken" toml:"VehicleToken" yaml:"VehicleToken"`
 }
 
 // NewStruct creates a new relationship struct
@@ -128,21 +135,21 @@ func (r *syntheticDeviceR) GetMintRequest() *MetaTransactionRequest {
 	return r.MintRequest
 }
 
-func (r *syntheticDeviceR) GetToken() *VehicleNFT {
+func (r *syntheticDeviceR) GetVehicleToken() *VehicleNFT {
 	if r == nil {
 		return nil
 	}
-	return r.Token
+	return r.VehicleToken
 }
 
 // syntheticDeviceL is where Load methods for each relationship are stored.
 type syntheticDeviceL struct{}
 
 var (
-	syntheticDeviceAllColumns            = []string{"token_id", "integration_id", "mint_request_id", "wallet_child_number", "wallet_address"}
-	syntheticDeviceColumnsWithoutDefault = []string{"token_id", "integration_id", "mint_request_id", "wallet_child_number", "wallet_address"}
-	syntheticDeviceColumnsWithDefault    = []string{}
-	syntheticDevicePrimaryKeyColumns     = []string{"token_id", "integration_id"}
+	syntheticDeviceAllColumns            = []string{"vehicle_token_id", "integration_token_id", "mint_request_id", "wallet_child_number", "wallet_address", "token_id"}
+	syntheticDeviceColumnsWithoutDefault = []string{"vehicle_token_id", "integration_token_id", "mint_request_id", "wallet_child_number", "wallet_address"}
+	syntheticDeviceColumnsWithDefault    = []string{"token_id"}
+	syntheticDevicePrimaryKeyColumns     = []string{"vehicle_token_id", "integration_token_id"}
 	syntheticDeviceGeneratedColumns      = []string{}
 )
 
@@ -435,10 +442,10 @@ func (o *SyntheticDevice) MintRequest(mods ...qm.QueryMod) metaTransactionReques
 	return MetaTransactionRequests(queryMods...)
 }
 
-// Token pointed to by the foreign key.
-func (o *SyntheticDevice) Token(mods ...qm.QueryMod) vehicleNFTQuery {
+// VehicleToken pointed to by the foreign key.
+func (o *SyntheticDevice) VehicleToken(mods ...qm.QueryMod) vehicleNFTQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"token_id\" = ?", o.TokenID),
+		qm.Where("\"token_id\" = ?", o.VehicleTokenID),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -566,9 +573,9 @@ func (syntheticDeviceL) LoadMintRequest(ctx context.Context, e boil.ContextExecu
 	return nil
 }
 
-// LoadToken allows an eager lookup of values, cached into the
+// LoadVehicleToken allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (syntheticDeviceL) LoadToken(ctx context.Context, e boil.ContextExecutor, singular bool, maybeSyntheticDevice interface{}, mods queries.Applicator) error {
+func (syntheticDeviceL) LoadVehicleToken(ctx context.Context, e boil.ContextExecutor, singular bool, maybeSyntheticDevice interface{}, mods queries.Applicator) error {
 	var slice []*SyntheticDevice
 	var object *SyntheticDevice
 
@@ -599,8 +606,8 @@ func (syntheticDeviceL) LoadToken(ctx context.Context, e boil.ContextExecutor, s
 		if object.R == nil {
 			object.R = &syntheticDeviceR{}
 		}
-		if !queries.IsNil(object.TokenID) {
-			args = append(args, object.TokenID)
+		if !queries.IsNil(object.VehicleTokenID) {
+			args = append(args, object.VehicleTokenID)
 		}
 
 	} else {
@@ -611,13 +618,13 @@ func (syntheticDeviceL) LoadToken(ctx context.Context, e boil.ContextExecutor, s
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.TokenID) {
+				if queries.Equal(a, obj.VehicleTokenID) {
 					continue Outer
 				}
 			}
 
-			if !queries.IsNil(obj.TokenID) {
-				args = append(args, obj.TokenID)
+			if !queries.IsNil(obj.VehicleTokenID) {
+				args = append(args, obj.VehicleTokenID)
 			}
 
 		}
@@ -666,22 +673,22 @@ func (syntheticDeviceL) LoadToken(ctx context.Context, e boil.ContextExecutor, s
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.Token = foreign
+		object.R.VehicleToken = foreign
 		if foreign.R == nil {
 			foreign.R = &vehicleNFTR{}
 		}
-		foreign.R.TokenSyntheticDevices = append(foreign.R.TokenSyntheticDevices, object)
+		foreign.R.VehicleTokenSyntheticDevices = append(foreign.R.VehicleTokenSyntheticDevices, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.TokenID, foreign.TokenID) {
-				local.R.Token = foreign
+			if queries.Equal(local.VehicleTokenID, foreign.TokenID) {
+				local.R.VehicleToken = foreign
 				if foreign.R == nil {
 					foreign.R = &vehicleNFTR{}
 				}
-				foreign.R.TokenSyntheticDevices = append(foreign.R.TokenSyntheticDevices, local)
+				foreign.R.VehicleTokenSyntheticDevices = append(foreign.R.VehicleTokenSyntheticDevices, local)
 				break
 			}
 		}
@@ -706,7 +713,7 @@ func (o *SyntheticDevice) SetMintRequest(ctx context.Context, exec boil.ContextE
 		strmangle.SetParamNames("\"", "\"", 1, []string{"mint_request_id"}),
 		strmangle.WhereClause("\"", "\"", 2, syntheticDevicePrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.TokenID, o.IntegrationID}
+	values := []interface{}{related.ID, o.VehicleTokenID, o.IntegrationTokenID}
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -737,10 +744,10 @@ func (o *SyntheticDevice) SetMintRequest(ctx context.Context, exec boil.ContextE
 	return nil
 }
 
-// SetToken of the syntheticDevice to the related item.
-// Sets o.R.Token to related.
-// Adds o to related.R.TokenSyntheticDevices.
-func (o *SyntheticDevice) SetToken(ctx context.Context, exec boil.ContextExecutor, insert bool, related *VehicleNFT) error {
+// SetVehicleToken of the syntheticDevice to the related item.
+// Sets o.R.VehicleToken to related.
+// Adds o to related.R.VehicleTokenSyntheticDevices.
+func (o *SyntheticDevice) SetVehicleToken(ctx context.Context, exec boil.ContextExecutor, insert bool, related *VehicleNFT) error {
 	var err error
 	if insert {
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
@@ -750,10 +757,10 @@ func (o *SyntheticDevice) SetToken(ctx context.Context, exec boil.ContextExecuto
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"devices_api\".\"synthetic_devices\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"token_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"vehicle_token_id"}),
 		strmangle.WhereClause("\"", "\"", 2, syntheticDevicePrimaryKeyColumns),
 	)
-	values := []interface{}{related.TokenID, o.TokenID, o.IntegrationID}
+	values := []interface{}{related.TokenID, o.VehicleTokenID, o.IntegrationTokenID}
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -764,21 +771,21 @@ func (o *SyntheticDevice) SetToken(ctx context.Context, exec boil.ContextExecuto
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.TokenID, related.TokenID)
+	queries.Assign(&o.VehicleTokenID, related.TokenID)
 	if o.R == nil {
 		o.R = &syntheticDeviceR{
-			Token: related,
+			VehicleToken: related,
 		}
 	} else {
-		o.R.Token = related
+		o.R.VehicleToken = related
 	}
 
 	if related.R == nil {
 		related.R = &vehicleNFTR{
-			TokenSyntheticDevices: SyntheticDeviceSlice{o},
+			VehicleTokenSyntheticDevices: SyntheticDeviceSlice{o},
 		}
 	} else {
-		related.R.TokenSyntheticDevices = append(related.R.TokenSyntheticDevices, o)
+		related.R.VehicleTokenSyntheticDevices = append(related.R.VehicleTokenSyntheticDevices, o)
 	}
 
 	return nil
@@ -797,7 +804,7 @@ func SyntheticDevices(mods ...qm.QueryMod) syntheticDeviceQuery {
 
 // FindSyntheticDevice retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindSyntheticDevice(ctx context.Context, exec boil.ContextExecutor, tokenID types.Decimal, integrationID string, selectCols ...string) (*SyntheticDevice, error) {
+func FindSyntheticDevice(ctx context.Context, exec boil.ContextExecutor, vehicleTokenID types.Decimal, integrationTokenID types.Decimal, selectCols ...string) (*SyntheticDevice, error) {
 	syntheticDeviceObj := &SyntheticDevice{}
 
 	sel := "*"
@@ -805,10 +812,10 @@ func FindSyntheticDevice(ctx context.Context, exec boil.ContextExecutor, tokenID
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"devices_api\".\"synthetic_devices\" where \"token_id\"=$1 AND \"integration_id\"=$2", sel,
+		"select %s from \"devices_api\".\"synthetic_devices\" where \"vehicle_token_id\"=$1 AND \"integration_token_id\"=$2", sel,
 	)
 
-	q := queries.Raw(query, tokenID, integrationID)
+	q := queries.Raw(query, vehicleTokenID, integrationTokenID)
 
 	err := q.Bind(ctx, exec, syntheticDeviceObj)
 	if err != nil {
@@ -1160,7 +1167,7 @@ func (o *SyntheticDevice) Delete(ctx context.Context, exec boil.ContextExecutor)
 	}
 
 	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), syntheticDevicePrimaryKeyMapping)
-	sql := "DELETE FROM \"devices_api\".\"synthetic_devices\" WHERE \"token_id\"=$1 AND \"integration_id\"=$2"
+	sql := "DELETE FROM \"devices_api\".\"synthetic_devices\" WHERE \"vehicle_token_id\"=$1 AND \"integration_token_id\"=$2"
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -1257,7 +1264,7 @@ func (o SyntheticDeviceSlice) DeleteAll(ctx context.Context, exec boil.ContextEx
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *SyntheticDevice) Reload(ctx context.Context, exec boil.ContextExecutor) error {
-	ret, err := FindSyntheticDevice(ctx, exec, o.TokenID, o.IntegrationID)
+	ret, err := FindSyntheticDevice(ctx, exec, o.VehicleTokenID, o.IntegrationTokenID)
 	if err != nil {
 		return err
 	}
@@ -1296,16 +1303,16 @@ func (o *SyntheticDeviceSlice) ReloadAll(ctx context.Context, exec boil.ContextE
 }
 
 // SyntheticDeviceExists checks if the SyntheticDevice row exists.
-func SyntheticDeviceExists(ctx context.Context, exec boil.ContextExecutor, tokenID types.Decimal, integrationID string) (bool, error) {
+func SyntheticDeviceExists(ctx context.Context, exec boil.ContextExecutor, vehicleTokenID types.Decimal, integrationTokenID types.Decimal) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"devices_api\".\"synthetic_devices\" where \"token_id\"=$1 AND \"integration_id\"=$2 limit 1)"
+	sql := "select exists(select 1 from \"devices_api\".\"synthetic_devices\" where \"vehicle_token_id\"=$1 AND \"integration_token_id\"=$2 limit 1)"
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
 		fmt.Fprintln(writer, sql)
-		fmt.Fprintln(writer, tokenID, integrationID)
+		fmt.Fprintln(writer, vehicleTokenID, integrationTokenID)
 	}
-	row := exec.QueryRowContext(ctx, sql, tokenID, integrationID)
+	row := exec.QueryRowContext(ctx, sql, vehicleTokenID, integrationTokenID)
 
 	err := row.Scan(&exists)
 	if err != nil {
@@ -1317,5 +1324,5 @@ func SyntheticDeviceExists(ctx context.Context, exec boil.ContextExecutor, token
 
 // Exists checks if the SyntheticDevice row exists.
 func (o *SyntheticDevice) Exists(ctx context.Context, exec boil.ContextExecutor) (bool, error) {
-	return SyntheticDeviceExists(ctx, exec, o.TokenID, o.IntegrationID)
+	return SyntheticDeviceExists(ctx, exec, o.VehicleTokenID, o.IntegrationTokenID)
 }
