@@ -395,7 +395,7 @@ func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevi
 	}
 
 	if vc := ud.R.VehicleNFT.R.Claim; vc != nil {
-		out.LatestActiveVinCredential = &pb.VinCredential{
+		out.LatestVinCredential = &pb.VinCredential{
 			Id:         vc.ClaimID,
 			Expiration: timestamppb.New(vc.ExpirationDate),
 		}
