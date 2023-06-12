@@ -237,6 +237,8 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature provided")
 	}
 
+	ownerSignature[64] += 27
+
 	childKeyNumber, err := vc.generateNextChildKeyNumber(c.Context())
 	if err != nil {
 		vc.log.Err(err).Msg("failed to generate sequence from database")
