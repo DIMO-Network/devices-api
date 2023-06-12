@@ -9,6 +9,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/DIMO-Network/shared"
+
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/segmentio/ksuid"
 
@@ -103,7 +105,7 @@ func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDe
 				ds.RecordUpdatedAt = &ts
 			}
 			o := odometer.Get("value").Float()
-			if isOdometerValid(o) {
+			if shared.IsOdometerValid(o) {
 				ds.Odometer = &o
 			}
 		}
@@ -180,17 +182,6 @@ func findMostRecentSignal(udd models.UserDeviceDatumSlice, path string, highestF
 		}
 	}
 	return gjson.GetBytes(udd[0].Signals.JSON, path)
-}
-
-// isOdometerValid encapsulates logic to decide whether to return odometer
-func isOdometerValid(odometer float64) bool {
-	if odometer <= 100 {
-		return false
-	}
-	if odometer == 65539 || odometer == 65538 {
-		return false
-	}
-	return true
 }
 
 // calculateRange returns the current estimated range based on fuel tank capacity, mpg, and fuelPercentRemaining and returns it in Kilometers
