@@ -69,7 +69,6 @@ func (s *userDeviceService) GetUserDevice(ctx context.Context, req *pb.GetUserDe
 			qm.Rels(
 				models.UserDeviceRels.VehicleNFT,
 				models.VehicleNFTRels.Claim,
-				models.VerifiableCredentialRels.ClaimVehicleNFT,
 			),
 		),
 	).One(ctx, s.dbs().Reader)
@@ -392,12 +391,12 @@ func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevi
 				out.AftermarketDeviceBeneficiaryAddress = vnft.OwnerAddress.Bytes
 			}
 		}
-	}
 
-	if vc := ud.R.VehicleNFT.R.Claim; vc != nil {
-		out.LatestVinCredential = &pb.VinCredential{
-			Id:         vc.ClaimID,
-			Expiration: timestamppb.New(vc.ExpirationDate),
+		if vc := vnft.R.Claim; vc != nil {
+			out.LatestVinCredential = &pb.VinCredential{
+				Id:         vc.ClaimID,
+				Expiration: timestamppb.New(vc.ExpirationDate),
+			}
 		}
 	}
 
