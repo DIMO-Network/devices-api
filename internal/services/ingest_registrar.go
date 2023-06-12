@@ -117,7 +117,7 @@ func (s *ingestRegistrar) Register2(data *AftermarketDeviceVehicleMapping) error
 
 func (s *ingestRegistrar) Deregister2(addr common.Address) error {
 	message := &sarama.ProducerMessage{
-		Topic: ingestAutoPiRegistrationTopic,
+		Topic: aftermarketDeviceIntegrationTopic,
 		Key:   sarama.StringEncoder(addr.Hex()),
 		Value: nil, // Delete from compacted topic.
 	}
