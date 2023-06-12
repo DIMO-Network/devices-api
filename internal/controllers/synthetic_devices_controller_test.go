@@ -311,7 +311,7 @@ func (s *VirtualDevicesControllerTestSuite) Test_MintSyntheticDevice() {
 	assert.NoError(s.T(), err)
 
 	assert.Equal(s.T(), syntDevice.IntegrationTokenID, types.NewDecimal(decimal.New(1, 0)))
-	assert.Equal(s.T(), syntDevice.TokenID, vnID)
+	assert.Equal(s.T(), syntDevice.VehicleTokenID, vnID)
 
 	assert.ObjectsAreEqual(expectedMnInput, actualMnInput)
 
