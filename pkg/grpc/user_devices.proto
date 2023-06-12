@@ -57,11 +57,6 @@ message UserDeviceIntegration {
   string status = 2; // This is not great, but getting tied to the list seems worse. We may regret this.
 }
 
-message VinCredential {
-  string id = 1;
-  google.protobuf.Timestamp expiration = 2;
-}
-
 message UserDeviceAutoPIUnitResponse {
   string user_device_id = 1;
   string user_id = 2;
@@ -106,4 +101,9 @@ message RegisterUserDeviceFromVINRequest {
 
 message RegisterUserDeviceFromVINResponse {
   bool created = 1;
+}
+
+message VinCredential {
+  string id = 1;
+  google.protobuf.Timestamp expiration = 2;
 }
