@@ -1,8 +1,11 @@
 package services
 
 import (
+	"math/big"
+
 	"github.com/DIMO-Network/shared"
 	"github.com/Shopify/sarama"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
 
 	"encoding/json"
@@ -12,6 +15,8 @@ import (
 
 const ingestAutoPiRegistrationTopic = "table.device.integration.autopi"
 const autoPiRegistrationEventType = "zone.dimo.device.integration.autopi.register"
+
+const ingestAftermarketDeviceRegistrationTopic = "table.aftermarket.device.integration"
 
 //go:generate mockgen -source ingest_registrar.go -destination mocks/ingest_registrar_mock.go
 type IngestRegistrar interface {
@@ -84,13 +89,18 @@ func (s *ingestRegistrar) Deregister(externalID, _, _ string) error {
 	return nil
 }
 
-type IntegrationTypeEnum string
+type AftermarketDeviceVehicleMapping struct {
+	AftermarketDevice AftermarketDeviceVehicleMappingAftermarketDevice `json:"aftermarketDevice"`
+	Vehicle           AftermarketDeviceVehicleMappingVehicle           `json:"vehicle"`
+}
 
-const (
-	Smartcar IntegrationTypeEnum = "Smartcar"
-	AutoPi   IntegrationTypeEnum = "AutoPi"
-)
+type AftermarketDeviceVehicleMappingAftermarketDevice struct {
+	Address common.Address `json:"address"`
+	Token   *big.Int       `json:"token"`
+	Serial  string         `json:"serial"`
+}
 
-func (r IntegrationTypeEnum) String() string {
-	return string(r)
+type AftermarketDeviceVehicleMappingVehicle struct {
+	Token        *big.Int `json:"token"`
+	UserDeviceID string   `json:"userDeviceId"`
 }

@@ -172,6 +172,14 @@ kafka:
         min.compaction.lag.ms: '3600000'
         min.cleanable.dirty.ratio: '0.01'
         delete.retention.ms: '3600000'
+    - name: table.aftermarket.device.integration
+      config:
+        segment.ms: '3600000'
+        compression.type: producer
+        cleanup.policy: compact
+        min.compaction.lag.ms: '3600000'
+        min.cleanable.dirty.ratio: '0.01'
+        delete.retention.ms: '3600000'
     - name: table.device.privacyfence
       config:
         segment.ms: '3600000'
