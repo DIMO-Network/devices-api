@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: c2ddf92
+  tag: 944514e
 imagePullSecrets: []
 nameOverride: ''
 fullnameOverride: ''
@@ -165,6 +165,14 @@ kafka:
         min.cleanable.dirty.ratio: '0.01'
         delete.retention.ms: '3600000'
     - name: table.device.integration.autopi
+      config:
+        segment.ms: '3600000'
+        compression.type: producer
+        cleanup.policy: compact
+        min.compaction.lag.ms: '3600000'
+        min.cleanable.dirty.ratio: '0.01'
+        delete.retention.ms: '3600000'
+    - name: table.aftermarket.device.integration
       config:
         segment.ms: '3600000'
         compression.type: producer

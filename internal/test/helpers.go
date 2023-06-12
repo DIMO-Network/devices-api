@@ -256,12 +256,13 @@ func SetupCreateAutoPiUnit(t *testing.T, userID, unitID string, deviceID *string
 	return &au
 }
 
-func SetupCreateAutoPiUnitWithToken(t *testing.T, userID, unitID string, tokenID *big.Int, deviceID *string, pdb db.Store) *models.AutopiUnit {
+func SetupCreateMintedAutoPiUnit(t *testing.T, userID, unitID string, tokenID *big.Int, addr common.Address, deviceID *string, pdb db.Store) *models.AutopiUnit {
 	au := models.AutopiUnit{
-		AutopiUnitID:   unitID,
-		UserID:         null.StringFrom(userID),
-		AutopiDeviceID: null.StringFromPtr(deviceID),
-		TokenID:        types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+		AutopiUnitID:    unitID,
+		UserID:          null.StringFrom(userID),
+		AutopiDeviceID:  null.StringFromPtr(deviceID),
+		TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+		EthereumAddress: null.BytesFrom(addr.Bytes()),
 	}
 	err := au.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
 	assert.NoError(t, err)
