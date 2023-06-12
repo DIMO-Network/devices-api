@@ -22,8 +22,6 @@ type remakeAftermarketTopicCmd struct {
 	logger    zerolog.Logger
 	settings  config.Settings
 	pdb       db.Store
-	producer  sarama.SyncProducer
-	ddSvc     services.DeviceDefinitionService
 	container dependencyContainer
 }
 
@@ -43,8 +41,7 @@ func (p *remakeAftermarketTopicCmd) SetFlags(f *flag.FlagSet) {
 }
 
 func (p *remakeAftermarketTopicCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
-	p.producer = p.container.getKafkaProducer()
-	err := remakeAftermarketTopic(ctx, p.pdb, p.producer, p.ddSvc)
+	err := remakeAftermarketTopic(ctx, p.pdb, p.container.getKafkaProducer(), p.container.getDeviceDefinitionService())
 	if err != nil {
 		p.logger.Fatal().Err(err).Msg("Error running AutoPi Kafka re-registration")
 	}
