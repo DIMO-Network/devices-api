@@ -16,9 +16,8 @@ type SyntheticWalletInstanceService interface {
 }
 
 type syntheticWalletInstanceService struct {
-	dbs         func() *db.ReaderWriter
-	serviceAddr string
-	grpc        grpcClient
+	dbs  func() *db.ReaderWriter
+	grpc *grpcClient
 }
 
 type grpcClient struct {
@@ -31,17 +30,17 @@ func NewSyntheticWalletInstanceService(DBS func() *db.ReaderWriter, settings *co
 	if err != nil {
 		return nil, err
 	}
+
 	virtualDeviceClient := pb.NewSyntheticWalletClient(conn)
 
-	grpc := grpcClient{
+	grpc := &grpcClient{
 		conn:   conn,
 		client: virtualDeviceClient,
 	}
 
 	return &syntheticWalletInstanceService{
-		dbs:         DBS,
-		serviceAddr: settings.SyntheticWalletGRPCAddr,
-		grpc:        grpc,
+		dbs:  DBS,
+		grpc: grpc,
 	}, nil
 }
 
