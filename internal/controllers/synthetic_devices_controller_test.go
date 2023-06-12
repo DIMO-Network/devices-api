@@ -305,13 +305,13 @@ func (s *VirtualDevicesControllerTestSuite) Test_MintSyntheticDevice() {
 
 	vnID := types.NewDecimal(decimal.New(57, 0))
 	syntDevice, err := models.SyntheticDevices(
-		models.SyntheticDeviceWhere.VehicleTokenID.EQ(vnID),
+		models.SyntheticDeviceWhere.TokenID.EQ(vnID),
 		models.SyntheticDeviceWhere.IntegrationID.EQ(integration.Id),
 	).One(s.ctx, s.pdb.DBS().Reader)
 	assert.NoError(s.T(), err)
 
 	assert.Equal(s.T(), syntDevice.IntegrationID, integration.Id)
-	assert.Equal(s.T(), syntDevice.VehicleTokenID, vnID)
+	assert.Equal(s.T(), syntDevice.TokenID, vnID)
 
 	assert.ObjectsAreEqual(expectedMnInput, actualMnInput)
 
@@ -361,15 +361,15 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload_
 }
 
 func (s *VirtualDevicesControllerTestSuite) Test_Synthetic_Device_Sequence() {
-	childKeyNumber, err := s.sdc.generateRandomNumber(s.ctx)
+	childKeyNumber, err := s.sdc.generateNextChildKeyNumber(s.ctx)
 	assert.NoError(s.T(), err)
 
 	startSeq := 2 // We start from 2 because the initial mint test would have generated sequence 1 already
 
-	assert.Equal(s.T(), startSeq, *childKeyNumber)
+	assert.Equal(s.T(), startSeq, childKeyNumber)
 
-	childKeyNumber, err = s.sdc.generateRandomNumber(s.ctx)
+	childKeyNumber, err = s.sdc.generateNextChildKeyNumber(s.ctx)
 	assert.NoError(s.T(), err)
 
-	assert.Equal(s.T(), startSeq+1, *childKeyNumber)
+	assert.Equal(s.T(), startSeq+1, childKeyNumber)
 }

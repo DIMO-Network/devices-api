@@ -23,37 +23,51 @@ import (
 
 // VerifiableCredential is an object representing the database table.
 type VerifiableCredential struct {
-	ClaimID    string `boil:"claim_id" json:"claim_id" toml:"claim_id" yaml:"claim_id"`
-	Credential []byte `boil:"credential" json:"credential" toml:"credential" yaml:"credential"`
+	ClaimID        string    `boil:"claim_id" json:"claim_id" toml:"claim_id" yaml:"claim_id"`
+	Credential     []byte    `boil:"credential" json:"credential" toml:"credential" yaml:"credential"`
+	IssuanceDate   time.Time `boil:"issuance_date" json:"issuance_date" toml:"issuance_date" yaml:"issuance_date"`
+	ExpirationDate time.Time `boil:"expiration_date" json:"expiration_date" toml:"expiration_date" yaml:"expiration_date"`
 
 	R *verifiableCredentialR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L verifiableCredentialL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var VerifiableCredentialColumns = struct {
-	ClaimID    string
-	Credential string
+	ClaimID        string
+	Credential     string
+	IssuanceDate   string
+	ExpirationDate string
 }{
-	ClaimID:    "claim_id",
-	Credential: "credential",
+	ClaimID:        "claim_id",
+	Credential:     "credential",
+	IssuanceDate:   "issuance_date",
+	ExpirationDate: "expiration_date",
 }
 
 var VerifiableCredentialTableColumns = struct {
-	ClaimID    string
-	Credential string
+	ClaimID        string
+	Credential     string
+	IssuanceDate   string
+	ExpirationDate string
 }{
-	ClaimID:    "verifiable_credentials.claim_id",
-	Credential: "verifiable_credentials.credential",
+	ClaimID:        "verifiable_credentials.claim_id",
+	Credential:     "verifiable_credentials.credential",
+	IssuanceDate:   "verifiable_credentials.issuance_date",
+	ExpirationDate: "verifiable_credentials.expiration_date",
 }
 
 // Generated where
 
 var VerifiableCredentialWhere = struct {
-	ClaimID    whereHelperstring
-	Credential whereHelper__byte
+	ClaimID        whereHelperstring
+	Credential     whereHelper__byte
+	IssuanceDate   whereHelpertime_Time
+	ExpirationDate whereHelpertime_Time
 }{
-	ClaimID:    whereHelperstring{field: "\"devices_api\".\"verifiable_credentials\".\"claim_id\""},
-	Credential: whereHelper__byte{field: "\"devices_api\".\"verifiable_credentials\".\"credential\""},
+	ClaimID:        whereHelperstring{field: "\"devices_api\".\"verifiable_credentials\".\"claim_id\""},
+	Credential:     whereHelper__byte{field: "\"devices_api\".\"verifiable_credentials\".\"credential\""},
+	IssuanceDate:   whereHelpertime_Time{field: "\"devices_api\".\"verifiable_credentials\".\"issuance_date\""},
+	ExpirationDate: whereHelpertime_Time{field: "\"devices_api\".\"verifiable_credentials\".\"expiration_date\""},
 }
 
 // VerifiableCredentialRels is where relationship names are stored.
@@ -84,9 +98,9 @@ func (r *verifiableCredentialR) GetClaimVehicleNFT() *VehicleNFT {
 type verifiableCredentialL struct{}
 
 var (
-	verifiableCredentialAllColumns            = []string{"claim_id", "credential"}
-	verifiableCredentialColumnsWithoutDefault = []string{"claim_id", "credential"}
-	verifiableCredentialColumnsWithDefault    = []string{}
+	verifiableCredentialAllColumns            = []string{"claim_id", "credential", "issuance_date", "expiration_date"}
+	verifiableCredentialColumnsWithoutDefault = []string{"claim_id", "credential", "expiration_date"}
+	verifiableCredentialColumnsWithDefault    = []string{"issuance_date"}
 	verifiableCredentialPrimaryKeyColumns     = []string{"claim_id"}
 	verifiableCredentialGeneratedColumns      = []string{}
 )

@@ -237,13 +237,13 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature provided")
 	}
 
-	childKeyNumber, err := vc.generateRandomNumber(c.Context())
+	childKeyNumber, err := vc.generateNextChildKeyNumber(c.Context())
 	if err != nil {
 		vc.log.Err(err).Msg("failed to generate sequence from database")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
-	syntheticDeviceAddr, err := vc.sendVirtualDeviceMintPayload(c.Context(), hash, req.VehicleNode, integration.TokenId, ownerSignature, *childKeyNumber)
+	syntheticDeviceAddr, err := vc.sendVirtualDeviceMintPayload(c.Context(), hash, req.VehicleNode, integration.TokenId, ownerSignature, childKeyNumber)
 	if err != nil {
 		vc.log.Err(err).Msg("synthetic device minting request failed")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
@@ -262,22 +262,20 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	if err = metaReq.Insert(context.Background(), tx, boil.Infer()); err != nil {
-		tx.Rollback() // nolint
 		vc.log.Err(err).Msg("error occurred creating meta transaction request")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
 	vnID := types.NewDecimal(decimal.New(vid, 0))
 	syntheticDevice := &models.SyntheticDevice{
-		VehicleTokenID:    vnID,
+		TokenID:           vnID,
 		IntegrationID:     integration.Id,
-		WalletChildNumber: *childKeyNumber,
+		WalletChildNumber: childKeyNumber,
 		WalletAddress:     syntheticDeviceAddr,
 		MintRequestID:     requestID,
 	}
 
 	if err = syntheticDevice.Insert(context.Background(), tx, boil.Infer()); err != nil {
-		tx.Rollback() // nolint
 		vc.log.Err(err).Msg("error occurred saving synthetic device")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
@@ -321,14 +319,14 @@ func (vc *SyntheticDevicesController) sendVirtualDeviceMintPayload(ctx context.C
 	return syntheticDeviceAddr, vc.registryClient.MintVirtualDeviceSign(requestID, mvt)
 }
 
-func (vc *SyntheticDevicesController) generateRandomNumber(ctx context.Context) (*int, error) {
+func (vc *SyntheticDevicesController) generateNextChildKeyNumber(ctx context.Context) (int, error) {
 	seq := SyntheticDeviceSequence{}
 
 	qry := fmt.Sprintf("SELECT nextval('%s.synthetic_devices_serial_sequence');", vc.Settings.DB.Name)
 	err := queries.Raw(qry).Bind(ctx, vc.DBS().Reader, &seq)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	return &seq.NextVal, nil
+	return seq.NextVal, nil
 }
