@@ -17,15 +17,15 @@ import (
 
 //go:generate mockgen -source smartcar_client.go -destination mocks/smartcar_client_mock.go
 
-type smartcarClient struct {
+type SmartcarClient struct {
 	settings    *config.Settings
 	exchangeURL string
 	baseURL     string
 	httpClient  *http.Client
 }
 
-func New() *smartcarClient {
-	return &smartcarClient{
+func New() *SmartcarClient {
+	return &SmartcarClient{
 		exchangeURL: "https://auth.smartcar.com/oauth/token/",
 		baseURL:     "https://api.smartcar.com/v2.0",
 		httpClient:  &http.Client{Timeout: time.Duration(310) * time.Second}, // Smartcar default.
@@ -71,7 +71,7 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("smartcar: status code %d", e.Code)
 }
 
-func (s *smartcarClient) ExchangeCode(ctx context.Context, code, redirectURI string) (*smartcar.Token, error) {
+func (s *SmartcarClient) ExchangeCode(ctx context.Context, code, redirectURI string) (*smartcar.Token, error) {
 	v := url.Values{}
 	v.Set("code", code)
 	v.Set("grant_type", "authorization_code")
@@ -122,7 +122,7 @@ type scListResp struct {
 	Vehicles []string `json:"vehicles"`
 }
 
-func (s *smartcarClient) GetExternalID(ctx context.Context, accessToken string) (string, error) {
+func (s *SmartcarClient) GetExternalID(ctx context.Context, accessToken string) (string, error) {
 	var r scListResp
 	if err := s.do(ctx, accessToken, "/vehicles", &r); err != nil {
 		return "", err
@@ -139,7 +139,7 @@ type scPermissions struct {
 	Permissions []string `json:"permissions"`
 }
 
-func (s *smartcarClient) GetPermissions(ctx context.Context, accessToken string, id string) ([]string, error) {
+func (s *SmartcarClient) GetPermissions(ctx context.Context, accessToken string, id string) ([]string, error) {
 	var r scPermissions
 	if err := s.do(ctx, accessToken, fmt.Sprintf("/vehicles/%s/permissions", id), &r); err != nil {
 		return nil, err
@@ -152,7 +152,7 @@ type scVIN struct {
 	VIN string `json:"vin"`
 }
 
-func (s *smartcarClient) GetVIN(ctx context.Context, accessToken string, id string) (string, error) {
+func (s *SmartcarClient) GetVIN(ctx context.Context, accessToken string, id string) (string, error) {
 	var r scVIN
 	if err := s.do(ctx, accessToken, fmt.Sprintf("/vehicles/%s/vin", id), &r); err != nil {
 		return "", err
@@ -166,7 +166,7 @@ type MMY struct {
 	Year  int    `json:"year"`
 }
 
-func (s *smartcarClient) GetInfo(ctx context.Context, accessToken string, id string) (*MMY, error) {
+func (s *SmartcarClient) GetInfo(ctx context.Context, accessToken string, id string) (*MMY, error) {
 	var r MMY
 	if err := s.do(ctx, accessToken, fmt.Sprintf("/vehicles/%s", id), &r); err != nil {
 		return nil, err
@@ -175,7 +175,7 @@ func (s *smartcarClient) GetInfo(ctx context.Context, accessToken string, id str
 	return &r, nil
 }
 
-func (s *smartcarClient) do(ctx context.Context, accessToken string, path string, v any) error {
+func (s *SmartcarClient) do(ctx context.Context, accessToken string, path string, v any) error {
 	req, err := http.NewRequestWithContext(ctx, "GET", s.baseURL+path, nil)
 	if err != nil {
 		return err
