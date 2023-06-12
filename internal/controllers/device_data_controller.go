@@ -9,6 +9,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/DIMO-Network/shared"
+
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/segmentio/ksuid"
 
@@ -103,7 +105,9 @@ func PrepareDeviceStatusInformation(ctx context.Context, ddSvc services.DeviceDe
 				ds.RecordUpdatedAt = &ts
 			}
 			o := odometer.Get("value").Float()
-			ds.Odometer = &o
+			if shared.IsOdometerValid(o) {
+				ds.Odometer = &o
+			}
 		}
 		rangeG := findMostRecentSignal(deviceData, "range", false)
 		if rangeG.Exists() {
@@ -251,14 +255,11 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 // @Router      /user/devices/{userDeviceID}/commands/refresh [post]
 func (udc *UserDevicesController) RefreshUserDeviceStatus(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 	// We could probably do a smarter join here, but it's unclear to me how to handle that
 	// in SQLBoiler.
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
-		models.UserDeviceWhere.UserID.EQ(userID),
 		qm.Load(models.UserDeviceRels.UserDeviceData),
-		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceData)),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -380,7 +381,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 // @Router      /user/devices/{userDeviceID}/error-codes [get]
 func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) error {
 	logger := helpers.GetLogger(c, udc.log)
-	
+
 	userDeviceID := c.Params("userDeviceID")
 
 	userDevice, err := models.UserDevices(

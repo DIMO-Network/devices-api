@@ -77,16 +77,18 @@ func New(c Config) (*Issuer, error) {
 func (i *Issuer) VIN(vin string, tokenID *big.Int) (id string, err error) {
 	id = uuid.New().String()
 	issuanceDate := time.Now().UTC().Format(time.RFC3339)
+	expirationDate := time.Now().Add(time.Hour * 24 * 7).UTC().Format(time.RFC3339)
 
 	credential := map[string]any{
 		"@context": []any{
 			"https://www.w3.org/2018/credentials/v1",
 			"https://schema.org/",
 		},
-		"id":           "urn:uuid:" + id,
-		"type":         []any{"VerifiableCredential", "Vehicle"},
-		"issuer":       i.IssuerDID,
-		"issuanceDate": issuanceDate,
+		"id":             "urn:uuid:" + id,
+		"type":           []any{"VerifiableCredential", "Vehicle"},
+		"issuer":         i.IssuerDID,
+		"issuanceDate":   issuanceDate,
+		"expirationDate": expirationDate,
 		"credentialSubject": map[string]any{
 			"id":                          fmt.Sprintf("did:nft:%d_erc721:%s_%d", i.ChainID, hexutil.Encode(i.VehicleNFTAddress.Bytes()), tokenID),
 			"vehicleIdentificationNumber": vin,

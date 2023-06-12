@@ -29,7 +29,7 @@ func (c *autoPiKTableDeleteCmd) Execute(_ context.Context, f *flag.FlagSet, _ ..
 
 	c.logger.Info().Msgf("Removing KTable entry for unit %s.", unitID)
 
-	reg := services.NewIngestRegistrar(services.AutoPi, c.container.getKafkaProducer())
+	reg := services.NewIngestRegistrar(c.container.getKafkaProducer())
 
 	if err := reg.Deregister(unitID, "", ""); err != nil {
 		c.logger.Err(err).Msg("Failed to emit tombstone.")
