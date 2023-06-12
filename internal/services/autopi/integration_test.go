@@ -99,7 +99,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_HardwareTemplate_Success() {
 
 	_, apAddr, _ := test.GenerateWallet()
 
-	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
+	autoPIUnit := test.SetupCreateMintedAutoPiUnit(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
 	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
@@ -177,7 +177,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_Make_HardwareTemplate_Success() {
 
 	_, apAddr, _ := test.GenerateWallet()
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
-	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
+	autoPIUnit := test.SetupCreateMintedAutoPiUnit(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
 	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
@@ -253,7 +253,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_DeviceStyle_HardwareTemplate_Su
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
 
 	_, apAddr, _ := test.GenerateWallet()
-	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
+	autoPIUnit := test.SetupCreateMintedAutoPiUnit(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
 	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
@@ -336,7 +336,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_UserDeviceStyle_HardwareTemplate_S
 
 	_, apAddr, _ := test.GenerateWallet()
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
-	autoPIUnit := test.SetupCreateAutoPiUnitWithToken(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
+	autoPIUnit := test.SetupCreateMintedAutoPiUnit(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
 	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)

@@ -256,7 +256,7 @@ func SetupCreateAutoPiUnit(t *testing.T, userID, unitID string, deviceID *string
 	return &au
 }
 
-func SetupCreateAutoPiUnitWithToken(t *testing.T, userID, unitID string, tokenID *big.Int, addr common.Address, deviceID *string, pdb db.Store) *models.AutopiUnit {
+func SetupCreateMintedAutoPiUnit(t *testing.T, userID, unitID string, tokenID *big.Int, addr common.Address, deviceID *string, pdb db.Store) *models.AutopiUnit {
 	au := models.AutopiUnit{
 		AutopiUnitID:    unitID,
 		UserID:          null.StringFrom(userID),
