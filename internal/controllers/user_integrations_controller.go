@@ -529,7 +529,11 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 
 	shouldUpdate := false
 	if udc.Settings.IsProduction() {
-		shouldUpdate = semver.Compare("v"+unit.Release.Version, minimumAutoPiRelease) < 0
+		version := unit.Release.Version
+		if string(unit.Release.Version[0]) != "v" {
+			version = "v" + version
+		}
+		shouldUpdate = semver.Compare(version, minimumAutoPiRelease) < 0
 	}
 
 	var claim, pair, unpair *AutoPiTransactionStatus
