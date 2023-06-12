@@ -94,7 +94,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	teslaTaskService := services.NewTeslaTaskService(settings, producer)
 	teslaSvc := services.NewTeslaService(settings)
 	autoPiSvc := services.NewAutoPiAPIService(settings, pdb.DBS)
-	autoPiIngest := services.NewIngestRegistrar(services.AutoPi, producer)
+	autoPiIngest := services.NewIngestRegistrar(producer)
 	deviceDefinitionRegistrar := services.NewDeviceDefinitionRegistrar(producer, settings)
 	autoPiTaskService := services.NewAutoPiTaskService(settings, autoPiSvc, pdb.DBS, logger)
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, pdb.DBS, &logger)

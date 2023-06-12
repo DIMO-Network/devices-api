@@ -7,6 +7,8 @@ package mock_services
 import (
 	reflect "reflect"
 
+	services "github.com/DIMO-Network/devices-api/internal/services"
+	common "github.com/ethereum/go-ethereum/common"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -47,6 +49,20 @@ func (mr *MockIngestRegistrarMockRecorder) Deregister(externalID, userDeviceID, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deregister", reflect.TypeOf((*MockIngestRegistrar)(nil).Deregister), externalID, userDeviceID, integrationID)
 }
 
+// Deregister2 mocks base method.
+func (m *MockIngestRegistrar) Deregister2(addr common.Address) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Deregister2", addr)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Deregister2 indicates an expected call of Deregister2.
+func (mr *MockIngestRegistrarMockRecorder) Deregister2(addr interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deregister2", reflect.TypeOf((*MockIngestRegistrar)(nil).Deregister2), addr)
+}
+
 // Register mocks base method.
 func (m *MockIngestRegistrar) Register(externalID, userDeviceID, integrationID string) error {
 	m.ctrl.T.Helper()
@@ -59,4 +75,18 @@ func (m *MockIngestRegistrar) Register(externalID, userDeviceID, integrationID s
 func (mr *MockIngestRegistrarMockRecorder) Register(externalID, userDeviceID, integrationID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockIngestRegistrar)(nil).Register), externalID, userDeviceID, integrationID)
+}
+
+// Register2 mocks base method.
+func (m *MockIngestRegistrar) Register2(data *services.AftermarketDeviceVehicleMapping) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Register2", data)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Register2 indicates an expected call of Register2.
+func (mr *MockIngestRegistrarMockRecorder) Register2(data interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register2", reflect.TypeOf((*MockIngestRegistrar)(nil).Register2), data)
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
@@ -253,6 +254,22 @@ func (i *Integration) Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *b
 		return err
 	}
 
+	err = i.apReg.Register2(&services.AftermarketDeviceVehicleMapping{
+		AftermarketDevice: services.AftermarketDeviceVehicleMappingAftermarketDevice{
+			Address:       common.BytesToAddress(autoPiModel.EthereumAddress.Bytes),
+			Token:         autoPiTokenID,
+			Serial:        autoPiModel.AutopiUnitID,
+			IntegrationID: integ.Id,
+		},
+		Vehicle: services.AftermarketDeviceVehicleMappingVehicle{
+			Token:        vehicleTokenID,
+			UserDeviceID: ud.ID,
+		},
+	})
+	if err != nil {
+		return err
+	}
+
 	_ = i.eventer.Emit(
 		&services.Event{
 			Type:    "com.dimo.zone.device.integration.create",
@@ -346,6 +363,11 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 	}
 
 	err = i.apReg.Deregister(autoPiModel.AutopiUnitID, ud.ID, integ.Id)
+	if err != nil {
+		return err
+	}
+
+	err = i.apReg.Deregister2(common.BytesToAddress(autoPiModel.EthereumAddress.Bytes))
 	if err != nil {
 		return err
 	}

@@ -390,7 +390,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 // @Router      /user/devices/{userDeviceID}/error-codes [get]
 func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) error {
 	logger := helpers.GetLogger(c, udc.log)
-	
+
 	userDeviceID := c.Params("userDeviceID")
 
 	userDevice, err := models.UserDevices(
