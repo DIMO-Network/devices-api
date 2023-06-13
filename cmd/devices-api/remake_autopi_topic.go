@@ -51,7 +51,7 @@ func (p *remakeAutoPiTopicCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ .
 
 // remakeAutoPiTopic re-populates the autopi ingest registrar topic based on data we have in user_device_api_integrations
 func remakeAutoPiTopic(ctx context.Context, pdb db.Store, producer sarama.SyncProducer, ddSvc services.DeviceDefinitionService) error {
-	reg := services.NewIngestRegistrar(services.AutoPi, producer)
+	reg := services.NewIngestRegistrar(producer)
 	db := pdb.DBS().Reader
 
 	// Grab the Smartcar integration ID, there should be exactly one.

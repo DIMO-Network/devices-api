@@ -2,11 +2,17 @@ package controllers
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"math/big"
 	"strconv"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/models"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
@@ -18,19 +24,24 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
 	"github.com/savsgio/gotils/bytes"
+	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 type SyntheticDevicesController struct {
-	Settings     *config.Settings
-	DBS          db.Store
-	log          *zerolog.Logger
-	deviceDefSvc services.DeviceDefinitionService
-	usersClient  pb.UserServiceClient
+	Settings       *config.Settings
+	DBS            func() *db.ReaderWriter
+	log            *zerolog.Logger
+	deviceDefSvc   services.DeviceDefinitionService
+	usersClient    pb.UserServiceClient
+	walletSvc      services.SyntheticWalletInstanceService
+	registryClient registry.Client
 }
 
-type SyntheticDeviceMintingRequest struct {
+type MintSyntheticDeviceRequest struct {
 	VehicleNode int `json:"vehicleNode"`
 	Credentials struct {
 		AuthorizationCode string `json:"authorizationCode"`
@@ -38,19 +49,25 @@ type SyntheticDeviceMintingRequest struct {
 	OwnerSignature string `json:"ownerSignature"`
 }
 
-func NewVirtualDeviceController(
-	settings *config.Settings, dbs db.Store, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient,
+type SyntheticDeviceSequence struct {
+	NextVal int `boil:"nextval"`
+}
+
+func NewSyntheticDevicesController(
+	settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient, walletSvc services.SyntheticWalletInstanceService, registryClient registry.Client,
 ) SyntheticDevicesController {
 	return SyntheticDevicesController{
-		Settings:     settings,
-		DBS:          dbs,
-		log:          logger,
-		usersClient:  usersClient,
-		deviceDefSvc: deviceDefSvc,
+		Settings:       settings,
+		DBS:            dbs,
+		log:            logger,
+		usersClient:    usersClient,
+		deviceDefSvc:   deviceDefSvc,
+		walletSvc:      walletSvc,
+		registryClient: registryClient,
 	}
 }
 
-func (vc *SyntheticDevicesController) getVirtualDeviceMintPayload(integrationID, vehicleNode int64) *signer.TypedData {
+func (vc *SyntheticDevicesController) getEIP712(integrationID, vehicleNode int64) *signer.TypedData {
 	return &signer.TypedData{
 		Types: signer.Types{
 			"EIP712Domain": []signer.Type{
@@ -59,6 +76,7 @@ func (vc *SyntheticDevicesController) getVirtualDeviceMintPayload(integrationID,
 				{Name: "chainId", Type: "uint256"},
 				{Name: "verifyingContract", Type: "address"},
 			},
+			// Need to keep this name until the contract changes.
 			"MintVirtualDeviceSign": []signer.Type{
 				{Name: "integrationNode", Type: "uint256"},
 				{Name: "vehicleNode", Type: "uint256"},
@@ -78,37 +96,37 @@ func (vc *SyntheticDevicesController) getVirtualDeviceMintPayload(integrationID,
 	}
 }
 
-func (vc *SyntheticDevicesController) verifyUserAddressAndNFTExist(ctx context.Context, user *pb.User, vehicleNode int64, integrationNode string) error {
+func (vc *SyntheticDevicesController) verifyUserAddressAndNFTExist(ctx context.Context, user *pb.User, vehicleNode int64, integrationNode string) (*models.VehicleNFT, error) {
 	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusUnauthorized, "User does not have an Ethereum address on file.")
+		return nil, fiber.NewError(fiber.StatusUnauthorized, "User does not have an Ethereum address on file.")
 	}
 
 	vnID := types.NewNullDecimal(decimal.New(vehicleNode, 0))
 	vehicleNFT, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.TokenID.EQ(vnID),
 		models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.HexToAddress(*user.EthereumAddress).Bytes())),
-	).Exists(ctx, vc.DBS.DBS().Reader)
+	).One(ctx, vc.DBS().Reader)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fiber.NewError(fiber.StatusNotFound, "user does not own vehicle node")
+		}
 		vc.log.Error().Err(err).Int64("vehicleNode", vehicleNode).Str("integrationNode", integrationNode).Msg("Could not fetch minting payload for device")
-		return fiber.NewError(fiber.StatusInternalServerError, "error generating device mint payload")
+		return nil, fiber.NewError(fiber.StatusInternalServerError, "error generating device mint payload")
 	}
 
-	if !vehicleNFT {
-		return fiber.NewError(fiber.StatusNotFound, "user does not own vehicle node")
-	}
-
-	return nil
+	return vehicleNFT, nil
 }
 
-// GetSyntheticDeviceMintingMessage godoc
-// @Description Gets the synthetic device minting payload for the user to sign and submit.
+// GetSyntheticDeviceMintingPayload godoc
+// @Description Produces the payload that the user signs and submits to mint a synthetic device for
+// @Description the given vehicle and integration.
 // @Tags        integrations
 // @Produce     json
-// @Param       integrationNode path int true "integration node id"
-// @Param       vehicleNode path int true "vehicle node id"
+// @Param       integrationNode path int true "token ID"
+// @Param       vehicleNode path int true "vehicle ID"
 // @Success     200 {array} signer.TypedData
 // @Router      synthetic/device/mint/:integrationNode/:vehicleNode [get]
-func (vc *SyntheticDevicesController) GetSyntheticDeviceMintingMessage(c *fiber.Ctx) error {
+func (vc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber.Ctx) error {
 	rawIntegrationNode := c.Params("integrationNode")
 	vehicleNode := c.Params("vehicleNode")
 	userID := helpers.GetUserID(c)
@@ -131,7 +149,7 @@ func (vc *SyntheticDevicesController) GetSyntheticDeviceMintingMessage(c *fiber.
 		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicleNode provided")
 	}
 
-	if err = vc.verifyUserAddressAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
+	if _, err := vc.verifyUserAddressAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
 		return err
 	}
 
@@ -140,13 +158,13 @@ func (vc *SyntheticDevicesController) GetSyntheticDeviceMintingMessage(c *fiber.
 		return helpers.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
-	response := vc.getVirtualDeviceMintPayload(int64(integration.TokenId), vid)
+	response := vc.getEIP712(int64(integration.TokenId), vid)
 
 	return c.JSON(response)
 }
 
 // MintSyntheticDevice godoc
-// @Description Validate and submit to the blockchain a synthetic device minting request.
+// @Description Submit a metadata
 // @Tags        integrations
 // @Produce     json
 // @Param       integrationNode path int true "token ID"
@@ -158,13 +176,13 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	vehicleNode := c.Params("vehicleNode")
 	userID := helpers.GetUserID(c)
 
-	req := &SyntheticDeviceMintingRequest{}
+	req := &MintSyntheticDeviceRequest{}
 	if err := c.BodyParser(req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
 	}
 
-	signature := common.FromHex(req.OwnerSignature)
-	if len(signature) != 65 {
+	ownerSignature := common.FromHex(req.OwnerSignature)
+	if len(ownerSignature) != 65 {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid signature provided")
 	}
 
@@ -185,7 +203,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicle id provided")
 	}
 
-	if err = vc.verifyUserAddressAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
+	if _, err = vc.verifyUserAddressAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
 		return err
 	}
 
@@ -196,7 +214,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	userAddr := common.HexToAddress(*user.EthereumAddress)
 
-	rawPayload := vc.getVirtualDeviceMintPayload(int64(integration.TokenId), vid)
+	rawPayload := vc.getEIP712(int64(integration.TokenId), vid)
 
 	hash, _, err := signer.TypedDataAndHash(*rawPayload)
 	if err != nil {
@@ -204,9 +222,9 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
 	}
 
-	signature[64] -= 27
+	ownerSignature[64] -= 27
 
-	pub, err := crypto.Ecrecover(hash, signature)
+	pub, err := crypto.Ecrecover(hash, ownerSignature)
 	if err != nil {
 		vc.log.Err(err).Msg("Error occurred while trying to recover public key from signature")
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
@@ -219,10 +237,104 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	payloadVerified := bytes.Equal(crypto.PubkeyToAddress(*pubRaw).Bytes(), userAddr.Bytes())
-
 	if !payloadVerified {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature provided")
 	}
 
-	return c.Send([]byte("signature is valid"))
+	ownerSignature[64] += 27
+
+	childKeyNumber, err := vc.generateNextChildKeyNumber(c.Context())
+	if err != nil {
+		vc.log.Err(err).Msg("failed to generate sequence from database")
+		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
+	}
+
+	syntheticDeviceAddr, err := vc.sendVirtualDeviceMintPayload(c.Context(), hash, req.VehicleNode, integration.TokenId, ownerSignature, childKeyNumber)
+	if err != nil {
+		vc.log.Err(err).Msg("synthetic device minting request failed")
+		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
+	}
+
+	tx, err := vc.DBS().Writer.DB.BeginTx(c.Context(), nil)
+	if err != nil {
+		vc.log.Err(err).Msg("error creating database transaction")
+		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
+	}
+
+	requestID := ksuid.New().String()
+	metaReq := &models.MetaTransactionRequest{
+		ID:     requestID,
+		Status: models.MetaTransactionRequestStatusUnsubmitted,
+	}
+
+	if err = metaReq.Insert(c.Context(), tx, boil.Infer()); err != nil {
+		vc.log.Err(err).Msg("error occurred creating meta transaction request")
+		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
+	}
+
+	vnID := types.NewDecimal(decimal.New(vid, 0))
+	syntheticDevice := &models.SyntheticDevice{
+		VehicleTokenID:     vnID,
+		IntegrationTokenID: types.NewDecimal(decimal.New(int64(integrationNode), 0)),
+		WalletChildNumber:  childKeyNumber,
+		WalletAddress:      syntheticDeviceAddr,
+		MintRequestID:      requestID,
+	}
+
+	if err = syntheticDevice.Insert(c.Context(), tx, boil.Infer()); err != nil {
+		vc.log.Err(err).Msg("error occurred saving synthetic device")
+		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return c.Send([]byte("synthetic device mint request successful"))
+}
+
+func (vc *SyntheticDevicesController) sendVirtualDeviceMintPayload(ctx context.Context, hash []byte, vehicleNode int, intTokenID uint64, ownerSignature []byte, childKeyNumber int) ([]byte, error) {
+	syntheticDeviceAddr, err := vc.walletSvc.GetAddress(ctx, uint32(childKeyNumber))
+	if err != nil {
+		vc.log.Err(err).
+			Str("function-name", "SyntheticWallet.GetAddress").
+			Int("childKeyNumber", childKeyNumber).
+			Msg("Error occurred getting synthetic wallet address")
+		return nil, err
+	}
+
+	virtSig, err := vc.walletSvc.SignHash(ctx, uint32(childKeyNumber), hash)
+	if err != nil {
+		vc.log.Err(err).
+			Str("function-name", "SyntheticWallet.SignHash").
+			Bytes("Hash", hash).
+			Int("childKeyNumber", childKeyNumber).
+			Msg("Error occurred signing message hash")
+		return nil, err
+	}
+
+	requestID := ksuid.New().String()
+
+	vNode := new(big.Int).SetInt64(int64(vehicleNode))
+	mvt := contracts.MintVirtualDeviceInput{
+		IntegrationNode:   new(big.Int).SetUint64(intTokenID),
+		VehicleNode:       vNode,
+		VehicleOwnerSig:   ownerSignature,
+		VirtualDeviceAddr: common.BytesToAddress(syntheticDeviceAddr),
+		VirtualDeviceSig:  virtSig,
+	}
+
+	return syntheticDeviceAddr, vc.registryClient.MintVirtualDeviceSign(requestID, mvt)
+}
+
+func (vc *SyntheticDevicesController) generateNextChildKeyNumber(ctx context.Context) (int, error) {
+	seq := SyntheticDeviceSequence{}
+
+	qry := fmt.Sprintf("SELECT nextval('%s.synthetic_devices_serial_sequence');", vc.Settings.DB.Name)
+	err := queries.Raw(qry).Bind(ctx, vc.DBS().Reader, &seq)
+	if err != nil {
+		return 0, err
+	}
+
+	return seq.NextVal, nil
 }

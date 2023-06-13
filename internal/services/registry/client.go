@@ -245,6 +245,21 @@ func (c *Client) UnPairAftermarketDeviceSign(requestID string, aftermarketDevice
 	return c.sendRequest(requestID, data)
 }
 
+// function mintVirtualDeviceSign(MintVirtualDeviceInput calldata data)
+func (c *Client) MintVirtualDeviceSign(requestID string, mintVirtualDeviceSign contracts.MintVirtualDeviceInput) error {
+	abi, err := contracts.RegistryMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
+
+	data, err := abi.Pack("mintVirtualDeviceSign", mintVirtualDeviceSign)
+	if err != nil {
+		return err
+	}
+
+	return c.sendRequest(requestID, data)
+}
+
 func (c *Client) sendRequest(requestID string, data []byte) error {
 	event := shared.CloudEvent[RequestData]{
 		ID:          ksuid.New().String(),

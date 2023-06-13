@@ -61,7 +61,7 @@ func (p *web2PairCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interfa
 
 	autoPiSvc := services.NewAutoPiAPIService(&p.settings, p.pdb.DBS)
 	autoPiTaskService := services.NewAutoPiTaskService(&p.settings, autoPiSvc, p.pdb.DBS, p.logger)
-	autoPiIngest := services.NewIngestRegistrar(services.AutoPi, p.producer)
+	autoPiIngest := services.NewIngestRegistrar(p.producer)
 	eventService := services.NewEventService(&p.logger, &p.settings, p.producer)
 	deviceDefinitionRegistrar := services.NewDeviceDefinitionRegistrar(p.producer, &p.settings)
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, p.pdb.DBS, &p.logger)

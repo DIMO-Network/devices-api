@@ -783,6 +783,42 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_FutureUpda
 	assert.Equal(s.T(), "1.23.1", gjson.GetBytes(body, "releaseVersion").String())
 	assert.Equal(s.T(), false, gjson.GetBytes(body, "shouldUpdate").Bool())
 }
+func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpdate_Semver() {
+	// as of jun 12 23, versions are now correctly semverd starting with "v", so test for this too
+	const environment = "prod" // shouldUpdate only applies in prod
+	// specific dependency and controller
+	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
+	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil)
+	app := fiber.New()
+	logger := zerolog.Nop()
+	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AutoPi(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
+	// arrange
+	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
+	test.SetupCreateAutoPiUnit(s.T(), "", unitID, nil, s.pdb)
+	autopiAPISvc.EXPECT().GetDeviceByUnitID(unitID).Times(1).Return(&services.AutoPiDongleDevice{
+		IsUpdated:         false,
+		UnitID:            unitID,
+		ID:                "4321",
+		HwRevision:        "1.23",
+		Template:          10,
+		LastCommunication: time.Now(),
+		Release: struct {
+			Version string `json:"version"`
+		}(struct{ Version string }{Version: "v1.22.8"}),
+	}, nil)
+
+	// act
+	request := test.BuildRequest("GET", "/autopi/unit/"+unitID, "")
+	response, err := app.Test(request)
+	require.NoError(s.T(), err)
+	// assert
+	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
+	body, _ := io.ReadAll(response.Body)
+	//assert
+	assert.Equal(s.T(), unitID, gjson.GetBytes(body, "unitId").String())
+	assert.Equal(s.T(), "v1.22.8", gjson.GetBytes(body, "releaseVersion").String())
+	assert.Equal(s.T(), false, gjson.GetBytes(body, "shouldUpdate").Bool()) // this because releaseVersion below 1.21.9
+}
 
 func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 	privateKey, err := crypto.GenerateKey()

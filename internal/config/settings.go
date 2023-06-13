@@ -77,7 +77,8 @@ type Settings struct {
 	// VIN verifiable credentials.
 	IssuerPrivateKey string `yaml:"ISSUER_PRIVATE_KEY"`
 
-	SyntheticDevicesEnabled bool `yaml:"SYNTHETIC_DEVICES_ENABLED"`
+	SyntheticDevicesEnabled bool   `yaml:"SYNTHETIC_DEVICES_ENABLED"`
+	SyntheticWalletGRPCAddr string `yaml:"SYNTHETIC_WALLET_GRPC_ADDR"`
 }
 
 func (s *Settings) IsProduction() bool {
