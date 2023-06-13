@@ -464,7 +464,7 @@ func (i *DeviceStatusIngestService) vinCredentialer(ctx goka.Context, event *Dev
 }
 
 func currentIssuanceweek() int {
-	sinceStart := time.Now().Sub(time.Date(2022, time.January, 31, 5, 0, 0, 0, time.UTC))
+	sinceStart := time.Since(time.Date(2022, time.January, 31, 5, 0, 0, 0, time.UTC))
 	weekNum := int(sinceStart.Truncate(weekDuration) / weekDuration)
 	return weekNum
 }
