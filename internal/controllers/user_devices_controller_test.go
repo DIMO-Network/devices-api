@@ -837,14 +837,14 @@ func (s *UserDevicesControllerTestSuite) TestGetRange() {
 	test.SetupCreateUserDeviceAPIIntegration(s.T(), autoPiUnitID, autoPiDeviceID, ud.ID, integration.Id, s.pdb)
 	udd := models.UserDeviceDatum{
 		UserDeviceID:  ud.ID,
-		Data:          null.JSONFrom(testUserDeviceData),
+		Signals:       null.JSONFrom(testUserDeviceData),
 		IntegrationID: integration.Id,
 	}
 	err := udd.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
 	require.NoError(s.T(), err)
 	udd2 := models.UserDeviceDatum{
 		UserDeviceID:  ud.ID,
-		Data:          null.JSONFrom([]byte(`{"range":380.14,"timestamp":"2022-06-18T04:02:11.544Z"}`)),
+		Signals:       null.JSONFrom([]byte(`{"range": {"value": 380.14,"timestamp":"2022-06-18T04:02:11.544Z" } }`)),
 		IntegrationID: smartCarIntegration.Id,
 	}
 	err = udd2.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
@@ -893,7 +893,7 @@ func (s *UserDevicesControllerTestSuite) TestPostRefreshSmartCar() {
 	require.NoError(s.T(), err)
 	udd := models.UserDeviceDatum{
 		UserDeviceID:  ud.ID,
-		Data:          null.JSONFrom([]byte(`{"odometer": 123.223}`)),
+		Signals:       null.JSONFrom([]byte(`{"odometer": { "value": 123.223, "timestamp": "2022-06-18T04:06:40.200Z" } }`)),
 		IntegrationID: smartCarInt.Id,
 		CreatedAt:     time.Now().UTC().Add(time.Hour * -4),
 		UpdatedAt:     time.Now().UTC().Add(time.Hour * -4),
@@ -944,7 +944,7 @@ func (s *UserDevicesControllerTestSuite) TestPostRefreshSmartCarRateLimited() {
 	// arrange data to cause condition
 	udd := models.UserDeviceDatum{
 		UserDeviceID:  ud.ID,
-		Data:          null.JSON{},
+		Signals:       null.JSON{},
 		IntegrationID: integration.Id,
 	}
 	err = udd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())

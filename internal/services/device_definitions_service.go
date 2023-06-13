@@ -699,7 +699,7 @@ func (d *deviceDefinitionService) getDeviceMileage(udID string, modelYear int) (
 	// Get user device odometer
 	deviceData, err := models.UserDeviceData(
 		models.UserDeviceDatumWhere.UserDeviceID.EQ(udID),
-		models.UserDeviceDatumWhere.Data.IsNotNull(),
+		models.UserDeviceDatumWhere.Signals.IsNotNull(),
 		qm.OrderBy("updated_at desc"),
 		qm.Limit(1)).One(context.Background(), d.dbs().Writer)
 	if err != nil {
@@ -707,7 +707,7 @@ func (d *deviceDefinitionService) getDeviceMileage(udID string, modelYear int) (
 			return nil, err
 		}
 	} else {
-		deviceOdometer := gjson.GetBytes(deviceData.Data.JSON, "odometer")
+		deviceOdometer := gjson.GetBytes(deviceData.Signals.JSON, "odometer.value")
 		if deviceOdometer.Exists() {
 			deviceMileage = new(float64)
 			*deviceMileage = deviceOdometer.Float() / MilesToKmFactor
@@ -737,7 +737,7 @@ func (d *deviceDefinitionService) getDeviceMileage(udID string, modelYear int) (
 func (d *deviceDefinitionService) getDeviceLatLong(userDeviceID string) (lat, long float64) {
 	deviceData, err := models.UserDeviceData(
 		models.UserDeviceDatumWhere.UserDeviceID.EQ(userDeviceID),
-		models.UserDeviceDatumWhere.Data.IsNotNull(),
+		models.UserDeviceDatumWhere.Signals.IsNotNull(),
 		qm.OrderBy("updated_at desc"),
 		qm.Limit(1)).One(context.Background(), d.dbs().Writer)
 	if err != nil {
@@ -745,8 +745,8 @@ func (d *deviceDefinitionService) getDeviceLatLong(userDeviceID string) (lat, lo
 			return
 		}
 	} else {
-		latitude := gjson.GetBytes(deviceData.Data.JSON, "latitude")
-		longitude := gjson.GetBytes(deviceData.Data.JSON, "longitude")
+		latitude := gjson.GetBytes(deviceData.Signals.JSON, "latitude.value")
+		longitude := gjson.GetBytes(deviceData.Signals.JSON, "longitude.value")
 		if latitude.Exists() && longitude.Exists() {
 			lat = latitude.Float()
 			long = longitude.Float()
