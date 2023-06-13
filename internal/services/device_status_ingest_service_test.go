@@ -15,7 +15,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
 	"github.com/lovoo/goka"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
@@ -92,12 +91,12 @@ func TestIngestDeviceStatus(t *testing.T) {
 	integs, _ := deviceDefSvc.GetIntegrations(ctx)
 	integrationID := integs[0].Id
 
-	settings, err := shared.LoadConfig[config.Settings]("settings.yaml")
-	if err != nil {
-		logger.Fatal().Err(err).Msg("could not load settings")
-	}
-
-	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc, &settings)
+	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc, &config.Settings{
+		DIMORegistryChainID: 80001,
+		DIMORegistryAddr:    "0x4De1bCf2B7E851E31216fC07989caA902A604784",
+		VehicleNFTAddress:   "0x90c4d6113ec88dd4bdf12f26db2b3998fd13a144",
+		IssuerPrivateKey:    "3qM17-6NmFbwY52XWtzgbtM1ku2ha3wQ6w6hFpE9o1j",
+	})
 
 	ud := test.SetupCreateUserDevice(t, "dylan", ksuid.New().String(), nil, "", pdb)
 
@@ -106,7 +105,7 @@ func TestIngestDeviceStatus(t *testing.T) {
 		IntegrationID: integrationID,
 		Status:        models.UserDeviceAPIIntegrationStatusPendingFirstData,
 	}
-	err = udai.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	err := udai.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 	assert.NoError(t, err)
 
 	testCases := []struct {
@@ -216,12 +215,12 @@ func TestAutoPiStatusMerge(t *testing.T) {
 	integs, _ := deviceDefSvc.GetIntegrations(ctx)
 	integrationID := integs[0].Id
 
-	settings, err := shared.LoadConfig[config.Settings]("settings.yaml")
-	if err != nil {
-		logger.Fatal().Err(err).Msg("could not load settings")
-	}
-
-	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc, &settings)
+	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc, &config.Settings{
+		DIMORegistryChainID: 80001,
+		DIMORegistryAddr:    "0x4De1bCf2B7E851E31216fC07989caA902A604784",
+		VehicleNFTAddress:   "0x90c4d6113ec88dd4bdf12f26db2b3998fd13a144",
+		IssuerPrivateKey:    "3qM17-6NmFbwY52XWtzgbtM1ku2ha3wQ6w6hFpE9o1j",
+	})
 
 	ud := test.SetupCreateUserDevice(t, "dylan", ddID, nil, "", pdb)
 
@@ -231,7 +230,7 @@ func TestAutoPiStatusMerge(t *testing.T) {
 		Status:        models.UserDeviceAPIIntegrationStatusActive,
 	}
 
-	err = udai.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	err := udai.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 	assert.NoError(err)
 
 	tx := pdb.DBS().Writer
@@ -289,12 +288,12 @@ func TestAutoPiStatusWithSignals(t *testing.T) {
 	integs, _ := deviceDefSvc.GetIntegrations(ctx)
 	integrationID := integs[0].Id
 
-	settings, err := shared.LoadConfig[config.Settings]("settings.yaml")
-	if err != nil {
-		logger.Fatal().Err(err).Msg("could not load settings")
-	}
-
-	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc, &settings)
+	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc, &config.Settings{
+		DIMORegistryChainID: 80001,
+		DIMORegistryAddr:    "0x4De1bCf2B7E851E31216fC07989caA902A604784",
+		VehicleNFTAddress:   "0x90c4d6113ec88dd4bdf12f26db2b3998fd13a144",
+		IssuerPrivateKey:    "3qM17-6NmFbwY52XWtzgbtM1ku2ha3wQ6w6hFpE9o1j",
+	})
 
 	ud := test.SetupCreateUserDevice(t, "rvivanco", ddID, nil, "", pdb)
 
@@ -304,7 +303,7 @@ func TestAutoPiStatusWithSignals(t *testing.T) {
 		Status:        models.UserDeviceAPIIntegrationStatusActive,
 	}
 
-	err = udai.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	err := udai.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 	assert.NoError(err)
 
 	tx := pdb.DBS().Writer
