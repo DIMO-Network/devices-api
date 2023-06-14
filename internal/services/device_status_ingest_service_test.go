@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/big"
 	"os"
@@ -104,35 +105,35 @@ func TestIngestDeviceStatus(t *testing.T) {
 	testCases := []struct {
 		Name                string
 		ExistingData        null.JSON
-		NewData             null.JSON
+		EventData           null.JSON
 		LastOdometerEventAt null.Time
 		ExpectedEvent       null.Float64
 	}{
 		{
 			Name:                "New reading, none prior",
 			ExistingData:        null.JSON{},
-			NewData:             null.JSONFrom([]byte(`{"odometer": 12.5}`)),
+			EventData:           null.JSONFrom([]byte(`{"odometer": 12.5}`)),
 			LastOdometerEventAt: null.Time{},
 			ExpectedEvent:       null.Float64From(12.5),
 		},
 		{
 			Name:                "Odometer changed, event off cooldown",
-			ExistingData:        null.JSONFrom([]byte(`{"odometer": 12.5}`)),
-			NewData:             null.JSONFrom([]byte(`{"odometer": 14.5}`)),
+			ExistingData:        null.JSONFrom([]byte(`{"odometer": {"value": 12.5, "timestamp": "2022-06-18T04:06:40.200Z"} }`)),
+			EventData:           null.JSONFrom([]byte(`{"odometer": 14.5}`)),
 			LastOdometerEventAt: null.TimeFrom(time.Now().Add(-2 * odometerCooldown)),
 			ExpectedEvent:       null.Float64From(14.5),
 		},
 		{
 			Name:                "Event off cooldown, odometer unchanged",
-			ExistingData:        null.JSONFrom([]byte(`{"odometer": 12.5}`)),
-			NewData:             null.JSONFrom([]byte(`{"odometer": 12.5}`)),
+			ExistingData:        null.JSONFrom([]byte(`{"odometer": {"value": 12.5, "timestamp": "2022-06-18T04:06:40.200Z"}}`)),
+			EventData:           null.JSONFrom([]byte(`{"odometer": 12.5}`)),
 			LastOdometerEventAt: null.TimeFrom(time.Now().Add(-2 * odometerCooldown)),
 			ExpectedEvent:       null.Float64{},
 		},
 		{
 			Name:                "Odometer changed, but event on cooldown",
-			ExistingData:        null.JSONFrom([]byte(`{"odometer": 12.5}`)),
-			NewData:             null.JSONFrom([]byte(`{"odometer": 14.5}`)),
+			ExistingData:        null.JSONFrom([]byte(`{"odometer": {"value": 12.5, "timestamp": "2022-06-18T04:06:40.200Z"}}`)),
+			EventData:           null.JSONFrom([]byte(`{"odometer": 14.5}`)),
 			LastOdometerEventAt: null.TimeFrom(time.Now().Add(odometerCooldown / 2)),
 			ExpectedEvent:       null.Float64{},
 		},
@@ -146,7 +147,7 @@ func TestIngestDeviceStatus(t *testing.T) {
 
 			datum := models.UserDeviceDatum{
 				UserDeviceID:        ud.ID,
-				Data:                c.ExistingData,
+				Signals:             c.ExistingData,
 				LastOdometerEventAt: c.LastOdometerEventAt,
 				IntegrationID:       integrationID,
 			}
@@ -162,7 +163,7 @@ func TestIngestDeviceStatus(t *testing.T) {
 				Specversion: "1.0",
 				Subject:     ud.ID,
 				Type:        deviceStatusEventType,
-				Data:        c.NewData.JSON,
+				Data:        c.EventData.JSON,
 			}
 
 			var ctxGk goka.Context
@@ -222,23 +223,25 @@ func TestAutoPiStatusMerge(t *testing.T) {
 	assert.NoError(err)
 
 	tx := pdb.DBS().Writer
-
+	existingTimestamp := "2022-06-18T04:06:40.200Z"
 	dat1 := models.UserDeviceDatum{
-		UserDeviceID:        ud.ID,
-		Data:                null.JSONFrom([]byte(`{"odometer": 45.22, "latitude": 11.0, "longitude": -7.0}`)),
+		UserDeviceID: ud.ID,
+		Signals: null.JSONFrom([]byte(
+			fmt.Sprintf(`{"odometer": {"value": 45.22, "timestamp": "%s"}, "latitude": {"value": 11.0, "timestamp": "%s"}, "longitude": {"value": -7.0, "timestamp": "%s"} }`,
+				existingTimestamp, existingTimestamp, existingTimestamp))),
 		LastOdometerEventAt: null.TimeFrom(time.Now().Add(-10 * time.Second)),
 		IntegrationID:       integrationID,
 	}
 
 	err = dat1.Insert(ctx, tx, boil.Infer())
 	assert.NoError(err)
-
+	date := time.Now().UTC()
 	input := &DeviceStatusEvent{
 		Source:      "dimo/integration/" + integrationID,
 		Specversion: "1.0",
 		Subject:     ud.ID,
 		Type:        deviceStatusEventType,
-		Time:        time.Now(),
+		Time:        date,
 		Data:        []byte(`{"latitude": 2.0, "longitude": 3.0}`),
 	}
 
@@ -249,7 +252,8 @@ func TestAutoPiStatusMerge(t *testing.T) {
 	err = dat1.Reload(ctx, tx)
 	require.NoError(t, err)
 
-	assert.JSONEq(`{"odometer": 45.22, "latitude": 2.0, "longitude": 3.0}`, string(dat1.Data.JSON))
+	timeString := date.Format(time.RFC3339)
+	assert.JSONEq(fmt.Sprintf(`{"odometer": {"value": 45.22, "timestamp": "%s"}, "latitude": { "value": 2.0, "timestamp": "%s"}, "longitude": {"value": 3.0, "timestamp": "%s"} }`, existingTimestamp, timeString, timeString), string(dat1.Signals.JSON))
 }
 
 // TestAutoPiStatusWithSignals tests that the signals column is getting updated correctly merging any existing data and setting timestamps
@@ -293,7 +297,6 @@ func TestAutoPiStatusWithSignals(t *testing.T) {
 
 	dat1 := models.UserDeviceDatum{
 		UserDeviceID:        ud.ID,
-		Data:                null.JSONFrom([]byte(`{"odometer": 45.22, "signal_name_version_1": 23.4}`)),
 		Signals:             null.JSONFrom([]byte(`{"signal_name_version_1": {"timestamp": "xx", "value": 23.4}}`)),
 		LastOdometerEventAt: null.TimeFrom(time.Now().Add(-10 * time.Second)),
 		IntegrationID:       integrationID,

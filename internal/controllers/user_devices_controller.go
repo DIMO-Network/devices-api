@@ -1483,8 +1483,8 @@ func (udc *UserDevicesController) GetRange(c *fiber.Ctx) error {
 		rangeData := helpers.GetActualDeviceDefinitionMetadataValues(dds[0], userDevice.DeviceStyleID)
 
 		sortByJSONFieldMostRecent(udd, "fuelPercentRemaining")
-		fuelPercentRemaining := gjson.GetBytes(udd[0].Data.JSON, "fuelPercentRemaining")
-		dataUpdatedOn := gjson.GetBytes(udd[0].Data.JSON, "timestamp").Time()
+		fuelPercentRemaining := gjson.GetBytes(udd[0].Signals.JSON, "fuelPercentRemaining.value")
+		dataUpdatedOn := gjson.GetBytes(udd[0].Signals.JSON, "fuelPercentRemaining.timestamp").Time()
 		if fuelPercentRemaining.Exists() && rangeData.FuelTankCapGal > 0 && rangeData.Mpg > 0 {
 			fuelTankAtGal := rangeData.FuelTankCapGal * fuelPercentRemaining.Float()
 			rangeSet := RangeSet{
@@ -1501,8 +1501,8 @@ func (udc *UserDevicesController) GetRange(c *fiber.Ctx) error {
 			}
 		}
 		sortByJSONFieldMostRecent(udd, "range")
-		reportedRange := gjson.GetBytes(udd[0].Data.JSON, "range")
-		dataUpdatedOn = gjson.GetBytes(udd[0].Data.JSON, "timestamp").Time()
+		reportedRange := gjson.GetBytes(udd[0].Signals.JSON, "range.value")
+		dataUpdatedOn = gjson.GetBytes(udd[0].Signals.JSON, "range.timestamp").Time()
 		if reportedRange.Exists() {
 			reportedRangeMiles := int(reportedRange.Float() / services.MilesToKmFactor)
 			rangeSet := RangeSet{
@@ -2119,16 +2119,17 @@ func (u *UpdateNameReq) validate() error {
 }
 
 // sortByJSONFieldMostRecent Sort user device data so the latest that has the specified field is first
+// only pass in field name, as this will append "timestamp" to look compare signals.field.timestamp
 func sortByJSONFieldMostRecent(udd models.UserDeviceDatumSlice, field string) {
 	sort.Slice(udd, func(i, j int) bool {
-		fpri := gjson.GetBytes(udd[i].Data.JSON, field)
-		fprj := gjson.GetBytes(udd[j].Data.JSON, field)
+		fpri := gjson.GetBytes(udd[i].Signals.JSON, field+".timestamp")
+		fprj := gjson.GetBytes(udd[j].Signals.JSON, field+".timestamp")
 		if fpri.Exists() && !fprj.Exists() {
 			return true
 		} else if !fpri.Exists() && fprj.Exists() {
 			return false
 		}
-		return udd[i].UpdatedAt.After(udd[j].UpdatedAt)
+		return fpri.Time().After(fprj.Time())
 	})
 }
 

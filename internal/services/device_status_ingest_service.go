@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/appmetrics"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -89,7 +91,7 @@ func (i *DeviceStatusIngestService) processMessage(ctx goka.Context, event *Devi
 
 var userDeviceDataPrimaryKeyColumns = []string{models.UserDeviceDatumColumns.UserDeviceID, models.UserDeviceDatumColumns.IntegrationID}
 
-// processEvent handles the device data status update so we have a latest snapshot. This should all be refactored to device data api.
+// processEvent handles the device data status update so we have a latest snapshot and saves to signals. This should all be refactored to device data api.
 func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *DeviceStatusEvent) error {
 	ctx := context.Background()
 	userDeviceID := event.Subject
@@ -188,9 +190,6 @@ func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *Devi
 
 	// Not every update has every signal. Merge the new into the old.
 	compositeData := make(map[string]any)
-	if err := datum.Data.Unmarshal(&compositeData); err != nil {
-		return err
-	}
 
 	// This will preserve any mappings with keys present in datum.Data but not in
 	// event.Data. If a key is present in both maps then the value from event.Data
@@ -202,9 +201,6 @@ func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *Devi
 		return err
 	}
 
-	if err := datum.Data.Marshal(compositeData); err != nil {
-		return err
-	}
 	datum.ErrorData = null.JSON{}
 
 	// extract signals with timestamps and persist to signals
@@ -252,8 +248,8 @@ func (i *DeviceStatusIngestService) processOdometer(datum *models.UserDeviceDatu
 	}
 
 	var oldOdometer null.Float64
-	if datum.Data.Valid {
-		if o, err := extractOdometer(datum.Data.JSON); err == nil {
+	if datum.Signals.Valid {
+		if o, err := extractOdometer(datum.Signals.JSON); err == nil {
 			oldOdometer = null.Float64From(o)
 		}
 	}
@@ -297,17 +293,11 @@ func (i *DeviceStatusIngestService) emitOdometerEvent(device *models.UserDevice,
 }
 
 func extractOdometer(data []byte) (float64, error) {
-	partialData := new(struct {
-		Odometer *float64 `json:"odometer"`
-	})
-	if err := json.Unmarshal(data, partialData); err != nil {
-		return 0, fmt.Errorf("failed parsing data field: %w", err)
-	}
-	if partialData.Odometer == nil {
+	result := gjson.GetBytes(data, "odometer")
+	if !result.Exists() {
 		return 0, errors.New("data payload did not have an odometer reading")
 	}
-
-	return *partialData.Odometer, nil
+	return result.Float(), nil
 }
 
 func mergeSignals(currentData map[string]interface{}, newData map[string]interface{}, t time.Time) (map[string]interface{}, error) {
