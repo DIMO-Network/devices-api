@@ -245,14 +245,14 @@ func (c *Client) UnPairAftermarketDeviceSign(requestID string, aftermarketDevice
 	return c.sendRequest(requestID, data)
 }
 
-// function mintVirtualDeviceSign(MintVirtualDeviceInput calldata data)
-func (c *Client) MintVirtualDeviceSign(requestID string, mintVirtualDeviceSign contracts.MintVirtualDeviceInput) error {
+// function MintSyntheticDeviceSign(MintSyntheticDeviceInput calldata data)
+func (c *Client) MintSyntheticDeviceSign(requestID string, mintSyntheticDeviceInput contracts.MintSyntheticDeviceInput) error {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
 	}
 
-	data, err := abi.Pack("mintVirtualDeviceSign", mintVirtualDeviceSign)
+	data, err := abi.Pack("mintSyntheticDeviceSign", mintSyntheticDeviceInput)
 	if err != nil {
 		return err
 	}

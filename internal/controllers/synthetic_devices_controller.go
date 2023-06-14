@@ -77,12 +77,12 @@ func (vc *SyntheticDevicesController) getEIP712(integrationID, vehicleNode int64
 				{Name: "verifyingContract", Type: "address"},
 			},
 			// Need to keep this name until the contract changes.
-			"MintVirtualDeviceSign": []signer.Type{
+			"MintSyntheticDeviceSign": []signer.Type{
 				{Name: "integrationNode", Type: "uint256"},
 				{Name: "vehicleNode", Type: "uint256"},
 			},
 		},
-		PrimaryType: "MintVirtualDeviceSign",
+		PrimaryType: "MintSyntheticDeviceSign",
 		Domain: signer.TypedDataDomain{
 			Name:              "DIMO",
 			Version:           "1",
@@ -249,7 +249,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
-	syntheticDeviceAddr, err := vc.sendVirtualDeviceMintPayload(c.Context(), hash, req.VehicleNode, integration.TokenId, ownerSignature, childKeyNumber)
+	syntheticDeviceAddr, err := vc.sendSyntheticDeviceMintPayload(c.Context(), hash, req.VehicleNode, integration.TokenId, ownerSignature, childKeyNumber)
 	if err != nil {
 		vc.log.Err(err).Msg("synthetic device minting request failed")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
@@ -293,7 +293,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	return c.Send([]byte("synthetic device mint request successful"))
 }
 
-func (vc *SyntheticDevicesController) sendVirtualDeviceMintPayload(ctx context.Context, hash []byte, vehicleNode int, intTokenID uint64, ownerSignature []byte, childKeyNumber int) ([]byte, error) {
+func (vc *SyntheticDevicesController) sendSyntheticDeviceMintPayload(ctx context.Context, hash []byte, vehicleNode int, intTokenID uint64, ownerSignature []byte, childKeyNumber int) ([]byte, error) {
 	syntheticDeviceAddr, err := vc.walletSvc.GetAddress(ctx, uint32(childKeyNumber))
 	if err != nil {
 		vc.log.Err(err).
@@ -316,15 +316,15 @@ func (vc *SyntheticDevicesController) sendVirtualDeviceMintPayload(ctx context.C
 	requestID := ksuid.New().String()
 
 	vNode := new(big.Int).SetInt64(int64(vehicleNode))
-	mvt := contracts.MintVirtualDeviceInput{
-		IntegrationNode:   new(big.Int).SetUint64(intTokenID),
-		VehicleNode:       vNode,
-		VehicleOwnerSig:   ownerSignature,
-		VirtualDeviceAddr: common.BytesToAddress(syntheticDeviceAddr),
-		VirtualDeviceSig:  virtSig,
+	mvt := contracts.MintSyntheticDeviceInput{
+		IntegrationNode:     new(big.Int).SetUint64(intTokenID),
+		VehicleNode:         vNode,
+		VehicleOwnerSig:     ownerSignature,
+		SyntheticDeviceAddr: common.BytesToAddress(syntheticDeviceAddr),
+		SyntheticDeviceSig:  virtSig,
 	}
 
-	return syntheticDeviceAddr, vc.registryClient.MintVirtualDeviceSign(requestID, mvt)
+	return syntheticDeviceAddr, vc.registryClient.MintSyntheticDeviceSign(requestID, mvt)
 }
 
 func (vc *SyntheticDevicesController) generateNextChildKeyNumber(ctx context.Context) (int, error) {

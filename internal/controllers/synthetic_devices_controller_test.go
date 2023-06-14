@@ -31,12 +31,12 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
-var signature = "0x80312cd950310f5bdf7095b1aecac23dc44879a6e8a879a2b7935ed79516e5b80667759a75c21cfd1471f0a0064b74a8ad2eb8b3c3dea7ef597e8a94e2b6a93e1b"
+var signature = "0xa4438e5cb667dc63ebd694167ae3ad83585f2834c9b04895dd890f805c4c459a024ed9df1b03872536b4ac0c7720d02cb787884a093cfcde5c3bd7f94657e30c1b"
 var userEthAddress = "0xd64E249A06ee6263d989e43aBFe12748a2506f88"
 var mockProducer *smock.SyncProducer
 var mockUserID = ksuid.New().String()
 
-type VirtualDevicesControllerTestSuite struct {
+type SyntheticDevicesControllerTestSuite struct {
 	suite.Suite
 	pdb                   db.Store
 	container             testcontainers.Container
@@ -50,7 +50,7 @@ type VirtualDevicesControllerTestSuite struct {
 }
 
 // SetupSuite starts container db
-func (s *VirtualDevicesControllerTestSuite) SetupSuite() {
+func (s *SyntheticDevicesControllerTestSuite) SetupSuite() {
 	s.ctx = context.Background()
 	s.pdb, s.container = test.StartContainerDatabase(s.ctx, s.T(), migrationsDirRelPath)
 
@@ -95,12 +95,12 @@ func (s *VirtualDevicesControllerTestSuite) SetupSuite() {
 }
 
 // TearDownTest after each test truncate tables
-func (s *VirtualDevicesControllerTestSuite) TearDownTest() {
+func (s *SyntheticDevicesControllerTestSuite) TearDownTest() {
 	test.TruncateTables(s.pdb.DBS().Writer.DB, s.T())
 }
 
 // TearDownSuite cleanup at end by terminating container
-func (s *VirtualDevicesControllerTestSuite) TearDownSuite() {
+func (s *SyntheticDevicesControllerTestSuite) TearDownSuite() {
 	fmt.Printf("shutting down postgres at with session: %s \n", s.container.SessionID())
 
 	if err := s.container.Terminate(s.ctx); err != nil {
@@ -110,11 +110,11 @@ func (s *VirtualDevicesControllerTestSuite) TearDownSuite() {
 }
 
 // Test Runner
-func TestVirtualDevicesControllerTestSuite(t *testing.T) {
-	suite.Run(t, new(VirtualDevicesControllerTestSuite))
+func TestSyntheticDevicesControllerTestSuite(t *testing.T) {
+	suite.Run(t, new(SyntheticDevicesControllerTestSuite))
 }
 
-func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload() {
+func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload() {
 	_, addr, err := test.GenerateWallet()
 	assert.NoError(s.T(), err)
 
@@ -146,7 +146,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload()
 	assert.Equal(s.T(), body, expectedRespJSON)
 }
 
-func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_UserNotFound() {
+func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload_UserNotFound() {
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(nil, errors.New("User not found"))
 
 	request := test.BuildRequest("GET", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), "")
@@ -159,7 +159,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_U
 	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"error occurred when fetching user: User not found"}`, fiber.StatusInternalServerError)), body)
 }
 
-func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_NoEthereumAddressForUser() {
+func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload_NoEthereumAddressForUser() {
 	email := "some@email.com"
 	user := test.BuildGetUserGRPC(mockUserID, &email, nil, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
@@ -174,7 +174,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_N
 	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"User does not have an Ethereum address on file."}`, fiber.StatusUnauthorized)), body)
 }
 
-func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_NoIntegrationForID() {
+func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload_NoIntegrationForID() {
 	_, addr, err := test.GenerateWallet()
 	assert.NoError(s.T(), err)
 
@@ -199,7 +199,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_N
 	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"failed to get integration: could not find integration"}`, fiber.StatusInternalServerError)), body)
 }
 
-func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_VehicleNodeNotOwnedByUserEthAddress() {
+func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload_VehicleNodeNotOwnedByUserEthAddress() {
 	_, addr, err := test.GenerateWallet()
 	assert.NoError(s.T(), err)
 
@@ -219,7 +219,7 @@ func (s *VirtualDevicesControllerTestSuite) TestGetVirtualDeviceMintingPayload_V
 	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"user does not own vehicle node"}`, fiber.StatusNotFound)), body)
 }
 
-func (s *VirtualDevicesControllerTestSuite) Test_MintSyntheticDevice() {
+func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDevice() {
 	email := "some@email.com"
 	eth := userEthAddress
 	addr := common.HexToAddress(userEthAddress)
@@ -274,7 +274,7 @@ func (s *VirtualDevicesControllerTestSuite) Test_MintSyntheticDevice() {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	s.Require().NoError(err)
 
-	method := abi.Methods["mintVirtualDeviceSign"]
+	method := abi.Methods["mintSyntheticDeviceSign"]
 
 	callData := me.Data.Data
 
@@ -284,23 +284,23 @@ func (s *VirtualDevicesControllerTestSuite) Test_MintSyntheticDevice() {
 	s.Require().NoError(err)
 
 	actualMnInput := o[0].(struct {
-		IntegrationNode   *big.Int       `json:"integrationNode"`
-		VehicleNode       *big.Int       `json:"vehicleNode"`
-		VirtualDeviceSig  []uint8        `json:"virtualDeviceSig"`
-		VehicleOwnerSig   []uint8        `json:"vehicleOwnerSig"`
-		VirtualDeviceAddr common.Address `json:"virtualDeviceAddr"`
-		AttrInfoPairs     []struct {
+		IntegrationNode     *big.Int       `json:"integrationNode"`
+		VehicleNode         *big.Int       `json:"vehicleNode"`
+		SyntheticDeviceSig  []uint8        `json:"syntheticDeviceSig"`
+		VehicleOwnerSig     []uint8        `json:"vehicleOwnerSig"`
+		SyntheticDeviceAddr common.Address `json:"syntheticDeviceAddr"`
+		AttrInfoPairs       []struct {
 			Attribute string `json:"attribute"`
 			Info      string `json:"info"`
 		} `json:"attrInfoPairs"`
 	})
 
-	expectedMnInput := contracts.MintVirtualDeviceInput{
-		IntegrationNode:   new(big.Int).SetUint64(1),
-		VehicleNode:       new(big.Int).SetUint64(57),
-		VehicleOwnerSig:   common.FromHex(signature),
-		VirtualDeviceAddr: deviceEthAddr,
-		VirtualDeviceSig:  vehicleSig,
+	expectedMnInput := contracts.MintSyntheticDeviceInput{
+		IntegrationNode:     new(big.Int).SetUint64(1),
+		VehicleNode:         new(big.Int).SetUint64(57),
+		VehicleOwnerSig:     common.FromHex(signature),
+		SyntheticDeviceAddr: deviceEthAddr,
+		SyntheticDeviceSig:  vehicleSig,
 	}
 
 	vnID := types.NewDecimal(decimal.New(57, 0))
@@ -324,7 +324,7 @@ func (s *VirtualDevicesControllerTestSuite) Test_MintSyntheticDevice() {
 	assert.Equal(s.T(), metaTrxReq, true)
 }
 
-func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload_BadSignatureFailure() {
+func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayload_BadSignatureFailure() {
 	req := fmt.Sprintf(`{
 		"vehicleNode": %d,
 		"credentials": {
@@ -342,7 +342,7 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload_
 	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"invalid signature provided"}`, fiber.StatusBadRequest)), body)
 }
 
-func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload_BadSignatureLengthFailure() {
+func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayload_BadSignatureLengthFailure() {
 	req := fmt.Sprintf(`{
 		"vehicleNode": %d,
 		"credentials": {
@@ -360,7 +360,7 @@ func (s *VirtualDevicesControllerTestSuite) TestSignVirtualDeviceMintingPayload_
 	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"invalid signature provided"}`, fiber.StatusBadRequest)), body)
 }
 
-func (s *VirtualDevicesControllerTestSuite) Test_Synthetic_Device_Sequence() {
+func (s *SyntheticDevicesControllerTestSuite) Test_Synthetic_Device_Sequence() {
 	childKeyNumber, err := s.sdc.generateNextChildKeyNumber(s.ctx)
 	assert.NoError(s.T(), err)
 
