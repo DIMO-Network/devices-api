@@ -21,6 +21,7 @@ TASK_CREDENTIAL_TOPIC: table.task.credential
 PRIVACY_FENCE_TOPIC: table.device.privacyfence
 NFT_INPUT_TOPIC: topic.device.nft.mint
 NFT_OUTPUT_TOPIC: topic.device.nft.mint.result
+NFT_S3_BUCKET: dimo-network-nfts
 REDIS_URL: localhost:6379
 REDIS_PASSWORD:
 REDIS_TLS: false
