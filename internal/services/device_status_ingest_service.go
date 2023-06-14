@@ -293,7 +293,7 @@ func (i *DeviceStatusIngestService) emitOdometerEvent(device *models.UserDevice,
 }
 
 func extractOdometer(data []byte) (float64, error) {
-	result := gjson.GetBytes(data, "odometer.value")
+	result := gjson.GetBytes(data, "odometer")
 	if !result.Exists() {
 		return 0, errors.New("data payload did not have an odometer reading")
 	}
