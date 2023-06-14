@@ -31,11 +31,11 @@ func NewSyntheticWalletInstanceService(DBS func() *db.ReaderWriter, settings *co
 		return nil, err
 	}
 
-	virtualDeviceClient := pb.NewSyntheticWalletClient(conn)
+	syntheticDeviceClient := pb.NewSyntheticWalletClient(conn)
 
 	grpc := &grpcClient{
 		conn:   conn,
-		client: virtualDeviceClient,
+		client: syntheticDeviceClient,
 	}
 
 	return &syntheticWalletInstanceService{
