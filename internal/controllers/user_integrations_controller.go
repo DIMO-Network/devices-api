@@ -934,12 +934,6 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "Device not yet claimed.")
 	}
 
-	if udc.Settings.IsProduction() {
-		if common.BytesToAddress(autoPiUnit.OwnerAddress.Bytes) != common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes) {
-			return fiber.NewError(fiber.StatusConflict, "AutoPi and vehicle have different owners.")
-		}
-	}
-
 	apToken := autoPiUnit.TokenID.Int(nil)
 	vehicleToken := ud.R.VehicleNFT.TokenID.Int(nil)
 
@@ -1101,12 +1095,6 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 
 	if !autoPiUnit.OwnerAddress.Valid {
 		return fiber.NewError(fiber.StatusConflict, "Device not yet claimed.")
-	}
-
-	if udc.Settings.IsProduction() {
-		if common.BytesToAddress(autoPiUnit.OwnerAddress.Bytes) != common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes) {
-			return fiber.NewError(fiber.StatusConflict, "AutoPi and vehicle have different owners.")
-		}
 	}
 
 	apToken := autoPiUnit.TokenID.Int(nil)
