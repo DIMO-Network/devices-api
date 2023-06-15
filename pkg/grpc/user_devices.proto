@@ -114,4 +114,5 @@ message VinCredential {
 message UpdateDeviceIntegrationStatusRequest {
   string user_device_id = 1;
   string integration_id = 2;
+  string status = 3;
 }

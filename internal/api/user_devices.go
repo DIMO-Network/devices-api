@@ -290,6 +290,7 @@ func (s *userDeviceService) UpdateDeviceIntegrationStatus(ctx context.Context, r
 	}
 
 	apiIntegration := dbDevice.R.UserDeviceAPIIntegrations[0]
+	apiIntegration.Status = req.Status
 	if _, err := apiIntegration.Update(ctx, s.dbs().Writer, boil.Infer()); err != nil {
 		return nil, status.Error(codes.Internal, "failed to update API integration")
 	}
