@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"strconv"
 
@@ -190,6 +191,29 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid integrationNode provided")
 	}
+
+	client := services.NewSmartcarClient(vc.Settings)
+	tok, err := client.ExchangeCode(c.Context(), req.Credentials.AuthorizationCode, "http://localhost:3000")
+	if err != nil {
+		return err
+	}
+
+	tok.Refresh
+	tok.AccessExpiry
+
+	extID, err := client.GetExternalID(c.Context(), tok.Access)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("External id: %s", extID)
+
+	vin, err := client.GetVIN(c.Context(), tok.Access, extID)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("VIN: %s", vin)
 
 	user, err := vc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{
 		Id: userID,
