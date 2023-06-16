@@ -8,12 +8,15 @@ import (
 	"math/big"
 	"strconv"
 
+	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/shared"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
@@ -25,6 +28,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/savsgio/gotils/bytes"
 	"github.com/segmentio/ksuid"
+	smartcar "github.com/smartcar/go-sdk"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -39,6 +43,8 @@ type SyntheticDevicesController struct {
 	usersClient    pb.UserServiceClient
 	walletSvc      services.SyntheticWalletInstanceService
 	registryClient registry.Client
+	smartcarClient services.SmartcarClient
+	cipher         shared.Cipher
 }
 
 type MintSyntheticDeviceRequest struct {
@@ -54,7 +60,8 @@ type SyntheticDeviceSequence struct {
 }
 
 func NewSyntheticDevicesController(
-	settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient, walletSvc services.SyntheticWalletInstanceService, registryClient registry.Client,
+	settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient, walletSvc services.SyntheticWalletInstanceService, registryClient registry.Client, smartcarClient services.SmartcarClient, cipher shared.Cipher,
+
 ) SyntheticDevicesController {
 	return SyntheticDevicesController{
 		Settings:       settings,
@@ -64,6 +71,8 @@ func NewSyntheticDevicesController(
 		deviceDefSvc:   deviceDefSvc,
 		walletSvc:      walletSvc,
 		registryClient: registryClient,
+		smartcarClient: smartcarClient,
+		cipher:         cipher,
 	}
 }
 
@@ -181,14 +190,23 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
 	}
 
-	ownerSignature := common.FromHex(req.OwnerSignature)
-	if len(ownerSignature) != 65 {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid signature provided")
-	}
-
 	integrationNode, err := strconv.ParseUint(rawIntegrationNode, 10, 64)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid integrationNode provided")
+	}
+
+	integration, err := vc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), integrationNode)
+	if err != nil {
+		return helpers.GrpcErrorToFiber(err, "failed to get integration")
+	}
+
+	if integration.Vendor == constants.SmartCarVendor && req.Credentials.AuthorizationCode == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "please provide authorization code")
+	}
+
+	ownerSignature := common.FromHex(req.OwnerSignature)
+	if len(ownerSignature) != 65 {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid signature provided")
 	}
 
 	user, err := vc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{
@@ -203,13 +221,9 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicle id provided")
 	}
 
-	if _, err = vc.verifyUserAddressAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
-		return err
-	}
-
-	integration, err := vc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), integrationNode)
+	vNFT, err := vc.verifyUserAddressAndNFTExist(c.Context(), user, vid, rawIntegrationNode)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "failed to get integration")
+		return err
 	}
 
 	userAddr := common.HexToAddress(*user.EthereumAddress)
@@ -258,6 +272,11 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	tx, err := vc.DBS().Writer.DB.BeginTx(c.Context(), nil)
 	if err != nil {
 		vc.log.Err(err).Msg("error creating database transaction")
+		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
+	}
+
+	if err := vc.handleDeviceApiIntegrationCreation(c.Context(), tx, req, vNFT.UserDeviceID.String, integration); err != nil {
+		vc.log.Err(err).Str("UserDeviceID", vNFT.UserDeviceID.String).Msg("error creating userDeviceAPiIntegration record")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
@@ -337,4 +356,56 @@ func (vc *SyntheticDevicesController) generateNextChildKeyNumber(ctx context.Con
 	}
 
 	return seq.NextVal, nil
+}
+
+func (vc *SyntheticDevicesController) handleDeviceApiIntegrationCreation(ctx context.Context, tx *sql.Tx, req *MintSyntheticDeviceRequest, userDeviceID string, integration *grpc.Integration) error {
+	udi := models.UserDeviceAPIIntegration{
+		IntegrationID: integration.Id,
+		UserDeviceID:  userDeviceID,
+		Status:        models.UserDeviceAPIIntegrationStatusPending,
+	}
+	switch integration.Vendor {
+	case constants.SmartCarVendor:
+		token, err := vc.exchangeSmartCarCode(ctx, req.Credentials.AuthorizationCode, "")
+		if err != nil {
+			return err
+		}
+		encAccess, err := vc.cipher.Encrypt(token.Access)
+		if err != nil {
+			return opaqueInternalError
+		}
+		encRefresh, err := vc.cipher.Encrypt(token.Refresh)
+		if err != nil {
+			return opaqueInternalError
+		}
+		udi.AccessToken = null.StringFrom(encAccess)
+		udi.AccessExpiresAt = null.TimeFrom(token.AccessExpiry)
+		udi.RefreshToken = null.StringFrom(encRefresh)
+	default:
+		return nil
+	}
+
+	if err := udi.Insert(ctx, tx, boil.Infer()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (vc *SyntheticDevicesController) exchangeSmartCarCode(ctx context.Context, authCode, redirectURI string) (*smartcar.Token, error) {
+	token, err := vc.smartcarClient.ExchangeCode(ctx, authCode, redirectURI)
+	if err != nil {
+		var scErr *services.SmartcarError
+		if errors.As(err, &scErr) {
+			vc.log.Err(err).Str("function", "syntheticDeviceController.exchangeSmartCarCode").Msgf("Failed exchanging Authorization code. Status code %d, request id %s`.", scErr.Code, scErr.RequestID)
+		} else {
+			vc.log.Err(err).Str("function", "syntheticDeviceController.exchangeSmartCarCode").Msg("Failed to exchange authorization code with Smartcar.")
+		}
+
+		// This may not be the user's fault, but 400 for now.
+		return nil, err
+		// fiber.NewError(fiber.StatusBadRequest, "Failed to exchange authorization code with Smartcar.")
+	}
+
+	return token, nil
 }

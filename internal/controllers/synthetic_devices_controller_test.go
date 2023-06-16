@@ -47,6 +47,7 @@ type SyntheticDevicesControllerTestSuite struct {
 	userClient            *mock_services.MockUserServiceClient
 	sdc                   SyntheticDevicesController
 	syntheticDeviceSigSvc *mock_services.MockSyntheticWalletInstanceService
+	smartcarClient        *mock_services.MockSmartcarClient
 }
 
 // SetupSuite starts container db
@@ -60,6 +61,7 @@ func (s *SyntheticDevicesControllerTestSuite) SetupSuite() {
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(s.mockCtrl)
 	s.userClient = mock_services.NewMockUserServiceClient(s.mockCtrl)
 	s.syntheticDeviceSigSvc = mock_services.NewMockSyntheticWalletInstanceService(s.mockCtrl)
+	s.smartcarClient = mock_services.NewMockSmartcarClient(s.mockCtrl)
 
 	mockProducer = smock.NewSyncProducer(s.T(), nil)
 
@@ -75,7 +77,7 @@ func (s *SyntheticDevicesControllerTestSuite) SetupSuite() {
 			Name:    "DIMO",
 			Version: "1",
 		},
-	}
+	}  
 
 	if err != nil {
 		s.T().Fatal(err)
@@ -83,7 +85,7 @@ func (s *SyntheticDevicesControllerTestSuite) SetupSuite() {
 
 	logger := test.Logger()
 
-	c := NewSyntheticDevicesController(mockSettings, s.pdb.DBS, logger, s.deviceDefSvc, s.userClient, s.syntheticDeviceSigSvc, client)
+	c := NewSyntheticDevicesController(mockSettings, s.pdb.DBS, logger, s.deviceDefSvc, s.userClient, s.syntheticDeviceSigSvc, client, s.smartcarClient, new(shared.ROT13Cipher))
 	s.sdc = c
 
 	app := test.SetupAppFiber(*logger)
