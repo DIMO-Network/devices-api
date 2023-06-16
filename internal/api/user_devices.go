@@ -267,6 +267,33 @@ func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *
 	return &pb.RegisterUserDeviceFromVINResponse{Created: true}, err
 }
 
+func (s *userDeviceService) UpdateDeviceIntegrationStatus(ctx context.Context, req *pb.UpdateDeviceIntegrationStatusRequest) (*pb.UserDevice, error) {
+
+	apiIntegration, err := models.UserDeviceAPIIntegrations(
+		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(req.IntegrationId),
+		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(req.UserDeviceId),
+	).One(ctx, s.dbs().Reader)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, status.Error(codes.NotFound, "No UserDeviceAPIIntegrations with that ID found.")
+		}
+
+		s.logger.Err(err).
+			Str("IntegrationId", req.IntegrationId).
+			Str("UserDeviceId", req.UserDeviceId).
+			Msg("Database failure retrieving UserDeviceAPIIntegrations.")
+		return nil, status.Error(codes.Internal, "Internal error.")
+	}
+
+	apiIntegration.Status = req.Status
+	if _, err := apiIntegration.Update(ctx, s.dbs().Writer, boil.Infer()); err != nil {
+		return nil, status.Error(codes.Internal, "failed to update API integration")
+	}
+
+	return s.GetUserDevice(ctx, &pb.GetUserDeviceRequest{Id: req.UserDeviceId})
+}
+
 //nolint:all
 func (s *userDeviceService) GetUserDeviceByAutoPIUnitId(ctx context.Context, req *pb.GetUserDeviceByAutoPIUnitIdRequest) (*pb.UserDeviceAutoPIUnitResponse, error) {
 	dbDevice, err := models.UserDeviceAPIIntegrations(
@@ -374,6 +401,7 @@ func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevi
 		DeviceStyleId:      ud.DeviceStyleID.Ptr(),
 		OptedInAt:          nullTimeToPB(ud.OptedInAt),
 		Integrations:       make([]*pb.UserDeviceIntegration, len(ud.R.UserDeviceAPIIntegrations)),
+		VinConfirmed:       ud.VinConfirmed,
 	}
 
 	if vnft := ud.R.VehicleNFT; vnft != nil {
