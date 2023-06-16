@@ -268,12 +268,10 @@ func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *
 }
 
 func (s *userDeviceService) UpdateDeviceIntegrationStatus(ctx context.Context, req *pb.UpdateDeviceIntegrationStatusRequest) (*pb.UserDevice, error) {
-	dbDevice, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(req.UserDeviceId),
-		qm.Load(
-			models.UserDeviceRels.UserDeviceAPIIntegrations,
-			models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(req.IntegrationId),
-		),
+
+	apiIntegration, err := models.UserDeviceAPIIntegrations(
+		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(req.IntegrationId),
+		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(req.UserDeviceId),
 	).One(ctx, s.dbs().Reader)
 
 	if err != nil {
@@ -281,15 +279,13 @@ func (s *userDeviceService) UpdateDeviceIntegrationStatus(ctx context.Context, r
 			return nil, status.Error(codes.NotFound, "No UserDeviceAPIIntegrations with that ID found.")
 		}
 
-		s.logger.Err(err).Str("IntegrationId", req.IntegrationId).Msg("Database failure retrieving UserDeviceAPIIntegrations.")
+		s.logger.Err(err).
+			Str("IntegrationId", req.IntegrationId).
+			Str("UserDeviceId", req.UserDeviceId).
+			Msg("Database failure retrieving UserDeviceAPIIntegrations.")
 		return nil, status.Error(codes.Internal, "Internal error.")
 	}
 
-	if len(dbDevice.R.UserDeviceAPIIntegrations) == 0 {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("can't find API integration for device %s and integration %s", req.UserDeviceId, req.IntegrationId))
-	}
-
-	apiIntegration := dbDevice.R.UserDeviceAPIIntegrations[0]
 	apiIntegration.Status = req.Status
 	if _, err := apiIntegration.Update(ctx, s.dbs().Writer, boil.Infer()); err != nil {
 		return nil, status.Error(codes.Internal, "failed to update API integration")
