@@ -155,7 +155,8 @@ func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []strin
 								"properties": {
 									"code": { "type": "string" },
 									"explanation": { "type": "string" }
-								}
+								},
+								"required": ["code", "explanation"]
 							}
 						}
 					},
@@ -182,7 +183,7 @@ func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []strin
 		o.logger.Error().Interface("rawResponse", r).Msg("Unexpected finish_reason from ChatGPT.")
 	}
 
-	var rawResp ErrorCodesFunctionCallResoponse
+	var rawResp ErrorCodesFunctionCallResponse
 	if err := json.Unmarshal([]byte(c.Message.FunctionCall.Arguments), &rawResp); err != nil {
 		return nil, err
 	}
