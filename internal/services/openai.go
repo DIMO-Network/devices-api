@@ -29,10 +29,16 @@ type openAI struct {
 	logger     *zerolog.Logger
 }
 
+type FunctionCallResponse struct {
+	Name      string
+	Arguments string
+}
+
 type ChatGPTResponseChoices struct {
 	Message struct {
-		Role    string
-		Content string `json:"content"`
+		Role         string
+		Content      string               `json:"content"`
+		FunctionCall FunctionCallResponse `json:"function_call"`
 	}
 	Index        int
 	FinishReason string `json:"finish_reason"`
@@ -54,6 +60,13 @@ type ChatGPTResponse struct {
 type ErrorCodesResponse struct {
 	Code        string `json:"code" example:"P0148"`
 	Description string `json:"description" example:"Fuel delivery error"`
+}
+
+type ErrorCodesFunctionCallResponse struct {
+	ErrorCodes []struct {
+		Code        string
+		Explanation string `json:"explanation"`
+	} `json:"error_codes"`
 }
 
 func NewOpenAI(logger *zerolog.Logger, c config.Settings) OpenAI {
@@ -118,13 +131,41 @@ func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []strin
 	codes := strings.Join(errorCodes, ", ")
 
 	req := fmt.Sprintf(`{
-		"model": "gpt-3.5-turbo",
+		"model": "gpt-3.5-turbo-0613",
+		"temperature": 0,
 		"messages": [
 			{
 				"role": "user", 
-				"content": "A %s %s is returning error codes %s. Return an extensive explanation for each code in JSON format, use the code as a key and the explanation as a value."}]
-	  		}
-	  `, make, model, codes)
+				"content": "A %s %s is returning error codes %s. Return a long extensive explanation for each code."
+			}
+		],
+		"function_call": {
+			"name": "vehicle_error_codes"
+		},
+		"functions": [
+			{
+				"name": "vehicle_error_codes",
+				"parameters": {
+					"type": "object",
+					"properties": {
+						"error_codes": {
+							"type":"array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"code": { "type": "string" },
+									"explanation": { "type": "string" }
+								},
+								"required": ["code", "explanation"]
+							}
+						}
+					},
+					"required": ["error_codes"]
+				}
+			}
+		]
+	}
+	`, make, model, codes)
 
 	r, err := o.askChatGPT(strings.NewReader(req))
 	if err != nil {
@@ -142,21 +183,17 @@ func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []strin
 		o.logger.Error().Interface("rawResponse", r).Msg("Unexpected finish_reason from ChatGPT.")
 	}
 
-	rawResp := map[string]string{}
-	if err := json.Unmarshal([]byte(r.Choices[0].Message.Content), &rawResp); err != nil {
+	var rawResp ErrorCodesFunctionCallResponse
+	if err := json.Unmarshal([]byte(c.Message.FunctionCall.Arguments), &rawResp); err != nil {
 		return nil, err
 	}
 
 	resp := []ErrorCodesResponse{}
-
-	for code, desc := range rawResp {
-		if code == "" {
-			continue
-		}
+	for _, obj := range rawResp.ErrorCodes {
 
 		resp = append(resp, ErrorCodesResponse{
-			Code:        code,
-			Description: desc,
+			Code:        obj.Code,
+			Description: obj.Explanation,
 		})
 	}
 
