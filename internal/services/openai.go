@@ -62,7 +62,7 @@ type ErrorCodesResponse struct {
 	Description string `json:"description" example:"Fuel delivery error"`
 }
 
-type ErrorCodesFunctionCallResoponse struct {
+type ErrorCodesFunctionCallResponse struct {
 	ErrorCodes []struct {
 		Code        string
 		Explanation string `json:"explanation"`
