@@ -275,7 +275,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
-	if err := vc.handleDeviceApiIntegrationCreation(c.Context(), tx, req, vNFT.UserDeviceID.String, integration); err != nil {
+	if err := vc.handleDeviceAPIIntegrationCreation(c.Context(), tx, req, vNFT.UserDeviceID.String, integration); err != nil {
 		vc.log.Err(err).Str("UserDeviceID", vNFT.UserDeviceID.String).Msg("error creating userDeviceAPiIntegration record")
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -358,7 +358,7 @@ func (vc *SyntheticDevicesController) generateNextChildKeyNumber(ctx context.Con
 	return seq.NextVal, nil
 }
 
-func (vc *SyntheticDevicesController) handleDeviceApiIntegrationCreation(ctx context.Context, tx *sql.Tx, req *MintSyntheticDeviceRequest, userDeviceID string, integration *grpc.Integration) error {
+func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx context.Context, tx *sql.Tx, req *MintSyntheticDeviceRequest, userDeviceID string, integration *grpc.Integration) error {
 	udi := models.UserDeviceAPIIntegration{
 		IntegrationID: integration.Id,
 		UserDeviceID:  userDeviceID,
@@ -385,11 +385,7 @@ func (vc *SyntheticDevicesController) handleDeviceApiIntegrationCreation(ctx con
 		return nil
 	}
 
-	if err := udi.Insert(ctx, tx, boil.Infer()); err != nil {
-		return err
-	}
-
-	return nil
+	return udi.Insert(ctx, tx, boil.Infer())
 }
 
 func (vc *SyntheticDevicesController) exchangeSmartCarCode(ctx context.Context, authCode, redirectURI string) (*smartcar.Token, error) {

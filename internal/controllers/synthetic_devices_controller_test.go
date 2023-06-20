@@ -425,7 +425,7 @@ func (s *SyntheticDevicesControllerTestSuite) Test_Device_API_Integration_Creati
 	tx, err := s.sdc.DBS().Writer.DB.BeginTx(ctx, nil)
 	assert.NoError(s.T(), err)
 
-	err = s.sdc.handleDeviceApiIntegrationCreation(ctx, tx, &MintSyntheticDeviceRequest{
+	err = s.sdc.handleDeviceAPIIntegrationCreation(ctx, tx, &MintSyntheticDeviceRequest{
 		Credentials: struct {
 			AuthorizationCode string `json:"authorizationCode"`
 		}{AuthorizationCode: "mockAuthCode"},
