@@ -430,6 +430,9 @@ func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevi
 
 	for i, udai := range ud.R.UserDeviceAPIIntegrations {
 		out.Integrations[i] = &pb.UserDeviceIntegration{Id: udai.IntegrationID, Status: udai.Status}
+		if udai.ExternalID.Valid {
+			out.Integrations[i].ExternalId = udai.ExternalID.String
+		}
 	}
 
 	if ud.VinConfirmed {

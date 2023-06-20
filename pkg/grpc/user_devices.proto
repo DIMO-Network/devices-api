@@ -58,6 +58,7 @@ message UserDevice {
 message UserDeviceIntegration {
   string id = 1;
   string status = 2; // This is not great, but getting tied to the list seems worse. We may regret this.
+  string external_id = 3;
 }
 
 message UserDeviceAutoPIUnitResponse {
