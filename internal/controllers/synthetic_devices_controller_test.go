@@ -448,5 +448,5 @@ func (s *SyntheticDevicesControllerTestSuite) Test_Device_API_Integration_Creati
 	assert.Equal(s.T(), mockSmartClientToken.Access, decAccessToken)
 	assert.Equal(s.T(), mockSmartClientToken.Refresh, decRefreshToken)
 
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint
 }
