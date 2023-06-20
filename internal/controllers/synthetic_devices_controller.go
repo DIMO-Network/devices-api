@@ -277,7 +277,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	if err := vc.handleDeviceApiIntegrationCreation(c.Context(), tx, req, vNFT.UserDeviceID.String, integration); err != nil {
 		vc.log.Err(err).Str("UserDeviceID", vNFT.UserDeviceID.String).Msg("error creating userDeviceAPiIntegration record")
-		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
 	requestID := ksuid.New().String()
@@ -402,9 +402,7 @@ func (vc *SyntheticDevicesController) exchangeSmartCarCode(ctx context.Context, 
 			vc.log.Err(err).Str("function", "syntheticDeviceController.exchangeSmartCarCode").Msg("Failed to exchange authorization code with Smartcar.")
 		}
 
-		// This may not be the user's fault, but 400 for now.
-		return nil, err
-		// fiber.NewError(fiber.StatusBadRequest, "Failed to exchange authorization code with Smartcar.")
+		return nil, errors.New("failed to exchange authorization code with smartcar")
 	}
 
 	return token, nil
