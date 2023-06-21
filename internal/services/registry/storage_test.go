@@ -47,25 +47,23 @@ func (s *StorageTestSuite) TestMintVehicle() {
 		ID: ksuid.New().String(),
 	}
 
-	err = ud.Insert(ctx, s.dbs.DBS().Writer, boil.Infer())
-	s.Require().NoError(err)
+	s.MustInsert(&ud)
 
 	mtr := models.MetaTransactionRequest{
 		ID:     ksuid.New().String(),
 		Status: models.MetaTransactionRequestStatusMined,
 	}
-	err = mtr.Insert(ctx, s.dbs.DBS().Writer, boil.Infer())
-	s.Require().NoError(err)
+
+	s.MustInsert(&mtr)
 
 	vnft := models.VehicleNFT{
 		MintRequestID: mtr.ID,
 		UserDeviceID:  null.StringFrom(ud.ID),
 	}
 
-	err = vnft.Insert(ctx, s.dbs.DBS().Writer, boil.Infer())
-	s.Require().NoError(err)
+	s.MustInsert(&vnft)
 
-	err = proc.Handle(context.TODO(), &ceData{
+	s.Require().NoError(proc.Handle(context.TODO(), &ceData{
 		RequestID: mtr.ID,
 		Type:      "Confirmed",
 		Transaction: ceTx{
@@ -83,14 +81,18 @@ func (s *StorageTestSuite) TestMintVehicle() {
 				},
 			},
 		},
-	})
-	s.Require().NoError(err)
+	}))
 
-	err = vnft.Reload(ctx, s.dbs.DBS().Writer)
-	s.Require().NoError(err)
+	s.Require().NoError(vnft.Reload(ctx, s.dbs.DBS().Writer))
 
 	s.Zero(vnft.TokenID.Int(nil).Cmp(big.NewInt(14443)))
 	s.Equal(common.HexToAddress("7e74d0f663d58d12817b8bef762bcde3af1f63d6"), common.BytesToAddress(vnft.OwnerAddress.Bytes))
+}
+
+func (s *StorageTestSuite) MustInsert(o interface {
+	Insert(ctx context.Context, exec boil.ContextExecutor, columns boil.Columns) error
+}) {
+	s.Require().NoError(o.Insert(context.TODO(), s.dbs.DBS().Writer, boil.Infer()))
 }
 
 // In order for 'go test' to run this suite, we need to create
