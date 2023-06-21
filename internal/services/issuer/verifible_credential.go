@@ -5,8 +5,10 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -16,10 +18,14 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
+	"github.com/lovoo/goka"
 	"github.com/piprate/json-gold/ld"
+	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
+	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
 )
@@ -44,6 +50,7 @@ type Issuer struct {
 	VerificationMethod string
 	LDProcessor        *ld.JsonLdProcessor
 	LDOptions          *ld.JsonLdOptions
+	log                *zerolog.Logger
 }
 
 func New(c Config) (*Issuer, error) {
@@ -179,4 +186,94 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int) (id string, err error) {
 	}
 
 	return id, tx.Commit()
+}
+
+func (i *Issuer) Fingerprint(ctx goka.Context, msg interface{}) {
+	event, ok := msg.(FingerprintEvent)
+	if !ok {
+		i.log.Err(errors.New("unable to parse fingerprint event")).Msg("invalid payload")
+		return
+	}
+	currentIssuanceWeek := GetWeekNumForCron(time.Now())
+	observedVIN, err := services.ExtractVIN(event.Data)
+	if err != nil {
+		i.log.Debug().Err(err).Str("userDeviceId", event.Subject).Msg("could not extract vin from payload")
+		return
+	}
+
+	device, err := models.VehicleNFTS(
+		models.VehicleNFTWhere.UserDeviceID.EQ(null.StringFrom(event.ID)),
+		models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(event.Subject))),
+		qm.Load(models.VehicleNFTRels.UserDevice),
+	).One(ctx.Context(), i.DBS.DBS().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			i.log.Debug().Err(err).Str("userDeviceId", event.Subject).Msg("no associated vehicle nft for device")
+			return
+		}
+		i.log.Debug().Err(err).Str("userDeviceId", event.Subject).Msg("database failure retrieving user device")
+		return
+	}
+
+	tkn, ok := device.TokenID.Int64()
+	if !ok {
+		i.log.Err(errors.New("unable to parse token id")).Msg("invalid token")
+	}
+
+	if val := ctx.Value(); val != nil {
+		record := val.(Fingerprint)
+		if observedVIN == record.Vin && record.LatestEligibleRewardWeek != currentIssuanceWeek {
+
+			// TODO AE: also check that a vc hasn't been issued with a exp date GTE time.Now()?
+			record.LatestEligibleRewardWeek = currentIssuanceWeek
+			ctx.SetValue(record)
+			_, err = i.VIN(observedVIN, big.NewInt(tkn))
+			if err != nil {
+				i.log.Debug().Err(err).Str("userDeviceId", event.Subject).Str("vin", observedVIN).Int("issuanceWeek", currentIssuanceWeek).Msg("could not issue vin credential")
+				return
+			}
+		}
+	}
+
+	if !device.R.UserDevice.VinConfirmed || observedVIN != device.R.UserDevice.VinIdentifier.String {
+		i.log.Err(errors.New("cannot generate credential")).Str("userDeviceId", event.Subject).Str("observedVin", observedVIN).Msg("invalid vin")
+		return
+	}
+
+	record := &Fingerprint{
+		Vin:                      observedVIN,
+		LatestEligibleRewardWeek: currentIssuanceWeek,
+	}
+
+	ctx.SetValue(record)
+	_, err = i.VIN(observedVIN, big.NewInt(tkn))
+	if err != nil {
+		i.log.Debug().Err(err).Str("userDeviceId", event.Subject).Str("vin", observedVIN).Int("issuanceWeek", currentIssuanceWeek).Msg("could not issue vin credential")
+		return
+	}
+}
+
+type FingerprintEvent struct {
+	ID          string          `json:"id"`
+	Signature   string          `json:"signature"`
+	Source      string          `json:"source"`
+	Specversion string          `json:"specversion"`
+	Subject     string          `json:"subject"`
+	Time        time.Time       `json:"time"`
+	Type        string          `json:"type"`
+	Data        json.RawMessage `json:"data"`
+}
+
+type Fingerprint struct {
+	Vin                      string `json:"vin"`
+	LatestEligibleRewardWeek int    `json:"latestEligibleRewardWeek"`
+}
+
+var issuanceStartTime = time.Date(2022, time.January, 31, 5, 0, 0, 0, time.UTC)
+var weekDuration = 7 * 24 * time.Hour
+
+func GetWeekNumForCron(t time.Time) int {
+	sinceStart := t.Sub(issuanceStartTime)
+	weekNum := int(sinceStart.Round(weekDuration) / weekDuration)
+	return weekNum
 }
