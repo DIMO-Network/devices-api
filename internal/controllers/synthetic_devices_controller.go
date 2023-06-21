@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -381,6 +382,25 @@ func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx con
 		udi.AccessToken = null.StringFrom(encAccess)
 		udi.AccessExpiresAt = null.TimeFrom(token.AccessExpiry)
 		udi.RefreshToken = null.StringFrom(encRefresh)
+
+		externalID, err := vc.smartcarClient.GetExternalID(ctx, token.Access)
+		if err != nil {
+			return err
+		}
+
+		endpoints, err := vc.smartcarClient.GetEndpoints(ctx, token.Access, externalID)
+		if err != nil {
+			vc.log.Err(err).Msg("Failed to retrieve permissions from Smartcar.")
+			return err
+		}
+
+		meta := services.UserDeviceAPIIntegrationsMetadata{
+			SmartcarEndpoints: endpoints,
+		}
+
+		mb, _ := json.Marshal(meta)
+		udi.Metadata = null.JSONFrom(mb)
+		udi.ExternalID = null.StringFrom(externalID)
 	default:
 		return nil
 	}

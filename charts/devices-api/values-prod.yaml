@@ -41,6 +41,7 @@ env:
   AFTERMARKET_DEVICE_CONTRACT_ADDRESS: '0x9c94c395cbcbde662235e0a9d3bb87ad708561ba'
   DIMO_CONTRACT_APIURL: https://contracts-api.dimo.zone/
   NATS_URL: nats-prod:4222
+  SYNTHETIC_DEVICES_ENABLED: false
 ingress:
   enabled: true
   className: nginx

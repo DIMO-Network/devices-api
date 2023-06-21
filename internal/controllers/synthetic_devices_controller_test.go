@@ -252,6 +252,8 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDevice() {
 	s.syntheticDeviceSigSvc.EXPECT().GetAddress(gomock.Any(), gomock.Any()).Return(deviceEthAddr.Bytes(), nil).AnyTimes()
 
 	s.smartcarClient.EXPECT().ExchangeCode(gomock.Any(), gomock.Any(), gomock.Any()).Return(mockSmartClientToken, nil)
+	s.smartcarClient.EXPECT().GetExternalID(gomock.Any(), gomock.Any()).Return("smartcarVehicleId", nil)
+	s.smartcarClient.EXPECT().GetEndpoints(gomock.Any(), gomock.Any(), gomock.Any()).Return([]string{"/odometer", "/location"}, nil)
 
 	var kb []byte
 	mockProducer.ExpectSendMessageWithCheckerFunctionAndSucceed(func(val []byte) error {
@@ -421,6 +423,8 @@ func (s *SyntheticDevicesControllerTestSuite) Test_Device_API_Integration_Creati
 	vehicle := test.SetupCreateVehicleNFTForMiddleware(s.T(), addr, mockUserID, udID, 57, s.pdb)
 
 	s.smartcarClient.EXPECT().ExchangeCode(gomock.Any(), gomock.Any(), gomock.Any()).Return(mockSmartClientToken, nil)
+	s.smartcarClient.EXPECT().GetExternalID(gomock.Any(), "mockAccessToken").Return("smartcarVehicleId", nil)
+	s.smartcarClient.EXPECT().GetEndpoints(gomock.Any(), "mockAccessToken", "smartcarVehicleId").Return([]string{"/odometer", "/location"}, nil)
 
 	tx, err := s.sdc.DBS().Writer.DB.BeginTx(ctx, nil)
 	assert.NoError(s.T(), err)
@@ -447,6 +451,8 @@ func (s *SyntheticDevicesControllerTestSuite) Test_Device_API_Integration_Creati
 	assert.Equal(s.T(), vehicle.UserDeviceID.String, udis[0].UserDeviceID)
 	assert.Equal(s.T(), mockSmartClientToken.Access, decAccessToken)
 	assert.Equal(s.T(), mockSmartClientToken.Refresh, decRefreshToken)
+	s.Equal("smartcarVehicleId", udis[0].ExternalID.String)
+	s.JSONEq(`{"smartcarEndpoints": ["/odometer", "/location"]}`, string(udis[0].Metadata.JSON))
 
 	defer tx.Rollback() //nolint
 }
