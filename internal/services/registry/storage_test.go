@@ -29,7 +29,7 @@ func (s *StorageTestSuite) SetupSuite() {
 }
 
 func (s *StorageTestSuite) TearDownSuite() {
-	s.container.Terminate(context.TODO())
+	s.Require().NoError(s.container.Terminate(context.TODO()))
 }
 
 func (s *StorageTestSuite) TearDownTest() {
