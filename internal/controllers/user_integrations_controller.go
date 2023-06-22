@@ -217,54 +217,6 @@ func (udc *UserDevicesController) GetIntegrations(c *fiber.Ctx) error {
 	})
 }
 
-// SendAutoPiCommand godoc
-// @Description Closed off in prod. Submit a raw autopi command to unit. Device must be registered with autopi before this can be used
-// @Tags        integrations
-// @Accept      json
-// @Param       AutoPiCommandRequest body controllers.AutoPiCommandRequest true "raw autopi command"
-// @Success     200
-// @Security    BearerAuth
-// @Router      /user/devices/:userDeviceID/autopi/command [post]
-func (udc *UserDevicesController) SendAutoPiCommand(c *fiber.Ctx) error {
-	if udc.Settings.Environment == "prod" {
-		return c.SendStatus(fiber.StatusGone)
-	}
-	userID := helpers.GetUserID(c)
-	userDeviceID := c.Params("userDeviceID")
-	req := new(AutoPiCommandRequest)
-	err := c.BodyParser(req)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "unable to parse body json")
-	}
-
-	logger := udc.log.With().
-		Str("userId", userID).
-		Str("userDeviceId", userDeviceID).
-		Str("handler", "SendAutoPiCommand").
-		Str("autopiCmd", req.Command).
-		Logger()
-	logger.Info().Msg("Attempting to send autopi raw command")
-
-	udai, _, err := udc.DeviceDefIntSvc.FindUserDeviceAutoPiIntegration(c.Context(), udc.DBS().Writer, userDeviceID, userID)
-	if err != nil {
-		logger.Err(err).Msg("error finding user device autopi integration")
-		return err
-	}
-	apUnit, err := models.AutopiUnits(models.AutopiUnitWhere.AutopiDeviceID.EQ(udai.ExternalID)).
-		One(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		return err
-	}
-	// call autopi
-	commandResponse, err := udc.autoPiSvc.CommandRaw(c.Context(), apUnit.AutopiUnitID, apUnit.AutopiDeviceID.String, req.Command, userDeviceID)
-	if err != nil {
-		logger.Err(err).Msg("autopi returned error when calling raw command")
-		return errors.Wrapf(err, "autopi returned error when calling raw command: %s", req.Command)
-	}
-
-	return c.Status(fiber.StatusOK).JSON(commandResponse)
-}
-
 // GetCommandRequestStatus godoc
 // @Summary     Get the status of a submitted command.
 // @Description Get the status of a submitted command by request id.
@@ -480,31 +432,6 @@ func (udc *UserDevicesController) OpenFrunk(c *fiber.Ctx) error {
 	return udc.handleEnqueueCommand(c, "frunk/open")
 }
 
-// GetAutoPiCommandStatus godoc
-// @Description gets the status of an autopi raw command by jobID
-// @Tags        integrations
-// @Produce     json
-// @Param       jobID path     string true "job id, from autopi"
-// @Success     200   {object} services.AutoPiCommandJob
-// @Security    BearerAuth
-// @Router      /user/devices/:userDeviceID/autopi/command/:jobID [get]
-func (udc *UserDevicesController) GetAutoPiCommandStatus(c *fiber.Ctx) error {
-	userDeviceID := c.Params("userDeviceID")
-	jobID := c.Params("jobID")
-
-	job, dbJob, err := udc.autoPiSvc.GetCommandStatus(c.Context(), jobID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return c.Status(fiber.StatusBadRequest).SendString("no job found with provided jobID")
-		}
-		return err
-	}
-	if dbJob.UserDeviceID.String != userDeviceID {
-		return fiber.NewError(fiber.StatusNotFound, "No job found")
-	}
-	return c.JSON(job)
-}
-
 // GetAutoPiUnitInfo godoc
 // @Description gets the information about the autopi by the unitId
 // @Tags        integrations
@@ -635,65 +562,6 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 	return c.JSON(adi)
 }
 
-// GetIsAutoPiOnline godoc
-// @Description gets whether the autopi is online right now, if already paired with a user, makes sure user has access. returns json with {"online": true/false}
-// @Tags        integrations
-// @Produce     json
-// @Param       unitID path string true "autopi unit id"
-// @Success     200
-// @Security    BearerAuth
-// @Router      /autopi/unit/:unitID/is-online [get]
-func (udc *UserDevicesController) GetIsAutoPiOnline(c *fiber.Ctx) error {
-	unitID := c.Locals("unitID").(string)
-	logger := c.Locals("logger").(*zerolog.Logger)
-
-	var userDeviceID string
-
-	// Create a record, using information from the AutoPi API, if necessary.
-	autopiUnit, err := models.FindAutopiUnit(c.Context(), udc.DBS().Reader, unitID)
-	if err != nil {
-		logger.Err(err).Msg("Failed searching for AutoPi in database.")
-		return opaqueInternalError
-	}
-
-	// send command without webhook since we'll just query the jobid
-	commandResponse, err := udc.autoPiSvc.CommandRaw(c.Context(), unitID, autopiUnit.AutopiDeviceID.String, "test.ping", userDeviceID)
-	if err != nil {
-		logger.Err(err).Msg("failed to send command to autopi api")
-		return fiber.NewError(fiber.StatusInternalServerError, "Partner API returned an error")
-	}
-	// for loop with wait timer of 1 second at begining that calls autopi get job id
-	backoffSchedule := []time.Duration{
-		2 * time.Second,
-		1 * time.Second,
-		1 * time.Second,
-		1 * time.Second,
-		1 * time.Second,
-		1 * time.Second,
-	}
-	online := false
-	for _, backoff := range backoffSchedule {
-		time.Sleep(backoff)
-		job, _, err := udc.autoPiSvc.GetCommandStatus(c.Context(), commandResponse.Jid)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "job id not found"})
-			}
-			continue // try again if error
-		}
-		if job.CommandState == "COMMAND_EXECUTED" {
-			online = true
-			break
-		}
-		if job.CommandState == "TIMEOUT" {
-			break
-		}
-	}
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"online": online,
-	})
-}
-
 // StartAutoPiUpdateTask godoc
 // @Description checks to see if autopi unit needs to be updated, and starts update process if so.
 // @Tags        integrations
@@ -736,29 +604,6 @@ func (udc *UserDevicesController) StartAutoPiUpdateTask(c *fiber.Ctx) error {
 		Description: "",
 		Code:        100,
 	})
-}
-
-// GetAutoPiTask godoc
-// @Description gets the status of an autopi related task. In future could be other tasks too?
-// @Tags        integrations
-// @Produce     json
-// @Param       taskID path     string true "task id", returned from endpoint that starts a task
-// @Success     200    {object} services.AutoPiTask
-// @Security    BearerAuth
-// @Router      /autopi/task/:taskID [get]
-func (udc *UserDevicesController) GetAutoPiTask(c *fiber.Ctx) error {
-	taskID := c.Params("taskID") // save in task
-	if len(taskID) == 0 {
-		return c.SendStatus(fiber.StatusBadRequest)
-	}
-	//userID := api.GetUserID(c)
-	task, err := udc.autoPiTaskService.GetTaskStatus(c.Context(), taskID)
-	if err != nil {
-		return err
-	}
-
-	// todo somewhere need to check this userID has access to that taskID
-	return c.JSON(task)
 }
 
 // GetAutoPiClaimMessage godoc

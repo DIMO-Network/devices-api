@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -113,8 +112,6 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 	app := test.SetupAppFiber(*logger)
 
 	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.RegisterDeviceIntegration)
-	app.Post("/user/devices/:userDeviceID/autopi/command", test.AuthInjectorTestHandler(testUserID), c.SendAutoPiCommand)
-	app.Get("/user/devices/:userDeviceID/autopi/command/:jobID", test.AuthInjectorTestHandler(testUserID), c.GetAutoPiCommandStatus)
 
 	app.Post("/user2/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUser2), c.RegisterDeviceIntegration)
 	app.Get("/integrations", c.GetIntegrations)
@@ -546,135 +543,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateD
 	}
 }
 
-func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiCommand() {
-	// specific dependency and controller
-	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil)
-	app := fiber.New()
-	app.Post("/user/devices/:userDeviceID/autopi/command", test.AuthInjectorTestHandler(testUserID), c.SendAutoPiCommand)
-	// arrange
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 34, 0)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Testla", "Model 4", 2022, nil)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	const (
-		deviceID = "1dd96159-3bb2-9472-91f6-72fe9211cfeb"
-		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	)
-	_ = test.SetupCreateAutoPiUnit(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
-	udapiInt := test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
-
-	udAPIMetadata := services.UserDeviceAPIIntegrationsMetadata{
-		AutoPiUnitID: func(s string) *string { return &s }(unitID),
-	}
-	_ = udapiInt.Metadata.Marshal(udAPIMetadata)
-	_, err := udapiInt.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
-	require.NoError(s.T(), err)
-	autoPiJob := models.AutopiJob{
-		ID:                 "somepreviousjobId",
-		AutopiDeviceID:     deviceID,
-		Command:            "raw",
-		State:              "COMMAND_EXECUTED",
-		CommandLastUpdated: null.TimeFrom(time.Now().UTC()),
-		UserDeviceID:       null.StringFrom(ud.ID),
-	}
-	err = autoPiJob.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
-	require.NoError(s.T(), err)
-	// test job can be retrieved
-	apSvc := services.NewAutoPiAPIService(&config.Settings{}, s.pdb.DBS)
-	status, _, err := apSvc.GetCommandStatus(s.ctx, "somepreviousjobId")
-	require.NoError(s.T(), err)
-	assert.Equal(s.T(), "somepreviousjobId", status.CommandJobID)
-	assert.Equal(s.T(), autoPiJob.State, status.CommandState)
-	assert.Equal(s.T(), "raw", status.CommandRaw)
-
-	// test sending a command from api
-	const jobID = "123"
-	// mock expectations
-	const cmd = "raw test"
-	autopiAPISvc.EXPECT().CommandRaw(gomock.Any(), unitID, deviceID, cmd, ud.ID).Return(&services.AutoPiCommandResponse{
-		Jid:     jobID,
-		Minions: nil,
-	}, nil)
-	// act: send request
-	req := fmt.Sprintf(`{
-			"command": "%s"
-		}`, cmd)
-
-	s.deviceDefIntSvc.EXPECT().FindUserDeviceAutoPiIntegration(gomock.Any(), gomock.Any(), ud.ID, testUserID).Times(1).Return(&udapiInt, &udAPIMetadata, nil)
-
-	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/autopi/command", req)
-	response, _ := app.Test(request, 20000)
-	body, _ := io.ReadAll(response.Body)
-	//assert
-	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-	jid := gjson.GetBytes(body, "jid")
-	assert.Equal(s.T(), jobID, jid.String())
-}
-
-func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiCommand() {
-	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil)
-	app := fiber.New()
-	app.Get("/user/devices/:userDeviceID/autopi/command/:jobID", test.AuthInjectorTestHandler(testUserID), c.GetAutoPiCommandStatus)
-	//arrange
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 34, 0)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Testla", "Model 4", 2022, nil)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	const (
-		deviceID = "1dd96159-3bb2-9472-91f6-72fe9211cfeb"
-		jobID    = "somepreviousjobId"
-	)
-	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), "", deviceID, ud.ID, integration.Id, s.pdb)
-
-	lastUpdated := time.Now()
-
-	autopiAPISvc.EXPECT().GetCommandStatus(gomock.Any(), jobID).Return(&services.AutoPiCommandJob{
-		CommandJobID: jobID,
-		CommandState: "COMMAND_EXECUTED",
-		CommandRaw:   "raw",
-		LastUpdated:  &lastUpdated,
-	}, &models.AutopiJob{
-		ID:                 jobID,
-		AutopiDeviceID:     deviceID,
-		Command:            "raw",
-		State:              "COMMAND_EXECUTED",
-		CommandLastUpdated: null.TimeFrom(lastUpdated),
-		UserDeviceID:       null.StringFrom(ud.ID),
-	}, nil)
-
-	// act: send request
-	request := test.BuildRequest("GET", "/user/devices/"+ud.ID+"/autopi/command/"+jobID, "")
-	response, _ := app.Test(request)
-	require.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-
-	body, _ := io.ReadAll(response.Body)
-	//assert
-	assert.Equal(s.T(), jobID, gjson.GetBytes(body, "commandJobId").String())
-	assert.Equal(s.T(), "COMMAND_EXECUTED", gjson.GetBytes(body, "commandState").String())
-	assert.Equal(s.T(), "raw", gjson.GetBytes(body, "commandRaw").String())
-
-}
-func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiCommandNoResults400() {
-	//arrange
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 34, 0)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Testla", "Model 4", 2022, nil)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	const (
-		jobID    = "somepreviousjobId2"
-		deviceID = "1dd96159-3bb2-9472-91f6-72fe9211cfeb"
-		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	)
-	_ = test.SetupCreateAutoPiUnit(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
-	test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
-
-	s.autopiAPISvc.EXPECT().GetCommandStatus(gomock.Any(), jobID).Return(nil, nil, sql.ErrNoRows)
-
-	// act: send request
-	request := test.BuildRequest("GET", "/user/devices/"+ud.ID+"/autopi/command/"+jobID, "")
-	response, _ := s.app.Test(request)
-	//assert
-	assert.Equal(s.T(), fiber.StatusBadRequest, response.StatusCode)
-}
 func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpdate() {
 	const environment = "prod" // shouldUpdate only applies in prod
 	// specific dependency and controller
