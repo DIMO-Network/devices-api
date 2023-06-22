@@ -53,7 +53,7 @@ type Issuer struct {
 	log                *zerolog.Logger
 }
 
-func New(c Config) (*Issuer, error) {
+func New(c Config, log *zerolog.Logger) (*Issuer, error) {
 	privateKey, err := crypto.ToECDSA(c.PrivateKey)
 	if err != nil {
 		return nil, err
@@ -78,6 +78,7 @@ func New(c Config) (*Issuer, error) {
 		VerificationMethod: verificationMethod,
 		LDProcessor:        ldProc,
 		LDOptions:          options,
+		log:                log,
 	}, nil
 }
 
@@ -189,7 +190,7 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int) (id string, err error) {
 }
 
 func (i *Issuer) Fingerprint(ctx goka.Context, msg interface{}) {
-	event, ok := msg.(FingerprintEvent)
+	event, ok := msg.(*FingerprintEvent)
 	if !ok {
 		i.log.Err(errors.New("unable to parse fingerprint event")).Msg("invalid payload")
 		return
@@ -197,7 +198,7 @@ func (i *Issuer) Fingerprint(ctx goka.Context, msg interface{}) {
 	currentIssuanceWeek := GetWeekNumForCron(time.Now())
 	observedVIN, err := services.ExtractVIN(event.Data)
 	if err != nil {
-		i.log.Debug().Err(err).Str("userDeviceId", event.Subject).Msg("could not extract vin from payload")
+		i.log.Info().Err(err).Str("userDeviceId", event.Subject).Msg("could not extract vin from payload")
 		return
 	}
 
@@ -208,10 +209,10 @@ func (i *Issuer) Fingerprint(ctx goka.Context, msg interface{}) {
 	).One(ctx.Context(), i.DBS.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			i.log.Debug().Err(err).Str("userDeviceId", event.Subject).Msg("no associated vehicle nft for device")
+			i.log.Info().Err(err).Str("userDeviceId", event.Subject).Msg("no associated vehicle nft for device")
 			return
 		}
-		i.log.Debug().Err(err).Str("userDeviceId", event.Subject).Msg("database failure retrieving user device")
+		i.log.Info().Err(err).Str("userDeviceId", event.Subject).Msg("database failure retrieving user device")
 		return
 	}
 
@@ -221,9 +222,8 @@ func (i *Issuer) Fingerprint(ctx goka.Context, msg interface{}) {
 	}
 
 	if val := ctx.Value(); val != nil {
-		record := val.(Fingerprint)
+		record := val.(*Fingerprint)
 		if observedVIN == record.Vin && record.LatestEligibleRewardWeek != currentIssuanceWeek {
-
 			// TODO AE: also check that a vc hasn't been issued with a exp date GTE time.Now()?
 			record.LatestEligibleRewardWeek = currentIssuanceWeek
 			ctx.SetValue(record)

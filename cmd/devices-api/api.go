@@ -344,6 +344,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 				VehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
 				DBS:               pdb,
 			},
+			&logger,
 		)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("Failed to create issuer.")
