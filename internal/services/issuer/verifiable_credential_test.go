@@ -41,7 +41,6 @@ type CredentialTestSuite struct {
 	gokaTester    *tester.Tester
 	gokaProcessor *goka.Processor
 	iss           *Issuer
-	log           *zerolog.Logger
 }
 
 const migrationsDirRelPath = "../../../migrations"
@@ -83,7 +82,11 @@ func (s *CredentialTestSuite) SetupSuite() {
 
 	s.gokaProcessor = p
 
-	go s.gokaProcessor.Run(s.ctx)
+	go func() {
+		if err := s.gokaProcessor.Run(s.ctx); err != nil {
+			require.NoError(s.T(), err)
+		}
+	}()
 
 }
 
