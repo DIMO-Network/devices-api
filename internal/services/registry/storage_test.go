@@ -71,11 +71,11 @@ func (s *StorageTestSuite) TestMintVehicle() {
 			Logs: []ceLog{
 				{
 					Topics: []common.Hash{
-						// keccack256("VehicleNodeMinted(uint256,address)")
+						// keccack256("VehicleNodeMinted(uint256,address)"). Both arguments not indexed.
 						common.HexToHash("0x09ec7fe5281be92443463e1061ce315afc1142b6c31c98a90b711012a54cc32f"),
 					},
 					Data: common.FromHex(
-						"000000000000000000000000000000000000000000000000000000000000386b" +
+						"000000000000000000000000000000000000000000000000000000000000386b" + // 14443 in hex.
 							"0000000000000000000000007e74d0f663d58d12817b8bef762bcde3af1f63d6",
 					),
 				},
