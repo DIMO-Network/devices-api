@@ -258,7 +258,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Patch("/vin", userDeviceController.UpdateVIN)
 	udOwner.Patch("/name", userDeviceController.UpdateName)
 	udOwner.Patch("/country-code", userDeviceController.UpdateCountryCode)
-	udOwner.Patch("/image", userDeviceController.UpdateImage)
 	udOwner.Get("/valuations", userDeviceController.GetValuations)
 	udOwner.Get("/offers", userDeviceController.GetOffers)
 	udOwner.Get("/range", userDeviceController.GetRange)

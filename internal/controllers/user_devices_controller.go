@@ -1113,40 +1113,6 @@ func (udc *UserDevicesController) UpdateCountryCode(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-// UpdateImage godoc
-// @Description updates the ImageUrl on the user device record
-// @Tags        user-devices
-// @Produce     json
-// @Accept      json
-// @Param       name body controllers.UpdateImageURLReq true "Image URL"
-// @Success     204
-// @Security    BearerAuth
-// @Router      /user/devices/{userDeviceID}/image [patch]
-func (udc *UserDevicesController) UpdateImage(c *fiber.Ctx) error {
-	udi := c.Params("userDeviceID")
-
-	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi)).One(c.Context(), udc.DBS().Writer)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, err.Error())
-		}
-		return err
-	}
-	req := &UpdateImageURLReq{}
-	if err := c.BodyParser(req); err != nil {
-		// Return status 400 and error message.
-		return helpers.ErrorResponseHandler(c, err, fiber.StatusBadRequest)
-	}
-
-	userDevice.CustomImageURL = null.StringFromPtr(req.ImageURL)
-	_, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Infer())
-	if err != nil {
-		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
-	}
-
-	return c.SendStatus(fiber.StatusNoContent)
-}
-
 type DeviceValuation struct {
 	// Contains a list of valuation sets, one for each vendor
 	ValuationSets []ValuationSet `json:"valuationSets"`
