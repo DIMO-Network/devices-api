@@ -245,7 +245,7 @@ func (c *Client) UnPairAftermarketDeviceSign(requestID string, aftermarketDevice
 	return c.sendRequest(requestID, data)
 }
 
-// function MintSyntheticDeviceSign(MintSyntheticDeviceInput calldata data)
+// function mintSyntheticDeviceSign(MintSyntheticDeviceInput calldata data)
 func (c *Client) MintSyntheticDeviceSign(requestID string, mintSyntheticDeviceInput contracts.MintSyntheticDeviceInput) error {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
@@ -253,6 +253,21 @@ func (c *Client) MintSyntheticDeviceSign(requestID string, mintSyntheticDeviceIn
 	}
 
 	data, err := abi.Pack("mintSyntheticDeviceSign", mintSyntheticDeviceInput)
+	if err != nil {
+		return err
+	}
+
+	return c.sendRequest(requestID, data)
+}
+
+// function burnSyntheticDeviceSign(uint256 vehicleNode, uint256 syntheticDeviceNode, bytes calldata ownerSig)
+func (c *Client) BurnSyntheticDeviceSign(requestID string, vehicleNode, syntheticDeviceNode *big.Int, ownerSig []byte) error {
+	abi, err := contracts.RegistryMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
+
+	data, err := abi.Pack("burnSyntheticDeviceSign", vehicleNode, syntheticDeviceNode, ownerSig)
 	if err != nil {
 		return err
 	}

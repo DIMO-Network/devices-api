@@ -148,7 +148,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 
 	body, _ := io.ReadAll(response.Body)
 
-	rawExpectedResp := s.sdc.getEIP712(int64(1), int64(57))
+	rawExpectedResp := s.sdc.getEIP712Mint(int64(1), int64(57))
 	expectedRespJSON, err := json.Marshal(rawExpectedResp)
 	assert.NoError(s.T(), err)
 
