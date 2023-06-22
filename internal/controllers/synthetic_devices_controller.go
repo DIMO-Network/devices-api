@@ -167,7 +167,7 @@ func (vc *SyntheticDevicesController) verifyUserAddressAndNFTExist(ctx context.C
 // @Param       integrationNode path int true "token ID"
 // @Param       vehicleNode path int true "vehicle ID"
 // @Success     200 {array} signer.TypedData
-// @Router      synthetic/device/mint/:integrationNode/:vehicleNode [get]
+// @Router /synthetic/device/mint/{integrationNode}/{vehicleNode} [get]
 func (vc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber.Ctx) error {
 	rawIntegrationNode := c.Params("integrationNode")
 	vehicleNode := c.Params("vehicleNode")
@@ -211,8 +211,8 @@ func (vc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber.
 // @Produce     json
 // @Param       integrationNode path int true "token ID"
 // @Param       vehicleNode path int true "vehicle ID"
-// @Success     200 {array}
-// @Router      synthetic/device/mint/:integrationNode/:vehicleNode [post]
+// @Success     204
+// @Router      /synthetic/device/mint/{integrationNode}/{vehicleNode} [post]
 func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	rawIntegrationNode := c.Params("integrationNode")
 	vehicleNode := c.Params("vehicleNode")
