@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -82,6 +83,40 @@ func (s *StorageTestSuite) TestMintVehicle() {
 			},
 		},
 	}))
+
+	// Faking Synthetics
+	fmt.Println(&ceData{
+		RequestID: mtr.ID,
+		Type:      "Confirmed",
+		Transaction: ceTx{
+			Hash: "0x45556dbb377e6287c939d565aa785385d80a2945f2075225980b63d1488ff85b",
+			Logs: []ceLog{
+				{
+					Topics: []common.Hash{
+						// keccack256("SyntheticDeviceNodeMinted(uint256,uint256,uint256,address,address)")
+						// Last three arguments are indexed.
+						/*
+							    event SyntheticDeviceNodeMinted(
+									uint256 integrationNode,
+									uint256 syntheticDeviceNode,
+									uint256 indexed vehicleNode,
+									address indexed syntheticDeviceAddress,
+									address indexed owner
+								)
+						*/
+						common.HexToHash("0x5a560c1adda92bd6cbf9c891dc38e9e2973b7963493f2364caa40a4218346280"),
+						common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"), // Vehicle node 1
+						common.HexToHash("0x000000000000000000000000eEDBa2484aAF940f37cd3CD21a5D7C4A7DAfbfC0"), // SD adddress
+						common.HexToHash("0x00000000000000000000000096045bc26dfa0f0adeeb6e8a09b32b758a9fa3aa"), // Vehicle owner addr
+					},
+					Data: common.FromHex(
+						"0000000000000000000000000000000000000000000000000000000000000001" + // Integration node 1
+							"0000000000000000000000000000000000000000000000000000000000000009", // New minted synthetic device node thing, token id 9
+					),
+				},
+			},
+		},
+	})
 
 	s.Require().NoError(vnft.Reload(ctx, s.dbs.DBS().Writer))
 
