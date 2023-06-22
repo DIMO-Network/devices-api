@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
@@ -171,7 +172,24 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return err
 				}
 
-				_, err = mtr.R.BurnRequestSyntheticDevice.Delete(ctx, p.DB().Writer)
+				if _, err := mtr.R.BurnRequestSyntheticDevice.Delete(ctx, p.DB().Writer); err != nil {
+					return err
+				}
+
+				v, err := models.VehicleNFTS(models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(mtr.R.BurnRequestSyntheticDevice.VehicleTokenID.Big))).One(ctx, p.DB().Reader)
+				if err != nil {
+					return err
+				}
+
+				udai, err := models.FindUserDeviceAPIIntegration(ctx, p.DB().Reader, v.UserDeviceID.String, "22N2xaPOq2WW2gAHBHd0Ikn4Zob")
+				if err != nil {
+					if err == sql.ErrNoRows {
+						return nil
+					}
+					return err
+				}
+
+				_, err = udai.Delete(ctx, p.DB().Writer)
 				return err
 			}
 		}
