@@ -119,7 +119,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	})
 
 	// controllers
-	deviceControllers := controllers.NewDevicesController(settings, pdb.DBS, &logger, nhtsaSvc, ddSvc, ddIntSvc)
 	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService, smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest, deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient, natsSvc)
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
@@ -156,10 +155,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	v1.Get("/swagger/*", swagger.HandlerDefault)
 	// Device Definitions
-	v1.Get("/device-definitions/:id", cacheHandler, deviceControllers.GetDeviceDefinitionByID)
-	v1.Get("/device-definitions/:id/integrations", cacheHandler, deviceControllers.GetDeviceIntegrationsByID)
-	v1.Get("/device-definitions", deviceControllers.GetDeviceDefinitionByMMY)
-
 	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc, dcnSvc)
 	v1.Get("/vehicle/:tokenID", nftController.GetNFTMetadata)
 	v1.Get("/vehicle/:tokenID/image", nftController.GetNFTImage)
@@ -221,7 +216,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	apOwner := v1Auth.Group("/autopi/unit/:unitID", apOwnerMw)
 
 	apOwner.Get("/", userDeviceController.GetAutoPiUnitInfo)
-	apOwner.Get("/is-online", userDeviceController.GetIsAutoPiOnline)
 	apOwner.Post("/update", userDeviceController.StartAutoPiUpdateTask)
 
 	// AutoPi claiming
@@ -231,11 +225,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		// Used by mobile to test. Easy to misuse.
 		apOwner.Post("/commands/unclaim", userDeviceController.PostUnclaimAutoPi)
 	}
-
-	// delete below line once confirmed no active apps using it.
-	v1Auth.Get("/autopi/unit/is-online/:unitID", userDeviceController.GetIsAutoPiOnline) // this one is deprecated
-
-	v1Auth.Get("/autopi/task/:taskID", userDeviceController.GetAutoPiTask)
 
 	// geofence
 	v1Auth.Post("/user/geofences", geofenceController.Create)
@@ -269,7 +258,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Patch("/vin", userDeviceController.UpdateVIN)
 	udOwner.Patch("/name", userDeviceController.UpdateName)
 	udOwner.Patch("/country-code", userDeviceController.UpdateCountryCode)
-	udOwner.Patch("/image", userDeviceController.UpdateImage)
 	udOwner.Get("/valuations", userDeviceController.GetValuations)
 	udOwner.Get("/offers", userDeviceController.GetOffers)
 	udOwner.Get("/range", userDeviceController.GetRange)
@@ -303,9 +291,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Post("/autopi/commands/unpair", userDeviceController.UnpairAutoPi)
 
 	udOwner.Post("/autopi/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
-
-	udOwner.Post("/autopi/command", userDeviceController.SendAutoPiCommand)
-	udOwner.Get("/autopi/command/:jobID", userDeviceController.GetAutoPiCommandStatus)
 
 	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService)
 

@@ -116,7 +116,6 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	app.Get("/user/devices/me", test.AuthInjectorTestHandler(s.testUserID), c.GetUserDevices)
 	app.Patch("/user/devices/:userDeviceID/vin", test.AuthInjectorTestHandler(s.testUserID), c.UpdateVIN)
 	app.Patch("/user/devices/:userDeviceID/name", test.AuthInjectorTestHandler(s.testUserID), c.UpdateName)
-	app.Patch("/user/devices/:userDeviceID/image", test.AuthInjectorTestHandler(s.testUserID), c.UpdateImage)
 	app.Get("/user/devices/:userDeviceID/offers", test.AuthInjectorTestHandler(s.testUserID), c.GetOffers)
 	app.Get("/user/devices/:userDeviceID/valuations", test.AuthInjectorTestHandler(s.testUserID), c.GetValuations)
 	app.Get("/user/devices/:userDeviceID/range", test.AuthInjectorTestHandler(s.testUserID), c.GetRange)
@@ -679,18 +678,6 @@ func (s *UserDevicesControllerTestSuite) TestPatchName() {
 	}
 	require.NoError(s.T(), ud.Reload(s.ctx, s.pdb.DBS().Reader))
 	assert.Equal(s.T(), testName, ud.Name.String)
-}
-
-func (s *UserDevicesControllerTestSuite) TestPatchImageURL() {
-	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, ksuid.New().String(), nil, "", s.pdb)
-
-	payload := `{ "imageUrl": "https://ipfs.com/planetary/car.jpg" }`
-	request := test.BuildRequest("PATCH", "/user/devices/"+ud.ID+"/image", payload)
-	response, _ := s.app.Test(request)
-	if assert.Equal(s.T(), fiber.StatusNoContent, response.StatusCode) == false {
-		body, _ := io.ReadAll(response.Body)
-		fmt.Println("message: " + string(body))
-	}
 }
 
 //go:embed test_drivly_pricing_by_vin.json
