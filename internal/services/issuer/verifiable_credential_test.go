@@ -73,9 +73,9 @@ func (s *CredentialTestSuite) SetupSuite() {
 	s.iss = iss
 
 	s.Require().NoError(err)
-	group := goka.DefineGroup("device-fingerprinting",
-		goka.Input(goka.Stream(s.topic), new(shared.JSONCodec[FingerprintEvent]), iss.Fingerprint),
-		goka.Persist(new(shared.JSONCodec[Fingerprint])))
+	group := goka.DefineGroup("aftermarket-device-vin-credential",
+		goka.Input(goka.Stream(s.topic), new(shared.JSONCodec[ADVinCredentialEvent]), iss.Fingerprint),
+		goka.Persist(new(shared.JSONCodec[VinEligibilityStatus])))
 
 	p, err := goka.NewProcessor([]string{}, group, goka.WithTester(s.gokaTester))
 	require.NoError(s.T(), err)
@@ -199,11 +199,14 @@ func (s *CredentialTestSuite) TestFingerprintIssueFirstVC() {
 	})
 	require.NoError(s.T(), err)
 
-	s.gokaTester.Consume(s.topic, string(ownerAddress.Bytes), &FingerprintEvent{
-		Data:    rawMsg,
-		Time:    time.Now(),
-		ID:      deviceID,
-		Subject: common.Bytes2Hex(ownerAddress.Bytes),
+	s.gokaTester.Consume(s.topic, string(ownerAddress.Bytes), &ADVinCredentialEvent{
+		CloudEvent: shared.CloudEvent[json.RawMessage]{
+			Data:    rawMsg,
+			Time:    time.Now(),
+			ID:      deviceID,
+			Subject: common.Bytes2Hex(ownerAddress.Bytes),
+		},
+		Signature: "1123581321345589144",
 	})
 
 	key, value, valid := out.Next()
@@ -211,7 +214,7 @@ func (s *CredentialTestSuite) TestFingerprintIssueFirstVC() {
 		s.T().Fatal("No status update produced.")
 	}
 
-	event := value.(*FingerprintEvent)
+	event := value.(*ADVinCredentialEvent)
 
 	assert.Equal(s.T(), key, string(ownerAddress.Bytes))
 

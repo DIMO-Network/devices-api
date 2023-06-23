@@ -27,6 +27,7 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 )
 
@@ -190,7 +191,7 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int) (id string, err error) {
 }
 
 func (i *Issuer) Fingerprint(ctx goka.Context, msg interface{}) {
-	event, ok := msg.(*FingerprintEvent)
+	event, ok := msg.(*ADVinCredentialEvent)
 	if !ok {
 		i.log.Err(errors.New("unable to parse fingerprint event")).Msg("invalid payload")
 		return
@@ -222,8 +223,8 @@ func (i *Issuer) Fingerprint(ctx goka.Context, msg interface{}) {
 	}
 
 	if val := ctx.Value(); val != nil {
-		record := val.(*Fingerprint)
-		if observedVIN == record.Vin && record.LatestEligibleRewardWeek != currentIssuanceWeek {
+		record := val.(*VinEligibilityStatus)
+		if observedVIN == record.VIN && record.LatestEligibleRewardWeek != currentIssuanceWeek {
 			// TODO AE: also check that a vc hasn't been issued with a exp date GTE time.Now()?
 			record.LatestEligibleRewardWeek = currentIssuanceWeek
 			ctx.SetValue(record)
@@ -240,8 +241,8 @@ func (i *Issuer) Fingerprint(ctx goka.Context, msg interface{}) {
 		return
 	}
 
-	record := &Fingerprint{
-		Vin:                      observedVIN,
+	record := &VinEligibilityStatus{
+		VIN:                      observedVIN,
 		LatestEligibleRewardWeek: currentIssuanceWeek,
 	}
 
@@ -253,19 +254,13 @@ func (i *Issuer) Fingerprint(ctx goka.Context, msg interface{}) {
 	}
 }
 
-type FingerprintEvent struct {
-	ID          string          `json:"id"`
-	Signature   string          `json:"signature"`
-	Source      string          `json:"source"`
-	Specversion string          `json:"specversion"`
-	Subject     string          `json:"subject"`
-	Time        time.Time       `json:"time"`
-	Type        string          `json:"type"`
-	Data        json.RawMessage `json:"data"`
+type ADVinCredentialEvent struct {
+	shared.CloudEvent[json.RawMessage]
+	Signature string `json:"signature"`
 }
 
-type Fingerprint struct {
-	Vin                      string `json:"vin"`
+type VinEligibilityStatus struct {
+	VIN                      string `json:"vin"`
 	LatestEligibleRewardWeek int    `json:"latestEligibleRewardWeek"`
 }
 
