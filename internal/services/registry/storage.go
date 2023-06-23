@@ -168,7 +168,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	// Temporary
 	case mtr.R.MintRequestSyntheticDevice != nil:
 		for _, l1 := range data.Transaction.Logs {
-			if l1.Topics[0] == sdBurnEvent.ID {
+			if l1.Topics[0] == sdMintEvent.ID {
 				out := new(contracts.RegistrySyntheticDeviceNodeMinted)
 				err := p.parseLog(out, sdMintEvent, l1)
 				if err != nil {

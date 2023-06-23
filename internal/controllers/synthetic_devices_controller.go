@@ -296,7 +296,9 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
-	syntheticDeviceAddr, err := vc.sendSyntheticDeviceMintPayload(c.Context(), hash, req.VehicleNode, integration.TokenId, ownerSignature, childKeyNumber)
+	requestID := ksuid.New().String()
+
+	syntheticDeviceAddr, err := vc.sendSyntheticDeviceMintPayload(c.Context(), requestID, hash, req.VehicleNode, integration.TokenId, ownerSignature, childKeyNumber)
 	if err != nil {
 		vc.log.Err(err).Msg("synthetic device minting request failed")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
@@ -313,7 +315,6 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	requestID := ksuid.New().String()
 	metaReq := &models.MetaTransactionRequest{
 		ID:     requestID,
 		Status: models.MetaTransactionRequestStatusUnsubmitted,
@@ -345,7 +346,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	return c.Send([]byte("synthetic device mint request successful"))
 }
 
-func (vc *SyntheticDevicesController) sendSyntheticDeviceMintPayload(ctx context.Context, hash []byte, vehicleNode int, intTokenID uint64, ownerSignature []byte, childKeyNumber int) ([]byte, error) {
+func (vc *SyntheticDevicesController) sendSyntheticDeviceMintPayload(ctx context.Context, requestID string, hash []byte, vehicleNode int, intTokenID uint64, ownerSignature []byte, childKeyNumber int) ([]byte, error) {
 	syntheticDeviceAddr, err := vc.walletSvc.GetAddress(ctx, uint32(childKeyNumber))
 	if err != nil {
 		vc.log.Err(err).
@@ -364,8 +365,6 @@ func (vc *SyntheticDevicesController) sendSyntheticDeviceMintPayload(ctx context
 			Msg("Error occurred signing message hash")
 		return nil, err
 	}
-
-	requestID := ksuid.New().String()
 
 	vNode := new(big.Int).SetInt64(int64(vehicleNode))
 	mvt := contracts.MintSyntheticDeviceInput{
