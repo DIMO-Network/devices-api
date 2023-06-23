@@ -352,7 +352,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 		goka.ReplaceGlobalConfig(kconf)
 		group := goka.DefineGroup("aftermarket-device-vin-credential",
-			goka.Input(goka.Stream(settings.ADVinCredentialTopic), new(shared.JSONCodec[issuer.ADVinCredentialEvent]), vcIssuer.Fingerprint),
+			goka.Input(goka.Stream(settings.ADVinCredentialTopic), new(shared.JSONCodec[issuer.ADVinCredentialEvent]), vcIssuer.ADVinCredentialer),
 			goka.Persist(new(shared.JSONCodec[shared.CloudEvent[services.RegisteredVIN]])))
 
 		processor, err := goka.NewProcessor(strings.Split(settings.KafkaBrokers, ","),

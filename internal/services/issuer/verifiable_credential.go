@@ -190,7 +190,7 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int) (id string, err error) {
 	return id, tx.Commit()
 }
 
-func (i *Issuer) Fingerprint(ctx goka.Context, msg interface{}) {
+func (i *Issuer) ADVinCredentialer(ctx goka.Context, msg interface{}) {
 	event, ok := msg.(*ADVinCredentialEvent)
 	if !ok {
 		i.log.Err(errors.New("unable to parse fingerprint event")).Msg("invalid payload")
@@ -203,10 +203,9 @@ func (i *Issuer) Fingerprint(ctx goka.Context, msg interface{}) {
 		return
 	}
 
-	device, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.UserDeviceID.EQ(null.StringFrom(event.ID)),
-		models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(event.Subject))),
-		qm.Load(models.VehicleNFTRels.UserDevice),
+	ad, err := models.AutopiUnits(
+		models.AutopiUnitWhere.EthereumAddress.EQ(null.BytesFrom(common.FromHex(event.Subject))),
+		qm.Load(models.AutopiUnitRels.VehicleToken),
 	).One(ctx.Context(), i.DBS.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -217,7 +216,7 @@ func (i *Issuer) Fingerprint(ctx goka.Context, msg interface{}) {
 		return
 	}
 
-	tkn, ok := device.TokenID.Int64()
+	tkn, ok := ad.VehicleTokenID.Int64()
 	if !ok {
 		i.log.Err(errors.New("unable to parse token id")).Msg("invalid token")
 	}
@@ -226,17 +225,30 @@ func (i *Issuer) Fingerprint(ctx goka.Context, msg interface{}) {
 		record := val.(*VinEligibilityStatus)
 		if observedVIN == record.VIN && record.LatestEligibleRewardWeek != currentIssuanceWeek {
 			// TODO AE: also check that a vc hasn't been issued with a exp date GTE time.Now()?
+			_, err = i.VIN(observedVIN, big.NewInt(tkn))
 			record.LatestEligibleRewardWeek = currentIssuanceWeek
 			ctx.SetValue(record)
-			_, err = i.VIN(observedVIN, big.NewInt(tkn))
 			if err != nil {
 				i.log.Debug().Err(err).Str("userDeviceId", event.Subject).Str("vin", observedVIN).Int("issuanceWeek", currentIssuanceWeek).Msg("could not issue vin credential")
 				return
 			}
 		}
+		return
 	}
 
-	if !device.R.UserDevice.VinConfirmed || observedVIN != device.R.UserDevice.VinIdentifier.String {
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(ad.AutopiDeviceID.String),
+	).One(ctx.Context(), i.DBS.DBS().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			i.log.Info().Err(err).Str("userDeviceId", event.Subject).Msg("no associated device for id")
+			return
+		}
+		i.log.Info().Err(err).Str("userDeviceId", event.Subject).Msg("database failure retrieving user device")
+		return
+	}
+
+	if !ud.VinConfirmed || observedVIN != ud.VinIdentifier.String {
 		i.log.Err(errors.New("cannot generate credential")).Str("userDeviceId", event.Subject).Str("observedVin", observedVIN).Msg("invalid vin")
 		return
 	}

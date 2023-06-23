@@ -74,7 +74,7 @@ func (s *CredentialTestSuite) SetupSuite() {
 
 	s.Require().NoError(err)
 	group := goka.DefineGroup("aftermarket-device-vin-credential",
-		goka.Input(goka.Stream(s.topic), new(shared.JSONCodec[ADVinCredentialEvent]), iss.Fingerprint),
+		goka.Input(goka.Stream(s.topic), new(shared.JSONCodec[ADVinCredentialEvent]), iss.ADVinCredentialer),
 		goka.Persist(new(shared.JSONCodec[VinEligibilityStatus])))
 
 	p, err := goka.NewProcessor([]string{}, group, goka.WithTester(s.gokaTester))
@@ -187,8 +187,16 @@ func (s *CredentialTestSuite) TestFingerprintIssueFirstVC() {
 		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
 		OwnerAddress:  ownerAddress,
 	}
-
 	err = nft.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
+	require.NoError(s.T(), err)
+
+	ad := models.AutopiUnit{
+		EthereumAddress: ownerAddress,
+		AutopiUnitID:    ksuid.New().String(),
+		AutopiDeviceID:  null.StringFrom(deviceID),
+		VehicleTokenID:  types.NewNullDecimal(decimal.New(tokenID.Int64(), 0)),
+	}
+	err = ad.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
 	require.NoError(s.T(), err)
 
 	out := s.gokaTester.NewQueueTracker(string(s.topic))
