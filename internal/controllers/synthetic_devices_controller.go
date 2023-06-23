@@ -399,7 +399,7 @@ func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx con
 	}
 	switch integration.Vendor {
 	case constants.SmartCarVendor:
-		token, err := vc.exchangeSmartCarCode(ctx, req.Credentials.AuthorizationCode, "")
+		token, err := vc.exchangeSmartCarCode(ctx, req.Credentials.AuthorizationCode, "http://localhost:3000")
 		if err != nil {
 			return err
 		}
@@ -445,6 +445,7 @@ func (vc *SyntheticDevicesController) exchangeSmartCarCode(ctx context.Context, 
 	if err != nil {
 		var scErr *services.SmartcarError
 		if errors.As(err, &scErr) {
+			vc.log.Err(err).RawJSON("body", scErr.Body).Msg("Failure")
 			vc.log.Err(err).Str("function", "syntheticDeviceController.exchangeSmartCarCode").Msgf("Failed exchanging Authorization code. Status code %d, request id %s`.", scErr.Code, scErr.RequestID)
 		} else {
 			vc.log.Err(err).Str("function", "syntheticDeviceController.exchangeSmartCarCode").Msg("Failed to exchange authorization code with Smartcar.")
@@ -591,12 +592,23 @@ func (vc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 
 	reqID := ksuid.New().String()
 
+	fmt.Println("Burn request id is " + reqID)
+
 	if err := vc.registryClient.BurnSyntheticDeviceSign(reqID, big.NewInt(vehicleNode), big.NewInt(syntheticDeviceNode), ownerSignature); err != nil {
 		return err
 	}
 
+	mtr := models.MetaTransactionRequest{
+		ID:     reqID,
+		Status: models.MetaTransactionRequestStatusUnsubmitted,
+	}
+
+	if err := mtr.Insert(c.Context(), vc.DBS().Writer, boil.Infer()); err != nil {
+		return err
+	}
+
 	sd.BurnRequestID = null.StringFrom(reqID)
-	_, err = sd.Update(c.Context(), vc.DBS().Writer, boil.Whitelist(models.SyntheticDeviceColumns.BurnRequestID))
+	_, err = sd.Update(c.Context(), vc.DBS().Writer, boil.Infer())
 
 	return err
 }

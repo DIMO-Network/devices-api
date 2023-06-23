@@ -49,6 +49,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		qm.Load(models.MetaTransactionRequestRels.ClaimMetaTransactionRequestAutopiUnit),
 		qm.Load(models.MetaTransactionRequestRels.PairRequestAutopiUnit),
 		qm.Load(models.MetaTransactionRequestRels.UnpairRequestAutopiUnit),
+		qm.Load(models.MetaTransactionRequestRels.MintRequestSyntheticDevice),
 		qm.Load(models.MetaTransactionRequestRels.BurnRequestSyntheticDevice),
 	).One(context.Background(), p.DB().Reader)
 	if err != nil {
@@ -72,6 +73,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	devicePairedEvent := p.ABI.Events["AftermarketDevicePaired"]
 	deviceUnpairedEvent := p.ABI.Events["AftermarketDeviceUnpaired"]
 	sdBurnEvent := p.ABI.Events["SyntheticDeviceNodeBurned"]
+	sdMintEvent := p.ABI.Events["SyntheticDeviceNodeMinted"]
 
 	switch {
 	case mtr.R.MintRequestVehicleNFT != nil:
@@ -161,6 +163,21 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				}
 
 				return p.ap.Unpair(ctx, out.AftermarketDeviceNode, out.VehicleNode)
+			}
+		}
+	// Temporary
+	case mtr.R.MintRequestSyntheticDevice != nil:
+		for _, l1 := range data.Transaction.Logs {
+			if l1.Topics[0] == sdBurnEvent.ID {
+				out := new(contracts.RegistrySyntheticDeviceNodeMinted)
+				err := p.parseLog(out, sdMintEvent, l1)
+				if err != nil {
+					return err
+				}
+
+				mtr.R.MintRequestSyntheticDevice.TokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.SyntheticDeviceNode, 0))
+				_, err = mtr.R.MintRequestSyntheticDevice.Update(ctx, p.DB().Writer, boil.Infer())
+				return err
 			}
 		}
 	case mtr.R.BurnRequestSyntheticDevice != nil:
