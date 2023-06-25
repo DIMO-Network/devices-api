@@ -5,6 +5,7 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
+	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
 	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/models"
@@ -24,12 +25,13 @@ type StatusProcessor interface {
 }
 
 type proc struct {
-	ABI      *abi.ABI
-	DB       func() *db.ReaderWriter
-	Logger   *zerolog.Logger
-	ap       *autopi.Integration
-	issuer   *issuer.Issuer
-	settings *config.Settings
+	ABI             *abi.ABI
+	DB              func() *db.ReaderWriter
+	Logger          *zerolog.Logger
+	ap              *autopi.Integration
+	issuer          *issuer.Issuer
+	settings        *config.Settings
+	smartcarTaskSvc services.SmartcarTaskService
 }
 
 func (p *proc) Handle(ctx context.Context, data *ceData) error {
@@ -48,6 +50,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		qm.Load(models.MetaTransactionRequestRels.ClaimMetaTransactionRequestAutopiUnit),
 		qm.Load(models.MetaTransactionRequestRels.PairRequestAutopiUnit),
 		qm.Load(models.MetaTransactionRequestRels.UnpairRequestAutopiUnit),
+		qm.Load(models.MetaTransactionRequestRels.MintRequestSyntheticDevice),
 	).One(context.Background(), p.DB().Reader)
 	if err != nil {
 		return err
@@ -69,6 +72,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	deviceClaimedEvent := p.ABI.Events["AftermarketDeviceClaimed"]
 	devicePairedEvent := p.ABI.Events["AftermarketDevicePaired"]
 	deviceUnpairedEvent := p.ABI.Events["AftermarketDeviceUnpaired"]
+	syntheticDeviceMintedEvent := p.ABI.Events["SyntheticDeviceNodeMinted"]
 
 	switch {
 	case mtr.R.MintRequestVehicleNFT != nil:
@@ -104,7 +108,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 			}
 		}
 		// Other soon.
-
 	case mtr.R.ClaimMetaTransactionRequestAutopiUnit != nil:
 		for _, l1 := range data.Transaction.Logs {
 			if l1.Topics[0] == deviceClaimedEvent.ID {
@@ -160,6 +163,45 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				return p.ap.Unpair(ctx, out.AftermarketDeviceNode, out.VehicleNode)
 			}
 		}
+	case mtr.R.MintRequestSyntheticDevice != nil:
+		for _, l1 := range data.Transaction.Logs {
+			if l1.Topics[0] == syntheticDeviceMintedEvent.ID {
+				out := new(contracts.RegistrySyntheticDeviceNodeMinted)
+				err := p.parseLog(out, syntheticDeviceMintedEvent, l1)
+
+				if err != nil {
+					return err
+				}
+
+				sd, err := models.SyntheticDevices(
+					models.SyntheticDeviceWhere.MintRequestID.EQ(data.RequestID),
+					qm.Load(models.SyntheticDeviceRels.VehicleToken),
+				).One(ctx, p.DB().Reader)
+				if err != nil {
+					return err
+				}
+
+				tkID := types.NewNullDecimal(decimal.New(out.SyntheticDeviceNode.Int64(), 0))
+				sd.TokenID = tkID
+
+				if _, err := sd.Update(ctx, p.DB().Writer, boil.Infer()); err != nil {
+					return err
+				}
+
+				ud, err := models.UserDeviceAPIIntegrations(
+					models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(sd.R.VehicleToken.UserDeviceID.String),
+					models.UserDeviceAPIIntegrationWhere.Status.EQ(models.UserDeviceAPIIntegrationStatusPending),
+				).One(ctx, p.DB().Reader)
+				if err != nil {
+					return err
+				}
+
+				if err := p.smartcarTaskSvc.StartPoll(ud); err != nil {
+					logger.Err(err).Msg("Couldn't start Smartcar polling.")
+					return err
+				}
+			}
+		}
 	}
 
 	return nil
@@ -188,6 +230,7 @@ func NewProcessor(
 	ap *autopi.Integration,
 	issuer *issuer.Issuer,
 	settings *config.Settings,
+	smartcarTaskSvc services.SmartcarTaskService,
 ) (StatusProcessor, error) {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
@@ -195,11 +238,12 @@ func NewProcessor(
 	}
 
 	return &proc{
-		ABI:      abi,
-		DB:       db,
-		Logger:   logger,
-		ap:       ap,
-		issuer:   issuer,
-		settings: settings,
+		ABI:             abi,
+		DB:              db,
+		Logger:          logger,
+		ap:              ap,
+		issuer:          issuer,
+		settings:        settings,
+		smartcarTaskSvc: smartcarTaskSvc,
 	}, nil
 }
