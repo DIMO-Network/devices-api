@@ -5,7 +5,6 @@ import (
 	"crypto/ecdsa"
 	"database/sql"
 	"fmt"
-	"github.com/DIMO-Network/devices-api/internal/services"
 	"math/big"
 	"net/http"
 	"os"
@@ -251,7 +250,10 @@ func SetupCreateAutoPiUnit(t *testing.T, userID, unitID string, deviceID *string
 		Serial: unitID,
 		UserID: null.StringFrom(userID),
 	}
-
+	if deviceID != nil {
+		amdMD := map[string]any{"autoPiDeviceId": *deviceID}
+		_ = amd.Metadata.Marshal(amdMD)
+	}
 	err := amd.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
 	assert.NoError(t, err)
 	return &amd
@@ -265,7 +267,7 @@ func SetupCreateMintedAutoPiUnit(t *testing.T, userID, unitID string, tokenID *b
 		EthereumAddress: null.BytesFrom(addr.Bytes()),
 	}
 	if deviceID != nil {
-		amdMD := services.AftermarketDeviceMetadata{AutoPiDeviceID: *deviceID}
+		amdMD := map[string]any{"autoPiDeviceId": *deviceID}
 		_ = amd.Metadata.Marshal(amdMD)
 	}
 	err := amd.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
