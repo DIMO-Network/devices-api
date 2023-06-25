@@ -240,7 +240,7 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 			require.NoError(t, err)
 
 			ap := models.AftermarketDevice{
-				Serial   c.AutoPiUnitID,
+				Serial:         c.AutoPiUnitID,
 				VehicleTokenID: c.AutoPiVehicleToken,
 				UserID:         c.AutoPiUserID,
 			}

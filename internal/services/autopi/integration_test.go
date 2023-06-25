@@ -154,9 +154,9 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_HardwareTemplate_Success() {
 
 	require.NoError(s.T(), err)
 	assert.Equal(s.T(), testUserID, ud.UserID)
-	assert.Equal(s.T(), unitID, autoPIUnit.AutopiUnitID)
+	assert.Equal(s.T(), unitID, autoPIUnit.Serial)
 	assert.Equal(s.T(), vin, vehicleNFT.Vin)
-	udai, err := models.UserDeviceAPIIntegrations(models.UserDeviceAPIIntegrationWhere.AutopiUnitID.EQ(null.StringFrom(autoPIUnit.AutopiUnitID))).
+	udai, err := models.UserDeviceAPIIntegrations(models.UserDeviceAPIIntegrationWhere.HWSerial.EQ(null.StringFrom(autoPIUnit.Serial))).
 		One(s.ctx, s.pdb.DBS().Reader)
 	require.NoError(s.T(), err)
 	assert.Equal(s.T(), "06", gjson.GetBytes(udai.Metadata.JSON, "canProtocol").String(), "canProtocol in metadata did not match expected")
@@ -232,7 +232,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_Make_HardwareTemplate_Success() {
 
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), testUserID, ud.UserID)
-	assert.Equal(s.T(), unitID, autoPIUnit.AutopiUnitID)
+	assert.Equal(s.T(), unitID, autoPIUnit.Serial)
 	assert.Equal(s.T(), vin, vehicleNFT.Vin)
 
 }
@@ -317,7 +317,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_DeviceStyle_HardwareTemplate_Su
 
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), testUserID, ud.UserID)
-	assert.Equal(s.T(), unitID, autoPIUnit.AutopiUnitID)
+	assert.Equal(s.T(), unitID, autoPIUnit.Serial)
 	assert.Equal(s.T(), vin, vehicleNFT.Vin)
 
 }
@@ -391,7 +391,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_UserDeviceStyle_HardwareTemplate_S
 
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), testUserID, ud.UserID)
-	assert.Equal(s.T(), unitID, autoPIUnit.AutopiUnitID)
+	assert.Equal(s.T(), unitID, autoPIUnit.Serial)
 	assert.Equal(s.T(), vin, vehicleNFT.Vin)
 
 }

@@ -758,7 +758,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 	userSig[64] += 27
 
 	in := map[string]any{
-		"externalId": apUnit.AutopiUnitID,
+		"externalId": apUnit.Serial,
 		"signature":  hexutil.Bytes(userSig).String(),
 	}
 

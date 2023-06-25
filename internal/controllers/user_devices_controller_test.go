@@ -653,7 +653,7 @@ func (s *UserDevicesControllerTestSuite) TestPatchName() {
 	apunit := test.SetupCreateAutoPiUnit(s.T(), s.testUserID, uuid.NewString(), &deviceID, s.pdb)
 	autoPiIntID := ksuid.New().String()
 	vehicleID := 3214
-	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), apunit.AutopiUnitID, deviceID, ud.ID, autoPiIntID, s.pdb)
+	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), apunit.Serial, deviceID, ud.ID, autoPiIntID, s.pdb)
 
 	// nil check test
 	payload := `{}`
@@ -664,8 +664,8 @@ func (s *UserDevicesControllerTestSuite) TestPatchName() {
 	testName := "Queens Charriot,.@!$’"
 	payload = fmt.Sprintf(`{ "name": " %s " }`, testName) // intentionally has spaces to test trimming
 
-	s.autoPiSvc.EXPECT().GetDeviceByUnitID(apunit.AutopiUnitID).Times(1).Return(&services.AutoPiDongleDevice{
-		ID: deviceID, UnitID: apunit.AutopiUnitID, Vehicle: services.AutoPiDongleVehicle{ID: vehicleID},
+	s.autoPiSvc.EXPECT().GetDeviceByUnitID(apunit.Serial).Times(1).Return(&services.AutoPiDongleDevice{
+		ID: deviceID, UnitID: apunit.Serial, Vehicle: services.AutoPiDongleVehicle{ID: vehicleID},
 	}, nil)
 	s.autoPiSvc.EXPECT().PatchVehicleProfile(vehicleID, services.PatchVehicleProfile{
 		CallName: &testName,
