@@ -373,8 +373,8 @@ func (nc *NFTController) GetAftermarketDeviceNFTMetadata(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse token id.")
 	}
 
-	unit, err := models.AutopiUnits(
-		models.AutopiUnitWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tid, 0))),
+	unit, err := models.AftermarketDevices(
+		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tid, 0))),
 	).One(c.Context(), nc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -393,7 +393,7 @@ func (nc *NFTController) GetAftermarketDeviceNFTMetadata(c *fiber.Ctx) error {
 		Image:       fmt.Sprintf("%s/v1/aftermarket/device/%s/image", nc.Settings.DeploymentBaseURL, tid),
 		Attributes: []NFTAttribute{
 			{TraitType: "Ethereum Address", Value: common.BytesToAddress(unit.EthereumAddress.Bytes).String()},
-			{TraitType: "Serial Number", Value: unit.AutopiUnitID},
+			{TraitType: "Serial Number", Value: unit.Serial},
 		},
 	})
 }
@@ -413,8 +413,8 @@ func (nc *NFTController) GetAftermarketDeviceNFTImage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
 	}
 
-	exists, err := models.AutopiUnits(
-		models.AutopiUnitWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))),
+	exists, err := models.AftermarketDevices(
+		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))),
 	).Exists(c.Context(), nc.DBS().Reader)
 	if err != nil {
 		return err

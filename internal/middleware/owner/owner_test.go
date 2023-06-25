@@ -212,7 +212,7 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
-			_, err := models.AutopiUnits().DeleteAll(ctx, pdb.DBS().Writer)
+			_, err := models.AftermarketDevices().DeleteAll(ctx, pdb.DBS().Writer)
 			require.NoError(t, err)
 			_, err = models.VehicleNFTS().DeleteAll(ctx, pdb.DBS().Writer)
 			require.NoError(t, err)
@@ -239,8 +239,8 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 			err = vnft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 			require.NoError(t, err)
 
-			ap := models.AutopiUnit{
-				AutopiUnitID:   c.AutoPiUnitID,
+			ap := models.AftermarketDevice{
+				Serial   c.AutoPiUnitID,
 				VehicleTokenID: c.AutoPiVehicleToken,
 				UserID:         c.AutoPiUserID,
 			}

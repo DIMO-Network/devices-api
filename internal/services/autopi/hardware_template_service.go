@@ -128,20 +128,20 @@ func (a *hardwareTemplateService) ApplyHardwareTemplate(ctx context.Context, req
 
 	udapi, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(req.UserDeviceId),
-		models.UserDeviceAPIIntegrationWhere.AutopiUnitID.EQ(null.StringFrom(req.AutoApiUnitId)),
+		models.UserDeviceAPIIntegrationWhere.HWSerial.EQ(null.StringFrom(req.AutoApiUnitId)),
 	).One(ctx, tx)
 	if err != nil {
 		return nil, err
 	}
 
-	autoPiModel, err := models.AutopiUnits(
-		models.AutopiUnitWhere.AutopiUnitID.EQ(req.AutoApiUnitId),
+	autoPiModel, err := models.AftermarketDevices(
+		models.AftermarketDeviceWhere.Serial.EQ(req.AutoApiUnitId),
 	).One(ctx, tx)
 	if err != nil {
 		return nil, err
 	}
 
-	autoPi, err := a.ap.GetDeviceByUnitID(autoPiModel.AutopiUnitID)
+	autoPi, err := a.ap.GetDeviceByUnitID(autoPiModel.Serial)
 	if err != nil {
 		return nil, err
 	}

@@ -92,14 +92,14 @@ func (i *Integration) Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *b
 
 	var autoPiUnitID string
 
-	autoPiModel, err := models.AutopiUnits(
-		models.AutopiUnitWhere.TokenID.EQ(intToDec(autoPiTokenID)),
+	autoPiModel, err := models.AftermarketDevices(
+		models.AftermarketDeviceWhere.TokenID.EQ(intToDec(autoPiTokenID)),
 	).One(ctx, tx)
 	if err != nil {
 		return err
 	}
 
-	autoPiUnitID = autoPiModel.AutopiUnitID
+	autoPiUnitID = autoPiModel.Serial
 
 	autoPi, err := i.ap.GetDeviceByUnitID(autoPiUnitID)
 	if err != nil {
@@ -161,7 +161,7 @@ func (i *Integration) Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *b
 		IntegrationID: integ.Id,
 		ExternalID:    null.StringFrom(autoPi.ID),
 		Status:        models.UserDeviceAPIIntegrationStatusPending,
-		AutopiUnitID:  null.StringFrom(autoPi.UnitID),
+		HWSerial:      null.StringFrom(autoPi.UnitID),
 	}
 	err = udai.Metadata.Marshal(udaiMd)
 	if err != nil {
@@ -258,7 +258,7 @@ func (i *Integration) Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *b
 		AftermarketDevice: services.AftermarketDeviceVehicleMappingAftermarketDevice{
 			Address:       common.BytesToAddress(autoPiModel.EthereumAddress.Bytes),
 			Token:         autoPiTokenID,
-			Serial:        autoPiModel.AutopiUnitID,
+			Serial:        autoPiModel.Serial,
 			IntegrationID: integ.Id,
 		},
 		Vehicle: services.AftermarketDeviceVehicleMappingVehicle{
@@ -338,8 +338,8 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 
 	ud := nft.R.UserDevice
 
-	autoPiModel, err := models.AutopiUnits(
-		models.AutopiUnitWhere.TokenID.EQ(intToDec(autoPiTokenID)),
+	autoPiModel, err := models.AftermarketDevices(
+		models.AftermarketDeviceWhere.TokenID.EQ(intToDec(autoPiTokenID)),
 	).One(ctx, tx)
 	if err != nil {
 		return err
@@ -362,7 +362,7 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 		}
 	}
 
-	err = i.apReg.Deregister(autoPiModel.AutopiUnitID, ud.ID, integ.Id)
+	err = i.apReg.Deregister(autoPiModel.Serial, ud.ID, integ.Id)
 	if err != nil {
 		return err
 	}

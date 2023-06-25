@@ -61,8 +61,8 @@ func (s *AutoPiAPIServiceTestSuite) TestGetUserDeviceIntegrationByUnitID() {
 
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, ksuid.New().String(), nil, "", s.pdb)
 
-	unit := &models.AutopiUnit{
-		AutopiUnitID: autoPiUnitID,
+	unit := &models.AftermarketDevice{
+		Serial: autoPiUnitID,
 	}
 
 	require.NoError(s.T(), unit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer()))
@@ -72,7 +72,7 @@ func (s *AutoPiAPIServiceTestSuite) TestGetUserDeviceIntegrationByUnitID() {
 		IntegrationID: ksuid.New().String(),
 		Status:        models.UserDeviceAPIIntegrationStatusActive,
 		ExternalID:    null.StringFrom("autoPiDeviceID"),
-		AutopiUnitID:  null.StringFrom(autoPiUnitID),
+		HWSerial:      null.StringFrom(autoPiUnitID),
 	}
 
 	err := apUdai.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())

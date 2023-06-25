@@ -165,6 +165,11 @@ type UserDeviceMetadata struct {
 	CANProtocol *string `json:"canProtocol,omitempty"`
 }
 
+// AftermarketDeviceMetadata json metadata for table AftermarketDevice
+type AftermarketDeviceMetadata struct {
+	AutoPiDeviceID string `json:"autoPiDeviceId,omitempty"`
+}
+
 // todo: consider moving below to controllers and have service just return db object
 
 // AutoPiCommandJob holds the autopi webhook jobs in a format for returning to clients

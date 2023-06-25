@@ -201,7 +201,7 @@ func Test_Transfer_Event_Handled_Correctly(t *testing.T) {
 	}
 
 	cm := common.BytesToAddress([]byte{uint8(9)})
-	autopiUnit := models.AutopiUnit{
+	autopiUnit := models.AftermarketDevice{
 		UserID:       null.StringFrom("SomeID"),
 		OwnerAddress: null.BytesFrom(cm.Bytes()),
 		CreatedAt:    time.Now(),
@@ -218,7 +218,7 @@ func Test_Transfer_Event_Handled_Correctly(t *testing.T) {
 	err = c.processMessage(msg)
 	s.assert.NoError(err)
 
-	aUnit, err := models.AutopiUnits(models.AutopiUnitWhere.TokenID.EQ(nullTkID)).One(s.ctx, s.pdb.DBS().Reader)
+	aUnit, err := models.AftermarketDevices(models.AftermarketDeviceWhere.TokenID.EQ(nullTkID)).One(s.ctx, s.pdb.DBS().Reader)
 	s.assert.NoError(err)
 
 	newOner := common.BytesToAddress([]byte{uint8(3)})
@@ -241,7 +241,7 @@ func Test_Ignore_Transfer_Mint_Event(t *testing.T) {
 	tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0))
 
 	cm := common.BytesToAddress([]byte{uint8(9)})
-	autopiUnit := models.AutopiUnit{
+	autopiUnit := models.AftermarketDevice{
 		UserID:       null.StringFrom("SomeID"),
 		OwnerAddress: null.BytesFrom(cm.Bytes()),
 		CreatedAt:    time.Now(),
@@ -257,7 +257,7 @@ func Test_Ignore_Transfer_Mint_Event(t *testing.T) {
 	err = c.processMessage(msg)
 	s.assert.NoError(err)
 
-	aUnit, err := models.AutopiUnits(models.AutopiUnitWhere.TokenID.EQ(tkID)).One(s.ctx, s.pdb.DBS().Reader)
+	aUnit, err := models.AftermarketDevices(models.AftermarketDeviceWhere.TokenID.EQ(tkID)).One(s.ctx, s.pdb.DBS().Reader)
 	s.assert.NoError(err)
 	s.assert.Equal(autopiUnit.OwnerAddress, aUnit.OwnerAddress)
 	s.assert.Equal(autopiUnit.UserID, aUnit.UserID)
@@ -276,7 +276,7 @@ func Test_Ignore_Transfer_Claims_Event(t *testing.T) {
 
 	tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0))
 
-	autopiUnit := models.AutopiUnit{
+	autopiUnit := models.AftermarketDevice{
 		UserID:    null.StringFrom("SomeID"),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -291,7 +291,7 @@ func Test_Ignore_Transfer_Claims_Event(t *testing.T) {
 	err = c.processMessage(msg)
 	s.assert.NoError(err)
 
-	aUnit, err := models.AutopiUnits(models.AutopiUnitWhere.TokenID.EQ(tkID)).One(s.ctx, s.pdb.DBS().Reader)
+	aUnit, err := models.AftermarketDevices(models.AftermarketDeviceWhere.TokenID.EQ(tkID)).One(s.ctx, s.pdb.DBS().Reader)
 	s.assert.NoError(err)
 	s.assert.Equal(autopiUnit.OwnerAddress, aUnit.OwnerAddress)
 	s.assert.Equal(autopiUnit.UserID, aUnit.UserID)
@@ -309,7 +309,7 @@ func Test_Ignore_Transfer_Wrong_Contract(t *testing.T) {
 	}
 
 	cm := common.BytesToAddress([]byte{uint8(9)})
-	autopiUnit := models.AutopiUnit{
+	autopiUnit := models.AftermarketDevice{
 		UserID:       null.StringFrom("SomeID"),
 		OwnerAddress: null.BytesFrom(cm.Bytes()),
 		CreatedAt:    time.Now(),
@@ -338,7 +338,7 @@ func Test_Ignore_Transfer_Unit_Not_Found(t *testing.T) {
 	}
 
 	cm := common.BytesToAddress([]byte{uint8(9)})
-	autopiUnit := models.AutopiUnit{
+	autopiUnit := models.AftermarketDevice{
 		UserID:       null.StringFrom("SomeID"),
 		OwnerAddress: null.BytesFrom(cm.Bytes()),
 		CreatedAt:    time.Now(),
@@ -359,7 +359,7 @@ type beneficiaryCase struct {
 	Name                      string
 	Address                   common.Address
 	Event                     ev
-	AutopiUnitTable           models.AutopiUnit
+	AutopiUnitTable           models.AftermarketDevice
 	ExpectedBeneficiaryResult null.Bytes
 }
 type ev struct {
@@ -381,7 +381,7 @@ func TestSetBeneficiary(t *testing.T) {
 				NodeId:         big.NewInt(2),
 				Beneficiary:    common.BigToAddress(big.NewInt(2)),
 			},
-			AutopiUnitTable: models.AutopiUnit{
+			AutopiUnitTable: models.AftermarketDevice{
 				OwnerAddress: null.BytesFrom(common.BigToAddress(big.NewInt(2)).Bytes()),
 				TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(2), 0)),
 			},
@@ -395,7 +395,7 @@ func TestSetBeneficiary(t *testing.T) {
 				NodeId:         big.NewInt(1),
 				Beneficiary:    common.BigToAddress(big.NewInt(1)),
 			},
-			AutopiUnitTable: models.AutopiUnit{
+			AutopiUnitTable: models.AftermarketDevice{
 				OwnerAddress: null.BytesFrom(common.BigToAddress(big.NewInt(1)).Bytes()),
 				TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(1), 0)),
 			},
@@ -409,7 +409,7 @@ func TestSetBeneficiary(t *testing.T) {
 				NodeId:         big.NewInt(3),
 				Beneficiary:    common.BigToAddress(big.NewInt(3)),
 			},
-			AutopiUnitTable: models.AutopiUnit{
+			AutopiUnitTable: models.AftermarketDevice{
 				OwnerAddress: null.BytesFrom(common.BigToAddress(big.NewInt(1)).Bytes()),
 				TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(3), 0)),
 				Beneficiary:  null.BytesFrom(common.BigToAddress(big.NewInt(2)).Bytes()),
@@ -424,7 +424,7 @@ func TestSetBeneficiary(t *testing.T) {
 				NodeId:         big.NewInt(3),
 				Beneficiary:    common.BigToAddress(big.NewInt(0)),
 			},
-			AutopiUnitTable: models.AutopiUnit{
+			AutopiUnitTable: models.AftermarketDevice{
 				OwnerAddress: null.BytesFrom(common.BigToAddress(big.NewInt(1)).Bytes()),
 				TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(3), 0)),
 				Beneficiary:  null.BytesFrom(common.BigToAddress(big.NewInt(2)).Bytes()),
