@@ -415,8 +415,8 @@ func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevi
 
 			if amnft.Beneficiary.Valid {
 				out.AftermarketDeviceBeneficiaryAddress = amnft.Beneficiary.Bytes
-			} else {
-				out.AftermarketDeviceBeneficiaryAddress = vnft.OwnerAddress.Bytes
+			} else if amnft.OwnerAddress.Valid {
+				out.AftermarketDeviceBeneficiaryAddress = amnft.OwnerAddress.Bytes
 			}
 		}
 
