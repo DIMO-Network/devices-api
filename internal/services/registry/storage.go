@@ -2,6 +2,8 @@ package registry
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
@@ -32,6 +34,7 @@ type proc struct {
 	issuer          *issuer.Issuer
 	settings        *config.Settings
 	smartcarTaskSvc services.SmartcarTaskService
+	deviceDefSvc    services.DeviceDefinitionService
 }
 
 func (p *proc) Handle(ctx context.Context, data *ceData) error {
@@ -50,7 +53,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		qm.Load(models.MetaTransactionRequestRels.ClaimMetaTransactionRequestAutopiUnit),
 		qm.Load(models.MetaTransactionRequestRels.PairRequestAutopiUnit),
 		qm.Load(models.MetaTransactionRequestRels.UnpairRequestAutopiUnit),
-		qm.Load(models.MetaTransactionRequestRels.MintRequestSyntheticDevice),
+		qm.Load(qm.Rels(models.MetaTransactionRequestRels.MintRequestSyntheticDevice, models.SyntheticDeviceRels.VehicleToken)),
 	).One(context.Background(), p.DB().Reader)
 	if err != nil {
 		return err
@@ -173,26 +176,39 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return err
 				}
 
-				sd, err := models.SyntheticDevices(
-					models.SyntheticDeviceWhere.MintRequestID.EQ(data.RequestID),
-					qm.Load(models.SyntheticDeviceRels.VehicleToken),
-				).One(ctx, p.DB().Reader)
-				if err != nil {
-					return err
-				}
+				sd := mtr.R.MintRequestSyntheticDevice
 
-				tkID := types.NewNullDecimal(decimal.New(out.SyntheticDeviceNode.Int64(), 0))
+				tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.SyntheticDeviceNode, 0))
 				sd.TokenID = tkID
 
 				if _, err := sd.Update(ctx, p.DB().Writer, boil.Infer()); err != nil {
 					return err
 				}
 
+				intToken, intTkErr := sd.IntegrationTokenID.Uint64()
+				if !intTkErr {
+					return errors.New("error occurred parsing integration tokenID")
+				}
+				integration, err := p.deviceDefSvc.GetIntegrationByTokenID(ctx, intToken)
+				if err != nil {
+					return err
+				}
+
 				ud, err := models.UserDeviceAPIIntegrations(
 					models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(sd.R.VehicleToken.UserDeviceID.String),
 					models.UserDeviceAPIIntegrationWhere.Status.EQ(models.UserDeviceAPIIntegrationStatusPending),
+					models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integration.Id),
 				).One(ctx, p.DB().Reader)
 				if err != nil {
+					if errors.Is(err, sql.ErrNoRows) {
+						p.Logger.Debug().Err(err).Str("userDeviceID", sd.R.VehicleToken.UserDeviceID.String).Msg("Device has been deleted")
+						return nil
+					}
+					return err
+				}
+
+				ud.Status = models.UserDeviceAPIIntegrationStatusPendingFirstData
+				if _, err := ud.Update(ctx, p.DB().Writer, boil.Infer()); err != nil {
 					return err
 				}
 
@@ -231,6 +247,7 @@ func NewProcessor(
 	issuer *issuer.Issuer,
 	settings *config.Settings,
 	smartcarTaskSvc services.SmartcarTaskService,
+	deviceDefSvc services.DeviceDefinitionService,
 ) (StatusProcessor, error) {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
@@ -245,5 +262,6 @@ func NewProcessor(
 		issuer:          issuer,
 		settings:        settings,
 		smartcarTaskSvc: smartcarTaskSvc,
+		deviceDefSvc:    deviceDefSvc,
 	}, nil
 }

@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
+
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
@@ -15,7 +17,6 @@ import (
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/golang/mock/gomock"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
@@ -29,11 +30,12 @@ import (
 
 type StorageTestSuite struct {
 	suite.Suite
-	ctx       context.Context
-	dbs       db.Store
-	container testcontainers.Container
-	mockCtrl  *gomock.Controller
-	scTaskSvc *mock_services.MockSmartcarTaskService
+	ctx          context.Context
+	dbs          db.Store
+	container    testcontainers.Container
+	mockCtrl     *gomock.Controller
+	scTaskSvc    *mock_services.MockSmartcarTaskService
+	deviceDefSvc *mock_services.MockDeviceDefinitionService
 
 	proc StatusProcessor
 }
@@ -45,8 +47,9 @@ func (s *StorageTestSuite) SetupSuite() {
 
 	s.dbs, s.container = test.StartContainerDatabase(context.TODO(), s.T(), "../../../migrations")
 
+	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(s.mockCtrl)
 	s.scTaskSvc = mock_services.NewMockSmartcarTaskService(s.mockCtrl)
-	proc, err := NewProcessor(s.dbs.DBS, &logger, nil, nil, &config.Settings{Environment: "prod"}, s.scTaskSvc)
+	proc, err := NewProcessor(s.dbs.DBS, &logger, nil, nil, &config.Settings{Environment: "prod"}, s.scTaskSvc, s.deviceDefSvc)
 	if err != nil {
 		s.T().Fatal(err)
 	}
@@ -75,8 +78,12 @@ func (s *StorageTestSuite) Test_Mint_SyntheticDevice() {
 	syntheticDeviceAddr := common.HexToAddress("4")
 	cipher := new(shared.ROT13Cipher)
 	ownerAddr := common.HexToAddress("1000")
+	integrationID := ksuid.New().String()
 
-	s.scTaskSvc.EXPECT().StartPoll(gomock.Any()).Return(nil)
+	udArgs := &models.UserDeviceAPIIntegration{}
+	s.scTaskSvc.EXPECT().StartPoll(gomock.Any()).Return(nil).Do(func(arg *models.UserDeviceAPIIntegration) {
+		udArgs = arg
+	})
 
 	ud := models.UserDevice{
 		ID: ksuid.New().String(),
@@ -119,7 +126,7 @@ func (s *StorageTestSuite) Test_Mint_SyntheticDevice() {
 	s.NoError(err)
 
 	udi := models.UserDeviceAPIIntegration{
-		IntegrationID:   ksuid.New().String(),
+		IntegrationID:   integrationID,
 		UserDeviceID:    ud.ID,
 		Status:          models.UserDeviceAPIIntegrationStatusPending,
 		AccessToken:     null.StringFrom(acToken),
@@ -127,6 +134,12 @@ func (s *StorageTestSuite) Test_Mint_SyntheticDevice() {
 		RefreshToken:    null.StringFrom(refToken),
 	}
 	s.MustInsert(&udi)
+
+	integration := &ddgrpc.Integration{Id: integrationID}
+	var intTokenID uint64
+	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(integration, nil).Do(func(ct context.Context, arg uint64) {
+		intTokenID = arg
+	})
 
 	a, _ := contracts.RegistryMetaData.GetAbi()
 
@@ -148,7 +161,7 @@ func (s *StorageTestSuite) Test_Mint_SyntheticDevice() {
 							)
 						*/
 						a.Events["SyntheticDeviceNodeMinted"].ID,
-						common.HexToHash(hexutil.EncodeBig(big.NewInt(vehicleID))),
+						common.BigToHash(big.NewInt(vehicleID)),
 						syntheticDeviceAddr.Hash(),
 						ownerAddr.Hash(),
 					},
@@ -168,6 +181,9 @@ func (s *StorageTestSuite) Test_Mint_SyntheticDevice() {
 	).One(s.ctx, s.dbs.DBS().Reader)
 	s.NoError(err)
 
+	s.Equal(udi.UserDeviceID, udArgs.UserDeviceID)
+	s.Equal(uint64(integrationNode), intTokenID)
+
 	tkID := types.NewNullDecimal(decimal.New(30, 0))
 	s.Equal(tkID, sd.TokenID)
 }
@@ -178,8 +194,7 @@ func (s *StorageTestSuite) TestMintVehicle() {
 	logger := zerolog.Nop()
 	s.mockCtrl = gomock.NewController(s.T())
 
-	smc := mock_services.NewMockSmartcarTaskService(s.mockCtrl)
-	proc, err := NewProcessor(s.dbs.DBS, &logger, nil, nil, &config.Settings{Environment: "prod"}, smc)
+	proc, err := NewProcessor(s.dbs.DBS, &logger, nil, nil, &config.Settings{Environment: "prod"}, s.scTaskSvc, s.deviceDefSvc)
 	s.Require().NoError(err)
 
 	ud := models.UserDevice{
