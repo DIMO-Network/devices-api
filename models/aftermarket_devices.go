@@ -293,29 +293,29 @@ var AftermarketDeviceWhere = struct {
 
 // AftermarketDeviceRels is where relationship names are stored.
 var AftermarketDeviceRels = struct {
-	ClaimMetaTransactionRequest       string
-	PairRequest                       string
-	UnpairRequest                     string
-	VehicleToken                      string
-	AutopiUnitAutopiJobs              string
-	HWSerialUserDeviceAPIIntegrations string
+	ClaimMetaTransactionRequest     string
+	PairRequest                     string
+	UnpairRequest                   string
+	VehicleToken                    string
+	AutopiUnitAutopiJobs            string
+	SerialUserDeviceAPIIntegrations string
 }{
-	ClaimMetaTransactionRequest:       "ClaimMetaTransactionRequest",
-	PairRequest:                       "PairRequest",
-	UnpairRequest:                     "UnpairRequest",
-	VehicleToken:                      "VehicleToken",
-	AutopiUnitAutopiJobs:              "AutopiUnitAutopiJobs",
-	HWSerialUserDeviceAPIIntegrations: "HWSerialUserDeviceAPIIntegrations",
+	ClaimMetaTransactionRequest:     "ClaimMetaTransactionRequest",
+	PairRequest:                     "PairRequest",
+	UnpairRequest:                   "UnpairRequest",
+	VehicleToken:                    "VehicleToken",
+	AutopiUnitAutopiJobs:            "AutopiUnitAutopiJobs",
+	SerialUserDeviceAPIIntegrations: "SerialUserDeviceAPIIntegrations",
 }
 
 // aftermarketDeviceR is where relationships are stored.
 type aftermarketDeviceR struct {
-	ClaimMetaTransactionRequest       *MetaTransactionRequest       `boil:"ClaimMetaTransactionRequest" json:"ClaimMetaTransactionRequest" toml:"ClaimMetaTransactionRequest" yaml:"ClaimMetaTransactionRequest"`
-	PairRequest                       *MetaTransactionRequest       `boil:"PairRequest" json:"PairRequest" toml:"PairRequest" yaml:"PairRequest"`
-	UnpairRequest                     *MetaTransactionRequest       `boil:"UnpairRequest" json:"UnpairRequest" toml:"UnpairRequest" yaml:"UnpairRequest"`
-	VehicleToken                      *VehicleNFT                   `boil:"VehicleToken" json:"VehicleToken" toml:"VehicleToken" yaml:"VehicleToken"`
-	AutopiUnitAutopiJobs              AutopiJobSlice                `boil:"AutopiUnitAutopiJobs" json:"AutopiUnitAutopiJobs" toml:"AutopiUnitAutopiJobs" yaml:"AutopiUnitAutopiJobs"`
-	HWSerialUserDeviceAPIIntegrations UserDeviceAPIIntegrationSlice `boil:"HWSerialUserDeviceAPIIntegrations" json:"HWSerialUserDeviceAPIIntegrations" toml:"HWSerialUserDeviceAPIIntegrations" yaml:"HWSerialUserDeviceAPIIntegrations"`
+	ClaimMetaTransactionRequest     *MetaTransactionRequest       `boil:"ClaimMetaTransactionRequest" json:"ClaimMetaTransactionRequest" toml:"ClaimMetaTransactionRequest" yaml:"ClaimMetaTransactionRequest"`
+	PairRequest                     *MetaTransactionRequest       `boil:"PairRequest" json:"PairRequest" toml:"PairRequest" yaml:"PairRequest"`
+	UnpairRequest                   *MetaTransactionRequest       `boil:"UnpairRequest" json:"UnpairRequest" toml:"UnpairRequest" yaml:"UnpairRequest"`
+	VehicleToken                    *VehicleNFT                   `boil:"VehicleToken" json:"VehicleToken" toml:"VehicleToken" yaml:"VehicleToken"`
+	AutopiUnitAutopiJobs            AutopiJobSlice                `boil:"AutopiUnitAutopiJobs" json:"AutopiUnitAutopiJobs" toml:"AutopiUnitAutopiJobs" yaml:"AutopiUnitAutopiJobs"`
+	SerialUserDeviceAPIIntegrations UserDeviceAPIIntegrationSlice `boil:"SerialUserDeviceAPIIntegrations" json:"SerialUserDeviceAPIIntegrations" toml:"SerialUserDeviceAPIIntegrations" yaml:"SerialUserDeviceAPIIntegrations"`
 }
 
 // NewStruct creates a new relationship struct
@@ -358,11 +358,11 @@ func (r *aftermarketDeviceR) GetAutopiUnitAutopiJobs() AutopiJobSlice {
 	return r.AutopiUnitAutopiJobs
 }
 
-func (r *aftermarketDeviceR) GetHWSerialUserDeviceAPIIntegrations() UserDeviceAPIIntegrationSlice {
+func (r *aftermarketDeviceR) GetSerialUserDeviceAPIIntegrations() UserDeviceAPIIntegrationSlice {
 	if r == nil {
 		return nil
 	}
-	return r.HWSerialUserDeviceAPIIntegrations
+	return r.SerialUserDeviceAPIIntegrations
 }
 
 // aftermarketDeviceL is where Load methods for each relationship are stored.
@@ -712,15 +712,15 @@ func (o *AftermarketDevice) AutopiUnitAutopiJobs(mods ...qm.QueryMod) autopiJobQ
 	return AutopiJobs(queryMods...)
 }
 
-// HWSerialUserDeviceAPIIntegrations retrieves all the user_device_api_integration's UserDeviceAPIIntegrations with an executor via hw_serial column.
-func (o *AftermarketDevice) HWSerialUserDeviceAPIIntegrations(mods ...qm.QueryMod) userDeviceAPIIntegrationQuery {
+// SerialUserDeviceAPIIntegrations retrieves all the user_device_api_integration's UserDeviceAPIIntegrations with an executor via serial column.
+func (o *AftermarketDevice) SerialUserDeviceAPIIntegrations(mods ...qm.QueryMod) userDeviceAPIIntegrationQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"devices_api\".\"user_device_api_integrations\".\"hw_serial\"=?", o.Serial),
+		qm.Where("\"devices_api\".\"user_device_api_integrations\".\"serial\"=?", o.Serial),
 	)
 
 	return UserDeviceAPIIntegrations(queryMods...)
@@ -1336,9 +1336,9 @@ func (aftermarketDeviceL) LoadAutopiUnitAutopiJobs(ctx context.Context, e boil.C
 	return nil
 }
 
-// LoadHWSerialUserDeviceAPIIntegrations allows an eager lookup of values, cached into the
+// LoadSerialUserDeviceAPIIntegrations allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (aftermarketDeviceL) LoadHWSerialUserDeviceAPIIntegrations(ctx context.Context, e boil.ContextExecutor, singular bool, maybeAftermarketDevice interface{}, mods queries.Applicator) error {
+func (aftermarketDeviceL) LoadSerialUserDeviceAPIIntegrations(ctx context.Context, e boil.ContextExecutor, singular bool, maybeAftermarketDevice interface{}, mods queries.Applicator) error {
 	var slice []*AftermarketDevice
 	var object *AftermarketDevice
 
@@ -1393,7 +1393,7 @@ func (aftermarketDeviceL) LoadHWSerialUserDeviceAPIIntegrations(ctx context.Cont
 
 	query := NewQuery(
 		qm.From(`devices_api.user_device_api_integrations`),
-		qm.WhereIn(`devices_api.user_device_api_integrations.hw_serial in ?`, args...),
+		qm.WhereIn(`devices_api.user_device_api_integrations.serial in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1424,24 +1424,24 @@ func (aftermarketDeviceL) LoadHWSerialUserDeviceAPIIntegrations(ctx context.Cont
 		}
 	}
 	if singular {
-		object.R.HWSerialUserDeviceAPIIntegrations = resultSlice
+		object.R.SerialUserDeviceAPIIntegrations = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
 				foreign.R = &userDeviceAPIIntegrationR{}
 			}
-			foreign.R.HWSerialAftermarketDevice = object
+			foreign.R.SerialAftermarketDevice = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.Serial, foreign.HWSerial) {
-				local.R.HWSerialUserDeviceAPIIntegrations = append(local.R.HWSerialUserDeviceAPIIntegrations, foreign)
+			if queries.Equal(local.Serial, foreign.Serial) {
+				local.R.SerialUserDeviceAPIIntegrations = append(local.R.SerialUserDeviceAPIIntegrations, foreign)
 				if foreign.R == nil {
 					foreign.R = &userDeviceAPIIntegrationR{}
 				}
-				foreign.R.HWSerialAftermarketDevice = local
+				foreign.R.SerialAftermarketDevice = local
 				break
 			}
 		}
@@ -1853,22 +1853,22 @@ func (o *AftermarketDevice) RemoveAutopiUnitAutopiJobs(ctx context.Context, exec
 	return nil
 }
 
-// AddHWSerialUserDeviceAPIIntegrations adds the given related objects to the existing relationships
+// AddSerialUserDeviceAPIIntegrations adds the given related objects to the existing relationships
 // of the aftermarket_device, optionally inserting them as new records.
-// Appends related to o.R.HWSerialUserDeviceAPIIntegrations.
-// Sets related.R.HWSerialAftermarketDevice appropriately.
-func (o *AftermarketDevice) AddHWSerialUserDeviceAPIIntegrations(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*UserDeviceAPIIntegration) error {
+// Appends related to o.R.SerialUserDeviceAPIIntegrations.
+// Sets related.R.SerialAftermarketDevice appropriately.
+func (o *AftermarketDevice) AddSerialUserDeviceAPIIntegrations(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*UserDeviceAPIIntegration) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.HWSerial, o.Serial)
+			queries.Assign(&rel.Serial, o.Serial)
 			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"devices_api\".\"user_device_api_integrations\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"hw_serial"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"serial"}),
 				strmangle.WhereClause("\"", "\"", 2, userDeviceAPIIntegrationPrimaryKeyColumns),
 			)
 			values := []interface{}{o.Serial, rel.UserDeviceID, rel.IntegrationID}
@@ -1882,38 +1882,38 @@ func (o *AftermarketDevice) AddHWSerialUserDeviceAPIIntegrations(ctx context.Con
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.HWSerial, o.Serial)
+			queries.Assign(&rel.Serial, o.Serial)
 		}
 	}
 
 	if o.R == nil {
 		o.R = &aftermarketDeviceR{
-			HWSerialUserDeviceAPIIntegrations: related,
+			SerialUserDeviceAPIIntegrations: related,
 		}
 	} else {
-		o.R.HWSerialUserDeviceAPIIntegrations = append(o.R.HWSerialUserDeviceAPIIntegrations, related...)
+		o.R.SerialUserDeviceAPIIntegrations = append(o.R.SerialUserDeviceAPIIntegrations, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &userDeviceAPIIntegrationR{
-				HWSerialAftermarketDevice: o,
+				SerialAftermarketDevice: o,
 			}
 		} else {
-			rel.R.HWSerialAftermarketDevice = o
+			rel.R.SerialAftermarketDevice = o
 		}
 	}
 	return nil
 }
 
-// SetHWSerialUserDeviceAPIIntegrations removes all previously related items of the
+// SetSerialUserDeviceAPIIntegrations removes all previously related items of the
 // aftermarket_device replacing them completely with the passed
 // in related items, optionally inserting them as new records.
-// Sets o.R.HWSerialAftermarketDevice's HWSerialUserDeviceAPIIntegrations accordingly.
-// Replaces o.R.HWSerialUserDeviceAPIIntegrations with related.
-// Sets related.R.HWSerialAftermarketDevice's HWSerialUserDeviceAPIIntegrations accordingly.
-func (o *AftermarketDevice) SetHWSerialUserDeviceAPIIntegrations(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*UserDeviceAPIIntegration) error {
-	query := "update \"devices_api\".\"user_device_api_integrations\" set \"hw_serial\" = null where \"hw_serial\" = $1"
+// Sets o.R.SerialAftermarketDevice's SerialUserDeviceAPIIntegrations accordingly.
+// Replaces o.R.SerialUserDeviceAPIIntegrations with related.
+// Sets related.R.SerialAftermarketDevice's SerialUserDeviceAPIIntegrations accordingly.
+func (o *AftermarketDevice) SetSerialUserDeviceAPIIntegrations(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*UserDeviceAPIIntegration) error {
+	query := "update \"devices_api\".\"user_device_api_integrations\" set \"serial\" = null where \"serial\" = $1"
 	values := []interface{}{o.Serial}
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -1926,35 +1926,35 @@ func (o *AftermarketDevice) SetHWSerialUserDeviceAPIIntegrations(ctx context.Con
 	}
 
 	if o.R != nil {
-		for _, rel := range o.R.HWSerialUserDeviceAPIIntegrations {
-			queries.SetScanner(&rel.HWSerial, nil)
+		for _, rel := range o.R.SerialUserDeviceAPIIntegrations {
+			queries.SetScanner(&rel.Serial, nil)
 			if rel.R == nil {
 				continue
 			}
 
-			rel.R.HWSerialAftermarketDevice = nil
+			rel.R.SerialAftermarketDevice = nil
 		}
-		o.R.HWSerialUserDeviceAPIIntegrations = nil
+		o.R.SerialUserDeviceAPIIntegrations = nil
 	}
 
-	return o.AddHWSerialUserDeviceAPIIntegrations(ctx, exec, insert, related...)
+	return o.AddSerialUserDeviceAPIIntegrations(ctx, exec, insert, related...)
 }
 
-// RemoveHWSerialUserDeviceAPIIntegrations relationships from objects passed in.
-// Removes related items from R.HWSerialUserDeviceAPIIntegrations (uses pointer comparison, removal does not keep order)
-// Sets related.R.HWSerialAftermarketDevice.
-func (o *AftermarketDevice) RemoveHWSerialUserDeviceAPIIntegrations(ctx context.Context, exec boil.ContextExecutor, related ...*UserDeviceAPIIntegration) error {
+// RemoveSerialUserDeviceAPIIntegrations relationships from objects passed in.
+// Removes related items from R.SerialUserDeviceAPIIntegrations (uses pointer comparison, removal does not keep order)
+// Sets related.R.SerialAftermarketDevice.
+func (o *AftermarketDevice) RemoveSerialUserDeviceAPIIntegrations(ctx context.Context, exec boil.ContextExecutor, related ...*UserDeviceAPIIntegration) error {
 	if len(related) == 0 {
 		return nil
 	}
 
 	var err error
 	for _, rel := range related {
-		queries.SetScanner(&rel.HWSerial, nil)
+		queries.SetScanner(&rel.Serial, nil)
 		if rel.R != nil {
-			rel.R.HWSerialAftermarketDevice = nil
+			rel.R.SerialAftermarketDevice = nil
 		}
-		if _, err = rel.Update(ctx, exec, boil.Whitelist("hw_serial")); err != nil {
+		if _, err = rel.Update(ctx, exec, boil.Whitelist("serial")); err != nil {
 			return err
 		}
 	}
@@ -1963,16 +1963,16 @@ func (o *AftermarketDevice) RemoveHWSerialUserDeviceAPIIntegrations(ctx context.
 	}
 
 	for _, rel := range related {
-		for i, ri := range o.R.HWSerialUserDeviceAPIIntegrations {
+		for i, ri := range o.R.SerialUserDeviceAPIIntegrations {
 			if rel != ri {
 				continue
 			}
 
-			ln := len(o.R.HWSerialUserDeviceAPIIntegrations)
+			ln := len(o.R.SerialUserDeviceAPIIntegrations)
 			if ln > 1 && i < ln-1 {
-				o.R.HWSerialUserDeviceAPIIntegrations[i] = o.R.HWSerialUserDeviceAPIIntegrations[ln-1]
+				o.R.SerialUserDeviceAPIIntegrations[i] = o.R.SerialUserDeviceAPIIntegrations[ln-1]
 			}
-			o.R.HWSerialUserDeviceAPIIntegrations = o.R.HWSerialUserDeviceAPIIntegrations[:ln-1]
+			o.R.SerialUserDeviceAPIIntegrations = o.R.SerialUserDeviceAPIIntegrations[:ln-1]
 			break
 		}
 	}

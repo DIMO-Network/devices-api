@@ -463,7 +463,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	_ = test.SetupCreateAutoPiUnit(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
+	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
 
 	addr := "67B94473D81D0cd00849D563C94d0432Ac988B49"
@@ -507,7 +507,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	ud := test.SetupCreateUserDeviceWithDeviceID(s.T(), userID, deviceID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	_ = test.SetupCreateAutoPiUnit(s.T(), userID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
+	_ = test.SetupCreateAftermarketDevice(s.T(), userID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
 
 	addr := "67B94473D81D0cd00849D563C94d0432Ac988B49"
@@ -650,7 +650,7 @@ func (s *UserDevicesControllerTestSuite) TestNameValidate() {
 func (s *UserDevicesControllerTestSuite) TestPatchName() {
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, ksuid.New().String(), nil, "", s.pdb)
 	deviceID := uuid.New().String()
-	apunit := test.SetupCreateAutoPiUnit(s.T(), s.testUserID, uuid.NewString(), &deviceID, s.pdb)
+	apunit := test.SetupCreateAftermarketDevice(s.T(), s.testUserID, uuid.NewString(), &deviceID, s.pdb)
 	autoPiIntID := ksuid.New().String()
 	vehicleID := 3214
 	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), apunit.Serial, deviceID, ud.ID, autoPiIntID, s.pdb)
@@ -804,7 +804,7 @@ func (s *UserDevicesControllerTestSuite) TestGetRange() {
 	ddID := ksuid.New().String()
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	smartCarIntegration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
-	_ = test.SetupCreateAutoPiUnit(s.T(), testUserID, autoPiUnitID, &autoPiDeviceID, s.pdb)
+	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, autoPiUnitID, &autoPiDeviceID, s.pdb)
 
 	gddir := []*grpc.GetDeviceDefinitionItemResponse{
 		{

@@ -161,7 +161,7 @@ func (i *Integration) Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *b
 		IntegrationID: integ.Id,
 		ExternalID:    null.StringFrom(autoPi.ID),
 		Status:        models.UserDeviceAPIIntegrationStatusPending,
-		HWSerial:      null.StringFrom(autoPi.UnitID),
+		Serial:        null.StringFrom(autoPi.UnitID),
 	}
 	err = udai.Metadata.Marshal(udaiMd)
 	if err != nil {

@@ -77,7 +77,7 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 	apiInt, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID),
-		qm.Load(models.UserDeviceAPIIntegrationRels.HWSerialAftermarketDevice),
+		qm.Load(models.UserDeviceAPIIntegrationRels.SerialAftermarketDevice),
 	).One(ctx, tx)
 	if err != nil {
 		return err
@@ -104,7 +104,7 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 			}
 		}
 	case constants.AutoPiVendor:
-		if unit := apiInt.R.HWSerialAftermarketDevice; unit != nil && unit.PairRequestID.Valid {
+		if unit := apiInt.R.SerialAftermarketDevice; unit != nil && unit.PairRequestID.Valid {
 			return fiber.NewError(fiber.StatusConflict, "Must un-pair on-chain before deleting integration.")
 		}
 
@@ -739,8 +739,8 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 
 	udai, err := ud.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(autoPiInt.Id),
-		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.HWSerialAftermarketDevice, models.AftermarketDeviceRels.PairRequest)),
-		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.HWSerialAftermarketDevice, models.AftermarketDeviceRels.UnpairRequest)),
+		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.SerialAftermarketDevice, models.AftermarketDeviceRels.PairRequest)),
+		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.SerialAftermarketDevice, models.AftermarketDeviceRels.UnpairRequest)),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
@@ -748,16 +748,16 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 			return opaqueInternalError
 		}
 	} else {
-		if !udai.HWSerial.Valid {
+		if !udai.Serial.Valid {
 			return opaqueInternalError
 		}
 
 		// Conflict with web2 pairing?
-		if autoPiUnit != nil && (!udai.HWSerial.Valid || udai.HWSerial.String != autoPiUnit.Serial) {
+		if autoPiUnit != nil && (!udai.Serial.Valid || udai.Serial.String != autoPiUnit.Serial) {
 			return fiber.NewError(fiber.StatusConflict, "Vehicle already paired with another AutoPi.")
 		}
 
-		autoPiUnit = udai.R.HWSerialAftermarketDevice
+		autoPiUnit = udai.R.SerialAftermarketDevice
 	}
 
 	if autoPiUnit.R.PairRequest != nil && autoPiUnit.R.PairRequest.Status != "Failed" {
@@ -870,13 +870,13 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 			models.AftermarketDeviceWhere.Serial.EQ(unitID.String()),
 			qm.Load(models.AftermarketDeviceRels.PairRequest),
 			qm.Load(models.AftermarketDeviceRels.UnpairRequest),
-			qm.Load(models.AftermarketDeviceRels.HWSerialUserDeviceAPIIntegrations),
+			qm.Load(models.AftermarketDeviceRels.SerialUserDeviceAPIIntegrations),
 		).One(c.Context(), udc.DBS().Reader)
 		if err != nil {
 			return err
 		}
 
-		for _, udai := range autoPiUnit.R.HWSerialUserDeviceAPIIntegrations {
+		for _, udai := range autoPiUnit.R.SerialUserDeviceAPIIntegrations {
 			if udai.UserDeviceID != userDeviceID {
 				logger.Error().Str("existingUserDeviceId", udai.UserDeviceID).Msg("AutoPi already web2-paired with another vehicle.")
 				return fiber.NewError(fiber.StatusConflict, "AutoPi connected to another vehicle.")
@@ -886,8 +886,8 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 
 	udai, err := ud.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(autoPiInt.Id),
-		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.HWSerialAftermarketDevice, models.AftermarketDeviceRels.PairRequest)),
-		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.HWSerialAftermarketDevice, models.AftermarketDeviceRels.UnpairRequest)),
+		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.SerialAftermarketDevice, models.AftermarketDeviceRels.PairRequest)),
+		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.SerialAftermarketDevice, models.AftermarketDeviceRels.UnpairRequest)),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
@@ -896,15 +896,15 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 		}
 	} else {
 		// Conflict with web2 pairing?
-		if autoPiUnit != nil && (!udai.HWSerial.Valid || udai.HWSerial.String != autoPiUnit.Serial) {
+		if autoPiUnit != nil && (!udai.Serial.Valid || udai.Serial.String != autoPiUnit.Serial) {
 			return fiber.NewError(fiber.StatusConflict, "Vehicle already paired with another AutoPi.")
 		}
 
-		if !udai.HWSerial.Valid {
+		if !udai.Serial.Valid {
 			return opaqueInternalError
 		}
 
-		autoPiUnit = udai.R.HWSerialAftermarketDevice
+		autoPiUnit = udai.R.SerialAftermarketDevice
 	}
 
 	if autoPiUnit.R.PairRequest != nil && autoPiUnit.R.PairRequest.Status != "Failed" {
@@ -1265,13 +1265,13 @@ func (udc *UserDevicesController) GetAutoPiUnpairMessage(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
-	if !udai.HWSerial.Valid {
+	if !udai.Serial.Valid {
 		// This shouldn't happen.
 		logger.Error().Msg("Active AutoPi integration with no associated unit id.")
 		return opaqueInternalError
 	}
 
-	autoPiUnit, err := udai.HWSerialAftermarketDevice().One(c.Context(), udc.DBS().Reader)
+	autoPiUnit, err := udai.SerialAftermarketDevice().One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		logger.Error().Msg("Failed to retrieve AutoPi record.")
 		return opaqueInternalError

@@ -72,7 +72,7 @@ func (s *AutoPiAPIServiceTestSuite) TestGetUserDeviceIntegrationByUnitID() {
 		IntegrationID: ksuid.New().String(),
 		Status:        models.UserDeviceAPIIntegrationStatusActive,
 		ExternalID:    null.StringFrom("autoPiDeviceID"),
-		HWSerial:      null.StringFrom(autoPiUnitID),
+		Serial:        null.StringFrom(autoPiUnitID),
 	}
 
 	err := apUdai.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
@@ -95,7 +95,7 @@ func (s *AutoPiAPIServiceTestSuite) TestCommandRaw() {
 		apiURL     = "https://mock.town"
 		jobID      = "321"
 	)
-	_ = test.SetupCreateAutoPiUnit(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
+	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	// http client mock
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()

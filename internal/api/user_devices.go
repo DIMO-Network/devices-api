@@ -297,7 +297,7 @@ func (s *userDeviceService) UpdateDeviceIntegrationStatus(ctx context.Context, r
 //nolint:all
 func (s *userDeviceService) GetUserDeviceByAutoPIUnitId(ctx context.Context, req *pb.GetUserDeviceByAutoPIUnitIdRequest) (*pb.UserDeviceAutoPIUnitResponse, error) {
 	dbDevice, err := models.UserDeviceAPIIntegrations(
-		models.UserDeviceAPIIntegrationWhere.HWSerial.EQ(null.StringFrom(req.Id)),
+		models.UserDeviceAPIIntegrationWhere.Serial.EQ(null.StringFrom(req.Id)),
 		qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
 	).One(ctx, s.dbs().Reader)
 	if err != nil {

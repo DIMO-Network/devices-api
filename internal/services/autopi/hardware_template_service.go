@@ -128,7 +128,7 @@ func (a *hardwareTemplateService) ApplyHardwareTemplate(ctx context.Context, req
 
 	udapi, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(req.UserDeviceId),
-		models.UserDeviceAPIIntegrationWhere.HWSerial.EQ(null.StringFrom(req.AutoApiUnitId)),
+		models.UserDeviceAPIIntegrationWhere.Serial.EQ(null.StringFrom(req.AutoApiUnitId)),
 	).One(ctx, tx)
 	if err != nil {
 		return nil, err

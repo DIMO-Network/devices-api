@@ -245,7 +245,7 @@ func SetupCreateUserDeviceWithDeviceID(t *testing.T, testUserID string, deviceID
 	return ud
 }
 
-func SetupCreateAutoPiUnit(t *testing.T, userID, unitID string, deviceID *string, pdb db.Store) *models.AftermarketDevice {
+func SetupCreateAftermarketDevice(t *testing.T, userID, unitID string, deviceID *string, pdb db.Store) *models.AftermarketDevice {
 	amd := models.AftermarketDevice{
 		Serial: unitID,
 		UserID: null.StringFrom(userID),
@@ -259,7 +259,7 @@ func SetupCreateAutoPiUnit(t *testing.T, userID, unitID string, deviceID *string
 	return &amd
 }
 
-func SetupCreateMintedAutoPiUnit(t *testing.T, userID, unitID string, tokenID *big.Int, addr common.Address, deviceID *string, pdb db.Store) *models.AftermarketDevice {
+func SetupCreateMintedAftermarketDevice(t *testing.T, userID, unitID string, tokenID *big.Int, addr common.Address, deviceID *string, pdb db.Store) *models.AftermarketDevice {
 	amd := models.AftermarketDevice{
 		Serial:          unitID,
 		UserID:          null.StringFrom(userID),
@@ -338,7 +338,7 @@ func SetupCreateUserDeviceAPIIntegration(t *testing.T, autoPiUnitID, externalID,
 	}
 	if autoPiUnitID != "" {
 		md := fmt.Sprintf(`{"autoPiUnitId": "%s"}`, autoPiUnitID)
-		udapiInt.HWSerial = null.StringFrom(autoPiUnitID)
+		udapiInt.Serial = null.StringFrom(autoPiUnitID)
 		_ = udapiInt.Metadata.UnmarshalJSON([]byte(md))
 	}
 	err := udapiInt.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())

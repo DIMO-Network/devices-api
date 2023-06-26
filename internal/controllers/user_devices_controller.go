@@ -1065,8 +1065,8 @@ func (udc *UserDevicesController) UpdateName(c *fiber.Ctx) error {
 	}
 	// update name on autopi too. This helps for debugging purposes to search a vehicle
 	for _, udapi := range userDevice.R.UserDeviceAPIIntegrations {
-		if udapi.HWSerial.Valid {
-			autoPiDevice, err := udc.autoPiSvc.GetDeviceByUnitID(udapi.HWSerial.String)
+		if udapi.Serial.Valid {
+			autoPiDevice, err := udc.autoPiSvc.GetDeviceByUnitID(udapi.Serial.String)
 			if err == nil {
 				_ = udc.autoPiSvc.PatchVehicleProfile(autoPiDevice.Vehicle.ID, services.PatchVehicleProfile{
 					CallName: req.Name,
@@ -1498,7 +1498,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
-		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationRels.HWSerialAftermarketDevice)),
+		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationRels.SerialAftermarketDevice)),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1513,7 +1513,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 	}
 
 	for _, apiInteg := range userDevice.R.UserDeviceAPIIntegrations {
-		if unit := apiInteg.R.HWSerialAftermarketDevice; unit != nil && !unit.VehicleTokenID.IsZero() {
+		if unit := apiInteg.R.SerialAftermarketDevice; unit != nil && !unit.VehicleTokenID.IsZero() {
 			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Cannot delete vehicle before unpairing AutoPi %s on-chain.", unit.Serial))
 		}
 	}
