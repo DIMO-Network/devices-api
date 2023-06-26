@@ -332,7 +332,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 			logger.Fatal().Err(err).Msg("Failed to create issuer.")
 		}
 
-		store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, issuer, settings)
+		store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, issuer, settings, scTaskSvc, ddSvc)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("Failed to create registry storage client")
 		}
