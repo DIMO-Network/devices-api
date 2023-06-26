@@ -50,9 +50,9 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		models.MetaTransactionRequestWhere.ID.EQ(data.RequestID),
 		// This is really ugly. We should probably link back to the type instead of doing this.
 		qm.Load(models.MetaTransactionRequestRels.MintRequestVehicleNFT),
-		qm.Load(models.MetaTransactionRequestRels.ClaimMetaTransactionRequestAutopiUnit),
-		qm.Load(models.MetaTransactionRequestRels.PairRequestAutopiUnit),
-		qm.Load(models.MetaTransactionRequestRels.UnpairRequestAutopiUnit),
+		qm.Load(models.MetaTransactionRequestRels.ClaimMetaTransactionRequestAftermarketDevice),
+		qm.Load(models.MetaTransactionRequestRels.PairRequestAftermarketDevice),
+		qm.Load(models.MetaTransactionRequestRels.UnpairRequestAftermarketDevice),
 		qm.Load(qm.Rels(models.MetaTransactionRequestRels.MintRequestSyntheticDevice, models.SyntheticDeviceRels.VehicleToken)),
 	).One(context.Background(), p.DB().Reader)
 	if err != nil {
@@ -111,7 +111,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 			}
 		}
 		// Other soon.
-	case mtr.R.ClaimMetaTransactionRequestAutopiUnit != nil:
+	case mtr.R.ClaimMetaTransactionRequestAftermarketDevice != nil:
 		for _, l1 := range data.Transaction.Logs {
 			if l1.Topics[0] == deviceClaimedEvent.ID {
 				out := new(contracts.RegistryAftermarketDeviceClaimed)
@@ -120,16 +120,16 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return err
 				}
 
-				mtr.R.ClaimMetaTransactionRequestAutopiUnit.OwnerAddress = null.BytesFrom(out.Owner[:])
-				_, err = mtr.R.ClaimMetaTransactionRequestAutopiUnit.Update(ctx, p.DB().Writer, boil.Infer())
+				mtr.R.ClaimMetaTransactionRequestAftermarketDevice.OwnerAddress = null.BytesFrom(out.Owner[:])
+				_, err = mtr.R.ClaimMetaTransactionRequestAftermarketDevice.Update(ctx, p.DB().Writer, boil.Infer())
 				if err != nil {
 					return err
 				}
 
-				logger.Info().Str("autoPiTokenId", mtr.R.ClaimMetaTransactionRequestAutopiUnit.TokenID.String()).Str("owner", out.Owner.String()).Msg("Device claimed.")
+				logger.Info().Str("autoPiTokenId", mtr.R.ClaimMetaTransactionRequestAftermarketDevice.TokenID.String()).Str("owner", out.Owner.String()).Msg("Device claimed.")
 			}
 		}
-	case mtr.R.PairRequestAutopiUnit != nil:
+	case mtr.R.PairRequestAftermarketDevice != nil:
 		for _, l1 := range data.Transaction.Logs {
 			if l1.Topics[0] == devicePairedEvent.ID {
 				out := new(contracts.RegistryAftermarketDevicePaired)
@@ -138,8 +138,8 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return err
 				}
 
-				mtr.R.PairRequestAutopiUnit.VehicleTokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.VehicleNode, 0))
-				_, err = mtr.R.PairRequestAutopiUnit.Update(ctx, p.DB().Writer, boil.Infer())
+				mtr.R.PairRequestAftermarketDevice.VehicleTokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.VehicleNode, 0))
+				_, err = mtr.R.PairRequestAftermarketDevice.Update(ctx, p.DB().Writer, boil.Infer())
 				if err != nil {
 					return err
 				}
@@ -147,7 +147,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				return p.ap.Pair(ctx, out.AftermarketDeviceNode, out.VehicleNode)
 			}
 		}
-	case mtr.R.UnpairRequestAutopiUnit != nil:
+	case mtr.R.UnpairRequestAftermarketDevice != nil:
 		for _, l1 := range data.Transaction.Logs {
 			if l1.Topics[0] == deviceUnpairedEvent.ID {
 				out := new(contracts.RegistryAftermarketDeviceUnpaired)
@@ -156,9 +156,9 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return err
 				}
 
-				mtr.R.UnpairRequestAutopiUnit.VehicleTokenID = types.NullDecimal{}
-				mtr.R.UnpairRequestAutopiUnit.PairRequestID = null.String{}
-				_, err = mtr.R.UnpairRequestAutopiUnit.Update(ctx, p.DB().Writer, boil.Infer())
+				mtr.R.UnpairRequestAftermarketDevice.VehicleTokenID = types.NullDecimal{}
+				mtr.R.UnpairRequestAftermarketDevice.PairRequestID = null.String{}
+				_, err = mtr.R.UnpairRequestAftermarketDevice.Update(ctx, p.DB().Writer, boil.Infer())
 				if err != nil {
 					return err
 				}

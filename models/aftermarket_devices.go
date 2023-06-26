@@ -23,10 +23,9 @@ import (
 	"github.com/volatiletech/strmangle"
 )
 
-// AutopiUnit is an object representing the database table.
-type AutopiUnit struct {
-	AutopiUnitID                  string            `boil:"autopi_unit_id" json:"autopi_unit_id" toml:"autopi_unit_id" yaml:"autopi_unit_id"`
-	AutopiDeviceID                null.String       `boil:"autopi_device_id" json:"autopi_device_id,omitempty" toml:"autopi_device_id" yaml:"autopi_device_id,omitempty"`
+// AftermarketDevice is an object representing the database table.
+type AftermarketDevice struct {
+	Serial                        string            `boil:"serial" json:"serial" toml:"serial" yaml:"serial"`
 	UserID                        null.String       `boil:"user_id" json:"user_id,omitempty" toml:"user_id" yaml:"user_id,omitempty"`
 	EthereumAddress               null.Bytes        `boil:"ethereum_address" json:"ethereum_address,omitempty" toml:"ethereum_address" yaml:"ethereum_address,omitempty"`
 	CreatedAt                     time.Time         `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
@@ -38,14 +37,14 @@ type AutopiUnit struct {
 	UnpairRequestID               null.String       `boil:"unpair_request_id" json:"unpair_request_id,omitempty" toml:"unpair_request_id" yaml:"unpair_request_id,omitempty"`
 	VehicleTokenID                types.NullDecimal `boil:"vehicle_token_id" json:"vehicle_token_id,omitempty" toml:"vehicle_token_id" yaml:"vehicle_token_id,omitempty"`
 	Beneficiary                   null.Bytes        `boil:"beneficiary" json:"beneficiary,omitempty" toml:"beneficiary" yaml:"beneficiary,omitempty"`
+	Metadata                      null.JSON         `boil:"metadata" json:"metadata,omitempty" toml:"metadata" yaml:"metadata,omitempty"`
 
-	R *autopiUnitR `boil:"-" json:"-" toml:"-" yaml:"-"`
-	L autopiUnitL  `boil:"-" json:"-" toml:"-" yaml:"-"`
+	R *aftermarketDeviceR `boil:"-" json:"-" toml:"-" yaml:"-"`
+	L aftermarketDeviceL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
-var AutopiUnitColumns = struct {
-	AutopiUnitID                  string
-	AutopiDeviceID                string
+var AftermarketDeviceColumns = struct {
+	Serial                        string
 	UserID                        string
 	EthereumAddress               string
 	CreatedAt                     string
@@ -57,9 +56,9 @@ var AutopiUnitColumns = struct {
 	UnpairRequestID               string
 	VehicleTokenID                string
 	Beneficiary                   string
+	Metadata                      string
 }{
-	AutopiUnitID:                  "autopi_unit_id",
-	AutopiDeviceID:                "autopi_device_id",
+	Serial:                        "serial",
 	UserID:                        "user_id",
 	EthereumAddress:               "ethereum_address",
 	CreatedAt:                     "created_at",
@@ -71,11 +70,11 @@ var AutopiUnitColumns = struct {
 	UnpairRequestID:               "unpair_request_id",
 	VehicleTokenID:                "vehicle_token_id",
 	Beneficiary:                   "beneficiary",
+	Metadata:                      "metadata",
 }
 
-var AutopiUnitTableColumns = struct {
-	AutopiUnitID                  string
-	AutopiDeviceID                string
+var AftermarketDeviceTableColumns = struct {
+	Serial                        string
 	UserID                        string
 	EthereumAddress               string
 	CreatedAt                     string
@@ -87,23 +86,85 @@ var AutopiUnitTableColumns = struct {
 	UnpairRequestID               string
 	VehicleTokenID                string
 	Beneficiary                   string
+	Metadata                      string
 }{
-	AutopiUnitID:                  "autopi_units.autopi_unit_id",
-	AutopiDeviceID:                "autopi_units.autopi_device_id",
-	UserID:                        "autopi_units.user_id",
-	EthereumAddress:               "autopi_units.ethereum_address",
-	CreatedAt:                     "autopi_units.created_at",
-	UpdatedAt:                     "autopi_units.updated_at",
-	TokenID:                       "autopi_units.token_id",
-	ClaimMetaTransactionRequestID: "autopi_units.claim_meta_transaction_request_id",
-	OwnerAddress:                  "autopi_units.owner_address",
-	PairRequestID:                 "autopi_units.pair_request_id",
-	UnpairRequestID:               "autopi_units.unpair_request_id",
-	VehicleTokenID:                "autopi_units.vehicle_token_id",
-	Beneficiary:                   "autopi_units.beneficiary",
+	Serial:                        "aftermarket_devices.serial",
+	UserID:                        "aftermarket_devices.user_id",
+	EthereumAddress:               "aftermarket_devices.ethereum_address",
+	CreatedAt:                     "aftermarket_devices.created_at",
+	UpdatedAt:                     "aftermarket_devices.updated_at",
+	TokenID:                       "aftermarket_devices.token_id",
+	ClaimMetaTransactionRequestID: "aftermarket_devices.claim_meta_transaction_request_id",
+	OwnerAddress:                  "aftermarket_devices.owner_address",
+	PairRequestID:                 "aftermarket_devices.pair_request_id",
+	UnpairRequestID:               "aftermarket_devices.unpair_request_id",
+	VehicleTokenID:                "aftermarket_devices.vehicle_token_id",
+	Beneficiary:                   "aftermarket_devices.beneficiary",
+	Metadata:                      "aftermarket_devices.metadata",
 }
 
 // Generated where
+
+type whereHelperstring struct{ field string }
+
+func (w whereHelperstring) EQ(x string) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
+func (w whereHelperstring) NEQ(x string) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
+func (w whereHelperstring) LT(x string) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
+func (w whereHelperstring) LTE(x string) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
+func (w whereHelperstring) GT(x string) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
+func (w whereHelperstring) GTE(x string) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
+func (w whereHelperstring) IN(slice []string) qm.QueryMod {
+	values := make([]interface{}, 0, len(slice))
+	for _, value := range slice {
+		values = append(values, value)
+	}
+	return qm.WhereIn(fmt.Sprintf("%s IN ?", w.field), values...)
+}
+func (w whereHelperstring) NIN(slice []string) qm.QueryMod {
+	values := make([]interface{}, 0, len(slice))
+	for _, value := range slice {
+		values = append(values, value)
+	}
+	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
+}
+
+type whereHelpernull_String struct{ field string }
+
+func (w whereHelpernull_String) EQ(x null.String) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_String) NEQ(x null.String) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_String) LT(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_String) LTE(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_String) GT(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_String) GTE(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+func (w whereHelpernull_String) IN(slice []string) qm.QueryMod {
+	values := make([]interface{}, 0, len(slice))
+	for _, value := range slice {
+		values = append(values, value)
+	}
+	return qm.WhereIn(fmt.Sprintf("%s IN ?", w.field), values...)
+}
+func (w whereHelpernull_String) NIN(slice []string) qm.QueryMod {
+	values := make([]interface{}, 0, len(slice))
+	for _, value := range slice {
+		values = append(values, value)
+	}
+	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
+}
+
+func (w whereHelpernull_String) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_String) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
 type whereHelpernull_Bytes struct{ field string }
 
@@ -128,6 +189,27 @@ func (w whereHelpernull_Bytes) GTE(x null.Bytes) qm.QueryMod {
 
 func (w whereHelpernull_Bytes) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
 func (w whereHelpernull_Bytes) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
+
+type whereHelpertime_Time struct{ field string }
+
+func (w whereHelpertime_Time) EQ(x time.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.EQ, x)
+}
+func (w whereHelpertime_Time) NEQ(x time.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.NEQ, x)
+}
+func (w whereHelpertime_Time) LT(x time.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpertime_Time) LTE(x time.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpertime_Time) GT(x time.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpertime_Time) GTE(x time.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
 
 type whereHelpertypes_NullDecimal struct{ field string }
 
@@ -155,9 +237,32 @@ func (w whereHelpertypes_NullDecimal) IsNotNull() qm.QueryMod {
 	return qmhelper.WhereIsNotNull(w.field)
 }
 
-var AutopiUnitWhere = struct {
-	AutopiUnitID                  whereHelperstring
-	AutopiDeviceID                whereHelpernull_String
+type whereHelpernull_JSON struct{ field string }
+
+func (w whereHelpernull_JSON) EQ(x null.JSON) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_JSON) NEQ(x null.JSON) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_JSON) LT(x null.JSON) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_JSON) LTE(x null.JSON) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_JSON) GT(x null.JSON) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_JSON) GTE(x null.JSON) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelpernull_JSON) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_JSON) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
+
+var AftermarketDeviceWhere = struct {
+	Serial                        whereHelperstring
 	UserID                        whereHelpernull_String
 	EthereumAddress               whereHelpernull_Bytes
 	CreatedAt                     whereHelpertime_Time
@@ -169,130 +274,131 @@ var AutopiUnitWhere = struct {
 	UnpairRequestID               whereHelpernull_String
 	VehicleTokenID                whereHelpertypes_NullDecimal
 	Beneficiary                   whereHelpernull_Bytes
+	Metadata                      whereHelpernull_JSON
 }{
-	AutopiUnitID:                  whereHelperstring{field: "\"devices_api\".\"autopi_units\".\"autopi_unit_id\""},
-	AutopiDeviceID:                whereHelpernull_String{field: "\"devices_api\".\"autopi_units\".\"autopi_device_id\""},
-	UserID:                        whereHelpernull_String{field: "\"devices_api\".\"autopi_units\".\"user_id\""},
-	EthereumAddress:               whereHelpernull_Bytes{field: "\"devices_api\".\"autopi_units\".\"ethereum_address\""},
-	CreatedAt:                     whereHelpertime_Time{field: "\"devices_api\".\"autopi_units\".\"created_at\""},
-	UpdatedAt:                     whereHelpertime_Time{field: "\"devices_api\".\"autopi_units\".\"updated_at\""},
-	TokenID:                       whereHelpertypes_NullDecimal{field: "\"devices_api\".\"autopi_units\".\"token_id\""},
-	ClaimMetaTransactionRequestID: whereHelpernull_String{field: "\"devices_api\".\"autopi_units\".\"claim_meta_transaction_request_id\""},
-	OwnerAddress:                  whereHelpernull_Bytes{field: "\"devices_api\".\"autopi_units\".\"owner_address\""},
-	PairRequestID:                 whereHelpernull_String{field: "\"devices_api\".\"autopi_units\".\"pair_request_id\""},
-	UnpairRequestID:               whereHelpernull_String{field: "\"devices_api\".\"autopi_units\".\"unpair_request_id\""},
-	VehicleTokenID:                whereHelpertypes_NullDecimal{field: "\"devices_api\".\"autopi_units\".\"vehicle_token_id\""},
-	Beneficiary:                   whereHelpernull_Bytes{field: "\"devices_api\".\"autopi_units\".\"beneficiary\""},
+	Serial:                        whereHelperstring{field: "\"devices_api\".\"aftermarket_devices\".\"serial\""},
+	UserID:                        whereHelpernull_String{field: "\"devices_api\".\"aftermarket_devices\".\"user_id\""},
+	EthereumAddress:               whereHelpernull_Bytes{field: "\"devices_api\".\"aftermarket_devices\".\"ethereum_address\""},
+	CreatedAt:                     whereHelpertime_Time{field: "\"devices_api\".\"aftermarket_devices\".\"created_at\""},
+	UpdatedAt:                     whereHelpertime_Time{field: "\"devices_api\".\"aftermarket_devices\".\"updated_at\""},
+	TokenID:                       whereHelpertypes_NullDecimal{field: "\"devices_api\".\"aftermarket_devices\".\"token_id\""},
+	ClaimMetaTransactionRequestID: whereHelpernull_String{field: "\"devices_api\".\"aftermarket_devices\".\"claim_meta_transaction_request_id\""},
+	OwnerAddress:                  whereHelpernull_Bytes{field: "\"devices_api\".\"aftermarket_devices\".\"owner_address\""},
+	PairRequestID:                 whereHelpernull_String{field: "\"devices_api\".\"aftermarket_devices\".\"pair_request_id\""},
+	UnpairRequestID:               whereHelpernull_String{field: "\"devices_api\".\"aftermarket_devices\".\"unpair_request_id\""},
+	VehicleTokenID:                whereHelpertypes_NullDecimal{field: "\"devices_api\".\"aftermarket_devices\".\"vehicle_token_id\""},
+	Beneficiary:                   whereHelpernull_Bytes{field: "\"devices_api\".\"aftermarket_devices\".\"beneficiary\""},
+	Metadata:                      whereHelpernull_JSON{field: "\"devices_api\".\"aftermarket_devices\".\"metadata\""},
 }
 
-// AutopiUnitRels is where relationship names are stored.
-var AutopiUnitRels = struct {
-	ClaimMetaTransactionRequest string
-	PairRequest                 string
-	UnpairRequest               string
-	VehicleToken                string
-	AutopiJobs                  string
-	UserDeviceAPIIntegrations   string
+// AftermarketDeviceRels is where relationship names are stored.
+var AftermarketDeviceRels = struct {
+	ClaimMetaTransactionRequest     string
+	PairRequest                     string
+	UnpairRequest                   string
+	VehicleToken                    string
+	AutopiUnitAutopiJobs            string
+	SerialUserDeviceAPIIntegrations string
 }{
-	ClaimMetaTransactionRequest: "ClaimMetaTransactionRequest",
-	PairRequest:                 "PairRequest",
-	UnpairRequest:               "UnpairRequest",
-	VehicleToken:                "VehicleToken",
-	AutopiJobs:                  "AutopiJobs",
-	UserDeviceAPIIntegrations:   "UserDeviceAPIIntegrations",
+	ClaimMetaTransactionRequest:     "ClaimMetaTransactionRequest",
+	PairRequest:                     "PairRequest",
+	UnpairRequest:                   "UnpairRequest",
+	VehicleToken:                    "VehicleToken",
+	AutopiUnitAutopiJobs:            "AutopiUnitAutopiJobs",
+	SerialUserDeviceAPIIntegrations: "SerialUserDeviceAPIIntegrations",
 }
 
-// autopiUnitR is where relationships are stored.
-type autopiUnitR struct {
-	ClaimMetaTransactionRequest *MetaTransactionRequest       `boil:"ClaimMetaTransactionRequest" json:"ClaimMetaTransactionRequest" toml:"ClaimMetaTransactionRequest" yaml:"ClaimMetaTransactionRequest"`
-	PairRequest                 *MetaTransactionRequest       `boil:"PairRequest" json:"PairRequest" toml:"PairRequest" yaml:"PairRequest"`
-	UnpairRequest               *MetaTransactionRequest       `boil:"UnpairRequest" json:"UnpairRequest" toml:"UnpairRequest" yaml:"UnpairRequest"`
-	VehicleToken                *VehicleNFT                   `boil:"VehicleToken" json:"VehicleToken" toml:"VehicleToken" yaml:"VehicleToken"`
-	AutopiJobs                  AutopiJobSlice                `boil:"AutopiJobs" json:"AutopiJobs" toml:"AutopiJobs" yaml:"AutopiJobs"`
-	UserDeviceAPIIntegrations   UserDeviceAPIIntegrationSlice `boil:"UserDeviceAPIIntegrations" json:"UserDeviceAPIIntegrations" toml:"UserDeviceAPIIntegrations" yaml:"UserDeviceAPIIntegrations"`
+// aftermarketDeviceR is where relationships are stored.
+type aftermarketDeviceR struct {
+	ClaimMetaTransactionRequest     *MetaTransactionRequest       `boil:"ClaimMetaTransactionRequest" json:"ClaimMetaTransactionRequest" toml:"ClaimMetaTransactionRequest" yaml:"ClaimMetaTransactionRequest"`
+	PairRequest                     *MetaTransactionRequest       `boil:"PairRequest" json:"PairRequest" toml:"PairRequest" yaml:"PairRequest"`
+	UnpairRequest                   *MetaTransactionRequest       `boil:"UnpairRequest" json:"UnpairRequest" toml:"UnpairRequest" yaml:"UnpairRequest"`
+	VehicleToken                    *VehicleNFT                   `boil:"VehicleToken" json:"VehicleToken" toml:"VehicleToken" yaml:"VehicleToken"`
+	AutopiUnitAutopiJobs            AutopiJobSlice                `boil:"AutopiUnitAutopiJobs" json:"AutopiUnitAutopiJobs" toml:"AutopiUnitAutopiJobs" yaml:"AutopiUnitAutopiJobs"`
+	SerialUserDeviceAPIIntegrations UserDeviceAPIIntegrationSlice `boil:"SerialUserDeviceAPIIntegrations" json:"SerialUserDeviceAPIIntegrations" toml:"SerialUserDeviceAPIIntegrations" yaml:"SerialUserDeviceAPIIntegrations"`
 }
 
 // NewStruct creates a new relationship struct
-func (*autopiUnitR) NewStruct() *autopiUnitR {
-	return &autopiUnitR{}
+func (*aftermarketDeviceR) NewStruct() *aftermarketDeviceR {
+	return &aftermarketDeviceR{}
 }
 
-func (r *autopiUnitR) GetClaimMetaTransactionRequest() *MetaTransactionRequest {
+func (r *aftermarketDeviceR) GetClaimMetaTransactionRequest() *MetaTransactionRequest {
 	if r == nil {
 		return nil
 	}
 	return r.ClaimMetaTransactionRequest
 }
 
-func (r *autopiUnitR) GetPairRequest() *MetaTransactionRequest {
+func (r *aftermarketDeviceR) GetPairRequest() *MetaTransactionRequest {
 	if r == nil {
 		return nil
 	}
 	return r.PairRequest
 }
 
-func (r *autopiUnitR) GetUnpairRequest() *MetaTransactionRequest {
+func (r *aftermarketDeviceR) GetUnpairRequest() *MetaTransactionRequest {
 	if r == nil {
 		return nil
 	}
 	return r.UnpairRequest
 }
 
-func (r *autopiUnitR) GetVehicleToken() *VehicleNFT {
+func (r *aftermarketDeviceR) GetVehicleToken() *VehicleNFT {
 	if r == nil {
 		return nil
 	}
 	return r.VehicleToken
 }
 
-func (r *autopiUnitR) GetAutopiJobs() AutopiJobSlice {
+func (r *aftermarketDeviceR) GetAutopiUnitAutopiJobs() AutopiJobSlice {
 	if r == nil {
 		return nil
 	}
-	return r.AutopiJobs
+	return r.AutopiUnitAutopiJobs
 }
 
-func (r *autopiUnitR) GetUserDeviceAPIIntegrations() UserDeviceAPIIntegrationSlice {
+func (r *aftermarketDeviceR) GetSerialUserDeviceAPIIntegrations() UserDeviceAPIIntegrationSlice {
 	if r == nil {
 		return nil
 	}
-	return r.UserDeviceAPIIntegrations
+	return r.SerialUserDeviceAPIIntegrations
 }
 
-// autopiUnitL is where Load methods for each relationship are stored.
-type autopiUnitL struct{}
+// aftermarketDeviceL is where Load methods for each relationship are stored.
+type aftermarketDeviceL struct{}
 
 var (
-	autopiUnitAllColumns            = []string{"autopi_unit_id", "autopi_device_id", "user_id", "ethereum_address", "created_at", "updated_at", "token_id", "claim_meta_transaction_request_id", "owner_address", "pair_request_id", "unpair_request_id", "vehicle_token_id", "beneficiary"}
-	autopiUnitColumnsWithoutDefault = []string{"autopi_unit_id"}
-	autopiUnitColumnsWithDefault    = []string{"autopi_device_id", "user_id", "ethereum_address", "created_at", "updated_at", "token_id", "claim_meta_transaction_request_id", "owner_address", "pair_request_id", "unpair_request_id", "vehicle_token_id", "beneficiary"}
-	autopiUnitPrimaryKeyColumns     = []string{"autopi_unit_id"}
-	autopiUnitGeneratedColumns      = []string{}
+	aftermarketDeviceAllColumns            = []string{"serial", "user_id", "ethereum_address", "created_at", "updated_at", "token_id", "claim_meta_transaction_request_id", "owner_address", "pair_request_id", "unpair_request_id", "vehicle_token_id", "beneficiary", "metadata"}
+	aftermarketDeviceColumnsWithoutDefault = []string{"serial"}
+	aftermarketDeviceColumnsWithDefault    = []string{"user_id", "ethereum_address", "created_at", "updated_at", "token_id", "claim_meta_transaction_request_id", "owner_address", "pair_request_id", "unpair_request_id", "vehicle_token_id", "beneficiary", "metadata"}
+	aftermarketDevicePrimaryKeyColumns     = []string{"serial"}
+	aftermarketDeviceGeneratedColumns      = []string{}
 )
 
 type (
-	// AutopiUnitSlice is an alias for a slice of pointers to AutopiUnit.
-	// This should almost always be used instead of []AutopiUnit.
-	AutopiUnitSlice []*AutopiUnit
-	// AutopiUnitHook is the signature for custom AutopiUnit hook methods
-	AutopiUnitHook func(context.Context, boil.ContextExecutor, *AutopiUnit) error
+	// AftermarketDeviceSlice is an alias for a slice of pointers to AftermarketDevice.
+	// This should almost always be used instead of []AftermarketDevice.
+	AftermarketDeviceSlice []*AftermarketDevice
+	// AftermarketDeviceHook is the signature for custom AftermarketDevice hook methods
+	AftermarketDeviceHook func(context.Context, boil.ContextExecutor, *AftermarketDevice) error
 
-	autopiUnitQuery struct {
+	aftermarketDeviceQuery struct {
 		*queries.Query
 	}
 )
 
 // Cache for insert, update and upsert
 var (
-	autopiUnitType                 = reflect.TypeOf(&AutopiUnit{})
-	autopiUnitMapping              = queries.MakeStructMapping(autopiUnitType)
-	autopiUnitPrimaryKeyMapping, _ = queries.BindMapping(autopiUnitType, autopiUnitMapping, autopiUnitPrimaryKeyColumns)
-	autopiUnitInsertCacheMut       sync.RWMutex
-	autopiUnitInsertCache          = make(map[string]insertCache)
-	autopiUnitUpdateCacheMut       sync.RWMutex
-	autopiUnitUpdateCache          = make(map[string]updateCache)
-	autopiUnitUpsertCacheMut       sync.RWMutex
-	autopiUnitUpsertCache          = make(map[string]insertCache)
+	aftermarketDeviceType                 = reflect.TypeOf(&AftermarketDevice{})
+	aftermarketDeviceMapping              = queries.MakeStructMapping(aftermarketDeviceType)
+	aftermarketDevicePrimaryKeyMapping, _ = queries.BindMapping(aftermarketDeviceType, aftermarketDeviceMapping, aftermarketDevicePrimaryKeyColumns)
+	aftermarketDeviceInsertCacheMut       sync.RWMutex
+	aftermarketDeviceInsertCache          = make(map[string]insertCache)
+	aftermarketDeviceUpdateCacheMut       sync.RWMutex
+	aftermarketDeviceUpdateCache          = make(map[string]updateCache)
+	aftermarketDeviceUpsertCacheMut       sync.RWMutex
+	aftermarketDeviceUpsertCache          = make(map[string]insertCache)
 )
 
 var (
@@ -303,27 +409,27 @@ var (
 	_ = qmhelper.Where
 )
 
-var autopiUnitAfterSelectHooks []AutopiUnitHook
+var aftermarketDeviceAfterSelectHooks []AftermarketDeviceHook
 
-var autopiUnitBeforeInsertHooks []AutopiUnitHook
-var autopiUnitAfterInsertHooks []AutopiUnitHook
+var aftermarketDeviceBeforeInsertHooks []AftermarketDeviceHook
+var aftermarketDeviceAfterInsertHooks []AftermarketDeviceHook
 
-var autopiUnitBeforeUpdateHooks []AutopiUnitHook
-var autopiUnitAfterUpdateHooks []AutopiUnitHook
+var aftermarketDeviceBeforeUpdateHooks []AftermarketDeviceHook
+var aftermarketDeviceAfterUpdateHooks []AftermarketDeviceHook
 
-var autopiUnitBeforeDeleteHooks []AutopiUnitHook
-var autopiUnitAfterDeleteHooks []AutopiUnitHook
+var aftermarketDeviceBeforeDeleteHooks []AftermarketDeviceHook
+var aftermarketDeviceAfterDeleteHooks []AftermarketDeviceHook
 
-var autopiUnitBeforeUpsertHooks []AutopiUnitHook
-var autopiUnitAfterUpsertHooks []AutopiUnitHook
+var aftermarketDeviceBeforeUpsertHooks []AftermarketDeviceHook
+var aftermarketDeviceAfterUpsertHooks []AftermarketDeviceHook
 
 // doAfterSelectHooks executes all "after Select" hooks.
-func (o *AutopiUnit) doAfterSelectHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
+func (o *AftermarketDevice) doAfterSelectHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
 	if boil.HooksAreSkipped(ctx) {
 		return nil
 	}
 
-	for _, hook := range autopiUnitAfterSelectHooks {
+	for _, hook := range aftermarketDeviceAfterSelectHooks {
 		if err := hook(ctx, exec, o); err != nil {
 			return err
 		}
@@ -333,12 +439,12 @@ func (o *AutopiUnit) doAfterSelectHooks(ctx context.Context, exec boil.ContextEx
 }
 
 // doBeforeInsertHooks executes all "before insert" hooks.
-func (o *AutopiUnit) doBeforeInsertHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
+func (o *AftermarketDevice) doBeforeInsertHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
 	if boil.HooksAreSkipped(ctx) {
 		return nil
 	}
 
-	for _, hook := range autopiUnitBeforeInsertHooks {
+	for _, hook := range aftermarketDeviceBeforeInsertHooks {
 		if err := hook(ctx, exec, o); err != nil {
 			return err
 		}
@@ -348,12 +454,12 @@ func (o *AutopiUnit) doBeforeInsertHooks(ctx context.Context, exec boil.ContextE
 }
 
 // doAfterInsertHooks executes all "after Insert" hooks.
-func (o *AutopiUnit) doAfterInsertHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
+func (o *AftermarketDevice) doAfterInsertHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
 	if boil.HooksAreSkipped(ctx) {
 		return nil
 	}
 
-	for _, hook := range autopiUnitAfterInsertHooks {
+	for _, hook := range aftermarketDeviceAfterInsertHooks {
 		if err := hook(ctx, exec, o); err != nil {
 			return err
 		}
@@ -363,12 +469,12 @@ func (o *AutopiUnit) doAfterInsertHooks(ctx context.Context, exec boil.ContextEx
 }
 
 // doBeforeUpdateHooks executes all "before Update" hooks.
-func (o *AutopiUnit) doBeforeUpdateHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
+func (o *AftermarketDevice) doBeforeUpdateHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
 	if boil.HooksAreSkipped(ctx) {
 		return nil
 	}
 
-	for _, hook := range autopiUnitBeforeUpdateHooks {
+	for _, hook := range aftermarketDeviceBeforeUpdateHooks {
 		if err := hook(ctx, exec, o); err != nil {
 			return err
 		}
@@ -378,12 +484,12 @@ func (o *AutopiUnit) doBeforeUpdateHooks(ctx context.Context, exec boil.ContextE
 }
 
 // doAfterUpdateHooks executes all "after Update" hooks.
-func (o *AutopiUnit) doAfterUpdateHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
+func (o *AftermarketDevice) doAfterUpdateHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
 	if boil.HooksAreSkipped(ctx) {
 		return nil
 	}
 
-	for _, hook := range autopiUnitAfterUpdateHooks {
+	for _, hook := range aftermarketDeviceAfterUpdateHooks {
 		if err := hook(ctx, exec, o); err != nil {
 			return err
 		}
@@ -393,12 +499,12 @@ func (o *AutopiUnit) doAfterUpdateHooks(ctx context.Context, exec boil.ContextEx
 }
 
 // doBeforeDeleteHooks executes all "before Delete" hooks.
-func (o *AutopiUnit) doBeforeDeleteHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
+func (o *AftermarketDevice) doBeforeDeleteHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
 	if boil.HooksAreSkipped(ctx) {
 		return nil
 	}
 
-	for _, hook := range autopiUnitBeforeDeleteHooks {
+	for _, hook := range aftermarketDeviceBeforeDeleteHooks {
 		if err := hook(ctx, exec, o); err != nil {
 			return err
 		}
@@ -408,12 +514,12 @@ func (o *AutopiUnit) doBeforeDeleteHooks(ctx context.Context, exec boil.ContextE
 }
 
 // doAfterDeleteHooks executes all "after Delete" hooks.
-func (o *AutopiUnit) doAfterDeleteHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
+func (o *AftermarketDevice) doAfterDeleteHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
 	if boil.HooksAreSkipped(ctx) {
 		return nil
 	}
 
-	for _, hook := range autopiUnitAfterDeleteHooks {
+	for _, hook := range aftermarketDeviceAfterDeleteHooks {
 		if err := hook(ctx, exec, o); err != nil {
 			return err
 		}
@@ -423,12 +529,12 @@ func (o *AutopiUnit) doAfterDeleteHooks(ctx context.Context, exec boil.ContextEx
 }
 
 // doBeforeUpsertHooks executes all "before Upsert" hooks.
-func (o *AutopiUnit) doBeforeUpsertHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
+func (o *AftermarketDevice) doBeforeUpsertHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
 	if boil.HooksAreSkipped(ctx) {
 		return nil
 	}
 
-	for _, hook := range autopiUnitBeforeUpsertHooks {
+	for _, hook := range aftermarketDeviceBeforeUpsertHooks {
 		if err := hook(ctx, exec, o); err != nil {
 			return err
 		}
@@ -438,12 +544,12 @@ func (o *AutopiUnit) doBeforeUpsertHooks(ctx context.Context, exec boil.ContextE
 }
 
 // doAfterUpsertHooks executes all "after Upsert" hooks.
-func (o *AutopiUnit) doAfterUpsertHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
+func (o *AftermarketDevice) doAfterUpsertHooks(ctx context.Context, exec boil.ContextExecutor) (err error) {
 	if boil.HooksAreSkipped(ctx) {
 		return nil
 	}
 
-	for _, hook := range autopiUnitAfterUpsertHooks {
+	for _, hook := range aftermarketDeviceAfterUpsertHooks {
 		if err := hook(ctx, exec, o); err != nil {
 			return err
 		}
@@ -452,33 +558,33 @@ func (o *AutopiUnit) doAfterUpsertHooks(ctx context.Context, exec boil.ContextEx
 	return nil
 }
 
-// AddAutopiUnitHook registers your hook function for all future operations.
-func AddAutopiUnitHook(hookPoint boil.HookPoint, autopiUnitHook AutopiUnitHook) {
+// AddAftermarketDeviceHook registers your hook function for all future operations.
+func AddAftermarketDeviceHook(hookPoint boil.HookPoint, aftermarketDeviceHook AftermarketDeviceHook) {
 	switch hookPoint {
 	case boil.AfterSelectHook:
-		autopiUnitAfterSelectHooks = append(autopiUnitAfterSelectHooks, autopiUnitHook)
+		aftermarketDeviceAfterSelectHooks = append(aftermarketDeviceAfterSelectHooks, aftermarketDeviceHook)
 	case boil.BeforeInsertHook:
-		autopiUnitBeforeInsertHooks = append(autopiUnitBeforeInsertHooks, autopiUnitHook)
+		aftermarketDeviceBeforeInsertHooks = append(aftermarketDeviceBeforeInsertHooks, aftermarketDeviceHook)
 	case boil.AfterInsertHook:
-		autopiUnitAfterInsertHooks = append(autopiUnitAfterInsertHooks, autopiUnitHook)
+		aftermarketDeviceAfterInsertHooks = append(aftermarketDeviceAfterInsertHooks, aftermarketDeviceHook)
 	case boil.BeforeUpdateHook:
-		autopiUnitBeforeUpdateHooks = append(autopiUnitBeforeUpdateHooks, autopiUnitHook)
+		aftermarketDeviceBeforeUpdateHooks = append(aftermarketDeviceBeforeUpdateHooks, aftermarketDeviceHook)
 	case boil.AfterUpdateHook:
-		autopiUnitAfterUpdateHooks = append(autopiUnitAfterUpdateHooks, autopiUnitHook)
+		aftermarketDeviceAfterUpdateHooks = append(aftermarketDeviceAfterUpdateHooks, aftermarketDeviceHook)
 	case boil.BeforeDeleteHook:
-		autopiUnitBeforeDeleteHooks = append(autopiUnitBeforeDeleteHooks, autopiUnitHook)
+		aftermarketDeviceBeforeDeleteHooks = append(aftermarketDeviceBeforeDeleteHooks, aftermarketDeviceHook)
 	case boil.AfterDeleteHook:
-		autopiUnitAfterDeleteHooks = append(autopiUnitAfterDeleteHooks, autopiUnitHook)
+		aftermarketDeviceAfterDeleteHooks = append(aftermarketDeviceAfterDeleteHooks, aftermarketDeviceHook)
 	case boil.BeforeUpsertHook:
-		autopiUnitBeforeUpsertHooks = append(autopiUnitBeforeUpsertHooks, autopiUnitHook)
+		aftermarketDeviceBeforeUpsertHooks = append(aftermarketDeviceBeforeUpsertHooks, aftermarketDeviceHook)
 	case boil.AfterUpsertHook:
-		autopiUnitAfterUpsertHooks = append(autopiUnitAfterUpsertHooks, autopiUnitHook)
+		aftermarketDeviceAfterUpsertHooks = append(aftermarketDeviceAfterUpsertHooks, aftermarketDeviceHook)
 	}
 }
 
-// One returns a single autopiUnit record from the query.
-func (q autopiUnitQuery) One(ctx context.Context, exec boil.ContextExecutor) (*AutopiUnit, error) {
-	o := &AutopiUnit{}
+// One returns a single aftermarketDevice record from the query.
+func (q aftermarketDeviceQuery) One(ctx context.Context, exec boil.ContextExecutor) (*AftermarketDevice, error) {
+	o := &AftermarketDevice{}
 
 	queries.SetLimit(q.Query, 1)
 
@@ -487,7 +593,7 @@ func (q autopiUnitQuery) One(ctx context.Context, exec boil.ContextExecutor) (*A
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "models: failed to execute a one query for autopi_units")
+		return nil, errors.Wrap(err, "models: failed to execute a one query for aftermarket_devices")
 	}
 
 	if err := o.doAfterSelectHooks(ctx, exec); err != nil {
@@ -497,16 +603,16 @@ func (q autopiUnitQuery) One(ctx context.Context, exec boil.ContextExecutor) (*A
 	return o, nil
 }
 
-// All returns all AutopiUnit records from the query.
-func (q autopiUnitQuery) All(ctx context.Context, exec boil.ContextExecutor) (AutopiUnitSlice, error) {
-	var o []*AutopiUnit
+// All returns all AftermarketDevice records from the query.
+func (q aftermarketDeviceQuery) All(ctx context.Context, exec boil.ContextExecutor) (AftermarketDeviceSlice, error) {
+	var o []*AftermarketDevice
 
 	err := q.Bind(ctx, exec, &o)
 	if err != nil {
-		return nil, errors.Wrap(err, "models: failed to assign all query results to AutopiUnit slice")
+		return nil, errors.Wrap(err, "models: failed to assign all query results to AftermarketDevice slice")
 	}
 
-	if len(autopiUnitAfterSelectHooks) != 0 {
+	if len(aftermarketDeviceAfterSelectHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterSelectHooks(ctx, exec); err != nil {
 				return o, err
@@ -517,8 +623,8 @@ func (q autopiUnitQuery) All(ctx context.Context, exec boil.ContextExecutor) (Au
 	return o, nil
 }
 
-// Count returns the count of all AutopiUnit records in the query.
-func (q autopiUnitQuery) Count(ctx context.Context, exec boil.ContextExecutor) (int64, error) {
+// Count returns the count of all AftermarketDevice records in the query.
+func (q aftermarketDeviceQuery) Count(ctx context.Context, exec boil.ContextExecutor) (int64, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -526,14 +632,14 @@ func (q autopiUnitQuery) Count(ctx context.Context, exec boil.ContextExecutor) (
 
 	err := q.Query.QueryRowContext(ctx, exec).Scan(&count)
 	if err != nil {
-		return 0, errors.Wrap(err, "models: failed to count autopi_units rows")
+		return 0, errors.Wrap(err, "models: failed to count aftermarket_devices rows")
 	}
 
 	return count, nil
 }
 
 // Exists checks if the row exists in the table.
-func (q autopiUnitQuery) Exists(ctx context.Context, exec boil.ContextExecutor) (bool, error) {
+func (q aftermarketDeviceQuery) Exists(ctx context.Context, exec boil.ContextExecutor) (bool, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -542,14 +648,14 @@ func (q autopiUnitQuery) Exists(ctx context.Context, exec boil.ContextExecutor) 
 
 	err := q.Query.QueryRowContext(ctx, exec).Scan(&count)
 	if err != nil {
-		return false, errors.Wrap(err, "models: failed to check if autopi_units exists")
+		return false, errors.Wrap(err, "models: failed to check if aftermarket_devices exists")
 	}
 
 	return count > 0, nil
 }
 
 // ClaimMetaTransactionRequest pointed to by the foreign key.
-func (o *AutopiUnit) ClaimMetaTransactionRequest(mods ...qm.QueryMod) metaTransactionRequestQuery {
+func (o *AftermarketDevice) ClaimMetaTransactionRequest(mods ...qm.QueryMod) metaTransactionRequestQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.ClaimMetaTransactionRequestID),
 	}
@@ -560,7 +666,7 @@ func (o *AutopiUnit) ClaimMetaTransactionRequest(mods ...qm.QueryMod) metaTransa
 }
 
 // PairRequest pointed to by the foreign key.
-func (o *AutopiUnit) PairRequest(mods ...qm.QueryMod) metaTransactionRequestQuery {
+func (o *AftermarketDevice) PairRequest(mods ...qm.QueryMod) metaTransactionRequestQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.PairRequestID),
 	}
@@ -571,7 +677,7 @@ func (o *AutopiUnit) PairRequest(mods ...qm.QueryMod) metaTransactionRequestQuer
 }
 
 // UnpairRequest pointed to by the foreign key.
-func (o *AutopiUnit) UnpairRequest(mods ...qm.QueryMod) metaTransactionRequestQuery {
+func (o *AftermarketDevice) UnpairRequest(mods ...qm.QueryMod) metaTransactionRequestQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.UnpairRequestID),
 	}
@@ -582,7 +688,7 @@ func (o *AutopiUnit) UnpairRequest(mods ...qm.QueryMod) metaTransactionRequestQu
 }
 
 // VehicleToken pointed to by the foreign key.
-func (o *AutopiUnit) VehicleToken(mods ...qm.QueryMod) vehicleNFTQuery {
+func (o *AftermarketDevice) VehicleToken(mods ...qm.QueryMod) vehicleNFTQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"token_id\" = ?", o.VehicleTokenID),
 	}
@@ -592,29 +698,29 @@ func (o *AutopiUnit) VehicleToken(mods ...qm.QueryMod) vehicleNFTQuery {
 	return VehicleNFTS(queryMods...)
 }
 
-// AutopiJobs retrieves all the autopi_job's AutopiJobs with an executor.
-func (o *AutopiUnit) AutopiJobs(mods ...qm.QueryMod) autopiJobQuery {
+// AutopiUnitAutopiJobs retrieves all the autopi_job's AutopiJobs with an executor via autopi_unit_id column.
+func (o *AftermarketDevice) AutopiUnitAutopiJobs(mods ...qm.QueryMod) autopiJobQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"devices_api\".\"autopi_jobs\".\"autopi_unit_id\"=?", o.AutopiUnitID),
+		qm.Where("\"devices_api\".\"autopi_jobs\".\"autopi_unit_id\"=?", o.Serial),
 	)
 
 	return AutopiJobs(queryMods...)
 }
 
-// UserDeviceAPIIntegrations retrieves all the user_device_api_integration's UserDeviceAPIIntegrations with an executor.
-func (o *AutopiUnit) UserDeviceAPIIntegrations(mods ...qm.QueryMod) userDeviceAPIIntegrationQuery {
+// SerialUserDeviceAPIIntegrations retrieves all the user_device_api_integration's UserDeviceAPIIntegrations with an executor via serial column.
+func (o *AftermarketDevice) SerialUserDeviceAPIIntegrations(mods ...qm.QueryMod) userDeviceAPIIntegrationQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"devices_api\".\"user_device_api_integrations\".\"autopi_unit_id\"=?", o.AutopiUnitID),
+		qm.Where("\"devices_api\".\"user_device_api_integrations\".\"serial\"=?", o.Serial),
 	)
 
 	return UserDeviceAPIIntegrations(queryMods...)
@@ -622,28 +728,28 @@ func (o *AutopiUnit) UserDeviceAPIIntegrations(mods ...qm.QueryMod) userDeviceAP
 
 // LoadClaimMetaTransactionRequest allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (autopiUnitL) LoadClaimMetaTransactionRequest(ctx context.Context, e boil.ContextExecutor, singular bool, maybeAutopiUnit interface{}, mods queries.Applicator) error {
-	var slice []*AutopiUnit
-	var object *AutopiUnit
+func (aftermarketDeviceL) LoadClaimMetaTransactionRequest(ctx context.Context, e boil.ContextExecutor, singular bool, maybeAftermarketDevice interface{}, mods queries.Applicator) error {
+	var slice []*AftermarketDevice
+	var object *AftermarketDevice
 
 	if singular {
 		var ok bool
-		object, ok = maybeAutopiUnit.(*AutopiUnit)
+		object, ok = maybeAftermarketDevice.(*AftermarketDevice)
 		if !ok {
-			object = new(AutopiUnit)
-			ok = queries.SetFromEmbeddedStruct(&object, &maybeAutopiUnit)
+			object = new(AftermarketDevice)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeAftermarketDevice)
 			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeAutopiUnit))
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeAftermarketDevice))
 			}
 		}
 	} else {
-		s, ok := maybeAutopiUnit.(*[]*AutopiUnit)
+		s, ok := maybeAftermarketDevice.(*[]*AftermarketDevice)
 		if ok {
 			slice = *s
 		} else {
-			ok = queries.SetFromEmbeddedStruct(&slice, maybeAutopiUnit)
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeAftermarketDevice)
 			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeAutopiUnit))
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeAftermarketDevice))
 			}
 		}
 	}
@@ -651,7 +757,7 @@ func (autopiUnitL) LoadClaimMetaTransactionRequest(ctx context.Context, e boil.C
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &autopiUnitR{}
+			object.R = &aftermarketDeviceR{}
 		}
 		if !queries.IsNil(object.ClaimMetaTransactionRequestID) {
 			args = append(args, object.ClaimMetaTransactionRequestID)
@@ -661,7 +767,7 @@ func (autopiUnitL) LoadClaimMetaTransactionRequest(ctx context.Context, e boil.C
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &autopiUnitR{}
+				obj.R = &aftermarketDeviceR{}
 			}
 
 			for _, a := range args {
@@ -724,7 +830,7 @@ func (autopiUnitL) LoadClaimMetaTransactionRequest(ctx context.Context, e boil.C
 		if foreign.R == nil {
 			foreign.R = &metaTransactionRequestR{}
 		}
-		foreign.R.ClaimMetaTransactionRequestAutopiUnit = object
+		foreign.R.ClaimMetaTransactionRequestAftermarketDevice = object
 		return nil
 	}
 
@@ -735,7 +841,7 @@ func (autopiUnitL) LoadClaimMetaTransactionRequest(ctx context.Context, e boil.C
 				if foreign.R == nil {
 					foreign.R = &metaTransactionRequestR{}
 				}
-				foreign.R.ClaimMetaTransactionRequestAutopiUnit = local
+				foreign.R.ClaimMetaTransactionRequestAftermarketDevice = local
 				break
 			}
 		}
@@ -746,28 +852,28 @@ func (autopiUnitL) LoadClaimMetaTransactionRequest(ctx context.Context, e boil.C
 
 // LoadPairRequest allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (autopiUnitL) LoadPairRequest(ctx context.Context, e boil.ContextExecutor, singular bool, maybeAutopiUnit interface{}, mods queries.Applicator) error {
-	var slice []*AutopiUnit
-	var object *AutopiUnit
+func (aftermarketDeviceL) LoadPairRequest(ctx context.Context, e boil.ContextExecutor, singular bool, maybeAftermarketDevice interface{}, mods queries.Applicator) error {
+	var slice []*AftermarketDevice
+	var object *AftermarketDevice
 
 	if singular {
 		var ok bool
-		object, ok = maybeAutopiUnit.(*AutopiUnit)
+		object, ok = maybeAftermarketDevice.(*AftermarketDevice)
 		if !ok {
-			object = new(AutopiUnit)
-			ok = queries.SetFromEmbeddedStruct(&object, &maybeAutopiUnit)
+			object = new(AftermarketDevice)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeAftermarketDevice)
 			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeAutopiUnit))
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeAftermarketDevice))
 			}
 		}
 	} else {
-		s, ok := maybeAutopiUnit.(*[]*AutopiUnit)
+		s, ok := maybeAftermarketDevice.(*[]*AftermarketDevice)
 		if ok {
 			slice = *s
 		} else {
-			ok = queries.SetFromEmbeddedStruct(&slice, maybeAutopiUnit)
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeAftermarketDevice)
 			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeAutopiUnit))
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeAftermarketDevice))
 			}
 		}
 	}
@@ -775,7 +881,7 @@ func (autopiUnitL) LoadPairRequest(ctx context.Context, e boil.ContextExecutor, 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &autopiUnitR{}
+			object.R = &aftermarketDeviceR{}
 		}
 		if !queries.IsNil(object.PairRequestID) {
 			args = append(args, object.PairRequestID)
@@ -785,7 +891,7 @@ func (autopiUnitL) LoadPairRequest(ctx context.Context, e boil.ContextExecutor, 
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &autopiUnitR{}
+				obj.R = &aftermarketDeviceR{}
 			}
 
 			for _, a := range args {
@@ -848,7 +954,7 @@ func (autopiUnitL) LoadPairRequest(ctx context.Context, e boil.ContextExecutor, 
 		if foreign.R == nil {
 			foreign.R = &metaTransactionRequestR{}
 		}
-		foreign.R.PairRequestAutopiUnit = object
+		foreign.R.PairRequestAftermarketDevice = object
 		return nil
 	}
 
@@ -859,7 +965,7 @@ func (autopiUnitL) LoadPairRequest(ctx context.Context, e boil.ContextExecutor, 
 				if foreign.R == nil {
 					foreign.R = &metaTransactionRequestR{}
 				}
-				foreign.R.PairRequestAutopiUnit = local
+				foreign.R.PairRequestAftermarketDevice = local
 				break
 			}
 		}
@@ -870,28 +976,28 @@ func (autopiUnitL) LoadPairRequest(ctx context.Context, e boil.ContextExecutor, 
 
 // LoadUnpairRequest allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (autopiUnitL) LoadUnpairRequest(ctx context.Context, e boil.ContextExecutor, singular bool, maybeAutopiUnit interface{}, mods queries.Applicator) error {
-	var slice []*AutopiUnit
-	var object *AutopiUnit
+func (aftermarketDeviceL) LoadUnpairRequest(ctx context.Context, e boil.ContextExecutor, singular bool, maybeAftermarketDevice interface{}, mods queries.Applicator) error {
+	var slice []*AftermarketDevice
+	var object *AftermarketDevice
 
 	if singular {
 		var ok bool
-		object, ok = maybeAutopiUnit.(*AutopiUnit)
+		object, ok = maybeAftermarketDevice.(*AftermarketDevice)
 		if !ok {
-			object = new(AutopiUnit)
-			ok = queries.SetFromEmbeddedStruct(&object, &maybeAutopiUnit)
+			object = new(AftermarketDevice)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeAftermarketDevice)
 			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeAutopiUnit))
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeAftermarketDevice))
 			}
 		}
 	} else {
-		s, ok := maybeAutopiUnit.(*[]*AutopiUnit)
+		s, ok := maybeAftermarketDevice.(*[]*AftermarketDevice)
 		if ok {
 			slice = *s
 		} else {
-			ok = queries.SetFromEmbeddedStruct(&slice, maybeAutopiUnit)
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeAftermarketDevice)
 			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeAutopiUnit))
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeAftermarketDevice))
 			}
 		}
 	}
@@ -899,7 +1005,7 @@ func (autopiUnitL) LoadUnpairRequest(ctx context.Context, e boil.ContextExecutor
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &autopiUnitR{}
+			object.R = &aftermarketDeviceR{}
 		}
 		if !queries.IsNil(object.UnpairRequestID) {
 			args = append(args, object.UnpairRequestID)
@@ -909,7 +1015,7 @@ func (autopiUnitL) LoadUnpairRequest(ctx context.Context, e boil.ContextExecutor
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &autopiUnitR{}
+				obj.R = &aftermarketDeviceR{}
 			}
 
 			for _, a := range args {
@@ -972,7 +1078,7 @@ func (autopiUnitL) LoadUnpairRequest(ctx context.Context, e boil.ContextExecutor
 		if foreign.R == nil {
 			foreign.R = &metaTransactionRequestR{}
 		}
-		foreign.R.UnpairRequestAutopiUnit = object
+		foreign.R.UnpairRequestAftermarketDevice = object
 		return nil
 	}
 
@@ -983,7 +1089,7 @@ func (autopiUnitL) LoadUnpairRequest(ctx context.Context, e boil.ContextExecutor
 				if foreign.R == nil {
 					foreign.R = &metaTransactionRequestR{}
 				}
-				foreign.R.UnpairRequestAutopiUnit = local
+				foreign.R.UnpairRequestAftermarketDevice = local
 				break
 			}
 		}
@@ -994,28 +1100,28 @@ func (autopiUnitL) LoadUnpairRequest(ctx context.Context, e boil.ContextExecutor
 
 // LoadVehicleToken allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (autopiUnitL) LoadVehicleToken(ctx context.Context, e boil.ContextExecutor, singular bool, maybeAutopiUnit interface{}, mods queries.Applicator) error {
-	var slice []*AutopiUnit
-	var object *AutopiUnit
+func (aftermarketDeviceL) LoadVehicleToken(ctx context.Context, e boil.ContextExecutor, singular bool, maybeAftermarketDevice interface{}, mods queries.Applicator) error {
+	var slice []*AftermarketDevice
+	var object *AftermarketDevice
 
 	if singular {
 		var ok bool
-		object, ok = maybeAutopiUnit.(*AutopiUnit)
+		object, ok = maybeAftermarketDevice.(*AftermarketDevice)
 		if !ok {
-			object = new(AutopiUnit)
-			ok = queries.SetFromEmbeddedStruct(&object, &maybeAutopiUnit)
+			object = new(AftermarketDevice)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeAftermarketDevice)
 			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeAutopiUnit))
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeAftermarketDevice))
 			}
 		}
 	} else {
-		s, ok := maybeAutopiUnit.(*[]*AutopiUnit)
+		s, ok := maybeAftermarketDevice.(*[]*AftermarketDevice)
 		if ok {
 			slice = *s
 		} else {
-			ok = queries.SetFromEmbeddedStruct(&slice, maybeAutopiUnit)
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeAftermarketDevice)
 			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeAutopiUnit))
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeAftermarketDevice))
 			}
 		}
 	}
@@ -1023,7 +1129,7 @@ func (autopiUnitL) LoadVehicleToken(ctx context.Context, e boil.ContextExecutor,
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &autopiUnitR{}
+			object.R = &aftermarketDeviceR{}
 		}
 		if !queries.IsNil(object.VehicleTokenID) {
 			args = append(args, object.VehicleTokenID)
@@ -1033,7 +1139,7 @@ func (autopiUnitL) LoadVehicleToken(ctx context.Context, e boil.ContextExecutor,
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &autopiUnitR{}
+				obj.R = &aftermarketDeviceR{}
 			}
 
 			for _, a := range args {
@@ -1096,7 +1202,7 @@ func (autopiUnitL) LoadVehicleToken(ctx context.Context, e boil.ContextExecutor,
 		if foreign.R == nil {
 			foreign.R = &vehicleNFTR{}
 		}
-		foreign.R.VehicleTokenAutopiUnit = object
+		foreign.R.VehicleTokenAftermarketDevice = object
 		return nil
 	}
 
@@ -1107,7 +1213,7 @@ func (autopiUnitL) LoadVehicleToken(ctx context.Context, e boil.ContextExecutor,
 				if foreign.R == nil {
 					foreign.R = &vehicleNFTR{}
 				}
-				foreign.R.VehicleTokenAutopiUnit = local
+				foreign.R.VehicleTokenAftermarketDevice = local
 				break
 			}
 		}
@@ -1116,30 +1222,30 @@ func (autopiUnitL) LoadVehicleToken(ctx context.Context, e boil.ContextExecutor,
 	return nil
 }
 
-// LoadAutopiJobs allows an eager lookup of values, cached into the
+// LoadAutopiUnitAutopiJobs allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (autopiUnitL) LoadAutopiJobs(ctx context.Context, e boil.ContextExecutor, singular bool, maybeAutopiUnit interface{}, mods queries.Applicator) error {
-	var slice []*AutopiUnit
-	var object *AutopiUnit
+func (aftermarketDeviceL) LoadAutopiUnitAutopiJobs(ctx context.Context, e boil.ContextExecutor, singular bool, maybeAftermarketDevice interface{}, mods queries.Applicator) error {
+	var slice []*AftermarketDevice
+	var object *AftermarketDevice
 
 	if singular {
 		var ok bool
-		object, ok = maybeAutopiUnit.(*AutopiUnit)
+		object, ok = maybeAftermarketDevice.(*AftermarketDevice)
 		if !ok {
-			object = new(AutopiUnit)
-			ok = queries.SetFromEmbeddedStruct(&object, &maybeAutopiUnit)
+			object = new(AftermarketDevice)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeAftermarketDevice)
 			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeAutopiUnit))
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeAftermarketDevice))
 			}
 		}
 	} else {
-		s, ok := maybeAutopiUnit.(*[]*AutopiUnit)
+		s, ok := maybeAftermarketDevice.(*[]*AftermarketDevice)
 		if ok {
 			slice = *s
 		} else {
-			ok = queries.SetFromEmbeddedStruct(&slice, maybeAutopiUnit)
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeAftermarketDevice)
 			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeAutopiUnit))
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeAftermarketDevice))
 			}
 		}
 	}
@@ -1147,23 +1253,23 @@ func (autopiUnitL) LoadAutopiJobs(ctx context.Context, e boil.ContextExecutor, s
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &autopiUnitR{}
+			object.R = &aftermarketDeviceR{}
 		}
-		args = append(args, object.AutopiUnitID)
+		args = append(args, object.Serial)
 	} else {
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &autopiUnitR{}
+				obj.R = &aftermarketDeviceR{}
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.AutopiUnitID) {
+				if queries.Equal(a, obj.Serial) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.AutopiUnitID)
+			args = append(args, obj.Serial)
 		}
 	}
 
@@ -1204,7 +1310,7 @@ func (autopiUnitL) LoadAutopiJobs(ctx context.Context, e boil.ContextExecutor, s
 		}
 	}
 	if singular {
-		object.R.AutopiJobs = resultSlice
+		object.R.AutopiUnitAutopiJobs = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
 				foreign.R = &autopiJobR{}
@@ -1216,8 +1322,8 @@ func (autopiUnitL) LoadAutopiJobs(ctx context.Context, e boil.ContextExecutor, s
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.AutopiUnitID, foreign.AutopiUnitID) {
-				local.R.AutopiJobs = append(local.R.AutopiJobs, foreign)
+			if queries.Equal(local.Serial, foreign.AutopiUnitID) {
+				local.R.AutopiUnitAutopiJobs = append(local.R.AutopiUnitAutopiJobs, foreign)
 				if foreign.R == nil {
 					foreign.R = &autopiJobR{}
 				}
@@ -1230,30 +1336,30 @@ func (autopiUnitL) LoadAutopiJobs(ctx context.Context, e boil.ContextExecutor, s
 	return nil
 }
 
-// LoadUserDeviceAPIIntegrations allows an eager lookup of values, cached into the
+// LoadSerialUserDeviceAPIIntegrations allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (autopiUnitL) LoadUserDeviceAPIIntegrations(ctx context.Context, e boil.ContextExecutor, singular bool, maybeAutopiUnit interface{}, mods queries.Applicator) error {
-	var slice []*AutopiUnit
-	var object *AutopiUnit
+func (aftermarketDeviceL) LoadSerialUserDeviceAPIIntegrations(ctx context.Context, e boil.ContextExecutor, singular bool, maybeAftermarketDevice interface{}, mods queries.Applicator) error {
+	var slice []*AftermarketDevice
+	var object *AftermarketDevice
 
 	if singular {
 		var ok bool
-		object, ok = maybeAutopiUnit.(*AutopiUnit)
+		object, ok = maybeAftermarketDevice.(*AftermarketDevice)
 		if !ok {
-			object = new(AutopiUnit)
-			ok = queries.SetFromEmbeddedStruct(&object, &maybeAutopiUnit)
+			object = new(AftermarketDevice)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeAftermarketDevice)
 			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeAutopiUnit))
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeAftermarketDevice))
 			}
 		}
 	} else {
-		s, ok := maybeAutopiUnit.(*[]*AutopiUnit)
+		s, ok := maybeAftermarketDevice.(*[]*AftermarketDevice)
 		if ok {
 			slice = *s
 		} else {
-			ok = queries.SetFromEmbeddedStruct(&slice, maybeAutopiUnit)
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeAftermarketDevice)
 			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeAutopiUnit))
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeAftermarketDevice))
 			}
 		}
 	}
@@ -1261,23 +1367,23 @@ func (autopiUnitL) LoadUserDeviceAPIIntegrations(ctx context.Context, e boil.Con
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &autopiUnitR{}
+			object.R = &aftermarketDeviceR{}
 		}
-		args = append(args, object.AutopiUnitID)
+		args = append(args, object.Serial)
 	} else {
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &autopiUnitR{}
+				obj.R = &aftermarketDeviceR{}
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.AutopiUnitID) {
+				if queries.Equal(a, obj.Serial) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.AutopiUnitID)
+			args = append(args, obj.Serial)
 		}
 	}
 
@@ -1287,7 +1393,7 @@ func (autopiUnitL) LoadUserDeviceAPIIntegrations(ctx context.Context, e boil.Con
 
 	query := NewQuery(
 		qm.From(`devices_api.user_device_api_integrations`),
-		qm.WhereIn(`devices_api.user_device_api_integrations.autopi_unit_id in ?`, args...),
+		qm.WhereIn(`devices_api.user_device_api_integrations.serial in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1318,24 +1424,24 @@ func (autopiUnitL) LoadUserDeviceAPIIntegrations(ctx context.Context, e boil.Con
 		}
 	}
 	if singular {
-		object.R.UserDeviceAPIIntegrations = resultSlice
+		object.R.SerialUserDeviceAPIIntegrations = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
 				foreign.R = &userDeviceAPIIntegrationR{}
 			}
-			foreign.R.AutopiUnit = object
+			foreign.R.SerialAftermarketDevice = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.AutopiUnitID, foreign.AutopiUnitID) {
-				local.R.UserDeviceAPIIntegrations = append(local.R.UserDeviceAPIIntegrations, foreign)
+			if queries.Equal(local.Serial, foreign.Serial) {
+				local.R.SerialUserDeviceAPIIntegrations = append(local.R.SerialUserDeviceAPIIntegrations, foreign)
 				if foreign.R == nil {
 					foreign.R = &userDeviceAPIIntegrationR{}
 				}
-				foreign.R.AutopiUnit = local
+				foreign.R.SerialAftermarketDevice = local
 				break
 			}
 		}
@@ -1344,10 +1450,10 @@ func (autopiUnitL) LoadUserDeviceAPIIntegrations(ctx context.Context, e boil.Con
 	return nil
 }
 
-// SetClaimMetaTransactionRequest of the autopiUnit to the related item.
+// SetClaimMetaTransactionRequest of the aftermarketDevice to the related item.
 // Sets o.R.ClaimMetaTransactionRequest to related.
-// Adds o to related.R.ClaimMetaTransactionRequestAutopiUnit.
-func (o *AutopiUnit) SetClaimMetaTransactionRequest(ctx context.Context, exec boil.ContextExecutor, insert bool, related *MetaTransactionRequest) error {
+// Adds o to related.R.ClaimMetaTransactionRequestAftermarketDevice.
+func (o *AftermarketDevice) SetClaimMetaTransactionRequest(ctx context.Context, exec boil.ContextExecutor, insert bool, related *MetaTransactionRequest) error {
 	var err error
 	if insert {
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
@@ -1356,11 +1462,11 @@ func (o *AutopiUnit) SetClaimMetaTransactionRequest(ctx context.Context, exec bo
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"devices_api\".\"autopi_units\" SET %s WHERE %s",
+		"UPDATE \"devices_api\".\"aftermarket_devices\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"claim_meta_transaction_request_id"}),
-		strmangle.WhereClause("\"", "\"", 2, autopiUnitPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, aftermarketDevicePrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.AutopiUnitID}
+	values := []interface{}{related.ID, o.Serial}
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -1373,7 +1479,7 @@ func (o *AutopiUnit) SetClaimMetaTransactionRequest(ctx context.Context, exec bo
 
 	queries.Assign(&o.ClaimMetaTransactionRequestID, related.ID)
 	if o.R == nil {
-		o.R = &autopiUnitR{
+		o.R = &aftermarketDeviceR{
 			ClaimMetaTransactionRequest: related,
 		}
 	} else {
@@ -1382,10 +1488,10 @@ func (o *AutopiUnit) SetClaimMetaTransactionRequest(ctx context.Context, exec bo
 
 	if related.R == nil {
 		related.R = &metaTransactionRequestR{
-			ClaimMetaTransactionRequestAutopiUnit: o,
+			ClaimMetaTransactionRequestAftermarketDevice: o,
 		}
 	} else {
-		related.R.ClaimMetaTransactionRequestAutopiUnit = o
+		related.R.ClaimMetaTransactionRequestAftermarketDevice = o
 	}
 
 	return nil
@@ -1394,7 +1500,7 @@ func (o *AutopiUnit) SetClaimMetaTransactionRequest(ctx context.Context, exec bo
 // RemoveClaimMetaTransactionRequest relationship.
 // Sets o.R.ClaimMetaTransactionRequest to nil.
 // Removes o from all passed in related items' relationships struct.
-func (o *AutopiUnit) RemoveClaimMetaTransactionRequest(ctx context.Context, exec boil.ContextExecutor, related *MetaTransactionRequest) error {
+func (o *AftermarketDevice) RemoveClaimMetaTransactionRequest(ctx context.Context, exec boil.ContextExecutor, related *MetaTransactionRequest) error {
 	var err error
 
 	queries.SetScanner(&o.ClaimMetaTransactionRequestID, nil)
@@ -1409,14 +1515,14 @@ func (o *AutopiUnit) RemoveClaimMetaTransactionRequest(ctx context.Context, exec
 		return nil
 	}
 
-	related.R.ClaimMetaTransactionRequestAutopiUnit = nil
+	related.R.ClaimMetaTransactionRequestAftermarketDevice = nil
 	return nil
 }
 
-// SetPairRequest of the autopiUnit to the related item.
+// SetPairRequest of the aftermarketDevice to the related item.
 // Sets o.R.PairRequest to related.
-// Adds o to related.R.PairRequestAutopiUnit.
-func (o *AutopiUnit) SetPairRequest(ctx context.Context, exec boil.ContextExecutor, insert bool, related *MetaTransactionRequest) error {
+// Adds o to related.R.PairRequestAftermarketDevice.
+func (o *AftermarketDevice) SetPairRequest(ctx context.Context, exec boil.ContextExecutor, insert bool, related *MetaTransactionRequest) error {
 	var err error
 	if insert {
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
@@ -1425,11 +1531,11 @@ func (o *AutopiUnit) SetPairRequest(ctx context.Context, exec boil.ContextExecut
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"devices_api\".\"autopi_units\" SET %s WHERE %s",
+		"UPDATE \"devices_api\".\"aftermarket_devices\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"pair_request_id"}),
-		strmangle.WhereClause("\"", "\"", 2, autopiUnitPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, aftermarketDevicePrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.AutopiUnitID}
+	values := []interface{}{related.ID, o.Serial}
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -1442,7 +1548,7 @@ func (o *AutopiUnit) SetPairRequest(ctx context.Context, exec boil.ContextExecut
 
 	queries.Assign(&o.PairRequestID, related.ID)
 	if o.R == nil {
-		o.R = &autopiUnitR{
+		o.R = &aftermarketDeviceR{
 			PairRequest: related,
 		}
 	} else {
@@ -1451,10 +1557,10 @@ func (o *AutopiUnit) SetPairRequest(ctx context.Context, exec boil.ContextExecut
 
 	if related.R == nil {
 		related.R = &metaTransactionRequestR{
-			PairRequestAutopiUnit: o,
+			PairRequestAftermarketDevice: o,
 		}
 	} else {
-		related.R.PairRequestAutopiUnit = o
+		related.R.PairRequestAftermarketDevice = o
 	}
 
 	return nil
@@ -1463,7 +1569,7 @@ func (o *AutopiUnit) SetPairRequest(ctx context.Context, exec boil.ContextExecut
 // RemovePairRequest relationship.
 // Sets o.R.PairRequest to nil.
 // Removes o from all passed in related items' relationships struct.
-func (o *AutopiUnit) RemovePairRequest(ctx context.Context, exec boil.ContextExecutor, related *MetaTransactionRequest) error {
+func (o *AftermarketDevice) RemovePairRequest(ctx context.Context, exec boil.ContextExecutor, related *MetaTransactionRequest) error {
 	var err error
 
 	queries.SetScanner(&o.PairRequestID, nil)
@@ -1478,14 +1584,14 @@ func (o *AutopiUnit) RemovePairRequest(ctx context.Context, exec boil.ContextExe
 		return nil
 	}
 
-	related.R.PairRequestAutopiUnit = nil
+	related.R.PairRequestAftermarketDevice = nil
 	return nil
 }
 
-// SetUnpairRequest of the autopiUnit to the related item.
+// SetUnpairRequest of the aftermarketDevice to the related item.
 // Sets o.R.UnpairRequest to related.
-// Adds o to related.R.UnpairRequestAutopiUnit.
-func (o *AutopiUnit) SetUnpairRequest(ctx context.Context, exec boil.ContextExecutor, insert bool, related *MetaTransactionRequest) error {
+// Adds o to related.R.UnpairRequestAftermarketDevice.
+func (o *AftermarketDevice) SetUnpairRequest(ctx context.Context, exec boil.ContextExecutor, insert bool, related *MetaTransactionRequest) error {
 	var err error
 	if insert {
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
@@ -1494,11 +1600,11 @@ func (o *AutopiUnit) SetUnpairRequest(ctx context.Context, exec boil.ContextExec
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"devices_api\".\"autopi_units\" SET %s WHERE %s",
+		"UPDATE \"devices_api\".\"aftermarket_devices\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"unpair_request_id"}),
-		strmangle.WhereClause("\"", "\"", 2, autopiUnitPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, aftermarketDevicePrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.AutopiUnitID}
+	values := []interface{}{related.ID, o.Serial}
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -1511,7 +1617,7 @@ func (o *AutopiUnit) SetUnpairRequest(ctx context.Context, exec boil.ContextExec
 
 	queries.Assign(&o.UnpairRequestID, related.ID)
 	if o.R == nil {
-		o.R = &autopiUnitR{
+		o.R = &aftermarketDeviceR{
 			UnpairRequest: related,
 		}
 	} else {
@@ -1520,10 +1626,10 @@ func (o *AutopiUnit) SetUnpairRequest(ctx context.Context, exec boil.ContextExec
 
 	if related.R == nil {
 		related.R = &metaTransactionRequestR{
-			UnpairRequestAutopiUnit: o,
+			UnpairRequestAftermarketDevice: o,
 		}
 	} else {
-		related.R.UnpairRequestAutopiUnit = o
+		related.R.UnpairRequestAftermarketDevice = o
 	}
 
 	return nil
@@ -1532,7 +1638,7 @@ func (o *AutopiUnit) SetUnpairRequest(ctx context.Context, exec boil.ContextExec
 // RemoveUnpairRequest relationship.
 // Sets o.R.UnpairRequest to nil.
 // Removes o from all passed in related items' relationships struct.
-func (o *AutopiUnit) RemoveUnpairRequest(ctx context.Context, exec boil.ContextExecutor, related *MetaTransactionRequest) error {
+func (o *AftermarketDevice) RemoveUnpairRequest(ctx context.Context, exec boil.ContextExecutor, related *MetaTransactionRequest) error {
 	var err error
 
 	queries.SetScanner(&o.UnpairRequestID, nil)
@@ -1547,14 +1653,14 @@ func (o *AutopiUnit) RemoveUnpairRequest(ctx context.Context, exec boil.ContextE
 		return nil
 	}
 
-	related.R.UnpairRequestAutopiUnit = nil
+	related.R.UnpairRequestAftermarketDevice = nil
 	return nil
 }
 
-// SetVehicleToken of the autopiUnit to the related item.
+// SetVehicleToken of the aftermarketDevice to the related item.
 // Sets o.R.VehicleToken to related.
-// Adds o to related.R.VehicleTokenAutopiUnit.
-func (o *AutopiUnit) SetVehicleToken(ctx context.Context, exec boil.ContextExecutor, insert bool, related *VehicleNFT) error {
+// Adds o to related.R.VehicleTokenAftermarketDevice.
+func (o *AftermarketDevice) SetVehicleToken(ctx context.Context, exec boil.ContextExecutor, insert bool, related *VehicleNFT) error {
 	var err error
 	if insert {
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
@@ -1563,11 +1669,11 @@ func (o *AutopiUnit) SetVehicleToken(ctx context.Context, exec boil.ContextExecu
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"devices_api\".\"autopi_units\" SET %s WHERE %s",
+		"UPDATE \"devices_api\".\"aftermarket_devices\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"vehicle_token_id"}),
-		strmangle.WhereClause("\"", "\"", 2, autopiUnitPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, aftermarketDevicePrimaryKeyColumns),
 	)
-	values := []interface{}{related.TokenID, o.AutopiUnitID}
+	values := []interface{}{related.TokenID, o.Serial}
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -1580,7 +1686,7 @@ func (o *AutopiUnit) SetVehicleToken(ctx context.Context, exec boil.ContextExecu
 
 	queries.Assign(&o.VehicleTokenID, related.TokenID)
 	if o.R == nil {
-		o.R = &autopiUnitR{
+		o.R = &aftermarketDeviceR{
 			VehicleToken: related,
 		}
 	} else {
@@ -1589,10 +1695,10 @@ func (o *AutopiUnit) SetVehicleToken(ctx context.Context, exec boil.ContextExecu
 
 	if related.R == nil {
 		related.R = &vehicleNFTR{
-			VehicleTokenAutopiUnit: o,
+			VehicleTokenAftermarketDevice: o,
 		}
 	} else {
-		related.R.VehicleTokenAutopiUnit = o
+		related.R.VehicleTokenAftermarketDevice = o
 	}
 
 	return nil
@@ -1601,7 +1707,7 @@ func (o *AutopiUnit) SetVehicleToken(ctx context.Context, exec boil.ContextExecu
 // RemoveVehicleToken relationship.
 // Sets o.R.VehicleToken to nil.
 // Removes o from all passed in related items' relationships struct.
-func (o *AutopiUnit) RemoveVehicleToken(ctx context.Context, exec boil.ContextExecutor, related *VehicleNFT) error {
+func (o *AftermarketDevice) RemoveVehicleToken(ctx context.Context, exec boil.ContextExecutor, related *VehicleNFT) error {
 	var err error
 
 	queries.SetScanner(&o.VehicleTokenID, nil)
@@ -1616,19 +1722,19 @@ func (o *AutopiUnit) RemoveVehicleToken(ctx context.Context, exec boil.ContextEx
 		return nil
 	}
 
-	related.R.VehicleTokenAutopiUnit = nil
+	related.R.VehicleTokenAftermarketDevice = nil
 	return nil
 }
 
-// AddAutopiJobs adds the given related objects to the existing relationships
-// of the autopi_unit, optionally inserting them as new records.
-// Appends related to o.R.AutopiJobs.
+// AddAutopiUnitAutopiJobs adds the given related objects to the existing relationships
+// of the aftermarket_device, optionally inserting them as new records.
+// Appends related to o.R.AutopiUnitAutopiJobs.
 // Sets related.R.AutopiUnit appropriately.
-func (o *AutopiUnit) AddAutopiJobs(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*AutopiJob) error {
+func (o *AftermarketDevice) AddAutopiUnitAutopiJobs(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*AutopiJob) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.AutopiUnitID, o.AutopiUnitID)
+			queries.Assign(&rel.AutopiUnitID, o.Serial)
 			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
@@ -1638,7 +1744,7 @@ func (o *AutopiUnit) AddAutopiJobs(ctx context.Context, exec boil.ContextExecuto
 				strmangle.SetParamNames("\"", "\"", 1, []string{"autopi_unit_id"}),
 				strmangle.WhereClause("\"", "\"", 2, autopiJobPrimaryKeyColumns),
 			)
-			values := []interface{}{o.AutopiUnitID, rel.ID}
+			values := []interface{}{o.Serial, rel.ID}
 
 			if boil.IsDebug(ctx) {
 				writer := boil.DebugWriterFrom(ctx)
@@ -1649,16 +1755,16 @@ func (o *AutopiUnit) AddAutopiJobs(ctx context.Context, exec boil.ContextExecuto
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.AutopiUnitID, o.AutopiUnitID)
+			queries.Assign(&rel.AutopiUnitID, o.Serial)
 		}
 	}
 
 	if o.R == nil {
-		o.R = &autopiUnitR{
-			AutopiJobs: related,
+		o.R = &aftermarketDeviceR{
+			AutopiUnitAutopiJobs: related,
 		}
 	} else {
-		o.R.AutopiJobs = append(o.R.AutopiJobs, related...)
+		o.R.AutopiUnitAutopiJobs = append(o.R.AutopiUnitAutopiJobs, related...)
 	}
 
 	for _, rel := range related {
@@ -1673,15 +1779,15 @@ func (o *AutopiUnit) AddAutopiJobs(ctx context.Context, exec boil.ContextExecuto
 	return nil
 }
 
-// SetAutopiJobs removes all previously related items of the
-// autopi_unit replacing them completely with the passed
+// SetAutopiUnitAutopiJobs removes all previously related items of the
+// aftermarket_device replacing them completely with the passed
 // in related items, optionally inserting them as new records.
-// Sets o.R.AutopiUnit's AutopiJobs accordingly.
-// Replaces o.R.AutopiJobs with related.
-// Sets related.R.AutopiUnit's AutopiJobs accordingly.
-func (o *AutopiUnit) SetAutopiJobs(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*AutopiJob) error {
+// Sets o.R.AutopiUnit's AutopiUnitAutopiJobs accordingly.
+// Replaces o.R.AutopiUnitAutopiJobs with related.
+// Sets related.R.AutopiUnit's AutopiUnitAutopiJobs accordingly.
+func (o *AftermarketDevice) SetAutopiUnitAutopiJobs(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*AutopiJob) error {
 	query := "update \"devices_api\".\"autopi_jobs\" set \"autopi_unit_id\" = null where \"autopi_unit_id\" = $1"
-	values := []interface{}{o.AutopiUnitID}
+	values := []interface{}{o.Serial}
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
 		fmt.Fprintln(writer, query)
@@ -1693,7 +1799,7 @@ func (o *AutopiUnit) SetAutopiJobs(ctx context.Context, exec boil.ContextExecuto
 	}
 
 	if o.R != nil {
-		for _, rel := range o.R.AutopiJobs {
+		for _, rel := range o.R.AutopiUnitAutopiJobs {
 			queries.SetScanner(&rel.AutopiUnitID, nil)
 			if rel.R == nil {
 				continue
@@ -1701,16 +1807,16 @@ func (o *AutopiUnit) SetAutopiJobs(ctx context.Context, exec boil.ContextExecuto
 
 			rel.R.AutopiUnit = nil
 		}
-		o.R.AutopiJobs = nil
+		o.R.AutopiUnitAutopiJobs = nil
 	}
 
-	return o.AddAutopiJobs(ctx, exec, insert, related...)
+	return o.AddAutopiUnitAutopiJobs(ctx, exec, insert, related...)
 }
 
-// RemoveAutopiJobs relationships from objects passed in.
-// Removes related items from R.AutopiJobs (uses pointer comparison, removal does not keep order)
+// RemoveAutopiUnitAutopiJobs relationships from objects passed in.
+// Removes related items from R.AutopiUnitAutopiJobs (uses pointer comparison, removal does not keep order)
 // Sets related.R.AutopiUnit.
-func (o *AutopiUnit) RemoveAutopiJobs(ctx context.Context, exec boil.ContextExecutor, related ...*AutopiJob) error {
+func (o *AftermarketDevice) RemoveAutopiUnitAutopiJobs(ctx context.Context, exec boil.ContextExecutor, related ...*AutopiJob) error {
 	if len(related) == 0 {
 		return nil
 	}
@@ -1730,16 +1836,16 @@ func (o *AutopiUnit) RemoveAutopiJobs(ctx context.Context, exec boil.ContextExec
 	}
 
 	for _, rel := range related {
-		for i, ri := range o.R.AutopiJobs {
+		for i, ri := range o.R.AutopiUnitAutopiJobs {
 			if rel != ri {
 				continue
 			}
 
-			ln := len(o.R.AutopiJobs)
+			ln := len(o.R.AutopiUnitAutopiJobs)
 			if ln > 1 && i < ln-1 {
-				o.R.AutopiJobs[i] = o.R.AutopiJobs[ln-1]
+				o.R.AutopiUnitAutopiJobs[i] = o.R.AutopiUnitAutopiJobs[ln-1]
 			}
-			o.R.AutopiJobs = o.R.AutopiJobs[:ln-1]
+			o.R.AutopiUnitAutopiJobs = o.R.AutopiUnitAutopiJobs[:ln-1]
 			break
 		}
 	}
@@ -1747,25 +1853,25 @@ func (o *AutopiUnit) RemoveAutopiJobs(ctx context.Context, exec boil.ContextExec
 	return nil
 }
 
-// AddUserDeviceAPIIntegrations adds the given related objects to the existing relationships
-// of the autopi_unit, optionally inserting them as new records.
-// Appends related to o.R.UserDeviceAPIIntegrations.
-// Sets related.R.AutopiUnit appropriately.
-func (o *AutopiUnit) AddUserDeviceAPIIntegrations(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*UserDeviceAPIIntegration) error {
+// AddSerialUserDeviceAPIIntegrations adds the given related objects to the existing relationships
+// of the aftermarket_device, optionally inserting them as new records.
+// Appends related to o.R.SerialUserDeviceAPIIntegrations.
+// Sets related.R.SerialAftermarketDevice appropriately.
+func (o *AftermarketDevice) AddSerialUserDeviceAPIIntegrations(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*UserDeviceAPIIntegration) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.AutopiUnitID, o.AutopiUnitID)
+			queries.Assign(&rel.Serial, o.Serial)
 			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"devices_api\".\"user_device_api_integrations\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"autopi_unit_id"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"serial"}),
 				strmangle.WhereClause("\"", "\"", 2, userDeviceAPIIntegrationPrimaryKeyColumns),
 			)
-			values := []interface{}{o.AutopiUnitID, rel.UserDeviceID, rel.IntegrationID}
+			values := []interface{}{o.Serial, rel.UserDeviceID, rel.IntegrationID}
 
 			if boil.IsDebug(ctx) {
 				writer := boil.DebugWriterFrom(ctx)
@@ -1776,39 +1882,39 @@ func (o *AutopiUnit) AddUserDeviceAPIIntegrations(ctx context.Context, exec boil
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.AutopiUnitID, o.AutopiUnitID)
+			queries.Assign(&rel.Serial, o.Serial)
 		}
 	}
 
 	if o.R == nil {
-		o.R = &autopiUnitR{
-			UserDeviceAPIIntegrations: related,
+		o.R = &aftermarketDeviceR{
+			SerialUserDeviceAPIIntegrations: related,
 		}
 	} else {
-		o.R.UserDeviceAPIIntegrations = append(o.R.UserDeviceAPIIntegrations, related...)
+		o.R.SerialUserDeviceAPIIntegrations = append(o.R.SerialUserDeviceAPIIntegrations, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &userDeviceAPIIntegrationR{
-				AutopiUnit: o,
+				SerialAftermarketDevice: o,
 			}
 		} else {
-			rel.R.AutopiUnit = o
+			rel.R.SerialAftermarketDevice = o
 		}
 	}
 	return nil
 }
 
-// SetUserDeviceAPIIntegrations removes all previously related items of the
-// autopi_unit replacing them completely with the passed
+// SetSerialUserDeviceAPIIntegrations removes all previously related items of the
+// aftermarket_device replacing them completely with the passed
 // in related items, optionally inserting them as new records.
-// Sets o.R.AutopiUnit's UserDeviceAPIIntegrations accordingly.
-// Replaces o.R.UserDeviceAPIIntegrations with related.
-// Sets related.R.AutopiUnit's UserDeviceAPIIntegrations accordingly.
-func (o *AutopiUnit) SetUserDeviceAPIIntegrations(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*UserDeviceAPIIntegration) error {
-	query := "update \"devices_api\".\"user_device_api_integrations\" set \"autopi_unit_id\" = null where \"autopi_unit_id\" = $1"
-	values := []interface{}{o.AutopiUnitID}
+// Sets o.R.SerialAftermarketDevice's SerialUserDeviceAPIIntegrations accordingly.
+// Replaces o.R.SerialUserDeviceAPIIntegrations with related.
+// Sets related.R.SerialAftermarketDevice's SerialUserDeviceAPIIntegrations accordingly.
+func (o *AftermarketDevice) SetSerialUserDeviceAPIIntegrations(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*UserDeviceAPIIntegration) error {
+	query := "update \"devices_api\".\"user_device_api_integrations\" set \"serial\" = null where \"serial\" = $1"
+	values := []interface{}{o.Serial}
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
 		fmt.Fprintln(writer, query)
@@ -1820,35 +1926,35 @@ func (o *AutopiUnit) SetUserDeviceAPIIntegrations(ctx context.Context, exec boil
 	}
 
 	if o.R != nil {
-		for _, rel := range o.R.UserDeviceAPIIntegrations {
-			queries.SetScanner(&rel.AutopiUnitID, nil)
+		for _, rel := range o.R.SerialUserDeviceAPIIntegrations {
+			queries.SetScanner(&rel.Serial, nil)
 			if rel.R == nil {
 				continue
 			}
 
-			rel.R.AutopiUnit = nil
+			rel.R.SerialAftermarketDevice = nil
 		}
-		o.R.UserDeviceAPIIntegrations = nil
+		o.R.SerialUserDeviceAPIIntegrations = nil
 	}
 
-	return o.AddUserDeviceAPIIntegrations(ctx, exec, insert, related...)
+	return o.AddSerialUserDeviceAPIIntegrations(ctx, exec, insert, related...)
 }
 
-// RemoveUserDeviceAPIIntegrations relationships from objects passed in.
-// Removes related items from R.UserDeviceAPIIntegrations (uses pointer comparison, removal does not keep order)
-// Sets related.R.AutopiUnit.
-func (o *AutopiUnit) RemoveUserDeviceAPIIntegrations(ctx context.Context, exec boil.ContextExecutor, related ...*UserDeviceAPIIntegration) error {
+// RemoveSerialUserDeviceAPIIntegrations relationships from objects passed in.
+// Removes related items from R.SerialUserDeviceAPIIntegrations (uses pointer comparison, removal does not keep order)
+// Sets related.R.SerialAftermarketDevice.
+func (o *AftermarketDevice) RemoveSerialUserDeviceAPIIntegrations(ctx context.Context, exec boil.ContextExecutor, related ...*UserDeviceAPIIntegration) error {
 	if len(related) == 0 {
 		return nil
 	}
 
 	var err error
 	for _, rel := range related {
-		queries.SetScanner(&rel.AutopiUnitID, nil)
+		queries.SetScanner(&rel.Serial, nil)
 		if rel.R != nil {
-			rel.R.AutopiUnit = nil
+			rel.R.SerialAftermarketDevice = nil
 		}
-		if _, err = rel.Update(ctx, exec, boil.Whitelist("autopi_unit_id")); err != nil {
+		if _, err = rel.Update(ctx, exec, boil.Whitelist("serial")); err != nil {
 			return err
 		}
 	}
@@ -1857,16 +1963,16 @@ func (o *AutopiUnit) RemoveUserDeviceAPIIntegrations(ctx context.Context, exec b
 	}
 
 	for _, rel := range related {
-		for i, ri := range o.R.UserDeviceAPIIntegrations {
+		for i, ri := range o.R.SerialUserDeviceAPIIntegrations {
 			if rel != ri {
 				continue
 			}
 
-			ln := len(o.R.UserDeviceAPIIntegrations)
+			ln := len(o.R.SerialUserDeviceAPIIntegrations)
 			if ln > 1 && i < ln-1 {
-				o.R.UserDeviceAPIIntegrations[i] = o.R.UserDeviceAPIIntegrations[ln-1]
+				o.R.SerialUserDeviceAPIIntegrations[i] = o.R.SerialUserDeviceAPIIntegrations[ln-1]
 			}
-			o.R.UserDeviceAPIIntegrations = o.R.UserDeviceAPIIntegrations[:ln-1]
+			o.R.SerialUserDeviceAPIIntegrations = o.R.SerialUserDeviceAPIIntegrations[:ln-1]
 			break
 		}
 	}
@@ -1874,52 +1980,52 @@ func (o *AutopiUnit) RemoveUserDeviceAPIIntegrations(ctx context.Context, exec b
 	return nil
 }
 
-// AutopiUnits retrieves all the records using an executor.
-func AutopiUnits(mods ...qm.QueryMod) autopiUnitQuery {
-	mods = append(mods, qm.From("\"devices_api\".\"autopi_units\""))
+// AftermarketDevices retrieves all the records using an executor.
+func AftermarketDevices(mods ...qm.QueryMod) aftermarketDeviceQuery {
+	mods = append(mods, qm.From("\"devices_api\".\"aftermarket_devices\""))
 	q := NewQuery(mods...)
 	if len(queries.GetSelect(q)) == 0 {
-		queries.SetSelect(q, []string{"\"devices_api\".\"autopi_units\".*"})
+		queries.SetSelect(q, []string{"\"devices_api\".\"aftermarket_devices\".*"})
 	}
 
-	return autopiUnitQuery{q}
+	return aftermarketDeviceQuery{q}
 }
 
-// FindAutopiUnit retrieves a single record by ID with an executor.
+// FindAftermarketDevice retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindAutopiUnit(ctx context.Context, exec boil.ContextExecutor, autopiUnitID string, selectCols ...string) (*AutopiUnit, error) {
-	autopiUnitObj := &AutopiUnit{}
+func FindAftermarketDevice(ctx context.Context, exec boil.ContextExecutor, serial string, selectCols ...string) (*AftermarketDevice, error) {
+	aftermarketDeviceObj := &AftermarketDevice{}
 
 	sel := "*"
 	if len(selectCols) > 0 {
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"devices_api\".\"autopi_units\" where \"autopi_unit_id\"=$1", sel,
+		"select %s from \"devices_api\".\"aftermarket_devices\" where \"serial\"=$1", sel,
 	)
 
-	q := queries.Raw(query, autopiUnitID)
+	q := queries.Raw(query, serial)
 
-	err := q.Bind(ctx, exec, autopiUnitObj)
+	err := q.Bind(ctx, exec, aftermarketDeviceObj)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "models: unable to select from autopi_units")
+		return nil, errors.Wrap(err, "models: unable to select from aftermarket_devices")
 	}
 
-	if err = autopiUnitObj.doAfterSelectHooks(ctx, exec); err != nil {
-		return autopiUnitObj, err
+	if err = aftermarketDeviceObj.doAfterSelectHooks(ctx, exec); err != nil {
+		return aftermarketDeviceObj, err
 	}
 
-	return autopiUnitObj, nil
+	return aftermarketDeviceObj, nil
 }
 
 // Insert a single record using an executor.
 // See boil.Columns.InsertColumnSet documentation to understand column list inference for inserts.
-func (o *AutopiUnit) Insert(ctx context.Context, exec boil.ContextExecutor, columns boil.Columns) error {
+func (o *AftermarketDevice) Insert(ctx context.Context, exec boil.ContextExecutor, columns boil.Columns) error {
 	if o == nil {
-		return errors.New("models: no autopi_units provided for insertion")
+		return errors.New("models: no aftermarket_devices provided for insertion")
 	}
 
 	var err error
@@ -1938,33 +2044,33 @@ func (o *AutopiUnit) Insert(ctx context.Context, exec boil.ContextExecutor, colu
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(autopiUnitColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(aftermarketDeviceColumnsWithDefault, o)
 
 	key := makeCacheKey(columns, nzDefaults)
-	autopiUnitInsertCacheMut.RLock()
-	cache, cached := autopiUnitInsertCache[key]
-	autopiUnitInsertCacheMut.RUnlock()
+	aftermarketDeviceInsertCacheMut.RLock()
+	cache, cached := aftermarketDeviceInsertCache[key]
+	aftermarketDeviceInsertCacheMut.RUnlock()
 
 	if !cached {
 		wl, returnColumns := columns.InsertColumnSet(
-			autopiUnitAllColumns,
-			autopiUnitColumnsWithDefault,
-			autopiUnitColumnsWithoutDefault,
+			aftermarketDeviceAllColumns,
+			aftermarketDeviceColumnsWithDefault,
+			aftermarketDeviceColumnsWithoutDefault,
 			nzDefaults,
 		)
 
-		cache.valueMapping, err = queries.BindMapping(autopiUnitType, autopiUnitMapping, wl)
+		cache.valueMapping, err = queries.BindMapping(aftermarketDeviceType, aftermarketDeviceMapping, wl)
 		if err != nil {
 			return err
 		}
-		cache.retMapping, err = queries.BindMapping(autopiUnitType, autopiUnitMapping, returnColumns)
+		cache.retMapping, err = queries.BindMapping(aftermarketDeviceType, aftermarketDeviceMapping, returnColumns)
 		if err != nil {
 			return err
 		}
 		if len(wl) != 0 {
-			cache.query = fmt.Sprintf("INSERT INTO \"devices_api\".\"autopi_units\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
+			cache.query = fmt.Sprintf("INSERT INTO \"devices_api\".\"aftermarket_devices\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
 		} else {
-			cache.query = "INSERT INTO \"devices_api\".\"autopi_units\" %sDEFAULT VALUES%s"
+			cache.query = "INSERT INTO \"devices_api\".\"aftermarket_devices\" %sDEFAULT VALUES%s"
 		}
 
 		var queryOutput, queryReturning string
@@ -1992,22 +2098,22 @@ func (o *AutopiUnit) Insert(ctx context.Context, exec boil.ContextExecutor, colu
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "models: unable to insert into autopi_units")
+		return errors.Wrap(err, "models: unable to insert into aftermarket_devices")
 	}
 
 	if !cached {
-		autopiUnitInsertCacheMut.Lock()
-		autopiUnitInsertCache[key] = cache
-		autopiUnitInsertCacheMut.Unlock()
+		aftermarketDeviceInsertCacheMut.Lock()
+		aftermarketDeviceInsertCache[key] = cache
+		aftermarketDeviceInsertCacheMut.Unlock()
 	}
 
 	return o.doAfterInsertHooks(ctx, exec)
 }
 
-// Update uses an executor to update the AutopiUnit.
+// Update uses an executor to update the AftermarketDevice.
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
-func (o *AutopiUnit) Update(ctx context.Context, exec boil.ContextExecutor, columns boil.Columns) (int64, error) {
+func (o *AftermarketDevice) Update(ctx context.Context, exec boil.ContextExecutor, columns boil.Columns) (int64, error) {
 	if !boil.TimestampsAreSkipped(ctx) {
 		currTime := time.Now().In(boil.GetLocation())
 
@@ -2019,28 +2125,28 @@ func (o *AutopiUnit) Update(ctx context.Context, exec boil.ContextExecutor, colu
 		return 0, err
 	}
 	key := makeCacheKey(columns, nil)
-	autopiUnitUpdateCacheMut.RLock()
-	cache, cached := autopiUnitUpdateCache[key]
-	autopiUnitUpdateCacheMut.RUnlock()
+	aftermarketDeviceUpdateCacheMut.RLock()
+	cache, cached := aftermarketDeviceUpdateCache[key]
+	aftermarketDeviceUpdateCacheMut.RUnlock()
 
 	if !cached {
 		wl := columns.UpdateColumnSet(
-			autopiUnitAllColumns,
-			autopiUnitPrimaryKeyColumns,
+			aftermarketDeviceAllColumns,
+			aftermarketDevicePrimaryKeyColumns,
 		)
 
 		if !columns.IsWhitelist() {
 			wl = strmangle.SetComplement(wl, []string{"created_at"})
 		}
 		if len(wl) == 0 {
-			return 0, errors.New("models: unable to update autopi_units, could not build whitelist")
+			return 0, errors.New("models: unable to update aftermarket_devices, could not build whitelist")
 		}
 
-		cache.query = fmt.Sprintf("UPDATE \"devices_api\".\"autopi_units\" SET %s WHERE %s",
+		cache.query = fmt.Sprintf("UPDATE \"devices_api\".\"aftermarket_devices\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
-			strmangle.WhereClause("\"", "\"", len(wl)+1, autopiUnitPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", len(wl)+1, aftermarketDevicePrimaryKeyColumns),
 		)
-		cache.valueMapping, err = queries.BindMapping(autopiUnitType, autopiUnitMapping, append(wl, autopiUnitPrimaryKeyColumns...))
+		cache.valueMapping, err = queries.BindMapping(aftermarketDeviceType, aftermarketDeviceMapping, append(wl, aftermarketDevicePrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -2056,42 +2162,42 @@ func (o *AutopiUnit) Update(ctx context.Context, exec boil.ContextExecutor, colu
 	var result sql.Result
 	result, err = exec.ExecContext(ctx, cache.query, values...)
 	if err != nil {
-		return 0, errors.Wrap(err, "models: unable to update autopi_units row")
+		return 0, errors.Wrap(err, "models: unable to update aftermarket_devices row")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "models: failed to get rows affected by update for autopi_units")
+		return 0, errors.Wrap(err, "models: failed to get rows affected by update for aftermarket_devices")
 	}
 
 	if !cached {
-		autopiUnitUpdateCacheMut.Lock()
-		autopiUnitUpdateCache[key] = cache
-		autopiUnitUpdateCacheMut.Unlock()
+		aftermarketDeviceUpdateCacheMut.Lock()
+		aftermarketDeviceUpdateCache[key] = cache
+		aftermarketDeviceUpdateCacheMut.Unlock()
 	}
 
 	return rowsAff, o.doAfterUpdateHooks(ctx, exec)
 }
 
 // UpdateAll updates all rows with the specified column values.
-func (q autopiUnitQuery) UpdateAll(ctx context.Context, exec boil.ContextExecutor, cols M) (int64, error) {
+func (q aftermarketDeviceQuery) UpdateAll(ctx context.Context, exec boil.ContextExecutor, cols M) (int64, error) {
 	queries.SetUpdate(q.Query, cols)
 
 	result, err := q.Query.ExecContext(ctx, exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "models: unable to update all for autopi_units")
+		return 0, errors.Wrap(err, "models: unable to update all for aftermarket_devices")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "models: unable to retrieve rows affected for autopi_units")
+		return 0, errors.Wrap(err, "models: unable to retrieve rows affected for aftermarket_devices")
 	}
 
 	return rowsAff, nil
 }
 
 // UpdateAll updates all rows with the specified column values, using an executor.
-func (o AutopiUnitSlice) UpdateAll(ctx context.Context, exec boil.ContextExecutor, cols M) (int64, error) {
+func (o AftermarketDeviceSlice) UpdateAll(ctx context.Context, exec boil.ContextExecutor, cols M) (int64, error) {
 	ln := int64(len(o))
 	if ln == 0 {
 		return 0, nil
@@ -2113,13 +2219,13 @@ func (o AutopiUnitSlice) UpdateAll(ctx context.Context, exec boil.ContextExecuto
 
 	// Append all of the primary key values for each column
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), autopiUnitPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), aftermarketDevicePrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := fmt.Sprintf("UPDATE \"devices_api\".\"autopi_units\" SET %s WHERE %s",
+	sql := fmt.Sprintf("UPDATE \"devices_api\".\"aftermarket_devices\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, colNames),
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, autopiUnitPrimaryKeyColumns, len(o)))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, aftermarketDevicePrimaryKeyColumns, len(o)))
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -2128,21 +2234,21 @@ func (o AutopiUnitSlice) UpdateAll(ctx context.Context, exec boil.ContextExecuto
 	}
 	result, err := exec.ExecContext(ctx, sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "models: unable to update all in autopiUnit slice")
+		return 0, errors.Wrap(err, "models: unable to update all in aftermarketDevice slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "models: unable to retrieve rows affected all in update all autopiUnit")
+		return 0, errors.Wrap(err, "models: unable to retrieve rows affected all in update all aftermarketDevice")
 	}
 	return rowsAff, nil
 }
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *AutopiUnit) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *AftermarketDevice) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
-		return errors.New("models: no autopi_units provided for upsert")
+		return errors.New("models: no aftermarket_devices provided for upsert")
 	}
 	if !boil.TimestampsAreSkipped(ctx) {
 		currTime := time.Now().In(boil.GetLocation())
@@ -2157,7 +2263,7 @@ func (o *AutopiUnit) Upsert(ctx context.Context, exec boil.ContextExecutor, upda
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(autopiUnitColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(aftermarketDeviceColumnsWithDefault, o)
 
 	// Build cache key in-line uglily - mysql vs psql problems
 	buf := strmangle.GetBuffer()
@@ -2187,42 +2293,42 @@ func (o *AutopiUnit) Upsert(ctx context.Context, exec boil.ContextExecutor, upda
 	key := buf.String()
 	strmangle.PutBuffer(buf)
 
-	autopiUnitUpsertCacheMut.RLock()
-	cache, cached := autopiUnitUpsertCache[key]
-	autopiUnitUpsertCacheMut.RUnlock()
+	aftermarketDeviceUpsertCacheMut.RLock()
+	cache, cached := aftermarketDeviceUpsertCache[key]
+	aftermarketDeviceUpsertCacheMut.RUnlock()
 
 	var err error
 
 	if !cached {
 		insert, ret := insertColumns.InsertColumnSet(
-			autopiUnitAllColumns,
-			autopiUnitColumnsWithDefault,
-			autopiUnitColumnsWithoutDefault,
+			aftermarketDeviceAllColumns,
+			aftermarketDeviceColumnsWithDefault,
+			aftermarketDeviceColumnsWithoutDefault,
 			nzDefaults,
 		)
 
 		update := updateColumns.UpdateColumnSet(
-			autopiUnitAllColumns,
-			autopiUnitPrimaryKeyColumns,
+			aftermarketDeviceAllColumns,
+			aftermarketDevicePrimaryKeyColumns,
 		)
 
 		if updateOnConflict && len(update) == 0 {
-			return errors.New("models: unable to upsert autopi_units, could not build update column list")
+			return errors.New("models: unable to upsert aftermarket_devices, could not build update column list")
 		}
 
 		conflict := conflictColumns
 		if len(conflict) == 0 {
-			conflict = make([]string, len(autopiUnitPrimaryKeyColumns))
-			copy(conflict, autopiUnitPrimaryKeyColumns)
+			conflict = make([]string, len(aftermarketDevicePrimaryKeyColumns))
+			copy(conflict, aftermarketDevicePrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"autopi_units\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"aftermarket_devices\"", updateOnConflict, ret, update, conflict, insert)
 
-		cache.valueMapping, err = queries.BindMapping(autopiUnitType, autopiUnitMapping, insert)
+		cache.valueMapping, err = queries.BindMapping(aftermarketDeviceType, aftermarketDeviceMapping, insert)
 		if err != nil {
 			return err
 		}
 		if len(ret) != 0 {
-			cache.retMapping, err = queries.BindMapping(autopiUnitType, autopiUnitMapping, ret)
+			cache.retMapping, err = queries.BindMapping(aftermarketDeviceType, aftermarketDeviceMapping, ret)
 			if err != nil {
 				return err
 			}
@@ -2250,31 +2356,31 @@ func (o *AutopiUnit) Upsert(ctx context.Context, exec boil.ContextExecutor, upda
 		_, err = exec.ExecContext(ctx, cache.query, vals...)
 	}
 	if err != nil {
-		return errors.Wrap(err, "models: unable to upsert autopi_units")
+		return errors.Wrap(err, "models: unable to upsert aftermarket_devices")
 	}
 
 	if !cached {
-		autopiUnitUpsertCacheMut.Lock()
-		autopiUnitUpsertCache[key] = cache
-		autopiUnitUpsertCacheMut.Unlock()
+		aftermarketDeviceUpsertCacheMut.Lock()
+		aftermarketDeviceUpsertCache[key] = cache
+		aftermarketDeviceUpsertCacheMut.Unlock()
 	}
 
 	return o.doAfterUpsertHooks(ctx, exec)
 }
 
-// Delete deletes a single AutopiUnit record with an executor.
+// Delete deletes a single AftermarketDevice record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *AutopiUnit) Delete(ctx context.Context, exec boil.ContextExecutor) (int64, error) {
+func (o *AftermarketDevice) Delete(ctx context.Context, exec boil.ContextExecutor) (int64, error) {
 	if o == nil {
-		return 0, errors.New("models: no AutopiUnit provided for delete")
+		return 0, errors.New("models: no AftermarketDevice provided for delete")
 	}
 
 	if err := o.doBeforeDeleteHooks(ctx, exec); err != nil {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), autopiUnitPrimaryKeyMapping)
-	sql := "DELETE FROM \"devices_api\".\"autopi_units\" WHERE \"autopi_unit_id\"=$1"
+	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), aftermarketDevicePrimaryKeyMapping)
+	sql := "DELETE FROM \"devices_api\".\"aftermarket_devices\" WHERE \"serial\"=$1"
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -2283,12 +2389,12 @@ func (o *AutopiUnit) Delete(ctx context.Context, exec boil.ContextExecutor) (int
 	}
 	result, err := exec.ExecContext(ctx, sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "models: unable to delete from autopi_units")
+		return 0, errors.Wrap(err, "models: unable to delete from aftermarket_devices")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "models: failed to get rows affected by delete for autopi_units")
+		return 0, errors.Wrap(err, "models: failed to get rows affected by delete for aftermarket_devices")
 	}
 
 	if err := o.doAfterDeleteHooks(ctx, exec); err != nil {
@@ -2299,33 +2405,33 @@ func (o *AutopiUnit) Delete(ctx context.Context, exec boil.ContextExecutor) (int
 }
 
 // DeleteAll deletes all matching rows.
-func (q autopiUnitQuery) DeleteAll(ctx context.Context, exec boil.ContextExecutor) (int64, error) {
+func (q aftermarketDeviceQuery) DeleteAll(ctx context.Context, exec boil.ContextExecutor) (int64, error) {
 	if q.Query == nil {
-		return 0, errors.New("models: no autopiUnitQuery provided for delete all")
+		return 0, errors.New("models: no aftermarketDeviceQuery provided for delete all")
 	}
 
 	queries.SetDelete(q.Query)
 
 	result, err := q.Query.ExecContext(ctx, exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "models: unable to delete all from autopi_units")
+		return 0, errors.Wrap(err, "models: unable to delete all from aftermarket_devices")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "models: failed to get rows affected by deleteall for autopi_units")
+		return 0, errors.Wrap(err, "models: failed to get rows affected by deleteall for aftermarket_devices")
 	}
 
 	return rowsAff, nil
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o AutopiUnitSlice) DeleteAll(ctx context.Context, exec boil.ContextExecutor) (int64, error) {
+func (o AftermarketDeviceSlice) DeleteAll(ctx context.Context, exec boil.ContextExecutor) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
 
-	if len(autopiUnitBeforeDeleteHooks) != 0 {
+	if len(aftermarketDeviceBeforeDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doBeforeDeleteHooks(ctx, exec); err != nil {
 				return 0, err
@@ -2335,12 +2441,12 @@ func (o AutopiUnitSlice) DeleteAll(ctx context.Context, exec boil.ContextExecuto
 
 	var args []interface{}
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), autopiUnitPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), aftermarketDevicePrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "DELETE FROM \"devices_api\".\"autopi_units\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, autopiUnitPrimaryKeyColumns, len(o))
+	sql := "DELETE FROM \"devices_api\".\"aftermarket_devices\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, aftermarketDevicePrimaryKeyColumns, len(o))
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -2349,15 +2455,15 @@ func (o AutopiUnitSlice) DeleteAll(ctx context.Context, exec boil.ContextExecuto
 	}
 	result, err := exec.ExecContext(ctx, sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "models: unable to delete all from autopiUnit slice")
+		return 0, errors.Wrap(err, "models: unable to delete all from aftermarketDevice slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "models: failed to get rows affected by deleteall for autopi_units")
+		return 0, errors.Wrap(err, "models: failed to get rows affected by deleteall for aftermarket_devices")
 	}
 
-	if len(autopiUnitAfterDeleteHooks) != 0 {
+	if len(aftermarketDeviceAfterDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterDeleteHooks(ctx, exec); err != nil {
 				return 0, err
@@ -2370,8 +2476,8 @@ func (o AutopiUnitSlice) DeleteAll(ctx context.Context, exec boil.ContextExecuto
 
 // Reload refetches the object from the database
 // using the primary keys with an executor.
-func (o *AutopiUnit) Reload(ctx context.Context, exec boil.ContextExecutor) error {
-	ret, err := FindAutopiUnit(ctx, exec, o.AutopiUnitID)
+func (o *AftermarketDevice) Reload(ctx context.Context, exec boil.ContextExecutor) error {
+	ret, err := FindAftermarketDevice(ctx, exec, o.Serial)
 	if err != nil {
 		return err
 	}
@@ -2382,26 +2488,26 @@ func (o *AutopiUnit) Reload(ctx context.Context, exec boil.ContextExecutor) erro
 
 // ReloadAll refetches every row with matching primary key column values
 // and overwrites the original object slice with the newly updated slice.
-func (o *AutopiUnitSlice) ReloadAll(ctx context.Context, exec boil.ContextExecutor) error {
+func (o *AftermarketDeviceSlice) ReloadAll(ctx context.Context, exec boil.ContextExecutor) error {
 	if o == nil || len(*o) == 0 {
 		return nil
 	}
 
-	slice := AutopiUnitSlice{}
+	slice := AftermarketDeviceSlice{}
 	var args []interface{}
 	for _, obj := range *o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), autopiUnitPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), aftermarketDevicePrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "SELECT \"devices_api\".\"autopi_units\".* FROM \"devices_api\".\"autopi_units\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, autopiUnitPrimaryKeyColumns, len(*o))
+	sql := "SELECT \"devices_api\".\"aftermarket_devices\".* FROM \"devices_api\".\"aftermarket_devices\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, aftermarketDevicePrimaryKeyColumns, len(*o))
 
 	q := queries.Raw(sql, args...)
 
 	err := q.Bind(ctx, exec, &slice)
 	if err != nil {
-		return errors.Wrap(err, "models: unable to reload all in AutopiUnitSlice")
+		return errors.Wrap(err, "models: unable to reload all in AftermarketDeviceSlice")
 	}
 
 	*o = slice
@@ -2409,27 +2515,27 @@ func (o *AutopiUnitSlice) ReloadAll(ctx context.Context, exec boil.ContextExecut
 	return nil
 }
 
-// AutopiUnitExists checks if the AutopiUnit row exists.
-func AutopiUnitExists(ctx context.Context, exec boil.ContextExecutor, autopiUnitID string) (bool, error) {
+// AftermarketDeviceExists checks if the AftermarketDevice row exists.
+func AftermarketDeviceExists(ctx context.Context, exec boil.ContextExecutor, serial string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"devices_api\".\"autopi_units\" where \"autopi_unit_id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"devices_api\".\"aftermarket_devices\" where \"serial\"=$1 limit 1)"
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
 		fmt.Fprintln(writer, sql)
-		fmt.Fprintln(writer, autopiUnitID)
+		fmt.Fprintln(writer, serial)
 	}
-	row := exec.QueryRowContext(ctx, sql, autopiUnitID)
+	row := exec.QueryRowContext(ctx, sql, serial)
 
 	err := row.Scan(&exists)
 	if err != nil {
-		return false, errors.Wrap(err, "models: unable to check if autopi_units exists")
+		return false, errors.Wrap(err, "models: unable to check if aftermarket_devices exists")
 	}
 
 	return exists, nil
 }
 
-// Exists checks if the AutopiUnit row exists.
-func (o *AutopiUnit) Exists(ctx context.Context, exec boil.ContextExecutor) (bool, error) {
-	return AutopiUnitExists(ctx, exec, o.AutopiUnitID)
+// Exists checks if the AftermarketDevice row exists.
+func (o *AftermarketDevice) Exists(ctx context.Context, exec boil.ContextExecutor) (bool, error) {
+	return AftermarketDeviceExists(ctx, exec, o.Serial)
 }

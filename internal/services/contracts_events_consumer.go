@@ -256,7 +256,7 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 		return nil
 	}
 
-	apUnit, err := models.AutopiUnits(models.AutopiUnitWhere.TokenID.EQ(tkID)).One(context.Background(), c.db.DBS().Reader)
+	apUnit, err := models.AftermarketDevices(models.AftermarketDeviceWhere.TokenID.EQ(tkID)).One(context.Background(), c.db.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			c.log.Err(err).Str("tokenID", tkID.String()).Msg("record not found as this might be a newly minted device")
@@ -275,7 +275,7 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 	apUnit.OwnerAddress = null.BytesFrom(args.To.Bytes())
 	apUnit.Beneficiary = null.Bytes{}
 
-	cols := models.AutopiUnitColumns
+	cols := models.AftermarketDeviceColumns
 
 	if _, err = apUnit.Update(ctx, c.db.DBS().Writer, boil.Whitelist(cols.UserID, cols.OwnerAddress, cols.Beneficiary, cols.UpdatedAt)); err != nil {
 		c.log.Err(err).Str("tokenID", tkID.String()).Msg("error occurred transferring device")
@@ -317,17 +317,18 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 	}
 
 	c.log.Info().Str("serial", device.UnitID).Msgf("Aftermarket device minted with address %s, token id %d.", args.AftermarketDeviceAddress, args.TokenId)
+	amdMd := AftermarketDeviceMetadata{AutoPiDeviceID: device.ID}
 
-	ap := models.AutopiUnit{
-		AutopiUnitID:    device.UnitID,
-		AutopiDeviceID:  null.StringFrom(device.ID),
+	amd := models.AftermarketDevice{
+		Serial:          device.UnitID,
 		EthereumAddress: null.BytesFrom(args.AftermarketDeviceAddress.Bytes()),
 		TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
 	}
+	_ = amd.Metadata.Marshal(amdMd)
 
-	cols := models.AutopiUnitColumns
+	cols := models.AftermarketDeviceColumns
 
-	err = ap.Upsert(context.Background(), c.db.DBS().Writer, true, []string{cols.AutopiUnitID}, boil.Whitelist(cols.AutopiDeviceID, cols.EthereumAddress, cols.TokenID, cols.UpdatedAt), boil.Infer())
+	err = amd.Upsert(context.Background(), c.db.DBS().Writer, true, []string{cols.Serial}, boil.Whitelist(cols.Metadata, cols.EthereumAddress, cols.TokenID, cols.UpdatedAt), boil.Infer())
 	if err != nil {
 		c.log.Error().Err(err).Msg("Failed to insert privilege record.")
 		return err
@@ -344,14 +345,14 @@ func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
 
 	c.log.Info().Int64("nodeID", args.NodeId.Int64()).Msgf("Aftermarket beneficiary set: %s.", args.Beneficiary)
 
-	device, err := models.AutopiUnits(
-		models.AutopiUnitWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(args.NodeId.Int64()), 0))),
+	device, err := models.AftermarketDevices(
+		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(args.NodeId.Int64()), 0))),
 	).One(context.Background(), c.db.DBS().Reader)
 	if err != nil {
 		return err
 	}
 
-	cols := models.AutopiUnitColumns
+	cols := models.AftermarketDeviceColumns
 
 	if IsZeroAddress(args.Beneficiary) {
 		device.Beneficiary = null.Bytes{}

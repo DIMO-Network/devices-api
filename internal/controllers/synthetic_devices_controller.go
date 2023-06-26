@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -134,7 +135,7 @@ func (vc *SyntheticDevicesController) verifyUserAddressAndNFTExist(ctx context.C
 // @Param       integrationNode path int true "token ID"
 // @Param       vehicleNode path int true "vehicle ID"
 // @Success     200 {array} signer.TypedData
-// @Router      synthetic/device/mint/:integrationNode/:vehicleNode [get]
+// @Router /synthetic/device/mint/{integrationNode}/{vehicleNode} [get]
 func (vc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber.Ctx) error {
 	rawIntegrationNode := c.Params("integrationNode")
 	vehicleNode := c.Params("vehicleNode")
@@ -178,8 +179,8 @@ func (vc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber.
 // @Produce     json
 // @Param       integrationNode path int true "token ID"
 // @Param       vehicleNode path int true "vehicle ID"
-// @Success     200 {array}
-// @Router      synthetic/device/mint/:integrationNode/:vehicleNode [post]
+// @Success     204
+// @Router      /synthetic/device/mint/{integrationNode}/{vehicleNode} [post]
 func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	rawIntegrationNode := c.Params("integrationNode")
 	vehicleNode := c.Params("vehicleNode")
@@ -381,6 +382,25 @@ func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx con
 		udi.AccessToken = null.StringFrom(encAccess)
 		udi.AccessExpiresAt = null.TimeFrom(token.AccessExpiry)
 		udi.RefreshToken = null.StringFrom(encRefresh)
+
+		externalID, err := vc.smartcarClient.GetExternalID(ctx, token.Access)
+		if err != nil {
+			return err
+		}
+
+		endpoints, err := vc.smartcarClient.GetEndpoints(ctx, token.Access, externalID)
+		if err != nil {
+			vc.log.Err(err).Msg("Failed to retrieve permissions from Smartcar.")
+			return err
+		}
+
+		meta := services.UserDeviceAPIIntegrationsMetadata{
+			SmartcarEndpoints: endpoints,
+		}
+
+		mb, _ := json.Marshal(meta)
+		udi.Metadata = null.JSONFrom(mb)
+		udi.ExternalID = null.StringFrom(externalID)
 	default:
 		return nil
 	}
