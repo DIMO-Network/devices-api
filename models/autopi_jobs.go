@@ -89,29 +89,6 @@ var AutopiJobTableColumns = struct {
 
 // Generated where
 
-type whereHelperstring struct{ field string }
-
-func (w whereHelperstring) EQ(x string) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
-func (w whereHelperstring) NEQ(x string) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
-func (w whereHelperstring) LT(x string) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
-func (w whereHelperstring) LTE(x string) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
-func (w whereHelperstring) GT(x string) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
-func (w whereHelperstring) GTE(x string) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
-func (w whereHelperstring) IN(slice []string) qm.QueryMod {
-	values := make([]interface{}, 0, len(slice))
-	for _, value := range slice {
-		values = append(values, value)
-	}
-	return qm.WhereIn(fmt.Sprintf("%s IN ?", w.field), values...)
-}
-func (w whereHelperstring) NIN(slice []string) qm.QueryMod {
-	values := make([]interface{}, 0, len(slice))
-	for _, value := range slice {
-		values = append(values, value)
-	}
-	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
-}
-
 type whereHelpernull_Time struct{ field string }
 
 func (w whereHelpernull_Time) EQ(x null.Time) qm.QueryMod {
@@ -135,89 +112,6 @@ func (w whereHelpernull_Time) GTE(x null.Time) qm.QueryMod {
 
 func (w whereHelpernull_Time) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
 func (w whereHelpernull_Time) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
-
-type whereHelpernull_String struct{ field string }
-
-func (w whereHelpernull_String) EQ(x null.String) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, false, x)
-}
-func (w whereHelpernull_String) NEQ(x null.String) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, true, x)
-}
-func (w whereHelpernull_String) LT(x null.String) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelpernull_String) LTE(x null.String) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelpernull_String) GT(x null.String) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelpernull_String) GTE(x null.String) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
-func (w whereHelpernull_String) IN(slice []string) qm.QueryMod {
-	values := make([]interface{}, 0, len(slice))
-	for _, value := range slice {
-		values = append(values, value)
-	}
-	return qm.WhereIn(fmt.Sprintf("%s IN ?", w.field), values...)
-}
-func (w whereHelpernull_String) NIN(slice []string) qm.QueryMod {
-	values := make([]interface{}, 0, len(slice))
-	for _, value := range slice {
-		values = append(values, value)
-	}
-	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
-}
-
-func (w whereHelpernull_String) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
-func (w whereHelpernull_String) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
-
-type whereHelpertime_Time struct{ field string }
-
-func (w whereHelpertime_Time) EQ(x time.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.EQ, x)
-}
-func (w whereHelpertime_Time) NEQ(x time.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.NEQ, x)
-}
-func (w whereHelpertime_Time) LT(x time.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelpertime_Time) LTE(x time.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelpertime_Time) GT(x time.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelpertime_Time) GTE(x time.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
-
-type whereHelpernull_JSON struct{ field string }
-
-func (w whereHelpernull_JSON) EQ(x null.JSON) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, false, x)
-}
-func (w whereHelpernull_JSON) NEQ(x null.JSON) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, true, x)
-}
-func (w whereHelpernull_JSON) LT(x null.JSON) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelpernull_JSON) LTE(x null.JSON) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelpernull_JSON) GT(x null.JSON) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelpernull_JSON) GTE(x null.JSON) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
-
-func (w whereHelpernull_JSON) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
-func (w whereHelpernull_JSON) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
 var AutopiJobWhere = struct {
 	ID                 whereHelperstring
@@ -254,8 +148,8 @@ var AutopiJobRels = struct {
 
 // autopiJobR is where relationships are stored.
 type autopiJobR struct {
-	AutopiUnit *AutopiUnit `boil:"AutopiUnit" json:"AutopiUnit" toml:"AutopiUnit" yaml:"AutopiUnit"`
-	UserDevice *UserDevice `boil:"UserDevice" json:"UserDevice" toml:"UserDevice" yaml:"UserDevice"`
+	AutopiUnit *AftermarketDevice `boil:"AutopiUnit" json:"AutopiUnit" toml:"AutopiUnit" yaml:"AutopiUnit"`
+	UserDevice *UserDevice        `boil:"UserDevice" json:"UserDevice" toml:"UserDevice" yaml:"UserDevice"`
 }
 
 // NewStruct creates a new relationship struct
@@ -263,7 +157,7 @@ func (*autopiJobR) NewStruct() *autopiJobR {
 	return &autopiJobR{}
 }
 
-func (r *autopiJobR) GetAutopiUnit() *AutopiUnit {
+func (r *autopiJobR) GetAutopiUnit() *AftermarketDevice {
 	if r == nil {
 		return nil
 	}
@@ -567,14 +461,14 @@ func (q autopiJobQuery) Exists(ctx context.Context, exec boil.ContextExecutor) (
 }
 
 // AutopiUnit pointed to by the foreign key.
-func (o *AutopiJob) AutopiUnit(mods ...qm.QueryMod) autopiUnitQuery {
+func (o *AutopiJob) AutopiUnit(mods ...qm.QueryMod) aftermarketDeviceQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"autopi_unit_id\" = ?", o.AutopiUnitID),
+		qm.Where("\"serial\" = ?", o.AutopiUnitID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	return AutopiUnits(queryMods...)
+	return AftermarketDevices(queryMods...)
 }
 
 // UserDevice pointed to by the foreign key.
@@ -650,8 +544,8 @@ func (autopiJobL) LoadAutopiUnit(ctx context.Context, e boil.ContextExecutor, si
 	}
 
 	query := NewQuery(
-		qm.From(`devices_api.autopi_units`),
-		qm.WhereIn(`devices_api.autopi_units.autopi_unit_id in ?`, args...),
+		qm.From(`devices_api.aftermarket_devices`),
+		qm.WhereIn(`devices_api.aftermarket_devices.serial in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -659,22 +553,22 @@ func (autopiJobL) LoadAutopiUnit(ctx context.Context, e boil.ContextExecutor, si
 
 	results, err := query.QueryContext(ctx, e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load AutopiUnit")
+		return errors.Wrap(err, "failed to eager load AftermarketDevice")
 	}
 
-	var resultSlice []*AutopiUnit
+	var resultSlice []*AftermarketDevice
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice AutopiUnit")
+		return errors.Wrap(err, "failed to bind eager loaded slice AftermarketDevice")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for autopi_units")
+		return errors.Wrap(err, "failed to close results of eager load for aftermarket_devices")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for autopi_units")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for aftermarket_devices")
 	}
 
-	if len(autopiUnitAfterSelectHooks) != 0 {
+	if len(aftermarketDeviceAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
 				return err
@@ -690,20 +584,20 @@ func (autopiJobL) LoadAutopiUnit(ctx context.Context, e boil.ContextExecutor, si
 		foreign := resultSlice[0]
 		object.R.AutopiUnit = foreign
 		if foreign.R == nil {
-			foreign.R = &autopiUnitR{}
+			foreign.R = &aftermarketDeviceR{}
 		}
-		foreign.R.AutopiJobs = append(foreign.R.AutopiJobs, object)
+		foreign.R.AutopiUnitAutopiJobs = append(foreign.R.AutopiUnitAutopiJobs, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.AutopiUnitID, foreign.AutopiUnitID) {
+			if queries.Equal(local.AutopiUnitID, foreign.Serial) {
 				local.R.AutopiUnit = foreign
 				if foreign.R == nil {
-					foreign.R = &autopiUnitR{}
+					foreign.R = &aftermarketDeviceR{}
 				}
-				foreign.R.AutopiJobs = append(foreign.R.AutopiJobs, local)
+				foreign.R.AutopiUnitAutopiJobs = append(foreign.R.AutopiUnitAutopiJobs, local)
 				break
 			}
 		}
@@ -838,8 +732,8 @@ func (autopiJobL) LoadUserDevice(ctx context.Context, e boil.ContextExecutor, si
 
 // SetAutopiUnit of the autopiJob to the related item.
 // Sets o.R.AutopiUnit to related.
-// Adds o to related.R.AutopiJobs.
-func (o *AutopiJob) SetAutopiUnit(ctx context.Context, exec boil.ContextExecutor, insert bool, related *AutopiUnit) error {
+// Adds o to related.R.AutopiUnitAutopiJobs.
+func (o *AutopiJob) SetAutopiUnit(ctx context.Context, exec boil.ContextExecutor, insert bool, related *AftermarketDevice) error {
 	var err error
 	if insert {
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
@@ -852,7 +746,7 @@ func (o *AutopiJob) SetAutopiUnit(ctx context.Context, exec boil.ContextExecutor
 		strmangle.SetParamNames("\"", "\"", 1, []string{"autopi_unit_id"}),
 		strmangle.WhereClause("\"", "\"", 2, autopiJobPrimaryKeyColumns),
 	)
-	values := []interface{}{related.AutopiUnitID, o.ID}
+	values := []interface{}{related.Serial, o.ID}
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -863,7 +757,7 @@ func (o *AutopiJob) SetAutopiUnit(ctx context.Context, exec boil.ContextExecutor
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.AutopiUnitID, related.AutopiUnitID)
+	queries.Assign(&o.AutopiUnitID, related.Serial)
 	if o.R == nil {
 		o.R = &autopiJobR{
 			AutopiUnit: related,
@@ -873,11 +767,11 @@ func (o *AutopiJob) SetAutopiUnit(ctx context.Context, exec boil.ContextExecutor
 	}
 
 	if related.R == nil {
-		related.R = &autopiUnitR{
-			AutopiJobs: AutopiJobSlice{o},
+		related.R = &aftermarketDeviceR{
+			AutopiUnitAutopiJobs: AutopiJobSlice{o},
 		}
 	} else {
-		related.R.AutopiJobs = append(related.R.AutopiJobs, o)
+		related.R.AutopiUnitAutopiJobs = append(related.R.AutopiUnitAutopiJobs, o)
 	}
 
 	return nil
@@ -886,7 +780,7 @@ func (o *AutopiJob) SetAutopiUnit(ctx context.Context, exec boil.ContextExecutor
 // RemoveAutopiUnit relationship.
 // Sets o.R.AutopiUnit to nil.
 // Removes o from all passed in related items' relationships struct.
-func (o *AutopiJob) RemoveAutopiUnit(ctx context.Context, exec boil.ContextExecutor, related *AutopiUnit) error {
+func (o *AutopiJob) RemoveAutopiUnit(ctx context.Context, exec boil.ContextExecutor, related *AftermarketDevice) error {
 	var err error
 
 	queries.SetScanner(&o.AutopiUnitID, nil)
@@ -901,16 +795,16 @@ func (o *AutopiJob) RemoveAutopiUnit(ctx context.Context, exec boil.ContextExecu
 		return nil
 	}
 
-	for i, ri := range related.R.AutopiJobs {
+	for i, ri := range related.R.AutopiUnitAutopiJobs {
 		if queries.Equal(o.AutopiUnitID, ri.AutopiUnitID) {
 			continue
 		}
 
-		ln := len(related.R.AutopiJobs)
+		ln := len(related.R.AutopiUnitAutopiJobs)
 		if ln > 1 && i < ln-1 {
-			related.R.AutopiJobs[i] = related.R.AutopiJobs[ln-1]
+			related.R.AutopiUnitAutopiJobs[i] = related.R.AutopiUnitAutopiJobs[ln-1]
 		}
-		related.R.AutopiJobs = related.R.AutopiJobs[:ln-1]
+		related.R.AutopiUnitAutopiJobs = related.R.AutopiUnitAutopiJobs[:ln-1]
 		break
 	}
 	return nil

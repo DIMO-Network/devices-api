@@ -4,8 +4,8 @@
 package models
 
 var TableNames = struct {
+	AftermarketDevices        string
 	AutopiJobs                string
-	AutopiUnits               string
 	DCN                       string
 	DeviceCommandRequests     string
 	ErrorCodeQueries          string
@@ -21,8 +21,8 @@ var TableNames = struct {
 	VehicleNFTS               string
 	VerifiableCredentials     string
 }{
+	AftermarketDevices:        "aftermarket_devices",
 	AutopiJobs:                "autopi_jobs",
-	AutopiUnits:               "autopi_units",
 	DCN:                       "dcn",
 	DeviceCommandRequests:     "device_command_requests",
 	ErrorCodeQueries:          "error_code_queries",

@@ -58,29 +58,29 @@ func remakeAftermarketTopic(ctx context.Context, pdb db.Store, producer sarama.S
 		return fmt.Errorf("failed to retrieve AutoPi integration: %w", err)
 	}
 
-	aps, err := models.AutopiUnits(
-		models.AutopiUnitWhere.VehicleTokenID.IsNotNull(),
-		qm.Load(models.AutopiUnitRels.VehicleToken),
+	aps, err := models.AftermarketDevices(
+		models.AftermarketDeviceWhere.VehicleTokenID.IsNotNull(),
+		qm.Load(models.AftermarketDeviceRels.VehicleToken),
 	).All(ctx, db)
 	if err != nil {
 		return err
 	}
 
-	for _, ap := range aps {
-		if !ap.R.VehicleToken.UserDeviceID.Valid {
+	for _, amd := range aps {
+		if !amd.R.VehicleToken.UserDeviceID.Valid {
 			continue
 		}
 
 		if err := reg.Register2(&services.AftermarketDeviceVehicleMapping{
 			AftermarketDevice: services.AftermarketDeviceVehicleMappingAftermarketDevice{
-				Address:       common.BytesToAddress(ap.EthereumAddress.Bytes),
-				Token:         ap.TokenID.Int(nil),
-				Serial:        ap.AutopiUnitID,
+				Address:       common.BytesToAddress(amd.EthereumAddress.Bytes),
+				Token:         amd.TokenID.Int(nil),
+				Serial:        amd.Serial,
 				IntegrationID: integ.Id,
 			},
 			Vehicle: services.AftermarketDeviceVehicleMappingVehicle{
-				Token:        ap.VehicleTokenID.Int(nil),
-				UserDeviceID: ap.R.VehicleToken.UserDeviceID.String,
+				Token:        amd.VehicleTokenID.Int(nil),
+				UserDeviceID: amd.R.VehicleToken.UserDeviceID.String,
 			},
 		}); err != nil {
 			return err

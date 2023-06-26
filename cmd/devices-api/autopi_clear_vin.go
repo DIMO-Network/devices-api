@@ -43,16 +43,16 @@ func clearVINFromAutopi(ctx context.Context, logger *zerolog.Logger, settings *c
 	autoPiSvc := services.NewAutoPiAPIService(settings, pdb.DBS)
 
 	// iterate all autopi units
-	all, err := models.AutopiUnits(qm.Where("user_id is not null")).All(ctx, pdb.DBS().Reader)
+	all, err := models.AftermarketDevices(qm.Where("user_id is not null")).All(ctx, pdb.DBS().Reader)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to query db")
 	}
 	logger.Info().Msgf("processing %d autopi units", len(all))
 
 	for _, unit := range all {
-		innerLogger := logger.With().Str("autopiUnitID", unit.AutopiUnitID).Logger()
+		innerLogger := logger.With().Str("autopiUnitID", unit.Serial).Logger()
 
-		autoPiDevice, err := autoPiSvc.GetDeviceByUnitID(unit.AutopiUnitID)
+		autoPiDevice, err := autoPiSvc.GetDeviceByUnitID(unit.Serial)
 		if err != nil {
 			innerLogger.Err(err).Msg("failed to call autopi api to get autoPiDevice")
 			continue
@@ -67,7 +67,7 @@ func clearVINFromAutopi(ctx context.Context, logger *zerolog.Logger, settings *c
 				// uh oh spaghettie oh
 				innerLogger.Err(err).Msg("failed to set VIN on autopi service")
 			} else {
-				innerLogger.Info().Msgf("cleared vin for unit: %s", unit.AutopiUnitID)
+				innerLogger.Info().Msgf("cleared vin for unit: %s", unit.Serial)
 			}
 		}
 	}

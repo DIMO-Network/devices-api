@@ -487,7 +487,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateD
 		deviceID = "1dd96159-3bb2-9472-91f6-72fe9211cfeb"
 		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	)
-	_ = test.SetupCreateAutoPiUnit(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
+	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
 
 	req := fmt.Sprintf(`{
@@ -523,7 +523,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateD
 		deviceID = "1dd96159-3bb2-9472-91f6-72fe9211cfeb"
 		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	)
-	_ = test.SetupCreateAutoPiUnit(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
+	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	// test user
 	ud2 := test.SetupCreateUserDevice(s.T(), testUser2, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 
@@ -553,7 +553,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AutoPi(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	test.SetupCreateAutoPiUnit(s.T(), "", unitID, nil, s.pdb)
+	test.SetupCreateAftermarketDevice(s.T(), "", unitID, nil, s.pdb)
 	autopiAPISvc.EXPECT().GetDeviceByUnitID(unitID).Times(1).Return(&services.AutoPiDongleDevice{
 		IsUpdated:         false,
 		UnitID:            unitID,
@@ -591,7 +591,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_UpToDate()
 	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AutoPi(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	test.SetupCreateAutoPiUnit(s.T(), "", unitID, nil, s.pdb)
+	test.SetupCreateAftermarketDevice(s.T(), "", unitID, nil, s.pdb)
 	autopiAPISvc.EXPECT().GetDeviceByUnitID(unitID).Times(1).Return(&services.AutoPiDongleDevice{
 		IsUpdated:         true,
 		UnitID:            unitID,
@@ -626,7 +626,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_FutureUpda
 	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AutoPi(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	test.SetupCreateAutoPiUnit(s.T(), "", unitID, nil, s.pdb)
+	test.SetupCreateAftermarketDevice(s.T(), "", unitID, nil, s.pdb)
 	autopiAPISvc.EXPECT().GetDeviceByUnitID(unitID).Times(1).Return(&services.AutoPiDongleDevice{
 		IsUpdated:         false,
 		UnitID:            unitID,
@@ -662,7 +662,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AutoPi(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	test.SetupCreateAutoPiUnit(s.T(), "", unitID, nil, s.pdb)
+	test.SetupCreateAftermarketDevice(s.T(), "", unitID, nil, s.pdb)
 	autopiAPISvc.EXPECT().GetDeviceByUnitID(unitID).Times(1).Return(&services.AutoPiDongleDevice{
 		IsUpdated:         false,
 		UnitID:            unitID,
@@ -729,7 +729,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 	}
 	s.Require().NoError(vnft.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer()))
 
-	apUnit := test.SetupCreateAutoPiUnit(s.T(), testUserID, unitID, &deviceID, s.pdb)
+	apUnit := test.SetupCreateAftermarketDevice(s.T(), testUserID, unitID, &deviceID, s.pdb)
 	apUnit.TokenID = types.NewNullDecimal(decimal.New(5, 0))
 	apUnit.EthereumAddress = null.BytesFrom(common.BigToAddress(big.NewInt(2)).Bytes())
 	apUnit.OwnerAddress = null.BytesFrom(userAddr.Bytes())
@@ -758,7 +758,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 	userSig[64] += 27
 
 	in := map[string]any{
-		"externalId": apUnit.AutopiUnitID,
+		"externalId": apUnit.Serial,
 		"signature":  hexutil.Bytes(userSig).String(),
 	}
 

@@ -88,26 +88,26 @@ var VehicleNFTWhere = struct {
 
 // VehicleNFTRels is where relationship names are stored.
 var VehicleNFTRels = struct {
-	Claim                        string
-	MintRequest                  string
-	UserDevice                   string
-	VehicleTokenAutopiUnit       string
-	VehicleTokenSyntheticDevices string
+	Claim                         string
+	MintRequest                   string
+	UserDevice                    string
+	VehicleTokenAftermarketDevice string
+	VehicleTokenSyntheticDevices  string
 }{
-	Claim:                        "Claim",
-	MintRequest:                  "MintRequest",
-	UserDevice:                   "UserDevice",
-	VehicleTokenAutopiUnit:       "VehicleTokenAutopiUnit",
-	VehicleTokenSyntheticDevices: "VehicleTokenSyntheticDevices",
+	Claim:                         "Claim",
+	MintRequest:                   "MintRequest",
+	UserDevice:                    "UserDevice",
+	VehicleTokenAftermarketDevice: "VehicleTokenAftermarketDevice",
+	VehicleTokenSyntheticDevices:  "VehicleTokenSyntheticDevices",
 }
 
 // vehicleNFTR is where relationships are stored.
 type vehicleNFTR struct {
-	Claim                        *VerifiableCredential   `boil:"Claim" json:"Claim" toml:"Claim" yaml:"Claim"`
-	MintRequest                  *MetaTransactionRequest `boil:"MintRequest" json:"MintRequest" toml:"MintRequest" yaml:"MintRequest"`
-	UserDevice                   *UserDevice             `boil:"UserDevice" json:"UserDevice" toml:"UserDevice" yaml:"UserDevice"`
-	VehicleTokenAutopiUnit       *AutopiUnit             `boil:"VehicleTokenAutopiUnit" json:"VehicleTokenAutopiUnit" toml:"VehicleTokenAutopiUnit" yaml:"VehicleTokenAutopiUnit"`
-	VehicleTokenSyntheticDevices SyntheticDeviceSlice    `boil:"VehicleTokenSyntheticDevices" json:"VehicleTokenSyntheticDevices" toml:"VehicleTokenSyntheticDevices" yaml:"VehicleTokenSyntheticDevices"`
+	Claim                         *VerifiableCredential   `boil:"Claim" json:"Claim" toml:"Claim" yaml:"Claim"`
+	MintRequest                   *MetaTransactionRequest `boil:"MintRequest" json:"MintRequest" toml:"MintRequest" yaml:"MintRequest"`
+	UserDevice                    *UserDevice             `boil:"UserDevice" json:"UserDevice" toml:"UserDevice" yaml:"UserDevice"`
+	VehicleTokenAftermarketDevice *AftermarketDevice      `boil:"VehicleTokenAftermarketDevice" json:"VehicleTokenAftermarketDevice" toml:"VehicleTokenAftermarketDevice" yaml:"VehicleTokenAftermarketDevice"`
+	VehicleTokenSyntheticDevices  SyntheticDeviceSlice    `boil:"VehicleTokenSyntheticDevices" json:"VehicleTokenSyntheticDevices" toml:"VehicleTokenSyntheticDevices" yaml:"VehicleTokenSyntheticDevices"`
 }
 
 // NewStruct creates a new relationship struct
@@ -136,11 +136,11 @@ func (r *vehicleNFTR) GetUserDevice() *UserDevice {
 	return r.UserDevice
 }
 
-func (r *vehicleNFTR) GetVehicleTokenAutopiUnit() *AutopiUnit {
+func (r *vehicleNFTR) GetVehicleTokenAftermarketDevice() *AftermarketDevice {
 	if r == nil {
 		return nil
 	}
-	return r.VehicleTokenAutopiUnit
+	return r.VehicleTokenAftermarketDevice
 }
 
 func (r *vehicleNFTR) GetVehicleTokenSyntheticDevices() SyntheticDeviceSlice {
@@ -472,15 +472,15 @@ func (o *VehicleNFT) UserDevice(mods ...qm.QueryMod) userDeviceQuery {
 	return UserDevices(queryMods...)
 }
 
-// VehicleTokenAutopiUnit pointed to by the foreign key.
-func (o *VehicleNFT) VehicleTokenAutopiUnit(mods ...qm.QueryMod) autopiUnitQuery {
+// VehicleTokenAftermarketDevice pointed to by the foreign key.
+func (o *VehicleNFT) VehicleTokenAftermarketDevice(mods ...qm.QueryMod) aftermarketDeviceQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"vehicle_token_id\" = ?", o.TokenID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	return AutopiUnits(queryMods...)
+	return AftermarketDevices(queryMods...)
 }
 
 // VehicleTokenSyntheticDevices retrieves all the synthetic_device's SyntheticDevices with an executor via vehicle_token_id column.
@@ -865,9 +865,9 @@ func (vehicleNFTL) LoadUserDevice(ctx context.Context, e boil.ContextExecutor, s
 	return nil
 }
 
-// LoadVehicleTokenAutopiUnit allows an eager lookup of values, cached into the
+// LoadVehicleTokenAftermarketDevice allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-1 relationship.
-func (vehicleNFTL) LoadVehicleTokenAutopiUnit(ctx context.Context, e boil.ContextExecutor, singular bool, maybeVehicleNFT interface{}, mods queries.Applicator) error {
+func (vehicleNFTL) LoadVehicleTokenAftermarketDevice(ctx context.Context, e boil.ContextExecutor, singular bool, maybeVehicleNFT interface{}, mods queries.Applicator) error {
 	var slice []*VehicleNFT
 	var object *VehicleNFT
 
@@ -921,8 +921,8 @@ func (vehicleNFTL) LoadVehicleTokenAutopiUnit(ctx context.Context, e boil.Contex
 	}
 
 	query := NewQuery(
-		qm.From(`devices_api.autopi_units`),
-		qm.WhereIn(`devices_api.autopi_units.vehicle_token_id in ?`, args...),
+		qm.From(`devices_api.aftermarket_devices`),
+		qm.WhereIn(`devices_api.aftermarket_devices.vehicle_token_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -930,22 +930,22 @@ func (vehicleNFTL) LoadVehicleTokenAutopiUnit(ctx context.Context, e boil.Contex
 
 	results, err := query.QueryContext(ctx, e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load AutopiUnit")
+		return errors.Wrap(err, "failed to eager load AftermarketDevice")
 	}
 
-	var resultSlice []*AutopiUnit
+	var resultSlice []*AftermarketDevice
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice AutopiUnit")
+		return errors.Wrap(err, "failed to bind eager loaded slice AftermarketDevice")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for autopi_units")
+		return errors.Wrap(err, "failed to close results of eager load for aftermarket_devices")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for autopi_units")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for aftermarket_devices")
 	}
 
-	if len(autopiUnitAfterSelectHooks) != 0 {
+	if len(aftermarketDeviceAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
 				return err
@@ -959,9 +959,9 @@ func (vehicleNFTL) LoadVehicleTokenAutopiUnit(ctx context.Context, e boil.Contex
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.VehicleTokenAutopiUnit = foreign
+		object.R.VehicleTokenAftermarketDevice = foreign
 		if foreign.R == nil {
-			foreign.R = &autopiUnitR{}
+			foreign.R = &aftermarketDeviceR{}
 		}
 		foreign.R.VehicleToken = object
 	}
@@ -969,9 +969,9 @@ func (vehicleNFTL) LoadVehicleTokenAutopiUnit(ctx context.Context, e boil.Contex
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
 			if queries.Equal(local.TokenID, foreign.VehicleTokenID) {
-				local.R.VehicleTokenAutopiUnit = foreign
+				local.R.VehicleTokenAftermarketDevice = foreign
 				if foreign.R == nil {
-					foreign.R = &autopiUnitR{}
+					foreign.R = &aftermarketDeviceR{}
 				}
 				foreign.R.VehicleToken = local
 				break
@@ -1281,10 +1281,10 @@ func (o *VehicleNFT) RemoveUserDevice(ctx context.Context, exec boil.ContextExec
 	return nil
 }
 
-// SetVehicleTokenAutopiUnit of the vehicleNFT to the related item.
-// Sets o.R.VehicleTokenAutopiUnit to related.
+// SetVehicleTokenAftermarketDevice of the vehicleNFT to the related item.
+// Sets o.R.VehicleTokenAftermarketDevice to related.
 // Adds o to related.R.VehicleToken.
-func (o *VehicleNFT) SetVehicleTokenAutopiUnit(ctx context.Context, exec boil.ContextExecutor, insert bool, related *AutopiUnit) error {
+func (o *VehicleNFT) SetVehicleTokenAftermarketDevice(ctx context.Context, exec boil.ContextExecutor, insert bool, related *AftermarketDevice) error {
 	var err error
 
 	if insert {
@@ -1295,11 +1295,11 @@ func (o *VehicleNFT) SetVehicleTokenAutopiUnit(ctx context.Context, exec boil.Co
 		}
 	} else {
 		updateQuery := fmt.Sprintf(
-			"UPDATE \"devices_api\".\"autopi_units\" SET %s WHERE %s",
+			"UPDATE \"devices_api\".\"aftermarket_devices\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, []string{"vehicle_token_id"}),
-			strmangle.WhereClause("\"", "\"", 2, autopiUnitPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", 2, aftermarketDevicePrimaryKeyColumns),
 		)
-		values := []interface{}{o.TokenID, related.AutopiUnitID}
+		values := []interface{}{o.TokenID, related.Serial}
 
 		if boil.IsDebug(ctx) {
 			writer := boil.DebugWriterFrom(ctx)
@@ -1315,14 +1315,14 @@ func (o *VehicleNFT) SetVehicleTokenAutopiUnit(ctx context.Context, exec boil.Co
 
 	if o.R == nil {
 		o.R = &vehicleNFTR{
-			VehicleTokenAutopiUnit: related,
+			VehicleTokenAftermarketDevice: related,
 		}
 	} else {
-		o.R.VehicleTokenAutopiUnit = related
+		o.R.VehicleTokenAftermarketDevice = related
 	}
 
 	if related.R == nil {
-		related.R = &autopiUnitR{
+		related.R = &aftermarketDeviceR{
 			VehicleToken: o,
 		}
 	} else {
@@ -1331,10 +1331,10 @@ func (o *VehicleNFT) SetVehicleTokenAutopiUnit(ctx context.Context, exec boil.Co
 	return nil
 }
 
-// RemoveVehicleTokenAutopiUnit relationship.
-// Sets o.R.VehicleTokenAutopiUnit to nil.
+// RemoveVehicleTokenAftermarketDevice relationship.
+// Sets o.R.VehicleTokenAftermarketDevice to nil.
 // Removes o from all passed in related items' relationships struct.
-func (o *VehicleNFT) RemoveVehicleTokenAutopiUnit(ctx context.Context, exec boil.ContextExecutor, related *AutopiUnit) error {
+func (o *VehicleNFT) RemoveVehicleTokenAftermarketDevice(ctx context.Context, exec boil.ContextExecutor, related *AftermarketDevice) error {
 	var err error
 
 	queries.SetScanner(&related.VehicleTokenID, nil)
@@ -1343,7 +1343,7 @@ func (o *VehicleNFT) RemoveVehicleTokenAutopiUnit(ctx context.Context, exec boil
 	}
 
 	if o.R != nil {
-		o.R.VehicleTokenAutopiUnit = nil
+		o.R.VehicleTokenAftermarketDevice = nil
 	}
 
 	if related == nil || related.R == nil {
