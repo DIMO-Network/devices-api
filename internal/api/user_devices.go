@@ -62,7 +62,7 @@ func (s *userDeviceService) GetUserDevice(ctx context.Context, req *pb.GetUserDe
 		models.UserDeviceWhere.ID.EQ(req.Id),
 		qm.Load(
 			qm.Rels(models.UserDeviceRels.VehicleNFT,
-				models.VehicleNFTRels.VehicleTokenAutopiUnit),
+				models.VehicleNFTRels.VehicleTokenAftermarketDevice),
 		),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 		qm.Load(
@@ -127,7 +127,7 @@ func (s *userDeviceService) ListUserDevicesForUser(ctx context.Context, req *pb.
 	}
 
 	query = append(query,
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAutopiUnit)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAftermarketDevice)),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 		qm.OrderBy(models.UserDeviceTableColumns.CreatedAt+" DESC"),
 	)
@@ -297,7 +297,7 @@ func (s *userDeviceService) UpdateDeviceIntegrationStatus(ctx context.Context, r
 //nolint:all
 func (s *userDeviceService) GetUserDeviceByAutoPIUnitId(ctx context.Context, req *pb.GetUserDeviceByAutoPIUnitIdRequest) (*pb.UserDeviceAutoPIUnitResponse, error) {
 	dbDevice, err := models.UserDeviceAPIIntegrations(
-		models.UserDeviceAPIIntegrationWhere.AutopiUnitID.EQ(null.StringFrom(req.Id)),
+		models.UserDeviceAPIIntegrationWhere.Serial.EQ(null.StringFrom(req.Id)),
 		qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
 	).One(ctx, s.dbs().Reader)
 	if err != nil {
@@ -410,13 +410,13 @@ func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevi
 			out.OwnerAddress = vnft.OwnerAddress.Bytes
 		}
 
-		if amnft := vnft.R.VehicleTokenAutopiUnit; amnft != nil {
+		if amnft := vnft.R.VehicleTokenAftermarketDevice; amnft != nil {
 			out.AftermarketDeviceTokenId = s.toUint64(amnft.TokenID)
 
 			if amnft.Beneficiary.Valid {
 				out.AftermarketDeviceBeneficiaryAddress = amnft.Beneficiary.Bytes
-			} else {
-				out.AftermarketDeviceBeneficiaryAddress = vnft.OwnerAddress.Bytes
+			} else if amnft.OwnerAddress.Valid {
+				out.AftermarketDeviceBeneficiaryAddress = amnft.OwnerAddress.Bytes
 			}
 		}
 

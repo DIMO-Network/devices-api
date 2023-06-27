@@ -919,8 +919,8 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusBadRequest, "Couldn't recover signer address.")
 		}
 
-		found, err := models.AutopiUnits(
-			models.AutopiUnitWhere.EthereumAddress.EQ(null.BytesFrom(recAddr.Bytes())),
+		found, err := models.AftermarketDevices(
+			models.AftermarketDeviceWhere.EthereumAddress.EQ(null.BytesFrom(recAddr.Bytes())),
 		).Exists(c.Context(), udc.DBS().Reader)
 		if err != nil {
 			return err
@@ -1065,8 +1065,8 @@ func (udc *UserDevicesController) UpdateName(c *fiber.Ctx) error {
 	}
 	// update name on autopi too. This helps for debugging purposes to search a vehicle
 	for _, udapi := range userDevice.R.UserDeviceAPIIntegrations {
-		if udapi.AutopiUnitID.Valid {
-			autoPiDevice, err := udc.autoPiSvc.GetDeviceByUnitID(udapi.AutopiUnitID.String)
+		if udapi.Serial.Valid {
+			autoPiDevice, err := udc.autoPiSvc.GetDeviceByUnitID(udapi.Serial.String)
 			if err == nil {
 				_ = udc.autoPiSvc.PatchVehicleProfile(autoPiDevice.Vehicle.ID, services.PatchVehicleProfile{
 					CallName: req.Name,
@@ -1105,40 +1105,6 @@ func (udc *UserDevicesController) UpdateCountryCode(c *fiber.Ctx) error {
 	}
 
 	userDevice.CountryCode = null.StringFromPtr(countryCode.CountryCode)
-	_, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Infer())
-	if err != nil {
-		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
-	}
-
-	return c.SendStatus(fiber.StatusNoContent)
-}
-
-// UpdateImage godoc
-// @Description updates the ImageUrl on the user device record
-// @Tags        user-devices
-// @Produce     json
-// @Accept      json
-// @Param       name body controllers.UpdateImageURLReq true "Image URL"
-// @Success     204
-// @Security    BearerAuth
-// @Router      /user/devices/{userDeviceID}/image [patch]
-func (udc *UserDevicesController) UpdateImage(c *fiber.Ctx) error {
-	udi := c.Params("userDeviceID")
-
-	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi)).One(c.Context(), udc.DBS().Writer)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, err.Error())
-		}
-		return err
-	}
-	req := &UpdateImageURLReq{}
-	if err := c.BodyParser(req); err != nil {
-		// Return status 400 and error message.
-		return helpers.ErrorResponseHandler(c, err, fiber.StatusBadRequest)
-	}
-
-	userDevice.CustomImageURL = null.StringFromPtr(req.ImageURL)
 	_, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Infer())
 	if err != nil {
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
@@ -1532,7 +1498,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
-		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationRels.AutopiUnit)),
+		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationRels.SerialAftermarketDevice)),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1547,8 +1513,8 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 	}
 
 	for _, apiInteg := range userDevice.R.UserDeviceAPIIntegrations {
-		if unit := apiInteg.R.AutopiUnit; unit != nil && !unit.VehicleTokenID.IsZero() {
-			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Cannot delete vehicle before unpairing AutoPi %s on-chain.", unit.AutopiUnitID))
+		if unit := apiInteg.R.SerialAftermarketDevice; unit != nil && !unit.VehicleTokenID.IsZero() {
+			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Cannot delete vehicle before unpairing AutoPi %s on-chain.", unit.Serial))
 		}
 	}
 

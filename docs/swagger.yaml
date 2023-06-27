@@ -54,31 +54,6 @@ definitions:
       message:
         type: string
     type: object
-  github_com_DIMO-Network_devices-api_internal_services.AutoPiCommandJob:
-    properties:
-      commandJobId:
-        type: string
-      commandRaw:
-        type: string
-      commandState:
-        type: string
-      lastUpdated:
-        type: string
-      result:
-        $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiCommandResult'
-    type: object
-  github_com_DIMO-Network_devices-api_internal_services.AutoPiCommandResult:
-    properties:
-      tag:
-        description: corresponds to webhook response.tag
-        type: string
-      type:
-        description: corresponds to webhook response.data.return._type
-        type: string
-      value:
-        description: corresponds to webhook response.data.return.value
-        type: string
-    type: object
   github_com_DIMO-Network_devices-api_internal_services.AutoPiTask:
     properties:
       code:
@@ -290,11 +265,6 @@ definitions:
       userSignature:
         description: UserSignature is the signature from the user, using their private
           key.
-        type: string
-    type: object
-  internal_controllers.AutoPiCommandRequest:
-    properties:
-      command:
         type: string
     type: object
   internal_controllers.AutoPiDeviceInfo:
@@ -847,11 +817,6 @@ definitions:
       countryCode:
         type: string
     type: object
-  internal_controllers.UpdateImageURLReq:
-    properties:
-      imageUrl:
-        type: string
-    type: object
   internal_controllers.UpdateNameReq:
     properties:
       name:
@@ -1061,27 +1026,6 @@ paths:
           description: Not Found
       tags:
       - nfts
-  /autopi/task/:taskID:
-    get:
-      description: gets the status of an autopi related task. In future could be other
-        tasks too?
-      parameters:
-      - description: task id
-        in: path
-        name: taskID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiTask'
-      security:
-      - BearerAuth: []
-      tags:
-      - integrations
   /autopi/unit/:unitID:
     get:
       description: gets the information about the autopi by the unitId
@@ -1159,25 +1103,6 @@ paths:
           description: No Content
       security:
       - BearerAuth: []
-  /autopi/unit/:unitID/is-online:
-    get:
-      description: 'gets whether the autopi is online right now, if already paired
-        with a user, makes sure user has access. returns json with {"online": true/false}'
-      parameters:
-      - description: autopi unit id
-        in: path
-        name: unitID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-      security:
-      - BearerAuth: []
-      tags:
-      - integrations
   /autopi/unit/:unitID/update:
     post:
       description: checks to see if autopi unit needs to be updated, and starts update
@@ -1243,74 +1168,6 @@ paths:
           description: Not Found
       tags:
       - dcn
-  /device-definitions:
-    get:
-      description: gets a specific device definition by make model and year
-      parameters:
-      - description: make eg TESLA
-        in: query
-        name: make
-        required: true
-        type: string
-      - description: model eg MODEL Y
-        in: query
-        name: model
-        required: true
-        type: string
-      - description: year eg 2021
-        in: query
-        name: year
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceDefinition'
-      tags:
-      - device-definitions
-  /device-definitions/:id:
-    get:
-      description: gets a specific device definition by id, adds autopi integration
-        on the fly if does not have it and year > cutoff
-      parameters:
-      - description: device definition id, KSUID format
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceDefinition'
-      tags:
-      - device-definitions
-  /device-definitions/{id}/integrations:
-    get:
-      description: gets all the available integrations for a device definition. Includes
-        the capabilities of the device with the integration
-      parameters:
-      - description: device definition id, KSUID format
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceCompatibility'
-            type: array
-      tags:
-      - device-definitions
   /documents:
     get:
       consumes:
@@ -1476,6 +1333,53 @@ paths:
           description: Not Found
       tags:
       - nfts
+  /synthetic/device/mint/{integrationNode}/{vehicleNode}:
+    get:
+      description: |-
+        Produces the payload that the user signs and submits to mint a synthetic device for
+        the given vehicle and integration.
+      parameters:
+      - description: token ID
+        in: path
+        name: integrationNode
+        required: true
+        type: integer
+      - description: vehicle ID
+        in: path
+        name: vehicleNode
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/apitypes.TypedData'
+            type: array
+      tags:
+      - integrations
+    post:
+      description: Submit a metadata
+      parameters:
+      - description: token ID
+        in: path
+        name: integrationNode
+        required: true
+        type: integer
+      - description: vehicle ID
+        in: path
+        name: vehicleNode
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      tags:
+      - integrations
   /user/devices:
     post:
       consumes:
@@ -1501,46 +1405,6 @@ paths:
       - BearerAuth: []
       tags:
       - user-devices
-  /user/devices/:userDeviceID/autopi/command:
-    post:
-      consumes:
-      - application/json
-      description: Closed off in prod. Submit a raw autopi command to unit. Device
-        must be registered with autopi before this can be used
-      parameters:
-      - description: raw autopi command
-        in: body
-        name: AutoPiCommandRequest
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.AutoPiCommandRequest'
-      responses:
-        "200":
-          description: OK
-      security:
-      - BearerAuth: []
-      tags:
-      - integrations
-  /user/devices/:userDeviceID/autopi/command/:jobID:
-    get:
-      description: gets the status of an autopi raw command by jobID
-      parameters:
-      - description: job id, from autopi
-        in: path
-        name: jobID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiCommandJob'
-      security:
-      - BearerAuth: []
-      tags:
-      - integrations
   /user/devices/:userDeviceID/autopi/commands/cloud-repair:
     post:
       description: Re-apply AutoPi cloud actions in an attempt to get the device transmitting
@@ -1843,27 +1707,6 @@ paths:
       summary: Mark the most recent set of error codes as having been cleared.
       tags:
       - error-codes
-  /user/devices/{userDeviceID}/image:
-    patch:
-      consumes:
-      - application/json
-      description: updates the ImageUrl on the user device record
-      parameters:
-      - description: Image URL
-        in: body
-        name: name
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.UpdateImageURLReq'
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-      security:
-      - BearerAuth: []
-      tags:
-      - user-devices
   /user/devices/{userDeviceID}/integrations/{integrationID}:
     delete:
       description: Remove an integration from a device.

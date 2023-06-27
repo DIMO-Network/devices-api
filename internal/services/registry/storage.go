@@ -2,9 +2,12 @@ package registry
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
+	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
 	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/models"
@@ -24,12 +27,14 @@ type StatusProcessor interface {
 }
 
 type proc struct {
-	ABI      *abi.ABI
-	DB       func() *db.ReaderWriter
-	Logger   *zerolog.Logger
-	ap       *autopi.Integration
-	issuer   *issuer.Issuer
-	settings *config.Settings
+	ABI             *abi.ABI
+	DB              func() *db.ReaderWriter
+	Logger          *zerolog.Logger
+	ap              *autopi.Integration
+	issuer          *issuer.Issuer
+	settings        *config.Settings
+	smartcarTaskSvc services.SmartcarTaskService
+	deviceDefSvc    services.DeviceDefinitionService
 }
 
 func (p *proc) Handle(ctx context.Context, data *ceData) error {
@@ -45,9 +50,10 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		models.MetaTransactionRequestWhere.ID.EQ(data.RequestID),
 		// This is really ugly. We should probably link back to the type instead of doing this.
 		qm.Load(models.MetaTransactionRequestRels.MintRequestVehicleNFT),
-		qm.Load(models.MetaTransactionRequestRels.ClaimMetaTransactionRequestAutopiUnit),
-		qm.Load(models.MetaTransactionRequestRels.PairRequestAutopiUnit),
-		qm.Load(models.MetaTransactionRequestRels.UnpairRequestAutopiUnit),
+		qm.Load(models.MetaTransactionRequestRels.ClaimMetaTransactionRequestAftermarketDevice),
+		qm.Load(models.MetaTransactionRequestRels.PairRequestAftermarketDevice),
+		qm.Load(models.MetaTransactionRequestRels.UnpairRequestAftermarketDevice),
+		qm.Load(qm.Rels(models.MetaTransactionRequestRels.MintRequestSyntheticDevice, models.SyntheticDeviceRels.VehicleToken)),
 	).One(context.Background(), p.DB().Reader)
 	if err != nil {
 		return err
@@ -69,6 +75,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	deviceClaimedEvent := p.ABI.Events["AftermarketDeviceClaimed"]
 	devicePairedEvent := p.ABI.Events["AftermarketDevicePaired"]
 	deviceUnpairedEvent := p.ABI.Events["AftermarketDeviceUnpaired"]
+	syntheticDeviceMintedEvent := p.ABI.Events["SyntheticDeviceNodeMinted"]
 
 	switch {
 	case mtr.R.MintRequestVehicleNFT != nil:
@@ -104,8 +111,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 			}
 		}
 		// Other soon.
-
-	case mtr.R.ClaimMetaTransactionRequestAutopiUnit != nil:
+	case mtr.R.ClaimMetaTransactionRequestAftermarketDevice != nil:
 		for _, l1 := range data.Transaction.Logs {
 			if l1.Topics[0] == deviceClaimedEvent.ID {
 				out := new(contracts.RegistryAftermarketDeviceClaimed)
@@ -114,16 +120,16 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return err
 				}
 
-				mtr.R.ClaimMetaTransactionRequestAutopiUnit.OwnerAddress = null.BytesFrom(out.Owner[:])
-				_, err = mtr.R.ClaimMetaTransactionRequestAutopiUnit.Update(ctx, p.DB().Writer, boil.Infer())
+				mtr.R.ClaimMetaTransactionRequestAftermarketDevice.OwnerAddress = null.BytesFrom(out.Owner[:])
+				_, err = mtr.R.ClaimMetaTransactionRequestAftermarketDevice.Update(ctx, p.DB().Writer, boil.Infer())
 				if err != nil {
 					return err
 				}
 
-				logger.Info().Str("autoPiTokenId", mtr.R.ClaimMetaTransactionRequestAutopiUnit.TokenID.String()).Str("owner", out.Owner.String()).Msg("Device claimed.")
+				logger.Info().Str("autoPiTokenId", mtr.R.ClaimMetaTransactionRequestAftermarketDevice.TokenID.String()).Str("owner", out.Owner.String()).Msg("Device claimed.")
 			}
 		}
-	case mtr.R.PairRequestAutopiUnit != nil:
+	case mtr.R.PairRequestAftermarketDevice != nil:
 		for _, l1 := range data.Transaction.Logs {
 			if l1.Topics[0] == devicePairedEvent.ID {
 				out := new(contracts.RegistryAftermarketDevicePaired)
@@ -132,8 +138,8 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return err
 				}
 
-				mtr.R.PairRequestAutopiUnit.VehicleTokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.VehicleNode, 0))
-				_, err = mtr.R.PairRequestAutopiUnit.Update(ctx, p.DB().Writer, boil.Infer())
+				mtr.R.PairRequestAftermarketDevice.VehicleTokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.VehicleNode, 0))
+				_, err = mtr.R.PairRequestAftermarketDevice.Update(ctx, p.DB().Writer, boil.Infer())
 				if err != nil {
 					return err
 				}
@@ -141,7 +147,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				return p.ap.Pair(ctx, out.AftermarketDeviceNode, out.VehicleNode)
 			}
 		}
-	case mtr.R.UnpairRequestAutopiUnit != nil:
+	case mtr.R.UnpairRequestAftermarketDevice != nil:
 		for _, l1 := range data.Transaction.Logs {
 			if l1.Topics[0] == deviceUnpairedEvent.ID {
 				out := new(contracts.RegistryAftermarketDeviceUnpaired)
@@ -150,14 +156,66 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return err
 				}
 
-				mtr.R.UnpairRequestAutopiUnit.VehicleTokenID = types.NullDecimal{}
-				mtr.R.UnpairRequestAutopiUnit.PairRequestID = null.String{}
-				_, err = mtr.R.UnpairRequestAutopiUnit.Update(ctx, p.DB().Writer, boil.Infer())
+				mtr.R.UnpairRequestAftermarketDevice.VehicleTokenID = types.NullDecimal{}
+				mtr.R.UnpairRequestAftermarketDevice.PairRequestID = null.String{}
+				_, err = mtr.R.UnpairRequestAftermarketDevice.Update(ctx, p.DB().Writer, boil.Infer())
 				if err != nil {
 					return err
 				}
 
 				return p.ap.Unpair(ctx, out.AftermarketDeviceNode, out.VehicleNode)
+			}
+		}
+	case mtr.R.MintRequestSyntheticDevice != nil:
+		for _, l1 := range data.Transaction.Logs {
+			if l1.Topics[0] == syntheticDeviceMintedEvent.ID {
+				out := new(contracts.RegistrySyntheticDeviceNodeMinted)
+				err := p.parseLog(out, syntheticDeviceMintedEvent, l1)
+
+				if err != nil {
+					return err
+				}
+
+				sd := mtr.R.MintRequestSyntheticDevice
+
+				tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.SyntheticDeviceNode, 0))
+				sd.TokenID = tkID
+
+				if _, err := sd.Update(ctx, p.DB().Writer, boil.Infer()); err != nil {
+					return err
+				}
+
+				intToken, intTkErr := sd.IntegrationTokenID.Uint64()
+				if !intTkErr {
+					return errors.New("error occurred parsing integration tokenID")
+				}
+				integration, err := p.deviceDefSvc.GetIntegrationByTokenID(ctx, intToken)
+				if err != nil {
+					return err
+				}
+
+				ud, err := models.UserDeviceAPIIntegrations(
+					models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(sd.R.VehicleToken.UserDeviceID.String),
+					models.UserDeviceAPIIntegrationWhere.Status.EQ(models.UserDeviceAPIIntegrationStatusPending),
+					models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integration.Id),
+				).One(ctx, p.DB().Reader)
+				if err != nil {
+					if errors.Is(err, sql.ErrNoRows) {
+						p.Logger.Debug().Err(err).Str("userDeviceID", sd.R.VehicleToken.UserDeviceID.String).Msg("Device has been deleted")
+						return nil
+					}
+					return err
+				}
+
+				ud.Status = models.UserDeviceAPIIntegrationStatusPendingFirstData
+				if _, err := ud.Update(ctx, p.DB().Writer, boil.Infer()); err != nil {
+					return err
+				}
+
+				if err := p.smartcarTaskSvc.StartPoll(ud); err != nil {
+					logger.Err(err).Msg("Couldn't start Smartcar polling.")
+					return err
+				}
 			}
 		}
 	}
@@ -188,6 +246,8 @@ func NewProcessor(
 	ap *autopi.Integration,
 	issuer *issuer.Issuer,
 	settings *config.Settings,
+	smartcarTaskSvc services.SmartcarTaskService,
+	deviceDefSvc services.DeviceDefinitionService,
 ) (StatusProcessor, error) {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
@@ -195,11 +255,13 @@ func NewProcessor(
 	}
 
 	return &proc{
-		ABI:      abi,
-		DB:       db,
-		Logger:   logger,
-		ap:       ap,
-		issuer:   issuer,
-		settings: settings,
+		ABI:             abi,
+		DB:              db,
+		Logger:          logger,
+		ap:              ap,
+		issuer:          issuer,
+		settings:        settings,
+		smartcarTaskSvc: smartcarTaskSvc,
+		deviceDefSvc:    deviceDefSvc,
 	}, nil
 }

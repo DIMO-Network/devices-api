@@ -80,26 +80,26 @@ var MetaTransactionRequestWhere = struct {
 
 // MetaTransactionRequestRels is where relationship names are stored.
 var MetaTransactionRequestRels = struct {
-	ClaimMetaTransactionRequestAutopiUnit string
-	PairRequestAutopiUnit                 string
-	UnpairRequestAutopiUnit               string
-	MintRequestSyntheticDevice            string
-	MintRequestVehicleNFT                 string
+	ClaimMetaTransactionRequestAftermarketDevice string
+	PairRequestAftermarketDevice                 string
+	UnpairRequestAftermarketDevice               string
+	MintRequestSyntheticDevice                   string
+	MintRequestVehicleNFT                        string
 }{
-	ClaimMetaTransactionRequestAutopiUnit: "ClaimMetaTransactionRequestAutopiUnit",
-	PairRequestAutopiUnit:                 "PairRequestAutopiUnit",
-	UnpairRequestAutopiUnit:               "UnpairRequestAutopiUnit",
-	MintRequestSyntheticDevice:            "MintRequestSyntheticDevice",
-	MintRequestVehicleNFT:                 "MintRequestVehicleNFT",
+	ClaimMetaTransactionRequestAftermarketDevice: "ClaimMetaTransactionRequestAftermarketDevice",
+	PairRequestAftermarketDevice:                 "PairRequestAftermarketDevice",
+	UnpairRequestAftermarketDevice:               "UnpairRequestAftermarketDevice",
+	MintRequestSyntheticDevice:                   "MintRequestSyntheticDevice",
+	MintRequestVehicleNFT:                        "MintRequestVehicleNFT",
 }
 
 // metaTransactionRequestR is where relationships are stored.
 type metaTransactionRequestR struct {
-	ClaimMetaTransactionRequestAutopiUnit *AutopiUnit      `boil:"ClaimMetaTransactionRequestAutopiUnit" json:"ClaimMetaTransactionRequestAutopiUnit" toml:"ClaimMetaTransactionRequestAutopiUnit" yaml:"ClaimMetaTransactionRequestAutopiUnit"`
-	PairRequestAutopiUnit                 *AutopiUnit      `boil:"PairRequestAutopiUnit" json:"PairRequestAutopiUnit" toml:"PairRequestAutopiUnit" yaml:"PairRequestAutopiUnit"`
-	UnpairRequestAutopiUnit               *AutopiUnit      `boil:"UnpairRequestAutopiUnit" json:"UnpairRequestAutopiUnit" toml:"UnpairRequestAutopiUnit" yaml:"UnpairRequestAutopiUnit"`
-	MintRequestSyntheticDevice            *SyntheticDevice `boil:"MintRequestSyntheticDevice" json:"MintRequestSyntheticDevice" toml:"MintRequestSyntheticDevice" yaml:"MintRequestSyntheticDevice"`
-	MintRequestVehicleNFT                 *VehicleNFT      `boil:"MintRequestVehicleNFT" json:"MintRequestVehicleNFT" toml:"MintRequestVehicleNFT" yaml:"MintRequestVehicleNFT"`
+	ClaimMetaTransactionRequestAftermarketDevice *AftermarketDevice `boil:"ClaimMetaTransactionRequestAftermarketDevice" json:"ClaimMetaTransactionRequestAftermarketDevice" toml:"ClaimMetaTransactionRequestAftermarketDevice" yaml:"ClaimMetaTransactionRequestAftermarketDevice"`
+	PairRequestAftermarketDevice                 *AftermarketDevice `boil:"PairRequestAftermarketDevice" json:"PairRequestAftermarketDevice" toml:"PairRequestAftermarketDevice" yaml:"PairRequestAftermarketDevice"`
+	UnpairRequestAftermarketDevice               *AftermarketDevice `boil:"UnpairRequestAftermarketDevice" json:"UnpairRequestAftermarketDevice" toml:"UnpairRequestAftermarketDevice" yaml:"UnpairRequestAftermarketDevice"`
+	MintRequestSyntheticDevice                   *SyntheticDevice   `boil:"MintRequestSyntheticDevice" json:"MintRequestSyntheticDevice" toml:"MintRequestSyntheticDevice" yaml:"MintRequestSyntheticDevice"`
+	MintRequestVehicleNFT                        *VehicleNFT        `boil:"MintRequestVehicleNFT" json:"MintRequestVehicleNFT" toml:"MintRequestVehicleNFT" yaml:"MintRequestVehicleNFT"`
 }
 
 // NewStruct creates a new relationship struct
@@ -107,25 +107,25 @@ func (*metaTransactionRequestR) NewStruct() *metaTransactionRequestR {
 	return &metaTransactionRequestR{}
 }
 
-func (r *metaTransactionRequestR) GetClaimMetaTransactionRequestAutopiUnit() *AutopiUnit {
+func (r *metaTransactionRequestR) GetClaimMetaTransactionRequestAftermarketDevice() *AftermarketDevice {
 	if r == nil {
 		return nil
 	}
-	return r.ClaimMetaTransactionRequestAutopiUnit
+	return r.ClaimMetaTransactionRequestAftermarketDevice
 }
 
-func (r *metaTransactionRequestR) GetPairRequestAutopiUnit() *AutopiUnit {
+func (r *metaTransactionRequestR) GetPairRequestAftermarketDevice() *AftermarketDevice {
 	if r == nil {
 		return nil
 	}
-	return r.PairRequestAutopiUnit
+	return r.PairRequestAftermarketDevice
 }
 
-func (r *metaTransactionRequestR) GetUnpairRequestAutopiUnit() *AutopiUnit {
+func (r *metaTransactionRequestR) GetUnpairRequestAftermarketDevice() *AftermarketDevice {
 	if r == nil {
 		return nil
 	}
-	return r.UnpairRequestAutopiUnit
+	return r.UnpairRequestAftermarketDevice
 }
 
 func (r *metaTransactionRequestR) GetMintRequestSyntheticDevice() *SyntheticDevice {
@@ -431,37 +431,37 @@ func (q metaTransactionRequestQuery) Exists(ctx context.Context, exec boil.Conte
 	return count > 0, nil
 }
 
-// ClaimMetaTransactionRequestAutopiUnit pointed to by the foreign key.
-func (o *MetaTransactionRequest) ClaimMetaTransactionRequestAutopiUnit(mods ...qm.QueryMod) autopiUnitQuery {
+// ClaimMetaTransactionRequestAftermarketDevice pointed to by the foreign key.
+func (o *MetaTransactionRequest) ClaimMetaTransactionRequestAftermarketDevice(mods ...qm.QueryMod) aftermarketDeviceQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"claim_meta_transaction_request_id\" = ?", o.ID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	return AutopiUnits(queryMods...)
+	return AftermarketDevices(queryMods...)
 }
 
-// PairRequestAutopiUnit pointed to by the foreign key.
-func (o *MetaTransactionRequest) PairRequestAutopiUnit(mods ...qm.QueryMod) autopiUnitQuery {
+// PairRequestAftermarketDevice pointed to by the foreign key.
+func (o *MetaTransactionRequest) PairRequestAftermarketDevice(mods ...qm.QueryMod) aftermarketDeviceQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"pair_request_id\" = ?", o.ID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	return AutopiUnits(queryMods...)
+	return AftermarketDevices(queryMods...)
 }
 
-// UnpairRequestAutopiUnit pointed to by the foreign key.
-func (o *MetaTransactionRequest) UnpairRequestAutopiUnit(mods ...qm.QueryMod) autopiUnitQuery {
+// UnpairRequestAftermarketDevice pointed to by the foreign key.
+func (o *MetaTransactionRequest) UnpairRequestAftermarketDevice(mods ...qm.QueryMod) aftermarketDeviceQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"unpair_request_id\" = ?", o.ID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	return AutopiUnits(queryMods...)
+	return AftermarketDevices(queryMods...)
 }
 
 // MintRequestSyntheticDevice pointed to by the foreign key.
@@ -486,9 +486,9 @@ func (o *MetaTransactionRequest) MintRequestVehicleNFT(mods ...qm.QueryMod) vehi
 	return VehicleNFTS(queryMods...)
 }
 
-// LoadClaimMetaTransactionRequestAutopiUnit allows an eager lookup of values, cached into the
+// LoadClaimMetaTransactionRequestAftermarketDevice allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-1 relationship.
-func (metaTransactionRequestL) LoadClaimMetaTransactionRequestAutopiUnit(ctx context.Context, e boil.ContextExecutor, singular bool, maybeMetaTransactionRequest interface{}, mods queries.Applicator) error {
+func (metaTransactionRequestL) LoadClaimMetaTransactionRequestAftermarketDevice(ctx context.Context, e boil.ContextExecutor, singular bool, maybeMetaTransactionRequest interface{}, mods queries.Applicator) error {
 	var slice []*MetaTransactionRequest
 	var object *MetaTransactionRequest
 
@@ -542,8 +542,8 @@ func (metaTransactionRequestL) LoadClaimMetaTransactionRequestAutopiUnit(ctx con
 	}
 
 	query := NewQuery(
-		qm.From(`devices_api.autopi_units`),
-		qm.WhereIn(`devices_api.autopi_units.claim_meta_transaction_request_id in ?`, args...),
+		qm.From(`devices_api.aftermarket_devices`),
+		qm.WhereIn(`devices_api.aftermarket_devices.claim_meta_transaction_request_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -551,22 +551,22 @@ func (metaTransactionRequestL) LoadClaimMetaTransactionRequestAutopiUnit(ctx con
 
 	results, err := query.QueryContext(ctx, e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load AutopiUnit")
+		return errors.Wrap(err, "failed to eager load AftermarketDevice")
 	}
 
-	var resultSlice []*AutopiUnit
+	var resultSlice []*AftermarketDevice
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice AutopiUnit")
+		return errors.Wrap(err, "failed to bind eager loaded slice AftermarketDevice")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for autopi_units")
+		return errors.Wrap(err, "failed to close results of eager load for aftermarket_devices")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for autopi_units")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for aftermarket_devices")
 	}
 
-	if len(autopiUnitAfterSelectHooks) != 0 {
+	if len(aftermarketDeviceAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
 				return err
@@ -580,9 +580,9 @@ func (metaTransactionRequestL) LoadClaimMetaTransactionRequestAutopiUnit(ctx con
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.ClaimMetaTransactionRequestAutopiUnit = foreign
+		object.R.ClaimMetaTransactionRequestAftermarketDevice = foreign
 		if foreign.R == nil {
-			foreign.R = &autopiUnitR{}
+			foreign.R = &aftermarketDeviceR{}
 		}
 		foreign.R.ClaimMetaTransactionRequest = object
 	}
@@ -590,9 +590,9 @@ func (metaTransactionRequestL) LoadClaimMetaTransactionRequestAutopiUnit(ctx con
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
 			if queries.Equal(local.ID, foreign.ClaimMetaTransactionRequestID) {
-				local.R.ClaimMetaTransactionRequestAutopiUnit = foreign
+				local.R.ClaimMetaTransactionRequestAftermarketDevice = foreign
 				if foreign.R == nil {
-					foreign.R = &autopiUnitR{}
+					foreign.R = &aftermarketDeviceR{}
 				}
 				foreign.R.ClaimMetaTransactionRequest = local
 				break
@@ -603,9 +603,9 @@ func (metaTransactionRequestL) LoadClaimMetaTransactionRequestAutopiUnit(ctx con
 	return nil
 }
 
-// LoadPairRequestAutopiUnit allows an eager lookup of values, cached into the
+// LoadPairRequestAftermarketDevice allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-1 relationship.
-func (metaTransactionRequestL) LoadPairRequestAutopiUnit(ctx context.Context, e boil.ContextExecutor, singular bool, maybeMetaTransactionRequest interface{}, mods queries.Applicator) error {
+func (metaTransactionRequestL) LoadPairRequestAftermarketDevice(ctx context.Context, e boil.ContextExecutor, singular bool, maybeMetaTransactionRequest interface{}, mods queries.Applicator) error {
 	var slice []*MetaTransactionRequest
 	var object *MetaTransactionRequest
 
@@ -659,8 +659,8 @@ func (metaTransactionRequestL) LoadPairRequestAutopiUnit(ctx context.Context, e 
 	}
 
 	query := NewQuery(
-		qm.From(`devices_api.autopi_units`),
-		qm.WhereIn(`devices_api.autopi_units.pair_request_id in ?`, args...),
+		qm.From(`devices_api.aftermarket_devices`),
+		qm.WhereIn(`devices_api.aftermarket_devices.pair_request_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -668,22 +668,22 @@ func (metaTransactionRequestL) LoadPairRequestAutopiUnit(ctx context.Context, e 
 
 	results, err := query.QueryContext(ctx, e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load AutopiUnit")
+		return errors.Wrap(err, "failed to eager load AftermarketDevice")
 	}
 
-	var resultSlice []*AutopiUnit
+	var resultSlice []*AftermarketDevice
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice AutopiUnit")
+		return errors.Wrap(err, "failed to bind eager loaded slice AftermarketDevice")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for autopi_units")
+		return errors.Wrap(err, "failed to close results of eager load for aftermarket_devices")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for autopi_units")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for aftermarket_devices")
 	}
 
-	if len(autopiUnitAfterSelectHooks) != 0 {
+	if len(aftermarketDeviceAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
 				return err
@@ -697,9 +697,9 @@ func (metaTransactionRequestL) LoadPairRequestAutopiUnit(ctx context.Context, e 
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.PairRequestAutopiUnit = foreign
+		object.R.PairRequestAftermarketDevice = foreign
 		if foreign.R == nil {
-			foreign.R = &autopiUnitR{}
+			foreign.R = &aftermarketDeviceR{}
 		}
 		foreign.R.PairRequest = object
 	}
@@ -707,9 +707,9 @@ func (metaTransactionRequestL) LoadPairRequestAutopiUnit(ctx context.Context, e 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
 			if queries.Equal(local.ID, foreign.PairRequestID) {
-				local.R.PairRequestAutopiUnit = foreign
+				local.R.PairRequestAftermarketDevice = foreign
 				if foreign.R == nil {
-					foreign.R = &autopiUnitR{}
+					foreign.R = &aftermarketDeviceR{}
 				}
 				foreign.R.PairRequest = local
 				break
@@ -720,9 +720,9 @@ func (metaTransactionRequestL) LoadPairRequestAutopiUnit(ctx context.Context, e 
 	return nil
 }
 
-// LoadUnpairRequestAutopiUnit allows an eager lookup of values, cached into the
+// LoadUnpairRequestAftermarketDevice allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-1 relationship.
-func (metaTransactionRequestL) LoadUnpairRequestAutopiUnit(ctx context.Context, e boil.ContextExecutor, singular bool, maybeMetaTransactionRequest interface{}, mods queries.Applicator) error {
+func (metaTransactionRequestL) LoadUnpairRequestAftermarketDevice(ctx context.Context, e boil.ContextExecutor, singular bool, maybeMetaTransactionRequest interface{}, mods queries.Applicator) error {
 	var slice []*MetaTransactionRequest
 	var object *MetaTransactionRequest
 
@@ -776,8 +776,8 @@ func (metaTransactionRequestL) LoadUnpairRequestAutopiUnit(ctx context.Context, 
 	}
 
 	query := NewQuery(
-		qm.From(`devices_api.autopi_units`),
-		qm.WhereIn(`devices_api.autopi_units.unpair_request_id in ?`, args...),
+		qm.From(`devices_api.aftermarket_devices`),
+		qm.WhereIn(`devices_api.aftermarket_devices.unpair_request_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -785,22 +785,22 @@ func (metaTransactionRequestL) LoadUnpairRequestAutopiUnit(ctx context.Context, 
 
 	results, err := query.QueryContext(ctx, e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load AutopiUnit")
+		return errors.Wrap(err, "failed to eager load AftermarketDevice")
 	}
 
-	var resultSlice []*AutopiUnit
+	var resultSlice []*AftermarketDevice
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice AutopiUnit")
+		return errors.Wrap(err, "failed to bind eager loaded slice AftermarketDevice")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for autopi_units")
+		return errors.Wrap(err, "failed to close results of eager load for aftermarket_devices")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for autopi_units")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for aftermarket_devices")
 	}
 
-	if len(autopiUnitAfterSelectHooks) != 0 {
+	if len(aftermarketDeviceAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
 				return err
@@ -814,9 +814,9 @@ func (metaTransactionRequestL) LoadUnpairRequestAutopiUnit(ctx context.Context, 
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.UnpairRequestAutopiUnit = foreign
+		object.R.UnpairRequestAftermarketDevice = foreign
 		if foreign.R == nil {
-			foreign.R = &autopiUnitR{}
+			foreign.R = &aftermarketDeviceR{}
 		}
 		foreign.R.UnpairRequest = object
 	}
@@ -824,9 +824,9 @@ func (metaTransactionRequestL) LoadUnpairRequestAutopiUnit(ctx context.Context, 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
 			if queries.Equal(local.ID, foreign.UnpairRequestID) {
-				local.R.UnpairRequestAutopiUnit = foreign
+				local.R.UnpairRequestAftermarketDevice = foreign
 				if foreign.R == nil {
-					foreign.R = &autopiUnitR{}
+					foreign.R = &aftermarketDeviceR{}
 				}
 				foreign.R.UnpairRequest = local
 				break
@@ -1071,10 +1071,10 @@ func (metaTransactionRequestL) LoadMintRequestVehicleNFT(ctx context.Context, e 
 	return nil
 }
 
-// SetClaimMetaTransactionRequestAutopiUnit of the metaTransactionRequest to the related item.
-// Sets o.R.ClaimMetaTransactionRequestAutopiUnit to related.
+// SetClaimMetaTransactionRequestAftermarketDevice of the metaTransactionRequest to the related item.
+// Sets o.R.ClaimMetaTransactionRequestAftermarketDevice to related.
 // Adds o to related.R.ClaimMetaTransactionRequest.
-func (o *MetaTransactionRequest) SetClaimMetaTransactionRequestAutopiUnit(ctx context.Context, exec boil.ContextExecutor, insert bool, related *AutopiUnit) error {
+func (o *MetaTransactionRequest) SetClaimMetaTransactionRequestAftermarketDevice(ctx context.Context, exec boil.ContextExecutor, insert bool, related *AftermarketDevice) error {
 	var err error
 
 	if insert {
@@ -1085,11 +1085,11 @@ func (o *MetaTransactionRequest) SetClaimMetaTransactionRequestAutopiUnit(ctx co
 		}
 	} else {
 		updateQuery := fmt.Sprintf(
-			"UPDATE \"devices_api\".\"autopi_units\" SET %s WHERE %s",
+			"UPDATE \"devices_api\".\"aftermarket_devices\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, []string{"claim_meta_transaction_request_id"}),
-			strmangle.WhereClause("\"", "\"", 2, autopiUnitPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", 2, aftermarketDevicePrimaryKeyColumns),
 		)
-		values := []interface{}{o.ID, related.AutopiUnitID}
+		values := []interface{}{o.ID, related.Serial}
 
 		if boil.IsDebug(ctx) {
 			writer := boil.DebugWriterFrom(ctx)
@@ -1105,14 +1105,14 @@ func (o *MetaTransactionRequest) SetClaimMetaTransactionRequestAutopiUnit(ctx co
 
 	if o.R == nil {
 		o.R = &metaTransactionRequestR{
-			ClaimMetaTransactionRequestAutopiUnit: related,
+			ClaimMetaTransactionRequestAftermarketDevice: related,
 		}
 	} else {
-		o.R.ClaimMetaTransactionRequestAutopiUnit = related
+		o.R.ClaimMetaTransactionRequestAftermarketDevice = related
 	}
 
 	if related.R == nil {
-		related.R = &autopiUnitR{
+		related.R = &aftermarketDeviceR{
 			ClaimMetaTransactionRequest: o,
 		}
 	} else {
@@ -1121,10 +1121,10 @@ func (o *MetaTransactionRequest) SetClaimMetaTransactionRequestAutopiUnit(ctx co
 	return nil
 }
 
-// RemoveClaimMetaTransactionRequestAutopiUnit relationship.
-// Sets o.R.ClaimMetaTransactionRequestAutopiUnit to nil.
+// RemoveClaimMetaTransactionRequestAftermarketDevice relationship.
+// Sets o.R.ClaimMetaTransactionRequestAftermarketDevice to nil.
 // Removes o from all passed in related items' relationships struct.
-func (o *MetaTransactionRequest) RemoveClaimMetaTransactionRequestAutopiUnit(ctx context.Context, exec boil.ContextExecutor, related *AutopiUnit) error {
+func (o *MetaTransactionRequest) RemoveClaimMetaTransactionRequestAftermarketDevice(ctx context.Context, exec boil.ContextExecutor, related *AftermarketDevice) error {
 	var err error
 
 	queries.SetScanner(&related.ClaimMetaTransactionRequestID, nil)
@@ -1133,7 +1133,7 @@ func (o *MetaTransactionRequest) RemoveClaimMetaTransactionRequestAutopiUnit(ctx
 	}
 
 	if o.R != nil {
-		o.R.ClaimMetaTransactionRequestAutopiUnit = nil
+		o.R.ClaimMetaTransactionRequestAftermarketDevice = nil
 	}
 
 	if related == nil || related.R == nil {
@@ -1145,10 +1145,10 @@ func (o *MetaTransactionRequest) RemoveClaimMetaTransactionRequestAutopiUnit(ctx
 	return nil
 }
 
-// SetPairRequestAutopiUnit of the metaTransactionRequest to the related item.
-// Sets o.R.PairRequestAutopiUnit to related.
+// SetPairRequestAftermarketDevice of the metaTransactionRequest to the related item.
+// Sets o.R.PairRequestAftermarketDevice to related.
 // Adds o to related.R.PairRequest.
-func (o *MetaTransactionRequest) SetPairRequestAutopiUnit(ctx context.Context, exec boil.ContextExecutor, insert bool, related *AutopiUnit) error {
+func (o *MetaTransactionRequest) SetPairRequestAftermarketDevice(ctx context.Context, exec boil.ContextExecutor, insert bool, related *AftermarketDevice) error {
 	var err error
 
 	if insert {
@@ -1159,11 +1159,11 @@ func (o *MetaTransactionRequest) SetPairRequestAutopiUnit(ctx context.Context, e
 		}
 	} else {
 		updateQuery := fmt.Sprintf(
-			"UPDATE \"devices_api\".\"autopi_units\" SET %s WHERE %s",
+			"UPDATE \"devices_api\".\"aftermarket_devices\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, []string{"pair_request_id"}),
-			strmangle.WhereClause("\"", "\"", 2, autopiUnitPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", 2, aftermarketDevicePrimaryKeyColumns),
 		)
-		values := []interface{}{o.ID, related.AutopiUnitID}
+		values := []interface{}{o.ID, related.Serial}
 
 		if boil.IsDebug(ctx) {
 			writer := boil.DebugWriterFrom(ctx)
@@ -1179,14 +1179,14 @@ func (o *MetaTransactionRequest) SetPairRequestAutopiUnit(ctx context.Context, e
 
 	if o.R == nil {
 		o.R = &metaTransactionRequestR{
-			PairRequestAutopiUnit: related,
+			PairRequestAftermarketDevice: related,
 		}
 	} else {
-		o.R.PairRequestAutopiUnit = related
+		o.R.PairRequestAftermarketDevice = related
 	}
 
 	if related.R == nil {
-		related.R = &autopiUnitR{
+		related.R = &aftermarketDeviceR{
 			PairRequest: o,
 		}
 	} else {
@@ -1195,10 +1195,10 @@ func (o *MetaTransactionRequest) SetPairRequestAutopiUnit(ctx context.Context, e
 	return nil
 }
 
-// RemovePairRequestAutopiUnit relationship.
-// Sets o.R.PairRequestAutopiUnit to nil.
+// RemovePairRequestAftermarketDevice relationship.
+// Sets o.R.PairRequestAftermarketDevice to nil.
 // Removes o from all passed in related items' relationships struct.
-func (o *MetaTransactionRequest) RemovePairRequestAutopiUnit(ctx context.Context, exec boil.ContextExecutor, related *AutopiUnit) error {
+func (o *MetaTransactionRequest) RemovePairRequestAftermarketDevice(ctx context.Context, exec boil.ContextExecutor, related *AftermarketDevice) error {
 	var err error
 
 	queries.SetScanner(&related.PairRequestID, nil)
@@ -1207,7 +1207,7 @@ func (o *MetaTransactionRequest) RemovePairRequestAutopiUnit(ctx context.Context
 	}
 
 	if o.R != nil {
-		o.R.PairRequestAutopiUnit = nil
+		o.R.PairRequestAftermarketDevice = nil
 	}
 
 	if related == nil || related.R == nil {
@@ -1219,10 +1219,10 @@ func (o *MetaTransactionRequest) RemovePairRequestAutopiUnit(ctx context.Context
 	return nil
 }
 
-// SetUnpairRequestAutopiUnit of the metaTransactionRequest to the related item.
-// Sets o.R.UnpairRequestAutopiUnit to related.
+// SetUnpairRequestAftermarketDevice of the metaTransactionRequest to the related item.
+// Sets o.R.UnpairRequestAftermarketDevice to related.
 // Adds o to related.R.UnpairRequest.
-func (o *MetaTransactionRequest) SetUnpairRequestAutopiUnit(ctx context.Context, exec boil.ContextExecutor, insert bool, related *AutopiUnit) error {
+func (o *MetaTransactionRequest) SetUnpairRequestAftermarketDevice(ctx context.Context, exec boil.ContextExecutor, insert bool, related *AftermarketDevice) error {
 	var err error
 
 	if insert {
@@ -1233,11 +1233,11 @@ func (o *MetaTransactionRequest) SetUnpairRequestAutopiUnit(ctx context.Context,
 		}
 	} else {
 		updateQuery := fmt.Sprintf(
-			"UPDATE \"devices_api\".\"autopi_units\" SET %s WHERE %s",
+			"UPDATE \"devices_api\".\"aftermarket_devices\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, []string{"unpair_request_id"}),
-			strmangle.WhereClause("\"", "\"", 2, autopiUnitPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", 2, aftermarketDevicePrimaryKeyColumns),
 		)
-		values := []interface{}{o.ID, related.AutopiUnitID}
+		values := []interface{}{o.ID, related.Serial}
 
 		if boil.IsDebug(ctx) {
 			writer := boil.DebugWriterFrom(ctx)
@@ -1253,14 +1253,14 @@ func (o *MetaTransactionRequest) SetUnpairRequestAutopiUnit(ctx context.Context,
 
 	if o.R == nil {
 		o.R = &metaTransactionRequestR{
-			UnpairRequestAutopiUnit: related,
+			UnpairRequestAftermarketDevice: related,
 		}
 	} else {
-		o.R.UnpairRequestAutopiUnit = related
+		o.R.UnpairRequestAftermarketDevice = related
 	}
 
 	if related.R == nil {
-		related.R = &autopiUnitR{
+		related.R = &aftermarketDeviceR{
 			UnpairRequest: o,
 		}
 	} else {
@@ -1269,10 +1269,10 @@ func (o *MetaTransactionRequest) SetUnpairRequestAutopiUnit(ctx context.Context,
 	return nil
 }
 
-// RemoveUnpairRequestAutopiUnit relationship.
-// Sets o.R.UnpairRequestAutopiUnit to nil.
+// RemoveUnpairRequestAftermarketDevice relationship.
+// Sets o.R.UnpairRequestAftermarketDevice to nil.
 // Removes o from all passed in related items' relationships struct.
-func (o *MetaTransactionRequest) RemoveUnpairRequestAutopiUnit(ctx context.Context, exec boil.ContextExecutor, related *AutopiUnit) error {
+func (o *MetaTransactionRequest) RemoveUnpairRequestAftermarketDevice(ctx context.Context, exec boil.ContextExecutor, related *AftermarketDevice) error {
 	var err error
 
 	queries.SetScanner(&related.UnpairRequestID, nil)
@@ -1281,7 +1281,7 @@ func (o *MetaTransactionRequest) RemoveUnpairRequestAutopiUnit(ctx context.Conte
 	}
 
 	if o.R != nil {
-		o.R.UnpairRequestAutopiUnit = nil
+		o.R.UnpairRequestAftermarketDevice = nil
 	}
 
 	if related == nil || related.R == nil {

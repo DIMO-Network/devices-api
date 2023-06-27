@@ -116,7 +116,6 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	app.Get("/user/devices/me", test.AuthInjectorTestHandler(s.testUserID), c.GetUserDevices)
 	app.Patch("/user/devices/:userDeviceID/vin", test.AuthInjectorTestHandler(s.testUserID), c.UpdateVIN)
 	app.Patch("/user/devices/:userDeviceID/name", test.AuthInjectorTestHandler(s.testUserID), c.UpdateName)
-	app.Patch("/user/devices/:userDeviceID/image", test.AuthInjectorTestHandler(s.testUserID), c.UpdateImage)
 	app.Get("/user/devices/:userDeviceID/offers", test.AuthInjectorTestHandler(s.testUserID), c.GetOffers)
 	app.Get("/user/devices/:userDeviceID/valuations", test.AuthInjectorTestHandler(s.testUserID), c.GetValuations)
 	app.Get("/user/devices/:userDeviceID/range", test.AuthInjectorTestHandler(s.testUserID), c.GetRange)
@@ -464,7 +463,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	_ = test.SetupCreateAutoPiUnit(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
+	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
 
 	addr := "67B94473D81D0cd00849D563C94d0432Ac988B49"
@@ -508,7 +507,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	ud := test.SetupCreateUserDeviceWithDeviceID(s.T(), userID, deviceID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	_ = test.SetupCreateAutoPiUnit(s.T(), userID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
+	_ = test.SetupCreateAftermarketDevice(s.T(), userID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
 
 	addr := "67B94473D81D0cd00849D563C94d0432Ac988B49"
@@ -651,10 +650,10 @@ func (s *UserDevicesControllerTestSuite) TestNameValidate() {
 func (s *UserDevicesControllerTestSuite) TestPatchName() {
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, ksuid.New().String(), nil, "", s.pdb)
 	deviceID := uuid.New().String()
-	apunit := test.SetupCreateAutoPiUnit(s.T(), s.testUserID, uuid.NewString(), &deviceID, s.pdb)
+	apunit := test.SetupCreateAftermarketDevice(s.T(), s.testUserID, uuid.NewString(), &deviceID, s.pdb)
 	autoPiIntID := ksuid.New().String()
 	vehicleID := 3214
-	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), apunit.AutopiUnitID, deviceID, ud.ID, autoPiIntID, s.pdb)
+	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), apunit.Serial, deviceID, ud.ID, autoPiIntID, s.pdb)
 
 	// nil check test
 	payload := `{}`
@@ -665,8 +664,8 @@ func (s *UserDevicesControllerTestSuite) TestPatchName() {
 	testName := "Queens Charriot,.@!$’"
 	payload = fmt.Sprintf(`{ "name": " %s " }`, testName) // intentionally has spaces to test trimming
 
-	s.autoPiSvc.EXPECT().GetDeviceByUnitID(apunit.AutopiUnitID).Times(1).Return(&services.AutoPiDongleDevice{
-		ID: deviceID, UnitID: apunit.AutopiUnitID, Vehicle: services.AutoPiDongleVehicle{ID: vehicleID},
+	s.autoPiSvc.EXPECT().GetDeviceByUnitID(apunit.Serial).Times(1).Return(&services.AutoPiDongleDevice{
+		ID: deviceID, UnitID: apunit.Serial, Vehicle: services.AutoPiDongleVehicle{ID: vehicleID},
 	}, nil)
 	s.autoPiSvc.EXPECT().PatchVehicleProfile(vehicleID, services.PatchVehicleProfile{
 		CallName: &testName,
@@ -679,18 +678,6 @@ func (s *UserDevicesControllerTestSuite) TestPatchName() {
 	}
 	require.NoError(s.T(), ud.Reload(s.ctx, s.pdb.DBS().Reader))
 	assert.Equal(s.T(), testName, ud.Name.String)
-}
-
-func (s *UserDevicesControllerTestSuite) TestPatchImageURL() {
-	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, ksuid.New().String(), nil, "", s.pdb)
-
-	payload := `{ "imageUrl": "https://ipfs.com/planetary/car.jpg" }`
-	request := test.BuildRequest("PATCH", "/user/devices/"+ud.ID+"/image", payload)
-	response, _ := s.app.Test(request)
-	if assert.Equal(s.T(), fiber.StatusNoContent, response.StatusCode) == false {
-		body, _ := io.ReadAll(response.Body)
-		fmt.Println("message: " + string(body))
-	}
 }
 
 //go:embed test_drivly_pricing_by_vin.json
@@ -817,7 +804,7 @@ func (s *UserDevicesControllerTestSuite) TestGetRange() {
 	ddID := ksuid.New().String()
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	smartCarIntegration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
-	_ = test.SetupCreateAutoPiUnit(s.T(), testUserID, autoPiUnitID, &autoPiDeviceID, s.pdb)
+	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, autoPiUnitID, &autoPiDeviceID, s.pdb)
 
 	gddir := []*grpc.GetDeviceDefinitionItemResponse{
 		{

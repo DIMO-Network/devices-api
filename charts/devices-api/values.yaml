@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: aa5c297
+  tag: a728d1e
 imagePullSecrets: []
 nameOverride: ''
 fullnameOverride: ''
@@ -83,6 +83,7 @@ env:
   NATS_VALUATION_SUBJECT: dd_valuation_tasks
   NATS_DURABLE_CONSUMER: dd-valuation-task-consumer
   NATS_ACK_TIMEOUT: 2m
+  SYNTHETIC_DEVICES_ENABLED: true
 service:
   type: ClusterIP
   ports:

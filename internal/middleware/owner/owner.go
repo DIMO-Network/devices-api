@@ -95,7 +95,7 @@ func AutoPi(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logg
 		c.Locals("unitID", unitID)
 		c.Locals("logger", &logger)
 
-		autopiUnit, err := models.FindAutopiUnit(c.Context(), dbs.DBS().Reader, unitID)
+		autopiUnit, err := models.FindAftermarketDevice(c.Context(), dbs.DBS().Reader, unitID)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted, or unit ID invalid.")

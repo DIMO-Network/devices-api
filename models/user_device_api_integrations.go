@@ -30,12 +30,12 @@ type UserDeviceAPIIntegration struct {
 	AccessToken     null.String `boil:"access_token" json:"access_token,omitempty" toml:"access_token" yaml:"access_token,omitempty"`
 	AccessExpiresAt null.Time   `boil:"access_expires_at" json:"access_expires_at,omitempty" toml:"access_expires_at" yaml:"access_expires_at,omitempty"`
 	RefreshToken    null.String `boil:"refresh_token" json:"refresh_token,omitempty" toml:"refresh_token" yaml:"refresh_token,omitempty"`
+	ExternalID      null.String `boil:"external_id" json:"external_id,omitempty" toml:"external_id" yaml:"external_id,omitempty"`
 	CreatedAt       time.Time   `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt       time.Time   `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	Metadata        null.JSON   `boil:"metadata" json:"metadata,omitempty" toml:"metadata" yaml:"metadata,omitempty"`
 	TaskID          null.String `boil:"task_id" json:"task_id,omitempty" toml:"task_id" yaml:"task_id,omitempty"`
-	AutopiUnitID    null.String `boil:"autopi_unit_id" json:"autopi_unit_id,omitempty" toml:"autopi_unit_id" yaml:"autopi_unit_id,omitempty"`
-	ExternalID      null.String `boil:"external_id" json:"external_id,omitempty" toml:"external_id" yaml:"external_id,omitempty"`
+	Serial          null.String `boil:"serial" json:"serial,omitempty" toml:"serial" yaml:"serial,omitempty"`
 
 	R *userDeviceAPIIntegrationR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userDeviceAPIIntegrationL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -48,12 +48,12 @@ var UserDeviceAPIIntegrationColumns = struct {
 	AccessToken     string
 	AccessExpiresAt string
 	RefreshToken    string
+	ExternalID      string
 	CreatedAt       string
 	UpdatedAt       string
 	Metadata        string
 	TaskID          string
-	AutopiUnitID    string
-	ExternalID      string
+	Serial          string
 }{
 	UserDeviceID:    "user_device_id",
 	IntegrationID:   "integration_id",
@@ -61,12 +61,12 @@ var UserDeviceAPIIntegrationColumns = struct {
 	AccessToken:     "access_token",
 	AccessExpiresAt: "access_expires_at",
 	RefreshToken:    "refresh_token",
+	ExternalID:      "external_id",
 	CreatedAt:       "created_at",
 	UpdatedAt:       "updated_at",
 	Metadata:        "metadata",
 	TaskID:          "task_id",
-	AutopiUnitID:    "autopi_unit_id",
-	ExternalID:      "external_id",
+	Serial:          "serial",
 }
 
 var UserDeviceAPIIntegrationTableColumns = struct {
@@ -76,12 +76,12 @@ var UserDeviceAPIIntegrationTableColumns = struct {
 	AccessToken     string
 	AccessExpiresAt string
 	RefreshToken    string
+	ExternalID      string
 	CreatedAt       string
 	UpdatedAt       string
 	Metadata        string
 	TaskID          string
-	AutopiUnitID    string
-	ExternalID      string
+	Serial          string
 }{
 	UserDeviceID:    "user_device_api_integrations.user_device_id",
 	IntegrationID:   "user_device_api_integrations.integration_id",
@@ -89,12 +89,12 @@ var UserDeviceAPIIntegrationTableColumns = struct {
 	AccessToken:     "user_device_api_integrations.access_token",
 	AccessExpiresAt: "user_device_api_integrations.access_expires_at",
 	RefreshToken:    "user_device_api_integrations.refresh_token",
+	ExternalID:      "user_device_api_integrations.external_id",
 	CreatedAt:       "user_device_api_integrations.created_at",
 	UpdatedAt:       "user_device_api_integrations.updated_at",
 	Metadata:        "user_device_api_integrations.metadata",
 	TaskID:          "user_device_api_integrations.task_id",
-	AutopiUnitID:    "user_device_api_integrations.autopi_unit_id",
-	ExternalID:      "user_device_api_integrations.external_id",
+	Serial:          "user_device_api_integrations.serial",
 }
 
 // Generated where
@@ -106,12 +106,12 @@ var UserDeviceAPIIntegrationWhere = struct {
 	AccessToken     whereHelpernull_String
 	AccessExpiresAt whereHelpernull_Time
 	RefreshToken    whereHelpernull_String
+	ExternalID      whereHelpernull_String
 	CreatedAt       whereHelpertime_Time
 	UpdatedAt       whereHelpertime_Time
 	Metadata        whereHelpernull_JSON
 	TaskID          whereHelpernull_String
-	AutopiUnitID    whereHelpernull_String
-	ExternalID      whereHelpernull_String
+	Serial          whereHelpernull_String
 }{
 	UserDeviceID:    whereHelperstring{field: "\"devices_api\".\"user_device_api_integrations\".\"user_device_id\""},
 	IntegrationID:   whereHelperstring{field: "\"devices_api\".\"user_device_api_integrations\".\"integration_id\""},
@@ -119,27 +119,27 @@ var UserDeviceAPIIntegrationWhere = struct {
 	AccessToken:     whereHelpernull_String{field: "\"devices_api\".\"user_device_api_integrations\".\"access_token\""},
 	AccessExpiresAt: whereHelpernull_Time{field: "\"devices_api\".\"user_device_api_integrations\".\"access_expires_at\""},
 	RefreshToken:    whereHelpernull_String{field: "\"devices_api\".\"user_device_api_integrations\".\"refresh_token\""},
+	ExternalID:      whereHelpernull_String{field: "\"devices_api\".\"user_device_api_integrations\".\"external_id\""},
 	CreatedAt:       whereHelpertime_Time{field: "\"devices_api\".\"user_device_api_integrations\".\"created_at\""},
 	UpdatedAt:       whereHelpertime_Time{field: "\"devices_api\".\"user_device_api_integrations\".\"updated_at\""},
 	Metadata:        whereHelpernull_JSON{field: "\"devices_api\".\"user_device_api_integrations\".\"metadata\""},
 	TaskID:          whereHelpernull_String{field: "\"devices_api\".\"user_device_api_integrations\".\"task_id\""},
-	AutopiUnitID:    whereHelpernull_String{field: "\"devices_api\".\"user_device_api_integrations\".\"autopi_unit_id\""},
-	ExternalID:      whereHelpernull_String{field: "\"devices_api\".\"user_device_api_integrations\".\"external_id\""},
+	Serial:          whereHelpernull_String{field: "\"devices_api\".\"user_device_api_integrations\".\"serial\""},
 }
 
 // UserDeviceAPIIntegrationRels is where relationship names are stored.
 var UserDeviceAPIIntegrationRels = struct {
-	UserDevice string
-	AutopiUnit string
+	UserDevice              string
+	SerialAftermarketDevice string
 }{
-	UserDevice: "UserDevice",
-	AutopiUnit: "AutopiUnit",
+	UserDevice:              "UserDevice",
+	SerialAftermarketDevice: "SerialAftermarketDevice",
 }
 
 // userDeviceAPIIntegrationR is where relationships are stored.
 type userDeviceAPIIntegrationR struct {
-	UserDevice *UserDevice `boil:"UserDevice" json:"UserDevice" toml:"UserDevice" yaml:"UserDevice"`
-	AutopiUnit *AutopiUnit `boil:"AutopiUnit" json:"AutopiUnit" toml:"AutopiUnit" yaml:"AutopiUnit"`
+	UserDevice              *UserDevice        `boil:"UserDevice" json:"UserDevice" toml:"UserDevice" yaml:"UserDevice"`
+	SerialAftermarketDevice *AftermarketDevice `boil:"SerialAftermarketDevice" json:"SerialAftermarketDevice" toml:"SerialAftermarketDevice" yaml:"SerialAftermarketDevice"`
 }
 
 // NewStruct creates a new relationship struct
@@ -154,20 +154,20 @@ func (r *userDeviceAPIIntegrationR) GetUserDevice() *UserDevice {
 	return r.UserDevice
 }
 
-func (r *userDeviceAPIIntegrationR) GetAutopiUnit() *AutopiUnit {
+func (r *userDeviceAPIIntegrationR) GetSerialAftermarketDevice() *AftermarketDevice {
 	if r == nil {
 		return nil
 	}
-	return r.AutopiUnit
+	return r.SerialAftermarketDevice
 }
 
 // userDeviceAPIIntegrationL is where Load methods for each relationship are stored.
 type userDeviceAPIIntegrationL struct{}
 
 var (
-	userDeviceAPIIntegrationAllColumns            = []string{"user_device_id", "integration_id", "status", "access_token", "access_expires_at", "refresh_token", "created_at", "updated_at", "metadata", "task_id", "autopi_unit_id", "external_id"}
+	userDeviceAPIIntegrationAllColumns            = []string{"user_device_id", "integration_id", "status", "access_token", "access_expires_at", "refresh_token", "external_id", "created_at", "updated_at", "metadata", "task_id", "serial"}
 	userDeviceAPIIntegrationColumnsWithoutDefault = []string{"user_device_id", "integration_id", "status"}
-	userDeviceAPIIntegrationColumnsWithDefault    = []string{"access_token", "access_expires_at", "refresh_token", "created_at", "updated_at", "metadata", "task_id", "autopi_unit_id", "external_id"}
+	userDeviceAPIIntegrationColumnsWithDefault    = []string{"access_token", "access_expires_at", "refresh_token", "external_id", "created_at", "updated_at", "metadata", "task_id", "serial"}
 	userDeviceAPIIntegrationPrimaryKeyColumns     = []string{"user_device_id", "integration_id"}
 	userDeviceAPIIntegrationGeneratedColumns      = []string{}
 )
@@ -461,15 +461,15 @@ func (o *UserDeviceAPIIntegration) UserDevice(mods ...qm.QueryMod) userDeviceQue
 	return UserDevices(queryMods...)
 }
 
-// AutopiUnit pointed to by the foreign key.
-func (o *UserDeviceAPIIntegration) AutopiUnit(mods ...qm.QueryMod) autopiUnitQuery {
+// SerialAftermarketDevice pointed to by the foreign key.
+func (o *UserDeviceAPIIntegration) SerialAftermarketDevice(mods ...qm.QueryMod) aftermarketDeviceQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"autopi_unit_id\" = ?", o.AutopiUnitID),
+		qm.Where("\"serial\" = ?", o.Serial),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	return AutopiUnits(queryMods...)
+	return AftermarketDevices(queryMods...)
 }
 
 // LoadUserDevice allows an eager lookup of values, cached into the
@@ -592,9 +592,9 @@ func (userDeviceAPIIntegrationL) LoadUserDevice(ctx context.Context, e boil.Cont
 	return nil
 }
 
-// LoadAutopiUnit allows an eager lookup of values, cached into the
+// LoadSerialAftermarketDevice allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (userDeviceAPIIntegrationL) LoadAutopiUnit(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUserDeviceAPIIntegration interface{}, mods queries.Applicator) error {
+func (userDeviceAPIIntegrationL) LoadSerialAftermarketDevice(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUserDeviceAPIIntegration interface{}, mods queries.Applicator) error {
 	var slice []*UserDeviceAPIIntegration
 	var object *UserDeviceAPIIntegration
 
@@ -625,8 +625,8 @@ func (userDeviceAPIIntegrationL) LoadAutopiUnit(ctx context.Context, e boil.Cont
 		if object.R == nil {
 			object.R = &userDeviceAPIIntegrationR{}
 		}
-		if !queries.IsNil(object.AutopiUnitID) {
-			args = append(args, object.AutopiUnitID)
+		if !queries.IsNil(object.Serial) {
+			args = append(args, object.Serial)
 		}
 
 	} else {
@@ -637,13 +637,13 @@ func (userDeviceAPIIntegrationL) LoadAutopiUnit(ctx context.Context, e boil.Cont
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.AutopiUnitID) {
+				if queries.Equal(a, obj.Serial) {
 					continue Outer
 				}
 			}
 
-			if !queries.IsNil(obj.AutopiUnitID) {
-				args = append(args, obj.AutopiUnitID)
+			if !queries.IsNil(obj.Serial) {
+				args = append(args, obj.Serial)
 			}
 
 		}
@@ -654,8 +654,8 @@ func (userDeviceAPIIntegrationL) LoadAutopiUnit(ctx context.Context, e boil.Cont
 	}
 
 	query := NewQuery(
-		qm.From(`devices_api.autopi_units`),
-		qm.WhereIn(`devices_api.autopi_units.autopi_unit_id in ?`, args...),
+		qm.From(`devices_api.aftermarket_devices`),
+		qm.WhereIn(`devices_api.aftermarket_devices.serial in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -663,22 +663,22 @@ func (userDeviceAPIIntegrationL) LoadAutopiUnit(ctx context.Context, e boil.Cont
 
 	results, err := query.QueryContext(ctx, e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load AutopiUnit")
+		return errors.Wrap(err, "failed to eager load AftermarketDevice")
 	}
 
-	var resultSlice []*AutopiUnit
+	var resultSlice []*AftermarketDevice
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice AutopiUnit")
+		return errors.Wrap(err, "failed to bind eager loaded slice AftermarketDevice")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for autopi_units")
+		return errors.Wrap(err, "failed to close results of eager load for aftermarket_devices")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for autopi_units")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for aftermarket_devices")
 	}
 
-	if len(autopiUnitAfterSelectHooks) != 0 {
+	if len(aftermarketDeviceAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
 				return err
@@ -692,22 +692,22 @@ func (userDeviceAPIIntegrationL) LoadAutopiUnit(ctx context.Context, e boil.Cont
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.AutopiUnit = foreign
+		object.R.SerialAftermarketDevice = foreign
 		if foreign.R == nil {
-			foreign.R = &autopiUnitR{}
+			foreign.R = &aftermarketDeviceR{}
 		}
-		foreign.R.UserDeviceAPIIntegrations = append(foreign.R.UserDeviceAPIIntegrations, object)
+		foreign.R.SerialUserDeviceAPIIntegrations = append(foreign.R.SerialUserDeviceAPIIntegrations, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.AutopiUnitID, foreign.AutopiUnitID) {
-				local.R.AutopiUnit = foreign
+			if queries.Equal(local.Serial, foreign.Serial) {
+				local.R.SerialAftermarketDevice = foreign
 				if foreign.R == nil {
-					foreign.R = &autopiUnitR{}
+					foreign.R = &aftermarketDeviceR{}
 				}
-				foreign.R.UserDeviceAPIIntegrations = append(foreign.R.UserDeviceAPIIntegrations, local)
+				foreign.R.SerialUserDeviceAPIIntegrations = append(foreign.R.SerialUserDeviceAPIIntegrations, local)
 				break
 			}
 		}
@@ -763,10 +763,10 @@ func (o *UserDeviceAPIIntegration) SetUserDevice(ctx context.Context, exec boil.
 	return nil
 }
 
-// SetAutopiUnit of the userDeviceAPIIntegration to the related item.
-// Sets o.R.AutopiUnit to related.
-// Adds o to related.R.UserDeviceAPIIntegrations.
-func (o *UserDeviceAPIIntegration) SetAutopiUnit(ctx context.Context, exec boil.ContextExecutor, insert bool, related *AutopiUnit) error {
+// SetSerialAftermarketDevice of the userDeviceAPIIntegration to the related item.
+// Sets o.R.SerialAftermarketDevice to related.
+// Adds o to related.R.SerialUserDeviceAPIIntegrations.
+func (o *UserDeviceAPIIntegration) SetSerialAftermarketDevice(ctx context.Context, exec boil.ContextExecutor, insert bool, related *AftermarketDevice) error {
 	var err error
 	if insert {
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
@@ -776,10 +776,10 @@ func (o *UserDeviceAPIIntegration) SetAutopiUnit(ctx context.Context, exec boil.
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"devices_api\".\"user_device_api_integrations\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"autopi_unit_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"serial"}),
 		strmangle.WhereClause("\"", "\"", 2, userDeviceAPIIntegrationPrimaryKeyColumns),
 	)
-	values := []interface{}{related.AutopiUnitID, o.UserDeviceID, o.IntegrationID}
+	values := []interface{}{related.Serial, o.UserDeviceID, o.IntegrationID}
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -790,54 +790,54 @@ func (o *UserDeviceAPIIntegration) SetAutopiUnit(ctx context.Context, exec boil.
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.AutopiUnitID, related.AutopiUnitID)
+	queries.Assign(&o.Serial, related.Serial)
 	if o.R == nil {
 		o.R = &userDeviceAPIIntegrationR{
-			AutopiUnit: related,
+			SerialAftermarketDevice: related,
 		}
 	} else {
-		o.R.AutopiUnit = related
+		o.R.SerialAftermarketDevice = related
 	}
 
 	if related.R == nil {
-		related.R = &autopiUnitR{
-			UserDeviceAPIIntegrations: UserDeviceAPIIntegrationSlice{o},
+		related.R = &aftermarketDeviceR{
+			SerialUserDeviceAPIIntegrations: UserDeviceAPIIntegrationSlice{o},
 		}
 	} else {
-		related.R.UserDeviceAPIIntegrations = append(related.R.UserDeviceAPIIntegrations, o)
+		related.R.SerialUserDeviceAPIIntegrations = append(related.R.SerialUserDeviceAPIIntegrations, o)
 	}
 
 	return nil
 }
 
-// RemoveAutopiUnit relationship.
-// Sets o.R.AutopiUnit to nil.
+// RemoveSerialAftermarketDevice relationship.
+// Sets o.R.SerialAftermarketDevice to nil.
 // Removes o from all passed in related items' relationships struct.
-func (o *UserDeviceAPIIntegration) RemoveAutopiUnit(ctx context.Context, exec boil.ContextExecutor, related *AutopiUnit) error {
+func (o *UserDeviceAPIIntegration) RemoveSerialAftermarketDevice(ctx context.Context, exec boil.ContextExecutor, related *AftermarketDevice) error {
 	var err error
 
-	queries.SetScanner(&o.AutopiUnitID, nil)
-	if _, err = o.Update(ctx, exec, boil.Whitelist("autopi_unit_id")); err != nil {
+	queries.SetScanner(&o.Serial, nil)
+	if _, err = o.Update(ctx, exec, boil.Whitelist("serial")); err != nil {
 		return errors.Wrap(err, "failed to update local table")
 	}
 
 	if o.R != nil {
-		o.R.AutopiUnit = nil
+		o.R.SerialAftermarketDevice = nil
 	}
 	if related == nil || related.R == nil {
 		return nil
 	}
 
-	for i, ri := range related.R.UserDeviceAPIIntegrations {
-		if queries.Equal(o.AutopiUnitID, ri.AutopiUnitID) {
+	for i, ri := range related.R.SerialUserDeviceAPIIntegrations {
+		if queries.Equal(o.Serial, ri.Serial) {
 			continue
 		}
 
-		ln := len(related.R.UserDeviceAPIIntegrations)
+		ln := len(related.R.SerialUserDeviceAPIIntegrations)
 		if ln > 1 && i < ln-1 {
-			related.R.UserDeviceAPIIntegrations[i] = related.R.UserDeviceAPIIntegrations[ln-1]
+			related.R.SerialUserDeviceAPIIntegrations[i] = related.R.SerialUserDeviceAPIIntegrations[ln-1]
 		}
-		related.R.UserDeviceAPIIntegrations = related.R.UserDeviceAPIIntegrations[:ln-1]
+		related.R.SerialUserDeviceAPIIntegrations = related.R.SerialUserDeviceAPIIntegrations[:ln-1]
 		break
 	}
 	return nil

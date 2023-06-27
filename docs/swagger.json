@@ -66,39 +66,6 @@
                 }
             }
         },
-        "/autopi/task/:taskID": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "gets the status of an autopi related task. In future could be other tasks too?",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "integrations"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "task id",
-                        "name": "taskID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiTask"
-                        }
-                    }
-                }
-            }
-        },
         "/autopi/unit/:unitID": {
             "get": {
                 "security": [
@@ -223,36 +190,6 @@
                 }
             }
         },
-        "/autopi/unit/:unitID/is-online": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "gets whether the autopi is online right now, if already paired with a user, makes sure user has access. returns json with {\"online\": true/false}",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "integrations"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "autopi unit id",
-                        "name": "unitID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                }
-            }
-        },
         "/autopi/unit/:unitID/update": {
             "post": {
                 "security": [
@@ -350,107 +287,6 @@
                     },
                     "404": {
                         "description": "Not Found"
-                    }
-                }
-            }
-        },
-        "/device-definitions": {
-            "get": {
-                "description": "gets a specific device definition by make model and year",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "device-definitions"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "make eg TESLA",
-                        "name": "make",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "model eg MODEL Y",
-                        "name": "model",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "year eg 2021",
-                        "name": "year",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceDefinition"
-                        }
-                    }
-                }
-            }
-        },
-        "/device-definitions/:id": {
-            "get": {
-                "description": "gets a specific device definition by id, adds autopi integration on the fly if does not have it and year \u003e cutoff",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "device-definitions"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "device definition id, KSUID format",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceDefinition"
-                        }
-                    }
-                }
-            }
-        },
-        "/device-definitions/{id}/integrations": {
-            "get": {
-                "description": "gets all the available integrations for a device definition. Includes the capabilities of the device with the integration",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "device-definitions"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "device definition id, KSUID format",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceCompatibility"
-                            }
-                        }
                     }
                 }
             }
@@ -718,6 +554,74 @@
                 }
             }
         },
+        "/synthetic/device/mint/{integrationNode}/{vehicleNode}": {
+            "get": {
+                "description": "Produces the payload that the user signs and submits to mint a synthetic device for\nthe given vehicle and integration.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "integrations"
+                ],
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "token ID",
+                        "name": "integrationNode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "vehicle ID",
+                        "name": "vehicleNode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/apitypes.TypedData"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Submit a metadata",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "integrations"
+                ],
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "token ID",
+                        "name": "integrationNode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "vehicle ID",
+                        "name": "vehicleNode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
         "/user/devices": {
             "post": {
                 "security": [
@@ -754,71 +658,6 @@
                         "description": "Created",
                         "schema": {
                             "$ref": "#/definitions/internal_controllers.RegisterUserDeviceResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/devices/:userDeviceID/autopi/command": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Closed off in prod. Submit a raw autopi command to unit. Device must be registered with autopi before this can be used",
-                "consumes": [
-                    "application/json"
-                ],
-                "tags": [
-                    "integrations"
-                ],
-                "parameters": [
-                    {
-                        "description": "raw autopi command",
-                        "name": "AutoPiCommandRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.AutoPiCommandRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                }
-            }
-        },
-        "/user/devices/:userDeviceID/autopi/command/:jobID": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "gets the status of an autopi raw command by jobID",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "integrations"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "job id, from autopi",
-                        "name": "jobID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiCommandJob"
                         }
                     }
                 }
@@ -1460,41 +1299,6 @@
                         "schema": {
                             "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
                         }
-                    }
-                }
-            }
-        },
-        "/user/devices/{userDeviceID}/image": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "updates the ImageUrl on the user device record",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "description": "Image URL",
-                        "name": "name",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.UpdateImageURLReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
                     }
                 }
             }
@@ -2460,43 +2264,6 @@
                 }
             }
         },
-        "github_com_DIMO-Network_devices-api_internal_services.AutoPiCommandJob": {
-            "type": "object",
-            "properties": {
-                "commandJobId": {
-                    "type": "string"
-                },
-                "commandRaw": {
-                    "type": "string"
-                },
-                "commandState": {
-                    "type": "string"
-                },
-                "lastUpdated": {
-                    "type": "string"
-                },
-                "result": {
-                    "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiCommandResult"
-                }
-            }
-        },
-        "github_com_DIMO-Network_devices-api_internal_services.AutoPiCommandResult": {
-            "type": "object",
-            "properties": {
-                "tag": {
-                    "description": "corresponds to webhook response.tag",
-                    "type": "string"
-                },
-                "type": {
-                    "description": "corresponds to webhook response.data.return._type",
-                    "type": "string"
-                },
-                "value": {
-                    "description": "corresponds to webhook response.data.return.value",
-                    "type": "string"
-                }
-            }
-        },
         "github_com_DIMO-Network_devices-api_internal_services.AutoPiTask": {
             "type": "object",
             "properties": {
@@ -2800,14 +2567,6 @@
                 },
                 "userSignature": {
                     "description": "UserSignature is the signature from the user, using their private key.",
-                    "type": "string"
-                }
-            }
-        },
-        "internal_controllers.AutoPiCommandRequest": {
-            "type": "object",
-            "properties": {
-                "command": {
                     "type": "string"
                 }
             }
@@ -3580,14 +3339,6 @@
             "type": "object",
             "properties": {
                 "countryCode": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_controllers.UpdateImageURLReq": {
-            "type": "object",
-            "properties": {
-                "imageUrl": {
                     "type": "string"
                 }
             }

@@ -23,8 +23,8 @@ type aftermarketDeviceService struct {
 }
 
 func (s *aftermarketDeviceService) ListAftermarketDevicesForUser(ctx context.Context, req *pb.ListAftermarketDevicesForUserRequest) (*pb.ListAftermarketDevicesForUserResponse, error) {
-	units, err := models.AutopiUnits(
-		models.AutopiUnitWhere.UserID.EQ(null.StringFrom(req.UserId)),
+	units, err := models.AftermarketDevices(
+		models.AftermarketDeviceWhere.UserID.EQ(null.StringFrom(req.UserId)),
 	).All(ctx, s.dbs().Reader)
 	if err != nil {
 		s.logger.Err(err).Str("userId", req.UserId).Str("method", "ListAftermarketDevicesForUser").Msg("Database failure.")
@@ -35,7 +35,7 @@ func (s *aftermarketDeviceService) ListAftermarketDevicesForUser(ctx context.Con
 
 	for i, unit := range units {
 		out[i] = &pb.AftermarketDevice{
-			Serial: unit.AutopiUnitID,
+			Serial: unit.Serial,
 			UserId: &req.UserId,
 		}
 

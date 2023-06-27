@@ -245,28 +245,34 @@ func SetupCreateUserDeviceWithDeviceID(t *testing.T, testUserID string, deviceID
 	return ud
 }
 
-func SetupCreateAutoPiUnit(t *testing.T, userID, unitID string, deviceID *string, pdb db.Store) *models.AutopiUnit {
-	au := models.AutopiUnit{
-		AutopiUnitID:   unitID,
-		UserID:         null.StringFrom(userID),
-		AutopiDeviceID: null.StringFromPtr(deviceID),
+func SetupCreateAftermarketDevice(t *testing.T, userID, unitID string, deviceID *string, pdb db.Store) *models.AftermarketDevice {
+	amd := models.AftermarketDevice{
+		Serial: unitID,
+		UserID: null.StringFrom(userID),
 	}
-	err := au.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
+	if deviceID != nil {
+		amdMD := map[string]any{"autoPiDeviceId": *deviceID}
+		_ = amd.Metadata.Marshal(amdMD)
+	}
+	err := amd.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
 	assert.NoError(t, err)
-	return &au
+	return &amd
 }
 
-func SetupCreateMintedAutoPiUnit(t *testing.T, userID, unitID string, tokenID *big.Int, addr common.Address, deviceID *string, pdb db.Store) *models.AutopiUnit {
-	au := models.AutopiUnit{
-		AutopiUnitID:    unitID,
+func SetupCreateMintedAftermarketDevice(t *testing.T, userID, unitID string, tokenID *big.Int, addr common.Address, deviceID *string, pdb db.Store) *models.AftermarketDevice {
+	amd := models.AftermarketDevice{
+		Serial:          unitID,
 		UserID:          null.StringFrom(userID),
-		AutopiDeviceID:  null.StringFromPtr(deviceID),
 		TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
 		EthereumAddress: null.BytesFrom(addr.Bytes()),
 	}
-	err := au.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
+	if deviceID != nil {
+		amdMD := map[string]any{"autoPiDeviceId": *deviceID}
+		_ = amd.Metadata.Marshal(amdMD)
+	}
+	err := amd.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
 	assert.NoError(t, err)
-	return &au
+	return &amd
 }
 
 func SetupCreateVehicleNFT(t *testing.T, userDeviceID, vin string, tokenID *big.Int, ownerAddr null.Bytes, pdb db.Store) *models.VehicleNFT {
@@ -332,7 +338,7 @@ func SetupCreateUserDeviceAPIIntegration(t *testing.T, autoPiUnitID, externalID,
 	}
 	if autoPiUnitID != "" {
 		md := fmt.Sprintf(`{"autoPiUnitId": "%s"}`, autoPiUnitID)
-		udapiInt.AutopiUnitID = null.StringFrom(autoPiUnitID)
+		udapiInt.Serial = null.StringFrom(autoPiUnitID)
 		_ = udapiInt.Metadata.UnmarshalJSON([]byte(md))
 	}
 	err := udapiInt.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
