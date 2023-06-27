@@ -18,7 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
-	"github.com/lovoo/goka"
 	"github.com/piprate/json-gold/ld"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
@@ -86,7 +85,7 @@ func New(c Config, log *zerolog.Logger) (*Issuer, error) {
 func (i *Issuer) VIN(vin string, tokenID *big.Int) (id string, err error) {
 	id = uuid.New().String()
 	issuanceDate := time.Now().UTC().Format(time.RFC3339)
-	expirationDate := time.Now().Add(time.Hour * 24 * 7).UTC().Format(time.RFC3339)
+	expirationDate := time.Now().Add(time.Hour * 24 * 7).UTC()
 
 	credential := map[string]any{
 		"@context": []any{
@@ -97,7 +96,7 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int) (id string, err error) {
 		"type":           []any{"VerifiableCredential", "Vehicle"},
 		"issuer":         i.IssuerDID,
 		"issuanceDate":   issuanceDate,
-		"expirationDate": expirationDate,
+		"expirationDate": expirationDate.Format(time.RFC3339),
 		"credentialSubject": map[string]any{
 			"id":                          fmt.Sprintf("did:nft:%d_erc721:%s_%d", i.ChainID, hexutil.Encode(i.VehicleNFTAddress.Bytes()), tokenID),
 			"vehicleIdentificationNumber": vin,
@@ -169,8 +168,9 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int) (id string, err error) {
 	defer tx.Rollback() //nolint
 
 	vc := models.VerifiableCredential{
-		ClaimID:    id,
-		Credential: signedBytes,
+		ClaimID:        id,
+		Credential:     signedBytes,
+		ExpirationDate: expirationDate,
 	}
 
 	if err := vc.Insert(context.Background(), i.DBS.DBS().Writer, boil.Infer()); err != nil {
@@ -190,84 +190,8 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int) (id string, err error) {
 	return id, tx.Commit()
 }
 
-func (i *Issuer) ADVinCredentialer(ctx goka.Context, msg interface{}) {
-	event, ok := msg.(*ADVinCredentialEvent)
-	if !ok {
-		i.log.Err(errors.New("unable to parse fingerprint event")).Msg("invalid payload")
-		return
-	}
-	currentIssuanceWeek := GetWeekNumForCron(time.Now())
-	observedVIN, err := services.ExtractVIN(event.Data)
-	if err != nil {
-		i.log.Info().Err(err).Str("userDeviceId", event.Subject).Msg("could not extract vin from payload")
-		return
-	}
-
-	ad, err := models.AutopiUnits(
-		models.AutopiUnitWhere.EthereumAddress.EQ(null.BytesFrom(common.FromHex(event.Subject))),
-		qm.Load(models.AutopiUnitRels.VehicleToken),
-	).One(ctx.Context(), i.DBS.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			i.log.Info().Err(err).Str("userDeviceId", event.Subject).Msg("no associated vehicle nft for device")
-			return
-		}
-		i.log.Info().Err(err).Str("userDeviceId", event.Subject).Msg("database failure retrieving user device")
-		return
-	}
-
-	tkn, ok := ad.VehicleTokenID.Int64()
-	if !ok {
-		i.log.Err(errors.New("unable to parse token id")).Msg("invalid token")
-	}
-
-	if val := ctx.Value(); val != nil {
-		record := val.(*VinEligibilityStatus)
-		if observedVIN == record.VIN && record.LatestEligibleRewardWeek != currentIssuanceWeek {
-			// TODO AE: also check that a vc hasn't been issued with a exp date GTE time.Now()?
-			_, err = i.VIN(observedVIN, big.NewInt(tkn))
-			record.LatestEligibleRewardWeek = currentIssuanceWeek
-			ctx.SetValue(record)
-			if err != nil {
-				i.log.Debug().Err(err).Str("userDeviceId", event.Subject).Str("vin", observedVIN).Int("issuanceWeek", currentIssuanceWeek).Msg("could not issue vin credential")
-				return
-			}
-		}
-		return
-	}
-
-	ud, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(ad.AutopiDeviceID.String),
-	).One(ctx.Context(), i.DBS.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			i.log.Info().Err(err).Str("userDeviceId", event.Subject).Msg("no associated device for id")
-			return
-		}
-		i.log.Info().Err(err).Str("userDeviceId", event.Subject).Msg("database failure retrieving user device")
-		return
-	}
-
-	if !ud.VinConfirmed || observedVIN != ud.VinIdentifier.String {
-		i.log.Err(errors.New("cannot generate credential")).Str("userDeviceId", event.Subject).Str("observedVin", observedVIN).Msg("invalid vin")
-		return
-	}
-
-	record := &VinEligibilityStatus{
-		VIN:                      observedVIN,
-		LatestEligibleRewardWeek: currentIssuanceWeek,
-	}
-
-	ctx.SetValue(record)
-	_, err = i.VIN(observedVIN, big.NewInt(tkn))
-	if err != nil {
-		i.log.Debug().Err(err).Str("userDeviceId", event.Subject).Str("vin", observedVIN).Int("issuanceWeek", currentIssuanceWeek).Msg("could not issue vin credential")
-		return
-	}
-}
-
 func (i *Issuer) Handle(ctx context.Context, event *ADVinCredentialEvent) error {
-	observedVIN, err := services.ExtractVIN(event.Data)
+	observedVIN, err := services.ExtractVIN(event.CloudEvent.Data)
 	if err != nil {
 		i.log.Info().Err(err).Msg("could not extract vin from payload")
 		return err
@@ -276,11 +200,11 @@ func (i *Issuer) Handle(ctx context.Context, event *ADVinCredentialEvent) error 
 	logger := i.log.With().Str("device-address", event.Subject).Str("vin", observedVIN).Logger()
 	logger.Info().Msg("got vin credentialer event")
 
-	ad, err := models.AutopiUnits(
-		models.AutopiUnitWhere.EthereumAddress.EQ(
-			null.BytesFrom(common.Hex2Bytes(event.Subject)),
+	ad, err := models.AftermarketDevices(
+		models.AftermarketDeviceWhere.EthereumAddress.EQ(
+			null.BytesFrom(common.FromHex(event.Subject)),
 		),
-		qm.Load(models.AutopiUnitRels.VehicleToken),
+		qm.Load(models.AftermarketDeviceRels.VehicleToken),
 	).One(ctx, i.DBS.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -306,22 +230,29 @@ func (i *Issuer) Handle(ctx context.Context, event *ADVinCredentialEvent) error 
 	}
 
 	if !vnft.R.UserDevice.VinConfirmed {
+		err := errors.New("invalid vin")
 		logger.Err(err).Msg("vin associated with device not confirmed")
 		return err
 	}
 
 	if vnft.R.UserDevice.VinIdentifier.String != observedVIN {
 		// do we want to do anything here?
+		logger.Info().Msg("observed vin does not match confirmed vin")
+		return nil
 	}
 
-	if vnft.R.Claim.ExpirationDate.After(time.Now()) {
-		return nil
+	if vnft.R.Claim != nil {
+		if vnft.R.Claim.ExpirationDate.After(time.Now()) {
+			logger.Info().Str("claimID", vnft.R.Claim.ClaimID).Msg("valid claim already exists")
+			return nil
+		}
 	}
 
 	tkn, ok := vnft.TokenID.Int64()
 	if !ok {
-		logger.Err(errors.New("unable to convert token id to int"))
-		return errors.New("unable to convert token id to int")
+		err := errors.New("invalid token id")
+		logger.Err(err).Msg("unable to convert token id to int")
+		return err
 	}
 	claimID, err := i.VIN(observedVIN, big.NewInt(tkn))
 	logger.Info().Str("claim id", claimID).Msg("credential issued")
@@ -340,9 +271,3 @@ type VinEligibilityStatus struct {
 
 var issuanceStartTime = time.Date(2022, time.January, 31, 5, 0, 0, 0, time.UTC)
 var weekDuration = 7 * 24 * time.Hour
-
-func GetWeekNumForCron(t time.Time) int {
-	sinceStart := t.Sub(issuanceStartTime)
-	weekNum := int(sinceStart.Round(weekDuration) / weekDuration)
-	return weekNum
-}

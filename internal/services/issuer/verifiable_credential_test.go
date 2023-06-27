@@ -17,8 +17,6 @@ import (
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/golang/mock/gomock"
-	"github.com/lovoo/goka"
-	"github.com/lovoo/goka/tester"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
 	"github.com/stretchr/testify/assert"
@@ -27,7 +25,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
@@ -37,14 +34,12 @@ var mockUserID = ksuid.New().String()
 
 type CredentialTestSuite struct {
 	suite.Suite
-	pdb           db.Store
-	container     testcontainers.Container
-	ctx           context.Context
-	mockCtrl      *gomock.Controller
-	topic         string
-	gokaTester    *tester.Tester
-	gokaProcessor *goka.Processor
-	iss           *Issuer
+	pdb       db.Store
+	container testcontainers.Container
+	ctx       context.Context
+	mockCtrl  *gomock.Controller
+	topic     string
+	iss       *Issuer
 }
 
 const migrationsDirRelPath = "../../../migrations"
@@ -56,7 +51,6 @@ func (s *CredentialTestSuite) SetupSuite() {
 	s.mockCtrl = gomock.NewController(s.T())
 	s.topic = "topic.fingerprint"
 
-	s.gokaTester = tester.New(s.T())
 	pk, err := base64.RawURLEncoding.DecodeString("2pN28-5VmEavX46XWszjasN0kx4ha3wQ6w6hGqD8o0k")
 	require.NoError(s.T(), err)
 
@@ -77,21 +71,6 @@ func (s *CredentialTestSuite) SetupSuite() {
 	s.iss = iss
 
 	s.Require().NoError(err)
-	group := goka.DefineGroup("aftermarket-device-vin-credential",
-		goka.Input(goka.Stream(s.topic), new(shared.JSONCodec[ADVinCredentialEvent]), iss.ADVinCredentialer),
-		goka.Persist(new(shared.JSONCodec[VinEligibilityStatus])))
-
-	p, err := goka.NewProcessor([]string{}, group, goka.WithTester(s.gokaTester))
-	require.NoError(s.T(), err)
-
-	s.gokaProcessor = p
-
-	go func() {
-		if err := s.gokaProcessor.Run(s.ctx); err != nil {
-			require.NoError(s.T(), err)
-		}
-	}()
-
 }
 
 // TearDownSuite cleanup at end by terminating container
@@ -161,6 +140,47 @@ func (s *CredentialTestSuite) TestVinCredentialerHandler() {
 	userDeviceID := "userDeviceID1"
 	mtxReq := ksuid.New().String()
 	deiceDefID := "deviceDefID"
+	claimID := "claimID1"
+
+	// tables used in tests
+	aftermarketDevice := models.AftermarketDevice{
+		UserID:          null.StringFrom("SomeID"),
+		OwnerAddress:    ownerAddress,
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+		TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
+		VehicleTokenID:  types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+		Beneficiary:     null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
+		EthereumAddress: ownerAddress,
+	}
+
+	userDevice := models.UserDevice{
+		ID:                 deviceID,
+		UserID:             userDeviceID,
+		DeviceDefinitionID: deiceDefID,
+		VinConfirmed:       true,
+		VinIdentifier:      null.StringFrom(vin),
+	}
+
+	metaTx := models.MetaTransactionRequest{
+		ID:     mtxReq,
+		Status: models.MetaTransactionRequestStatusConfirmed,
+	}
+
+	credential := models.VerifiableCredential{
+		ClaimID:        claimID,
+		Credential:     []byte{},
+		ExpirationDate: time.Now().AddDate(0, 0, 7),
+	}
+
+	nft := models.VehicleNFT{
+		MintRequestID: mtxReq,
+		UserDeviceID:  null.StringFrom(deviceID),
+		Vin:           vin,
+		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+		OwnerAddress:  ownerAddress,
+		ClaimID:       null.StringFrom(claimID),
+	}
 
 	rawMsg, err := json.Marshal(struct {
 		Vin string
@@ -170,14 +190,14 @@ func (s *CredentialTestSuite) TestVinCredentialerHandler() {
 	require.NoError(s.T(), err)
 
 	cases := []struct {
-		Name             string
-		ReturnsError     bool
-		ExpectedResponse string
-		UserDeviceTable  models.UserDevice
-		MetaTxTable      models.MetaTransactionRequest
-		VCTable          models.VerifiableCredential
-		VehicleNFT       models.VehicleNFT
-		APUnitTable      models.AutopiUnit
+		Name              string
+		ReturnsError      bool
+		ExpectedResponse  string
+		UserDeviceTable   models.UserDevice
+		MetaTxTable       models.MetaTransactionRequest
+		VCTable           models.VerifiableCredential
+		VehicleNFT        models.VehicleNFT
+		AftermarketDevice models.AftermarketDevice
 	}{
 		{
 			Name:             "No corresponding aftermarket device for address",
@@ -185,190 +205,94 @@ func (s *CredentialTestSuite) TestVinCredentialerHandler() {
 			ExpectedResponse: "sql: no rows in result set",
 		},
 		{
-			Name:         "no error",
-			ReturnsError: false,
+			Name:              "active credential",
+			ReturnsError:      false,
+			UserDeviceTable:   userDevice,
+			MetaTxTable:       metaTx,
+			VCTable:           credential,
+			VehicleNFT:        nft,
+			AftermarketDevice: aftermarketDevice,
+		},
+		{
+			Name:             "vin associated with device not confirmed",
+			ReturnsError:     true,
+			ExpectedResponse: "invalid vin",
 			UserDeviceTable: models.UserDevice{
 				ID:                 deviceID,
 				UserID:             userDeviceID,
 				DeviceDefinitionID: deiceDefID,
-				VinConfirmed:       true,
+				VinConfirmed:       false,
 				VinIdentifier:      null.StringFrom(vin),
 			},
-			MetaTxTable: models.MetaTransactionRequest{
-				ID:     mtxReq,
-				Status: "Confirmed",
-			},
+			MetaTxTable:       metaTx,
+			VCTable:           credential,
+			VehicleNFT:        nft,
+			AftermarketDevice: aftermarketDevice,
+		},
+		{
+			Name:            "inactive credential",
+			ReturnsError:    false,
+			UserDeviceTable: userDevice,
+			MetaTxTable:     metaTx,
 			VCTable: models.VerifiableCredential{
-				ClaimID:        "claim1",
+				ClaimID:        claimID,
 				Credential:     []byte{},
-				ExpirationDate: time.Now().AddDate(0, 0, 7),
+				ExpirationDate: time.Now().AddDate(0, 0, -10),
 			},
-			VehicleNFT: models.VehicleNFT{
-				MintRequestID: mtxReq,
-				UserDeviceID:  null.StringFrom(deviceID),
-				Vin:           vin,
-				TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
-				OwnerAddress:  ownerAddress,
-				ClaimID:       null.StringFrom("claim1"),
-			},
-			APUnitTable: models.AutopiUnit{
-				UserID:          null.StringFrom("SomeID"),
-				OwnerAddress:    ownerAddress,
-				CreatedAt:       time.Now(),
-				UpdatedAt:       time.Now(),
-				TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
-				VehicleTokenID:  types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
-				Beneficiary:     null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
-				EthereumAddress: ownerAddress,
-			},
+			VehicleNFT:        nft,
+			AftermarketDevice: aftermarketDevice,
 		},
 	}
 
 	for _, c := range cases {
-		// s.T().Run(c.Name, func(t *testing.T) {
+		s.T().Run(c.Name, func(t *testing.T) {
 
-		err := c.UserDeviceTable.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
-		require.NoError(s.T(), err)
-
-		err = c.MetaTxTable.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
-		require.NoError(s.T(), err)
-
-		err = c.VCTable.Insert(ctx, s.pdb.DBS().Reader, boil.Infer())
-		require.NoError(s.T(), err)
-
-		err = c.VehicleNFT.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
-		require.NoError(s.T(), err)
-
-		err = c.APUnitTable.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
-		require.NoError(s.T(), err)
-
-		err = s.iss.Handle(s.ctx, &ADVinCredentialEvent{
-			CloudEvent: shared.CloudEvent[json.RawMessage]{
-				Data:    rawMsg,
-				Time:    time.Now(),
-				ID:      deviceID,
-				Subject: common.Bytes2Hex(ownerAddress.Bytes),
-			},
-			Signature: signature,
-		})
-
-		if c.ReturnsError {
-			assert.NotNil(s.T(), c.ExpectedResponse, err.Error())
-		} else {
+			err := c.UserDeviceTable.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
 			require.NoError(s.T(), err)
-		}
 
-		_, err = models.AutopiUnits().DeleteAll(ctx, s.pdb.DBS().Writer)
-		require.NoError(s.T(), err)
+			err = c.MetaTxTable.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
+			require.NoError(s.T(), err)
 
-		_, err = models.VehicleNFTS().DeleteAll(ctx, s.pdb.DBS().Writer)
-		require.NoError(s.T(), err)
+			err = c.VCTable.Insert(ctx, s.pdb.DBS().Reader, boil.Infer())
+			require.NoError(s.T(), err)
 
-		_, err = models.VerifiableCredentials().DeleteAll(ctx, s.pdb.DBS().Writer)
-		require.NoError(s.T(), err)
+			err = c.VehicleNFT.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
+			require.NoError(s.T(), err)
 
-		_, err = models.MetaTransactionRequests().DeleteAll(ctx, s.pdb.DBS().Writer)
-		require.NoError(s.T(), err)
+			err = c.AftermarketDevice.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
+			require.NoError(s.T(), err)
 
-		_, err = models.UserDevices().DeleteAll(ctx, s.pdb.DBS().Writer)
-		require.NoError(s.T(), err)
-	}
+			err = s.iss.Handle(s.ctx, &ADVinCredentialEvent{
+				CloudEvent: shared.CloudEvent[json.RawMessage]{
+					Data:    rawMsg,
+					Time:    time.Now(),
+					ID:      deviceID,
+					Subject: common.Bytes2Hex(ownerAddress.Bytes),
+				},
+				Signature: signature,
+			})
 
-}
+			if c.ReturnsError {
+				assert.NotNil(s.T(), c.ExpectedResponse, err.Error())
+			} else {
+				require.NoError(s.T(), err)
+			}
 
-func (s *CredentialTestSuite) TestFingerprintIssueFirstVC() {
-	vin := "1G6AL1RY2K0111939"
-	deviceID := ksuid.New().String()
-	ownerAddress := null.BytesFrom(common.Hex2Bytes("ab8438a18d83d41847dffbdc6101d37c69c9a2fc"))
-	mtxReq := ksuid.New().String()
-	tokenID := big.NewInt(1)
+			_, err = models.AftermarketDevices().DeleteAll(ctx, s.pdb.DBS().Writer)
+			require.NoError(s.T(), err)
 
-	_, err := models.AutopiUnits().DeleteAll(s.ctx, s.pdb.DBS().Writer)
-	require.NoError(s.T(), err)
-	_, err = models.VehicleNFTS().DeleteAll(s.ctx, s.pdb.DBS().Writer)
-	require.NoError(s.T(), err)
-	_, err = models.MetaTransactionRequests().DeleteAll(s.ctx, s.pdb.DBS().Writer)
-	require.NoError(s.T(), err)
+			_, err = models.VehicleNFTS().DeleteAll(ctx, s.pdb.DBS().Writer)
+			require.NoError(s.T(), err)
 
-	tx := models.MetaTransactionRequest{
-		ID:     mtxReq,
-		Status: "Confirmed",
-	}
-	err = tx.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
-	require.NoError(s.T(), err)
+			_, err = models.VerifiableCredentials().DeleteAll(ctx, s.pdb.DBS().Writer)
+			require.NoError(s.T(), err)
 
-	ud := models.UserDevice{
-		ID:                 deviceID,
-		UserID:             "user1",
-		DeviceDefinitionID: "devicedef1",
-		VinIdentifier:      null.StringFrom(vin),
-		VinConfirmed:       true,
-	}
+			_, err = models.MetaTransactionRequests().DeleteAll(ctx, s.pdb.DBS().Writer)
+			require.NoError(s.T(), err)
 
-	err = ud.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
-	require.NoError(s.T(), err)
-
-	nft := models.VehicleNFT{
-		MintRequestID: mtxReq,
-		UserDeviceID:  null.StringFrom(deviceID),
-		Vin:           vin,
-		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
-		OwnerAddress:  ownerAddress,
-	}
-	err = nft.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
-	require.NoError(s.T(), err)
-
-	ad := models.AutopiUnit{
-		EthereumAddress: ownerAddress,
-		AutopiUnitID:    ksuid.New().String(),
-		AutopiDeviceID:  null.StringFrom(deviceID),
-		VehicleTokenID:  types.NewNullDecimal(decimal.New(tokenID.Int64(), 0)),
-	}
-	err = ad.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
-	require.NoError(s.T(), err)
-
-	out := s.gokaTester.NewQueueTracker(string(s.topic))
-	rawMsg, err := json.Marshal(struct {
-		Vin string
-	}{
-		Vin: vin,
-	})
-	require.NoError(s.T(), err)
-
-	s.gokaTester.Consume(s.topic, string(ownerAddress.Bytes), &ADVinCredentialEvent{
-		CloudEvent: shared.CloudEvent[json.RawMessage]{
-			Data:    rawMsg,
-			Time:    time.Now(),
-			ID:      deviceID,
-			Subject: common.Bytes2Hex(ownerAddress.Bytes),
-		},
-		Signature: signature,
-	})
-
-	key, value, valid := out.Next()
-	if !valid {
-		s.T().Fatal("No status update produced.")
-	}
-
-	event := value.(*ADVinCredentialEvent)
-
-	assert.Equal(s.T(), key, string(ownerAddress.Bytes))
-
-	device, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.UserDeviceID.EQ(null.StringFrom(event.ID)),
-		models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(event.Subject))),
-		qm.Load(models.VehicleNFTRels.UserDevice),
-	).All(s.ctx, s.pdb.DBS().Reader)
-	require.NoError(s.T(), err)
-
-	tid, _ := device[0].TokenID.Int64()
-	assert.Equal(s.T(), tid, tokenID.Int64())
-
-	ok, err := models.VerifiableCredentials(models.VerifiableCredentialWhere.ClaimID.EQ(device[0].ClaimID.String)).Exists(s.ctx, s.pdb.DBS().Reader)
-	require.NoError(s.T(), err)
-
-	if !ok {
-		s.T().Fatalf("no associated credential found")
+			_, err = models.UserDevices().DeleteAll(ctx, s.pdb.DBS().Writer)
+			require.NoError(s.T(), err)
+		})
 	}
 
 }

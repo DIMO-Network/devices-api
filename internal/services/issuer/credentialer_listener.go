@@ -6,8 +6,6 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/rs/zerolog"
-
-	"github.com/DIMO-Network/shared"
 )
 
 type Consumer struct {
@@ -28,12 +26,12 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 		select {
 		case message := <-claim.Messages():
 			c.logger.Info().Int32("partition", message.Partition).Int64("offset", message.Offset).RawJSON("value", message.Value).Msg("Got fingerprint message")
-			event := shared.CloudEvent[ADVinCredentialEvent]{}
+			event := ADVinCredentialEvent{}
 			err := json.Unmarshal(message.Value, &event)
 			if err != nil {
 				c.logger.Err(err).Int32("partition", message.Partition).Int64("offset", message.Offset).Msg("Failed to parse vin credentialer event.")
 			} else {
-				err := c.vinCredentialer.Handle(session.Context(), &event.Data)
+				err := c.vinCredentialer.Handle(session.Context(), &event)
 				if err != nil {
 					c.logger.Err(err).Int32("partition", message.Partition).Int64("offset", message.Offset).Msg("Failed to update vin credential status.")
 				}
