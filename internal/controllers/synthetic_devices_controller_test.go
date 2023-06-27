@@ -262,12 +262,11 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDevice() {
 	})
 
 	req := fmt.Sprintf(`{
-		"vehicleNode": %d,
 		"credentials": {
 			"authorizationCode": "a4d04dad-2b65-4778-94b7-f04996e89907"
 		},
 		"ownerSignature": "%s"
-	}`, 57, signature)
+	}`, signature)
 
 	request := test.BuildRequest("POST", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), req)
 	response, err := s.app.Test(request)
@@ -360,12 +359,11 @@ func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayl
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(integration, nil)
 
 	req := fmt.Sprintf(`{
-		"vehicleNode": %d,
 		"credentials": {
 			"authorizationCode": "a4d04dad-2b65-4778-94b7-f04996e89907"
 		},
 		"ownerSignature": "%s"
-	}`, 57, "Bad Signature")
+	}`, "Bad Signature")
 	request := test.BuildRequest("POST", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), req)
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
@@ -381,12 +379,11 @@ func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayl
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(integration, nil)
 
 	req := fmt.Sprintf(`{
-		"vehicleNode": %d,
 		"credentials": {
 			"authorizationCode": "a4d04dad-2b65-4778-94b7-f04996e89907"
 		},
 		"ownerSignature": "%s"
-	}`, 57, "1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8")
+	}`, "1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8")
 	request := test.BuildRequest("POST", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), req)
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)

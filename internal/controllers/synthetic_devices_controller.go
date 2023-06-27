@@ -49,7 +49,6 @@ type SyntheticDevicesController struct {
 }
 
 type MintSyntheticDeviceRequest struct {
-	VehicleNode int `json:"vehicleNode"`
 	Credentials struct {
 		AuthorizationCode string `json:"authorizationCode"`
 	} `json:"credentials"`
@@ -264,7 +263,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
-	syntheticDeviceAddr, err := vc.sendSyntheticDeviceMintPayload(c.Context(), hash, req.VehicleNode, integration.TokenId, ownerSignature, childKeyNumber)
+	syntheticDeviceAddr, err := vc.sendSyntheticDeviceMintPayload(c.Context(), hash, int(vid), integration.TokenId, ownerSignature, childKeyNumber)
 	if err != nil {
 		vc.log.Err(err).Msg("synthetic device minting request failed")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
