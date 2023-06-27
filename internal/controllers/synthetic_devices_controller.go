@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -49,7 +48,6 @@ type SyntheticDevicesController struct {
 }
 
 type MintSyntheticDeviceRequest struct {
-	VehicleNode int `json:"vehicleNode"`
 	Credentials struct {
 		AuthorizationCode string `json:"authorizationCode"`
 	} `json:"credentials"`
@@ -78,14 +76,6 @@ func NewSyntheticDevicesController(
 }
 
 func (vc *SyntheticDevicesController) getEIP712(integrationID, vehicleNode int64) *signer.TypedData {
-	msg := signer.TypedDataMessage{
-		"integrationNode": math.NewHexOrDecimal256(integrationID),
-	}
-
-	if vehicleNode != 0 {
-		msg["vehicleNode"] = math.NewHexOrDecimal256(vehicleNode)
-	}
-
 	return &signer.TypedData{
 		Types: signer.Types{
 			"EIP712Domain": []signer.Type{
@@ -107,7 +97,10 @@ func (vc *SyntheticDevicesController) getEIP712(integrationID, vehicleNode int64
 			ChainId:           math.NewHexOrDecimal256(vc.Settings.DIMORegistryChainID),
 			VerifyingContract: vc.Settings.DIMORegistryAddr,
 		},
-		Message: msg,
+		Message: signer.TypedDataMessage{
+			"integrationNode": math.NewHexOrDecimal256(integrationID),
+			"vehicleNode":     math.NewHexOrDecimal256(vehicleNode),
+		},
 	}
 }
 
@@ -140,7 +133,7 @@ func (vc *SyntheticDevicesController) verifyUserAddressAndNFTExist(ctx context.C
 // @Param       integrationNode path int true "token ID"
 // @Param       vehicleNode path int true "vehicle ID"
 // @Success     200 {array} signer.TypedData
-// @Router /synthetic/device/mint/{integrationNode}/{vehicleNode} [get]
+// @Router      synthetic/device/mint/:integrationNode/:vehicleNode [get]
 func (vc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber.Ctx) error {
 	rawIntegrationNode := c.Params("integrationNode")
 	vehicleNode := c.Params("vehicleNode")
@@ -173,7 +166,7 @@ func (vc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber.
 		return helpers.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
-	response := vc.getEIP712(int64(integration.TokenId), 0)
+	response := vc.getEIP712(int64(integration.TokenId), vid)
 
 	return c.JSON(response)
 }
@@ -184,8 +177,8 @@ func (vc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber.
 // @Produce     json
 // @Param       integrationNode path int true "token ID"
 // @Param       vehicleNode path int true "vehicle ID"
-// @Success     204
-// @Router      /synthetic/device/mint/{integrationNode}/{vehicleNode} [post]
+// @Success     200 {array}
+// @Router      synthetic/device/mint/:integrationNode/:vehicleNode [post]
 func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	rawIntegrationNode := c.Params("integrationNode")
 	vehicleNode := c.Params("vehicleNode")
@@ -269,7 +262,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
-	syntheticDeviceAddr, err := vc.sendSyntheticDeviceMintPayload(c.Context(), hash, req.VehicleNode, integration.TokenId, ownerSignature, childKeyNumber)
+	syntheticDeviceAddr, err := vc.sendSyntheticDeviceMintPayload(c.Context(), hash, int(vid), integration.TokenId, ownerSignature, childKeyNumber)
 	if err != nil {
 		vc.log.Err(err).Msg("synthetic device minting request failed")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
@@ -387,25 +380,6 @@ func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx con
 		udi.AccessToken = null.StringFrom(encAccess)
 		udi.AccessExpiresAt = null.TimeFrom(token.AccessExpiry)
 		udi.RefreshToken = null.StringFrom(encRefresh)
-
-		externalID, err := vc.smartcarClient.GetExternalID(ctx, token.Access)
-		if err != nil {
-			return err
-		}
-
-		endpoints, err := vc.smartcarClient.GetEndpoints(ctx, token.Access, externalID)
-		if err != nil {
-			vc.log.Err(err).Msg("Failed to retrieve permissions from Smartcar.")
-			return err
-		}
-
-		meta := services.UserDeviceAPIIntegrationsMetadata{
-			SmartcarEndpoints: endpoints,
-		}
-
-		mb, _ := json.Marshal(meta)
-		udi.Metadata = null.JSONFrom(mb)
-		udi.ExternalID = null.StringFrom(externalID)
 	default:
 		return nil
 	}
