@@ -12,11 +12,9 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/middleware/metrics"
-	"github.com/burdiyan/kafkautil"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/lovoo/goka"
 
 	"github.com/DIMO-Network/shared/redis"
 
@@ -350,25 +348,10 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 			logger.Fatal().Err(err).Msg("Failed to create issuer.")
 		}
 
-		goka.ReplaceGlobalConfig(kconf)
-		group := goka.DefineGroup("aftermarket-device-vin-credential",
-			goka.Input(goka.Stream(settings.ADVinCredentialTopic), new(shared.JSONCodec[issuer.ADVinCredentialEvent]), vcIssuer.ADVinCredentialer),
-			goka.Persist(new(shared.JSONCodec[shared.CloudEvent[services.RegisteredVIN]])))
-
-		processor, err := goka.NewProcessor(strings.Split(settings.KafkaBrokers, ","),
-			group,
-			goka.WithHasher(kafkautil.MurmurHasher),
-		)
+		err = issuer.RunConsumer(ctx, kclient, &logger, vcIssuer)
 		if err != nil {
-			logger.Fatal().Err(err).Msg("Could not start device status processor")
+			logger.Fatal().Err(err).Msg("Failed to create vin credentialer listener")
 		}
-
-		go func() {
-			err = processor.Run(context.Background())
-			if err != nil {
-				logger.Fatal().Err(err).Msg("could not run device status processor")
-			}
-		}()
 
 		store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, vcIssuer, settings)
 		if err != nil {

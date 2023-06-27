@@ -266,6 +266,68 @@ func (i *Issuer) ADVinCredentialer(ctx goka.Context, msg interface{}) {
 	}
 }
 
+func (i *Issuer) Handle(ctx context.Context, event *ADVinCredentialEvent) error {
+	observedVIN, err := services.ExtractVIN(event.Data)
+	if err != nil {
+		i.log.Info().Err(err).Msg("could not extract vin from payload")
+		return err
+	}
+
+	logger := i.log.With().Str("device-address", event.Subject).Str("vin", observedVIN).Logger()
+	logger.Info().Msg("got vin credentialer event")
+
+	ad, err := models.AutopiUnits(
+		models.AutopiUnitWhere.EthereumAddress.EQ(
+			null.BytesFrom(common.Hex2Bytes(event.Subject)),
+		),
+		qm.Load(models.AutopiUnitRels.VehicleToken),
+	).One(ctx, i.DBS.DBS().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			i.log.Info().Err(err).Msg("no corresponding aftermarket device for address")
+			return err
+		}
+		i.log.Info().Err(err).Msg("database failure retrieving aftermarket device")
+		return err
+	}
+
+	vnft, err := models.VehicleNFTS(
+		models.VehicleNFTWhere.TokenID.EQ(ad.VehicleTokenID),
+		qm.Load(models.VehicleNFTRels.UserDevice),
+		qm.Load(models.VehicleNFTRels.Claim, qm.OrderBy(models.VerifiableCredentialColumns.ExpirationDate+" DESC")),
+	).One(ctx, i.DBS.DBS().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			logger.Err(err).Msg("no associated vehicle nft found for device")
+			return err
+		}
+		i.log.Info().Err(err).Msg("database failure retrieving nft associated with device")
+		return err
+	}
+
+	if !vnft.R.UserDevice.VinConfirmed {
+		logger.Err(err).Msg("vin associated with device not confirmed")
+		return err
+	}
+
+	if vnft.R.UserDevice.VinIdentifier.String != observedVIN {
+		// do we want to do anything here?
+	}
+
+	if vnft.R.Claim.ExpirationDate.After(time.Now()) {
+		return nil
+	}
+
+	tkn, ok := vnft.TokenID.Int64()
+	if !ok {
+		logger.Err(errors.New("unable to convert token id to int"))
+		return errors.New("unable to convert token id to int")
+	}
+	claimID, err := i.VIN(observedVIN, big.NewInt(tkn))
+	logger.Info().Str("claim id", claimID).Msg("credential issued")
+	return err
+}
+
 type ADVinCredentialEvent struct {
 	shared.CloudEvent[json.RawMessage]
 	Signature string `json:"signature"`
