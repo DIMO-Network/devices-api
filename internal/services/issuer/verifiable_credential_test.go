@@ -28,10 +28,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
-var signature = "0xa4438e5cb667dc63ebd694167ae3ad83585f2834c9b04895dd890f805c4c459a024ed9df1b03872536b4ac0c7720d02cb787884a093cfcde5c3bd7f94657e30c1b"
-var userEthAddress = "0xd64E249A06ee6263d989e43aBFe12748a2506f88"
-var mockUserID = ksuid.New().String()
-
 type CredentialTestSuite struct {
 	suite.Suite
 	pdb       db.Store
@@ -141,6 +137,7 @@ func (s *CredentialTestSuite) TestVinCredentialerHandler() {
 	mtxReq := ksuid.New().String()
 	deiceDefID := "deviceDefID"
 	claimID := "claimID1"
+	signature := "0xa4438e5cb667dc63ebd694167ae3ad83585f2834c9b04895dd890f805c4c459a024ed9df1b03872536b4ac0c7720d02cb787884a093cfcde5c3bd7f94657e30c1b"
 
 	// tables used in tests
 	aftermarketDevice := models.AftermarketDevice{

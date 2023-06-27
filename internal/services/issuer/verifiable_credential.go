@@ -268,6 +268,3 @@ type VinEligibilityStatus struct {
 	VIN                      string `json:"vin"`
 	LatestEligibleRewardWeek int    `json:"latestEligibleRewardWeek"`
 }
-
-var issuanceStartTime = time.Date(2022, time.January, 31, 5, 0, 0, 0, time.UTC)
-var weekDuration = 7 * 24 * time.Hour
