@@ -78,6 +78,14 @@ func NewSyntheticDevicesController(
 }
 
 func (vc *SyntheticDevicesController) getEIP712(integrationID, vehicleNode int64) *signer.TypedData {
+	msg := signer.TypedDataMessage{
+		"integrationNode": math.NewHexOrDecimal256(integrationID),
+	}
+
+	if vehicleNode != 0 {
+		msg["vehicleNode"] = math.NewHexOrDecimal256(vehicleNode)
+	}
+
 	return &signer.TypedData{
 		Types: signer.Types{
 			"EIP712Domain": []signer.Type{
@@ -99,10 +107,7 @@ func (vc *SyntheticDevicesController) getEIP712(integrationID, vehicleNode int64
 			ChainId:           math.NewHexOrDecimal256(vc.Settings.DIMORegistryChainID),
 			VerifyingContract: vc.Settings.DIMORegistryAddr,
 		},
-		Message: signer.TypedDataMessage{
-			"integrationNode": math.NewHexOrDecimal256(integrationID),
-			"vehicleNode":     math.NewHexOrDecimal256(vehicleNode),
-		},
+		Message: msg,
 	}
 }
 
@@ -168,7 +173,7 @@ func (vc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber.
 		return helpers.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
-	response := vc.getEIP712(int64(integration.TokenId), vid)
+	response := vc.getEIP712(int64(integration.TokenId), 0)
 
 	return c.JSON(response)
 }
