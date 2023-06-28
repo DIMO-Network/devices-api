@@ -84,6 +84,7 @@ env:
   NATS_DURABLE_CONSUMER: dd-valuation-task-consumer
   NATS_ACK_TIMEOUT: 2m
   SYNTHETIC_DEVICES_ENABLED: true
+  SYNTHETIC_WALLET_GRPC_ADDR: synthetic-wallet-instance-dev:8086
 service:
   type: ClusterIP
   ports:
