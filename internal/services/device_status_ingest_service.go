@@ -416,7 +416,8 @@ func (i *DeviceStatusIngestService) vinWeeklyCredentialer(ctx goka.Context, even
 				return
 			}
 
-			_, err = i.issuer.VIN(observedVIN, big.NewInt(tkn))
+			vinCredExpiration := time.Now().Add(time.Hour * 24 * 8).UTC()
+			_, err = i.issuer.VIN(observedVIN, big.NewInt(tkn), vinCredExpiration)
 			if err != nil {
 				i.log.Err(err).Str("userDeviceId", event.Subject).Msg("error issuing vin credential")
 			}
@@ -455,7 +456,8 @@ func (i *DeviceStatusIngestService) vinWeeklyCredentialer(ctx goka.Context, even
 		return
 	}
 
-	_, err = i.issuer.VIN(observedVIN, big.NewInt(tkn))
+	vinCredExpiration := time.Now().Add(time.Hour * 24 * 8).UTC()
+	_, err = i.issuer.VIN(observedVIN, big.NewInt(tkn), vinCredExpiration)
 	if err != nil {
 		i.log.Err(err).Str("userDeviceId", event.Subject).Msg("error issuing vin credential")
 	}

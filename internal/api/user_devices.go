@@ -3,7 +3,9 @@ package api
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"errors"
+	"math/big"
 
 	"fmt"
 	"strings"
@@ -19,6 +21,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
+	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/models"
 	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 	"github.com/DIMO-Network/shared/db"
@@ -504,4 +507,39 @@ func nullTimeToPB(t null.Time) *timestamppb.Timestamp {
 	}
 
 	return timestamppb.New(t.Time)
+}
+
+func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.VinCredentialRequest) (*pb.VinCredentialResponse, error) {
+	pk, err := base64.RawURLEncoding.DecodeString(s.settings.IssuerPrivateKey)
+	if err != nil {
+		s.logger.Err(err).Msg("Couldn't parse issuer private key.")
+		return nil, err
+	}
+
+	issuer, err := issuer.New(
+		issuer.Config{
+			PrivateKey:        pk,
+			ChainID:           big.NewInt(s.settings.DIMORegistryChainID),
+			VehicleNFTAddress: common.HexToAddress(s.settings.VehicleNFTAddress),
+			DBS:               s.dbs,
+		},
+	)
+	if err != nil {
+		s.logger.Err(err).Msg("Failed to create issuer.")
+		return nil, err
+	}
+
+	exp := time.Now().Add(time.Hour * 24 * 8)
+	if *req.ExpiresAt != "" {
+		exp, err = time.Parse(time.RFC3339, *req.ExpiresAt)
+		if err != nil {
+			s.logger.Err(err).Msg("Failed to parse credential experation date.")
+			return nil, err
+		}
+	}
+
+	credID, err := issuer.VIN(req.Vin, big.NewInt(int64(req.TokenId)), exp.UTC())
+	return &pb.VinCredentialResponse{
+		CredentialId: credID,
+	}, nil
 }

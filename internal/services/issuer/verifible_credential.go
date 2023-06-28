@@ -74,10 +74,12 @@ func New(c Config) (*Issuer, error) {
 	}, nil
 }
 
-func (i *Issuer) VIN(vin string, tokenID *big.Int) (id string, err error) {
+// VIN issues a vin credential using device vin and token ID
+// if an empty string is passed for expirationDate, the expiration date
+// defaults to eight days from current day.
+func (i *Issuer) VIN(vin string, tokenID *big.Int, expirationDate time.Time) (id string, err error) {
 	id = uuid.New().String()
 	issuanceDate := time.Now().UTC().Format(time.RFC3339)
-	expirationDate := time.Now().Add(time.Hour * 24 * 8).UTC().Format(time.RFC3339)
 
 	credential := map[string]any{
 		"@context": []any{
@@ -88,7 +90,7 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int) (id string, err error) {
 		"type":           []any{"VerifiableCredential", "Vehicle"},
 		"issuer":         i.IssuerDID,
 		"issuanceDate":   issuanceDate,
-		"expirationDate": expirationDate,
+		"expirationDate": expirationDate.Format(time.RFC3339),
 		"credentialSubject": map[string]any{
 			"id":                          fmt.Sprintf("did:nft:%d_erc721:%s_%d", i.ChainID, hexutil.Encode(i.VehicleNFTAddress.Bytes()), tokenID),
 			"vehicleIdentificationNumber": vin,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"math/big"
+	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
@@ -78,7 +79,8 @@ func (s *CredentialTestSuite) TestVerifiableCredential() {
 	})
 	s.Require().NoError(err)
 
-	credentialID, err := iss.VIN(vin, tokenID)
+	vinCredExpiration := time.Now().Add(time.Hour * 24 * 8).UTC()
+	credentialID, err := iss.VIN(vin, tokenID, vinCredExpiration)
 	s.Require().NoError(err)
 
 	vc, err := models.VerifiableCredentials(models.VerifiableCredentialWhere.ClaimID.EQ(credentialID)).One(context.Background(), s.pdb.DBS().Reader)

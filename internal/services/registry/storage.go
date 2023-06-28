@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
@@ -101,7 +102,8 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 						logger.Error().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msgf("Minted vehicle with blank VIN, no credential issued.")
 						return nil
 					}
-					vcID, err := p.issuer.VIN(mtr.R.MintRequestVehicleNFT.Vin, out.TokenId)
+					vinCredExpiration := time.Now().Add(time.Hour * 24 * 8).UTC()
+					vcID, err := p.issuer.VIN(mtr.R.MintRequestVehicleNFT.Vin, out.TokenId, vinCredExpiration)
 					if err != nil {
 						return err
 					}

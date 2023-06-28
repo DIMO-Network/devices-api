@@ -26,6 +26,7 @@ service UserDeviceService {
       returns (RegisterUserDeviceFromVINResponse);
   rpc UpdateDeviceIntegrationStatus(UpdateDeviceIntegrationStatusRequest)
       returns (UserDevice);
+  rpc IssueVinCredential(VinCredentialRequest) returns (VinCredentialResponse);
 }
 
 message GetUserDeviceByAutoPIUnitIdRequest { string id = 1; }
@@ -116,4 +117,14 @@ message UpdateDeviceIntegrationStatusRequest {
   string user_device_id = 1;
   string integration_id = 2;
   string status = 3;
+}
+
+message VinCredentialRequest {
+  string vin = 1;
+  uint64 token_id = 2;
+  optional string expires_at = 3;
+}
+
+message VinCredentialResponse {
+  string credential_id = 1;
 }
