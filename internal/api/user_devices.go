@@ -424,7 +424,7 @@ func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevi
 		}
 
 		if vc := vnft.R.Claim; vc != nil {
-			out.LatestVinCredential = &pb.VinCredential{
+			out.LatestVinCredential = &pb.CredentialMetadata{
 				Id:         vc.ClaimID,
 				Expiration: timestamppb.New(vc.ExpirationDate),
 			}
@@ -509,7 +509,7 @@ func nullTimeToPB(t null.Time) *timestamppb.Timestamp {
 	return timestamppb.New(t.Time)
 }
 
-func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.VinCredentialRequest) (*pb.VinCredentialResponse, error) {
+func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.IssueVinCredentialRequest) (*pb.CredentialIssuedResponse, error) {
 	logger := s.logger.With().Str("vin", req.Vin).Logger()
 	pk, err := base64.RawURLEncoding.DecodeString(s.settings.IssuerPrivateKey)
 	if err != nil {
@@ -544,7 +544,7 @@ func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.VinC
 		logger.Err(err).Msg("Failed to create vin credential.")
 		return nil, err
 	}
-	return &pb.VinCredentialResponse{
+	return &pb.CredentialIssuedResponse{
 		CredentialId: credID,
 	}, nil
 }

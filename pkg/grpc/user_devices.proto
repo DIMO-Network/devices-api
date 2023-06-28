@@ -26,7 +26,7 @@ service UserDeviceService {
       returns (RegisterUserDeviceFromVINResponse);
   rpc UpdateDeviceIntegrationStatus(UpdateDeviceIntegrationStatusRequest)
       returns (UserDevice);
-  rpc IssueVinCredential(VinCredentialRequest) returns (VinCredentialResponse);
+  rpc IssueVinCredential(IssueVinCredentialRequest) returns (CredentialIssuedResponse);
 }
 
 message GetUserDeviceByAutoPIUnitIdRequest { string id = 1; }
@@ -52,7 +52,7 @@ message UserDevice {
   string device_definition_id = 9;
   optional string device_style_id = 10;
   optional bytes aftermarket_device_beneficiary_address = 11;
-  optional VinCredential latest_vin_credential = 12;
+  optional CredentialMetadata latest_vin_credential = 12;
   bool vin_confirmed = 13;
 }
 
@@ -108,7 +108,7 @@ message RegisterUserDeviceFromVINResponse {
   bool created = 1;
 }
 
-message VinCredential {
+message CredentialMetadata {
   string id = 1;
   google.protobuf.Timestamp expiration = 2;
 }
@@ -119,12 +119,12 @@ message UpdateDeviceIntegrationStatusRequest {
   string status = 3;
 }
 
-message VinCredentialRequest {
+message IssueVinCredentialRequest {
   string vin = 1;
   uint64 token_id = 2;
   optional string expires_at = 3;
 }
 
-message VinCredentialResponse {
+message CredentialIssuedResponse {
   string credential_id = 1;
 }

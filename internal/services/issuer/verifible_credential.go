@@ -74,9 +74,7 @@ func New(c Config) (*Issuer, error) {
 	}, nil
 }
 
-// VIN issues a vin credential using device vin and token ID
-// if an empty string is passed for expirationDate, the expiration date
-// defaults to eight days from current day.
+// VIN issues a vin credential using device vin, token ID and expiration date
 func (i *Issuer) VIN(vin string, tokenID *big.Int, expirationDate time.Time) (id string, err error) {
 	id = uuid.New().String()
 	issuanceDate := time.Now().UTC().Format(time.RFC3339)
