@@ -204,7 +204,6 @@ func (i *Issuer) Handle(ctx context.Context, event *ADVinCredentialEvent) error 
 		models.AftermarketDeviceWhere.EthereumAddress.EQ(
 			null.BytesFrom(common.FromHex(event.Subject)),
 		),
-		qm.Load(models.AftermarketDeviceRels.VehicleToken),
 	).One(ctx, i.DBS.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -215,10 +214,15 @@ func (i *Issuer) Handle(ctx context.Context, event *ADVinCredentialEvent) error 
 		return err
 	}
 
+	if ad.VehicleTokenID.Big == nil {
+		err := errors.New("no token id associated with aftermarket device")
+		logger.Err(err).Msg("invalid token id")
+		return err
+	}
+
 	vnft, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.TokenID.EQ(ad.VehicleTokenID),
-		qm.Load(models.VehicleNFTRels.UserDevice),
-		qm.Load(models.VehicleNFTRels.Claim, qm.OrderBy(models.VerifiableCredentialColumns.ExpirationDate+" DESC")),
+		qm.Load(models.VehicleNFTRels.Claim),
 	).One(ctx, i.DBS.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -229,33 +233,23 @@ func (i *Issuer) Handle(ctx context.Context, event *ADVinCredentialEvent) error 
 		return err
 	}
 
-	if !vnft.R.UserDevice.VinConfirmed {
-		err := errors.New("invalid vin")
-		logger.Err(err).Msg("vin associated with device not confirmed")
-		return err
-	}
-
-	if vnft.R.UserDevice.VinIdentifier.String != observedVIN {
+	if vnft.Vin != observedVIN {
 		// do we want to do anything here?
 		logger.Info().Msg("observed vin does not match confirmed vin")
 		return nil
 	}
 
 	if vnft.R.Claim != nil {
-		if vnft.R.Claim.ExpirationDate.After(time.Now()) {
-			logger.Info().Str("claimID", vnft.R.Claim.ClaimID).Msg("valid claim already exists")
+		rewardWeekEnd := NumToWeekEnd(GetWeekNum(time.Now()))
+		if vnft.R.Claim.ExpirationDate.After(rewardWeekEnd) {
+			logger.Info().Str("claimID", vnft.R.Claim.ClaimID).Str("expires", vnft.R.Claim.ExpirationDate.Format(time.RFC822)).Msg("valid claim already exists")
 			return nil
 		}
 	}
 
-	tkn, ok := vnft.TokenID.Int64()
-	if !ok {
-		err := errors.New("invalid token id")
-		logger.Err(err).Msg("unable to convert token id to int")
-		return err
-	}
-	claimID, err := i.VIN(observedVIN, big.NewInt(tkn))
-	logger.Info().Str("claim id", claimID).Msg("credential issued")
+	tkn := vnft.TokenID.Int(nil)
+	claimID, err := i.VIN(observedVIN, tkn)
+	logger.Info().Str("claimID", claimID).Msg("credential issued")
 	return err
 }
 
@@ -264,7 +258,15 @@ type ADVinCredentialEvent struct {
 	Signature string `json:"signature"`
 }
 
-type VinEligibilityStatus struct {
-	VIN                      string `json:"vin"`
-	LatestEligibleRewardWeek int    `json:"latestEligibleRewardWeek"`
+var startTime = time.Date(2022, time.January, 31, 5, 0, 0, 0, time.UTC)
+var weekDuration = 7 * 24 * time.Hour
+
+func GetWeekNum(t time.Time) int {
+	sinceStart := t.Sub(startTime)
+	weekNum := int(sinceStart.Truncate(weekDuration) / weekDuration)
+	return weekNum
+}
+
+func NumToWeekEnd(n int) time.Time {
+	return startTime.Add(time.Duration(n+1) * weekDuration)
 }

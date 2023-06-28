@@ -211,22 +211,6 @@ func (s *CredentialTestSuite) TestVinCredentialerHandler() {
 			AftermarketDevice: aftermarketDevice,
 		},
 		{
-			Name:             "vin associated with device not confirmed",
-			ReturnsError:     true,
-			ExpectedResponse: "invalid vin",
-			UserDeviceTable: models.UserDevice{
-				ID:                 deviceID,
-				UserID:             userDeviceID,
-				DeviceDefinitionID: deiceDefID,
-				VinConfirmed:       false,
-				VinIdentifier:      null.StringFrom(vin),
-			},
-			MetaTxTable:       metaTx,
-			VCTable:           credential,
-			VehicleNFT:        nft,
-			AftermarketDevice: aftermarketDevice,
-		},
-		{
 			Name:            "inactive credential",
 			ReturnsError:    false,
 			UserDeviceTable: userDevice,
@@ -238,6 +222,24 @@ func (s *CredentialTestSuite) TestVinCredentialerHandler() {
 			},
 			VehicleNFT:        nft,
 			AftermarketDevice: aftermarketDevice,
+		},
+		{
+			Name:             "invalid token id",
+			ReturnsError:     true,
+			ExpectedResponse: "no token id associated with aftermarket device",
+			UserDeviceTable:  userDevice,
+			MetaTxTable:      metaTx,
+			VCTable:          credential,
+			VehicleNFT:       nft,
+			AftermarketDevice: models.AftermarketDevice{
+				UserID:          null.StringFrom("SomeID"),
+				OwnerAddress:    ownerAddress,
+				CreatedAt:       time.Now(),
+				UpdatedAt:       time.Now(),
+				TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
+				Beneficiary:     null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
+				EthereumAddress: ownerAddress,
+			},
 		},
 	}
 
@@ -275,20 +277,7 @@ func (s *CredentialTestSuite) TestVinCredentialerHandler() {
 				require.NoError(s.T(), err)
 			}
 
-			_, err = models.AftermarketDevices().DeleteAll(ctx, s.pdb.DBS().Writer)
-			require.NoError(s.T(), err)
-
-			_, err = models.VehicleNFTS().DeleteAll(ctx, s.pdb.DBS().Writer)
-			require.NoError(s.T(), err)
-
-			_, err = models.VerifiableCredentials().DeleteAll(ctx, s.pdb.DBS().Writer)
-			require.NoError(s.T(), err)
-
-			_, err = models.MetaTransactionRequests().DeleteAll(ctx, s.pdb.DBS().Writer)
-			require.NoError(s.T(), err)
-
-			_, err = models.UserDevices().DeleteAll(ctx, s.pdb.DBS().Writer)
-			require.NoError(s.T(), err)
+			test.TruncateTables(s.pdb.DBS().Writer.DB, s.T())
 		})
 	}
 
