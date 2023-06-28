@@ -91,7 +91,7 @@ func TestIngestDeviceStatus(t *testing.T) {
 	integs, _ := deviceDefSvc.GetIntegrations(ctx)
 	integrationID := integs[0].Id
 
-	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc, nil)
+	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc)
 	ud := test.SetupCreateUserDevice(t, "dylan", ksuid.New().String(), nil, "", pdb)
 
 	udai := models.UserDeviceAPIIntegration{
@@ -209,7 +209,7 @@ func TestAutoPiStatusMerge(t *testing.T) {
 	integs, _ := deviceDefSvc.GetIntegrations(ctx)
 	integrationID := integs[0].Id
 
-	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc, nil)
+	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc)
 
 	ud := test.SetupCreateUserDevice(t, "dylan", ddID, nil, "", pdb)
 
@@ -280,7 +280,7 @@ func TestAutoPiStatusWithSignals(t *testing.T) {
 	integs, _ := deviceDefSvc.GetIntegrations(ctx)
 	integrationID := integs[0].Id
 
-	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc, nil)
+	ingest := NewDeviceStatusIngestService(pdb.DBS, &logger, mes, deviceDefSvc, autoPISvc)
 
 	ud := test.SetupCreateUserDevice(t, "rvivanco", ddID, nil, "", pdb)
 

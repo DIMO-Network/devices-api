@@ -2,10 +2,8 @@ package services
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"regexp"
 	"strings"
 	"time"
@@ -14,14 +12,11 @@ import (
 
 	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/appmetrics"
-	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
-	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/lovoo/goka"
 	gocache "github.com/patrickmn/go-cache"
@@ -46,10 +41,9 @@ type DeviceStatusIngestService struct {
 	integrations []*grpc.Integration
 	autoPiSvc    AutoPiAPIService
 	memoryCache  *gocache.Cache
-	issuer       *issuer.Issuer
 }
 
-func NewDeviceStatusIngestService(pdb func() *db.ReaderWriter, log *zerolog.Logger, eventService EventService, ddSvc DeviceDefinitionService, autoPiSvc AutoPiAPIService, settings *config.Settings) *DeviceStatusIngestService {
+func NewDeviceStatusIngestService(db func() *db.ReaderWriter, log *zerolog.Logger, eventService EventService, ddSvc DeviceDefinitionService, autoPiSvc AutoPiAPIService) *DeviceStatusIngestService {
 	// Cache the list of integrations.
 	integrations, err := ddSvc.GetIntegrations(context.Background())
 	if err != nil {
@@ -57,32 +51,14 @@ func NewDeviceStatusIngestService(pdb func() *db.ReaderWriter, log *zerolog.Logg
 	}
 	c := gocache.New(30*time.Minute, 60*time.Minute) // band-aid on top of band-aids
 
-	pk, err := base64.RawURLEncoding.DecodeString(settings.IssuerPrivateKey)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Couldn't parse issuer private key.")
-	}
-
-	issuer, err := issuer.New(
-		issuer.Config{
-			PrivateKey:        pk,
-			ChainID:           big.NewInt(settings.DIMORegistryChainID),
-			VehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
-			DBS:               pdb,
-		},
-	)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to create issuer.")
-	}
-
 	return &DeviceStatusIngestService{
-		db:           pdb,
+		db:           db,
 		log:          log,
 		deviceDefSvc: ddSvc,
 		eventService: eventService,
 		integrations: integrations,
 		autoPiSvc:    autoPiSvc,
 		memoryCache:  c,
-		issuer:       issuer,
 	}
 }
 
@@ -149,7 +125,7 @@ func (i *DeviceStatusIngestService) processEvent(ctxGk goka.Context, event *Devi
 		i.memoryCache.Set(userDeviceID+"_"+integration.Id, device, 30*time.Minute)
 	}
 
-	i.vinWeeklyCredentialer(ctxGk, event, device)
+	i.vinFraudMonitor(ctxGk, event, device) // techdebt: we could get rid of this - nobody using it
 
 	if len(device.R.UserDeviceAPIIntegrations) == 0 {
 		return fmt.Errorf("can't find API integration for device %s and integration %s", userDeviceID, integration.Id)
@@ -378,13 +354,14 @@ func (i *DeviceStatusIngestService) getIntegrationFromEvent(event *DeviceStatusE
 	return nil, fmt.Errorf("no matching integration found in DB for event source: %s", event.Source)
 }
 
-func (i *DeviceStatusIngestService) vinWeeklyCredentialer(ctx goka.Context, event *DeviceStatusEvent, device *models.UserDevice) {
+func (i *DeviceStatusIngestService) vinFraudMonitor(ctx goka.Context, event *DeviceStatusEvent, device *models.UserDevice) {
 	if !device.VinConfirmed {
 		// Nothing to compare with.
 		return
 	}
 
 	storedVIN := device.VinIdentifier.String
+
 	observedVIN, err := extractVIN(event.Data)
 	if err != nil {
 		// This could get noisy. Even for vehicles that do transmit VIN, it may not be in every record.
@@ -392,41 +369,8 @@ func (i *DeviceStatusIngestService) vinWeeklyCredentialer(ctx goka.Context, even
 		return
 	}
 
-	val := ctx.Value()
-	if val != nil {
-		v, ok := val.(*shared.CloudEvent[RegisteredVIN])
-		if !ok {
-			i.log.Err(errors.New("unrecognized record format")).Str("userDeviceId", event.Subject).Msg("unable to parse record from table")
-			return
-		}
-
-		if v.Data.Date.Before(time.Now().UTC().Add(time.Hour * 24 * 8)) {
-			v = &shared.CloudEvent[RegisteredVIN]{}
-			v.Data.Date = time.Now().UTC()
-		}
-
-		if observedVIN == storedVIN {
-			if v.Data.CredentialIssued {
-				return
-			}
-
-			tkn, ok := device.R.VehicleNFT.TokenID.Big.Int64()
-			if !ok {
-				i.log.Err(errors.New("invalid tokenID")).Str("userDeviceId", event.Subject).Msg("credential not issued")
-				return
-			}
-
-			vinCredExpiration := time.Now().Add(time.Hour * 24 * 8).UTC()
-			_, err = i.issuer.VIN(observedVIN, big.NewInt(tkn), vinCredExpiration)
-			if err != nil {
-				i.log.Err(err).Str("userDeviceId", event.Subject).Msg("error issuing vin credential")
-			}
-			v.Data.CredentialIssued = true
-		} else {
-			v.Data.FraudDetected = false
-			// revoke credential?
-		}
-		ctx.SetValue(v)
+	// Check the group table for this vehicle. Its presence indicates that we've already logged a warning.
+	if val := ctx.Value(); val != nil {
 		return
 	}
 
@@ -436,34 +380,13 @@ func (i *DeviceStatusIngestService) vinWeeklyCredentialer(ctx goka.Context, even
 			Time:    time.Now(),
 			Subject: event.Subject,
 			Type:    "zone.dimo.device.vin.validation",
-			Data: RegisteredVIN{
-				FraudDetected: true,
-				Date:          time.Now().UTC(),
-			},
+			Data:    RegisteredVIN{},
 		}
 
 		i.log.Info().Str("userDeviceId", event.Subject).Str("observedVin", observedVIN).Str("storedVin", storedVIN).Msg("Detected potential VIN fraud.")
 
 		ctx.SetValue(record)
-		return
 	}
-
-	v := val.(*shared.CloudEvent[RegisteredVIN])
-	v.Data.Date = time.Now().UTC()
-	tkn, ok := device.R.VehicleNFT.TokenID.Big.Int64()
-	if !ok {
-		i.log.Err(errors.New("invalid tokenID")).Str("userDeviceId", event.Subject).Msg("credential not issued")
-		return
-	}
-
-	vinCredExpiration := time.Now().Add(time.Hour * 24 * 8).UTC()
-	_, err = i.issuer.VIN(observedVIN, big.NewInt(tkn), vinCredExpiration)
-	if err != nil {
-		i.log.Err(err).Str("userDeviceId", event.Subject).Msg("error issuing vin credential")
-	}
-	v.Data.CredentialIssued = true
-	ctx.SetValue(v)
-	return
 }
 
 type odometerEventDevice struct {
@@ -491,9 +414,5 @@ type DeviceStatusEvent struct {
 }
 
 type RegisteredVIN struct {
-	CredentialIssued  bool
-	FraudDetected     bool
-	CredentialRevoked bool
-	Date              time.Time
 	// The body serves no purpose at the moment.
 }
