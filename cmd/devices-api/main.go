@@ -162,7 +162,7 @@ func startDeviceStatusConsumer(logger zerolog.Logger, settings *config.Settings,
 	nhtsaSvc := services.NewNHTSAService()
 	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, nhtsaSvc, settings)
 	autoPISvc := services.NewAutoPiAPIService(settings, pdb.DBS)
-	ingestSvc := services.NewDeviceStatusIngestService(pdb.DBS, &logger, eventService, ddSvc, autoPISvc)
+	ingestSvc := services.NewDeviceStatusIngestService(pdb.DBS, &logger, eventService, ddSvc, autoPISvc, settings)
 
 	sc := goka.DefaultConfig()
 	sc.Version = sarama.V2_8_1_0

@@ -325,7 +325,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 				PrivateKey:        pk,
 				ChainID:           big.NewInt(settings.DIMORegistryChainID),
 				VehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
-				DBS:               pdb,
+				DBS:               pdb.DBS,
 			},
 		)
 		if err != nil {
