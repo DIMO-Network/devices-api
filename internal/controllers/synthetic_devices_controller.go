@@ -168,7 +168,7 @@ func (vc *SyntheticDevicesController) verifyUserAddressAndNFTExist(ctx context.C
 // @Param       integrationNode path int true "token ID"
 // @Param       vehicleNode path int true "vehicle ID"
 // @Success     200 {array} signer.TypedData
-// @Router /synthetic/device/mint/{integrationNode}/{vehicleNode} [get]
+// @Router 	    /synthetic/device/mint/{integrationNode}/{vehicleNode} [get]
 func (vc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber.Ctx) error {
 	rawIntegrationNode := c.Params("integrationNode")
 	vehicleNode := c.Params("vehicleNode")
@@ -461,7 +461,7 @@ func (vc *SyntheticDevicesController) exchangeSmartCarCode(ctx context.Context, 
 // @Produce     json
 // @Param       syntheticDeviceNode path int true "synthetic device token id"
 // @Success     200 {array} signer.TypedData
-// @Router      synthetic/device/:syntheticDeviceNode/burn [get]
+// @Router      /synthetic/device/{syntheticDeviceNode}/burn [get]
 func (vc *SyntheticDevicesController) GetSyntheticDeviceBurnPayload(c *fiber.Ctx) error {
 	syntheticDeviceNodeRaw := c.Params("syntheticDeviceNode")
 	userID := helpers.GetUserID(c)
@@ -510,7 +510,7 @@ func (vc *SyntheticDevicesController) GetSyntheticDeviceBurnPayload(c *fiber.Ctx
 // @Produce     json
 // @Param       syntheticDeviceNode path int true "synthetic device token id"
 // @Success     200
-// @Router      synthetic/device/:syntheticDeviceNode/burn [post]
+// @Router      /synthetic/device/{syntheticDeviceNode}/burn [post]
 func (vc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 	syntheticDeviceNodeRaw := c.Params("syntheticDeviceNode")
 	userID := helpers.GetUserID(c)
