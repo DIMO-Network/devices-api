@@ -245,8 +245,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		sdAuth.Get("/mint/:integrationNode/:vehicleNode", syntheticController.GetSyntheticDeviceMintingPayload)
 		sdAuth.Post("/mint/:integrationNode/:vehicleNode", syntheticController.MintSyntheticDevice)
 
-		sdAuth.Get("/:syntheticDeviceNode}/burn", syntheticController.GetSyntheticDeviceBurnPayload)
-		sdAuth.Post("/:syntheticDeviceNode}/burn", syntheticController.BurnSyntheticDevice)
+		sdAuth.Get("/:syntheticDeviceNode/burn", syntheticController.GetSyntheticDeviceBurnPayload)
+		sdAuth.Post("/:syntheticDeviceNode/burn", syntheticController.BurnSyntheticDevice)
 	}
 
 	// Vehicle owner routes.
