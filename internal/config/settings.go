@@ -72,7 +72,7 @@ type Settings struct {
 	NATSAckTimeout                    string      `yaml:"NATS_ACK_TIMEOUT"`
 	NATSDurableConsumer               string      `yaml:"NATS_DURABLE_CONSUMER"`
 	DIMOContractAPIURL                string      `yaml:"DIMO_CONTRACT_APIURL"`
-	ADVinCredentialTopic              string      `yaml:"AD_VIN_CREDENTIAL_TOPIC"`
+	DeviceFingerprintTopic            string      `yaml:"DEVICE_FINGERPRINT_TOPIC"`
 
 	// IssuerPrivateKey is a base64-encoded secp256k1 private key, used to sign
 	// VIN verifiable credentials.

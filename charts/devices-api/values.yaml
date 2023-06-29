@@ -84,6 +84,7 @@ env:
   NATS_DURABLE_CONSUMER: dd-valuation-task-consumer
   NATS_ACK_TIMEOUT: 2m
   SYNTHETIC_DEVICES_ENABLED: true
+  DEVICE_FINGERPRINT_TOPIC: topic.device.fingerprint
 service:
   type: ClusterIP
   ports:
