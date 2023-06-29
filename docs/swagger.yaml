@@ -1333,6 +1333,39 @@ paths:
           description: Not Found
       tags:
       - nfts
+  /synthetic/device/{syntheticDeviceNode}/burn:
+    get:
+      description: Produces the payload that the user signs and submits to burn a
+        synthetic device.
+      parameters:
+      - description: synthetic device token id
+        in: path
+        name: syntheticDeviceNode
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/apitypes.TypedData'
+            type: array
+    post:
+      description: Submit the signature required for the synthetic device burning
+        meta-transaction.
+      parameters:
+      - description: synthetic device token id
+        in: path
+        name: syntheticDeviceNode
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
   /synthetic/device/mint/{integrationNode}/{vehicleNode}:
     get:
       description: |-

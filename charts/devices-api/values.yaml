@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: a728d1e
+  tag: e4977e8
 imagePullSecrets: []
 nameOverride: ''
 fullnameOverride: ''
@@ -85,6 +85,7 @@ env:
   NATS_ACK_TIMEOUT: 2m
   SYNTHETIC_DEVICES_ENABLED: true
   DEVICE_FINGERPRINT_TOPIC: topic.device.fingerprint
+  SYNTHETIC_WALLET_GRPC_ADDR: synthetic-wallet-instance-dev:8086
 service:
   type: ClusterIP
   ports:

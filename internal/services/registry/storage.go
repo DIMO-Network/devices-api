@@ -54,6 +54,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		qm.Load(models.MetaTransactionRequestRels.PairRequestAftermarketDevice),
 		qm.Load(models.MetaTransactionRequestRels.UnpairRequestAftermarketDevice),
 		qm.Load(qm.Rels(models.MetaTransactionRequestRels.MintRequestSyntheticDevice, models.SyntheticDeviceRels.VehicleToken)),
+		qm.Load(models.MetaTransactionRequestRels.BurnRequestSyntheticDevice),
 	).One(context.Background(), p.DB().Reader)
 	if err != nil {
 		return err
@@ -76,6 +77,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	devicePairedEvent := p.ABI.Events["AftermarketDevicePaired"]
 	deviceUnpairedEvent := p.ABI.Events["AftermarketDeviceUnpaired"]
 	syntheticDeviceMintedEvent := p.ABI.Events["SyntheticDeviceNodeMinted"]
+	sdBurnEvent := p.ABI.Events["SyntheticDeviceNodeBurned"]
 
 	switch {
 	case mtr.R.MintRequestVehicleNFT != nil:
@@ -216,6 +218,36 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					logger.Err(err).Msg("Couldn't start Smartcar polling.")
 					return err
 				}
+			}
+		}
+	case mtr.R.BurnRequestSyntheticDevice != nil:
+		for _, l1 := range data.Transaction.Logs {
+			if l1.Topics[0] == sdBurnEvent.ID {
+				out := new(contracts.RegistrySyntheticDeviceNodeBurned)
+				err := p.parseLog(out, sdBurnEvent, l1)
+				if err != nil {
+					return err
+				}
+
+				if _, err := mtr.R.BurnRequestSyntheticDevice.Delete(ctx, p.DB().Writer); err != nil {
+					return err
+				}
+
+				v, err := models.VehicleNFTS(models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(mtr.R.BurnRequestSyntheticDevice.VehicleTokenID.Big))).One(ctx, p.DB().Reader)
+				if err != nil {
+					return err
+				}
+
+				udai, err := models.FindUserDeviceAPIIntegration(ctx, p.DB().Reader, v.UserDeviceID.String, "22N2xaPOq2WW2gAHBHd0Ikn4Zob")
+				if err != nil {
+					if err == sql.ErrNoRows {
+						return nil
+					}
+					return err
+				}
+
+				_, err = udai.Delete(ctx, p.DB().Writer)
+				return err
 			}
 		}
 	}
