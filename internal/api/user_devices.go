@@ -509,7 +509,7 @@ func nullTimeToPB(t null.Time) *timestamppb.Timestamp {
 	return timestamppb.New(t.Time)
 }
 
-func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.IssueVinCredentialRequest) (*pb.CredentialIssuedResponse, error) {
+func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.IssueVinCredentialRequest) (*pb.CredentialIssuedResponse, error) { //nolint
 	logger := s.logger.With().Str("vin", req.Vin).Logger()
 	pk, err := base64.RawURLEncoding.DecodeString(s.settings.IssuerPrivateKey)
 	if err != nil {
