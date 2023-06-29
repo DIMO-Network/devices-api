@@ -1,6 +1,7 @@
 package issuer
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
@@ -200,6 +201,17 @@ func (i *Issuer) Handle(ctx context.Context, event *ADVinCredentialEvent) error 
 	logger := i.log.With().Str("device-address", event.Subject).Str("vin", observedVIN).Logger()
 	logger.Info().Msg("got vin credentialer event")
 
+	v, err := validSignature(event.CloudEvent.Data, event.Signature, event.CloudEvent.Subject, logger)
+	if err != nil {
+		logger.Info().Err(err).Msg("signature is not valid")
+		return err
+	}
+	if !v {
+		err = errors.New("invalid signature on payload")
+		logger.Info().Err(err).Msg("signature is not valid")
+		return err
+	}
+
 	ad, err := models.AftermarketDevices(
 		models.AftermarketDeviceWhere.EthereumAddress.EQ(
 			null.BytesFrom(common.FromHex(event.Subject)),
@@ -251,6 +263,35 @@ func (i *Issuer) Handle(ctx context.Context, event *ADVinCredentialEvent) error 
 	claimID, err := i.VIN(observedVIN, tkn)
 	logger.Info().Str("claimID", claimID).Msg("credential issued")
 	return err
+}
+
+func validSignature(payload []byte, signature string, address string, logger zerolog.Logger) (bool, error) {
+	ownerSig := common.FromHex(signature)
+	if len(ownerSig) != 65 {
+		logger.Info().Msg("signature length invalid")
+		return false, errors.New("invalid signature length")
+	}
+	ownerSig[64] -= 27
+
+	addr := common.HexToAddress(address)
+	msg, _ := json.Marshal(payload)
+	h := crypto.Keccak256Hash(msg)
+
+	pub, err := crypto.Ecrecover(h.Bytes(), ownerSig)
+	if err != nil {
+		logger.Info().Err(err).Msg("unable to recover public key")
+		return false, err
+	}
+
+	pubRaw, err := crypto.UnmarshalPubkey(pub)
+	if err != nil {
+		logger.Info().Err(err).Msg("unable to unmarshal public key")
+		return false, err
+	}
+
+	payloadVerified := bytes.Equal(crypto.PubkeyToAddress(*pubRaw).Bytes(), addr.Bytes())
+	logger.Info().Msg("payload verified")
+	return payloadVerified, nil
 }
 
 type ADVinCredentialEvent struct {
