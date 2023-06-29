@@ -84,8 +84,9 @@ env:
   NATS_DURABLE_CONSUMER: dd-valuation-task-consumer
   NATS_ACK_TIMEOUT: 2m
   SYNTHETIC_DEVICES_ENABLED: true
-  DEVICE_FINGERPRINT_TOPIC: topic.device.fingerprint
   SYNTHETIC_WALLET_GRPC_ADDR: synthetic-wallet-instance-dev:8086
+  DEVICE_FINGERPRINT_TOPIC: topic.device.fingerprint
+  DEVICE_FINGERPRINT_CONSUMER_GROUP: device-fingerprint-vc-issuer
 service:
   type: ClusterIP
   ports:

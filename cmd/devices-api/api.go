@@ -30,6 +30,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/controllers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
+	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
 	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
@@ -325,7 +326,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 			logger.Fatal().Err(err).Msg("Couldn't parse issuer private key.")
 		}
 
-		vcIssuer, err := issuer.New(
+		iss, err := issuer.New(
 			issuer.Config{
 				PrivateKey:        pk,
 				ChainID:           big.NewInt(settings.DIMORegistryChainID),
@@ -338,12 +339,11 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 			logger.Fatal().Err(err).Msg("Failed to create issuer.")
 		}
 
-		err = issuer.RunConsumer(ctx, kclient, &logger, vcIssuer)
-		if err != nil {
+		if err := fingerprint.RunConsumer(ctx, settings, &logger, iss); err != nil {
 			logger.Fatal().Err(err).Msg("Failed to create vin credentialer listener")
 		}
 
-		store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, vcIssuer, settings, scTaskSvc, ddSvc)
+		store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, iss, settings, scTaskSvc, ddSvc)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("Failed to create registry storage client")
 		}

@@ -72,7 +72,6 @@ type Settings struct {
 	NATSAckTimeout                    string      `yaml:"NATS_ACK_TIMEOUT"`
 	NATSDurableConsumer               string      `yaml:"NATS_DURABLE_CONSUMER"`
 	DIMOContractAPIURL                string      `yaml:"DIMO_CONTRACT_APIURL"`
-	DeviceFingerprintTopic            string      `yaml:"DEVICE_FINGERPRINT_TOPIC"`
 
 	// IssuerPrivateKey is a base64-encoded secp256k1 private key, used to sign
 	// VIN verifiable credentials.
@@ -80,6 +79,9 @@ type Settings struct {
 
 	SyntheticDevicesEnabled bool   `yaml:"SYNTHETIC_DEVICES_ENABLED"`
 	SyntheticWalletGRPCAddr string `yaml:"SYNTHETIC_WALLET_GRPC_ADDR"`
+
+	DeviceFingerprintTopic         string `yaml:"DEVICE_FINGERPRINT_TOPIC"`
+	DeviceFingerprintConsumerGroup string `yaml:"DEVICE_FINGERPRINT_CONSUMER_GROUP"`
 }
 
 func (s *Settings) IsProduction() bool {
