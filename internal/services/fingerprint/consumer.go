@@ -45,7 +45,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 	for {
 		select {
 		case message := <-claim.Messages():
-			var event Event
+			var event DeviceFingerprintCloudEvent
 			if err := json.Unmarshal(message.Value, &event); err != nil {
 				c.logger.Err(err).Int32("partition", message.Partition).Int64("offset", message.Offset).Msg("Couldn't parse fingerprint event.")
 			} else {
@@ -87,14 +87,14 @@ func RunConsumer(ctx context.Context, settings *config.Settings, logger *zerolog
 	return nil
 }
 
-func (c *Consumer) Handle(ctx context.Context, event *Event) error {
+func (c *Consumer) Handle(ctx context.Context, event *DeviceFingerprintCloudEvent) error {
 	if !common.IsHexAddress(event.Subject) {
 		return fmt.Errorf("subject %q not a valid address", event.Subject)
 	}
-
 	addr := common.HexToAddress(event.Subject)
+	data, err := json.Marshal(event.Data)
 
-	v, err := validSignature(event.Signature, event.CloudEvent.Data)
+	v, err := validSignature(event.Signature, data)
 	if err != nil {
 		c.logger.Info().Err(err).Msg("signature is not valid")
 		return err
@@ -105,7 +105,7 @@ func (c *Consumer) Handle(ctx context.Context, event *Event) error {
 		return err
 	}
 
-	observedVIN, err := services.ExtractVIN(event.CloudEvent.Data)
+	observedVIN, err := services.ExtractVIN(data)
 	if err != nil {
 		return fmt.Errorf("couldn't extract VIN: %w", err)
 	}
@@ -145,7 +145,8 @@ func validSignature(s string, data []byte) (bool, error) {
 		return false, errors.New("invalid signature length")
 	}
 	hash := crypto.Keccak256Hash(data)
-	sigPublicKey, err := crypto.Ecrecover(hash.Bytes(), signature)
+	signature[64] -= 27
+	sigPublicKey, err := crypto.Ecrecover(hash.Bytes()[:], signature)
 	if err != nil {
 		return false, err
 	}

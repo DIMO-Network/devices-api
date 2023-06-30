@@ -13,7 +13,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
@@ -91,15 +90,14 @@ func TestConsumerTestSuite(t *testing.T) {
 
 func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 	deviceID := ksuid.New().String()
-	ownerAddress := null.BytesFrom(common.Hex2Bytes("ab8438a18d83d41847dffbdc6101d37c69c9a2fc"))
-	vin := "1G6AL1RY2K0111939"
+	ownerAddress := null.BytesFrom(common.Hex2Bytes("448cF8Fd88AD914e3585401241BC434FbEA94bbb"))
+	vin := "W1N2539531F907299"
 	ctx := context.Background()
 	tokenID := big.NewInt(3)
 	userDeviceID := "userDeviceID1"
 	mtxReq := ksuid.New().String()
 	deiceDefID := "deviceDefID"
 	claimID := "claimID1"
-	signature := "0xa4438e5cb667dc63ebd694167ae3ad83585f2834c9b04895dd890f805c4c459a024ed9df1b03872536b4ac0c7720d02cb787884a093cfcde5c3bd7f94657e30c1b"
 
 	// tables used in tests
 	aftermarketDevice := models.AftermarketDevice{
@@ -141,12 +139,26 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 		ClaimID:       null.StringFrom(claimID),
 	}
 
-	rawMsg, err := json.Marshal(struct {
-		Vin string
-	}{
-		Vin: vin,
-	})
-	require.NoError(s.T(), err)
+	msg := DeviceFingerprintCloudEvent{
+		CloudEventHeaders: CloudEventHeaders{
+			ID:          "2RvhwjUbtoePjmXN7q9qfjLQgwP",
+			Subject:     "0x448cF8Fd88AD914e3585401241BC434FbEA94bbb",
+			Source:      "aftermarket/device/fingerprint",
+			SpecVersion: "1.0",
+			Time:        "2023-06-30T14:51:42.63507585Z",
+			Type:        "zone.dimo.aftermarket.device.fingerprint",
+			Signature:   "7c31e54ddcffc2a548ccaf10ed64b7e4bdd239bbaa3e5f6dba41d3e4051d930b7fbdf184724c2fb8d3b2ac8ac82662d2ed74e881dd01c09c4b2a9b4e62ede5db1b",
+		},
+		Data: FingerprintData{
+			CommonData: CommonData{
+				BatteryVoltage: 13.49,
+				Timestamp:      1688136702634,
+				RpiUptimeSecs:  39,
+			},
+			Vin:      "W1N2539531F907299",
+			Protocol: "7",
+		},
+	}
 
 	cases := []struct {
 		Name              string
@@ -206,6 +218,7 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 
 	for _, c := range cases {
 		s.T().Run(c.Name, func(t *testing.T) {
+			test.TruncateTables(s.pdb.DBS().Writer.DB, t)
 			err := c.UserDeviceTable.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
 			require.NoError(t, err)
 
@@ -221,24 +234,76 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 			err = c.AftermarketDevice.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
 			require.NoError(t, err)
 
-			err = s.cons.Handle(s.ctx, &Event{
-				CloudEvent: shared.CloudEvent[json.RawMessage]{
-					Data:    rawMsg,
-					Time:    time.Now(),
-					ID:      deviceID,
-					Subject: common.Bytes2Hex(ownerAddress.Bytes),
-				},
-				Signature: signature,
-			})
+			err = s.cons.Handle(s.ctx, &msg)
 
 			if c.ReturnsError {
 				assert.ErrorContains(t, err, c.ExpectedResponse)
 			} else {
 				require.NoError(t, err)
 			}
-
-			test.TruncateTables(s.pdb.DBS().Writer.DB, t)
 		})
 	}
 
+}
+
+func (s *ConsumerTestSuite) TestSignatureValidation() {
+
+	msg := DeviceFingerprintCloudEvent{
+		CloudEventHeaders: CloudEventHeaders{
+			ID:          "2RvhwjUbtoePjmXN7q9qfjLQgwP",
+			Subject:     "0x448cF8Fd88AD914e3585401241BC434FbEA94bbb",
+			Source:      "aftermarket/device/fingerprint",
+			SpecVersion: "1.0",
+			Time:        "2023-06-30T14:51:42.63507585Z",
+			Type:        "zone.dimo.aftermarket.device.fingerprint",
+		},
+		Data: FingerprintData{
+			CommonData: CommonData{
+				BatteryVoltage: 13.49,
+				Timestamp:      1688136702634,
+				RpiUptimeSecs:  39,
+			},
+			Vin:      "W1N2539531F907299",
+			Protocol: "7",
+		},
+	}
+
+	signature := "7c31e54ddcffc2a548ccaf10ed64b7e4bdd239bbaa3e5f6dba41d3e4051d930b7fbdf184724c2fb8d3b2ac8ac82662d2ed74e881dd01c09c4b2a9b4e62ede5db1b"
+	data, err := json.Marshal(msg.Data)
+	require.NoError(s.T(), err)
+
+	v, err := validSignature(signature, data)
+	require.NoError(s.T(), err)
+
+	require.Equal(s.T(), v, true)
+}
+
+type CloudEventHeaders struct {
+	ID          string `json:"id"`
+	Source      string `json:"source"`
+	SpecVersion string `json:"specversion"`
+	Subject     string `json:"subject"`
+	Time        string `json:"time"`
+	Type        string `json:"type"`
+	// Signature is an extension https://github.com/cloudevents/spec/blob/main/cloudevents/documented-extensions.md
+	Signature string `json:"signature"`
+}
+
+type DeviceFingerprintCloudEvent struct {
+	CloudEventHeaders
+	Data FingerprintData `json:"data"`
+}
+
+type FingerprintData struct {
+	CommonData
+	Vin      string  `json:"vin"`
+	Protocol string  `json:"protocol"`
+	Odometer float64 `json:"odometer,omitempty"`
+}
+
+// CommonData common properties we want to send with every data payload
+type CommonData struct {
+	RpiUptimeSecs  int     `json:"rpiUptimeSecs,omitempty"`
+	BatteryVoltage float64 `json:"batteryVoltage,omitempty"`
+	Timestamp      int64   `json:"timestamp"`
 }
