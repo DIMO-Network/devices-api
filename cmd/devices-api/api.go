@@ -30,6 +30,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/controllers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
+	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
 	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
@@ -102,10 +103,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	openAI := services.NewOpenAI(&logger, *settings)
 	dcnSvc := registry.NewDcnService(settings)
 
-	syntheticDeviceSvc, err := services.NewSyntheticWalletInstanceService(pdb.DBS, settings)
-	if err != nil {
-		logger.Error().Err(err).Msg("unable to create Synthetic Device service")
-	}
 	natsSvc, err := services.NewNATSService(settings, &logger)
 	if err != nil {
 		logger.Error().Err(err).Msg("unable to create NATS service")
@@ -123,7 +120,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
-	syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, syntheticDeviceSvc, registryClient, smartcarClient, cipher)
 
 	// commenting this out b/c the library includes the path in the metrics which saturates prometheus queries - need to fork / make our own
 	//prometheus := fiberprometheus.New("devices-api")
@@ -240,10 +236,20 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Get("/documents/:id/download", documentsController.DownloadDocument)
 
 	if settings.SyntheticDevicesEnabled {
+		syntheticDeviceSvc, err := services.NewSyntheticWalletInstanceService(pdb.DBS, settings)
+		if err != nil {
+			logger.Error().Err(err).Msg("unable to create Synthetic Device service")
+		}
+
+		syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, syntheticDeviceSvc, registryClient, smartcarClient, cipher)
+
 		sdAuth := v1Auth.Group("/synthetic/device")
 
 		sdAuth.Get("/mint/:integrationNode/:vehicleNode", syntheticController.GetSyntheticDeviceMintingPayload)
 		sdAuth.Post("/mint/:integrationNode/:vehicleNode", syntheticController.MintSyntheticDevice)
+
+		sdAuth.Get("/:syntheticDeviceNode/burn", syntheticController.GetSyntheticDeviceBurnPayload)
+		sdAuth.Post("/:syntheticDeviceNode/burn", syntheticController.BurnSyntheticDevice)
 	}
 
 	// Vehicle owner routes.
@@ -320,7 +326,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 			logger.Fatal().Err(err).Msg("Couldn't parse issuer private key.")
 		}
 
-		vcIssuer, err := issuer.New(
+		iss, err := issuer.New(
 			issuer.Config{
 				PrivateKey:        pk,
 				ChainID:           big.NewInt(settings.DIMORegistryChainID),
@@ -333,13 +339,11 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 			logger.Fatal().Err(err).Msg("Failed to create issuer.")
 		}
 
-		err = issuer.RunConsumer(ctx, kclient, &logger, vcIssuer)
-		if err != nil {
+		if err := fingerprint.RunConsumer(ctx, settings, &logger, iss); err != nil {
 			logger.Fatal().Err(err).Msg("Failed to create vin credentialer listener")
 		}
 
-		store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, vcIssuer, settings, scTaskSvc, ddSvc)
-
+		store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, iss, settings, scTaskSvc, ddSvc)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("Failed to create registry storage client")
 		}

@@ -5,10 +5,8 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -22,11 +20,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
-	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 )
 
@@ -188,114 +183,4 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int) (id string, err error) {
 	}
 
 	return id, tx.Commit()
-}
-
-func (i *Issuer) Handle(ctx context.Context, event *ADVinCredentialEvent) error {
-	observedVIN, err := services.ExtractVIN(event.CloudEvent.Data)
-	if err != nil {
-		i.log.Info().Err(err).Msg("could not extract vin from payload")
-		return err
-	}
-
-	logger := i.log.With().Str("device-address", event.Subject).Str("vin", observedVIN).Logger()
-	logger.Info().Msg("got vin credentialer event")
-
-	v, err := validSignature(event.Signature, event.CloudEvent.Data)
-	if err != nil {
-		logger.Info().Err(err).Msg("signature is not valid")
-		return err
-	}
-	if !v {
-		err = errors.New("invalid signature on payload")
-		logger.Info().Err(err).Msg("signature is not valid")
-		return err
-	}
-
-	ad, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.EthereumAddress.EQ(
-			null.BytesFrom(common.FromHex(event.Subject)),
-		),
-	).One(ctx, i.DBS.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			i.log.Info().Err(err).Msg("no corresponding aftermarket device for address")
-			return err
-		}
-		i.log.Info().Err(err).Msg("database failure retrieving aftermarket device")
-		return err
-	}
-
-	if ad.VehicleTokenID.Big == nil {
-		err := errors.New("no token id associated with aftermarket device")
-		logger.Err(err).Msg("invalid token id")
-		return err
-	}
-
-	vnft, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(ad.VehicleTokenID),
-		qm.Load(models.VehicleNFTRels.Claim),
-	).One(ctx, i.DBS.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			logger.Err(err).Msg("no associated vehicle nft found for device")
-			return err
-		}
-		i.log.Info().Err(err).Msg("database failure retrieving nft associated with device")
-		return err
-	}
-
-	if vnft.Vin != observedVIN {
-		// do we want to do anything here?
-		logger.Info().Msg("observed vin does not match confirmed vin")
-		return nil
-	}
-
-	if vnft.R.Claim != nil {
-		rewardWeekEnd := NumToWeekEnd(GetWeekNum(time.Now()))
-		if vnft.R.Claim.ExpirationDate.After(rewardWeekEnd) {
-			logger.Info().Str("claimID", vnft.R.Claim.ClaimID).Str("expires", vnft.R.Claim.ExpirationDate.Format(time.RFC822)).Msg("valid claim already exists")
-			return nil
-		}
-	}
-
-	tkn := vnft.TokenID.Int(nil)
-	claimID, err := i.VIN(observedVIN, tkn)
-	logger.Info().Str("claimID", claimID).Msg("credential issued")
-	return err
-}
-
-func validSignature(s string, data []byte) (bool, error) {
-	signature := common.FromHex(s)
-	if len(signature) != 65 {
-		return false, errors.New("invalid signature length")
-	}
-	hash := crypto.Keccak256Hash(data)
-	sigPublicKey, err := crypto.Ecrecover(hash.Bytes(), signature)
-	if err != nil {
-		return false, err
-	}
-
-	signatureNoRecoverID := signature[:len(signature)-1]
-	if !crypto.VerifySignature(sigPublicKey, hash.Bytes(), signatureNoRecoverID) {
-		return false, errors.New("unable to verify signature")
-	}
-	return true, nil
-}
-
-type ADVinCredentialEvent struct {
-	shared.CloudEvent[json.RawMessage]
-	Signature string `json:"signature"`
-}
-
-var startTime = time.Date(2022, time.January, 31, 5, 0, 0, 0, time.UTC)
-var weekDuration = 7 * 24 * time.Hour
-
-func GetWeekNum(t time.Time) int {
-	sinceStart := t.Sub(startTime)
-	weekNum := int(sinceStart.Truncate(weekDuration) / weekDuration)
-	return weekNum
-}
-
-func NumToWeekEnd(n int) time.Time {
-	return startTime.Add(time.Duration(n+1) * weekDuration)
 }

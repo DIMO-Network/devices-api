@@ -260,6 +260,21 @@ func (c *Client) MintSyntheticDeviceSign(requestID string, mintSyntheticDeviceIn
 	return c.sendRequest(requestID, data)
 }
 
+// function burnSyntheticDeviceSign(uint256 vehicleNode, uint256 syntheticDeviceNode, bytes calldata ownerSig)
+func (c *Client) BurnSyntheticDeviceSign(requestID string, vehicleNode, syntheticDeviceNode *big.Int, ownerSig []byte) error {
+	abi, err := contracts.RegistryMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
+
+	data, err := abi.Pack("burnSyntheticDeviceSign", vehicleNode, syntheticDeviceNode, ownerSig)
+	if err != nil {
+		return err
+	}
+
+	return c.sendRequest(requestID, data)
+}
+
 func (c *Client) sendRequest(requestID string, data []byte) error {
 	event := shared.CloudEvent[RequestData]{
 		ID:          ksuid.New().String(),
