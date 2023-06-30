@@ -1,7 +1,6 @@
 package issuer
 
 import (
-	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
@@ -201,7 +200,7 @@ func (i *Issuer) Handle(ctx context.Context, event *ADVinCredentialEvent) error 
 	logger := i.log.With().Str("device-address", event.Subject).Str("vin", observedVIN).Logger()
 	logger.Info().Msg("got vin credentialer event")
 
-	v, err := validSignature(event.CloudEvent.Data, event.Signature, event.CloudEvent.Subject, logger)
+	v, err := validSignature(event.Signature, event.CloudEvent.Data)
 	if err != nil {
 		logger.Info().Err(err).Msg("signature is not valid")
 		return err
@@ -265,33 +264,22 @@ func (i *Issuer) Handle(ctx context.Context, event *ADVinCredentialEvent) error 
 	return err
 }
 
-func validSignature(payload []byte, signature string, address string, logger zerolog.Logger) (bool, error) {
-	ownerSig := common.FromHex(signature)
-	if len(ownerSig) != 65 {
-		logger.Info().Msg("signature length invalid")
+func validSignature(s string, data []byte) (bool, error) {
+	signature := common.FromHex(s)
+	if len(signature) != 65 {
 		return false, errors.New("invalid signature length")
 	}
-	ownerSig[64] -= 27
-
-	addr := common.HexToAddress(address)
-	msg, _ := json.Marshal(payload)
-	h := crypto.Keccak256Hash(msg)
-
-	pub, err := crypto.Ecrecover(h.Bytes(), ownerSig)
+	hash := crypto.Keccak256Hash(data)
+	sigPublicKey, err := crypto.Ecrecover(hash.Bytes(), signature)
 	if err != nil {
-		logger.Info().Err(err).Msg("unable to recover public key")
 		return false, err
 	}
 
-	pubRaw, err := crypto.UnmarshalPubkey(pub)
-	if err != nil {
-		logger.Info().Err(err).Msg("unable to unmarshal public key")
-		return false, err
+	signatureNoRecoverID := signature[:len(signature)-1]
+	if !crypto.VerifySignature(sigPublicKey, hash.Bytes(), signatureNoRecoverID) {
+		return false, errors.New("unable to verify signature")
 	}
-
-	payloadVerified := bytes.Equal(crypto.PubkeyToAddress(*pubRaw).Bytes(), addr.Bytes())
-	logger.Info().Msg("payload verified")
-	return payloadVerified, nil
+	return true, nil
 }
 
 type ADVinCredentialEvent struct {
