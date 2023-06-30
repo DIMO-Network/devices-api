@@ -57,7 +57,7 @@ func TestVinValidation(t *testing.T) {
 	for _, c := range testCases {
 		t.Run(c.Name, func(t *testing.T) {
 
-			if _, err := extractVIN(c.Data.JSON); err != nil {
+			if _, err := ExtractVIN(c.Data.JSON); err != nil {
 				if c.ExpectedResult != "pass" {
 					return
 				}

@@ -79,6 +79,9 @@ type Settings struct {
 
 	SyntheticDevicesEnabled bool   `yaml:"SYNTHETIC_DEVICES_ENABLED"`
 	SyntheticWalletGRPCAddr string `yaml:"SYNTHETIC_WALLET_GRPC_ADDR"`
+
+	DeviceFingerprintTopic         string `yaml:"DEVICE_FINGERPRINT_TOPIC"`
+	DeviceFingerprintConsumerGroup string `yaml:"DEVICE_FINGERPRINT_CONSUMER_GROUP"`
 }
 
 func (s *Settings) IsProduction() bool {
