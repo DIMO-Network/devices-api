@@ -93,6 +93,9 @@ func (c *Consumer) Handle(ctx context.Context, event *DeviceFingerprintCloudEven
 	}
 	addr := common.HexToAddress(event.Subject)
 	data, err := json.Marshal(event.Data)
+	if err != nil {
+		return err
+	}
 
 	v, err := validSignature(event.Signature, data)
 	if err != nil {
@@ -184,10 +187,10 @@ type CloudEventHeaders struct {
 
 type DeviceFingerprintCloudEvent struct {
 	CloudEventHeaders
-	Data FingerprintData `json:"data"`
+	Data Data `json:"data"`
 }
 
-type FingerprintData struct {
+type Data struct {
 	CommonData
 	Vin      string  `json:"vin"`
 	Protocol string  `json:"protocol"`

@@ -149,7 +149,7 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 			Type:        "zone.dimo.aftermarket.device.fingerprint",
 			Signature:   "7c31e54ddcffc2a548ccaf10ed64b7e4bdd239bbaa3e5f6dba41d3e4051d930b7fbdf184724c2fb8d3b2ac8ac82662d2ed74e881dd01c09c4b2a9b4e62ede5db1b",
 		},
-		Data: FingerprintData{
+		Data: Data{
 			CommonData: CommonData{
 				BatteryVoltage: 13.49,
 				Timestamp:      1688136702634,
@@ -257,7 +257,7 @@ func (s *ConsumerTestSuite) TestSignatureValidation() {
 			Time:        "2023-06-30T14:51:42.63507585Z",
 			Type:        "zone.dimo.aftermarket.device.fingerprint",
 		},
-		Data: FingerprintData{
+		Data: Data{
 			CommonData: CommonData{
 				BatteryVoltage: 13.49,
 				Timestamp:      1688136702634,
