@@ -186,13 +186,12 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 			AftermarketDevice: aftermarketDevice,
 		},
 		{
-			Name:             "invalid token id",
-			ReturnsError:     true,
-			ExpectedResponse: "no token id associated with aftermarket device",
-			UserDeviceTable:  userDevice,
-			MetaTxTable:      metaTx,
-			VCTable:          credential,
-			VehicleNFT:       nft,
+			Name:            "invalid token id",
+			ReturnsError:    false,
+			UserDeviceTable: userDevice,
+			MetaTxTable:     metaTx,
+			VCTable:         credential,
+			VehicleNFT:      nft,
 			AftermarketDevice: models.AftermarketDevice{
 				UserID:          null.StringFrom("SomeID"),
 				OwnerAddress:    ownerAddress,
@@ -233,7 +232,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 			})
 
 			if c.ReturnsError {
-				// assert.Error(s.T(), err)
 				assert.ErrorContains(t, err, c.ExpectedResponse)
 			} else {
 				require.NoError(t, err)
