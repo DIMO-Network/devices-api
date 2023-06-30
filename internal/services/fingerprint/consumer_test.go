@@ -29,7 +29,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
-type CredentialTestSuite struct {
+type ConsumerTestSuite struct {
 	suite.Suite
 	pdb       db.Store
 	container testcontainers.Container
@@ -43,7 +43,7 @@ type CredentialTestSuite struct {
 const migrationsDirRelPath = "../../../migrations"
 
 // SetupSuite starts container db
-func (s *CredentialTestSuite) SetupSuite() {
+func (s *ConsumerTestSuite) SetupSuite() {
 	s.ctx = context.Background()
 	s.pdb, s.container = test.StartContainerDatabase(context.Background(), s.T(), migrationsDirRelPath)
 	s.mockCtrl = gomock.NewController(s.T())
@@ -77,7 +77,7 @@ func (s *CredentialTestSuite) SetupSuite() {
 }
 
 // TearDownSuite cleanup at end by terminating container
-func (s *CredentialTestSuite) TearDownSuite() {
+func (s *ConsumerTestSuite) TearDownSuite() {
 	fmt.Printf("shutting down postgres at with session: %s \n", s.container.SessionID())
 	if err := s.container.Terminate(s.ctx); err != nil {
 		s.T().Fatal(err)
@@ -85,11 +85,11 @@ func (s *CredentialTestSuite) TearDownSuite() {
 	s.mockCtrl.Finish()
 }
 
-func TestCredentialTestSuite(t *testing.T) {
-	suite.Run(t, new(CredentialTestSuite))
+func TestConsumerTestSuite(t *testing.T) {
+	suite.Run(t, new(ConsumerTestSuite))
 }
 
-func (s *CredentialTestSuite) TestVinCredentialerHandler() {
+func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 	deviceID := ksuid.New().String()
 	ownerAddress := null.BytesFrom(common.Hex2Bytes("ab8438a18d83d41847dffbdc6101d37c69c9a2fc"))
 	vin := "1G6AL1RY2K0111939"
@@ -207,21 +207,20 @@ func (s *CredentialTestSuite) TestVinCredentialerHandler() {
 
 	for _, c := range cases {
 		s.T().Run(c.Name, func(t *testing.T) {
-
 			err := c.UserDeviceTable.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
-			require.NoError(s.T(), err)
+			require.NoError(t, err)
 
 			err = c.MetaTxTable.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
-			require.NoError(s.T(), err)
+			require.NoError(t, err)
 
 			err = c.VCTable.Insert(ctx, s.pdb.DBS().Reader, boil.Infer())
-			require.NoError(s.T(), err)
+			require.NoError(t, err)
 
 			err = c.VehicleNFT.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
-			require.NoError(s.T(), err)
+			require.NoError(t, err)
 
 			err = c.AftermarketDevice.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
-			require.NoError(s.T(), err)
+			require.NoError(t, err)
 
 			err = s.cons.Handle(s.ctx, &Event{
 				CloudEvent: shared.CloudEvent[json.RawMessage]{
@@ -234,12 +233,13 @@ func (s *CredentialTestSuite) TestVinCredentialerHandler() {
 			})
 
 			if c.ReturnsError {
-				assert.NotNil(s.T(), c.ExpectedResponse, err.Error())
+				// assert.Error(s.T(), err)
+				assert.ErrorContains(t, err, c.ExpectedResponse)
 			} else {
-				require.NoError(s.T(), err)
+				require.NoError(t, err)
 			}
 
-			test.TruncateTables(s.pdb.DBS().Writer.DB, s.T())
+			test.TruncateTables(s.pdb.DBS().Writer.DB, t)
 		})
 	}
 
