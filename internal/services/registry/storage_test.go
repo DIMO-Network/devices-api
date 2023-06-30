@@ -49,7 +49,7 @@ func (s *StorageTestSuite) SetupSuite() {
 
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(s.mockCtrl)
 	s.scTaskSvc = mock_services.NewMockSmartcarTaskService(s.mockCtrl)
-	proc, err := NewProcessor(s.dbs.DBS, &logger, nil, nil, &config.Settings{Environment: "prod"}, s.scTaskSvc, s.deviceDefSvc)
+	proc, err := NewProcessor(s.dbs.DBS, &logger, nil, &config.Settings{Environment: "prod"}, s.scTaskSvc, s.deviceDefSvc)
 	if err != nil {
 		s.T().Fatal(err)
 	}
@@ -194,7 +194,7 @@ func (s *StorageTestSuite) TestMintVehicle() {
 	logger := zerolog.Nop()
 	s.mockCtrl = gomock.NewController(s.T())
 
-	proc, err := NewProcessor(s.dbs.DBS, &logger, nil, nil, &config.Settings{Environment: "prod"}, s.scTaskSvc, s.deviceDefSvc)
+	proc, err := NewProcessor(s.dbs.DBS, &logger, nil, &config.Settings{Environment: "prod"}, s.scTaskSvc, s.deviceDefSvc)
 	s.Require().NoError(err)
 
 	ud := models.UserDevice{

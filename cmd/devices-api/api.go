@@ -343,7 +343,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 			logger.Fatal().Err(err).Msg("Failed to create vin credentialer listener")
 		}
 
-		store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, iss, settings, scTaskSvc, ddSvc)
+		store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, settings, scTaskSvc, ddSvc)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("Failed to create registry storage client")
 		}
