@@ -170,3 +170,33 @@ func GetWeekNum(t time.Time) int {
 func NumToWeekEnd(n int) time.Time {
 	return startTime.Add(time.Duration(n+1) * weekDuration)
 }
+
+type CloudEventHeaders struct {
+	ID          string `json:"id"`
+	Source      string `json:"source"`
+	SpecVersion string `json:"specversion"`
+	Subject     string `json:"subject"`
+	Time        string `json:"time"`
+	Type        string `json:"type"`
+	// Signature is an extension https://github.com/cloudevents/spec/blob/main/cloudevents/documented-extensions.md
+	Signature string `json:"signature"`
+}
+
+type DeviceFingerprintCloudEvent struct {
+	CloudEventHeaders
+	Data FingerprintData `json:"data"`
+}
+
+type FingerprintData struct {
+	CommonData
+	Vin      string  `json:"vin"`
+	Protocol string  `json:"protocol"`
+	Odometer float64 `json:"odometer,omitempty"`
+}
+
+// CommonData common properties we want to send with every data payload
+type CommonData struct {
+	RpiUptimeSecs  int     `json:"rpiUptimeSecs,omitempty"`
+	BatteryVoltage float64 `json:"batteryVoltage,omitempty"`
+	Timestamp      int64   `json:"timestamp"`
+}
