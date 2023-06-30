@@ -20,7 +20,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-type FingerprintEvent struct {
+type Event struct {
 	shared.CloudEvent[json.RawMessage]
 	Signature string `json:"signature"`
 }
@@ -43,7 +43,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 	for {
 		select {
 		case message := <-claim.Messages():
-			var event FingerprintEvent
+			var event Event
 			if err := json.Unmarshal(message.Value, &event); err != nil {
 				c.logger.Err(err).Msgf("Couldn't parse fingerprint event at partition %d, offset %d.", message.Partition, message.Offset)
 			} else {
@@ -85,7 +85,7 @@ func RunConsumer(ctx context.Context, settings *config.Settings, logger *zerolog
 	return nil
 }
 
-func (c *Consumer) Handle(ctx context.Context, event *FingerprintEvent) error {
+func (c *Consumer) Handle(ctx context.Context, event *Event) error {
 	if !common.IsHexAddress(event.Subject) {
 		return fmt.Errorf("subject %q not a valid address", event.Subject)
 	}
