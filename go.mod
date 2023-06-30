@@ -7,10 +7,10 @@ require (
 	github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c
 	github.com/DIMO-Network/shared v0.9.52
 	github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3
+	github.com/DIMO-Network/zflogger v1.0.0-beta
 	github.com/Shopify/sarama v1.38.1
 	github.com/ThreeDotsLabs/watermill v1.1.1
 	github.com/ThreeDotsLabs/watermill-kafka/v2 v2.2.1
-	github.com/algorand/go-algorand-sdk v1.24.0
 	github.com/aws/aws-sdk-go-v2 v1.17.8
 	github.com/aws/aws-sdk-go-v2/config v1.18.21
 	github.com/aws/aws-sdk-go-v2/service/kms v1.20.7
@@ -53,7 +53,7 @@ require (
 )
 
 require (
-	github.com/algorand/go-codec/codec v1.1.8 // indirect
+	github.com/MicahParks/keyfunc/v2 v2.1.0 // indirect
 	github.com/avast/retry-go v3.0.0+incompatible // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.8 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
@@ -78,6 +78,7 @@ require (
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/savsgio/dictpool v0.0.0-20221023140959-7bf2e61cea94 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
+	github.com/swaggo/files/v2 v2.0.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tinylib/msgp v1.1.8 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
@@ -178,7 +179,7 @@ require (
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/spec v0.20.9 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
-	github.com/gofiber/contrib/jwt v1.0.0
+	github.com/gofiber/contrib/jwt v1.0.2
 	github.com/gofiber/swagger v0.1.12
 	github.com/gofrs/uuid v4.3.0+incompatible // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
