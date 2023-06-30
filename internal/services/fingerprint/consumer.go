@@ -45,10 +45,10 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 		case message := <-claim.Messages():
 			var event Event
 			if err := json.Unmarshal(message.Value, &event); err != nil {
-				c.logger.Err(err).Msgf("Couldn't parse fingerprint event at partition %d, offset %d.", message.Partition, message.Offset)
+				c.logger.Err(err).Int32("partition", message.Partition).Int64("offset", message.Offset).Msg("Couldn't parse fingerprint event.")
 			} else {
 				if err := c.Handle(session.Context(), &event); err != nil {
-					c.logger.Err(err).Int32("partition", message.Partition).Int64("offset", message.Offset).Msg("Failed to update vin credential status.")
+					c.logger.Err(err).Int32("partition", message.Partition).Int64("offset", message.Offset).Msg("Failed to process fingerprint event.")
 				}
 			}
 			session.MarkMessage(message, "")
