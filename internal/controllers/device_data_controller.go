@@ -239,6 +239,8 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "No status updates yet.")
 	}
 
+	// todo grpc call and get rid of below
+
 	ds := PrepareDeviceStatusInformation(c.Context(), udc.DeviceDefSvc, deviceData, userDevice.DeviceDefinitionID,
 		userDevice.DeviceStyleID, []int64{NonLocationData, CurrentLocation, AllTimeLocation})
 
