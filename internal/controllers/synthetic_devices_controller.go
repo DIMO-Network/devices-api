@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"time"
 
 	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -51,6 +52,10 @@ type SyntheticDevicesController struct {
 type MintSyntheticDeviceRequest struct {
 	Credentials struct {
 		AuthorizationCode string `json:"authorizationCode"`
+		AccessToken       string `json:"accessToken"`
+		RefreshToken      string `json:"refreshToken"`
+		ExpiresIn         int64  `json:"expiresIn"`
+		ExternalID        string `json:"externalId"`
 	} `json:"credentials"`
 	OwnerSignature string `json:"ownerSignature"`
 }
@@ -400,6 +405,26 @@ func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx con
 		mb, _ := json.Marshal(meta)
 		udi.Metadata = null.JSONFrom(mb)
 		udi.ExternalID = null.StringFrom(externalID)
+	case constants.TeslaVendor:
+		encAccess, err := vc.cipher.Encrypt(req.Credentials.AccessToken)
+		if err != nil {
+			return opaqueInternalError
+		}
+		encRefresh, err := vc.cipher.Encrypt(req.Credentials.RefreshToken)
+		if err != nil {
+			return opaqueInternalError
+		}
+		udi.AccessToken = null.StringFrom(encAccess)
+		udi.AccessExpiresAt = null.TimeFrom(time.Unix(req.Credentials.ExpiresIn, 0))
+		udi.RefreshToken = null.StringFrom(encRefresh)
+
+		meta := services.UserDeviceAPIIntegrationsMetadata{
+			// EnableTeslaLock: ,
+		}
+
+		mb, _ := json.Marshal(meta)
+		udi.Metadata = null.JSONFrom(mb)
+		udi.ExternalID = null.StringFrom(req.Credentials.ExternalID)
 	default:
 		return nil
 	}
