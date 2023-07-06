@@ -123,6 +123,10 @@ func (c *Consumer) Handle(ctx context.Context, event *Event) error {
 	}
 
 	_, err = c.iss.VIN(observedVIN, vn.TokenID.Int(nil))
+	if err == nil {
+		c.logger.Info().Msgf("Issued VIN credential for vehicle %d using device %s.", vn.TokenID, addr)
+	}
+
 	return err
 }
 
