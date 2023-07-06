@@ -10,12 +10,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/golang/mock/gomock"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
@@ -299,13 +301,16 @@ func (s *ConsumerTestSuite) TestSignatureValidation() {
 	}
 
 	for _, c := range cases {
-		data, err := json.Marshal(c.Data)
+
+		data, err := json.Marshal(c.Data.Data)
 		require.NoError(s.T(), err)
 
-		v, err := validSignature(c.Signature, data)
-		require.NoError(s.T(), err)
-
-		require.Equal(s.T(), v, true)
+		signature := common.FromHex(c.Signature)
+		addr := common.HexToAddress(c.Data.CloudEventHeaders.Subject)
+		hash := crypto.Keccak256Hash(data)
+		recAddr, err := helpers.ECRecoverSol(hash.Bytes(), signature)
+		s.NoError(err)
+		s.Equal(addr, recAddr)
 	}
 }
 
@@ -331,11 +336,15 @@ func (s *ConsumerTestSuite) TestInvalidSignature() {
 		},
 	}
 
-	signature := "7c31e54ddcffc2a548ccaf10ed64b7e4bdd239bbaa3e5f6dba41d3e4051d930b7fbdf184724c2fb8d3b2ac8ac82662d2ed74e881dd01c09c4b2a9b4e62ede5db1a"
+	sig := "7c31e54ddcffc2a548ccaf10ed64b7e4bdd239bbaa3e5f6dba41d3e4051d930b7fbdf184724c2fb8d3b2ac8ac82662d2ed74e881dd01c09c4b2a9b4e62ede5db1a"
 	data, err := json.Marshal(msg.Data)
 	require.NoError(s.T(), err)
 
-	v, err := validSignature(signature, data)
-	require.Equal(s.T(), err.Error(), "invalid signature recovery id")
-	require.Equal(s.T(), false, v)
+	signature := common.FromHex(sig)
+	addr := common.HexToAddress(msg.CloudEventHeaders.Subject)
+	hash := crypto.Keccak256Hash(data)
+	recAddr, err := helpers.ECRecoverSol(hash.Bytes(), signature)
+	s.Error(err)
+	s.Equal(err.Error(), "invalid signature recovery id")
+	s.NotEqual(recAddr, addr)
 }

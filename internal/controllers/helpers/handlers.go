@@ -2,10 +2,12 @@ package helpers
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 
 	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
@@ -228,4 +230,26 @@ func GetActualDeviceDefinitionMetadataValues(dd *grpc.GetDeviceDefinitionItemRes
 		Mpg:            mpg,
 		MpgHwy:         mpgHwy,
 	}
+}
+
+func ECRecoverSol(hash []byte, sig []byte) (common.Address, error) {
+	if len(sig) != 65 {
+		return common.Address{}, fmt.Errorf("signature has invalid length %d", len(sig))
+	}
+
+	fixedSig := make([]byte, len(sig))
+	copy(fixedSig, sig)
+	fixedSig[64] -= 27
+
+	uncPubKey, err := crypto.Ecrecover(hash, fixedSig)
+	if err != nil {
+		return common.Address{}, err
+	}
+
+	pubKey, err := crypto.UnmarshalPubkey(uncPubKey)
+	if err != nil {
+		return common.Address{}, err
+	}
+
+	return crypto.PubkeyToAddress(*pubKey), nil
 }

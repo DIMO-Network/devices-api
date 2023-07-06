@@ -914,7 +914,7 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 
 		hash := crypto.Keccak256Hash(vinByte)
 
-		recAddr, err := recoverAddress2(hash.Bytes(), sig)
+		recAddr, err := helpers.ECRecoverSol(hash.Bytes(), sig)
 		if err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "Couldn't recover signer address.")
 		}
@@ -1630,28 +1630,6 @@ func computeTypedDataHash(td *signer.TypedData) (hash common.Hash, err error) {
 
 	hash = crypto.Keccak256Hash(payload)
 	return
-}
-
-func recoverAddress2(hash []byte, sig []byte) (common.Address, error) {
-	if len(sig) != 65 {
-		return common.Address{}, fmt.Errorf("signature has invalid length %d", len(sig))
-	}
-
-	fixedSig := make([]byte, len(sig))
-	copy(fixedSig, sig)
-	fixedSig[64] -= 27
-
-	uncPubKey, err := crypto.Ecrecover(hash, fixedSig)
-	if err != nil {
-		return common.Address{}, err
-	}
-
-	pubKey, err := crypto.UnmarshalPubkey(uncPubKey)
-	if err != nil {
-		return common.Address{}, err
-	}
-
-	return crypto.PubkeyToAddress(*pubKey), nil
 }
 
 func recoverAddress(td *signer.TypedData, signature []byte) (addr common.Address, err error) {

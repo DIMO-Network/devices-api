@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/models"
@@ -97,14 +98,13 @@ func (c *Consumer) Handle(ctx context.Context, event *DeviceFingerprintCloudEven
 		return err
 	}
 
-	v, err := validSignature(event.Signature, data)
-	if err != nil {
-		c.logger.Info().Err(err).Msg("signature is not valid")
+	signature := common.FromHex(event.Signature)
+	hash := crypto.Keccak256Hash(data)
+	if recAddr, err := helpers.ECRecoverSol(hash.Bytes(), signature); err != nil {
 		return err
-	}
-	if !v {
-		err = errors.New("invalid signature on payload")
-		c.logger.Info().Msg("signature is not valid")
+	} else if recAddr != addr {
+		err := errors.New("dervied address does not match expected")
+		c.logger.Info().Err(err).Msg("invalid signature")
 		return err
 	}
 
@@ -140,25 +140,6 @@ func (c *Consumer) Handle(ctx context.Context, event *DeviceFingerprintCloudEven
 
 	_, err = c.iss.VIN(observedVIN, vn.TokenID.Int(nil))
 	return err
-}
-
-func validSignature(s string, data []byte) (bool, error) {
-	signature := common.FromHex(s)
-	if len(signature) != 65 {
-		return false, errors.New("invalid signature length")
-	}
-	hash := crypto.Keccak256Hash(data)
-	signature[64] -= 27
-	sigPublicKey, err := crypto.Ecrecover(hash.Bytes()[:], signature)
-	if err != nil {
-		return false, err
-	}
-
-	signatureNoRecoverID := signature[:len(signature)-1]
-	if !crypto.VerifySignature(sigPublicKey, hash.Bytes(), signatureNoRecoverID) {
-		return false, errors.New("unable to verify signature")
-	}
-	return true, nil
 }
 
 var startTime = time.Date(2022, time.January, 31, 5, 0, 0, 0, time.UTC)
