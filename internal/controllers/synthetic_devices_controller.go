@@ -24,7 +24,6 @@ import (
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/crypto"
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
@@ -209,11 +208,6 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "please provide authorization code")
 	}
 
-	ownerSignature := common.FromHex(req.OwnerSignature)
-	if len(ownerSignature) != 65 {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid signature provided")
-	}
-
 	user, err := vc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{
 		Id: userID,
 	})
@@ -234,33 +228,18 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	userAddr := common.HexToAddress(*user.EthereumAddress)
 
 	rawPayload := vc.getEIP712(int64(integration.TokenId), vid)
-
 	hash, _, err := signer.TypedDataAndHash(*rawPayload)
 	if err != nil {
 		vc.log.Err(err).Msg("Error occurred creating has of payload")
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
 	}
 
-	ownerSignature[64] -= 27
-
-	pub, err := crypto.Ecrecover(hash, ownerSignature)
-	if err != nil {
-		vc.log.Err(err).Msg("Error occurred while trying to recover public key from signature")
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
-	}
-
-	pubRaw, err := crypto.UnmarshalPubkey(pub)
-	if err != nil {
-		vc.log.Err(err).Msg("Error occurred marshalling recovered public public key")
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
-	}
-
-	payloadVerified := bytes.Equal(crypto.PubkeyToAddress(*pubRaw).Bytes(), userAddr.Bytes())
+	ownerSignature := common.FromHex(req.OwnerSignature)
+	recAddr, err := helpers.ECRecoverSol(hash, ownerSignature)
+	payloadVerified := bytes.Equal(recAddr.Bytes(), userAddr.Bytes())
 	if !payloadVerified {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature provided")
 	}
-
-	ownerSignature[64] += 27
 
 	childKeyNumber, err := vc.generateNextChildKeyNumber(c.Context())
 	if err != nil {
