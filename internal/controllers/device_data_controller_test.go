@@ -72,7 +72,7 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &logger, deviceDefSvc, deviceDefIntSvc, &fakeEventService{}, scClient, scTaskSvc, teslaSvc, teslaTaskService, nil, nil, nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, nil, nil, nil, nil, nil, natsSvc)
 	app := fiber.New()
 	app.Get("/user/devices/:userDeviceID/status", test.AuthInjectorTestHandler(testUserID), owner.UserDevice(pdb, &usersClient, &logger), c.GetUserDeviceStatus)
-
+	// todo re-work these tests since logic mostly outside, will need a mockgst
 	t.Run("GET - device status merge autopi and smartcar", func(t *testing.T) {
 		// arrange db, insert some user_devices
 		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
