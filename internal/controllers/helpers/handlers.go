@@ -232,6 +232,8 @@ func GetActualDeviceDefinitionMetadataValues(dd *grpc.GetDeviceDefinitionItemRes
 	}
 }
 
+// ECRecoverSol used to verify message signature
+// accepts message and signature hash and returns address of signer
 func ECRecoverSol(hash []byte, sig []byte) (common.Address, error) {
 	if len(sig) != 65 {
 		return common.Address{}, fmt.Errorf("signature has invalid length %d", len(sig))
