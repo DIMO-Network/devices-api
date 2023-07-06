@@ -45,6 +45,7 @@ type SyntheticDevicesController struct {
 	walletSvc      services.SyntheticWalletInstanceService
 	registryClient registry.Client
 	smartcarClient services.SmartcarClient
+	teslaService   services.TeslaService
 	cipher         shared.Cipher
 }
 
@@ -64,7 +65,7 @@ type SyntheticDeviceSequence struct {
 }
 
 func NewSyntheticDevicesController(
-	settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient, walletSvc services.SyntheticWalletInstanceService, registryClient registry.Client, smartcarClient services.SmartcarClient, cipher shared.Cipher,
+	settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient, walletSvc services.SyntheticWalletInstanceService, registryClient registry.Client, smartcarClient services.SmartcarClient, teslaSvc services.TeslaService, cipher shared.Cipher,
 
 ) SyntheticDevicesController {
 	return SyntheticDevicesController{
@@ -76,6 +77,7 @@ func NewSyntheticDevicesController(
 		walletSvc:      walletSvc,
 		registryClient: registryClient,
 		smartcarClient: smartcarClient,
+		teslaService:   teslaSvc,
 		cipher:         cipher,
 	}
 }
@@ -188,7 +190,6 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	rawIntegrationNode := c.Params("integrationNode")
 	vehicleNode := c.Params("vehicleNode")
 	userID := helpers.GetUserID(c)
-
 	req := &MintSyntheticDeviceRequest{}
 	if err := c.BodyParser(req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
@@ -202,6 +203,10 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	integration, err := vc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), integrationNode)
 	if err != nil {
 		return helpers.GrpcErrorToFiber(err, "failed to get integration")
+	}
+
+	if integration.Vendor == constants.TeslaVendor && req.Credentials.AccessToken == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid access token")
 	}
 
 	if integration.Vendor == constants.SmartCarVendor && req.Credentials.AuthorizationCode == "" {
@@ -385,6 +390,17 @@ func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx con
 		udi.Metadata = null.JSONFrom(mb)
 		udi.ExternalID = null.StringFrom(externalID)
 	case constants.TeslaVendor:
+		teslaID, err := strconv.Atoi(req.Credentials.ExternalID)
+		if err != nil {
+			vc.log.Err(err).Msgf("unable to parse external id %+v as integer", req.Credentials.ExternalID)
+			return err
+		}
+
+		if _, err := vc.teslaService.GetVehicle(req.Credentials.AccessToken, teslaID); err != nil {
+			vc.log.Err(err).Msg("unable to retrieve vehicle from Tesla")
+			return err
+		}
+
 		encAccess, err := vc.cipher.Encrypt(req.Credentials.AccessToken)
 		if err != nil {
 			return opaqueInternalError
@@ -398,12 +414,20 @@ func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx con
 		udi.RefreshToken = null.StringFrom(encRefresh)
 
 		meta := services.UserDeviceAPIIntegrationsMetadata{
-			// EnableTeslaLock: ,
+			Commands: &services.UserDeviceAPIIntegrationsMetadataCommands{
+				Enabled: []string{"doors/unlock", "doors/lock", "trunk/open", "frunk/open", "charge/limit"},
+			},
 		}
 
-		mb, _ := json.Marshal(meta)
-		udi.Metadata = null.JSONFrom(mb)
+		mb, err := json.Marshal(meta)
+		if err != nil {
+			return err
+		}
+
 		udi.ExternalID = null.StringFrom(req.Credentials.ExternalID)
+		udi.AccessExpiresAt = null.TimeFrom(time.Now().Add(time.Duration(req.Credentials.ExpiresIn) * time.Second))
+		udi.TaskID = null.StringFrom(ksuid.New().String())
+		udi.Metadata = null.JSONFrom(mb)
 	default:
 		return nil
 	}
