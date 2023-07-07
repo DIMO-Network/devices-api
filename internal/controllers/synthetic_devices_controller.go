@@ -244,7 +244,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid access token")
 	}
 
-	if integration.Vendor == constants.SmartCarVendor && req.Credentials.AuthorizationCode == "" {
+	if integration.Vendor == constants.SmartCarVendor && req.Credentials.Code == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "please provide authorization code")
 	}
 
