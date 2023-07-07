@@ -232,26 +232,33 @@ func GetActualDeviceDefinitionMetadataValues(dd *grpc.GetDeviceDefinitionItemRes
 	}
 }
 
-// ECRecoverSol used to verify message signature
-// accepts message and signature hash and returns address of signer
-func ECRecoverSol(hash []byte, sig []byte) (common.Address, error) {
-	if len(sig) != 65 {
-		return common.Address{}, fmt.Errorf("signature has invalid length %d", len(sig))
+var zeroAddr common.Address
+
+const sigLen = 65
+
+// Ecrecover mimics the ecrecover opcode, returning the address that signed
+// hash with signature. sig must have length 65 and the last byte, the v value,
+// must be 27 or 28.
+func Ecrecover(hash common.Hash, sig []byte) (common.Address, error) {
+	if len(sig) != sigLen {
+		return zeroAddr, fmt.Errorf("signature has invalid length %d", len(sig))
 	}
 
-	fixedSig := make([]byte, len(sig))
+	// Defensive copy: the caller shouldn't have to worry about us modifying
+	// the signature. We adjust because crypto.Ecrecover demands 0 <= v <= 4.
+	fixedSig := make([]byte, sigLen)
 	copy(fixedSig, sig)
 	fixedSig[64] -= 27
 
-	uncPubKey, err := crypto.Ecrecover(hash, fixedSig)
+	rawPk, err := crypto.Ecrecover(hash.Bytes(), fixedSig)
 	if err != nil {
-		return common.Address{}, err
+		return zeroAddr, err
 	}
 
-	pubKey, err := crypto.UnmarshalPubkey(uncPubKey)
+	pk, err := crypto.UnmarshalPubkey(rawPk)
 	if err != nil {
-		return common.Address{}, err
+		return zeroAddr, err
 	}
 
-	return crypto.PubkeyToAddress(*pubKey), nil
+	return crypto.PubkeyToAddress(*pk), nil
 }

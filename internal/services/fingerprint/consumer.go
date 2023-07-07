@@ -100,7 +100,7 @@ func (c *Consumer) Handle(ctx context.Context, event *DeviceFingerprintCloudEven
 
 	signature := common.FromHex(event.Signature)
 	hash := crypto.Keccak256Hash(data)
-	if recAddr, err := helpers.ECRecoverSol(hash.Bytes(), signature); err != nil {
+	if recAddr, err := helpers.Ecrecover(hash, signature); err != nil {
 		return err
 	} else if recAddr != addr {
 		err := errors.New("dervied address does not match expected")

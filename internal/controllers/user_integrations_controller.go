@@ -972,7 +972,7 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Signature was not 65 bytes long.")
 	}
 
-	if recAddr, err := helpers.ECRecoverSol(hash.Bytes(), vehicleOwnerSig); err != nil {
+	if recAddr, err := helpers.Ecrecover(hash, vehicleOwnerSig); err != nil {
 		return err
 	} else if recAddr != userAddr {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature.")
@@ -986,7 +986,7 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Device signature required but only %d bytes long.", len(aftermarketDeviceSig)))
 		}
 
-		if recAddr, err := helpers.ECRecoverSol(hash.Bytes(), aftermarketDeviceSig); err != nil {
+		if recAddr, err := helpers.Ecrecover(hash, aftermarketDeviceSig); err != nil {
 			return err
 		} else if recAddr != common.BytesToAddress(autoPiUnit.EthereumAddress.Bytes) {
 			return fiber.NewError(fiber.StatusBadRequest, "Incorrect aftermarket device signature.")
@@ -1187,7 +1187,7 @@ func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 
 	sigBytes := pairReq.Signature
 
-	recAddr, err := helpers.ECRecoverSol(hash[:], sigBytes)
+	recAddr, err := helpers.Ecrecover(hash, sigBytes)
 	if err != nil {
 		return err
 	}
@@ -1476,7 +1476,7 @@ func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("User signature has invalid length %d.", len(userSig)))
 	}
 
-	recUserAddr, err := helpers.ECRecoverSol(hash[:], userSig)
+	recUserAddr, err := helpers.Ecrecover(hash, userSig)
 	if err != nil {
 		return err
 	}
@@ -1492,7 +1492,7 @@ func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Device signature has invalid length %d.", len(amSig)))
 	}
 
-	recAmAddr, err := helpers.ECRecoverSol(hash[:], amSig)
+	recAmAddr, err := helpers.Ecrecover(hash, amSig)
 	if err != nil {
 		return err
 	}
