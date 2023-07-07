@@ -228,6 +228,7 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 
 			var event Event
 			err = json.Unmarshal([]byte(msg), &event)
+			require.NoError(t, err)
 			err = s.cons.Handle(s.ctx, &event)
 
 			if c.ReturnsError {
@@ -272,6 +273,7 @@ func (s *ConsumerTestSuite) TestSignatureValidation() {
 	for _, c := range cases {
 		var event Event
 		err := json.Unmarshal([]byte(c.Data), &event)
+		require.NoError(s.T(), err)
 		data, err := json.Marshal(event.Data)
 		require.NoError(s.T(), err)
 
@@ -297,6 +299,7 @@ func (s *ConsumerTestSuite) TestInvalidSignature() {
 
 	var event Event
 	err := json.Unmarshal([]byte(msg), &event)
+	require.NoError(s.T(), err)
 	data, err := json.Marshal(event.Data)
 	require.NoError(s.T(), err)
 
