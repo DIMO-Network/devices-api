@@ -61,7 +61,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 	}
 }
 
-func RunConsumer(ctx context.Context, settings *config.Settings, logger *zerolog.Logger, i *issuer.Issuer) error {
+func RunConsumer(ctx context.Context, settings *config.Settings, logger *zerolog.Logger, i *issuer.Issuer, dbs db.Store) error {
 	kc := sarama.NewConfig()
 	kc.Version = sarama.V3_3_1_0
 
@@ -70,7 +70,7 @@ func RunConsumer(ctx context.Context, settings *config.Settings, logger *zerolog
 		return err
 	}
 
-	c := &Consumer{logger: logger, iss: i}
+	c := &Consumer{logger: logger, iss: i, DBS: dbs}
 
 	logger.Info().Msg("Starting transaction request status listener.")
 
@@ -139,6 +139,10 @@ func (c *Consumer) Handle(ctx context.Context, event *DeviceFingerprintCloudEven
 	}
 
 	_, err = c.iss.VIN(observedVIN, vn.TokenID.Int(nil))
+	if err == nil {
+		c.logger.Info().Msgf("Issued VIN credential for vehicle %d using device %s.", vn.TokenID, addr)
+	}
+
 	return err
 }
 

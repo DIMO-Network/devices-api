@@ -339,7 +339,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 			logger.Fatal().Err(err).Msg("Failed to create issuer.")
 		}
 
-		if err := fingerprint.RunConsumer(ctx, settings, &logger, iss); err != nil {
+		if err := fingerprint.RunConsumer(ctx, settings, &logger, iss, pdb); err != nil {
 			logger.Fatal().Err(err).Msg("Failed to create vin credentialer listener")
 		}
 
