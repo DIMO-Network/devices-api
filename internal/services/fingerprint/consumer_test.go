@@ -141,27 +141,16 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 		ClaimID:       null.StringFrom(claimID),
 	}
 
-	tm, _ := time.Parse(time.RFC1123, "2023-06-30T14:51:42.63507585Z")
-	msg := DeviceFingerprintCloudEvent{
-		CloudEventHeaders: CloudEventHeaders{
-			ID:          "2RvhwjUbtoePjmXN7q9qfjLQgwP",
-			Subject:     "0x448cF8Fd88AD914e3585401241BC434FbEA94bbb",
-			Source:      "aftermarket/device/fingerprint",
-			SpecVersion: "1.0",
-			Time:        tm,
-			Type:        "zone.dimo.aftermarket.device.fingerprint",
-			Signature:   "7c31e54ddcffc2a548ccaf10ed64b7e4bdd239bbaa3e5f6dba41d3e4051d930b7fbdf184724c2fb8d3b2ac8ac82662d2ed74e881dd01c09c4b2a9b4e62ede5db1b",
-		},
-		Data: Data{
-			CommonData: CommonData{
-				BatteryVoltage: 13.49,
-				Timestamp:      1688136702634,
-				RpiUptimeSecs:  39,
-			},
-			Vin:      "W1N2539531F907299",
-			Protocol: "7",
-		},
-	}
+	msg :=
+		`{
+	"data": {"rpiUptimeSecs":39,"batteryVoltage":13.49,"timestamp":1688136702634,"vin":"W1N2539531F907299","protocol":"7"},
+	"id": "2RvhwjUbtoePjmXN7q9qfjLQgwP",
+	"signature": "7c31e54ddcffc2a548ccaf10ed64b7e4bdd239bbaa3e5f6dba41d3e4051d930b7fbdf184724c2fb8d3b2ac8ac82662d2ed74e881dd01c09c4b2a9b4e62ede5db1b",
+	"source": "aftermarket/device/fingerprint",
+	"specversion": "1.0",
+	"subject": "0x448cF8Fd88AD914e3585401241BC434FbEA94bbb",
+	"type": "zone.dimo.aftermarket.device.fingerprint"
+}`
 
 	cases := []struct {
 		Name              string
@@ -237,7 +226,9 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 			err = c.AftermarketDevice.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
 			require.NoError(t, err)
 
-			err = s.cons.Handle(s.ctx, &msg)
+			var event Event
+			err = json.Unmarshal([]byte(msg), &event)
+			err = s.cons.Handle(s.ctx, &event)
 
 			if c.ReturnsError {
 				assert.ErrorContains(t, err, c.ExpectedResponse)
@@ -252,65 +243,40 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 func (s *ConsumerTestSuite) TestSignatureValidation() {
 
 	cases := []struct {
-		Data      DeviceFingerprintCloudEvent
-		Signature string
-		Time      string
+		Data string
 	}{
 		{
-			Data: DeviceFingerprintCloudEvent{
-				CloudEventHeaders: CloudEventHeaders{
-					ID:          "2RvhwjUbtoePjmXN7q9qfjLQgwP",
-					Subject:     "0x448cF8Fd88AD914e3585401241BC434FbEA94bbb",
-					Source:      "aftermarket/device/fingerprint",
-					SpecVersion: "1.0",
-					Type:        "zone.dimo.aftermarket.device.fingerprint",
-				},
-				Data: Data{
-					CommonData: CommonData{
-						BatteryVoltage: 13.49,
-						Timestamp:      1688136702634,
-						RpiUptimeSecs:  39,
-					},
-					Vin:      "W1N2539531F907299",
-					Protocol: "7",
-				},
-			},
-			Signature: "7c31e54ddcffc2a548ccaf10ed64b7e4bdd239bbaa3e5f6dba41d3e4051d930b7fbdf184724c2fb8d3b2ac8ac82662d2ed74e881dd01c09c4b2a9b4e62ede5db1b",
-			Time:      "2023-06-30T14:51:42.63507585Z",
+			Data: `{
+				"data": {"rpiUptimeSecs":39,"batteryVoltage":13.49,"timestamp":1688136702634,"vin":"W1N2539531F907299","protocol":"7"},
+				"id": "2RvhwjUbtoePjmXN7q9qfjLQgwP",
+				"signature": "7c31e54ddcffc2a548ccaf10ed64b7e4bdd239bbaa3e5f6dba41d3e4051d930b7fbdf184724c2fb8d3b2ac8ac82662d2ed74e881dd01c09c4b2a9b4e62ede5db1b",
+				"source": "aftermarket/device/fingerprint",
+				"specversion": "1.0",
+				"subject": "0x448cF8Fd88AD914e3585401241BC434FbEA94bbb",
+				"type": "zone.dimo.aftermarket.device.fingerprint"
+			}`,
 		},
 		{
-			Data: DeviceFingerprintCloudEvent{
-				CloudEventHeaders: CloudEventHeaders{
-					ID:          "2S9zmhIVydI2mjPjqxOFiV8WYwN",
-					Subject:     "0xa3CF0f4670F557D1F2f5d38F35645363c5c06f8d",
-					Source:      "aftermarket/device/fingerprint",
-					SpecVersion: "1.0",
-					Type:        "zone.dimo.aftermarket.device.fingerprint",
-				},
-				Data: Data{
-					CommonData: CommonData{
-						BatteryVoltage: 13.43,
-						Timestamp:      1688573744829,
-						RpiUptimeSecs:  37,
-					},
-					Vin:      "4T1BF1FK5EU372595",
-					Protocol: "6",
-				},
-			},
-			Signature: "e6d4fb3b81c2c533d9aaa9eb6131f2e0492e7e83fae3462fe64604d45a6eafa178193b47a6621e1ce7c29a5bb95adf294bcb5bae41e1244a9021c7f6c4a071621b",
-			Time:      "2023-07-05T16:15:44.829649462Z",
+			Data: `{
+				"data": {"rpiUptimeSecs":36,"batteryVoltage":13.73,"timestamp":1688760445189,"vin":"LRBFXCSA5KD124854","protocol":"6"},
+				"id": "2SG6Cu2NWOcu7LvhadPtmDGb65S",
+				"signature": "5fb985f758c6224ab45630d055c7aca163329b88accfb8fd76a0dbb13b2ebcfe3c5bd8b801851f683f7a288c174a11ed8fc2631d95929c3b3cc85c75fb10ea001c",
+				"source": "aftermarket/device/fingerprint",
+				"specversion": "1.0",
+				"subject": "0x06fF8E7A4A159EA388da7c133DC5F79727868d83",
+				"type": "zone.dimo.aftermarket.device.fingerprint"
+			}`,
 		},
 	}
 
 	for _, c := range cases {
-
-		tm, _ := time.Parse(time.RFC1123, c.Time)
-		c.Data.CloudEventHeaders.Time = tm
-		data, err := json.Marshal(c.Data.Data)
+		var event Event
+		err := json.Unmarshal([]byte(c.Data), &event)
+		data, err := json.Marshal(event.Data)
 		require.NoError(s.T(), err)
 
-		signature := common.FromHex(c.Signature)
-		addr := common.HexToAddress(c.Data.CloudEventHeaders.Subject)
+		signature := common.FromHex(event.Signature)
+		addr := common.HexToAddress(event.Subject)
 		hash := crypto.Keccak256Hash(data)
 		recAddr, err := helpers.Ecrecover(hash, signature)
 		s.NoError(err)
@@ -319,35 +285,23 @@ func (s *ConsumerTestSuite) TestSignatureValidation() {
 }
 
 func (s *ConsumerTestSuite) TestInvalidSignature() {
+	msg := `{
+		"data": {"rpiUptimeSecs":36,"batteryVoltage":13.73,"timestamp":1688760445189,"vin":"LRBFXCSA5KD124854","protocol":"6"},
+		"id": "2SG6Cu2NWOcu7LvhadPtmDGb65S",
+		"signature": "5fb985f758c6224ab45630d055c7aca163329b88accfb8fd76a0dbb13b2ebcfe3c5bd8b801851f683f7a288c174a11ed8fc2631d95929c3b3cc85c75fb10ea001a",
+		"source": "aftermarket/device/fingerprint",
+		"specversion": "1.0",
+		"subject": "0x06fF8E7A4A159EA388da7c133DC5F79727868d83",
+		"type": "zone.dimo.aftermarket.device.fingerprint"
+	}`
 
-	tm, _ := time.Parse(time.RFC1123, "2023-06-30T14:51:42.63507585Z")
-
-	msg := DeviceFingerprintCloudEvent{
-		CloudEventHeaders: CloudEventHeaders{
-			ID:          "2RvhwjUbtoePjmXN7q9qfjLQgwP",
-			Subject:     "0x448cF8Fd88AD914e3585401241BC434FbEA94bbb",
-			Source:      "aftermarket/device/fingerprint",
-			SpecVersion: "1.0",
-			Time:        tm,
-			Type:        "zone.dimo.aftermarket.device.fingerprint",
-		},
-		Data: Data{
-			CommonData: CommonData{
-				BatteryVoltage: 13.49,
-				Timestamp:      1688136702634,
-				RpiUptimeSecs:  39,
-			},
-			Vin:      "W1N2539531F907299",
-			Protocol: "7",
-		},
-	}
-
-	sig := "7c31e54ddcffc2a548ccaf10ed64b7e4bdd239bbaa3e5f6dba41d3e4051d930b7fbdf184724c2fb8d3b2ac8ac82662d2ed74e881dd01c09c4b2a9b4e62ede5db1a"
-	data, err := json.Marshal(msg.Data)
+	var event Event
+	err := json.Unmarshal([]byte(msg), &event)
+	data, err := json.Marshal(event.Data)
 	require.NoError(s.T(), err)
 
-	signature := common.FromHex(sig)
-	addr := common.HexToAddress(msg.CloudEventHeaders.Subject)
+	signature := common.FromHex(event.Signature)
+	addr := common.HexToAddress(event.Subject)
 	hash := crypto.Keccak256Hash(data)
 	recAddr, err := helpers.Ecrecover(hash, signature)
 	s.Error(err)
