@@ -318,10 +318,10 @@ func mergeSignals(currentData map[string]interface{}, newData map[string]interfa
 
 var basicVINExp = regexp.MustCompile(`^[A-Z0-9]{17}$`)
 
-// extractVIN extracts the vin field from a status update's data object.
+// ExtractVIN extracts the vin field from a status update's data object.
 // If this field is not present or fails basic validation, an error is returned.
 // The function does clean up the input slightly.
-func extractVIN(data []byte) (string, error) {
+func ExtractVIN(data []byte) (string, error) {
 	partialData := new(struct {
 		VIN *string `json:"vin"`
 	})
@@ -362,7 +362,7 @@ func (i *DeviceStatusIngestService) vinFraudMonitor(ctx goka.Context, event *Dev
 
 	storedVIN := device.VinIdentifier.String
 
-	observedVIN, err := extractVIN(event.Data)
+	observedVIN, err := ExtractVIN(event.Data)
 	if err != nil {
 		// This could get noisy. Even for vehicles that do transmit VIN, it may not be in every record.
 		i.log.Debug().Err(err).Str("userDeviceId", event.Subject).Msg("Couldn't extract a valid VIN from the status update.")

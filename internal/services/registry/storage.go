@@ -9,7 +9,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
-	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
@@ -31,7 +30,6 @@ type proc struct {
 	DB              func() *db.ReaderWriter
 	Logger          *zerolog.Logger
 	ap              *autopi.Integration
-	issuer          *issuer.Issuer
 	settings        *config.Settings
 	smartcarTaskSvc services.SmartcarTaskService
 	deviceDefSvc    services.DeviceDefinitionService
@@ -54,6 +52,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		qm.Load(models.MetaTransactionRequestRels.PairRequestAftermarketDevice),
 		qm.Load(models.MetaTransactionRequestRels.UnpairRequestAftermarketDevice),
 		qm.Load(qm.Rels(models.MetaTransactionRequestRels.MintRequestSyntheticDevice, models.SyntheticDeviceRels.VehicleToken)),
+		qm.Load(models.MetaTransactionRequestRels.BurnRequestSyntheticDevice),
 	).One(context.Background(), p.DB().Reader)
 	if err != nil {
 		return err
@@ -76,6 +75,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	devicePairedEvent := p.ABI.Events["AftermarketDevicePaired"]
 	deviceUnpairedEvent := p.ABI.Events["AftermarketDeviceUnpaired"]
 	syntheticDeviceMintedEvent := p.ABI.Events["SyntheticDeviceNodeMinted"]
+	sdBurnEvent := p.ABI.Events["SyntheticDeviceNodeBurned"]
 
 	switch {
 	case mtr.R.MintRequestVehicleNFT != nil:
@@ -95,19 +95,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				}
 
 				logger.Info().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msg("Vehicle minted.")
-
-				if !p.settings.IsProduction() {
-					if mtr.R.MintRequestVehicleNFT.Vin == "" {
-						logger.Error().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msgf("Minted vehicle with blank VIN, no credential issued.")
-						return nil
-					}
-					vcID, err := p.issuer.VIN(mtr.R.MintRequestVehicleNFT.Vin, out.TokenId)
-					if err != nil {
-						return err
-					}
-
-					logger.Info().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msgf("Issued verifiable credential %s", vcID)
-				}
 			}
 		}
 		// Other soon.
@@ -218,6 +205,36 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				}
 			}
 		}
+	case mtr.R.BurnRequestSyntheticDevice != nil:
+		for _, l1 := range data.Transaction.Logs {
+			if l1.Topics[0] == sdBurnEvent.ID {
+				out := new(contracts.RegistrySyntheticDeviceNodeBurned)
+				err := p.parseLog(out, sdBurnEvent, l1)
+				if err != nil {
+					return err
+				}
+
+				if _, err := mtr.R.BurnRequestSyntheticDevice.Delete(ctx, p.DB().Writer); err != nil {
+					return err
+				}
+
+				v, err := models.VehicleNFTS(models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(mtr.R.BurnRequestSyntheticDevice.VehicleTokenID.Big))).One(ctx, p.DB().Reader)
+				if err != nil {
+					return err
+				}
+
+				udai, err := models.FindUserDeviceAPIIntegration(ctx, p.DB().Reader, v.UserDeviceID.String, "22N2xaPOq2WW2gAHBHd0Ikn4Zob")
+				if err != nil {
+					if err == sql.ErrNoRows {
+						return nil
+					}
+					return err
+				}
+
+				_, err = udai.Delete(ctx, p.DB().Writer)
+				return err
+			}
+		}
 	}
 
 	return nil
@@ -244,7 +261,6 @@ func NewProcessor(
 	db func() *db.ReaderWriter,
 	logger *zerolog.Logger,
 	ap *autopi.Integration,
-	issuer *issuer.Issuer,
 	settings *config.Settings,
 	smartcarTaskSvc services.SmartcarTaskService,
 	deviceDefSvc services.DeviceDefinitionService,
@@ -259,7 +275,6 @@ func NewProcessor(
 		DB:              db,
 		Logger:          logger,
 		ap:              ap,
-		issuer:          issuer,
 		settings:        settings,
 		smartcarTaskSvc: smartcarTaskSvc,
 		deviceDefSvc:    deviceDefSvc,

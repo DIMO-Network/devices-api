@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -30,6 +31,7 @@ type SyntheticDevice struct {
 	WalletChildNumber  int               `boil:"wallet_child_number" json:"wallet_child_number" toml:"wallet_child_number" yaml:"wallet_child_number"`
 	WalletAddress      []byte            `boil:"wallet_address" json:"wallet_address" toml:"wallet_address" yaml:"wallet_address"`
 	TokenID            types.NullDecimal `boil:"token_id" json:"token_id,omitempty" toml:"token_id" yaml:"token_id,omitempty"`
+	BurnRequestID      null.String       `boil:"burn_request_id" json:"burn_request_id,omitempty" toml:"burn_request_id" yaml:"burn_request_id,omitempty"`
 
 	R *syntheticDeviceR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L syntheticDeviceL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -42,6 +44,7 @@ var SyntheticDeviceColumns = struct {
 	WalletChildNumber  string
 	WalletAddress      string
 	TokenID            string
+	BurnRequestID      string
 }{
 	VehicleTokenID:     "vehicle_token_id",
 	IntegrationTokenID: "integration_token_id",
@@ -49,6 +52,7 @@ var SyntheticDeviceColumns = struct {
 	WalletChildNumber:  "wallet_child_number",
 	WalletAddress:      "wallet_address",
 	TokenID:            "token_id",
+	BurnRequestID:      "burn_request_id",
 }
 
 var SyntheticDeviceTableColumns = struct {
@@ -58,6 +62,7 @@ var SyntheticDeviceTableColumns = struct {
 	WalletChildNumber  string
 	WalletAddress      string
 	TokenID            string
+	BurnRequestID      string
 }{
 	VehicleTokenID:     "synthetic_devices.vehicle_token_id",
 	IntegrationTokenID: "synthetic_devices.integration_token_id",
@@ -65,6 +70,7 @@ var SyntheticDeviceTableColumns = struct {
 	WalletChildNumber:  "synthetic_devices.wallet_child_number",
 	WalletAddress:      "synthetic_devices.wallet_address",
 	TokenID:            "synthetic_devices.token_id",
+	BurnRequestID:      "synthetic_devices.burn_request_id",
 }
 
 // Generated where
@@ -99,6 +105,7 @@ var SyntheticDeviceWhere = struct {
 	WalletChildNumber  whereHelperint
 	WalletAddress      whereHelper__byte
 	TokenID            whereHelpertypes_NullDecimal
+	BurnRequestID      whereHelpernull_String
 }{
 	VehicleTokenID:     whereHelpertypes_Decimal{field: "\"devices_api\".\"synthetic_devices\".\"vehicle_token_id\""},
 	IntegrationTokenID: whereHelpertypes_Decimal{field: "\"devices_api\".\"synthetic_devices\".\"integration_token_id\""},
@@ -106,21 +113,25 @@ var SyntheticDeviceWhere = struct {
 	WalletChildNumber:  whereHelperint{field: "\"devices_api\".\"synthetic_devices\".\"wallet_child_number\""},
 	WalletAddress:      whereHelper__byte{field: "\"devices_api\".\"synthetic_devices\".\"wallet_address\""},
 	TokenID:            whereHelpertypes_NullDecimal{field: "\"devices_api\".\"synthetic_devices\".\"token_id\""},
+	BurnRequestID:      whereHelpernull_String{field: "\"devices_api\".\"synthetic_devices\".\"burn_request_id\""},
 }
 
 // SyntheticDeviceRels is where relationship names are stored.
 var SyntheticDeviceRels = struct {
 	MintRequest  string
 	VehicleToken string
+	BurnRequest  string
 }{
 	MintRequest:  "MintRequest",
 	VehicleToken: "VehicleToken",
+	BurnRequest:  "BurnRequest",
 }
 
 // syntheticDeviceR is where relationships are stored.
 type syntheticDeviceR struct {
 	MintRequest  *MetaTransactionRequest `boil:"MintRequest" json:"MintRequest" toml:"MintRequest" yaml:"MintRequest"`
 	VehicleToken *VehicleNFT             `boil:"VehicleToken" json:"VehicleToken" toml:"VehicleToken" yaml:"VehicleToken"`
+	BurnRequest  *MetaTransactionRequest `boil:"BurnRequest" json:"BurnRequest" toml:"BurnRequest" yaml:"BurnRequest"`
 }
 
 // NewStruct creates a new relationship struct
@@ -142,13 +153,20 @@ func (r *syntheticDeviceR) GetVehicleToken() *VehicleNFT {
 	return r.VehicleToken
 }
 
+func (r *syntheticDeviceR) GetBurnRequest() *MetaTransactionRequest {
+	if r == nil {
+		return nil
+	}
+	return r.BurnRequest
+}
+
 // syntheticDeviceL is where Load methods for each relationship are stored.
 type syntheticDeviceL struct{}
 
 var (
-	syntheticDeviceAllColumns            = []string{"vehicle_token_id", "integration_token_id", "mint_request_id", "wallet_child_number", "wallet_address", "token_id"}
+	syntheticDeviceAllColumns            = []string{"vehicle_token_id", "integration_token_id", "mint_request_id", "wallet_child_number", "wallet_address", "token_id", "burn_request_id"}
 	syntheticDeviceColumnsWithoutDefault = []string{"vehicle_token_id", "integration_token_id", "mint_request_id", "wallet_child_number", "wallet_address"}
-	syntheticDeviceColumnsWithDefault    = []string{"token_id"}
+	syntheticDeviceColumnsWithDefault    = []string{"token_id", "burn_request_id"}
 	syntheticDevicePrimaryKeyColumns     = []string{"vehicle_token_id", "integration_token_id"}
 	syntheticDeviceGeneratedColumns      = []string{}
 )
@@ -453,6 +471,17 @@ func (o *SyntheticDevice) VehicleToken(mods ...qm.QueryMod) vehicleNFTQuery {
 	return VehicleNFTS(queryMods...)
 }
 
+// BurnRequest pointed to by the foreign key.
+func (o *SyntheticDevice) BurnRequest(mods ...qm.QueryMod) metaTransactionRequestQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.BurnRequestID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	return MetaTransactionRequests(queryMods...)
+}
+
 // LoadMintRequest allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (syntheticDeviceL) LoadMintRequest(ctx context.Context, e boil.ContextExecutor, singular bool, maybeSyntheticDevice interface{}, mods queries.Applicator) error {
@@ -697,6 +726,130 @@ func (syntheticDeviceL) LoadVehicleToken(ctx context.Context, e boil.ContextExec
 	return nil
 }
 
+// LoadBurnRequest allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (syntheticDeviceL) LoadBurnRequest(ctx context.Context, e boil.ContextExecutor, singular bool, maybeSyntheticDevice interface{}, mods queries.Applicator) error {
+	var slice []*SyntheticDevice
+	var object *SyntheticDevice
+
+	if singular {
+		var ok bool
+		object, ok = maybeSyntheticDevice.(*SyntheticDevice)
+		if !ok {
+			object = new(SyntheticDevice)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeSyntheticDevice)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeSyntheticDevice))
+			}
+		}
+	} else {
+		s, ok := maybeSyntheticDevice.(*[]*SyntheticDevice)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeSyntheticDevice)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeSyntheticDevice))
+			}
+		}
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &syntheticDeviceR{}
+		}
+		if !queries.IsNil(object.BurnRequestID) {
+			args = append(args, object.BurnRequestID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &syntheticDeviceR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.BurnRequestID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.BurnRequestID) {
+				args = append(args, obj.BurnRequestID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`devices_api.meta_transaction_requests`),
+		qm.WhereIn(`devices_api.meta_transaction_requests.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load MetaTransactionRequest")
+	}
+
+	var resultSlice []*MetaTransactionRequest
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice MetaTransactionRequest")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for meta_transaction_requests")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for meta_transaction_requests")
+	}
+
+	if len(metaTransactionRequestAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.BurnRequest = foreign
+		if foreign.R == nil {
+			foreign.R = &metaTransactionRequestR{}
+		}
+		foreign.R.BurnRequestSyntheticDevice = object
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.BurnRequestID, foreign.ID) {
+				local.R.BurnRequest = foreign
+				if foreign.R == nil {
+					foreign.R = &metaTransactionRequestR{}
+				}
+				foreign.R.BurnRequestSyntheticDevice = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetMintRequest of the syntheticDevice to the related item.
 // Sets o.R.MintRequest to related.
 // Adds o to related.R.MintRequestSyntheticDevice.
@@ -788,6 +941,75 @@ func (o *SyntheticDevice) SetVehicleToken(ctx context.Context, exec boil.Context
 		related.R.VehicleTokenSyntheticDevices = append(related.R.VehicleTokenSyntheticDevices, o)
 	}
 
+	return nil
+}
+
+// SetBurnRequest of the syntheticDevice to the related item.
+// Sets o.R.BurnRequest to related.
+// Adds o to related.R.BurnRequestSyntheticDevice.
+func (o *SyntheticDevice) SetBurnRequest(ctx context.Context, exec boil.ContextExecutor, insert bool, related *MetaTransactionRequest) error {
+	var err error
+	if insert {
+		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"devices_api\".\"synthetic_devices\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"burn_request_id"}),
+		strmangle.WhereClause("\"", "\"", 2, syntheticDevicePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.VehicleTokenID, o.IntegrationTokenID}
+
+	if boil.IsDebug(ctx) {
+		writer := boil.DebugWriterFrom(ctx)
+		fmt.Fprintln(writer, updateQuery)
+		fmt.Fprintln(writer, values)
+	}
+	if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.BurnRequestID, related.ID)
+	if o.R == nil {
+		o.R = &syntheticDeviceR{
+			BurnRequest: related,
+		}
+	} else {
+		o.R.BurnRequest = related
+	}
+
+	if related.R == nil {
+		related.R = &metaTransactionRequestR{
+			BurnRequestSyntheticDevice: o,
+		}
+	} else {
+		related.R.BurnRequestSyntheticDevice = o
+	}
+
+	return nil
+}
+
+// RemoveBurnRequest relationship.
+// Sets o.R.BurnRequest to nil.
+// Removes o from all passed in related items' relationships struct.
+func (o *SyntheticDevice) RemoveBurnRequest(ctx context.Context, exec boil.ContextExecutor, related *MetaTransactionRequest) error {
+	var err error
+
+	queries.SetScanner(&o.BurnRequestID, nil)
+	if _, err = o.Update(ctx, exec, boil.Whitelist("burn_request_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.BurnRequest = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	related.R.BurnRequestSyntheticDevice = nil
 	return nil
 }
 

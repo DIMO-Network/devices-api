@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
 	"github.com/piprate/json-gold/ld"
+	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
@@ -44,9 +45,10 @@ type Issuer struct {
 	VerificationMethod string
 	LDProcessor        *ld.JsonLdProcessor
 	LDOptions          *ld.JsonLdOptions
+	log                *zerolog.Logger
 }
 
-func New(c Config) (*Issuer, error) {
+func New(c Config, log *zerolog.Logger) (*Issuer, error) {
 	privateKey, err := crypto.ToECDSA(c.PrivateKey)
 	if err != nil {
 		return nil, err
@@ -71,13 +73,14 @@ func New(c Config) (*Issuer, error) {
 		VerificationMethod: verificationMethod,
 		LDProcessor:        ldProc,
 		LDOptions:          options,
+		log:                log,
 	}, nil
 }
 
 func (i *Issuer) VIN(vin string, tokenID *big.Int) (id string, err error) {
 	id = uuid.New().String()
 	issuanceDate := time.Now().UTC().Format(time.RFC3339)
-	expirationDate := time.Now().Add(time.Hour * 24 * 7).UTC().Format(time.RFC3339)
+	expirationDate := time.Now().Add(time.Hour * 24 * 7).UTC()
 
 	credential := map[string]any{
 		"@context": []any{
@@ -88,7 +91,7 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int) (id string, err error) {
 		"type":           []any{"VerifiableCredential", "Vehicle"},
 		"issuer":         i.IssuerDID,
 		"issuanceDate":   issuanceDate,
-		"expirationDate": expirationDate,
+		"expirationDate": expirationDate.Format(time.RFC3339),
 		"credentialSubject": map[string]any{
 			"id":                          fmt.Sprintf("did:nft:%d_erc721:%s_%d", i.ChainID, hexutil.Encode(i.VehicleNFTAddress.Bytes()), tokenID),
 			"vehicleIdentificationNumber": vin,
@@ -160,8 +163,9 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int) (id string, err error) {
 	defer tx.Rollback() //nolint
 
 	vc := models.VerifiableCredential{
-		ClaimID:    id,
-		Credential: signedBytes,
+		ClaimID:        id,
+		Credential:     signedBytes,
+		ExpirationDate: expirationDate,
 	}
 
 	if err := vc.Insert(context.Background(), i.DBS.DBS().Writer, boil.Infer()); err != nil {

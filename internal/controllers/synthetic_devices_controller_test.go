@@ -151,7 +151,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 
 	body, _ := io.ReadAll(response.Body)
 
-	rawExpectedResp := s.sdc.getEIP712(int64(1), int64(57))
+	rawExpectedResp := s.sdc.getEIP712Mint(int64(1), int64(57))
 	expectedRespJSON, err := json.Marshal(rawExpectedResp)
 	assert.NoError(s.T(), err)
 
@@ -266,7 +266,7 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceSmartcar()
 
 	req := fmt.Sprintf(`{
 		"credentials": {
-			"authorizationCode": "a4d04dad-2b65-4778-94b7-f04996e89907"
+			"code": "a4d04dad-2b65-4778-94b7-f04996e89907"
 		},
 		"ownerSignature": "%s"
 	}`, signature)
