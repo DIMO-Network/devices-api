@@ -141,13 +141,14 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 		ClaimID:       null.StringFrom(claimID),
 	}
 
+	tm, _ := time.Parse(time.RFC1123, "2023-06-30T14:51:42.63507585Z")
 	msg := DeviceFingerprintCloudEvent{
 		CloudEventHeaders: CloudEventHeaders{
 			ID:          "2RvhwjUbtoePjmXN7q9qfjLQgwP",
 			Subject:     "0x448cF8Fd88AD914e3585401241BC434FbEA94bbb",
 			Source:      "aftermarket/device/fingerprint",
 			SpecVersion: "1.0",
-			Time:        "2023-06-30T14:51:42.63507585Z",
+			Time:        tm,
 			Type:        "zone.dimo.aftermarket.device.fingerprint",
 			Signature:   "7c31e54ddcffc2a548ccaf10ed64b7e4bdd239bbaa3e5f6dba41d3e4051d930b7fbdf184724c2fb8d3b2ac8ac82662d2ed74e881dd01c09c4b2a9b4e62ede5db1b",
 		},
@@ -253,6 +254,7 @@ func (s *ConsumerTestSuite) TestSignatureValidation() {
 	cases := []struct {
 		Data      DeviceFingerprintCloudEvent
 		Signature string
+		Time      string
 	}{
 		{
 			Data: DeviceFingerprintCloudEvent{
@@ -261,7 +263,6 @@ func (s *ConsumerTestSuite) TestSignatureValidation() {
 					Subject:     "0x448cF8Fd88AD914e3585401241BC434FbEA94bbb",
 					Source:      "aftermarket/device/fingerprint",
 					SpecVersion: "1.0",
-					Time:        "2023-06-30T14:51:42.63507585Z",
 					Type:        "zone.dimo.aftermarket.device.fingerprint",
 				},
 				Data: Data{
@@ -275,6 +276,7 @@ func (s *ConsumerTestSuite) TestSignatureValidation() {
 				},
 			},
 			Signature: "7c31e54ddcffc2a548ccaf10ed64b7e4bdd239bbaa3e5f6dba41d3e4051d930b7fbdf184724c2fb8d3b2ac8ac82662d2ed74e881dd01c09c4b2a9b4e62ede5db1b",
+			Time:      "2023-06-30T14:51:42.63507585Z",
 		},
 		{
 			Data: DeviceFingerprintCloudEvent{
@@ -283,7 +285,6 @@ func (s *ConsumerTestSuite) TestSignatureValidation() {
 					Subject:     "0xa3CF0f4670F557D1F2f5d38F35645363c5c06f8d",
 					Source:      "aftermarket/device/fingerprint",
 					SpecVersion: "1.0",
-					Time:        "2023-07-05T16:15:44.829649462Z",
 					Type:        "zone.dimo.aftermarket.device.fingerprint",
 				},
 				Data: Data{
@@ -297,11 +298,14 @@ func (s *ConsumerTestSuite) TestSignatureValidation() {
 				},
 			},
 			Signature: "e6d4fb3b81c2c533d9aaa9eb6131f2e0492e7e83fae3462fe64604d45a6eafa178193b47a6621e1ce7c29a5bb95adf294bcb5bae41e1244a9021c7f6c4a071621b",
+			Time:      "2023-07-05T16:15:44.829649462Z",
 		},
 	}
 
 	for _, c := range cases {
 
+		tm, _ := time.Parse(time.RFC1123, c.Time)
+		c.Data.CloudEventHeaders.Time = tm
 		data, err := json.Marshal(c.Data.Data)
 		require.NoError(s.T(), err)
 
@@ -316,13 +320,15 @@ func (s *ConsumerTestSuite) TestSignatureValidation() {
 
 func (s *ConsumerTestSuite) TestInvalidSignature() {
 
+	tm, _ := time.Parse(time.RFC1123, "2023-06-30T14:51:42.63507585Z")
+
 	msg := DeviceFingerprintCloudEvent{
 		CloudEventHeaders: CloudEventHeaders{
 			ID:          "2RvhwjUbtoePjmXN7q9qfjLQgwP",
 			Subject:     "0x448cF8Fd88AD914e3585401241BC434FbEA94bbb",
 			Source:      "aftermarket/device/fingerprint",
 			SpecVersion: "1.0",
-			Time:        "2023-06-30T14:51:42.63507585Z",
+			Time:        tm,
 			Type:        "zone.dimo.aftermarket.device.fingerprint",
 		},
 		Data: Data{

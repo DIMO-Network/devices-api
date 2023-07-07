@@ -45,7 +45,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 	for {
 		select {
 		case message := <-claim.Messages():
-			var event Event
+			var event DeviceFingerprintCloudEvent
 			if err := json.Unmarshal(message.Value, &event); err != nil {
 				c.logger.Err(err).Int32("partition", message.Partition).Int64("offset", message.Offset).Msg("Couldn't parse fingerprint event.")
 			} else {
@@ -87,21 +87,26 @@ func RunConsumer(ctx context.Context, settings *config.Settings, logger *zerolog
 	return nil
 }
 
-func (c *Consumer) Handle(ctx context.Context, event *Event) error {
+func (c *Consumer) Handle(ctx context.Context, event *DeviceFingerprintCloudEvent) error {
 	if !common.IsHexAddress(event.Subject) {
 		return fmt.Errorf("subject %q not a valid address", event.Subject)
 	}
 	addr := common.HexToAddress(event.Subject)
 	signature := common.FromHex(event.Signature)
-	hash := crypto.Keccak256Hash(event.Data)
 
+	b, err := json.Marshal(event.Data)
+	if err != nil {
+		return err
+	}
+
+	hash := crypto.Keccak256Hash(b)
 	if recAddr, err := helpers.Ecrecover(hash, signature); err != nil {
 		return fmt.Errorf("failed to recover an address: %w", err)
 	} else if recAddr != addr {
 		return fmt.Errorf("recovered wrong address %s", recAddr)
 	}
 
-	observedVIN, err := services.ExtractVIN(event.Data)
+	observedVIN, err := services.ExtractVIN(b)
 	if err != nil {
 		return fmt.Errorf("couldn't extract VIN: %w", err)
 	}
@@ -150,4 +155,35 @@ func GetWeekNum(t time.Time) int {
 
 func NumToWeekEnd(n int) time.Time {
 	return startTime.Add(time.Duration(n+1) * weekDuration)
+}
+
+// CloudEventHeaders contains the fields common to all CloudEvent messages. https://github.com/cloudevents/spec/blob/main/cloudevents/spec.md
+type CloudEventHeaders struct {
+	ID          string    `json:"id"`
+	Source      string    `json:"source"`
+	SpecVersion string    `json:"specversion"`
+	Subject     string    `json:"subject"`
+	Time        time.Time `json:"time"`
+	Type        string    `json:"type"`
+	// Signature is an extension https://github.com/cloudevents/spec/blob/main/cloudevents/documented-extensions.md
+	Signature string `json:"signature"`
+}
+
+type DeviceFingerprintCloudEvent struct {
+	CloudEventHeaders
+	Data Data `json:"data"`
+}
+
+type Data struct {
+	CommonData
+	Vin      string  `json:"vin"`
+	Protocol string  `json:"protocol"`
+	Odometer float64 `json:"odometer,omitempty"`
+}
+
+// CommonData common properties we want to send with every data payload
+type CommonData struct {
+	RpiUptimeSecs  int     `json:"rpiUptimeSecs,omitempty"`
+	BatteryVoltage float64 `json:"batteryVoltage,omitempty"`
+	Timestamp      int64   `json:"timestamp"`
 }
