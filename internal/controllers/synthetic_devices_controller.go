@@ -52,15 +52,17 @@ type SyntheticDevicesController struct {
 }
 
 type MintSyntheticDeviceRequest struct {
-	Credentials struct {
-		AccessToken  string `json:"accessToken"`
-		RefreshToken string `json:"refreshToken"`
-		ExpiresIn    int64  `json:"expiresIn"`
-		ExternalID   string `json:"externalId"`
-		Code         string `json:"code"`
-		RedirectURI  string `json:"redirectUri"`
-	} `json:"credentials"`
-	OwnerSignature string `json:"ownerSignature"`
+	Credentials    credentials `json:"credentials"`
+	OwnerSignature string      `json:"ownerSignature"`
+}
+
+type credentials struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+	ExpiresIn    int64  `json:"expiresIn"`
+	ExternalID   string `json:"externalId"`
+	Code         string `json:"code"`
+	RedirectURI  string `json:"redirectUri"`
 }
 
 type SyntheticDeviceSequence struct {
@@ -277,6 +279,10 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	ownerSignature := common.FromHex(req.OwnerSignature)
 	recAddr, err := helpers.ECRecoverSol(hash, ownerSignature)
+	if err != nil {
+		vc.log.Err(err).Msg("unable to validate signature")
+		return err
+	}
 	payloadVerified := bytes.Equal(recAddr.Bytes(), userAddr.Bytes())
 	if !payloadVerified {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature provided")

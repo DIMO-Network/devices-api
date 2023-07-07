@@ -566,13 +566,7 @@ func (s *SyntheticDevicesControllerTestSuite) Test_Device_API_Integration_Creati
 	assert.NoError(s.T(), err)
 
 	err = s.sdc.handleDeviceAPIIntegrationCreation(ctx, tx, &MintSyntheticDeviceRequest{
-		Credentials: struct {
-			AuthorizationCode string `json:"authorizationCode"`
-			AccessToken       string `json:"accessToken"`
-			RefreshToken      string `json:"refreshToken"`
-			ExpiresIn         int64  `json:"expiresIn"`
-			ExternalID        string `json:"externalId"`
-		}{AuthorizationCode: "mockAuthCode"},
+		Credentials: credentials{Code: "mockAuthCode"},
 	}, vehicle.UserDeviceID.String, integration)
 	assert.NoError(s.T(), err)
 
