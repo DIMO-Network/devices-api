@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/models"
@@ -15,6 +16,7 @@ import (
 	"github.com/DIMO-Network/shared/db"
 	"github.com/Shopify/sarama"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -89,10 +91,17 @@ func (c *Consumer) Handle(ctx context.Context, event *Event) error {
 	if !common.IsHexAddress(event.Subject) {
 		return fmt.Errorf("subject %q not a valid address", event.Subject)
 	}
-
 	addr := common.HexToAddress(event.Subject)
+	signature := common.FromHex(event.Signature)
+	hash := crypto.Keccak256Hash(event.Data)
 
-	observedVIN, err := services.ExtractVIN(event.CloudEvent.Data)
+	if recAddr, err := helpers.Ecrecover(hash, signature); err != nil {
+		return fmt.Errorf("failed to recover an address: %w", err)
+	} else if recAddr != addr {
+		return fmt.Errorf("recovered wrong address %s", recAddr)
+	}
+
+	observedVIN, err := services.ExtractVIN(event.Data)
 	if err != nil {
 		return fmt.Errorf("couldn't extract VIN: %w", err)
 	}
