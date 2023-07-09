@@ -10,13 +10,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/golang/mock/gomock"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
@@ -91,15 +92,14 @@ func TestConsumerTestSuite(t *testing.T) {
 
 func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 	deviceID := ksuid.New().String()
-	ownerAddress := null.BytesFrom(common.Hex2Bytes("ab8438a18d83d41847dffbdc6101d37c69c9a2fc"))
-	vin := "1G6AL1RY2K0111939"
+	ownerAddress := null.BytesFrom(common.Hex2Bytes("448cF8Fd88AD914e3585401241BC434FbEA94bbb"))
+	vin := "W1N2539531F907299"
 	ctx := context.Background()
 	tokenID := big.NewInt(3)
 	userDeviceID := "userDeviceID1"
 	mtxReq := ksuid.New().String()
 	deiceDefID := "deviceDefID"
 	claimID := "claimID1"
-	signature := "0xa4438e5cb667dc63ebd694167ae3ad83585f2834c9b04895dd890f805c4c459a024ed9df1b03872536b4ac0c7720d02cb787884a093cfcde5c3bd7f94657e30c1b"
 
 	// tables used in tests
 	aftermarketDevice := models.AftermarketDevice{
@@ -141,12 +141,16 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 		ClaimID:       null.StringFrom(claimID),
 	}
 
-	rawMsg, err := json.Marshal(struct {
-		Vin string
-	}{
-		Vin: vin,
-	})
-	require.NoError(s.T(), err)
+	msg :=
+		`{
+	"data": {"rpiUptimeSecs":39,"batteryVoltage":13.49,"timestamp":1688136702634,"vin":"W1N2539531F907299","protocol":"7"},
+	"id": "2RvhwjUbtoePjmXN7q9qfjLQgwP",
+	"signature": "7c31e54ddcffc2a548ccaf10ed64b7e4bdd239bbaa3e5f6dba41d3e4051d930b7fbdf184724c2fb8d3b2ac8ac82662d2ed74e881dd01c09c4b2a9b4e62ede5db1b",
+	"source": "aftermarket/device/fingerprint",
+	"specversion": "1.0",
+	"subject": "0x448cF8Fd88AD914e3585401241BC434FbEA94bbb",
+	"type": "zone.dimo.aftermarket.device.fingerprint"
+}`
 
 	cases := []struct {
 		Name              string
@@ -206,6 +210,7 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 
 	for _, c := range cases {
 		s.T().Run(c.Name, func(t *testing.T) {
+			test.TruncateTables(s.pdb.DBS().Writer.DB, t)
 			err := c.UserDeviceTable.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
 			require.NoError(t, err)
 
@@ -221,24 +226,88 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 			err = c.AftermarketDevice.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
 			require.NoError(t, err)
 
-			err = s.cons.Handle(s.ctx, &Event{
-				CloudEvent: shared.CloudEvent[json.RawMessage]{
-					Data:    rawMsg,
-					Time:    time.Now(),
-					ID:      deviceID,
-					Subject: common.Bytes2Hex(ownerAddress.Bytes),
-				},
-				Signature: signature,
-			})
+			var event Event
+			err = json.Unmarshal([]byte(msg), &event)
+			require.NoError(t, err)
+			err = s.cons.Handle(s.ctx, &event)
 
 			if c.ReturnsError {
 				assert.ErrorContains(t, err, c.ExpectedResponse)
 			} else {
 				require.NoError(t, err)
 			}
-
-			test.TruncateTables(s.pdb.DBS().Writer.DB, t)
 		})
 	}
 
+}
+
+func (s *ConsumerTestSuite) TestSignatureValidation() {
+
+	cases := []struct {
+		Data string
+	}{
+		{
+			Data: `{
+				"data": {"rpiUptimeSecs":39,"batteryVoltage":13.49,"timestamp":1688136702634,"vin":"W1N2539531F907299","protocol":"7"},
+				"id": "2RvhwjUbtoePjmXN7q9qfjLQgwP",
+				"signature": "7c31e54ddcffc2a548ccaf10ed64b7e4bdd239bbaa3e5f6dba41d3e4051d930b7fbdf184724c2fb8d3b2ac8ac82662d2ed74e881dd01c09c4b2a9b4e62ede5db1b",
+				"source": "aftermarket/device/fingerprint",
+				"specversion": "1.0",
+				"subject": "0x448cF8Fd88AD914e3585401241BC434FbEA94bbb",
+				"type": "zone.dimo.aftermarket.device.fingerprint"
+			}`,
+		},
+		{
+			Data: `{
+				"data": {"rpiUptimeSecs":36,"batteryVoltage":13.73,"timestamp":1688760445189,"vin":"LRBFXCSA5KD124854","protocol":"6"},
+				"id": "2SG6Cu2NWOcu7LvhadPtmDGb65S",
+				"signature": "5fb985f758c6224ab45630d055c7aca163329b88accfb8fd76a0dbb13b2ebcfe3c5bd8b801851f683f7a288c174a11ed8fc2631d95929c3b3cc85c75fb10ea001c",
+				"source": "aftermarket/device/fingerprint",
+				"specversion": "1.0",
+				"subject": "0x06fF8E7A4A159EA388da7c133DC5F79727868d83",
+				"type": "zone.dimo.aftermarket.device.fingerprint"
+			}`,
+		},
+	}
+
+	for _, c := range cases {
+		var event Event
+		err := json.Unmarshal([]byte(c.Data), &event)
+		require.NoError(s.T(), err)
+		data, err := json.Marshal(event.Data)
+		require.NoError(s.T(), err)
+
+		signature := common.FromHex(event.Signature)
+		addr := common.HexToAddress(event.Subject)
+		hash := crypto.Keccak256Hash(data)
+		recAddr, err := helpers.Ecrecover(hash, signature)
+		s.NoError(err)
+		s.Equal(addr, recAddr)
+	}
+}
+
+func (s *ConsumerTestSuite) TestInvalidSignature() {
+	msg := `{
+		"data": {"rpiUptimeSecs":36,"batteryVoltage":13.73,"timestamp":1688760445189,"vin":"LRBFXCSA5KD124854","protocol":"6"},
+		"id": "2SG6Cu2NWOcu7LvhadPtmDGb65S",
+		"signature": "5fb985f758c6224ab45630d055c7aca163329b88accfb8fd76a0dbb13b2ebcfe3c5bd8b801851f683f7a288c174a11ed8fc2631d95929c3b3cc85c75fb10ea001a",
+		"source": "aftermarket/device/fingerprint",
+		"specversion": "1.0",
+		"subject": "0x06fF8E7A4A159EA388da7c133DC5F79727868d83",
+		"type": "zone.dimo.aftermarket.device.fingerprint"
+	}`
+
+	var event Event
+	err := json.Unmarshal([]byte(msg), &event)
+	require.NoError(s.T(), err)
+	data, err := json.Marshal(event.Data)
+	require.NoError(s.T(), err)
+
+	signature := common.FromHex(event.Signature)
+	addr := common.HexToAddress(event.Subject)
+	hash := crypto.Keccak256Hash(data)
+	recAddr, err := helpers.Ecrecover(hash, signature)
+	s.Error(err)
+	s.Equal(err.Error(), "invalid signature recovery id")
+	s.NotEqual(recAddr, addr)
 }
