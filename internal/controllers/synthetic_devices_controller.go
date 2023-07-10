@@ -271,14 +271,15 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	rawPayload := vc.getEIP712Mint(int64(integration.TokenId), vid)
 
-	hash, _, err := signer.TypedDataAndHash(*rawPayload)
+	h, _, err := signer.TypedDataAndHash(*rawPayload)
 	if err != nil {
 		vc.log.Err(err).Msg("Error occurred creating has of payload")
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
 	}
-
+	hash := crypto.Keccak256Hash(h)
 	ownerSignature := common.FromHex(req.OwnerSignature)
-	recAddr, err := helpers.ECRecoverSol(hash, ownerSignature)
+
+	recAddr, err := helpers.Ecrecover(hash, ownerSignature)
 	if err != nil {
 		vc.log.Err(err).Msg("unable to validate signature")
 		return err
@@ -296,7 +297,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	requestID := ksuid.New().String()
 
-	syntheticDeviceAddr, err := vc.sendSyntheticDeviceMintPayload(c.Context(), requestID, hash, int(vid), integration.TokenId, ownerSignature, childKeyNumber)
+	syntheticDeviceAddr, err := vc.sendSyntheticDeviceMintPayload(c.Context(), requestID, h, int(vid), integration.TokenId, ownerSignature, childKeyNumber)
 	if err != nil {
 		vc.log.Err(err).Msg("synthetic device minting request failed")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
