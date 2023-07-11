@@ -80,9 +80,9 @@ func main() {
 		}
 		startMonitoringServer(logger, &settings)
 		eventService := services.NewEventService(&logger, &settings, deps.getKafkaProducer())
-		//startDeviceStatusConsumer(logger, &settings, pdb, eventService)
-		//startCredentialConsumer(logger, &settings, pdb)
-		//startTaskStatusConsumer(logger, &settings, pdb)
+		startDeviceStatusConsumer(logger, &settings, pdb, eventService)
+		startCredentialConsumer(logger, &settings, pdb)
+		startTaskStatusConsumer(logger, &settings, pdb)
 		startWebAPI(logger, &settings, pdb, eventService, deps.getKafkaProducer(), deps.getS3ServiceClient(ctx), deps.getS3NFTServiceClient(ctx))
 	} else {
 
