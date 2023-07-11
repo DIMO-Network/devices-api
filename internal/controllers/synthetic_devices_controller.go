@@ -276,17 +276,17 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		vc.log.Err(err).Msg("Error occurred creating has of payload")
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
 	}
-	hash := crypto.Keccak256Hash(h)
+
 	ownerSignature := common.FromHex(req.OwnerSignature)
 
-	recAddr, err := helpers.Ecrecover(hash, ownerSignature)
+	recAddr, err := helpers.Ecrecover(h, ownerSignature)
 	if err != nil {
 		vc.log.Err(err).Msg("unable to validate signature")
 		return err
 	}
 	payloadVerified := bytes.Equal(recAddr.Bytes(), userAddr.Bytes())
 	if !payloadVerified {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature provided")
+		return fiber.NewError(fiber.StatusBadRequest, "invalid signature provided")
 	}
 
 	childKeyNumber, err := vc.generateNextChildKeyNumber(c.Context())

@@ -95,7 +95,7 @@ func (c *Consumer) Handle(ctx context.Context, event *Event) error {
 	signature := common.FromHex(event.Signature)
 	hash := crypto.Keccak256Hash(event.Data)
 
-	if recAddr, err := helpers.Ecrecover(hash, signature); err != nil {
+	if recAddr, err := helpers.Ecrecover(hash.Bytes(), signature); err != nil {
 		return fmt.Errorf("failed to recover an address: %w", err)
 	} else if recAddr != addr {
 		return fmt.Errorf("recovered wrong address %s", recAddr)
