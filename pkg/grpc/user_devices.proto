@@ -53,6 +53,7 @@ message UserDevice {
   optional bytes aftermarket_device_beneficiary_address = 11;
   optional VinCredential latest_vin_credential = 12;
   bool vin_confirmed = 13;
+  string CountryCode = 14;
 }
 
 message UserDeviceIntegration {
