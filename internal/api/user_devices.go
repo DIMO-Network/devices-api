@@ -439,6 +439,10 @@ func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevi
 		out.Vin = &ud.VinIdentifier.String
 	}
 
+	if ud.CountryCode.Valid {
+		out.CountryCode = ud.CountryCode.String
+	}
+
 	return out
 }
 
