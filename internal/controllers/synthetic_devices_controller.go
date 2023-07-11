@@ -268,12 +268,11 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	userAddr := common.HexToAddress(*user.EthereumAddress)
-
 	rawPayload := vc.getEIP712Mint(int64(integration.TokenId), vid)
 
 	h, _, err := signer.TypedDataAndHash(*rawPayload)
 	if err != nil {
-		vc.log.Err(err).Msg("Error occurred creating has of payload")
+		vc.log.Err(err).Msg("Error occurred creating hash of payload")
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
 	}
 

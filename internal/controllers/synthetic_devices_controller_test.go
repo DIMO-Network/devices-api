@@ -13,6 +13,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
+	"github.com/DIMO-Network/devices-api/internal/services"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/test"
@@ -378,141 +379,129 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceSmartcar()
 	assert.Equal(s.T(), mockSmartClientToken.Refresh, decRefreshToken)
 }
 
-// func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceTesla() {
-// 	email := "some@email.com"
-// 	eth := userEthAddress
-// 	addr := common.HexToAddress(userEthAddress)
-// 	deviceEthAddr := common.HexToAddress("11")
+func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceTesla() {
+	email := "some@email.com"
+	userEthAddress := "0xFdC646Ad5950ED5cBf2A203C4D8001551b3Ee752"
+	signature := "0xee3235ef51bd273ec6533db4fe8038add3461bcde83e35d0043d94b4a58d7ba10a9e4648694e45daab12ac5617dffed1a84232e49885dfaf651dbe5e97d349bd1b"
+	eth := userEthAddress
+	addr := common.HexToAddress(userEthAddress)
+	deviceEthAddr := common.HexToAddress("10")
+	integrationID := 2
+	vehicleNode := 56
 
-// 	_, err := models.UserDeviceAPIIntegrations().DeleteAll(s.ctx, s.pdb.DBS().Writer)
-// 	s.NoError(err)
+	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &users.UserReferrer{})
+	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
-// 	_, err = models.MetaTransactionRequests().DeleteAll(s.ctx, s.pdb.DBS().Writer)
-// 	s.NoError(err)
+	integration := test.BuildIntegrationForGRPCRequest(10, uint64(integrationID))
+	integration.Vendor = constants.TeslaVendor
+	integration.TokenId = 2
+	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(integration, nil)
 
-// 	_, err = models.SyntheticDevices().DeleteAll(s.ctx, s.pdb.DBS().Writer)
-// 	s.NoError(err)
+	_ = test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model X", 2022, nil)
 
-// 	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &users.UserReferrer{})
-// 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
+	udID := ksuid.New().String()
+	vehicle := test.SetupCreateVehicleNFTForMiddleware(s.T(), addr, mockUserID, udID, int64(vehicleNode), s.pdb)
 
-// 	integration := test.BuildIntegrationForGRPCRequest(10, uint64(1))
-// 	integration.Vendor = constants.TeslaVendor
-// 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(integration, nil)
+	vehicleSig := common.HexToAddress("20").Hash().Bytes()
+	s.syntheticDeviceSigSvc.EXPECT().SignHash(gomock.Any(), gomock.Any(), gomock.Any()).Return(vehicleSig, nil).AnyTimes()
+	s.syntheticDeviceSigSvc.EXPECT().GetAddress(gomock.Any(), gomock.Any()).Return(deviceEthAddr.Bytes(), nil).AnyTimes()
 
-// 	_ = test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model X", 2022, nil)
+	teslaData := services.TeslaVehicle{ID: 13, VehicleID: 666, VIN: "5YJYGDEE9MF073630"}
+	s.teslaService.EXPECT().GetVehicle(gomock.Any(), gomock.Any()).Return(&teslaData, nil)
 
-// 	udID := ksuid.New().String()
-// 	vehicle := test.SetupCreateVehicleNFTForMiddleware(s.T(), addr, mockUserID, udID, 57, s.pdb)
+	var kb []byte
+	mockProducer.ExpectSendMessageWithCheckerFunctionAndSucceed(func(val []byte) error {
+		kb = val
+		return nil
+	})
 
-// 	vehicleSig := common.HexToAddress("20").Hash().Bytes()
-// 	s.syntheticDeviceSigSvc.EXPECT().SignHash(gomock.Any(), gomock.Any(), gomock.Any()).Return(vehicleSig, nil).AnyTimes()
-// 	s.syntheticDeviceSigSvc.EXPECT().GetAddress(gomock.Any(), gomock.Any()).Return(deviceEthAddr.Bytes(), nil).AnyTimes()
+	teslaClientToken.Signature = signature
+	reqB, err := json.Marshal(teslaClientToken)
+	s.NoError(err)
 
-// 	teslaData := services.TeslaVehicle{ID: 13, VehicleID: 666, VIN: "5YJYGDEE9MF073630"}
-// 	s.teslaService.EXPECT().GetVehicle(gomock.Any(), gomock.Any()).Return(&teslaData, nil)
+	request := test.BuildRequest("POST", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", integrationID, vehicleNode), string(reqB))
+	response, err := s.app.Test(request)
+	require.NoError(s.T(), err)
 
-// 	var kb []byte
-// 	mockProducer.ExpectSendMessageWithCheckerFunctionAndSucceed(func(val []byte) error {
-// 		kb = val
-// 		return nil
-// 	})
+	body, _ := io.ReadAll(response.Body)
 
-// 	accessToken := "accessToken"
-// 	refreshToken := "refreshToken"
-// 	req := fmt.Sprintf(`{
-// 		"credentials": {
-// 			"externalId": "13",
-// 			"accessToken": "%s",
-// 			"refreshToken": "%s",
-// 			"expiresIn": %d
-// 		},
-// 		"ownerSignature": "%s"
-// 	}`, accessToken, refreshToken, 28800, signature)
+	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
 
-// 	request := test.BuildRequest("POST", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), req)
-// 	response, err := s.app.Test(request)
-// 	require.NoError(s.T(), err)
+	mockProducer.Close()
 
-// 	body, _ := io.ReadAll(response.Body)
+	assert.Equal(s.T(), "synthetic device mint request successful", string(body))
 
-// 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
+	var me shared.CloudEvent[registry.RequestData]
 
-// 	mockProducer.Close()
+	err = json.Unmarshal(kb, &me)
+	s.Require().NoError(err)
 
-// 	assert.Equal(s.T(), "synthetic device mint request successful", string(body))
+	abi, err := contracts.RegistryMetaData.GetAbi()
+	s.Require().NoError(err)
 
-// 	var me shared.CloudEvent[registry.RequestData]
+	method := abi.Methods["mintSyntheticDeviceSign"]
 
-// 	err = json.Unmarshal(kb, &me)
-// 	s.Require().NoError(err)
+	callData := me.Data.Data
 
-// 	abi, err := contracts.RegistryMetaData.GetAbi()
-// 	s.Require().NoError(err)
+	s.EqualValues(method.ID, callData[:4])
 
-// 	method := abi.Methods["mintSyntheticDeviceSign"]
+	o, err := method.Inputs.Unpack(callData[4:])
+	s.Require().NoError(err)
 
-// 	callData := me.Data.Data
+	actualMnInput := o[0].(struct {
+		IntegrationNode     *big.Int       `json:"integrationNode"`
+		VehicleNode         *big.Int       `json:"vehicleNode"`
+		SyntheticDeviceSig  []uint8        `json:"syntheticDeviceSig"`
+		VehicleOwnerSig     []uint8        `json:"vehicleOwnerSig"`
+		SyntheticDeviceAddr common.Address `json:"syntheticDeviceAddr"`
+		AttrInfoPairs       []struct {
+			Attribute string `json:"attribute"`
+			Info      string `json:"info"`
+		} `json:"attrInfoPairs"`
+	})
 
-// 	s.EqualValues(method.ID, callData[:4])
+	expectedMnInput := contracts.MintSyntheticDeviceInput{
+		IntegrationNode:     new(big.Int).SetUint64(uint64(integrationID)),
+		VehicleNode:         new(big.Int).SetUint64(uint64(vehicleNode)),
+		VehicleOwnerSig:     common.FromHex(signature),
+		SyntheticDeviceAddr: deviceEthAddr,
+		SyntheticDeviceSig:  vehicleSig,
+	}
 
-// 	o, err := method.Inputs.Unpack(callData[4:])
-// 	s.Require().NoError(err)
+	vnID := types.NewDecimal(decimal.New(int64(vehicleNode), 0))
+	syntDevice, err := models.SyntheticDevices(
+		models.SyntheticDeviceWhere.VehicleTokenID.EQ(vnID),
+		models.SyntheticDeviceWhere.IntegrationTokenID.EQ(types.NewDecimal(decimal.New(int64(integrationID), 0))),
+	).One(s.ctx, s.pdb.DBS().Reader)
+	assert.NoError(s.T(), err)
 
-// 	actualMnInput := o[0].(struct {
-// 		IntegrationNode     *big.Int       `json:"integrationNode"`
-// 		VehicleNode         *big.Int       `json:"vehicleNode"`
-// 		SyntheticDeviceSig  []uint8        `json:"syntheticDeviceSig"`
-// 		VehicleOwnerSig     []uint8        `json:"vehicleOwnerSig"`
-// 		SyntheticDeviceAddr common.Address `json:"syntheticDeviceAddr"`
-// 		AttrInfoPairs       []struct {
-// 			Attribute string `json:"attribute"`
-// 			Info      string `json:"info"`
-// 		} `json:"attrInfoPairs"`
-// 	})
+	assert.Equal(s.T(), syntDevice.IntegrationTokenID, types.NewDecimal(decimal.New(int64(integrationID), 0)))
+	assert.Equal(s.T(), syntDevice.VehicleTokenID, vnID)
 
-// 	expectedMnInput := contracts.MintSyntheticDeviceInput{
-// 		IntegrationNode:     new(big.Int).SetUint64(1),
-// 		VehicleNode:         new(big.Int).SetUint64(57),
-// 		VehicleOwnerSig:     common.FromHex(signature),
-// 		SyntheticDeviceAddr: deviceEthAddr,
-// 		SyntheticDeviceSig:  vehicleSig,
-// 	}
+	assert.ObjectsAreEqual(expectedMnInput, actualMnInput)
 
-// 	vnID := types.NewDecimal(decimal.New(57, 0))
-// 	syntDevice, err := models.SyntheticDevices(
-// 		models.SyntheticDeviceWhere.VehicleTokenID.EQ(vnID),
-// 		models.SyntheticDeviceWhere.IntegrationTokenID.EQ(types.NewDecimal(decimal.New(1, 0))),
-// 	).One(s.ctx, s.pdb.DBS().Reader)
-// 	assert.NoError(s.T(), err)
+	metaTrxReq, err := models.MetaTransactionRequests(
+		models.MetaTransactionRequestWhere.ID.EQ(syntDevice.MintRequestID),
+		models.MetaTransactionRequestWhere.Status.EQ(models.MetaTransactionRequestStatusUnsubmitted),
+	).Exists(s.ctx, s.pdb.DBS().Reader)
+	assert.NoError(s.T(), err)
 
-// 	assert.Equal(s.T(), syntDevice.IntegrationTokenID, types.NewDecimal(decimal.New(1, 0)))
-// 	assert.Equal(s.T(), syntDevice.VehicleTokenID, vnID)
+	assert.Equal(s.T(), metaTrxReq, true)
 
-// 	assert.ObjectsAreEqual(expectedMnInput, actualMnInput)
+	udi, err := models.UserDeviceAPIIntegrations(models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(udID)).One(s.ctx, s.pdb.DBS().Reader)
+	assert.NoError(s.T(), err)
 
-// 	metaTrxReq, err := models.MetaTransactionRequests(
-// 		models.MetaTransactionRequestWhere.ID.EQ(syntDevice.MintRequestID),
-// 		models.MetaTransactionRequestWhere.Status.EQ(models.MetaTransactionRequestStatusUnsubmitted),
-// 	).Exists(s.ctx, s.pdb.DBS().Reader)
-// 	assert.NoError(s.T(), err)
+	decryptedAccessTkn, err := s.sdc.cipher.Decrypt(udi.AccessToken.String)
+	assert.NoError(s.T(), err)
 
-// 	assert.Equal(s.T(), metaTrxReq, true)
+	decryptedRefreshTkn, err := s.sdc.cipher.Decrypt(udi.RefreshToken.String)
+	assert.NoError(s.T(), err)
 
-// 	udi, err := models.UserDeviceAPIIntegrations(models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(udID)).One(s.ctx, s.pdb.DBS().Reader)
-// 	assert.NoError(s.T(), err)
-
-// 	decryptedAccessTkn, err := s.sdc.cipher.Decrypt(udi.AccessToken.String)
-// 	assert.NoError(s.T(), err)
-
-// 	decryptedRefreshTkn, err := s.sdc.cipher.Decrypt(udi.RefreshToken.String)
-// 	assert.NoError(s.T(), err)
-
-// 	assert.Equal(s.T(), integration.Id, udi.IntegrationID)
-// 	assert.Equal(s.T(), vehicle.UserDeviceID.String, udi.UserDeviceID)
-// 	assert.Equal(s.T(), accessToken, decryptedAccessTkn)
-// 	assert.Equal(s.T(), refreshToken, decryptedRefreshTkn)
-// }
+	assert.Equal(s.T(), integration.Id, udi.IntegrationID)
+	assert.Equal(s.T(), vehicle.UserDeviceID.String, udi.UserDeviceID)
+	assert.Equal(s.T(), teslaClientToken.Credentials.AccessToken, decryptedAccessTkn)
+	assert.Equal(s.T(), teslaClientToken.Credentials.RefreshToken, decryptedRefreshTkn)
+}
 
 func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayload_BadSignatureFailure() {
 	integration := test.BuildIntegrationForGRPCRequest(10, uint64(1))
@@ -550,7 +539,8 @@ func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayl
 	msg := struct {
 		Message string `json:"message"`
 	}{}
-	json.Unmarshal(body, &msg)
+	err = json.Unmarshal(body, &msg)
+	s.NoError(err)
 
 	assert.Equal(s.T(), fiber.StatusInternalServerError, response.StatusCode)
 	assert.Equal(s.T(), secp256k1.ErrRecoverFailed.Error(), msg.Message)
