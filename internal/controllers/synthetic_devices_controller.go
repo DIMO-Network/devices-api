@@ -432,7 +432,7 @@ func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx con
 	case constants.TeslaVendor:
 		teslaID, err := strconv.Atoi(req.Credentials.ExternalID)
 		if err != nil {
-			vc.log.Err(err).Msgf("unable to parse external id %+v as integer", req.Credentials.ExternalID)
+			vc.log.Err(err).Msgf("unable to parse external id %q as integer", req.Credentials.ExternalID)
 			return err
 		}
 
