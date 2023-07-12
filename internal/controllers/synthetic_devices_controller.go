@@ -28,7 +28,6 @@ import (
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
-	"github.com/savsgio/gotils/bytes"
 	"github.com/segmentio/ksuid"
 	smartcar "github.com/smartcar/go-sdk"
 	"github.com/volatiletech/null/v8"
@@ -270,7 +269,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	userAddr := common.HexToAddress(*user.EthereumAddress)
 	rawPayload := vc.getEIP712Mint(int64(integration.TokenId), vid)
 
-	h, _, err := signer.TypedDataAndHash(*rawPayload)
+	tdHash, _, err := signer.TypedDataAndHash(*rawPayload)
 	if err != nil {
 		vc.log.Err(err).Msg("Error occurred creating hash of payload")
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
@@ -278,14 +277,14 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	ownerSignature := common.FromHex(req.OwnerSignature)
 
-	recAddr, err := helpers.Ecrecover(h, ownerSignature)
+	recAddr, err := helpers.Ecrecover(tdHash, ownerSignature)
 	if err != nil {
 		vc.log.Err(err).Msg("unable to validate signature")
 		return err
 	}
-	payloadVerified := bytes.Equal(recAddr.Bytes(), userAddr.Bytes())
-	if !payloadVerified {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid signature provided")
+
+	if recAddr != userAddr {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature.")
 	}
 
 	childKeyNumber, err := vc.generateNextChildKeyNumber(c.Context())
@@ -296,7 +295,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	requestID := ksuid.New().String()
 
-	syntheticDeviceAddr, err := vc.sendSyntheticDeviceMintPayload(c.Context(), requestID, h, int(vid), integration.TokenId, ownerSignature, childKeyNumber)
+	syntheticDeviceAddr, err := vc.sendSyntheticDeviceMintPayload(c.Context(), requestID, tdHash, int(vid), integration.TokenId, ownerSignature, childKeyNumber)
 	if err != nil {
 		vc.log.Err(err).Msg("synthetic device minting request failed")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
@@ -341,7 +340,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Send([]byte("synthetic device mint request successful"))
+	return c.JSON(fiber.Map{"message": "Submitted synthetic device mint request."})
 }
 
 func (vc *SyntheticDevicesController) sendSyntheticDeviceMintPayload(ctx context.Context, requestID string, hash []byte, vehicleNode int, intTokenID uint64, ownerSignature []byte, childKeyNumber int) ([]byte, error) {
@@ -451,7 +450,6 @@ func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx con
 			return opaqueInternalError
 		}
 		udi.AccessToken = null.StringFrom(encAccess)
-		udi.AccessExpiresAt = null.TimeFrom(time.Unix(req.Credentials.ExpiresIn, 0))
 		udi.RefreshToken = null.StringFrom(encRefresh)
 
 		meta := services.UserDeviceAPIIntegrationsMetadata{

@@ -303,7 +303,7 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceSmartcar()
 
 	mockProducer.Close()
 
-	assert.Equal(s.T(), "synthetic device mint request successful", string(body))
+	assert.Equal(s.T(), "{\"message\":\"Submitted synthetic device mint request.\"}", string(body))
 
 	var me shared.CloudEvent[registry.RequestData]
 
@@ -429,7 +429,7 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceTesla() {
 
 	mockProducer.Close()
 
-	assert.Equal(s.T(), "synthetic device mint request successful", string(body))
+	assert.Equal(s.T(), "{\"message\":\"Submitted synthetic device mint request.\"}", string(body))
 
 	var me shared.CloudEvent[registry.RequestData]
 
