@@ -241,7 +241,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 			logger.Error().Err(err).Msg("unable to create Synthetic Device service")
 		}
 
-		syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, syntheticDeviceSvc, registryClient, smartcarClient, cipher)
+		syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, syntheticDeviceSvc, registryClient, smartcarClient, teslaSvc, cipher)
 
 		sdAuth := v1Auth.Group("/synthetic/device")
 

@@ -914,7 +914,7 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 
 		hash := crypto.Keccak256Hash(vinByte)
 
-		recAddr, err := helpers.Ecrecover(hash, sig)
+		recAddr, err := helpers.Ecrecover(hash.Bytes(), sig)
 		if err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "Couldn't recover signer address.")
 		}

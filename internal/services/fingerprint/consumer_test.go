@@ -280,7 +280,7 @@ func (s *ConsumerTestSuite) TestSignatureValidation() {
 		signature := common.FromHex(event.Signature)
 		addr := common.HexToAddress(event.Subject)
 		hash := crypto.Keccak256Hash(data)
-		recAddr, err := helpers.Ecrecover(hash, signature)
+		recAddr, err := helpers.Ecrecover(hash.Bytes(), signature)
 		s.NoError(err)
 		s.Equal(addr, recAddr)
 	}
@@ -306,7 +306,7 @@ func (s *ConsumerTestSuite) TestInvalidSignature() {
 	signature := common.FromHex(event.Signature)
 	addr := common.HexToAddress(event.Subject)
 	hash := crypto.Keccak256Hash(data)
-	recAddr, err := helpers.Ecrecover(hash, signature)
+	recAddr, err := helpers.Ecrecover(hash.Bytes(), signature)
 	s.Error(err)
 	s.Equal(err.Error(), "invalid signature recovery id")
 	s.NotEqual(recAddr, addr)

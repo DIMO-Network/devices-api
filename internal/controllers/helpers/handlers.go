@@ -239,7 +239,7 @@ const sigLen = 65
 // Ecrecover mimics the ecrecover opcode, returning the address that signed
 // hash with signature. sig must have length 65 and the last byte, the v value,
 // must be 27 or 28.
-func Ecrecover(hash common.Hash, sig []byte) (common.Address, error) {
+func Ecrecover(hash, sig []byte) (common.Address, error) {
 	if len(sig) != sigLen {
 		return zeroAddr, fmt.Errorf("signature has invalid length %d", len(sig))
 	}
@@ -250,7 +250,7 @@ func Ecrecover(hash common.Hash, sig []byte) (common.Address, error) {
 	copy(fixedSig, sig)
 	fixedSig[64] -= 27
 
-	rawPk, err := crypto.Ecrecover(hash.Bytes(), fixedSig)
+	rawPk, err := crypto.Ecrecover(hash, fixedSig)
 	if err != nil {
 		return zeroAddr, err
 	}
