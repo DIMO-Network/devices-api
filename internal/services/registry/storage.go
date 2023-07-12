@@ -216,12 +216,19 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 						return err
 					}
 
-					v := services.TeslaVehicle{
-						ID:  extID,
-						VIN: ud.R.UserDevice.VinIdentifier.String,
+					vID, err := strconv.Atoi(ud.TeslaVehicleID.String)
+					if err != nil {
+						logger.Err(err).Msg("cannot convert tesla external id to int")
+						return err
 					}
 
-					if err := p.teslaTaskSvc.StartPoll(&v, ud); err != nil {
+					v := &services.TeslaVehicle{
+						ID:        extID,
+						VIN:       ud.R.UserDevice.VinIdentifier.String,
+						VehicleID: vID,
+					}
+
+					if err := p.teslaTaskSvc.StartPoll(v, ud); err != nil {
 						logger.Err(err).Msg("Couldn't start Tesla polling.")
 						return err
 					}
@@ -286,6 +293,7 @@ func NewProcessor(
 	ap *autopi.Integration,
 	settings *config.Settings,
 	smartcarTaskSvc services.SmartcarTaskService,
+	teslaTaskService services.TeslaTaskService,
 	deviceDefSvc services.DeviceDefinitionService,
 ) (StatusProcessor, error) {
 	abi, err := contracts.RegistryMetaData.GetAbi()
@@ -300,6 +308,7 @@ func NewProcessor(
 		ap:              ap,
 		settings:        settings,
 		smartcarTaskSvc: smartcarTaskSvc,
+		teslaTaskSvc:    teslaTaskService,
 		deviceDefSvc:    deviceDefSvc,
 	}, nil
 }

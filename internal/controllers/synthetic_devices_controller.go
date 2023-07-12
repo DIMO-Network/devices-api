@@ -437,7 +437,8 @@ func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx con
 			return err
 		}
 
-		if _, err := vc.teslaService.GetVehicle(req.Credentials.AccessToken, teslaID); err != nil {
+		v, err := vc.teslaService.GetVehicle(req.Credentials.AccessToken, teslaID)
+		if err != nil {
 			vc.log.Err(err).Msg("unable to retrieve vehicle from Tesla")
 			return err
 		}
@@ -453,6 +454,7 @@ func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx con
 		udi.AccessToken = null.StringFrom(encAccess)
 		udi.AccessExpiresAt = null.TimeFrom(time.Unix(req.Credentials.ExpiresIn, 0))
 		udi.RefreshToken = null.StringFrom(encRefresh)
+		udi.TeslaVehicleID = null.StringFrom(strconv.FormatInt(int64(v.VehicleID), 10))
 
 		meta := services.UserDeviceAPIIntegrationsMetadata{
 			Commands: &services.UserDeviceAPIIntegrationsMetadataCommands{
