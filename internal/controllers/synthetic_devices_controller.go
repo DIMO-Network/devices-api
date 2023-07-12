@@ -429,6 +429,7 @@ func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx con
 		mb, _ := json.Marshal(meta)
 		udi.Metadata = null.JSONFrom(mb)
 		udi.ExternalID = null.StringFrom(externalID)
+		udi.TaskID = null.StringFrom(ksuid.New().String())
 	case constants.TeslaVendor:
 		teslaID, err := strconv.Atoi(req.Credentials.ExternalID)
 		if err != nil {
