@@ -547,17 +547,20 @@ func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayl
 }
 
 func (s *SyntheticDevicesControllerTestSuite) Test_Synthetic_Device_Sequence() {
+	s.pdb, s.container = test.StartContainerDatabase(s.ctx, s.T(), migrationsDirRelPath) // resets sequence in pg, if removed, must account for Tesla and Smartcar mints above
+
+	syntDeviceCount, err := models.SyntheticDevices().Count(s.ctx, s.pdb.DBS().Reader) // expect that count will be 0
+	assert.NoError(s.T(), err)
+
 	childKeyNumber, err := s.sdc.generateNextChildKeyNumber(s.ctx)
 	assert.NoError(s.T(), err)
 
-	startSeq := 2 // We start from 2 because the initial mint test would have generated sequence 1 already
-
-	assert.Equal(s.T(), startSeq, childKeyNumber)
+	assert.Equal(s.T(), int(syntDeviceCount)+1, childKeyNumber)
 
 	childKeyNumber, err = s.sdc.generateNextChildKeyNumber(s.ctx)
 	assert.NoError(s.T(), err)
 
-	assert.Equal(s.T(), startSeq+1, childKeyNumber)
+	assert.Equal(s.T(), int(syntDeviceCount)+2, childKeyNumber)
 }
 
 // handleDeviceApiIntegrationCreation
