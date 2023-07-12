@@ -247,7 +247,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	if integration.Vendor == constants.SmartCarVendor && req.Credentials.Code == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "please provide authorization code")
+		return fiber.NewError(fiber.StatusBadRequest, "invalid authorization code")
 	}
 
 	user, err := vc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{
@@ -294,14 +294,6 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
-	requestID := ksuid.New().String()
-
-	syntheticDeviceAddr, err := vc.sendSyntheticDeviceMintPayload(c.Context(), requestID, h, int(vid), integration.TokenId, ownerSignature, childKeyNumber)
-	if err != nil {
-		vc.log.Err(err).Msg("synthetic device minting request failed")
-		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
-	}
-
 	tx, err := vc.DBS().Writer.DB.BeginTx(c.Context(), nil)
 	if err != nil {
 		vc.log.Err(err).Msg("error creating database transaction")
@@ -311,6 +303,14 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	if err := vc.handleDeviceAPIIntegrationCreation(c.Context(), tx, req, vNFT.UserDeviceID.String, integration); err != nil {
 		vc.log.Err(err).Str("UserDeviceID", vNFT.UserDeviceID.String).Msg("error creating userDeviceAPiIntegration record")
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	requestID := ksuid.New().String()
+
+	syntheticDeviceAddr, err := vc.sendSyntheticDeviceMintPayload(c.Context(), requestID, h, int(vid), integration.TokenId, ownerSignature, childKeyNumber)
+	if err != nil {
+		vc.log.Err(err).Msg("synthetic device minting request failed")
+		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
 	metaReq := &models.MetaTransactionRequest{

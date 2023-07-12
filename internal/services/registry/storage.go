@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strconv"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
@@ -32,6 +34,7 @@ type proc struct {
 	ap              *autopi.Integration
 	settings        *config.Settings
 	smartcarTaskSvc services.SmartcarTaskService
+	teslaTaskSvc    services.TeslaTaskService
 	deviceDefSvc    services.DeviceDefinitionService
 }
 
@@ -185,6 +188,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(sd.R.VehicleToken.UserDeviceID.String),
 					models.UserDeviceAPIIntegrationWhere.Status.EQ(models.UserDeviceAPIIntegrationStatusPending),
 					models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integration.Id),
+					qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
 				).One(ctx, p.DB().Reader)
 				if err != nil {
 					if errors.Is(err, sql.ErrNoRows) {
@@ -199,9 +203,28 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return err
 				}
 
-				if err := p.smartcarTaskSvc.StartPoll(ud); err != nil {
-					logger.Err(err).Msg("Couldn't start Smartcar polling.")
-					return err
+				switch integration.Vendor {
+				case constants.SmartCarVendor:
+					if err := p.smartcarTaskSvc.StartPoll(ud); err != nil {
+						logger.Err(err).Msg("Couldn't start Smartcar polling.")
+						return err
+					}
+				case constants.TeslaVendor:
+					extID, err := strconv.Atoi(ud.ExternalID.String)
+					if err != nil {
+						logger.Err(err).Msg("cannot convert tesla external id to int")
+						return err
+					}
+
+					v := services.TeslaVehicle{
+						ID:  extID,
+						VIN: ud.R.UserDevice.VinIdentifier.String,
+					}
+
+					if err := p.teslaTaskSvc.StartPoll(&v, ud); err != nil {
+						logger.Err(err).Msg("Couldn't start Tesla polling.")
+						return err
+					}
 				}
 			}
 		}
