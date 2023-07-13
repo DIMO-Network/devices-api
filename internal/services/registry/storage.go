@@ -39,6 +39,8 @@ type proc struct {
 	deviceDefSvc    services.DeviceDefinitionService
 }
 
+var errInvalidOEM = errors.New("unrecognized oem for synthetic device mint request")
+
 func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	logger := p.Logger.With().
 		Str("requestId", data.RequestID).
@@ -101,7 +103,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				logger.Info().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msg("Vehicle minted.")
 			}
 		}
-		// Other soon.
 	case mtr.R.ClaimMetaTransactionRequestAftermarketDevice != nil:
 		for _, l1 := range data.Transaction.Logs {
 			if l1.Topics[0] == deviceClaimedEvent.ID {
@@ -162,16 +163,13 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 			if l1.Topics[0] == syntheticDeviceMintedEvent.ID {
 				out := new(contracts.RegistrySyntheticDeviceNodeMinted)
 				err := p.parseLog(out, syntheticDeviceMintedEvent, l1)
-
 				if err != nil {
 					return err
 				}
 
 				sd := mtr.R.MintRequestSyntheticDevice
-
 				tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.SyntheticDeviceNode, 0))
 				sd.TokenID = tkID
-
 				if _, err := sd.Update(ctx, p.DB().Writer, boil.Infer()); err != nil {
 					return err
 				}
@@ -234,6 +232,9 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 						logger.Err(err).Msg("Couldn't start Tesla polling.")
 						return err
 					}
+				default:
+					logger.Err(err).Msg("unable to complete request")
+					return errInvalidOEM
 				}
 			}
 		}

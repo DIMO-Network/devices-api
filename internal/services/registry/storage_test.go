@@ -9,6 +9,7 @@ import (
 	"time"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
+	"github.com/rs/zerolog"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -22,7 +23,6 @@ import (
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/golang/mock/gomock"
-	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
@@ -82,7 +82,7 @@ func TestStorageTestSuite(t *testing.T) {
 	suite.Run(t, new(StorageTestSuite))
 }
 
-func (s *StorageTestSuite) Test_Mint_SyntheticDevice() {
+func (s *StorageTestSuite) Test_SmartCar_StartPollOnMint() {
 	vehicleID := int64(54)
 	integrationNode := int64(1)
 	childKeyNumber := 300
@@ -92,9 +92,12 @@ func (s *StorageTestSuite) Test_Mint_SyntheticDevice() {
 	integrationID := ksuid.New().String()
 
 	udArgs := &models.UserDeviceAPIIntegration{}
-	s.scTaskSvc.EXPECT().StartPoll(gomock.Any()).Return(nil).Do(func(arg *models.UserDeviceAPIIntegration) {
-		udArgs = arg
-	})
+	s.scTaskSvc.EXPECT().StartPoll(gomock.AssignableToTypeOf(udArgs)).DoAndReturn(
+		func(udai *models.UserDeviceAPIIntegration) error {
+			udArgs = udai
+			return nil
+		},
+	)
 
 	ud := models.UserDevice{
 		ID: ksuid.New().String(),
@@ -162,15 +165,6 @@ func (s *StorageTestSuite) Test_Mint_SyntheticDevice() {
 			Logs: []ceLog{
 				{
 					Topics: []common.Hash{
-						/*
-							event SyntheticDeviceNodeMinted(
-								uint256 integrationNode,
-								uint256 syntheticDeviceNode,
-								uint256 indexed vehicleNode,
-								address indexed syntheticDeviceAddress,
-								address indexed owner
-							)
-						*/
 						a.Events["SyntheticDeviceNodeMinted"].ID,
 						common.BigToHash(big.NewInt(vehicleID)),
 						syntheticDeviceAddr.Hash(),
@@ -318,6 +312,96 @@ func (s *StorageTestSuite) Test_Tesla_StartPollOnMint() {
 
 	tkID := types.NewNullDecimal(decimal.New(30, 0))
 	s.Equal(tkID, sd.TokenID)
+}
+
+func (s *StorageTestSuite) Test_InvalidOEMInMetaTx() {
+	vehicleID := int64(54)
+	integrationNode := int64(1)
+	childKeyNumber := 300
+	syntheticDeviceAddr := common.HexToAddress("4")
+	cipher := new(shared.ROT13Cipher)
+	ownerAddr := common.HexToAddress("1000")
+	integrationID := ksuid.New().String()
+
+	ud := models.UserDevice{
+		ID: ksuid.New().String(),
+	}
+	s.MustInsert(&ud)
+
+	mtr := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusMined,
+	}
+	s.MustInsert(&mtr)
+
+	vnft := models.VehicleNFT{
+		MintRequestID: mtr.ID,
+		UserDeviceID:  null.StringFrom(ud.ID),
+		TokenID:       types.NewNullDecimal(decimal.New(vehicleID, 0)),
+		OwnerAddress:  null.BytesFrom(ownerAddr.Bytes()),
+	}
+	s.MustInsert(&vnft)
+
+	syntMtr := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusMined,
+	}
+	s.MustInsert(&syntMtr)
+
+	vnID := types.NewDecimal(decimal.New(vehicleID, 0))
+	syntheticDevice := models.SyntheticDevice{
+		VehicleTokenID:     vnID,
+		IntegrationTokenID: types.NewDecimal(decimal.New(integrationNode, 0)),
+		WalletChildNumber:  childKeyNumber,
+		WalletAddress:      syntheticDeviceAddr.Bytes(),
+		MintRequestID:      syntMtr.ID,
+	}
+	s.MustInsert(&syntheticDevice)
+
+	acToken, err := cipher.Encrypt("mockAccessToken")
+	s.NoError(err)
+	refToken, err := cipher.Encrypt("mockRefreshToken")
+	s.NoError(err)
+
+	udi := models.UserDeviceAPIIntegration{
+		IntegrationID:   integrationID,
+		UserDeviceID:    ud.ID,
+		Status:          models.UserDeviceAPIIntegrationStatusPending,
+		AccessToken:     null.StringFrom(acToken),
+		AccessExpiresAt: null.TimeFrom(time.Now()),
+		RefreshToken:    null.StringFrom(refToken),
+	}
+	s.MustInsert(&udi)
+
+	integration := &ddgrpc.Integration{Id: integrationID, Vendor: "genericInvalidOEMName"}
+	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(integration, nil).Do(func(ct context.Context, arg uint64) {
+	})
+
+	a, _ := contracts.RegistryMetaData.GetAbi()
+
+	err = s.proc.Handle(context.TODO(), &ceData{
+		RequestID: syntMtr.ID,
+		Type:      "Confirmed",
+		Transaction: ceTx{
+			Hash: "0x28db529e841dc0bc46c27a5a43ae7db8ed43294c1b97a8b81b142b8fd6763f43",
+			Logs: []ceLog{
+				{
+					Topics: []common.Hash{
+						a.Events["SyntheticDeviceNodeMinted"].ID,
+						common.BigToHash(big.NewInt(vehicleID)),
+						syntheticDeviceAddr.Hash(),
+						ownerAddr.Hash(),
+					},
+					Data: common.FromHex(
+						"0000000000000000000000000000000000000000000000000000000000000001" +
+							"000000000000000000000000000000000000000000000000000000000000001e",
+					),
+				},
+			},
+		},
+	})
+	s.T().Log(err, errInvalidOEM)
+	s.Require().Equal(err.Error(), errInvalidOEM.Error())
 }
 
 func (s *StorageTestSuite) TestMintVehicle() {
