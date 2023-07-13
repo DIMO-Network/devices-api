@@ -38,7 +38,6 @@ require (
 	github.com/pressly/goose/v3 v3.5.3
 	github.com/prometheus/client_golang v1.15.1
 	github.com/rs/zerolog v1.28.0
-	github.com/savsgio/gotils v0.0.0-20230208104028-c358bd845dee
 	github.com/segmentio/ksuid v1.0.4
 	github.com/stretchr/testify v1.8.2
 	github.com/swaggo/swag v1.16.1
@@ -77,6 +76,7 @@ require (
 	github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/savsgio/dictpool v0.0.0-20221023140959-7bf2e61cea94 // indirect
+	github.com/savsgio/gotils v0.0.0-20230208104028-c358bd845dee // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/swaggo/files/v2 v2.0.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect

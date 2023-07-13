@@ -912,9 +912,9 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusBadRequest, "Signature is not 65 bytes long.")
 		}
 
-		hash := crypto.Keccak256Hash(vinByte)
+		hash := crypto.Keccak256(vinByte)
 
-		recAddr, err := helpers.Ecrecover(hash.Bytes(), sig)
+		recAddr, err := helpers.Ecrecover(hash, sig)
 		if err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "Couldn't recover signer address.")
 		}
@@ -1632,25 +1632,6 @@ func computeTypedDataHash(td *signer.TypedData) (hash common.Hash, err error) {
 	return
 }
 
-func recoverAddress(td *signer.TypedData, signature []byte) (addr common.Address, err error) {
-	hash, err := computeTypedDataHash(td)
-	if err != nil {
-		return
-	}
-	signature[64] -= 27
-	rawPub, err := crypto.Ecrecover(hash[:], signature)
-	if err != nil {
-		return
-	}
-
-	pub, err := crypto.UnmarshalPubkey(rawPub)
-	if err != nil {
-		return
-	}
-	addr = crypto.PubkeyToAddress(*pub)
-	return
-}
-
 // UpdateNFTImage godoc
 // @Description Updates a user's NFT image.
 // @Tags        user-devices
@@ -1868,26 +1849,11 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	sigBytes := common.FromHex(mr.Signature)
 
-	if len(sigBytes) != 65 {
-		logger.Error().Str("rawSignature", mr.Signature).Msg("Signature was not 65 bytes.")
-		return fiber.NewError(fiber.StatusBadRequest, "Signature must be 65 bytes.")
-	}
-
-	sigBytesYellowPaper := make([]byte, len(sigBytes))
-	copy(sigBytesYellowPaper, sigBytes)
-	sigBytesYellowPaper[64] -= 27
-
-	recUncPubKey, err := crypto.Ecrecover(hash[:], sigBytesYellowPaper)
+	recAddr, err := helpers.Ecrecover(hash.Bytes(), sigBytes)
 	if err != nil {
 		return err
 	}
 
-	recPubKey, err := crypto.UnmarshalPubkey(recUncPubKey)
-	if err != nil {
-		return err
-	}
-
-	recAddr := crypto.PubkeyToAddress(*recPubKey)
 	realAddr := common.HexToAddress(*user.EthereumAddress)
 
 	if recAddr != realAddr {

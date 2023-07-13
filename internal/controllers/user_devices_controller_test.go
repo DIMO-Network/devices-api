@@ -979,39 +979,3 @@ func TestEIP712Hash(t *testing.T) {
 		assert.Equal(t, realHash, hash)
 	}
 }
-
-func TestEIP712Recover(t *testing.T) {
-	td := &signer.TypedData{
-		Types: signer.Types{
-			"EIP712Domain": []signer.Type{
-				{Name: "name", Type: "string"},
-				{Name: "version", Type: "string"},
-				{Name: "chainId", Type: "uint256"},
-				{Name: "verifyingContract", Type: "address"},
-			},
-			"MintDevice": {
-				{Name: "rootNode", Type: "uint256"},
-				{Name: "attributes", Type: "string[]"},
-				{Name: "infos", Type: "string[]"},
-			},
-		},
-		PrimaryType: "MintDevice",
-		Domain: signer.TypedDataDomain{
-			Name:              "DIMO",
-			Version:           "1",
-			ChainId:           math.NewHexOrDecimal256(31337),
-			VerifyingContract: "0x5fbdb2315678afecb367f032d93f642f64180aa3",
-		},
-		Message: signer.TypedDataMessage{
-			"rootNode":   math.NewHexOrDecimal256(7), // Just hardcoding this. We need a node for each make, and to keep these in sync.
-			"attributes": []any{"Make", "Model", "Year"},
-			"infos":      []any{"Tesla", "Model 3", "2020"},
-		},
-	}
-	sig := common.FromHex("0x558266d4d8cd994c9eab2dee0efeb3ee33c839e4ce77c64da544679a85bd4a864805dd1fab769e9888fdfc0ed6502f685dc43ddda1add760febd749acfcd517b1b")
-	addr, err := recoverAddress(td, sig)
-	if assert.NoError(t, err) {
-		realAddr := common.HexToAddress("0x969602c4f39D345Cbe47E7fe0dd8F1f16f984D65")
-		assert.Equal(t, realAddr, addr)
-	}
-}
