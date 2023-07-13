@@ -262,3 +262,5 @@ func Ecrecover(hash, sig []byte) (common.Address, error) {
 
 	return crypto.PubkeyToAddress(*pk), nil
 }
+
+// TODO(elffjs): This is becoming a dumping ground.

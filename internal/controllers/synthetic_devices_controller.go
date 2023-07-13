@@ -146,22 +146,29 @@ type BurnSyntheticDeviceRequest struct {
 	OwnerSignature string `json:"ownerSignature"`
 }
 
-func (sdc *SyntheticDevicesController) verifyUserAddressAndNFTExist(ctx context.Context, user *pb.User, vehicleNode int64, integrationNode string) (*models.VehicleNFT, error) {
+func (sdc *SyntheticDevicesController) verifyUserAddressAndNFTExist(ctx context.Context, user *pb.User, vehicleNode int64) (*models.VehicleNFT, error) {
 	if user.EthereumAddress == nil {
-		return nil, fiber.NewError(fiber.StatusUnauthorized, "User does not have an Ethereum address on file.")
+		return nil, fiber.NewError(fiber.StatusUnauthorized, "User does not have an Ethereum address.")
 	}
 
+	uadd := common.HexToAddress(*user.EthereumAddress)
+
 	vnID := types.NewNullDecimal(decimal.New(vehicleNode, 0))
-	vehicleNFT, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(vnID),
-		models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.HexToAddress(*user.EthereumAddress).Bytes())),
-	).One(ctx, sdc.DBS().Reader)
+	vehicleNFT, err := models.VehicleNFTS(models.VehicleNFTWhere.TokenID.EQ(vnID)).One(ctx, sdc.DBS().Reader)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fiber.NewError(fiber.StatusNotFound, "user does not own vehicle node")
+		if err == sql.ErrNoRows {
+			return nil, fiber.NewError(fiber.StatusNotFound, "No vehicle with that id found.")
 		}
-		sdc.log.Error().Err(err).Int64("vehicleNode", vehicleNode).Str("integrationNode", integrationNode).Msg("Could not fetch minting payload for device")
-		return nil, fiber.NewError(fiber.StatusInternalServerError, "error generating device mint payload")
+		return nil, err
+	}
+
+	vown := common.BytesToAddress(vehicleNFT.OwnerAddress.Bytes)
+	if uadd != vown {
+		return nil, fiber.NewError(fiber.StatusForbidden, fmt.Sprintf("Vehicle owned by another address, %s.", vown))
+	}
+
+	if !vehicleNFT.UserDeviceID.Valid {
+		return nil, fiber.NewError(fiber.StatusConflict, "Vehicle deleted.")
 	}
 
 	return vehicleNFT, nil
@@ -199,7 +206,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicleNode provided")
 	}
 
-	if _, err := sdc.verifyUserAddressAndNFTExist(c.Context(), user, vid, rawIntegrationNode); err != nil {
+	if _, err := sdc.verifyUserAddressAndNFTExist(c.Context(), user, vid); err != nil {
 		return err
 	}
 
@@ -260,7 +267,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicle id provided")
 	}
 
-	vNFT, err := sdc.verifyUserAddressAndNFTExist(c.Context(), user, vid, rawIntegrationNode)
+	vNFT, err := sdc.verifyUserAddressAndNFTExist(c.Context(), user, vid)
 	if err != nil {
 		return err
 	}
@@ -305,9 +312,13 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
-	if err := sdc.handleDeviceAPIIntegrationCreation(c.Context(), tx, req, vNFT.UserDeviceID.String, integration); err != nil {
-		sdc.log.Err(err).Str("UserDeviceID", vNFT.UserDeviceID.String).Msg("error creating userDeviceAPiIntegration record")
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	udai, err := sdc.generateUDAI(c.Context(), tx, req, vNFT.UserDeviceID.String, integration)
+	if err != nil {
+		return err
+	}
+
+	if err := udai.Insert(c.Context(), tx, boil.Infer()); err != nil {
+		return err
 	}
 
 	metaReq := &models.MetaTransactionRequest{
@@ -385,39 +396,44 @@ func (vc *SyntheticDevicesController) generateNextChildKeyNumber(ctx context.Con
 	return seq.NextVal, nil
 }
 
-func (sdc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx context.Context, tx *sql.Tx, req *MintSyntheticDeviceRequest, userDeviceID string, integration *grpc.Integration) error {
+func (sdc *SyntheticDevicesController) generateUDAI(ctx context.Context, tx *sql.Tx, req *MintSyntheticDeviceRequest, userDeviceID string, integration *grpc.Integration) (*models.UserDeviceAPIIntegration, error) {
 	udi := models.UserDeviceAPIIntegration{
 		IntegrationID: integration.Id,
 		UserDeviceID:  userDeviceID,
 		Status:        models.UserDeviceAPIIntegrationStatusPending,
+		TaskID:        null.StringFrom(ksuid.New().String()),
 	}
+
 	switch integration.Vendor {
 	case constants.SmartCarVendor:
 		token, err := sdc.exchangeSmartCarCode(ctx, req.Credentials.Code, req.Credentials.RedirectURI)
 		if err != nil {
-			return err
+			return nil, err
 		}
+
 		encAccess, err := sdc.cipher.Encrypt(token.Access)
 		if err != nil {
-			return opaqueInternalError
+			return nil, opaqueInternalError
 		}
+
 		encRefresh, err := sdc.cipher.Encrypt(token.Refresh)
 		if err != nil {
-			return opaqueInternalError
+			return nil, opaqueInternalError
 		}
+
 		udi.AccessToken = null.StringFrom(encAccess)
 		udi.AccessExpiresAt = null.TimeFrom(token.AccessExpiry)
 		udi.RefreshToken = null.StringFrom(encRefresh)
 
 		externalID, err := sdc.smartcarClient.GetExternalID(ctx, token.Access)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		endpoints, err := sdc.smartcarClient.GetEndpoints(ctx, token.Access, externalID)
 		if err != nil {
 			sdc.log.Err(err).Msg("Failed to retrieve permissions from Smartcar.")
-			return err
+			return nil, err
 		}
 
 		meta := services.UserDeviceAPIIntegrationsMetadata{
@@ -432,22 +448,22 @@ func (sdc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx co
 		teslaID, err := strconv.Atoi(req.Credentials.ExternalID)
 		if err != nil {
 			sdc.log.Err(err).Msgf("unable to parse external id %q as integer", req.Credentials.ExternalID)
-			return err
+			return nil, err
 		}
 
 		v, err := sdc.teslaService.GetVehicle(req.Credentials.AccessToken, teslaID)
 		if err != nil {
 			sdc.log.Err(err).Msg("unable to retrieve vehicle from Tesla")
-			return err
+			return nil, err
 		}
 
 		encAccess, err := sdc.cipher.Encrypt(req.Credentials.AccessToken)
 		if err != nil {
-			return opaqueInternalError
+			return nil, opaqueInternalError
 		}
 		encRefresh, err := sdc.cipher.Encrypt(req.Credentials.RefreshToken)
 		if err != nil {
-			return opaqueInternalError
+			return nil, opaqueInternalError
 		}
 		udi.AccessToken = null.StringFrom(encAccess)
 		udi.RefreshToken = null.StringFrom(encRefresh)
@@ -459,20 +475,17 @@ func (sdc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx co
 			TeslaVehicleID: v.ID,
 		}
 
-		mb, err := json.Marshal(meta)
-		if err != nil {
-			return err
-		}
+		mb, _ := json.Marshal(meta)
 
 		udi.ExternalID = null.StringFrom(req.Credentials.ExternalID)
 		udi.AccessExpiresAt = null.TimeFrom(time.Now().Add(time.Duration(req.Credentials.ExpiresIn) * time.Second))
 		udi.TaskID = null.StringFrom(ksuid.New().String())
 		udi.Metadata = null.JSONFrom(mb)
 	default:
-		return nil
+		return nil, fmt.Errorf("unrecognized vendor %s", integration.Vendor)
 	}
 
-	return udi.Insert(ctx, tx, boil.Infer())
+	return &udi, nil
 }
 
 func (sdc *SyntheticDevicesController) exchangeSmartCarCode(ctx context.Context, authCode, redirectURI string) (*smartcar.Token, error) {
