@@ -426,7 +426,6 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceTesla() {
 	body, _ := io.ReadAll(response.Body)
 
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-
 	mockProducer.Close()
 
 	assert.Equal(s.T(), "{\"message\":\"Submitted synthetic device mint request.\"}", string(body))

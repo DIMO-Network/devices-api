@@ -3,9 +3,12 @@ package registry
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"strconv"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
@@ -32,8 +35,11 @@ type proc struct {
 	ap              *autopi.Integration
 	settings        *config.Settings
 	smartcarTaskSvc services.SmartcarTaskService
+	teslaTaskSvc    services.TeslaTaskService
 	deviceDefSvc    services.DeviceDefinitionService
 }
+
+var errInvalidOEM = errors.New("unrecognized oem for synthetic device mint request")
 
 func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	logger := p.Logger.With().
@@ -97,7 +103,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				logger.Info().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msg("Vehicle minted.")
 			}
 		}
-		// Other soon.
 	case mtr.R.ClaimMetaTransactionRequestAftermarketDevice != nil:
 		for _, l1 := range data.Transaction.Logs {
 			if l1.Topics[0] == deviceClaimedEvent.ID {
@@ -158,16 +163,13 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 			if l1.Topics[0] == syntheticDeviceMintedEvent.ID {
 				out := new(contracts.RegistrySyntheticDeviceNodeMinted)
 				err := p.parseLog(out, syntheticDeviceMintedEvent, l1)
-
 				if err != nil {
 					return err
 				}
 
 				sd := mtr.R.MintRequestSyntheticDevice
-
 				tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.SyntheticDeviceNode, 0))
 				sd.TokenID = tkID
-
 				if _, err := sd.Update(ctx, p.DB().Writer, boil.Infer()); err != nil {
 					return err
 				}
@@ -185,6 +187,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(sd.R.VehicleToken.UserDeviceID.String),
 					models.UserDeviceAPIIntegrationWhere.Status.EQ(models.UserDeviceAPIIntegrationStatusPending),
 					models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integration.Id),
+					qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
 				).One(ctx, p.DB().Reader)
 				if err != nil {
 					if errors.Is(err, sql.ErrNoRows) {
@@ -199,9 +202,39 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return err
 				}
 
-				if err := p.smartcarTaskSvc.StartPoll(ud); err != nil {
-					logger.Err(err).Msg("Couldn't start Smartcar polling.")
-					return err
+				switch integration.Vendor {
+				case constants.SmartCarVendor:
+					if err := p.smartcarTaskSvc.StartPoll(ud); err != nil {
+						logger.Err(err).Msg("Couldn't start Smartcar polling.")
+						return err
+					}
+				case constants.TeslaVendor:
+					extID, err := strconv.Atoi(ud.ExternalID.String)
+					if err != nil {
+						logger.Err(err).Msg("cannot convert tesla external id to int")
+						return err
+					}
+
+					var metadata services.UserDeviceAPIIntegrationsMetadata
+					err = json.Unmarshal(ud.Metadata.JSON, &metadata)
+					if err != nil {
+						logger.Err(err).Msg("unable to parse metadata")
+						return err
+					}
+
+					v := &services.TeslaVehicle{
+						ID:        extID,
+						VIN:       ud.R.UserDevice.VinIdentifier.String,
+						VehicleID: metadata.TeslaVehicleID,
+					}
+
+					if err := p.teslaTaskSvc.StartPoll(v, ud); err != nil {
+						logger.Err(err).Msg("Couldn't start Tesla polling.")
+						return err
+					}
+				default:
+					logger.Err(err).Msg("unable to complete request")
+					return errInvalidOEM
 				}
 			}
 		}
@@ -263,6 +296,7 @@ func NewProcessor(
 	ap *autopi.Integration,
 	settings *config.Settings,
 	smartcarTaskSvc services.SmartcarTaskService,
+	teslaTaskService services.TeslaTaskService,
 	deviceDefSvc services.DeviceDefinitionService,
 ) (StatusProcessor, error) {
 	abi, err := contracts.RegistryMetaData.GetAbi()
@@ -277,6 +311,7 @@ func NewProcessor(
 		ap:              ap,
 		settings:        settings,
 		smartcarTaskSvc: smartcarTaskSvc,
+		teslaTaskSvc:    teslaTaskService,
 		deviceDefSvc:    deviceDefSvc,
 	}, nil
 }

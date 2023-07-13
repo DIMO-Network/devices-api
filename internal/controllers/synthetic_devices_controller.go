@@ -245,7 +245,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	if integration.Vendor == constants.SmartCarVendor && req.Credentials.Code == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "please provide authorization code")
+		return fiber.NewError(fiber.StatusBadRequest, "invalid authorization code")
 	}
 
 	user, err := vc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{
@@ -275,7 +275,6 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	ownerSignature := common.FromHex(req.OwnerSignature)
-
 	recAddr, err := helpers.Ecrecover(tdHash, ownerSignature)
 	if err != nil {
 		vc.log.Err(err).Msg("unable to validate signature")
@@ -436,7 +435,8 @@ func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx con
 			return err
 		}
 
-		if _, err := vc.teslaService.GetVehicle(req.Credentials.AccessToken, teslaID); err != nil {
+		v, err := vc.teslaService.GetVehicle(req.Credentials.AccessToken, teslaID)
+		if err != nil {
 			vc.log.Err(err).Msg("unable to retrieve vehicle from Tesla")
 			return err
 		}
@@ -456,6 +456,7 @@ func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx con
 			Commands: &services.UserDeviceAPIIntegrationsMetadataCommands{
 				Enabled: []string{"doors/unlock", "doors/lock", "trunk/open", "frunk/open", "charge/limit"},
 			},
+			TeslaVehicleID: v.ID,
 		}
 
 		mb, err := json.Marshal(meta)
