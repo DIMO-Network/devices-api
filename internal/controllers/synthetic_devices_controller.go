@@ -312,7 +312,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
-	udai, err := sdc.generateUDAI(c.Context(), tx, req, vNFT.UserDeviceID.String, integration)
+	udai, err := sdc.generateUDAI(c.Context(), req, vNFT.UserDeviceID.String, integration)
 	if err != nil {
 		return err
 	}
@@ -396,7 +396,7 @@ func (vc *SyntheticDevicesController) generateNextChildKeyNumber(ctx context.Con
 	return seq.NextVal, nil
 }
 
-func (sdc *SyntheticDevicesController) generateUDAI(ctx context.Context, tx *sql.Tx, req *MintSyntheticDeviceRequest, userDeviceID string, integration *grpc.Integration) (*models.UserDeviceAPIIntegration, error) {
+func (sdc *SyntheticDevicesController) generateUDAI(ctx context.Context, req *MintSyntheticDeviceRequest, userDeviceID string, integration *grpc.Integration) (*models.UserDeviceAPIIntegration, error) {
 	udi := models.UserDeviceAPIIntegration{
 		IntegrationID: integration.Id,
 		UserDeviceID:  userDeviceID,
