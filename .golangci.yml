@@ -12,6 +12,7 @@ linters:
     - staticcheck
     - typecheck
     - unused
+    - zerologlint
 
 issues:
   fix: true
