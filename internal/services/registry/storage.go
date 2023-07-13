@@ -219,6 +219,10 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 					var metadata services.UserDeviceAPIIntegrationsMetadata
 					err = json.Unmarshal(ud.Metadata.JSON, &metadata)
+					if err != nil {
+						logger.Err(err).Msg("unable to parse metadata")
+						return err
+					}
 
 					v := &services.TeslaVehicle{
 						ID:        extID,
