@@ -24,7 +24,6 @@ import (
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/crypto"
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
@@ -604,25 +603,11 @@ func (vc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
 	}
 
-	ownerSignature[64] -= 27
-
-	pub, err := crypto.Ecrecover(hash, ownerSignature)
-	if err != nil {
-		vc.log.Err(err).Msg("Error occurred while trying to recover public key from signature")
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
-	}
-
-	pubRaw, err := crypto.UnmarshalPubkey(pub)
-	if err != nil {
-		vc.log.Err(err).Msg("Error occurred marshalling recovered public public key")
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
-	}
-
-	if crypto.PubkeyToAddress(*pubRaw) != addr {
+	if recAddr, err := helpers.Ecrecover(hash, ownerSignature); err != nil {
+		return err
+	} else if recAddr != addr {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature.")
 	}
-
-	ownerSignature[64] += 27
 
 	reqID := ksuid.New().String()
 
