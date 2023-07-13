@@ -392,13 +392,14 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 	}, nil
 }
 
-func (s *userDeviceService) GetAllUserDevice(ctx context.Context, req *pb.GetAllUserDeviceRequest) (*pb.GetAllUserDeviceResponse, error) {
+func (s *userDeviceService) GetAllUserDevice(req *pb.GetAllUserDeviceRequest, stream pb.UserDeviceService_GetAllUserDeviceServer) error {
+	ctx := context.Background()
 	all, err := models.UserDevices(
 		models.UserDeviceWhere.VinConfirmed.EQ(true)).
 		All(ctx, s.dbs().Reader)
 	if err != nil {
 		s.logger.Err(err).Msg("Database failure retrieving all user devices.")
-		return nil, status.Error(codes.Internal, "Internal error.")
+		return status.Error(codes.Internal, "Internal error.")
 	}
 
 	if len(req.Wmi) == 3 {
@@ -413,12 +414,13 @@ func (s *userDeviceService) GetAllUserDevice(ctx context.Context, req *pb.GetAll
 		all = filtered
 	}
 
-	var response = &pb.GetAllUserDeviceResponse{}
 	for _, item := range all {
-		response.UserDevices = append(response.UserDevices, s.deviceModelToAPI(item))
+		if err := stream.Send(s.deviceModelToAPI(item)); err != nil {
+			return err
+		}
 	}
 
-	return response, nil
+	return nil
 }
 
 func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevice {
