@@ -443,7 +443,6 @@ func (sdc *SyntheticDevicesController) generateUDAI(ctx context.Context, req *Mi
 		mb, _ := json.Marshal(meta)
 		udi.Metadata = null.JSONFrom(mb)
 		udi.ExternalID = null.StringFrom(externalID)
-		udi.TaskID = null.StringFrom(ksuid.New().String())
 	case constants.TeslaVendor:
 		teslaID, err := strconv.Atoi(req.Credentials.ExternalID)
 		if err != nil {
@@ -479,7 +478,6 @@ func (sdc *SyntheticDevicesController) generateUDAI(ctx context.Context, req *Mi
 
 		udi.ExternalID = null.StringFrom(req.Credentials.ExternalID)
 		udi.AccessExpiresAt = null.TimeFrom(time.Now().Add(time.Duration(req.Credentials.ExpiresIn) * time.Second))
-		udi.TaskID = null.StringFrom(ksuid.New().String())
 		udi.Metadata = null.JSONFrom(mb)
 	default:
 		return nil, fmt.Errorf("unrecognized vendor %s", integration.Vendor)
