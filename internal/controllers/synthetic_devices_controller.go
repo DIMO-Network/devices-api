@@ -28,7 +28,6 @@ import (
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
-	"github.com/savsgio/gotils/bytes"
 	"github.com/segmentio/ksuid"
 	smartcar "github.com/smartcar/go-sdk"
 	"github.com/volatiletech/null/v8"
@@ -246,6 +245,10 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid access token")
 	}
 
+	if integration.Vendor == constants.TeslaVendor && req.Credentials.AccessToken == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid access token")
+	}
+
 	if integration.Vendor == constants.SmartCarVendor && req.Credentials.Code == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid authorization code")
 	}
@@ -270,27 +273,37 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	userAddr := common.HexToAddress(*user.EthereumAddress)
 	rawPayload := vc.getEIP712Mint(int64(integration.TokenId), vid)
 
-	h, _, err := signer.TypedDataAndHash(*rawPayload)
+	tdHash, _, err := signer.TypedDataAndHash(*rawPayload)
 	if err != nil {
+		vc.log.Err(err).Msg("Error occurred creating hash of payload")
 		vc.log.Err(err).Msg("Error occurred creating hash of payload")
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
 	}
 
 	ownerSignature := common.FromHex(req.OwnerSignature)
-
-	recAddr, err := helpers.Ecrecover(h, ownerSignature)
+	recAddr, err := helpers.Ecrecover(tdHash, ownerSignature)
 	if err != nil {
 		vc.log.Err(err).Msg("unable to validate signature")
 		return err
+		vc.log.Err(err).Msg("unable to validate signature")
+		return err
 	}
-	payloadVerified := bytes.Equal(recAddr.Bytes(), userAddr.Bytes())
-	if !payloadVerified {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid signature provided")
+
+	if recAddr != userAddr {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature.")
 	}
 
 	childKeyNumber, err := vc.generateNextChildKeyNumber(c.Context())
 	if err != nil {
 		vc.log.Err(err).Msg("failed to generate sequence from database")
+		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
+	}
+
+	requestID := ksuid.New().String()
+
+	syntheticDeviceAddr, err := vc.sendSyntheticDeviceMintPayload(c.Context(), requestID, tdHash, int(vid), integration.TokenId, ownerSignature, childKeyNumber)
+	if err != nil {
+		vc.log.Err(err).Msg("synthetic device minting request failed")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
@@ -303,14 +316,6 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	if err := vc.handleDeviceAPIIntegrationCreation(c.Context(), tx, req, vNFT.UserDeviceID.String, integration); err != nil {
 		vc.log.Err(err).Str("UserDeviceID", vNFT.UserDeviceID.String).Msg("error creating userDeviceAPiIntegration record")
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-
-	requestID := ksuid.New().String()
-
-	syntheticDeviceAddr, err := vc.sendSyntheticDeviceMintPayload(c.Context(), requestID, h, int(vid), integration.TokenId, ownerSignature, childKeyNumber)
-	if err != nil {
-		vc.log.Err(err).Msg("synthetic device minting request failed")
-		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
 	metaReq := &models.MetaTransactionRequest{
@@ -341,7 +346,7 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Send([]byte("synthetic device mint request successful"))
+	return c.JSON(fiber.Map{"message": "Submitted synthetic device mint request."})
 }
 
 func (vc *SyntheticDevicesController) sendSyntheticDeviceMintPayload(ctx context.Context, requestID string, hash []byte, vehicleNode int, intTokenID uint64, ownerSignature []byte, childKeyNumber int) ([]byte, error) {
@@ -430,15 +435,15 @@ func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx con
 		mb, _ := json.Marshal(meta)
 		udi.Metadata = null.JSONFrom(mb)
 		udi.ExternalID = null.StringFrom(externalID)
+		udi.TaskID = null.StringFrom(ksuid.New().String())
 	case constants.TeslaVendor:
 		teslaID, err := strconv.Atoi(req.Credentials.ExternalID)
 		if err != nil {
-			vc.log.Err(err).Msgf("unable to parse external id %+v as integer", req.Credentials.ExternalID)
+			vc.log.Err(err).Msgf("unable to parse external id %q as integer", req.Credentials.ExternalID)
 			return err
 		}
 
-		v, err := vc.teslaService.GetVehicle(req.Credentials.AccessToken, teslaID)
-		if err != nil {
+		if _, err := vc.teslaService.GetVehicle(req.Credentials.AccessToken, teslaID); err != nil {
 			vc.log.Err(err).Msg("unable to retrieve vehicle from Tesla")
 			return err
 		}
@@ -452,9 +457,7 @@ func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx con
 			return opaqueInternalError
 		}
 		udi.AccessToken = null.StringFrom(encAccess)
-		udi.AccessExpiresAt = null.TimeFrom(time.Unix(req.Credentials.ExpiresIn, 0))
 		udi.RefreshToken = null.StringFrom(encRefresh)
-		udi.TeslaVehicleID = null.StringFrom(strconv.FormatInt(int64(v.VehicleID), 10))
 
 		meta := services.UserDeviceAPIIntegrationsMetadata{
 			Commands: &services.UserDeviceAPIIntegrationsMetadataCommands{
