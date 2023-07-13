@@ -511,8 +511,6 @@ func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayl
 
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(1)).Return(scInt, nil)
 
-	_ = test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
-
 	udID := ksuid.New().String()
 	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), common.HexToAddress(userEthAddress), mockUserID, udID, 57, s.pdb)
 
