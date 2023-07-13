@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-
 	"fmt"
 	"strings"
 	"time"
@@ -391,6 +390,37 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 		Total:            float32(totalValuation),
 		GrowthPercentage: float32(growthPercentage),
 	}, nil
+}
+
+func (s *userDeviceService) GetAllUserDevice(req *pb.GetAllUserDeviceRequest, stream pb.UserDeviceService_GetAllUserDeviceServer) error {
+	ctx := context.Background()
+	all, err := models.UserDevices(
+		models.UserDeviceWhere.VinConfirmed.EQ(true)).
+		All(ctx, s.dbs().Reader)
+	if err != nil {
+		s.logger.Err(err).Msg("Database failure retrieving all user devices.")
+		return status.Error(codes.Internal, "Internal error.")
+	}
+
+	if len(req.Wmi) == 3 {
+		wmi := strings.ToUpper(req.Wmi)
+		s.logger.Info().Msgf("WMI filter set: %s", wmi)
+		filtered := models.UserDeviceSlice{}
+		for _, device := range all {
+			if len(device.VinIdentifier.String) > 3 && device.VinIdentifier.String[:3] == wmi {
+				filtered = append(filtered, device)
+			}
+		}
+		all = filtered
+	}
+
+	for _, item := range all {
+		if err := stream.Send(s.deviceModelToAPI(item)); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevice {

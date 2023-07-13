@@ -33,6 +33,7 @@ type UserDeviceServiceClient interface {
 	CreateTemplate(ctx context.Context, in *CreateTemplateRequest, opts ...grpc.CallOption) (*CreateTemplateResponse, error)
 	RegisterUserDeviceFromVIN(ctx context.Context, in *RegisterUserDeviceFromVINRequest, opts ...grpc.CallOption) (*RegisterUserDeviceFromVINResponse, error)
 	UpdateDeviceIntegrationStatus(ctx context.Context, in *UpdateDeviceIntegrationStatusRequest, opts ...grpc.CallOption) (*UserDevice, error)
+	GetAllUserDevice(ctx context.Context, in *GetAllUserDeviceRequest, opts ...grpc.CallOption) (UserDeviceService_GetAllUserDeviceClient, error)
 }
 
 type userDeviceServiceClient struct {
@@ -133,6 +134,38 @@ func (c *userDeviceServiceClient) UpdateDeviceIntegrationStatus(ctx context.Cont
 	return out, nil
 }
 
+func (c *userDeviceServiceClient) GetAllUserDevice(ctx context.Context, in *GetAllUserDeviceRequest, opts ...grpc.CallOption) (UserDeviceService_GetAllUserDeviceClient, error) {
+	stream, err := c.cc.NewStream(ctx, &UserDeviceService_ServiceDesc.Streams[0], "/devices.UserDeviceService/GetAllUserDevice", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &userDeviceServiceGetAllUserDeviceClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type UserDeviceService_GetAllUserDeviceClient interface {
+	Recv() (*UserDevice, error)
+	grpc.ClientStream
+}
+
+type userDeviceServiceGetAllUserDeviceClient struct {
+	grpc.ClientStream
+}
+
+func (x *userDeviceServiceGetAllUserDeviceClient) Recv() (*UserDevice, error) {
+	m := new(UserDevice)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // UserDeviceServiceServer is the server API for UserDeviceService service.
 // All implementations must embed UnimplementedUserDeviceServiceServer
 // for forward compatibility
@@ -147,6 +180,7 @@ type UserDeviceServiceServer interface {
 	CreateTemplate(context.Context, *CreateTemplateRequest) (*CreateTemplateResponse, error)
 	RegisterUserDeviceFromVIN(context.Context, *RegisterUserDeviceFromVINRequest) (*RegisterUserDeviceFromVINResponse, error)
 	UpdateDeviceIntegrationStatus(context.Context, *UpdateDeviceIntegrationStatusRequest) (*UserDevice, error)
+	GetAllUserDevice(*GetAllUserDeviceRequest, UserDeviceService_GetAllUserDeviceServer) error
 	mustEmbedUnimplementedUserDeviceServiceServer()
 }
 
@@ -183,6 +217,9 @@ func (UnimplementedUserDeviceServiceServer) RegisterUserDeviceFromVIN(context.Co
 }
 func (UnimplementedUserDeviceServiceServer) UpdateDeviceIntegrationStatus(context.Context, *UpdateDeviceIntegrationStatusRequest) (*UserDevice, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateDeviceIntegrationStatus not implemented")
+}
+func (UnimplementedUserDeviceServiceServer) GetAllUserDevice(*GetAllUserDeviceRequest, UserDeviceService_GetAllUserDeviceServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetAllUserDevice not implemented")
 }
 func (UnimplementedUserDeviceServiceServer) mustEmbedUnimplementedUserDeviceServiceServer() {}
 
@@ -377,6 +414,27 @@ func _UserDeviceService_UpdateDeviceIntegrationStatus_Handler(srv interface{}, c
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserDeviceService_GetAllUserDevice_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetAllUserDeviceRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(UserDeviceServiceServer).GetAllUserDevice(m, &userDeviceServiceGetAllUserDeviceServer{stream})
+}
+
+type UserDeviceService_GetAllUserDeviceServer interface {
+	Send(*UserDevice) error
+	grpc.ServerStream
+}
+
+type userDeviceServiceGetAllUserDeviceServer struct {
+	grpc.ServerStream
+}
+
+func (x *userDeviceServiceGetAllUserDeviceServer) Send(m *UserDevice) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // UserDeviceService_ServiceDesc is the grpc.ServiceDesc for UserDeviceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -425,6 +483,12 @@ var UserDeviceService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _UserDeviceService_UpdateDeviceIntegrationStatus_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "GetAllUserDevice",
+			Handler:       _UserDeviceService_GetAllUserDevice_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "pkg/grpc/user_devices.proto",
 }

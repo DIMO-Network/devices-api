@@ -26,6 +26,7 @@ service UserDeviceService {
       returns (RegisterUserDeviceFromVINResponse);
   rpc UpdateDeviceIntegrationStatus(UpdateDeviceIntegrationStatusRequest)
       returns (UserDevice);
+  rpc GetAllUserDevice(GetAllUserDeviceRequest) returns (stream UserDevice);
 }
 
 message GetUserDeviceByAutoPIUnitIdRequest { string id = 1; }
@@ -117,4 +118,8 @@ message UpdateDeviceIntegrationStatusRequest {
   string user_device_id = 1;
   string integration_id = 2;
   string status = 3;
+}
+
+message GetAllUserDeviceRequest {
+  string wmi = 1;
 }
