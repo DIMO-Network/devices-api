@@ -912,9 +912,9 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusBadRequest, "Signature is not 65 bytes long.")
 		}
 
-		hash := crypto.Keccak256Hash(vinByte)
+		hash := crypto.Keccak256(vinByte)
 
-		recAddr, err := helpers.Ecrecover(hash.Bytes(), sig)
+		recAddr, err := helpers.Ecrecover(hash, sig)
 		if err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "Couldn't recover signer address.")
 		}
