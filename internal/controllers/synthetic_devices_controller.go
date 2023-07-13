@@ -387,7 +387,7 @@ func (sdc *SyntheticDevicesController) sendSyntheticDeviceMintPayload(ctx contex
 func (sdc *SyntheticDevicesController) generateNextChildKeyNumber(ctx context.Context) (int, error) {
 	seq := SyntheticDeviceSequence{}
 
-	qry := fmt.Sprintf("SELECT nextval('%s.synthetic_devices_serial_sequence');", vc.Settings.DB.Name)
+	qry := fmt.Sprintf("SELECT nextval('%s.synthetic_devices_serial_sequence');", sdc.Settings.DB.Name)
 	err := queries.Raw(qry).Bind(ctx, sdc.DBS().Reader, &seq)
 	if err != nil {
 		return 0, err
