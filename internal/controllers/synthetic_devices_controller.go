@@ -384,7 +384,7 @@ func (sdc *SyntheticDevicesController) sendSyntheticDeviceMintPayload(ctx contex
 	return syntheticDeviceAddr, sdc.registryClient.MintSyntheticDeviceSign(requestID, mvt)
 }
 
-func (vc *SyntheticDevicesController) generateNextChildKeyNumber(ctx context.Context) (int, error) {
+func (sdc *SyntheticDevicesController) generateNextChildKeyNumber(ctx context.Context) (int, error) {
 	seq := SyntheticDeviceSequence{}
 
 	qry := fmt.Sprintf("SELECT nextval('%s.synthetic_devices_serial_sequence');", vc.Settings.DB.Name)
