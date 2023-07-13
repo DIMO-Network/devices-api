@@ -388,7 +388,7 @@ func (sdc *SyntheticDevicesController) generateNextChildKeyNumber(ctx context.Co
 	seq := SyntheticDeviceSequence{}
 
 	qry := fmt.Sprintf("SELECT nextval('%s.synthetic_devices_serial_sequence');", vc.Settings.DB.Name)
-	err := queries.Raw(qry).Bind(ctx, vc.DBS().Reader, &seq)
+	err := queries.Raw(qry).Bind(ctx, sdc.DBS().Reader, &seq)
 	if err != nil {
 		return 0, err
 	}
