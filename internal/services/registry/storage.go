@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"strconv"
 
@@ -216,16 +217,13 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 						return err
 					}
 
-					vID, err := strconv.Atoi(ud.TeslaVehicleID.String)
-					if err != nil {
-						logger.Err(err).Msg("cannot convert tesla external id to int")
-						return err
-					}
+					var metadata services.UserDeviceAPIIntegrationsMetadata
+					err = json.Unmarshal(ud.Metadata.JSON, &metadata)
 
 					v := &services.TeslaVehicle{
 						ID:        extID,
 						VIN:       ud.R.UserDevice.VinIdentifier.String,
-						VehicleID: vID,
+						VehicleID: metadata.TeslaVehicleID,
 					}
 
 					if err := p.teslaTaskSvc.StartPoll(v, ud); err != nil {

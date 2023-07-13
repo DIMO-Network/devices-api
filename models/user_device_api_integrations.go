@@ -36,7 +36,6 @@ type UserDeviceAPIIntegration struct {
 	Metadata        null.JSON   `boil:"metadata" json:"metadata,omitempty" toml:"metadata" yaml:"metadata,omitempty"`
 	TaskID          null.String `boil:"task_id" json:"task_id,omitempty" toml:"task_id" yaml:"task_id,omitempty"`
 	Serial          null.String `boil:"serial" json:"serial,omitempty" toml:"serial" yaml:"serial,omitempty"`
-	TeslaVehicleID  null.String `boil:"tesla_vehicle_id" json:"tesla_vehicle_id,omitempty" toml:"tesla_vehicle_id" yaml:"tesla_vehicle_id,omitempty"`
 
 	R *userDeviceAPIIntegrationR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userDeviceAPIIntegrationL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -55,7 +54,6 @@ var UserDeviceAPIIntegrationColumns = struct {
 	Metadata        string
 	TaskID          string
 	Serial          string
-	TeslaVehicleID  string
 }{
 	UserDeviceID:    "user_device_id",
 	IntegrationID:   "integration_id",
@@ -69,7 +67,6 @@ var UserDeviceAPIIntegrationColumns = struct {
 	Metadata:        "metadata",
 	TaskID:          "task_id",
 	Serial:          "serial",
-	TeslaVehicleID:  "tesla_vehicle_id",
 }
 
 var UserDeviceAPIIntegrationTableColumns = struct {
@@ -85,7 +82,6 @@ var UserDeviceAPIIntegrationTableColumns = struct {
 	Metadata        string
 	TaskID          string
 	Serial          string
-	TeslaVehicleID  string
 }{
 	UserDeviceID:    "user_device_api_integrations.user_device_id",
 	IntegrationID:   "user_device_api_integrations.integration_id",
@@ -99,7 +95,6 @@ var UserDeviceAPIIntegrationTableColumns = struct {
 	Metadata:        "user_device_api_integrations.metadata",
 	TaskID:          "user_device_api_integrations.task_id",
 	Serial:          "user_device_api_integrations.serial",
-	TeslaVehicleID:  "user_device_api_integrations.tesla_vehicle_id",
 }
 
 // Generated where
@@ -117,7 +112,6 @@ var UserDeviceAPIIntegrationWhere = struct {
 	Metadata        whereHelpernull_JSON
 	TaskID          whereHelpernull_String
 	Serial          whereHelpernull_String
-	TeslaVehicleID  whereHelpernull_String
 }{
 	UserDeviceID:    whereHelperstring{field: "\"devices_api\".\"user_device_api_integrations\".\"user_device_id\""},
 	IntegrationID:   whereHelperstring{field: "\"devices_api\".\"user_device_api_integrations\".\"integration_id\""},
@@ -131,7 +125,6 @@ var UserDeviceAPIIntegrationWhere = struct {
 	Metadata:        whereHelpernull_JSON{field: "\"devices_api\".\"user_device_api_integrations\".\"metadata\""},
 	TaskID:          whereHelpernull_String{field: "\"devices_api\".\"user_device_api_integrations\".\"task_id\""},
 	Serial:          whereHelpernull_String{field: "\"devices_api\".\"user_device_api_integrations\".\"serial\""},
-	TeslaVehicleID:  whereHelpernull_String{field: "\"devices_api\".\"user_device_api_integrations\".\"tesla_vehicle_id\""},
 }
 
 // UserDeviceAPIIntegrationRels is where relationship names are stored.
@@ -172,9 +165,9 @@ func (r *userDeviceAPIIntegrationR) GetSerialAftermarketDevice() *AftermarketDev
 type userDeviceAPIIntegrationL struct{}
 
 var (
-	userDeviceAPIIntegrationAllColumns            = []string{"user_device_id", "integration_id", "status", "access_token", "access_expires_at", "refresh_token", "external_id", "created_at", "updated_at", "metadata", "task_id", "serial", "tesla_vehicle_id"}
+	userDeviceAPIIntegrationAllColumns            = []string{"user_device_id", "integration_id", "status", "access_token", "access_expires_at", "refresh_token", "external_id", "created_at", "updated_at", "metadata", "task_id", "serial"}
 	userDeviceAPIIntegrationColumnsWithoutDefault = []string{"user_device_id", "integration_id", "status"}
-	userDeviceAPIIntegrationColumnsWithDefault    = []string{"access_token", "access_expires_at", "refresh_token", "external_id", "created_at", "updated_at", "metadata", "task_id", "serial", "tesla_vehicle_id"}
+	userDeviceAPIIntegrationColumnsWithDefault    = []string{"access_token", "access_expires_at", "refresh_token", "external_id", "created_at", "updated_at", "metadata", "task_id", "serial"}
 	userDeviceAPIIntegrationPrimaryKeyColumns     = []string{"user_device_id", "integration_id"}
 	userDeviceAPIIntegrationGeneratedColumns      = []string{}
 )

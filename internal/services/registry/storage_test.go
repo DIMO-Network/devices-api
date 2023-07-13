@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"testing"
@@ -249,6 +250,16 @@ func (s *StorageTestSuite) Test_Tesla_StartPollOnMint() {
 	refToken, err := cipher.Encrypt("eyJhbGciOiJSUzI1NiIsInR5cCI")
 	s.NoError(err)
 
+	meta := services.UserDeviceAPIIntegrationsMetadata{
+		Commands: &services.UserDeviceAPIIntegrationsMetadataCommands{
+			Enabled: []string{"doors/unlock", "doors/lock", "trunk/open", "frunk/open", "charge/limit"},
+		},
+		TeslaVehicleID: 163418800938,
+	}
+
+	mb, err := json.Marshal(meta)
+	s.NoError(err)
+
 	udi := models.UserDeviceAPIIntegration{
 		IntegrationID:   integration.Id,
 		UserDeviceID:    ud.ID,
@@ -256,7 +267,7 @@ func (s *StorageTestSuite) Test_Tesla_StartPollOnMint() {
 		ExternalID:      null.StringFrom(extID),
 		AccessExpiresAt: null.TimeFrom(time.Now()),
 		RefreshToken:    null.StringFrom(refToken),
-		TeslaVehicleID:  null.StringFrom("163418800938"),
+		Metadata:        null.JSONFrom(mb),
 	}
 	s.MustInsert(&udi)
 

@@ -245,10 +245,6 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid access token")
 	}
 
-	if integration.Vendor == constants.TeslaVendor && req.Credentials.AccessToken == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid access token")
-	}
-
 	if integration.Vendor == constants.SmartCarVendor && req.Credentials.Code == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid authorization code")
 	}
@@ -276,15 +272,12 @@ func (vc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	tdHash, _, err := signer.TypedDataAndHash(*rawPayload)
 	if err != nil {
 		vc.log.Err(err).Msg("Error occurred creating hash of payload")
-		vc.log.Err(err).Msg("Error occurred creating hash of payload")
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
 	}
 
 	ownerSignature := common.FromHex(req.OwnerSignature)
 	recAddr, err := helpers.Ecrecover(tdHash, ownerSignature)
 	if err != nil {
-		vc.log.Err(err).Msg("unable to validate signature")
-		return err
 		vc.log.Err(err).Msg("unable to validate signature")
 		return err
 	}
@@ -443,7 +436,8 @@ func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx con
 			return err
 		}
 
-		if _, err := vc.teslaService.GetVehicle(req.Credentials.AccessToken, teslaID); err != nil {
+		v, err := vc.teslaService.GetVehicle(req.Credentials.AccessToken, teslaID)
+		if err != nil {
 			vc.log.Err(err).Msg("unable to retrieve vehicle from Tesla")
 			return err
 		}
@@ -463,6 +457,7 @@ func (vc *SyntheticDevicesController) handleDeviceAPIIntegrationCreation(ctx con
 			Commands: &services.UserDeviceAPIIntegrationsMetadataCommands{
 				Enabled: []string{"doors/unlock", "doors/lock", "trunk/open", "frunk/open", "charge/limit"},
 			},
+			TeslaVehicleID: v.ID,
 		}
 
 		mb, err := json.Marshal(meta)
