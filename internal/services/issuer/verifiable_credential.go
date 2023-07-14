@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
 	"github.com/piprate/json-gold/ld"
+	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
@@ -44,9 +45,10 @@ type Issuer struct {
 	VerificationMethod string
 	LDProcessor        *ld.JsonLdProcessor
 	LDOptions          *ld.JsonLdOptions
+	log                *zerolog.Logger
 }
 
-func New(c Config) (*Issuer, error) {
+func New(c Config, log *zerolog.Logger) (*Issuer, error) {
 	privateKey, err := crypto.ToECDSA(c.PrivateKey)
 	if err != nil {
 		return nil, err
@@ -71,6 +73,7 @@ func New(c Config) (*Issuer, error) {
 		VerificationMethod: verificationMethod,
 		LDProcessor:        ldProc,
 		LDOptions:          options,
+		log:                log,
 	}, nil
 }
 
@@ -160,8 +163,9 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int, expirationDate time.Time) (id
 	defer tx.Rollback() //nolint
 
 	vc := models.VerifiableCredential{
-		ClaimID:    id,
-		Credential: signedBytes,
+		ClaimID:        id,
+		Credential:     signedBytes,
+		ExpirationDate: expirationDate,
 	}
 
 	if err := vc.Insert(context.Background(), i.DBS().Writer, boil.Infer()); err != nil {

@@ -26,6 +26,7 @@ service UserDeviceService {
       returns (RegisterUserDeviceFromVINResponse);
   rpc UpdateDeviceIntegrationStatus(UpdateDeviceIntegrationStatusRequest)
       returns (UserDevice);
+  rpc GetAllUserDevice(GetAllUserDeviceRequest) returns (stream UserDevice);
   rpc IssueVinCredential(IssueVinCredentialRequest) returns (CredentialIssuedResponse);
 }
 
@@ -54,6 +55,7 @@ message UserDevice {
   optional bytes aftermarket_device_beneficiary_address = 11;
   optional CredentialMetadata latest_vin_credential = 12;
   bool vin_confirmed = 13;
+  string country_code = 14;
 }
 
 message UserDeviceIntegration {
@@ -127,4 +129,8 @@ message IssueVinCredentialRequest {
 
 message CredentialIssuedResponse {
   string credential_id = 1;
+}
+
+message GetAllUserDeviceRequest {
+  string wmi = 1;
 }

@@ -19,6 +19,7 @@ import (
 
 	"github.com/DIMO-Network/shared/redis"
 
+	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
 	deviceDefs "github.com/DIMO-Network/device-definitions-api/pkg"
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -77,6 +78,7 @@ type UserDevicesController struct {
 	redisCache                redis.CacheService
 	openAI                    services.OpenAI
 	usersClient               pb.UserServiceClient
+	deviceDataClient          dagrpc.UserDeviceDataServiceClient
 	NATSSvc                   *services.NATSService
 }
 
@@ -130,6 +132,7 @@ func NewUserDevicesController(settings *config.Settings,
 	cache redis.CacheService,
 	openAI services.OpenAI,
 	usersClient pb.UserServiceClient,
+	deviceDataClient dagrpc.UserDeviceDataServiceClient,
 	natsSvc *services.NATSService,
 ) UserDevicesController {
 	return UserDevicesController{
@@ -155,6 +158,7 @@ func NewUserDevicesController(settings *config.Settings,
 		redisCache:                cache,
 		openAI:                    openAI,
 		usersClient:               usersClient,
+		deviceDataClient:          deviceDataClient,
 		NATSSvc:                   natsSvc,
 	}
 }
@@ -912,9 +916,9 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusBadRequest, "Signature is not 65 bytes long.")
 		}
 
-		hash := crypto.Keccak256Hash(vinByte)
+		hash := crypto.Keccak256(vinByte)
 
-		recAddr, err := recoverAddress2(hash.Bytes(), sig)
+		recAddr, err := helpers.Ecrecover(hash, sig)
 		if err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "Couldn't recover signer address.")
 		}
@@ -1632,47 +1636,6 @@ func computeTypedDataHash(td *signer.TypedData) (hash common.Hash, err error) {
 	return
 }
 
-func recoverAddress2(hash []byte, sig []byte) (common.Address, error) {
-	if len(sig) != 65 {
-		return common.Address{}, fmt.Errorf("signature has invalid length %d", len(sig))
-	}
-
-	fixedSig := make([]byte, len(sig))
-	copy(fixedSig, sig)
-	fixedSig[64] -= 27
-
-	uncPubKey, err := crypto.Ecrecover(hash, fixedSig)
-	if err != nil {
-		return common.Address{}, err
-	}
-
-	pubKey, err := crypto.UnmarshalPubkey(uncPubKey)
-	if err != nil {
-		return common.Address{}, err
-	}
-
-	return crypto.PubkeyToAddress(*pubKey), nil
-}
-
-func recoverAddress(td *signer.TypedData, signature []byte) (addr common.Address, err error) {
-	hash, err := computeTypedDataHash(td)
-	if err != nil {
-		return
-	}
-	signature[64] -= 27
-	rawPub, err := crypto.Ecrecover(hash[:], signature)
-	if err != nil {
-		return
-	}
-
-	pub, err := crypto.UnmarshalPubkey(rawPub)
-	if err != nil {
-		return
-	}
-	addr = crypto.PubkeyToAddress(*pub)
-	return
-}
-
 // UpdateNFTImage godoc
 // @Description Updates a user's NFT image.
 // @Tags        user-devices
@@ -1890,26 +1853,11 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	sigBytes := common.FromHex(mr.Signature)
 
-	if len(sigBytes) != 65 {
-		logger.Error().Str("rawSignature", mr.Signature).Msg("Signature was not 65 bytes.")
-		return fiber.NewError(fiber.StatusBadRequest, "Signature must be 65 bytes.")
-	}
-
-	sigBytesYellowPaper := make([]byte, len(sigBytes))
-	copy(sigBytesYellowPaper, sigBytes)
-	sigBytesYellowPaper[64] -= 27
-
-	recUncPubKey, err := crypto.Ecrecover(hash[:], sigBytesYellowPaper)
+	recAddr, err := helpers.Ecrecover(hash.Bytes(), sigBytes)
 	if err != nil {
 		return err
 	}
 
-	recPubKey, err := crypto.UnmarshalPubkey(recUncPubKey)
-	if err != nil {
-		return err
-	}
-
-	recAddr := crypto.PubkeyToAddress(*recPubKey)
 	realAddr := common.HexToAddress(*user.EthereumAddress)
 
 	if recAddr != realAddr {

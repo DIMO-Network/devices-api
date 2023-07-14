@@ -107,7 +107,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
-		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, nil, s.redisClient, nil, s.usersClient, s.natsService)
+		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, nil, s.redisClient, nil, s.usersClient, nil, s.natsService)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUser)
 	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUserFromVIN)
@@ -977,41 +977,5 @@ func TestEIP712Hash(t *testing.T) {
 	if assert.NoError(t, err) {
 		realHash := common.HexToHash("0x8258cd28afb13c201c07bf80c717d55ce13e226b725dd8a115ae5ab064e537da")
 		assert.Equal(t, realHash, hash)
-	}
-}
-
-func TestEIP712Recover(t *testing.T) {
-	td := &signer.TypedData{
-		Types: signer.Types{
-			"EIP712Domain": []signer.Type{
-				{Name: "name", Type: "string"},
-				{Name: "version", Type: "string"},
-				{Name: "chainId", Type: "uint256"},
-				{Name: "verifyingContract", Type: "address"},
-			},
-			"MintDevice": {
-				{Name: "rootNode", Type: "uint256"},
-				{Name: "attributes", Type: "string[]"},
-				{Name: "infos", Type: "string[]"},
-			},
-		},
-		PrimaryType: "MintDevice",
-		Domain: signer.TypedDataDomain{
-			Name:              "DIMO",
-			Version:           "1",
-			ChainId:           math.NewHexOrDecimal256(31337),
-			VerifyingContract: "0x5fbdb2315678afecb367f032d93f642f64180aa3",
-		},
-		Message: signer.TypedDataMessage{
-			"rootNode":   math.NewHexOrDecimal256(7), // Just hardcoding this. We need a node for each make, and to keep these in sync.
-			"attributes": []any{"Make", "Model", "Year"},
-			"infos":      []any{"Tesla", "Model 3", "2020"},
-		},
-	}
-	sig := common.FromHex("0x558266d4d8cd994c9eab2dee0efeb3ee33c839e4ce77c64da544679a85bd4a864805dd1fab769e9888fdfc0ed6502f685dc43ddda1add760febd749acfcd517b1b")
-	addr, err := recoverAddress(td, sig)
-	if assert.NoError(t, err) {
-		realAddr := common.HexToAddress("0x969602c4f39D345Cbe47E7fe0dd8F1f16f984D65")
-		assert.Equal(t, realAddr, addr)
 	}
 }

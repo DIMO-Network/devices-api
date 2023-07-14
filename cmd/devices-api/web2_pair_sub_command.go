@@ -5,8 +5,6 @@ import (
 	"flag"
 	"os"
 
-	"github.com/Shopify/sarama"
-
 	"math/big"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -21,8 +19,6 @@ type web2PairCmd struct {
 	logger    zerolog.Logger
 	settings  config.Settings
 	pdb       db.Store
-	producer  sarama.SyncProducer
-	ddSvc     services.DeviceDefinitionService
 	container dependencyContainer
 }
 
@@ -40,8 +36,8 @@ func (p *web2PairCmd) SetFlags(f *flag.FlagSet) {
 }
 
 func (p *web2PairCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
-
-	p.producer = p.container.getKafkaProducer()
+	producer := p.container.getKafkaProducer()
+	ddSvc := p.container.getDeviceDefinitionService()
 
 	if len(os.Args[2:]) != 2 {
 		p.logger.Fatal().Msg("Requires aftermarket_token_id vehicle_token_id")
@@ -61,12 +57,12 @@ func (p *web2PairCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interfa
 
 	autoPiSvc := services.NewAutoPiAPIService(&p.settings, p.pdb.DBS)
 	autoPiTaskService := services.NewAutoPiTaskService(&p.settings, autoPiSvc, p.pdb.DBS, p.logger)
-	autoPiIngest := services.NewIngestRegistrar(p.producer)
-	eventService := services.NewEventService(&p.logger, &p.settings, p.producer)
-	deviceDefinitionRegistrar := services.NewDeviceDefinitionRegistrar(p.producer, &p.settings)
+	autoPiIngest := services.NewIngestRegistrar(producer)
+	eventService := services.NewEventService(&p.logger, &p.settings, producer)
+	deviceDefinitionRegistrar := services.NewDeviceDefinitionRegistrar(producer, &p.settings)
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, p.pdb.DBS, &p.logger)
 
-	i := autopi.NewIntegration(p.pdb.DBS, p.ddSvc, autoPiSvc, autoPiTaskService, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &p.logger)
+	i := autopi.NewIntegration(p.pdb.DBS, ddSvc, autoPiSvc, autoPiTaskService, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &p.logger)
 
 	err := i.Pair(ctx, amToken, vToken)
 	if err != nil {

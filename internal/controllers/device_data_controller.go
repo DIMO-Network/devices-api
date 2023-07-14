@@ -9,6 +9,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/DIMO-Network/device-data-api/pkg/grpc"
+
 	"github.com/DIMO-Network/shared"
 
 	"github.com/DIMO-Network/devices-api/internal/services"
@@ -239,10 +241,16 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "No status updates yet.")
 	}
 
-	ds := PrepareDeviceStatusInformation(c.Context(), udc.DeviceDefSvc, deviceData, userDevice.DeviceDefinitionID,
-		userDevice.DeviceStyleID, []int64{NonLocationData, CurrentLocation, AllTimeLocation})
+	udd, err := udc.deviceDataClient.GetUserDeviceData(c.Context(), &grpc.UserDeviceDataRequest{
+		UserDeviceId:       userDeviceID,
+		DeviceDefinitionId: userDevice.DeviceDefinitionID,
+		DeviceStyleId:      userDevice.DeviceDefinitionID,
+	})
+	if err != nil {
+		return shared.GrpcErrorToFiber(err, "failed to get user device data grpc")
+	}
 
-	return c.JSON(ds)
+	return c.JSON(udd)
 }
 
 // RefreshUserDeviceStatus godoc
