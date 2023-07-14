@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"database/sql"
-	"encoding/base64"
 	"errors"
 	"math/big"
 
@@ -40,13 +39,22 @@ const (
 	euroToUsd float64 = 1.10
 )
 
-func NewUserDeviceService(dbs func() *db.ReaderWriter, settings *config.Settings, hardwareTemplateService autopi.HardwareTemplateService, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, eventService services.EventService) pb.UserDeviceServiceServer {
+func NewUserDeviceService(
+	dbs func() *db.ReaderWriter,
+	settings *config.Settings,
+	hardwareTemplateService autopi.HardwareTemplateService,
+	logger *zerolog.Logger,
+	deviceDefSvc services.DeviceDefinitionService,
+	eventService services.EventService,
+	vcIss *issuer.Issuer,
+) pb.UserDeviceServiceServer {
 	return &userDeviceService{dbs: dbs,
 		logger:                  logger,
 		settings:                settings,
 		hardwareTemplateService: hardwareTemplateService,
 		deviceDefSvc:            deviceDefSvc,
 		eventService:            eventService,
+		vcIss:                   vcIss,
 	}
 }
 
@@ -58,6 +66,7 @@ type userDeviceService struct {
 	settings                *config.Settings
 	deviceDefSvc            services.DeviceDefinitionService
 	eventService            services.EventService
+	vcIss                   *issuer.Issuer
 }
 
 func (s *userDeviceService) GetUserDevice(ctx context.Context, req *pb.GetUserDeviceRequest) (*pb.UserDevice, error) {
@@ -545,13 +554,6 @@ func nullTimeToPB(t null.Time) *timestamppb.Timestamp {
 }
 
 func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.IssueVinCredentialRequest) (*pb.IssueVinCredentialResponse, error) {
-	logger := s.logger.With().Str("vin", req.Vin).Logger()
-	pk, err := base64.RawURLEncoding.DecodeString(s.settings.IssuerPrivateKey)
-	if err != nil {
-		logger.Err(err).Msg("Couldn't parse issuer private key.")
-		return nil, err
-	}
-
 	v, err := models.VehicleNFTS(models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(int64(req.TokenId), 0)))).One(ctx, s.dbs().Reader)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -564,23 +566,9 @@ func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.Issu
 		return nil, status.Error(codes.InvalidArgument, "Input and NFT VINs do not much.")
 	}
 
-	issuer, err := issuer.New(
-		issuer.Config{
-			PrivateKey:        pk,
-			ChainID:           big.NewInt(s.settings.DIMORegistryChainID),
-			VehicleNFTAddress: common.HexToAddress(s.settings.VehicleNFTAddress),
-			DBS:               s.dbs,
-		},
-		&logger,
-	)
+	credID, err := s.vcIss.VIN(req.Vin, new(big.Int).SetUint64(req.TokenId), req.ExpiresAt.AsTime())
 	if err != nil {
-		logger.Err(err).Msg("Failed to create issuer.")
-		return nil, err
-	}
-
-	credID, err := issuer.VIN(req.Vin, new(big.Int).SetUint64(req.TokenId), req.ExpiresAt.AsTime())
-	if err != nil {
-		logger.Err(err).Msg("Failed to create vin credential.")
+		s.logger.Err(err).Msg("Failed to create vin credential.")
 		return nil, err
 	}
 	return &pb.IssueVinCredentialResponse{

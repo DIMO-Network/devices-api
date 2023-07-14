@@ -32,14 +32,14 @@ type Config struct {
 	PrivateKey        []byte
 	ChainID           *big.Int
 	VehicleNFTAddress common.Address
-	DBS               func() *db.ReaderWriter
+	DBS               db.Store
 }
 
 type Issuer struct {
 	PrivateKey         *ecdsa.PrivateKey
 	ChainID            *big.Int
 	VehicleNFTAddress  common.Address
-	DBS                func() *db.ReaderWriter
+	DBS                db.Store
 	KeyEnc             string
 	IssuerDID          string
 	VerificationMethod string
@@ -156,7 +156,7 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int, expirationDate time.Time) (id
 		return "", err
 	}
 
-	tx, err := i.DBS().Writer.Begin()
+	tx, err := i.DBS.DBS().Writer.Begin()
 	if err != nil {
 		return "", err
 	}
@@ -168,7 +168,7 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int, expirationDate time.Time) (id
 		ExpirationDate: expirationDate,
 	}
 
-	if err := vc.Insert(context.Background(), i.DBS().Writer, boil.Infer()); err != nil {
+	if err := vc.Insert(context.Background(), i.DBS.DBS().Writer, boil.Infer()); err != nil {
 		return "", err
 	}
 
@@ -178,7 +178,7 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int, expirationDate time.Time) (id
 	}
 
 	nft.ClaimID = null.StringFrom(id)
-	if _, err := nft.Update(context.Background(), i.DBS().Writer, boil.Whitelist(models.VehicleNFTColumns.ClaimID)); err != nil {
+	if _, err := nft.Update(context.Background(), i.DBS.DBS().Writer, boil.Whitelist(models.VehicleNFTColumns.ClaimID)); err != nil {
 		return "", err
 	}
 
