@@ -5,10 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/DIMO-Network/device-data-api/pkg/grpc"
 	"regexp"
 	"sort"
 	"time"
+
+	"github.com/DIMO-Network/device-data-api/pkg/grpc"
 
 	"github.com/DIMO-Network/shared"
 
