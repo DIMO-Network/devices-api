@@ -53,7 +53,7 @@ message UserDevice {
   string device_definition_id = 9;
   optional string device_style_id = 10;
   optional bytes aftermarket_device_beneficiary_address = 11;
-  optional CredentialMetadata latest_vin_credential = 12;
+  optional VinCredential latest_vin_credential = 12;
   bool vin_confirmed = 13;
   string country_code = 14;
 }
@@ -110,7 +110,7 @@ message RegisterUserDeviceFromVINResponse {
   bool created = 1;
 }
 
-message CredentialMetadata {
+message VinCredential {
   string id = 1;
   google.protobuf.Timestamp expiration = 2;
 }

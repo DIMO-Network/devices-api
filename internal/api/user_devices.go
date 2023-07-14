@@ -455,7 +455,7 @@ func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevi
 		}
 
 		if vc := vnft.R.Claim; vc != nil {
-			out.LatestVinCredential = &pb.CredentialMetadata{
+			out.LatestVinCredential = &pb.VinCredential{
 				Id:         vc.ClaimID,
 				Expiration: timestamppb.New(vc.ExpirationDate),
 			}
