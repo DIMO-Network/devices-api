@@ -544,7 +544,7 @@ func nullTimeToPB(t null.Time) *timestamppb.Timestamp {
 	return timestamppb.New(t.Time)
 }
 
-func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.IssueVinCredentialRequest) (*pb.IssueVinCredentialResponse, error) { //nolint
+func (s *userDeviceService) IssueVinCredential(_ context.Context, req *pb.IssueVinCredentialRequest) (*pb.IssueVinCredentialResponse, error) { //nolint
 	logger := s.logger.With().Str("vin", req.Vin).Logger()
 	pk, err := base64.RawURLEncoding.DecodeString(s.settings.IssuerPrivateKey)
 	if err != nil {
@@ -566,16 +566,7 @@ func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.Issu
 		return nil, err
 	}
 
-	exp := time.Now().Add(time.Hour * 24 * 8)
-	if *req.ExpiresAt != "" {
-		exp, err = time.Parse(time.RFC3339, *req.ExpiresAt)
-		if err != nil {
-			logger.Err(err).Msg("Failed to parse credential experation date.")
-			return nil, err
-		}
-	}
-
-	credID, err := issuer.VIN(req.Vin, big.NewInt(int64(req.TokenId)), exp.UTC())
+	credID, err := issuer.VIN(req.Vin, big.NewInt(int64(req.TokenId)), req.ExpiresAt.AsTime())
 	if err != nil {
 		logger.Err(err).Msg("Failed to create vin credential.")
 		return nil, err
