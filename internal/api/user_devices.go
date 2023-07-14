@@ -544,12 +544,24 @@ func nullTimeToPB(t null.Time) *timestamppb.Timestamp {
 	return timestamppb.New(t.Time)
 }
 
-func (s *userDeviceService) IssueVinCredential(_ context.Context, req *pb.IssueVinCredentialRequest) (*pb.IssueVinCredentialResponse, error) {
+func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.IssueVinCredentialRequest) (*pb.IssueVinCredentialResponse, error) {
 	logger := s.logger.With().Str("vin", req.Vin).Logger()
 	pk, err := base64.RawURLEncoding.DecodeString(s.settings.IssuerPrivateKey)
 	if err != nil {
 		logger.Err(err).Msg("Couldn't parse issuer private key.")
 		return nil, err
+	}
+
+	v, err := models.VehicleNFTS(models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(int64(req.TokenId), 0)))).One(ctx, s.dbs().Reader)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, status.Error(codes.NotFound, "No vehicle with that id.")
+		}
+		return nil, err
+	}
+
+	if req.Vin != v.Vin {
+		return nil, status.Error(codes.InvalidArgument, "Input and NFT VINs do not much.")
 	}
 
 	issuer, err := issuer.New(
