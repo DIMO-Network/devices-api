@@ -45,6 +45,7 @@ type Settings struct {
 	DrivlyVINAPIURL                   string      `yaml:"DRIVLY_VIN_API_URL"`
 	DrivlyOfferAPIURL                 string      `yaml:"DRIVLY_OFFER_API_URL"`
 	DefinitionsGRPCAddr               string      `yaml:"DEFINITIONS_GRPC_ADDR"`
+	DeviceDataGRPCAddr                string      `yaml:"DEVICE_DATA_GRPC_ADDR"`
 	DeviceDefinitionTopic             string      `yaml:"DEVICE_DEFINITION_TOPIC"`
 	DeviceDefinitionMetadataTopic     string      `yaml:"DEVICE_DEFINITION_METADATA_TOPIC"`
 	ElasticDeviceStatusIndex          string      `yaml:"ELASTIC_DEVICE_STATUS_INDEX"`
@@ -71,12 +72,12 @@ type Settings struct {
 	NATSValuationSubject              string      `yaml:"NATS_VALUATION_SUBJECT"`
 	NATSAckTimeout                    string      `yaml:"NATS_ACK_TIMEOUT"`
 	NATSDurableConsumer               string      `yaml:"NATS_DURABLE_CONSUMER"`
-	DIMOContractAPIURL                string      `yaml:"DIMO_CONTRACT_APIURL"`
+
+	DIMOContractAPIURL string `yaml:"DIMO_CONTRACT_APIURL"`
 
 	// IssuerPrivateKey is a base64-encoded secp256k1 private key, used to sign
 	// VIN verifiable credentials.
-	IssuerPrivateKey string `yaml:"ISSUER_PRIVATE_KEY"`
-
+	IssuerPrivateKey        string `yaml:"ISSUER_PRIVATE_KEY"`
 	SyntheticDevicesEnabled bool   `yaml:"SYNTHETIC_DEVICES_ENABLED"`
 	SyntheticWalletGRPCAddr string `yaml:"SYNTHETIC_WALLET_GRPC_ADDR"`
 
