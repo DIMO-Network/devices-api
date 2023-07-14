@@ -59,7 +59,7 @@ func (s *CredentialTestSuite) SetupSuite() {
 		PrivateKey:        pk,
 		ChainID:           big.NewInt(137),
 		VehicleNFTAddress: common.HexToAddress("00f1"),
-		DBS:               s.pdb.DBS,
+		DBS:               s.pdb,
 	},
 		&logger)
 	s.iss = iss
@@ -123,7 +123,7 @@ func (s *CredentialTestSuite) TestVerifiableCredential() {
 		PrivateKey:        pk,
 		ChainID:           big.NewInt(137),
 		VehicleNFTAddress: common.HexToAddress("00f1"),
-		DBS:               s.pdb.DBS,
+		DBS:               s.pdb,
 	}, &log)
 	s.Require().NoError(err)
 
