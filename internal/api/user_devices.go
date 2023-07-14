@@ -566,7 +566,7 @@ func (s *userDeviceService) IssueVinCredential(_ context.Context, req *pb.IssueV
 		return nil, err
 	}
 
-	credID, err := issuer.VIN(req.Vin, big.NewInt(int64(req.TokenId)), req.ExpiresAt.AsTime())
+	credID, err := issuer.VIN(req.Vin, new(big.Int).SetUint64(req.TokenId), req.ExpiresAt.AsTime())
 	if err != nil {
 		logger.Err(err).Msg("Failed to create vin credential.")
 		return nil, err
