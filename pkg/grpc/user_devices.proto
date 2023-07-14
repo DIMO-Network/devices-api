@@ -122,8 +122,8 @@ message UpdateDeviceIntegrationStatusRequest {
 }
 
 message IssueVinCredentialRequest {
-  string vin = 1;
-  uint64 token_id = 2;
+  uint64 token_id = 1;
+  string vin = 2;
   google.protobuf.Timestamp expires_at = 3;
 }
 
