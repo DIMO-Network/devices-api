@@ -222,23 +222,14 @@ func calculateRange(ctx context.Context, ddSvc services.DeviceDefinitionService,
 // @Router      /user/devices/{userDeviceID}/status [get]
 func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
+	userID := helpers.GetUserID(c)
 
 	userDevice, err := models.FindUserDevice(c.Context(), udc.DBS().Reader, userDeviceID)
 	if err != nil {
 		return err
 	}
-
-	deviceData, err := models.UserDeviceData(
-		models.UserDeviceDatumWhere.UserDeviceID.EQ(userDevice.ID),
-		models.UserDeviceDatumWhere.Signals.IsNotNull(),
-		models.UserDeviceDatumWhere.UpdatedAt.GT(time.Now().Add(-14*24*time.Hour)),
-	).All(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		return err
-	}
-
-	if len(deviceData) == 0 {
-		return fiber.NewError(fiber.StatusNotFound, "No status updates yet.")
+	if userDevice.UserID != userID {
+		return fiber.NewError(fiber.StatusForbidden)
 	}
 
 	udd, err := udc.deviceDataClient.GetUserDeviceData(c.Context(), &grpc.UserDeviceDataRequest{
