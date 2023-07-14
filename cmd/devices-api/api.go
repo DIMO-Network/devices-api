@@ -325,20 +325,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	ctx := context.Background()
 
-	pk, err := base64.RawURLEncoding.DecodeString(settings.IssuerPrivateKey)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Couldn't parse issuer private key.")
-	}
-
-	iss, err := issuer.New(
-		issuer.Config{
-			PrivateKey:        pk,
-			ChainID:           big.NewInt(settings.DIMORegistryChainID),
-			VehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
-			DBS:               pdb,
-		},
-		&logger,
-	)
+	iss, err := createVCIssuer(settings, pdb, &logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to create issuer.")
 	}
@@ -416,6 +403,23 @@ func startGRPCServer(
 	if err := server.Serve(lis); err != nil {
 		logger.Fatal().Err(err).Msg("gRPC server terminated unexpectedly")
 	}
+}
+
+func createVCIssuer(settings *config.Settings, dbs db.Store, logger *zerolog.Logger) (*issuer.Issuer, error) {
+	pk, err := base64.RawURLEncoding.DecodeString(settings.IssuerPrivateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return issuer.New(
+		issuer.Config{
+			PrivateKey:        pk,
+			ChainID:           big.NewInt(settings.DIMORegistryChainID),
+			VehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
+			DBS:               dbs,
+		},
+		logger,
+	)
 }
 
 func startValuationConsumer(settings *config.Settings, pdb func() *db.ReaderWriter, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService, natsSvc *services.NATSService) {
