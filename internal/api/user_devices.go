@@ -544,7 +544,7 @@ func nullTimeToPB(t null.Time) *timestamppb.Timestamp {
 	return timestamppb.New(t.Time)
 }
 
-func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.IssueVinCredentialRequest) (*pb.CredentialIssuedResponse, error) { //nolint
+func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.IssueVinCredentialRequest) (*pb.IssueVinCredentialResponse, error) { //nolint
 	logger := s.logger.With().Str("vin", req.Vin).Logger()
 	pk, err := base64.RawURLEncoding.DecodeString(s.settings.IssuerPrivateKey)
 	if err != nil {
@@ -559,6 +559,7 @@ func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.Issu
 			VehicleNFTAddress: common.HexToAddress(s.settings.VehicleNFTAddress),
 			DBS:               s.dbs,
 		},
+		&logger,
 	)
 	if err != nil {
 		logger.Err(err).Msg("Failed to create issuer.")
@@ -579,7 +580,7 @@ func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.Issu
 		logger.Err(err).Msg("Failed to create vin credential.")
 		return nil, err
 	}
-	return &pb.CredentialIssuedResponse{
+	return &pb.IssueVinCredentialResponse{
 		CredentialId: credID,
 	}, nil
 }

@@ -49,7 +49,7 @@ type UserDeviceServiceClient interface {
 	RegisterUserDeviceFromVIN(ctx context.Context, in *RegisterUserDeviceFromVINRequest, opts ...grpc.CallOption) (*RegisterUserDeviceFromVINResponse, error)
 	UpdateDeviceIntegrationStatus(ctx context.Context, in *UpdateDeviceIntegrationStatusRequest, opts ...grpc.CallOption) (*UserDevice, error)
 	GetAllUserDevice(ctx context.Context, in *GetAllUserDeviceRequest, opts ...grpc.CallOption) (UserDeviceService_GetAllUserDeviceClient, error)
-	IssueVinCredential(ctx context.Context, in *IssueVinCredentialRequest, opts ...grpc.CallOption) (*CredentialIssuedResponse, error)
+	IssueVinCredential(ctx context.Context, in *IssueVinCredentialRequest, opts ...grpc.CallOption) (*IssueVinCredentialResponse, error)
 }
 
 type userDeviceServiceClient struct {
@@ -182,8 +182,8 @@ func (x *userDeviceServiceGetAllUserDeviceClient) Recv() (*UserDevice, error) {
 	return m, nil
 }
 
-func (c *userDeviceServiceClient) IssueVinCredential(ctx context.Context, in *IssueVinCredentialRequest, opts ...grpc.CallOption) (*CredentialIssuedResponse, error) {
-	out := new(CredentialIssuedResponse)
+func (c *userDeviceServiceClient) IssueVinCredential(ctx context.Context, in *IssueVinCredentialRequest, opts ...grpc.CallOption) (*IssueVinCredentialResponse, error) {
+	out := new(IssueVinCredentialResponse)
 	err := c.cc.Invoke(ctx, UserDeviceService_IssueVinCredential_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -206,7 +206,7 @@ type UserDeviceServiceServer interface {
 	RegisterUserDeviceFromVIN(context.Context, *RegisterUserDeviceFromVINRequest) (*RegisterUserDeviceFromVINResponse, error)
 	UpdateDeviceIntegrationStatus(context.Context, *UpdateDeviceIntegrationStatusRequest) (*UserDevice, error)
 	GetAllUserDevice(*GetAllUserDeviceRequest, UserDeviceService_GetAllUserDeviceServer) error
-	IssueVinCredential(context.Context, *IssueVinCredentialRequest) (*CredentialIssuedResponse, error)
+	IssueVinCredential(context.Context, *IssueVinCredentialRequest) (*IssueVinCredentialResponse, error)
 	mustEmbedUnimplementedUserDeviceServiceServer()
 }
 
@@ -247,7 +247,7 @@ func (UnimplementedUserDeviceServiceServer) UpdateDeviceIntegrationStatus(contex
 func (UnimplementedUserDeviceServiceServer) GetAllUserDevice(*GetAllUserDeviceRequest, UserDeviceService_GetAllUserDeviceServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetAllUserDevice not implemented")
 }
-func (UnimplementedUserDeviceServiceServer) IssueVinCredential(context.Context, *IssueVinCredentialRequest) (*CredentialIssuedResponse, error) {
+func (UnimplementedUserDeviceServiceServer) IssueVinCredential(context.Context, *IssueVinCredentialRequest) (*IssueVinCredentialResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method IssueVinCredential not implemented")
 }
 func (UnimplementedUserDeviceServiceServer) mustEmbedUnimplementedUserDeviceServiceServer() {}

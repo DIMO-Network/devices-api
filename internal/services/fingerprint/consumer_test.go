@@ -64,7 +64,7 @@ func (s *ConsumerTestSuite) SetupSuite() {
 		PrivateKey:        pk,
 		ChainID:           big.NewInt(137),
 		VehicleNFTAddress: common.HexToAddress("00f1"),
-		DBS:               s.pdb,
+		DBS:               s.pdb.DBS,
 	},
 		&logger)
 	s.iss = iss
