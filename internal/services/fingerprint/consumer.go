@@ -131,12 +131,13 @@ func (c *Consumer) Handle(ctx context.Context, event *Event) error {
 		}
 	}
 
-	_, err = c.iss.VIN(observedVIN, vn.TokenID.Int(nil), time.Now().Add(7*24*time.Hour))
-	if err == nil {
-		c.logger.Info().Msgf("Issued VIN credential for vehicle %d using device %s.", vn.TokenID, addr)
+	if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), time.Now().Add(8*24*time.Hour)); err != nil {
+		return err
 	}
 
-	return err
+	c.logger.Info().Msgf("Issued VIN credential for vehicle %d using device %s.", vn.TokenID, addr)
+
+	return nil
 }
 
 var startTime = time.Date(2022, time.January, 31, 5, 0, 0, 0, time.UTC)
