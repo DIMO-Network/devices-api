@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
@@ -113,9 +114,21 @@ func (s *CredentialTestSuite) TestVerifiableCredential() {
 	err = nft.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
 	require.NoError(s.T(), err)
 
+	pk, err := base64.RawURLEncoding.DecodeString("2pN28-5VmEavX46XWszjasN0kx4ha3wQ6w6hGqD8o0k")
+	require.NoError(s.T(), err)
+
+	log := zerolog.Nop()
+
+	iss, err := New(Config{
+		PrivateKey:        pk,
+		ChainID:           big.NewInt(137),
+		VehicleNFTAddress: common.HexToAddress("00f1"),
+		DBS:               s.pdb,
+	}, &log)
 	s.Require().NoError(err)
 
-	credentialID, err := s.iss.VIN(vin, tokenID)
+	vinCredExpiration := time.Now().Add(time.Hour * 24 * 8).UTC()
+	credentialID, err := iss.VIN(vin, tokenID, vinCredExpiration)
 	s.Require().NoError(err)
 
 	vc, err := models.VerifiableCredentials(models.VerifiableCredentialWhere.ClaimID.EQ(credentialID)).One(context.Background(), s.pdb.DBS().Reader)

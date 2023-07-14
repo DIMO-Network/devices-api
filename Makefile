@@ -1,4 +1,4 @@
-.PHONY: all deps docker docker-cgo clean docs test test-race fmt lint install deploy-docs
+.PHONY: all deps docker gen-proto docker-cgo clean docs test test-race fmt lint install deploy-docs
 
 TAGS =
 
@@ -37,6 +37,9 @@ $(PATHINSTBIN)/%: $(SOURCE_FILES)
 	@go build $(GO_FLAGS) -tags "$(TAGS)" -ldflags "$(LD_FLAGS) " -o $@ ./cmd/$*
 
 $(APPS): %: $(PATHINSTBIN)/%
+
+gen-proto:
+	@protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative pkg/grpc/*.proto
 
 docker-tags:
 	@echo "latest,$(VER_CUT),$(VER_MAJOR).$(VER_MINOR),$(VER_MAJOR)" > .tags

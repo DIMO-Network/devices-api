@@ -77,10 +77,10 @@ func New(c Config, log *zerolog.Logger) (*Issuer, error) {
 	}, nil
 }
 
-func (i *Issuer) VIN(vin string, tokenID *big.Int) (id string, err error) {
+// VIN issues a vin credential using device vin, token ID and expiration date
+func (i *Issuer) VIN(vin string, tokenID *big.Int, expirationDate time.Time) (id string, err error) {
 	id = uuid.New().String()
 	issuanceDate := time.Now().UTC().Format(time.RFC3339)
-	expirationDate := time.Now().Add(time.Hour * 24 * 7).UTC()
 
 	credential := map[string]any{
 		"@context": []any{

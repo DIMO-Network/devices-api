@@ -305,8 +305,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	udOwner.Post("/autopi/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
 
-	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService)
-
 	go startValuationConsumer(settings, pdb.DBS, &logger, ddSvc, natsSvc)
 
 	logger.Info().Msg("Server started on port " + settings.Port)
@@ -327,39 +325,25 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	ctx := context.Background()
 
-	{
-		pk, err := base64.RawURLEncoding.DecodeString(settings.IssuerPrivateKey)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Couldn't parse issuer private key.")
-		}
-
-		iss, err := issuer.New(
-			issuer.Config{
-				PrivateKey:        pk,
-				ChainID:           big.NewInt(settings.DIMORegistryChainID),
-				VehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
-				DBS:               pdb,
-			},
-			&logger,
-		)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Failed to create issuer.")
-		}
-
-		if err := fingerprint.RunConsumer(ctx, settings, &logger, iss, pdb); err != nil {
-			logger.Fatal().Err(err).Msg("Failed to create vin credentialer listener")
-		}
-
-		store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, settings, scTaskSvc, teslaTaskService, ddSvc)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Failed to create registry storage client")
-		}
-
-		err = registry.RunConsumer(ctx, kclient, &logger, store)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Failed to create transaction listener")
-		}
+	iss, err := createVCIssuer(settings, pdb, &logger)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create issuer.")
 	}
+
+	if err := fingerprint.RunConsumer(ctx, settings, &logger, iss, pdb); err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create vin credentialer listener")
+	}
+
+	store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, settings, scTaskSvc, teslaTaskService, ddSvc)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create registry storage client")
+	}
+
+	if err := registry.RunConsumer(ctx, kclient, &logger, store); err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create transaction listener")
+	}
+
+	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService, iss)
 
 	// start task consumer for autopi
 	autoPiTaskService.StartConsumer(ctx)
@@ -389,8 +373,15 @@ func healthCheck(c *fiber.Ctx) error {
 	return nil
 }
 
-func startGRPCServer(settings *config.Settings, dbs func() *db.ReaderWriter,
-	hardwareTemplateService autopi.HardwareTemplateService, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, eventService services.EventService) {
+func startGRPCServer(
+	settings *config.Settings,
+	dbs func() *db.ReaderWriter,
+	hardwareTemplateService autopi.HardwareTemplateService,
+	logger *zerolog.Logger,
+	deviceDefSvc services.DeviceDefinitionService,
+	eventService services.EventService,
+	vcIss *issuer.Issuer,
+) {
 	lis, err := net.Listen("tcp", ":"+settings.GRPCPort)
 	if err != nil {
 		logger.Fatal().Err(err).Msgf("Couldn't listen on gRPC port %s", settings.GRPCPort)
@@ -406,12 +397,29 @@ func startGRPCServer(settings *config.Settings, dbs func() *db.ReaderWriter,
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 	)
 
-	pb.RegisterUserDeviceServiceServer(server, api.NewUserDeviceService(dbs, settings, hardwareTemplateService, logger, deviceDefSvc, eventService))
+	pb.RegisterUserDeviceServiceServer(server, api.NewUserDeviceService(dbs, settings, hardwareTemplateService, logger, deviceDefSvc, eventService, vcIss))
 	pb.RegisterAftermarketDeviceServiceServer(server, api.NewAftermarketDeviceService(dbs, logger))
 
 	if err := server.Serve(lis); err != nil {
 		logger.Fatal().Err(err).Msg("gRPC server terminated unexpectedly")
 	}
+}
+
+func createVCIssuer(settings *config.Settings, dbs db.Store, logger *zerolog.Logger) (*issuer.Issuer, error) {
+	pk, err := base64.RawURLEncoding.DecodeString(settings.IssuerPrivateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return issuer.New(
+		issuer.Config{
+			PrivateKey:        pk,
+			ChainID:           big.NewInt(settings.DIMORegistryChainID),
+			VehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
+			DBS:               dbs,
+		},
+		logger,
+	)
 }
 
 func startValuationConsumer(settings *config.Settings, pdb func() *db.ReaderWriter, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService, natsSvc *services.NATSService) {
