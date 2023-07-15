@@ -9,8 +9,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/DIMO-Network/device-data-api/pkg/grpc"
-
 	"github.com/DIMO-Network/shared"
 
 	"github.com/DIMO-Network/devices-api/internal/services"
@@ -232,12 +230,12 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusForbidden)
 	}
 
-	udd, err := udc.deviceDataClient.GetUserDeviceData(c.Context(), &grpc.UserDeviceDataRequest{
-		UserDeviceId:       userDeviceID,
-		DeviceDefinitionId: userDevice.DeviceDefinitionID,
-		DeviceStyleId:      userDevice.DeviceStyleID.String,
-		PrivilegeIds:       []int64{NonLocationData, CurrentLocation, AllTimeLocation}, // assume all privileges when called from here
-	})
+	udd, err := udc.deviceDataSvc.GetDeviceData(c.Context(),
+		userDeviceID,
+		userDevice.DeviceDefinitionID,
+		userDevice.DeviceStyleID.String,
+		[]int64{NonLocationData, CurrentLocation, AllTimeLocation}, // assume all privileges when called from here
+	)
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "failed to get user device data grpc")
 	}

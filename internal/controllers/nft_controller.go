@@ -11,11 +11,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/DIMO-Network/device-data-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/shared"
 
-	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
@@ -50,7 +48,7 @@ type NFTController struct {
 	teslaTaskService services.TeslaTaskService
 	dcnService       registry.DCNService
 	dcnTmpl          *template.Template
-	deviceDataClient dagrpc.UserDeviceDataServiceClient
+	deviceDataSvc    services.DeviceDataService
 }
 
 //go:embed dcn.svg
@@ -63,7 +61,7 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 	teslaTaskService services.TeslaTaskService,
 	integSvc services.DeviceDefinitionIntegrationService,
 	dcnSVc registry.DCNService,
-	deviceDataClient dagrpc.UserDeviceDataServiceClient,
+	deviceDataSvc services.DeviceDataService,
 ) NFTController {
 	dcn, _ := template.New("dcn_image").Parse(dcnImageTemplate)
 
@@ -78,7 +76,7 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 		integSvc:         integSvc,
 		dcnService:       dcnSVc,
 		dcnTmpl:          dcn,
-		deviceDataClient: deviceDataClient,
+		deviceDataSvc:    deviceDataSvc,
 	}
 }
 
@@ -512,12 +510,12 @@ func (nc *NFTController) GetVehicleStatus(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "NFT not found.")
 	}
 
-	udd, err := nc.deviceDataClient.GetUserDeviceData(c.Context(), &grpc.UserDeviceDataRequest{
-		UserDeviceId:       nft.R.UserDevice.ID,
-		DeviceDefinitionId: nft.R.UserDevice.DeviceDefinitionID,
-		DeviceStyleId:      nft.R.UserDevice.DeviceStyleID.String,
-		PrivilegeIds:       privileges,
-	})
+	udd, err := nc.deviceDataSvc.GetDeviceData(c.Context(),
+		nft.R.UserDevice.ID,
+		nft.R.UserDevice.DeviceDefinitionID,
+		nft.R.UserDevice.DeviceStyleID.String,
+		privileges,
+	)
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "failed to get user device data grpc")
 	}
