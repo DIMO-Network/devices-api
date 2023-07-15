@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+//go:generate mockgen -source device_data_service.go -destination mocks/device_data_service_mock.go
 type deviceDataService struct {
 	logger *zerolog.Logger
 	client dagrpc.UserDeviceDataServiceClient
