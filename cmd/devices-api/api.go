@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/DIMO-Network/devices-api/internal/rpc"
+
 	"github.com/DIMO-Network/devices-api/internal/middleware/metrics"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
@@ -24,8 +26,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/middleware/owner"
 
-	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
-	"github.com/DIMO-Network/devices-api/internal/api"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers"
@@ -87,16 +87,12 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 	usersClient := pbuser.NewUserServiceClient(gcon)
 
-	uddcon, err := grpc.Dial(settings.DeviceDataGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed dialing device-data-api.")
-	}
-	deviceDataClient := dagrpc.NewUserDeviceDataServiceClient(uddcon)
-
 	// services
 	nhtsaSvc := services.NewNHTSAService()
 	ddIntSvc := services.NewDeviceDefinitionIntegrationService(pdb.DBS, settings)
 	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, nhtsaSvc, settings)
+	ddaSvc := services.NewDeviceDataService(settings.DeviceDataGRPCAddr, &logger)
+
 	scTaskSvc := services.NewSmartcarTaskService(settings, producer)
 	smartcarClient := services.NewSmartcarClient(settings)
 	teslaTaskService := services.NewTeslaTaskService(settings, producer)
@@ -123,7 +119,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	})
 
 	// controllers
-	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService, smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest, deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient, deviceDataClient, natsSvc)
+	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService, smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest, deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient, ddaSvc, natsSvc)
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
@@ -158,7 +154,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	v1.Get("/swagger/*", swagger.HandlerDefault)
 	// Device Definitions
-	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc, dcnSvc, deviceDataClient)
+	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc, dcnSvc, ddaSvc)
 	v1.Get("/vehicle/:tokenID", nftController.GetNFTMetadata)
 	v1.Get("/vehicle/:tokenID/image", nftController.GetNFTImage)
 
@@ -397,8 +393,8 @@ func startGRPCServer(
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 	)
 
-	pb.RegisterUserDeviceServiceServer(server, api.NewUserDeviceService(dbs, settings, hardwareTemplateService, logger, deviceDefSvc, eventService, vcIss))
-	pb.RegisterAftermarketDeviceServiceServer(server, api.NewAftermarketDeviceService(dbs, logger))
+	pb.RegisterUserDeviceServiceServer(server, rpc.NewUserDeviceService(dbs, settings, hardwareTemplateService, logger, deviceDefSvc, eventService, vcIss))
+	pb.RegisterAftermarketDeviceServiceServer(server, rpc.NewAftermarketDeviceService(dbs, logger))
 
 	if err := server.Serve(lis); err != nil {
 		logger.Fatal().Err(err).Msg("gRPC server terminated unexpectedly")

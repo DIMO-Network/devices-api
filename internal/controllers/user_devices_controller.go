@@ -19,7 +19,6 @@ import (
 
 	"github.com/DIMO-Network/shared/redis"
 
-	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
 	deviceDefs "github.com/DIMO-Network/device-definitions-api/pkg"
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -78,7 +77,7 @@ type UserDevicesController struct {
 	redisCache                redis.CacheService
 	openAI                    services.OpenAI
 	usersClient               pb.UserServiceClient
-	deviceDataClient          dagrpc.UserDeviceDataServiceClient
+	deviceDataSvc             services.DeviceDataService
 	NATSSvc                   *services.NATSService
 }
 
@@ -132,7 +131,7 @@ func NewUserDevicesController(settings *config.Settings,
 	cache redis.CacheService,
 	openAI services.OpenAI,
 	usersClient pb.UserServiceClient,
-	deviceDataClient dagrpc.UserDeviceDataServiceClient,
+	deviceDataSvc services.DeviceDataService,
 	natsSvc *services.NATSService,
 ) UserDevicesController {
 	return UserDevicesController{
@@ -158,7 +157,7 @@ func NewUserDevicesController(settings *config.Settings,
 		redisCache:                cache,
 		openAI:                    openAI,
 		usersClient:               usersClient,
-		deviceDataClient:          deviceDataClient,
+		deviceDataSvc:             deviceDataSvc,
 		NATSSvc:                   natsSvc,
 	}
 }
