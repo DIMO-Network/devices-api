@@ -235,7 +235,7 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 	udd, err := udc.deviceDataClient.GetUserDeviceData(c.Context(), &grpc.UserDeviceDataRequest{
 		UserDeviceId:       userDeviceID,
 		DeviceDefinitionId: userDevice.DeviceDefinitionID,
-		DeviceStyleId:      userDevice.DeviceDefinitionID,
+		DeviceStyleId:      userDevice.DeviceStyleID.String,
 		PrivilegeIds:       []int64{NonLocationData, CurrentLocation, AllTimeLocation}, // assume all privileges when called from here
 	})
 	if err != nil {

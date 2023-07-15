@@ -515,7 +515,7 @@ func (nc *NFTController) GetVehicleStatus(c *fiber.Ctx) error {
 	udd, err := nc.deviceDataClient.GetUserDeviceData(c.Context(), &grpc.UserDeviceDataRequest{
 		UserDeviceId:       nft.R.UserDevice.ID,
 		DeviceDefinitionId: nft.R.UserDevice.DeviceDefinitionID,
-		DeviceStyleId:      nft.R.UserDevice.DeviceDefinitionID,
+		DeviceStyleId:      nft.R.UserDevice.DeviceStyleID.String,
 		PrivilegeIds:       privileges,
 	})
 	if err != nil {
