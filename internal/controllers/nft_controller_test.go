@@ -42,7 +42,7 @@ func TestNFTController_GetDcnNFTMetadata(t *testing.T) {
 	deviceDefSvc := mock_services.NewMockDeviceDefinitionService(mockCtrl)
 
 	c := NewNFTController(&config.Settings{Port: "3000"}, pdb.DBS, &logger,
-		nil, deviceDefSvc, nil, nil, nil, nil)
+		nil, deviceDefSvc, nil, nil, nil, nil, nil)
 
 	app := fiber.New()
 	app.Get("/dcn/:nodeID", c.GetDcnNFTMetadata)
