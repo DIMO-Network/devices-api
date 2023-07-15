@@ -5,14 +5,15 @@ import (
 	"database/sql"
 	_ "embed"
 	"fmt"
-	"github.com/DIMO-Network/device-data-api/pkg/grpc"
-	"github.com/DIMO-Network/devices-api/internal/services/registry"
-	"github.com/DIMO-Network/shared"
 	"io"
 	"math/big"
 	"strconv"
 	"strings"
 	"text/template"
+
+	"github.com/DIMO-Network/device-data-api/pkg/grpc"
+	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	"github.com/DIMO-Network/shared"
 
 	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
