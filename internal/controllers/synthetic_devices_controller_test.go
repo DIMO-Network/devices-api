@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
@@ -45,21 +46,8 @@ var mockSmartClientToken = &smartcar.Token{
 	AccessExpiry: time.Now().Add(time.Hour + 1),
 	Refresh:      "mockRefreshToken",
 }
-var teslaClientToken = struct {
-	Credentials struct {
-		AccessToken  string `json:"accessToken"`
-		RefreshToken string `json:"refreshToken"`
-		ExternalID   string `json:"externalId"`
-		ExpiresIn    int    `json:"expiresIn"`
-	} `json:"credentials"`
-	Signature string `json:"ownerSignature"`
-}{
-	Credentials: struct {
-		AccessToken  string `json:"accessToken"`
-		RefreshToken string `json:"refreshToken"`
-		ExternalID   string `json:"externalId"`
-		ExpiresIn    int    `json:"expiresIn"`
-	}{
+var teslaClientToken = MintSyntheticDeviceRequest{
+	Credentials: credentials{
 		AccessToken:  "accessToken",
 		RefreshToken: "refreshToken",
 		ExternalID:   "13",
@@ -86,7 +74,9 @@ type SyntheticDevicesControllerTestSuite struct {
 func (s *SyntheticDevicesControllerTestSuite) SetupSuite() {
 	s.ctx = context.Background()
 	s.pdb, s.container = test.StartContainerDatabase(s.ctx, s.T(), migrationsDirRelPath)
+}
 
+func (s *SyntheticDevicesControllerTestSuite) SetupTest() {
 	s.mockCtrl = gomock.NewController(s.T())
 	var err error
 
@@ -206,7 +196,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 	body, _ := io.ReadAll(response.Body)
 
 	assert.Equal(s.T(), fiber.StatusUnauthorized, response.StatusCode)
-	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"User does not have an Ethereum address on file."}`, fiber.StatusUnauthorized)), body)
+	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"User does not have an Ethereum address."}`, fiber.StatusUnauthorized)), body)
 }
 
 func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload_NoIntegrationForID() {
@@ -234,7 +224,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"failed to get integration: could not find integration"}`, fiber.StatusInternalServerError)), body)
 }
 
-func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload_VehicleNodeNotOwnedByUserEthAddress() {
+func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload_VehicleNodeNotExist() {
 	_, addr, err := test.GenerateWallet()
 	assert.NoError(s.T(), err)
 
@@ -251,7 +241,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 	body, _ := io.ReadAll(response.Body)
 
 	assert.Equal(s.T(), fiber.StatusNotFound, response.StatusCode)
-	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"user does not own vehicle node"}`, fiber.StatusNotFound)), body)
+	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"No vehicle with that id found."}`, fiber.StatusNotFound)), body)
 }
 
 func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceSmartcar() {
@@ -263,9 +253,13 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceSmartcar()
 	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
-	integration := test.BuildIntegrationForGRPCRequest(10, uint64(1))
-	integration.Vendor = constants.SmartCarVendor
-	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(integration, nil)
+	scInt := &ddgrpc.Integration{
+		Id:      "22N2xaPOq2WW2gAHBHd0Ikn4Zob",
+		Vendor:  "SmartCar",
+		TokenId: 1,
+	}
+
+	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(1)).Return(scInt, nil)
 
 	_ = test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
 
@@ -373,13 +367,13 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceSmartcar()
 	decRefreshToken, err := s.sdc.cipher.Decrypt(udis[0].RefreshToken.String)
 	assert.NoError(s.T(), err)
 
-	assert.Equal(s.T(), integration.Id, udis[0].IntegrationID)
+	assert.Equal(s.T(), scInt.Id, udis[0].IntegrationID)
 	assert.Equal(s.T(), vehicle.UserDeviceID.String, udis[0].UserDeviceID)
 	assert.Equal(s.T(), mockSmartClientToken.Access, decAccessToken)
 	assert.Equal(s.T(), mockSmartClientToken.Refresh, decRefreshToken)
 }
 
-func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceTesla() {
+func (s *SyntheticDevicesControllerTestSuite) TestMintTesla() {
 	email := "some@email.com"
 	userEthAddress := "0xFdC646Ad5950ED5cBf2A203C4D8001551b3Ee752"
 	signature := "0xee3235ef51bd273ec6533db4fe8038add3461bcde83e35d0043d94b4a58d7ba10a9e4648694e45daab12ac5617dffed1a84232e49885dfaf651dbe5e97d349bd1b"
@@ -415,7 +409,7 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceTesla() {
 		return nil
 	})
 
-	teslaClientToken.Signature = signature
+	teslaClientToken.OwnerSignature = signature
 	reqB, err := json.Marshal(teslaClientToken)
 	s.NoError(err)
 
@@ -503,25 +497,22 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceTesla() {
 }
 
 func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayload_BadSignatureFailure() {
-	integration := test.BuildIntegrationForGRPCRequest(10, uint64(1))
-	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), gomock.Any()).Return(integration, nil)
-
 	email := "some@email.com"
 	eth := userEthAddress
-	addr := common.HexToAddress(userEthAddress)
+
 	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &users.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
+	scInt := &ddgrpc.Integration{
+		Id:      "22N2xaPOq2WW2gAHBHd0Ikn4Zob",
+		Vendor:  "SmartCar",
+		TokenId: 1,
+	}
+
+	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(1)).Return(scInt, nil)
+
 	udID := ksuid.New().String()
-	vehicle := test.SetupCreateVehicleNFTForMiddleware(s.T(), addr, mockUserID, udID, 57, s.pdb)
-
-	tx, err := s.sdc.DBS().Writer.DB.BeginTx(s.ctx, nil)
-	assert.NoError(s.T(), err)
-
-	err = s.sdc.handleDeviceAPIIntegrationCreation(s.ctx, tx, &MintSyntheticDeviceRequest{
-		Credentials: credentials{Code: "mockAuthCode"},
-	}, vehicle.UserDeviceID.String, integration)
-	assert.NoError(s.T(), err)
+	_ = test.SetupCreateVehicleNFTForMiddleware(s.T(), common.HexToAddress(userEthAddress), mockUserID, udID, 57, s.pdb)
 
 	req := fmt.Sprintf(`{
 		"credentials": {
@@ -560,48 +551,4 @@ func (s *SyntheticDevicesControllerTestSuite) Test_Synthetic_Device_Sequence() {
 	assert.NoError(s.T(), err)
 
 	assert.Equal(s.T(), int(syntDeviceCount)+2, childKeyNumber)
-}
-
-// handleDeviceApiIntegrationCreation
-func (s *SyntheticDevicesControllerTestSuite) Test_Device_API_Integration_Creation() {
-	ctx := context.Background()
-	addr := common.HexToAddress(userEthAddress)
-
-	integration := test.BuildIntegrationForGRPCRequest(10, uint64(1))
-	integration.Vendor = constants.SmartCarVendor
-
-	udID := ksuid.New().String()
-	vehicle := test.SetupCreateVehicleNFTForMiddleware(s.T(), addr, mockUserID, udID, 57, s.pdb)
-
-	s.smartcarClient.EXPECT().ExchangeCode(gomock.Any(), gomock.Any(), gomock.Any()).Return(mockSmartClientToken, nil)
-	s.smartcarClient.EXPECT().GetExternalID(gomock.Any(), "mockAccessToken").Return("smartcarVehicleId", nil)
-	s.smartcarClient.EXPECT().GetEndpoints(gomock.Any(), "mockAccessToken", "smartcarVehicleId").Return([]string{"/odometer", "/location"}, nil)
-
-	tx, err := s.sdc.DBS().Writer.DB.BeginTx(ctx, nil)
-	assert.NoError(s.T(), err)
-
-	err = s.sdc.handleDeviceAPIIntegrationCreation(ctx, tx, &MintSyntheticDeviceRequest{
-		Credentials: credentials{Code: "mockAuthCode"},
-	}, vehicle.UserDeviceID.String, integration)
-	assert.NoError(s.T(), err)
-
-	udis, err := models.UserDeviceAPIIntegrations().All(ctx, tx)
-	assert.NoError(s.T(), err)
-
-	assert.Equal(s.T(), 1, len(udis))
-
-	decAccessToken, err := s.sdc.cipher.Decrypt(udis[0].AccessToken.String)
-	assert.NoError(s.T(), err)
-
-	decRefreshToken, err := s.sdc.cipher.Decrypt(udis[0].RefreshToken.String)
-	assert.NoError(s.T(), err)
-
-	assert.Equal(s.T(), integration.Id, udis[0].IntegrationID)
-	assert.Equal(s.T(), vehicle.UserDeviceID.String, udis[0].UserDeviceID)
-	assert.Equal(s.T(), mockSmartClientToken.Access, decAccessToken)
-	assert.Equal(s.T(), mockSmartClientToken.Refresh, decRefreshToken)
-	s.Equal("smartcarVehicleId", udis[0].ExternalID.String)
-	s.JSONEq(`{"smartcarEndpoints": ["/odometer", "/location"]}`, string(udis[0].Metadata.JSON))
-
-	defer tx.Rollback() //nolint
 }
