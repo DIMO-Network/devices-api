@@ -236,6 +236,7 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 		UserDeviceId:       userDeviceID,
 		DeviceDefinitionId: userDevice.DeviceDefinitionID,
 		DeviceStyleId:      userDevice.DeviceDefinitionID,
+		PrivilegeIds:       []int64{NonLocationData, CurrentLocation, AllTimeLocation}, // assume all privileges when called from here
 	})
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "failed to get user device data grpc")

@@ -515,6 +515,7 @@ func (nc *NFTController) GetVehicleStatus(c *fiber.Ctx) error {
 		UserDeviceId:       nft.R.UserDevice.ID,
 		DeviceDefinitionId: nft.R.UserDevice.DeviceDefinitionID,
 		DeviceStyleId:      nft.R.UserDevice.DeviceDefinitionID,
+		PrivilegeIds:       privileges,
 	})
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "failed to get user device data grpc")
