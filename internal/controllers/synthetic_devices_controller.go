@@ -437,6 +437,15 @@ func (sdc *SyntheticDevicesController) generateUDAI(ctx context.Context, creds c
 			SmartcarEndpoints: endpoints,
 		}
 
+		if doorControl, err := sdc.smartcarClient.HasDoorControl(ctx, token.Access, externalID); err != nil {
+			sdc.log.Err(err).Msg("Failed to retrieve door control permissions from Smartcar.")
+			return nil, err
+		} else if doorControl {
+			meta.Commands = &services.UserDeviceAPIIntegrationsMetadataCommands{
+				Enabled: []string{"doors/unlock", "doors/lock"},
+			}
+		}
+
 		mb, _ := json.Marshal(meta)
 		udi.Metadata = null.JSONFrom(mb)
 		udi.ExternalID = null.StringFrom(externalID)
