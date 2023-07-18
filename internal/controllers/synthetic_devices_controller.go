@@ -693,7 +693,7 @@ func (sdc *SyntheticDevicesController) ReAuthenticate(c *fiber.Ctx) error {
 		return err
 	}
 
-	oldUDAI, err = models.FindUserDeviceAPIIntegration(c.Context(), sdc.DBS().Reader, sd.R.VehicleToken.UserDeviceID.String, i.Id)
+	oldUDAI, err := models.FindUserDeviceAPIIntegration(c.Context(), sdc.DBS().Reader, sd.R.VehicleToken.UserDeviceID.String, i.Id)
 	if err != nil {
 		return err
 	}
@@ -704,9 +704,20 @@ func (sdc *SyntheticDevicesController) ReAuthenticate(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
 	}
 
-	newUdai, err := sdc.generateUDAI(c.Context(), req.Credentials, sd.R.VehicleToken.UserDeviceID.String, i)
+	newUDAI, err := sdc.generateUDAI(c.Context(), req.Credentials, sd.R.VehicleToken.UserDeviceID.String, i)
 	if err != nil {
 		return err
+	}
+
+	switch i.Vendor {
+	case constants.SmartCarVendor:
+		sdc.smartcarTask.StopPoll(oldUDAI)
+
+		newUDAI.Update(c.Context(), sdc.DBS().Writer, boil.Infer())
+	case constants.TeslaVendor:
+		sdc.teslaTask.StopPoll(oldUDAI)
+		sdc.teslaTask.StartPoll(newUDAI)
+		newUDAI.Update(c.Context(), sdc.DBS().Writer, boil.Infer())
 	}
 
 	return nil
