@@ -58,7 +58,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		qm.Load(models.MetaTransactionRequestRels.PairRequestAftermarketDevice),
 		qm.Load(models.MetaTransactionRequestRels.UnpairRequestAftermarketDevice),
 		qm.Load(qm.Rels(models.MetaTransactionRequestRels.MintRequestSyntheticDevice, models.SyntheticDeviceRels.VehicleToken)),
-		qm.Load(models.MetaTransactionRequestRels.BurnRequestSyntheticDevice),
+		qm.Load(qm.Rels(models.MetaTransactionRequestRels.BurnRequestSyntheticDevice, models.SyntheticDeviceRels.VehicleToken)),
 	).One(context.Background(), p.DB().Reader)
 	if err != nil {
 		return err
@@ -247,25 +247,46 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return err
 				}
 
-				if _, err := mtr.R.BurnRequestSyntheticDevice.Delete(ctx, p.DB().Writer); err != nil {
-					return err
-				}
+				sd := mtr.R.MintRequestSyntheticDevice
+				v := sd.R.VehicleToken
 
-				v, err := models.VehicleNFTS(models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(mtr.R.BurnRequestSyntheticDevice.VehicleTokenID.Big))).One(ctx, p.DB().Reader)
-				if err != nil {
-					return err
-				}
-
-				udai, err := models.FindUserDeviceAPIIntegration(ctx, p.DB().Reader, v.UserDeviceID.String, "22N2xaPOq2WW2gAHBHd0Ikn4Zob")
-				if err != nil {
-					if err == sql.ErrNoRows {
-						return nil
+				if v.UserDeviceID.Valid {
+					intToken, _ := sd.IntegrationTokenID.Uint64()
+					integration, err := p.deviceDefSvc.GetIntegrationByTokenID(ctx, intToken)
+					if err != nil {
+						return err
 					}
-					return err
-				}
 
-				_, err = udai.Delete(ctx, p.DB().Writer)
-				return err
+					udai, err := models.FindUserDeviceAPIIntegration(ctx, p.DB().Reader, v.UserDeviceID.String, integration.Id)
+					if err != nil {
+						if err == sql.ErrNoRows {
+							return nil
+						}
+						return err
+					}
+
+					// In these two states, the job has already stopped, or never started.
+					if udai.Status != models.UserDeviceAPIIntegrationStatusAuthenticationFailure && udai.Status != models.UserDeviceAPIIntegrationStatusFailed {
+						switch integration.Vendor {
+						case constants.SmartCarVendor:
+							if err := p.smartcarTaskSvc.StopPoll(udai); err != nil {
+								return err
+							}
+						case constants.TeslaVendor:
+							if err := p.teslaTaskSvc.StopPoll(udai); err != nil {
+								return err
+							}
+						}
+
+						if _, err := udai.Delete(ctx, p.DB().Writer); err != nil {
+							return err
+						}
+					}
+
+					if _, err := sd.Delete(ctx, p.DB().Writer); err != nil {
+						return err
+					}
+				}
 			}
 		}
 	}
