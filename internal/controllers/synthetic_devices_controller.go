@@ -620,8 +620,6 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 
 	reqID := ksuid.New().String()
 
-	fmt.Println("Burn request id is " + reqID)
-
 	if err := sdc.registryClient.BurnSyntheticDeviceSign(reqID, big.NewInt(vehicleNode), big.NewInt(syntheticDeviceNode), ownerSignature); err != nil {
 		return err
 	}
