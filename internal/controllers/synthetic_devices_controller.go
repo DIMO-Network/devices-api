@@ -632,3 +632,37 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 
 	return err
 }
+
+// ReAuthenticate godoc
+// @Description Submit new credentials for the given synthetic device. Mostly
+// @Description used in the event of an upstream password change.
+// @Produce     json
+// @Param       syntheticDeviceNode path int true "synthetic device token id"
+// @Success     200
+// @Router      /synthetic/device/{syntheticDeviceNode}/re-authenticate [post]
+func (sdc *SyntheticDevicesController) ReAuthenticate(c *fiber.Ctx) error {
+	syntheticDeviceNodeRaw := c.Params("syntheticDeviceNode")
+	userID := helpers.GetUserID(c)
+
+	sdn, err := strconv.ParseInt(syntheticDeviceNodeRaw, 10, 64)
+	if err != nil {
+		return err
+	}
+
+	sd, err := models.SyntheticDevices(
+		models.SyntheticDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(sdn, 0))),
+		qm.Load(models.SyntheticDeviceRels.VehicleToken),
+	).One(c.Context(), sdc.DBS().Reader)
+
+	iNode, _ := sd.IntegrationTokenID.Uint64()
+
+	i, err := sdc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), iNode)
+	if err != nil {
+		return err
+	}
+
+	udai, err := models.FindUserDeviceAPIIntegration(c.Context(), sdc.DBS().Reader, sd.R.VehicleToken.UserDeviceID.String, i.Id)
+	if err != nil {
+		return err
+	}
+}
