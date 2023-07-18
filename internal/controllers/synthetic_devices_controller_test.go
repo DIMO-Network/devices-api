@@ -273,6 +273,7 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceSmartcar()
 	s.smartcarClient.EXPECT().ExchangeCode(gomock.Any(), gomock.Any(), gomock.Any()).Return(mockSmartClientToken, nil)
 	s.smartcarClient.EXPECT().GetExternalID(gomock.Any(), gomock.Any()).Return("smartcarVehicleId", nil)
 	s.smartcarClient.EXPECT().GetEndpoints(gomock.Any(), gomock.Any(), gomock.Any()).Return([]string{"/odometer", "/location"}, nil)
+	s.smartcarClient.EXPECT().HasDoorControl(gomock.Any(), mockSmartClientToken.Access, "smartcarVehicleId").Return(true, nil)
 
 	var kb []byte
 	mockProducer.ExpectSendMessageWithCheckerFunctionAndSucceed(func(val []byte) error {
