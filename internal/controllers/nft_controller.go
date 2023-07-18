@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
-	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	"github.com/DIMO-Network/shared"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -48,6 +48,7 @@ type NFTController struct {
 	teslaTaskService services.TeslaTaskService
 	dcnService       registry.DCNService
 	dcnTmpl          *template.Template
+	deviceDataSvc    services.DeviceDataService
 }
 
 //go:embed dcn.svg
@@ -60,6 +61,7 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 	teslaTaskService services.TeslaTaskService,
 	integSvc services.DeviceDefinitionIntegrationService,
 	dcnSVc registry.DCNService,
+	deviceDataSvc services.DeviceDataService,
 ) NFTController {
 	dcn, _ := template.New("dcn_image").Parse(dcnImageTemplate)
 
@@ -74,6 +76,7 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 		integSvc:         integSvc,
 		dcnService:       dcnSVc,
 		dcnTmpl:          dcn,
+		deviceDataSvc:    deviceDataSvc,
 	}
 }
 
@@ -507,22 +510,17 @@ func (nc *NFTController) GetVehicleStatus(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "NFT not found.")
 	}
 
-	deviceData, err := models.UserDeviceData(
-		models.UserDeviceDatumWhere.UserDeviceID.EQ(nft.R.UserDevice.ID),
-		models.UserDeviceDatumWhere.Signals.IsNotNull(),
-		models.UserDeviceDatumWhere.UpdatedAt.GT(time.Now().Add(-14*24*time.Hour)),
-	).All(c.Context(), nc.DBS().Reader)
-	if errors.Is(err, sql.ErrNoRows) || len(deviceData) == 0 {
-		return fiber.NewError(fiber.StatusNotFound, "no status updates yet")
-	}
+	udd, err := nc.deviceDataSvc.GetDeviceData(c.Context(),
+		nft.R.UserDevice.ID,
+		nft.R.UserDevice.DeviceDefinitionID,
+		nft.R.UserDevice.DeviceStyleID.String,
+		privileges,
+	)
 	if err != nil {
-		return err
+		return shared.GrpcErrorToFiber(err, "failed to get user device data grpc")
 	}
 
-	ds := PrepareDeviceStatusInformation(c.Context(), nc.deviceDefSvc, deviceData, nft.R.UserDevice.DeviceDefinitionID,
-		nft.R.UserDevice.DeviceStyleID, privileges)
-
-	return c.JSON(ds)
+	return c.JSON(udd)
 }
 
 // UnlockDoors godoc

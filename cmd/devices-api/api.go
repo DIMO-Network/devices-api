@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/DIMO-Network/devices-api/internal/rpc"
+
 	"github.com/DIMO-Network/devices-api/internal/middleware/metrics"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
@@ -24,8 +26,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/middleware/owner"
 
-	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
-	"github.com/DIMO-Network/devices-api/internal/api"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers"
@@ -87,16 +87,12 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 	usersClient := pbuser.NewUserServiceClient(gcon)
 
-	uddcon, err := grpc.Dial(settings.DeviceDataGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed dialing device-data-api.")
-	}
-	deviceDataClient := dagrpc.NewUserDeviceDataServiceClient(uddcon)
-
 	// services
 	nhtsaSvc := services.NewNHTSAService()
 	ddIntSvc := services.NewDeviceDefinitionIntegrationService(pdb.DBS, settings)
 	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, nhtsaSvc, settings)
+	ddaSvc := services.NewDeviceDataService(settings.DeviceDataGRPCAddr, &logger)
+
 	scTaskSvc := services.NewSmartcarTaskService(settings, producer)
 	smartcarClient := services.NewSmartcarClient(settings)
 	teslaTaskService := services.NewTeslaTaskService(settings, producer)
@@ -123,7 +119,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	})
 
 	// controllers
-	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService, smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest, deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient, deviceDataClient, natsSvc)
+	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService, smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest, deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient, ddaSvc, natsSvc)
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
@@ -158,7 +154,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	v1.Get("/swagger/*", swagger.HandlerDefault)
 	// Device Definitions
-	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc, dcnSvc)
+	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc, dcnSvc, ddaSvc)
 	v1.Get("/vehicle/:tokenID", nftController.GetNFTMetadata)
 	v1.Get("/vehicle/:tokenID/image", nftController.GetNFTImage)
 
@@ -305,8 +301,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	udOwner.Post("/autopi/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
 
-	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService)
-
 	go startValuationConsumer(settings, pdb.DBS, &logger, ddSvc, natsSvc)
 
 	logger.Info().Msg("Server started on port " + settings.Port)
@@ -327,39 +321,25 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	ctx := context.Background()
 
-	{
-		pk, err := base64.RawURLEncoding.DecodeString(settings.IssuerPrivateKey)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Couldn't parse issuer private key.")
-		}
-
-		iss, err := issuer.New(
-			issuer.Config{
-				PrivateKey:        pk,
-				ChainID:           big.NewInt(settings.DIMORegistryChainID),
-				VehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
-				DBS:               pdb,
-			},
-			&logger,
-		)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Failed to create issuer.")
-		}
-
-		if err := fingerprint.RunConsumer(ctx, settings, &logger, iss, pdb); err != nil {
-			logger.Fatal().Err(err).Msg("Failed to create vin credentialer listener")
-		}
-
-		store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, settings, scTaskSvc, teslaTaskService, ddSvc)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Failed to create registry storage client")
-		}
-
-		err = registry.RunConsumer(ctx, kclient, &logger, store)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Failed to create transaction listener")
-		}
+	iss, err := createVCIssuer(settings, pdb, &logger)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create issuer.")
 	}
+
+	if err := fingerprint.RunConsumer(ctx, settings, &logger, iss, pdb); err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create vin credentialer listener")
+	}
+
+	store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, settings, scTaskSvc, teslaTaskService, ddSvc)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create registry storage client")
+	}
+
+	if err := registry.RunConsumer(ctx, kclient, &logger, store); err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create transaction listener")
+	}
+
+	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService, iss)
 
 	// start task consumer for autopi
 	autoPiTaskService.StartConsumer(ctx)
@@ -389,8 +369,15 @@ func healthCheck(c *fiber.Ctx) error {
 	return nil
 }
 
-func startGRPCServer(settings *config.Settings, dbs func() *db.ReaderWriter,
-	hardwareTemplateService autopi.HardwareTemplateService, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, eventService services.EventService) {
+func startGRPCServer(
+	settings *config.Settings,
+	dbs func() *db.ReaderWriter,
+	hardwareTemplateService autopi.HardwareTemplateService,
+	logger *zerolog.Logger,
+	deviceDefSvc services.DeviceDefinitionService,
+	eventService services.EventService,
+	vcIss *issuer.Issuer,
+) {
 	lis, err := net.Listen("tcp", ":"+settings.GRPCPort)
 	if err != nil {
 		logger.Fatal().Err(err).Msgf("Couldn't listen on gRPC port %s", settings.GRPCPort)
@@ -406,12 +393,29 @@ func startGRPCServer(settings *config.Settings, dbs func() *db.ReaderWriter,
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 	)
 
-	pb.RegisterUserDeviceServiceServer(server, api.NewUserDeviceService(dbs, settings, hardwareTemplateService, logger, deviceDefSvc, eventService))
-	pb.RegisterAftermarketDeviceServiceServer(server, api.NewAftermarketDeviceService(dbs, logger))
+	pb.RegisterUserDeviceServiceServer(server, rpc.NewUserDeviceService(dbs, settings, hardwareTemplateService, logger, deviceDefSvc, eventService, vcIss))
+	pb.RegisterAftermarketDeviceServiceServer(server, rpc.NewAftermarketDeviceService(dbs, logger))
 
 	if err := server.Serve(lis); err != nil {
 		logger.Fatal().Err(err).Msg("gRPC server terminated unexpectedly")
 	}
+}
+
+func createVCIssuer(settings *config.Settings, dbs db.Store, logger *zerolog.Logger) (*issuer.Issuer, error) {
+	pk, err := base64.RawURLEncoding.DecodeString(settings.IssuerPrivateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return issuer.New(
+		issuer.Config{
+			PrivateKey:        pk,
+			ChainID:           big.NewInt(settings.DIMORegistryChainID),
+			VehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
+			DBS:               dbs,
+		},
+		logger,
+	)
 }
 
 func startValuationConsumer(settings *config.Settings, pdb func() *db.ReaderWriter, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService, natsSvc *services.NATSService) {

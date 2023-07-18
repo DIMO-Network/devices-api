@@ -2,7 +2,7 @@ replicaCount: 3
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 1.17.5
+  tag: 1.17.7
 cronJob:
   enabled: true
   schedule: 0 0 1 * *
@@ -42,6 +42,7 @@ env:
   DIMO_CONTRACT_APIURL: https://contracts-api.dimo.zone/
   NATS_URL: nats-prod:4222
   SYNTHETIC_DEVICES_ENABLED: false
+  DEVICE_DATA_GRPC_ADDR: device-data-api-prod:8086
 ingress:
   enabled: true
   className: nginx

@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: f8d0889
+  tag: d43f05e
 imagePullSecrets: []
 nameOverride: ''
 fullnameOverride: ''
@@ -87,6 +87,7 @@ env:
   SYNTHETIC_WALLET_GRPC_ADDR: synthetic-wallet-instance-dev:8086
   DEVICE_FINGERPRINT_TOPIC: topic.device.fingerprint
   DEVICE_FINGERPRINT_CONSUMER_GROUP: device-fingerprint-vc-issuer
+  DEVICE_DATA_GRPC_ADDR: device-data-api-dev:8086
 service:
   type: ClusterIP
   ports:

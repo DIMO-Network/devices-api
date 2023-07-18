@@ -9,8 +9,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/DIMO-Network/device-data-api/pkg/grpc"
-
 	"github.com/DIMO-Network/shared"
 
 	"github.com/DIMO-Network/devices-api/internal/services"
@@ -222,30 +220,22 @@ func calculateRange(ctx context.Context, ddSvc services.DeviceDefinitionService,
 // @Router      /user/devices/{userDeviceID}/status [get]
 func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
+	userID := helpers.GetUserID(c)
 
 	userDevice, err := models.FindUserDevice(c.Context(), udc.DBS().Reader, userDeviceID)
 	if err != nil {
 		return err
 	}
-
-	deviceData, err := models.UserDeviceData(
-		models.UserDeviceDatumWhere.UserDeviceID.EQ(userDevice.ID),
-		models.UserDeviceDatumWhere.Signals.IsNotNull(),
-		models.UserDeviceDatumWhere.UpdatedAt.GT(time.Now().Add(-14*24*time.Hour)),
-	).All(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		return err
+	if userDevice.UserID != userID {
+		return fiber.NewError(fiber.StatusForbidden)
 	}
 
-	if len(deviceData) == 0 {
-		return fiber.NewError(fiber.StatusNotFound, "No status updates yet.")
-	}
-
-	udd, err := udc.deviceDataClient.GetUserDeviceData(c.Context(), &grpc.UserDeviceDataRequest{
-		UserDeviceId:       userDeviceID,
-		DeviceDefinitionId: userDevice.DeviceDefinitionID,
-		DeviceStyleId:      userDevice.DeviceDefinitionID,
-	})
+	udd, err := udc.deviceDataSvc.GetDeviceData(c.Context(),
+		userDeviceID,
+		userDevice.DeviceDefinitionID,
+		userDevice.DeviceStyleID.String,
+		[]int64{NonLocationData, CurrentLocation, AllTimeLocation}, // assume all privileges when called from here
+	)
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "failed to get user device data grpc")
 	}

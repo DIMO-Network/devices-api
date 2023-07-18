@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
+	"github.com/tidwall/gjson"
 	"io"
 	"os"
 	"testing"
@@ -81,6 +83,7 @@ type deps struct {
 	logger                 zerolog.Logger
 	mockCtrl               *gomock.Controller
 	credentialSvc          *mock_services.MockVCService
+	deviceDataSvc          *mock_services.MockDeviceDataService
 }
 
 func createMockDependencies(t *testing.T) deps {
@@ -89,6 +92,7 @@ func createMockDependencies(t *testing.T) deps {
 
 	deviceDefIntSvc := mock_services.NewMockDeviceDefinitionIntegrationService(mockCtrl)
 	deviceDefSvc := mock_services.NewMockDeviceDefinitionService(mockCtrl)
+	deviceDataSvc := mock_services.NewMockDeviceDataService(mockCtrl)
 	scClient := mock_services.NewMockSmartcarClient(mockCtrl)
 	scTaskSvc := mock_services.NewMockSmartcarTaskService(mockCtrl)
 	teslaSvc := mock_services.NewMockTeslaService(mockCtrl)
@@ -120,7 +124,57 @@ func createMockDependencies(t *testing.T) deps {
 		logger:                 logger,
 		mockCtrl:               mockCtrl,
 		credentialSvc:          credentialSvc,
+		deviceDataSvc:          deviceDataSvc,
 	}
+
+}
+
+// Device Data Tests
+func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
+	mockDeps := createMockDependencies(t)
+	defer mockDeps.mockCtrl.Finish()
+
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	testUserID := "123123"
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.nhtsaService, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, mockDeps.autoPiTaskSvc, nil, nil, nil, nil, mockDeps.openAISvc, nil, mockDeps.deviceDataSvc, nil)
+	app := fiber.New()
+	app.Get("/user/devices/:userDeviceID/status", test.AuthInjectorTestHandler(testUserID), c.GetUserDeviceStatus)
+
+	t.Run("GET - get device status happy path", func(t *testing.T) {
+		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
+		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
+		mockDeps.deviceDataSvc.EXPECT().GetDeviceData(gomock.Any(), ud.ID, ud.DeviceDefinitionID,
+			ud.DeviceStyleID.String, []int64{1, 3, 4}).Times(1).
+			Return(&dagrpc.UserDeviceDataResponse{
+				FuelPercentRemaining: 0.50,
+				Odometer:             3000.50,
+				Range:                0,
+				RecordUpdatedAt:      nil,
+				RecordCreatedAt:      nil,
+				BatteryVoltage:       13.3,
+			}, nil)
+
+		request := test.BuildRequest("GET", "/user/devices/"+ud.ID+"/status", "")
+		response, err := app.Test(request, 60*1000)
+		require.NoError(t, err, "failed to make request")
+		assert.Equal(t, fiber.StatusOK, response.StatusCode)
+
+		body, _ := io.ReadAll(response.Body)
+		if response.StatusCode != fiber.StatusOK {
+			fmt.Println("body response: " + string(body))
+		}
+
+		assert.Equal(t, 3000.50, gjson.GetBytes(body, "odometer").Float())
+
+	})
 
 }
 

@@ -1,9 +1,11 @@
-package api
+package rpc
 
 import (
 	"context"
 	"database/sql"
 	"errors"
+	"math/big"
+
 	"fmt"
 	"strings"
 	"time"
@@ -18,6 +20,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
+	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/models"
 	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 	"github.com/DIMO-Network/shared/db"
@@ -36,13 +39,22 @@ const (
 	euroToUsd float64 = 1.10
 )
 
-func NewUserDeviceService(dbs func() *db.ReaderWriter, settings *config.Settings, hardwareTemplateService autopi.HardwareTemplateService, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, eventService services.EventService) pb.UserDeviceServiceServer {
+func NewUserDeviceService(
+	dbs func() *db.ReaderWriter,
+	settings *config.Settings,
+	hardwareTemplateService autopi.HardwareTemplateService,
+	logger *zerolog.Logger,
+	deviceDefSvc services.DeviceDefinitionService,
+	eventService services.EventService,
+	vcIss *issuer.Issuer,
+) pb.UserDeviceServiceServer {
 	return &userDeviceService{dbs: dbs,
 		logger:                  logger,
 		settings:                settings,
 		hardwareTemplateService: hardwareTemplateService,
 		deviceDefSvc:            deviceDefSvc,
 		eventService:            eventService,
+		vcIss:                   vcIss,
 	}
 }
 
@@ -54,6 +66,7 @@ type userDeviceService struct {
 	settings                *config.Settings
 	deviceDefSvc            services.DeviceDefinitionService
 	eventService            services.EventService
+	vcIss                   *issuer.Issuer
 }
 
 func (s *userDeviceService) GetUserDevice(ctx context.Context, req *pb.GetUserDeviceRequest) (*pb.UserDevice, error) {
@@ -538,4 +551,27 @@ func nullTimeToPB(t null.Time) *timestamppb.Timestamp {
 	}
 
 	return timestamppb.New(t.Time)
+}
+
+func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.IssueVinCredentialRequest) (*pb.IssueVinCredentialResponse, error) {
+	v, err := models.VehicleNFTS(models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(int64(req.TokenId), 0)))).One(ctx, s.dbs().Reader)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, status.Error(codes.NotFound, "No vehicle with that id.")
+		}
+		return nil, err
+	}
+
+	if req.Vin != v.Vin {
+		return nil, status.Error(codes.InvalidArgument, "Input and NFT VINs do not much.")
+	}
+
+	credID, err := s.vcIss.VIN(req.Vin, new(big.Int).SetUint64(req.TokenId), req.ExpiresAt.AsTime())
+	if err != nil {
+		s.logger.Err(err).Msg("Failed to create vin credential.")
+		return nil, err
+	}
+	return &pb.IssueVinCredentialResponse{
+		CredentialId: credID,
+	}, nil
 }
