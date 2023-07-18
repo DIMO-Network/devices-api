@@ -44,9 +44,11 @@ type SyntheticDevicesController struct {
 	usersClient    pb.UserServiceClient
 	walletSvc      services.SyntheticWalletInstanceService
 	registryClient registry.Client
+
+	cipher shared.Cipher
+
 	smartcarClient services.SmartcarClient
 	teslaService   services.TeslaService
-	cipher         shared.Cipher
 }
 
 type MintSyntheticDeviceRequest struct {
@@ -55,12 +57,15 @@ type MintSyntheticDeviceRequest struct {
 }
 
 type credentials struct {
+	// Smartcar
+	Code        string `json:"code"`
+	RedirectURI string `json:"redirectUri"`
+
+	// Tesla
+	ID           string `json:"id"`
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`
 	ExpiresIn    int64  `json:"expiresIn"`
-	ExternalID   string `json:"externalId"`
-	Code         string `json:"code"`
-	RedirectURI  string `json:"redirectUri"`
 }
 
 type SyntheticDeviceSequence struct {
@@ -68,8 +73,16 @@ type SyntheticDeviceSequence struct {
 }
 
 func NewSyntheticDevicesController(
-	settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, deviceDefSvc services.DeviceDefinitionService, usersClient pb.UserServiceClient, walletSvc services.SyntheticWalletInstanceService, registryClient registry.Client, smartcarClient services.SmartcarClient, teslaSvc services.TeslaService, cipher shared.Cipher,
-
+	settings *config.Settings,
+	dbs func() *db.ReaderWriter,
+	logger *zerolog.Logger,
+	deviceDefSvc services.DeviceDefinitionService,
+	usersClient pb.UserServiceClient,
+	walletSvc services.SyntheticWalletInstanceService,
+	registryClient registry.Client,
+	smartcarClient services.SmartcarClient,
+	teslaSvc services.TeslaService,
+	cipher shared.Cipher,
 ) SyntheticDevicesController {
 	return SyntheticDevicesController{
 		Settings:       settings,
@@ -441,9 +454,9 @@ func (sdc *SyntheticDevicesController) generateUDAI(ctx context.Context, creds c
 		udi.Metadata = null.JSONFrom(mb)
 		udi.ExternalID = null.StringFrom(externalID)
 	case constants.TeslaVendor:
-		teslaID, err := strconv.Atoi(creds.ExternalID)
+		teslaID, err := strconv.Atoi(creds.ID)
 		if err != nil {
-			sdc.log.Err(err).Msgf("unable to parse external id %q as integer", creds.ExternalID)
+			sdc.log.Err(err).Msgf("unable to parse external id %q as integer", creds.ID)
 			return nil, err
 		}
 
@@ -473,7 +486,7 @@ func (sdc *SyntheticDevicesController) generateUDAI(ctx context.Context, creds c
 
 		mb, _ := json.Marshal(meta)
 
-		udi.ExternalID = null.StringFrom(creds.ExternalID)
+		udi.ExternalID = null.StringFrom(creds.ID)
 		udi.AccessExpiresAt = null.TimeFrom(time.Now().Add(time.Duration(creds.ExpiresIn) * time.Second))
 		udi.Metadata = null.JSONFrom(mb)
 	default:
@@ -648,17 +661,27 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 // @Router      /synthetic/device/{syntheticDeviceNode}/re-authenticate [post]
 func (sdc *SyntheticDevicesController) ReAuthenticate(c *fiber.Ctx) error {
 	syntheticDeviceNodeRaw := c.Params("syntheticDeviceNode")
-	userID := helpers.GetUserID(c)
+	// userID := helpers.GetUserID(c)
 
 	sdn, err := strconv.ParseInt(syntheticDeviceNodeRaw, 10, 64)
 	if err != nil {
-		return err
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse the given token id.")
 	}
 
 	sd, err := models.SyntheticDevices(
 		models.SyntheticDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(sdn, 0))),
 		qm.Load(models.SyntheticDeviceRels.VehicleToken),
 	).One(c.Context(), sdc.DBS().Reader)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fiber.NewError(fiber.StatusNotFound, "No synthetic device with that id.")
+		}
+		return err
+	}
+
+	if !sd.R.VehicleToken.UserDeviceID.Valid {
+		return fiber.NewError(fiber.StatusConflict, "Vehicle deleted.")
+	}
 
 	iNode, _ := sd.IntegrationTokenID.Uint64()
 
@@ -667,8 +690,23 @@ func (sdc *SyntheticDevicesController) ReAuthenticate(c *fiber.Ctx) error {
 		return err
 	}
 
-	udai, err := models.FindUserDeviceAPIIntegration(c.Context(), sdc.DBS().Reader, sd.R.VehicleToken.UserDeviceID.String, i.Id)
+	oldUDAI, err = models.FindUserDeviceAPIIntegration(c.Context(), sdc.DBS().Reader, sd.R.VehicleToken.UserDeviceID.String, i.Id)
 	if err != nil {
 		return err
 	}
+
+	// Should really create a new type.
+	var req MintSyntheticDeviceRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
+	}
+
+	newUdai, err := sdc.generateUDAI(c.Context(), req.Credentials, sd.R.VehicleToken.UserDeviceID.String, i)
+	if err != nil {
+		return err
+	}
+
+	udai.
+
+	return nil
 }
