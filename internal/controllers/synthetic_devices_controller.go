@@ -255,9 +255,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid authorization code")
 	}
 
-	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{
-		Id: userID,
-	})
+	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		return helpers.GrpcErrorToFiber(err, "error occurred when fetching user")
 	}
@@ -292,6 +290,11 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature.")
 	}
 
+	udai, err := sdc.generateUDAI(c.Context(), req.Credentials, vNFT.UserDeviceID.String, integration)
+	if err != nil {
+		return err
+	}
+
 	childKeyNumber, err := sdc.generateNextChildKeyNumber(c.Context())
 	if err != nil {
 		sdc.log.Err(err).Msg("failed to generate sequence from database")
@@ -307,12 +310,6 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	tx, err := sdc.DBS().Writer.DB.BeginTx(c.Context(), nil)
-	if err != nil {
-		sdc.log.Err(err).Msg("error creating database transaction")
-		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
-	}
-
-	udai, err := sdc.generateUDAI(c.Context(), req, vNFT.UserDeviceID.String, integration)
 	if err != nil {
 		return err
 	}
@@ -396,7 +393,7 @@ func (sdc *SyntheticDevicesController) generateNextChildKeyNumber(ctx context.Co
 	return seq.NextVal, nil
 }
 
-func (sdc *SyntheticDevicesController) generateUDAI(ctx context.Context, req *MintSyntheticDeviceRequest, userDeviceID string, integration *grpc.Integration) (*models.UserDeviceAPIIntegration, error) {
+func (sdc *SyntheticDevicesController) generateUDAI(ctx context.Context, creds credentials, userDeviceID string, integration *grpc.Integration) (*models.UserDeviceAPIIntegration, error) {
 	udi := models.UserDeviceAPIIntegration{
 		IntegrationID: integration.Id,
 		UserDeviceID:  userDeviceID,
@@ -406,7 +403,7 @@ func (sdc *SyntheticDevicesController) generateUDAI(ctx context.Context, req *Mi
 
 	switch integration.Vendor {
 	case constants.SmartCarVendor:
-		token, err := sdc.exchangeSmartCarCode(ctx, req.Credentials.Code, req.Credentials.RedirectURI)
+		token, err := sdc.exchangeSmartCarCode(ctx, creds.Code, creds.RedirectURI)
 		if err != nil {
 			return nil, err
 		}
@@ -444,23 +441,23 @@ func (sdc *SyntheticDevicesController) generateUDAI(ctx context.Context, req *Mi
 		udi.Metadata = null.JSONFrom(mb)
 		udi.ExternalID = null.StringFrom(externalID)
 	case constants.TeslaVendor:
-		teslaID, err := strconv.Atoi(req.Credentials.ExternalID)
+		teslaID, err := strconv.Atoi(creds.ExternalID)
 		if err != nil {
-			sdc.log.Err(err).Msgf("unable to parse external id %q as integer", req.Credentials.ExternalID)
+			sdc.log.Err(err).Msgf("unable to parse external id %q as integer", creds.ExternalID)
 			return nil, err
 		}
 
-		v, err := sdc.teslaService.GetVehicle(req.Credentials.AccessToken, teslaID)
+		v, err := sdc.teslaService.GetVehicle(creds.AccessToken, teslaID)
 		if err != nil {
 			sdc.log.Err(err).Msg("unable to retrieve vehicle from Tesla")
 			return nil, err
 		}
 
-		encAccess, err := sdc.cipher.Encrypt(req.Credentials.AccessToken)
+		encAccess, err := sdc.cipher.Encrypt(creds.AccessToken)
 		if err != nil {
 			return nil, opaqueInternalError
 		}
-		encRefresh, err := sdc.cipher.Encrypt(req.Credentials.RefreshToken)
+		encRefresh, err := sdc.cipher.Encrypt(creds.RefreshToken)
 		if err != nil {
 			return nil, opaqueInternalError
 		}
@@ -476,8 +473,8 @@ func (sdc *SyntheticDevicesController) generateUDAI(ctx context.Context, req *Mi
 
 		mb, _ := json.Marshal(meta)
 
-		udi.ExternalID = null.StringFrom(req.Credentials.ExternalID)
-		udi.AccessExpiresAt = null.TimeFrom(time.Now().Add(time.Duration(req.Credentials.ExpiresIn) * time.Second))
+		udi.ExternalID = null.StringFrom(creds.ExternalID)
+		udi.AccessExpiresAt = null.TimeFrom(time.Now().Add(time.Duration(creds.ExpiresIn) * time.Second))
 		udi.Metadata = null.JSONFrom(mb)
 	default:
 		return nil, fmt.Errorf("unrecognized vendor %s", integration.Vendor)
