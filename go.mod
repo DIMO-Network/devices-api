@@ -3,7 +3,7 @@ module github.com/DIMO-Network/devices-api
 go 1.19
 
 require (
-	github.com/DIMO-Network/device-data-api v0.4.18
+	github.com/DIMO-Network/device-data-api v0.4.23-0.20230718210255-60a2c7be0aa7
 	github.com/DIMO-Network/device-definitions-api v1.0.7
 	github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c
 	github.com/DIMO-Network/shared v0.9.53

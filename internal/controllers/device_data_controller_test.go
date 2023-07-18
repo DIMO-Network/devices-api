@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
-	"github.com/tidwall/gjson"
 	"io"
 	"os"
 	"testing"
 	"time"
+
+	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
+	"github.com/tidwall/gjson"
 
 	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -151,15 +152,17 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
 		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
+		fuel := 0.50
+		odo := 3000.50
+		volt := 13.3
 		mockDeps.deviceDataSvc.EXPECT().GetDeviceData(gomock.Any(), ud.ID, ud.DeviceDefinitionID,
 			ud.DeviceStyleID.String, []int64{1, 3, 4}).Times(1).
 			Return(&dagrpc.UserDeviceDataResponse{
-				FuelPercentRemaining: 0.50,
-				Odometer:             3000.50,
-				Range:                0,
+				FuelPercentRemaining: &fuel,
+				Odometer:             &odo,
 				RecordUpdatedAt:      nil,
 				RecordCreatedAt:      nil,
-				BatteryVoltage:       13.3,
+				BatteryVoltage:       &volt,
 			}, nil)
 
 		request := test.BuildRequest("GET", "/user/devices/"+ud.ID+"/status", "")
@@ -173,6 +176,7 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 		}
 
 		assert.Equal(t, 3000.50, gjson.GetBytes(body, "odometer").Float())
+		assert.Equal(t, 0.50, gjson.GetBytes(body, "fuelPercentRemaining").Float())
 
 	})
 
