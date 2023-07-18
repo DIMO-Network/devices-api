@@ -48,7 +48,10 @@ type SyntheticDevicesController struct {
 	cipher shared.Cipher
 
 	smartcarClient services.SmartcarClient
-	teslaService   services.TeslaService
+	smartcarTask   services.SmartcarTaskService
+
+	teslaService services.TeslaService
+	teslaTask    services.TeslaTaskService
 }
 
 type MintSyntheticDeviceRequest struct {
@@ -705,8 +708,6 @@ func (sdc *SyntheticDevicesController) ReAuthenticate(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-
-	udai.
 
 	return nil
 }
