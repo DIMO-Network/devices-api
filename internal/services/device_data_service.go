@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+
 	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
@@ -37,5 +38,3 @@ func (ddd *deviceDataService) GetDeviceData(ctx context.Context, userDeviceID, d
 	})
 	return data, err
 }
-
-// todo add tests for nft controller and the status controller
