@@ -1652,11 +1652,10 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 
 	ud := udai.R.UserDevice
 	// pull dd info again - don't pass it in, as it may have changed
-	dds, err2 := udc.DeviceDefSvc.GetDeviceDefinitionsByIDs(ctx, []string{ud.DeviceDefinitionID})
+	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, ud.DeviceDefinitionID)
 	if err2 != nil {
 		logger.Err(err2).Str("deviceDefinitionId", ud.DeviceDefinitionID).Msg("failed to retrieve device defintion")
 	}
-	dd := dds[0]
 
 	err = udc.eventService.Emit(
 		&services.Event{

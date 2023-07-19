@@ -168,7 +168,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCarFailure() {
 			"redirectURI": "http://dimo.zone/cb"
 		}`
 	s.scClient.EXPECT().ExchangeCode(gomock.Any(), "qxyz", "http://dimo.zone/cb").Times(1).Return(nil, errors.New("failure communicating with Smartcar"))
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(1).Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(1).Return(dd[0], nil)
 
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := s.app.Test(request, 60*1000)
@@ -232,7 +232,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 	}).Return(nil)
 
 	// original device def
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd[0], nil)
 	s.scClient.EXPECT().GetUserID(gomock.Any(), "myAccess").Return(smartCarUserID, nil)
 	s.scClient.EXPECT().GetExternalID(gomock.Any(), "myAccess").Return("smartcar-idx", nil)
 	s.scClient.EXPECT().GetVIN(gomock.Any(), "myAccess", "smartcar-idx").Return(vin, nil)
@@ -381,7 +381,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 		},
 	)
 	// original device def
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).Times(2).Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd[0], nil)
 
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := s.app.Test(request)
@@ -458,7 +458,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
 		VIN:       "5YJYGDEF9NF010423",
 	}, nil)
 	s.teslaSvc.EXPECT().WakeUpVehicle("abc", 1145).Return(nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).Times(2).Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd[0], nil)
 	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dd[0], nil)
 
 	req := `{
@@ -536,7 +536,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateD
 		}`, unitID)
 	// no calls should be made to autopi api
 
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).AnyTimes().Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).AnyTimes().Return(dd[0], nil)
 
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := app.Test(request, 1000*240)
@@ -572,7 +572,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateD
 			"externalId": "%s"
 		}`, unitID)
 
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Times(1).Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
 
 	// no calls should be made to autopi api
 	request := test.BuildRequest("POST", "/user/devices/"+ud2.ID+"/integrations/"+integration.Id, req)
