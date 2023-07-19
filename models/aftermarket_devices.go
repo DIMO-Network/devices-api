@@ -27,7 +27,7 @@ import (
 type AftermarketDevice struct {
 	Serial                        string            `boil:"serial" json:"serial" toml:"serial" yaml:"serial"`
 	UserID                        null.String       `boil:"user_id" json:"user_id,omitempty" toml:"user_id" yaml:"user_id,omitempty"`
-	EthereumAddress               null.Bytes        `boil:"ethereum_address" json:"ethereum_address,omitempty" toml:"ethereum_address" yaml:"ethereum_address,omitempty"`
+	EthereumAddress               []byte            `boil:"ethereum_address" json:"ethereum_address" toml:"ethereum_address" yaml:"ethereum_address"`
 	CreatedAt                     time.Time         `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt                     time.Time         `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	TokenID                       types.NullDecimal `boil:"token_id" json:"token_id,omitempty" toml:"token_id" yaml:"token_id,omitempty"`
@@ -38,6 +38,7 @@ type AftermarketDevice struct {
 	VehicleTokenID                types.NullDecimal `boil:"vehicle_token_id" json:"vehicle_token_id,omitempty" toml:"vehicle_token_id" yaml:"vehicle_token_id,omitempty"`
 	Beneficiary                   null.Bytes        `boil:"beneficiary" json:"beneficiary,omitempty" toml:"beneficiary" yaml:"beneficiary,omitempty"`
 	Metadata                      null.JSON         `boil:"metadata" json:"metadata,omitempty" toml:"metadata" yaml:"metadata,omitempty"`
+	DeviceManufacturerTokenID     types.NullDecimal `boil:"device_manufacturer_token_id" json:"device_manufacturer_token_id,omitempty" toml:"device_manufacturer_token_id" yaml:"device_manufacturer_token_id,omitempty"`
 
 	R *aftermarketDeviceR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L aftermarketDeviceL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -57,6 +58,7 @@ var AftermarketDeviceColumns = struct {
 	VehicleTokenID                string
 	Beneficiary                   string
 	Metadata                      string
+	DeviceManufacturerTokenID     string
 }{
 	Serial:                        "serial",
 	UserID:                        "user_id",
@@ -71,6 +73,7 @@ var AftermarketDeviceColumns = struct {
 	VehicleTokenID:                "vehicle_token_id",
 	Beneficiary:                   "beneficiary",
 	Metadata:                      "metadata",
+	DeviceManufacturerTokenID:     "device_manufacturer_token_id",
 }
 
 var AftermarketDeviceTableColumns = struct {
@@ -87,6 +90,7 @@ var AftermarketDeviceTableColumns = struct {
 	VehicleTokenID                string
 	Beneficiary                   string
 	Metadata                      string
+	DeviceManufacturerTokenID     string
 }{
 	Serial:                        "aftermarket_devices.serial",
 	UserID:                        "aftermarket_devices.user_id",
@@ -101,6 +105,7 @@ var AftermarketDeviceTableColumns = struct {
 	VehicleTokenID:                "aftermarket_devices.vehicle_token_id",
 	Beneficiary:                   "aftermarket_devices.beneficiary",
 	Metadata:                      "aftermarket_devices.metadata",
+	DeviceManufacturerTokenID:     "aftermarket_devices.device_manufacturer_token_id",
 }
 
 // Generated where
@@ -166,29 +171,14 @@ func (w whereHelpernull_String) NIN(slice []string) qm.QueryMod {
 func (w whereHelpernull_String) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
 func (w whereHelpernull_String) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
-type whereHelpernull_Bytes struct{ field string }
+type whereHelper__byte struct{ field string }
 
-func (w whereHelpernull_Bytes) EQ(x null.Bytes) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, false, x)
-}
-func (w whereHelpernull_Bytes) NEQ(x null.Bytes) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, true, x)
-}
-func (w whereHelpernull_Bytes) LT(x null.Bytes) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelpernull_Bytes) LTE(x null.Bytes) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelpernull_Bytes) GT(x null.Bytes) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelpernull_Bytes) GTE(x null.Bytes) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
-
-func (w whereHelpernull_Bytes) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
-func (w whereHelpernull_Bytes) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
+func (w whereHelper__byte) EQ(x []byte) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
+func (w whereHelper__byte) NEQ(x []byte) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
+func (w whereHelper__byte) LT(x []byte) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
+func (w whereHelper__byte) LTE(x []byte) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
+func (w whereHelper__byte) GT(x []byte) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
+func (w whereHelper__byte) GTE(x []byte) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
 
 type whereHelpertime_Time struct{ field string }
 
@@ -237,6 +227,30 @@ func (w whereHelpertypes_NullDecimal) IsNotNull() qm.QueryMod {
 	return qmhelper.WhereIsNotNull(w.field)
 }
 
+type whereHelpernull_Bytes struct{ field string }
+
+func (w whereHelpernull_Bytes) EQ(x null.Bytes) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_Bytes) NEQ(x null.Bytes) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_Bytes) LT(x null.Bytes) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_Bytes) LTE(x null.Bytes) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_Bytes) GT(x null.Bytes) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_Bytes) GTE(x null.Bytes) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelpernull_Bytes) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_Bytes) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
+
 type whereHelpernull_JSON struct{ field string }
 
 func (w whereHelpernull_JSON) EQ(x null.JSON) qm.QueryMod {
@@ -264,7 +278,7 @@ func (w whereHelpernull_JSON) IsNotNull() qm.QueryMod { return qmhelper.WhereIsN
 var AftermarketDeviceWhere = struct {
 	Serial                        whereHelperstring
 	UserID                        whereHelpernull_String
-	EthereumAddress               whereHelpernull_Bytes
+	EthereumAddress               whereHelper__byte
 	CreatedAt                     whereHelpertime_Time
 	UpdatedAt                     whereHelpertime_Time
 	TokenID                       whereHelpertypes_NullDecimal
@@ -275,10 +289,11 @@ var AftermarketDeviceWhere = struct {
 	VehicleTokenID                whereHelpertypes_NullDecimal
 	Beneficiary                   whereHelpernull_Bytes
 	Metadata                      whereHelpernull_JSON
+	DeviceManufacturerTokenID     whereHelpertypes_NullDecimal
 }{
 	Serial:                        whereHelperstring{field: "\"devices_api\".\"aftermarket_devices\".\"serial\""},
 	UserID:                        whereHelpernull_String{field: "\"devices_api\".\"aftermarket_devices\".\"user_id\""},
-	EthereumAddress:               whereHelpernull_Bytes{field: "\"devices_api\".\"aftermarket_devices\".\"ethereum_address\""},
+	EthereumAddress:               whereHelper__byte{field: "\"devices_api\".\"aftermarket_devices\".\"ethereum_address\""},
 	CreatedAt:                     whereHelpertime_Time{field: "\"devices_api\".\"aftermarket_devices\".\"created_at\""},
 	UpdatedAt:                     whereHelpertime_Time{field: "\"devices_api\".\"aftermarket_devices\".\"updated_at\""},
 	TokenID:                       whereHelpertypes_NullDecimal{field: "\"devices_api\".\"aftermarket_devices\".\"token_id\""},
@@ -289,6 +304,7 @@ var AftermarketDeviceWhere = struct {
 	VehicleTokenID:                whereHelpertypes_NullDecimal{field: "\"devices_api\".\"aftermarket_devices\".\"vehicle_token_id\""},
 	Beneficiary:                   whereHelpernull_Bytes{field: "\"devices_api\".\"aftermarket_devices\".\"beneficiary\""},
 	Metadata:                      whereHelpernull_JSON{field: "\"devices_api\".\"aftermarket_devices\".\"metadata\""},
+	DeviceManufacturerTokenID:     whereHelpertypes_NullDecimal{field: "\"devices_api\".\"aftermarket_devices\".\"device_manufacturer_token_id\""},
 }
 
 // AftermarketDeviceRels is where relationship names are stored.
@@ -369,10 +385,10 @@ func (r *aftermarketDeviceR) GetSerialUserDeviceAPIIntegrations() UserDeviceAPII
 type aftermarketDeviceL struct{}
 
 var (
-	aftermarketDeviceAllColumns            = []string{"serial", "user_id", "ethereum_address", "created_at", "updated_at", "token_id", "claim_meta_transaction_request_id", "owner_address", "pair_request_id", "unpair_request_id", "vehicle_token_id", "beneficiary", "metadata"}
-	aftermarketDeviceColumnsWithoutDefault = []string{"serial"}
-	aftermarketDeviceColumnsWithDefault    = []string{"user_id", "ethereum_address", "created_at", "updated_at", "token_id", "claim_meta_transaction_request_id", "owner_address", "pair_request_id", "unpair_request_id", "vehicle_token_id", "beneficiary", "metadata"}
-	aftermarketDevicePrimaryKeyColumns     = []string{"serial"}
+	aftermarketDeviceAllColumns            = []string{"serial", "user_id", "ethereum_address", "created_at", "updated_at", "token_id", "claim_meta_transaction_request_id", "owner_address", "pair_request_id", "unpair_request_id", "vehicle_token_id", "beneficiary", "metadata", "device_manufacturer_token_id"}
+	aftermarketDeviceColumnsWithoutDefault = []string{"serial", "ethereum_address"}
+	aftermarketDeviceColumnsWithDefault    = []string{"user_id", "created_at", "updated_at", "token_id", "claim_meta_transaction_request_id", "owner_address", "pair_request_id", "unpair_request_id", "vehicle_token_id", "beneficiary", "metadata", "device_manufacturer_token_id"}
+	aftermarketDevicePrimaryKeyColumns     = []string{"ethereum_address"}
 	aftermarketDeviceGeneratedColumns      = []string{}
 )
 
@@ -1466,7 +1482,7 @@ func (o *AftermarketDevice) SetClaimMetaTransactionRequest(ctx context.Context, 
 		strmangle.SetParamNames("\"", "\"", 1, []string{"claim_meta_transaction_request_id"}),
 		strmangle.WhereClause("\"", "\"", 2, aftermarketDevicePrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.Serial}
+	values := []interface{}{related.ID, o.EthereumAddress}
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -1535,7 +1551,7 @@ func (o *AftermarketDevice) SetPairRequest(ctx context.Context, exec boil.Contex
 		strmangle.SetParamNames("\"", "\"", 1, []string{"pair_request_id"}),
 		strmangle.WhereClause("\"", "\"", 2, aftermarketDevicePrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.Serial}
+	values := []interface{}{related.ID, o.EthereumAddress}
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -1604,7 +1620,7 @@ func (o *AftermarketDevice) SetUnpairRequest(ctx context.Context, exec boil.Cont
 		strmangle.SetParamNames("\"", "\"", 1, []string{"unpair_request_id"}),
 		strmangle.WhereClause("\"", "\"", 2, aftermarketDevicePrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.Serial}
+	values := []interface{}{related.ID, o.EthereumAddress}
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -1673,7 +1689,7 @@ func (o *AftermarketDevice) SetVehicleToken(ctx context.Context, exec boil.Conte
 		strmangle.SetParamNames("\"", "\"", 1, []string{"vehicle_token_id"}),
 		strmangle.WhereClause("\"", "\"", 2, aftermarketDevicePrimaryKeyColumns),
 	)
-	values := []interface{}{related.TokenID, o.Serial}
+	values := []interface{}{related.TokenID, o.EthereumAddress}
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -1993,7 +2009,7 @@ func AftermarketDevices(mods ...qm.QueryMod) aftermarketDeviceQuery {
 
 // FindAftermarketDevice retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindAftermarketDevice(ctx context.Context, exec boil.ContextExecutor, serial string, selectCols ...string) (*AftermarketDevice, error) {
+func FindAftermarketDevice(ctx context.Context, exec boil.ContextExecutor, ethereumAddress []byte, selectCols ...string) (*AftermarketDevice, error) {
 	aftermarketDeviceObj := &AftermarketDevice{}
 
 	sel := "*"
@@ -2001,10 +2017,10 @@ func FindAftermarketDevice(ctx context.Context, exec boil.ContextExecutor, seria
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"devices_api\".\"aftermarket_devices\" where \"serial\"=$1", sel,
+		"select %s from \"devices_api\".\"aftermarket_devices\" where \"ethereum_address\"=$1", sel,
 	)
 
-	q := queries.Raw(query, serial)
+	q := queries.Raw(query, ethereumAddress)
 
 	err := q.Bind(ctx, exec, aftermarketDeviceObj)
 	if err != nil {
@@ -2380,7 +2396,7 @@ func (o *AftermarketDevice) Delete(ctx context.Context, exec boil.ContextExecuto
 	}
 
 	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), aftermarketDevicePrimaryKeyMapping)
-	sql := "DELETE FROM \"devices_api\".\"aftermarket_devices\" WHERE \"serial\"=$1"
+	sql := "DELETE FROM \"devices_api\".\"aftermarket_devices\" WHERE \"ethereum_address\"=$1"
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -2477,7 +2493,7 @@ func (o AftermarketDeviceSlice) DeleteAll(ctx context.Context, exec boil.Context
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *AftermarketDevice) Reload(ctx context.Context, exec boil.ContextExecutor) error {
-	ret, err := FindAftermarketDevice(ctx, exec, o.Serial)
+	ret, err := FindAftermarketDevice(ctx, exec, o.EthereumAddress)
 	if err != nil {
 		return err
 	}
@@ -2516,16 +2532,16 @@ func (o *AftermarketDeviceSlice) ReloadAll(ctx context.Context, exec boil.Contex
 }
 
 // AftermarketDeviceExists checks if the AftermarketDevice row exists.
-func AftermarketDeviceExists(ctx context.Context, exec boil.ContextExecutor, serial string) (bool, error) {
+func AftermarketDeviceExists(ctx context.Context, exec boil.ContextExecutor, ethereumAddress []byte) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"devices_api\".\"aftermarket_devices\" where \"serial\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"devices_api\".\"aftermarket_devices\" where \"ethereum_address\"=$1 limit 1)"
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
 		fmt.Fprintln(writer, sql)
-		fmt.Fprintln(writer, serial)
+		fmt.Fprintln(writer, ethereumAddress)
 	}
-	row := exec.QueryRowContext(ctx, sql, serial)
+	row := exec.QueryRowContext(ctx, sql, ethereumAddress)
 
 	err := row.Scan(&exists)
 	if err != nil {
@@ -2537,5 +2553,5 @@ func AftermarketDeviceExists(ctx context.Context, exec boil.ContextExecutor, ser
 
 // Exists checks if the AftermarketDevice row exists.
 func (o *AftermarketDevice) Exists(ctx context.Context, exec boil.ContextExecutor) (bool, error) {
-	return AftermarketDeviceExists(ctx, exec, o.Serial)
+	return AftermarketDeviceExists(ctx, exec, o.EthereumAddress)
 }
