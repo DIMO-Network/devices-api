@@ -168,7 +168,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCarFailure() {
 			"redirectURI": "http://dimo.zone/cb"
 		}`
 	s.scClient.EXPECT().ExchangeCode(gomock.Any(), "qxyz", "http://dimo.zone/cb").Times(1).Return(nil, errors.New("failure communicating with Smartcar"))
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).Times(1).Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(1).Return(dd, nil)
 
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := s.app.Test(request, 60*1000)
@@ -231,6 +231,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 		Region:             "Americas",
 	}).Return(nil)
 
+	// original device def
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd, nil)
 	s.scClient.EXPECT().GetUserID(gomock.Any(), "myAccess").Return(smartCarUserID, nil)
 	s.scClient.EXPECT().GetExternalID(gomock.Any(), "myAccess").Return("smartcar-idx", nil)
 	s.scClient.EXPECT().GetVIN(gomock.Any(), "myAccess", "smartcar-idx").Return(vin, nil)
@@ -244,8 +246,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 			return nil
 		},
 	)
-	// original device def
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).Times(2).Return(dd, nil)
 
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := s.app.Test(request)
@@ -263,6 +263,47 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 	assert.Equal(s.T(), "zlErserfu", apiInt.RefreshToken.String)
 	assert.Equal(s.T(), vin, updatedUD.VinIdentifier.String)
 	assert.Equal(s.T(), true, updatedUD.VinConfirmed)
+}
+
+func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_FailureTestVIN() {
+	model := "Mach E"
+	const vin = "0SC12312312312312"
+	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+
+	const smartCarUserID = "smartCarUserId"
+	req := `{
+			"code": "qxy",
+			"redirectURI": "http://dimo.zone/cb"
+		}`
+	expiry, _ := time.Parse(time.RFC3339, "2022-03-01T12:00:00Z")
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Return(dd[0], nil)
+	s.scClient.EXPECT().ExchangeCode(gomock.Any(), "qxy", "http://dimo.zone/cb").Times(1).Return(&smartcar.Token{
+		Access:        "myAccess",
+		AccessExpiry:  expiry,
+		Refresh:       "myRefresh",
+		RefreshExpiry: expiry.Add(24 * time.Hour),
+	}, nil)
+	s.scClient.EXPECT().GetUserID(gomock.Any(), "myAccess").Return(smartCarUserID, nil)
+	s.scClient.EXPECT().GetExternalID(gomock.Any(), "myAccess").Return("smartcar-idx", nil)
+	s.scClient.EXPECT().GetVIN(gomock.Any(), "myAccess", "smartcar-idx").Return(vin, nil)
+
+	logger := test.Logger()
+	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, s.eventSvc, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), s.autopiAPISvc, nil,
+		s.autoPiIngest, s.deviceDefinitionRegistrar, s.autoPiTaskService, nil, nil, nil, s.redisClient, nil, nil, nil, s.natsSvc)
+
+	app := test.SetupAppFiber(*logger)
+
+	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.RegisterDeviceIntegration)
+
+	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
+	response, err := app.Test(request)
+	require.NoError(s.T(), err)
+	if assert.Equal(s.T(), fiber.StatusConflict, response.StatusCode, "should return failure") == false {
+		body, _ := io.ReadAll(response.Body)
+		assert.FailNow(s.T(), "unexpected response: "+string(body))
+	}
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToken() {

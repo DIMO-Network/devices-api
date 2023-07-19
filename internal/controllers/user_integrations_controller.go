@@ -1559,12 +1559,11 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 	}
 	logger = logger.With().Str("region", countryRecord.Region).Logger()
 
-	dds, err := udc.DeviceDefSvc.GetDeviceDefinitionsByIDs(c.Context(), []string{ud.DeviceDefinitionID})
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), ud.DeviceDefinitionID)
 	if err != nil {
 		logger.Err(err).Msg("grpc error searching for device definition")
 		return helpers.GrpcErrorToFiber(err, "failed to get device definition with id: "+ud.DeviceDefinitionID)
 	}
-	dd := dds[0]
 	logger.Info().Msgf("get device definition id result during registration %+v", dd)
 
 	// filter out the desired integration from the compatible ones
@@ -1782,6 +1781,10 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 	// Prevent users from connecting a vehicle if it's already connected through another user
 	// device object. Disabled outside of prod for ease of testing.
 	if udc.Settings.IsProduction() {
+		if vin[0:3] == "0SC" {
+			logger.Error().Msgf("Smartcar test VIN %s is not allowed.", vin)
+			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Smartcar test VIN %s is not allowed.", vin))
+		}
 		// Probably a race condition here. Need to either lock something or impose a greater
 		// isolation level.
 		conflict, err := models.UserDevices(
