@@ -520,7 +520,9 @@ func (nc *NFTController) GetVehicleStatus(c *fiber.Ctx) error {
 		return shared.GrpcErrorToFiber(err, "failed to get user device data grpc")
 	}
 
-	return c.JSON(udd)
+	ds := grpcDeviceDataToSnapshot(udd)
+
+	return c.JSON(ds)
 }
 
 // UnlockDoors godoc

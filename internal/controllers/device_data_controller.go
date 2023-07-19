@@ -105,6 +105,12 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 		return shared.GrpcErrorToFiber(err, "failed to get user device data grpc")
 	}
 
+	ds := grpcDeviceDataToSnapshot(udd)
+
+	return c.JSON(ds)
+}
+
+func grpcDeviceDataToSnapshot(udd *dagrpc.UserDeviceDataResponse) DeviceSnapshot {
 	ds := DeviceSnapshot{
 		Charging:             udd.Charging,
 		FuelPercentRemaining: udd.FuelPercentRemaining,
@@ -122,8 +128,7 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 		BatteryVoltage:       udd.BatteryVoltage,
 		AmbientTemp:          udd.AmbientTemp,
 	}
-
-	return c.JSON(ds)
+	return ds
 }
 
 func convertTimestamp(ts *timestamppb.Timestamp) *time.Time {

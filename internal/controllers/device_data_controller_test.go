@@ -175,9 +175,9 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 			fmt.Println("body response: " + string(body))
 		}
 
-		assert.Equal(t, 3000.50, gjson.GetBytes(body, "odometer").Float())
-		assert.Equal(t, 0.50, gjson.GetBytes(body, "fuelPercentRemaining").Float())
-
+		assert.Equal(t, odo, gjson.GetBytes(body, "odometer").Float())
+		assert.Equal(t, fuel, gjson.GetBytes(body, "fuelPercentRemaining").Float())
+		assert.Equal(t, volt, gjson.GetBytes(body, "batteryVoltage").Float())
 	})
 
 }
