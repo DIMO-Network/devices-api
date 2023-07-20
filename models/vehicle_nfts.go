@@ -1299,7 +1299,7 @@ func (o *VehicleNFT) SetVehicleTokenAftermarketDevice(ctx context.Context, exec 
 			strmangle.SetParamNames("\"", "\"", 1, []string{"vehicle_token_id"}),
 			strmangle.WhereClause("\"", "\"", 2, aftermarketDevicePrimaryKeyColumns),
 		)
-		values := []interface{}{o.TokenID, related.Serial}
+		values := []interface{}{o.TokenID, related.EthereumAddress}
 
 		if boil.IsDebug(ctx) {
 			writer := boil.DebugWriterFrom(ctx)

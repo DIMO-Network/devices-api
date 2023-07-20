@@ -528,7 +528,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateD
 		deviceID = "1dd96159-3bb2-9472-91f6-72fe9211cfeb"
 		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	)
-	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
+	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, nil, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
 
 	req := fmt.Sprintf(`{
@@ -564,7 +564,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateD
 		deviceID = "1dd96159-3bb2-9472-91f6-72fe9211cfeb"
 		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	)
-	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
+	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, nil, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	// test user
 	ud2 := test.SetupCreateUserDevice(s.T(), testUser2, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 
@@ -594,7 +594,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AutoPi(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	test.SetupCreateAftermarketDevice(s.T(), "", unitID, nil, s.pdb)
+	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
 	autopiAPISvc.EXPECT().GetDeviceByUnitID(unitID).Times(1).Return(&services.AutoPiDongleDevice{
 		IsUpdated:         false,
 		UnitID:            unitID,
@@ -632,7 +632,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_UpToDate()
 	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AutoPi(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	test.SetupCreateAftermarketDevice(s.T(), "", unitID, nil, s.pdb)
+	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
 	autopiAPISvc.EXPECT().GetDeviceByUnitID(unitID).Times(1).Return(&services.AutoPiDongleDevice{
 		IsUpdated:         true,
 		UnitID:            unitID,
@@ -667,7 +667,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_FutureUpda
 	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AutoPi(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	test.SetupCreateAftermarketDevice(s.T(), "", unitID, nil, s.pdb)
+	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
 	autopiAPISvc.EXPECT().GetDeviceByUnitID(unitID).Times(1).Return(&services.AutoPiDongleDevice{
 		IsUpdated:         false,
 		UnitID:            unitID,
@@ -703,7 +703,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AutoPi(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	test.SetupCreateAftermarketDevice(s.T(), "", unitID, nil, s.pdb)
+	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
 	autopiAPISvc.EXPECT().GetDeviceByUnitID(unitID).Times(1).Return(&services.AutoPiDongleDevice{
 		IsUpdated:         false,
 		UnitID:            unitID,
@@ -770,22 +770,23 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 	}
 	s.Require().NoError(vnft.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer()))
 
-	apUnit := test.SetupCreateAftermarketDevice(s.T(), testUserID, unitID, &deviceID, s.pdb)
-	apUnit.TokenID = types.NewNullDecimal(decimal.New(5, 0))
-	apUnit.EthereumAddress = null.BytesFrom(common.BigToAddress(big.NewInt(2)).Bytes())
-	apUnit.OwnerAddress = null.BytesFrom(userAddr.Bytes())
-	_, err = apUnit.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
-	s.Require().NoError(err)
+	aftermarketDevice := test.SetupCreateAftermarketDevice(s.T(), testUserID, common.BigToAddress(big.NewInt(2)).Bytes(), unitID, &deviceID, s.pdb)
+	aftermarketDevice.TokenID = types.NewNullDecimal(decimal.New(5, 0))
+	aftermarketDevice.OwnerAddress = null.BytesFrom(userAddr.Bytes())
+	row, errAMD := aftermarketDevice.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Assert().Equal(int64(1), row)
+	s.Require().NoError(errAMD)
 
 	app := fiber.New()
 	app.Use(test.AuthInjectorTestHandler(userID))
 	app.Get("/:userDeviceID/pair", c.GetAutoPiPairMessage)
 	app.Post("/:userDeviceID/pair", c.PostPairAutoPi)
 
-	req := test.BuildRequest("GET", "/"+ud.ID+"/pair?external_id="+unitID, "")
+	req := test.BuildRequest("GET", "/"+ud.ID+"/pair?external_id="+aftermarketDevice.Serial, "")
 
 	res, err := app.Test(req)
 	s.Require().NoError(err)
+	s.Require().Equal(fiber.StatusOK, res.StatusCode) // todo issue - this is returning 409 instead of 200? due to change in how get unit?
 	defer res.Body.Close()
 
 	var td signer.TypedData
@@ -799,7 +800,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 	userSig[64] += 27
 
 	in := map[string]any{
-		"externalId": apUnit.Serial,
+		"externalId": aftermarketDevice.Serial,
 		"signature":  hexutil.Bytes(userSig).String(),
 	}
 

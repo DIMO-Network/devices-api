@@ -18,7 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -107,7 +106,7 @@ func (c *Consumer) Handle(ctx context.Context, event *Event) error {
 	}
 
 	ad, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.EthereumAddress.EQ(null.BytesFrom(addr.Bytes())),
+		models.AftermarketDeviceWhere.EthereumAddress.EQ(addr.Bytes()),
 		qm.Load(qm.Rels(models.AftermarketDeviceRels.VehicleToken, models.VehicleNFTRels.Claim)),
 	).One(ctx, c.DBS.DBS().Reader)
 	if err != nil {

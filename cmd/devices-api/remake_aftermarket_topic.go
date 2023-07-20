@@ -73,7 +73,7 @@ func remakeAftermarketTopic(ctx context.Context, pdb db.Store, producer sarama.S
 
 		if err := reg.Register2(&services.AftermarketDeviceVehicleMapping{
 			AftermarketDevice: services.AftermarketDeviceVehicleMappingAftermarketDevice{
-				Address:       common.BytesToAddress(amd.EthereumAddress.Bytes),
+				Address:       common.BytesToAddress(amd.EthereumAddress),
 				Token:         amd.TokenID.Int(nil),
 				Serial:        amd.Serial,
 				IntegrationID: integ.Id,
