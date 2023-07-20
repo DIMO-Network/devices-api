@@ -6,6 +6,9 @@ alter table aftermarket_devices add column device_manufacturer_token_id numeric(
     CHECK (device_manufacturer_token_id >= 0 AND device_manufacturer_token_id < 2^256);
 
 -- delete data that won't work for this phase, address cannot be null
+delete from autopi_jobs where autopi_unit_id in (
+    select serial from aftermarket_devices where ethereum_address is null
+    );
 delete from user_device_api_integrations where integration_id = '27qftVRWQYpVDcO5DltO5Ojbjxk'
                                            and user_device_id in (
         select user_device_id from user_device_api_integrations inner join aftermarket_devices ad on ad.serial = user_device_api_integrations.serial
