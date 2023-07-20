@@ -772,7 +772,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 
 	apUnit := test.SetupCreateAftermarketDevice(s.T(), testUserID, unitID, &deviceID, s.pdb)
 	apUnit.TokenID = types.NewNullDecimal(decimal.New(5, 0))
-	apUnit.EthereumAddress = null.BytesFrom(common.BigToAddress(big.NewInt(2)).Bytes())
+	apUnit.EthereumAddress = common.BigToAddress(big.NewInt(2)).Bytes()
 	apUnit.OwnerAddress = null.BytesFrom(userAddr.Bytes())
 	_, err = apUnit.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.Require().NoError(err)
@@ -786,6 +786,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 
 	res, err := app.Test(req)
 	s.Require().NoError(err)
+	s.Require().Equal(fiber.StatusOK, res.Status) // todo issue - this is returning 409 instead of 200? due to change in how get unit?
 	defer res.Body.Close()
 
 	var td signer.TypedData

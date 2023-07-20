@@ -483,10 +483,8 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 			tokenID = dbUnit.TokenID.Int(nil)
 		}
 
-		if dbUnit.EthereumAddress.Valid {
-			addr := common.BytesToAddress(dbUnit.EthereumAddress.Bytes)
-			ethereumAddress = &addr
-		}
+		addr := common.BytesToAddress(dbUnit.EthereumAddress)
+		ethereumAddress = &addr
 
 		if dbUnit.OwnerAddress.Valid {
 			addr := common.BytesToAddress(dbUnit.OwnerAddress.Bytes)
@@ -988,7 +986,7 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 
 		if recAddr, err := helpers.Ecrecover(hash.Bytes(), aftermarketDeviceSig); err != nil {
 			return err
-		} else if recAddr != common.BytesToAddress(autoPiUnit.EthereumAddress.Bytes) {
+		} else if recAddr != common.BytesToAddress(autoPiUnit.EthereumAddress) {
 			return fiber.NewError(fiber.StatusBadRequest, "Incorrect aftermarket device signature.")
 		}
 
@@ -1351,7 +1349,7 @@ func (udc *UserDevicesController) PostUnclaimAutoPi(c *fiber.Ctx) error {
 
 	logger.Info().Msg("Got unclaim request.")
 
-	unit, err := models.FindAftermarketDevice(c.Context(), udc.DBS().Reader, unitID)
+	unit, err := models.AftermarketDevices(models.AftermarketDeviceWhere.Serial.EQ(unitID)).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted, or unit ID invalid.")
@@ -1422,7 +1420,7 @@ func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal error.")
 	}
 
-	if unit.TokenID.IsZero() || !unit.EthereumAddress.Valid {
+	if unit.TokenID.IsZero() {
 		return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted.")
 	}
 
@@ -1497,7 +1495,7 @@ func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
 		return err
 	}
 
-	realAmAddr := common.BytesToAddress(unit.EthereumAddress.Bytes)
+	realAmAddr := common.BytesToAddress(unit.EthereumAddress)
 
 	if recAmAddr != realAmAddr {
 		return fiber.NewError(fiber.StatusBadRequest, "Aftermarket device signature invalid.")

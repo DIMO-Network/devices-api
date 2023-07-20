@@ -264,7 +264,7 @@ func SetupCreateMintedAftermarketDevice(t *testing.T, userID, unitID string, tok
 		Serial:          unitID,
 		UserID:          null.StringFrom(userID),
 		TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
-		EthereumAddress: null.BytesFrom(addr.Bytes()),
+		EthereumAddress: addr.Bytes(),
 	}
 	if deviceID != nil {
 		amdMD := map[string]any{"autoPiDeviceId": *deviceID}

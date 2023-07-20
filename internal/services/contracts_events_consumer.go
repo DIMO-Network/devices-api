@@ -321,7 +321,7 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 
 	amd := models.AftermarketDevice{
 		Serial:          device.UnitID,
-		EthereumAddress: null.BytesFrom(args.AftermarketDeviceAddress.Bytes()),
+		EthereumAddress: args.AftermarketDeviceAddress.Bytes(),
 		TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
 	}
 	_ = amd.Metadata.Marshal(amdMd)
