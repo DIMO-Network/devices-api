@@ -245,10 +245,11 @@ func SetupCreateUserDeviceWithDeviceID(t *testing.T, testUserID string, deviceID
 	return ud
 }
 
-func SetupCreateAftermarketDevice(t *testing.T, userID, unitID string, deviceID *string, pdb db.Store) *models.AftermarketDevice {
+func SetupCreateAftermarketDevice(t *testing.T, userID string, bytes []byte, unitID string, deviceID *string, pdb db.Store) *models.AftermarketDevice {
 	amd := models.AftermarketDevice{
-		Serial: unitID,
-		UserID: null.StringFrom(userID),
+		EthereumAddress: bytes, // pkey
+		Serial:          unitID,
+		UserID:          null.StringFrom(userID),
 	}
 	if deviceID != nil {
 		amdMD := map[string]any{"autoPiDeviceId": *deviceID}
