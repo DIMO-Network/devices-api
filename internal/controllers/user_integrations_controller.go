@@ -717,7 +717,7 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
-	var autoPiUnit *models.AftermarketDevice
+	var aftermarketDevice *models.AftermarketDevice
 
 	if extID := c.Query("external_id"); extID != "" {
 		unitID, err := uuid.Parse(extID)
@@ -725,7 +725,7 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 			return err
 		}
 
-		autoPiUnit, err = models.AftermarketDevices(
+		aftermarketDevice, err = models.AftermarketDevices(
 			models.AftermarketDeviceWhere.Serial.EQ(unitID.String()),
 			qm.Load(models.AftermarketDeviceRels.PairRequest),
 			qm.Load(models.AftermarketDeviceRels.UnpairRequest),
@@ -751,21 +751,21 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 		}
 
 		// Conflict with web2 pairing?
-		if autoPiUnit != nil && (!udai.Serial.Valid || udai.Serial.String != autoPiUnit.Serial) {
+		if aftermarketDevice != nil && (!udai.Serial.Valid || udai.Serial.String != aftermarketDevice.Serial) {
 			return fiber.NewError(fiber.StatusConflict, "Vehicle already paired with another AutoPi.")
 		}
 
-		autoPiUnit = udai.R.SerialAftermarketDevice
+		aftermarketDevice = udai.R.SerialAftermarketDevice
 	}
 
-	if autoPiUnit.R.PairRequest != nil && autoPiUnit.R.PairRequest.Status != "Failed" {
-		if autoPiUnit.R.PairRequest.Status == models.MetaTransactionRequestStatusConfirmed {
+	if aftermarketDevice.R.PairRequest != nil && aftermarketDevice.R.PairRequest.Status != "Failed" {
+		if aftermarketDevice.R.PairRequest.Status == models.MetaTransactionRequestStatusConfirmed {
 			return fiber.NewError(fiber.StatusConflict, "AutoPi already paired.")
 		}
 		return fiber.NewError(fiber.StatusConflict, "AutoPi pairing in process.")
 	}
 
-	if autoPiUnit.TokenID.IsZero() {
+	if aftermarketDevice.TokenID.IsZero() {
 		return fiber.NewError(fiber.StatusConflict, "AutoPi not yet minted.")
 	}
 
@@ -773,11 +773,11 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "Vehicle not yet minted.")
 	}
 
-	if !autoPiUnit.OwnerAddress.Valid {
+	if !aftermarketDevice.OwnerAddress.Valid {
 		return fiber.NewError(fiber.StatusConflict, "Device not yet claimed.")
 	}
 
-	apToken := autoPiUnit.TokenID.Int(nil)
+	apToken := aftermarketDevice.TokenID.Int(nil)
 	vehicleToken := ud.R.VehicleNFT.TokenID.Int(nil)
 
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
@@ -791,7 +791,7 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 	}
 
 	if udc.Settings.IsProduction() {
-		if common.HexToAddress(*user.EthereumAddress) != common.BytesToAddress(autoPiUnit.OwnerAddress.Bytes) {
+		if common.HexToAddress(*user.EthereumAddress) != common.BytesToAddress(aftermarketDevice.OwnerAddress.Bytes) {
 			return fiber.NewError(fiber.StatusConflict, "AutoPi claimed by another user.")
 		}
 	}
