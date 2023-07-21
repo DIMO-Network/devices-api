@@ -152,7 +152,7 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 	logger := test.Logger()
 
 	usersClient := &test.UsersClient{}
-	middleware := AutoPi(pdb, usersClient, logger)
+	middleware := AftermarketDevice(pdb, usersClient, logger)
 
 	app := test.SetupAppFiber(*logger)
 	app.Get("/:unitID", test.AuthInjectorTestHandler(userID), middleware, func(c *fiber.Ctx) error {
@@ -173,7 +173,7 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 		ExpectedCode       int
 	}{
 		{
-			Name:         "AutoPi not minted, or unit ID invalid.",
+			Name:         "AftermarketDevice not minted, or unit ID invalid.",
 			ExpectedCode: 404,
 		},
 		{
@@ -194,7 +194,7 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 			AutoPiUnitID:       unitID,
 		},
 		{
-			Name:               "user is not owner of paired vehicle or AutoPi",
+			Name:               "user is not owner of paired vehicle or AftermarketDevice",
 			ExpectedCode:       403,
 			AutoPiVehicleToken: types.NewNullDecimal(decimal.New(int64(1), 0)),
 			AutoPiUnitID:       unitID,

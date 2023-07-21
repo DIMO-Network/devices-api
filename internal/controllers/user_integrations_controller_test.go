@@ -591,7 +591,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	logger := zerolog.Nop()
-	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AutoPi(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
+	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
@@ -629,7 +629,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_UpToDate()
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	logger := zerolog.Nop()
-	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AutoPi(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
+	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
@@ -664,7 +664,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_FutureUpda
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	logger := zerolog.Nop()
-	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AutoPi(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
+	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
@@ -700,7 +700,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	logger := zerolog.Nop()
-	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AutoPi(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
+	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
