@@ -337,7 +337,7 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceSmartcar()
 		SyntheticDeviceSig:  vehicleSig,
 	}
 
-	vnID := types.NewDecimal(decimal.New(57, 0))
+	vnID := types.NewNullDecimal(decimal.New(57, 0))
 	syntDevice, err := models.SyntheticDevices(
 		models.SyntheticDeviceWhere.VehicleTokenID.EQ(vnID),
 		models.SyntheticDeviceWhere.IntegrationTokenID.EQ(types.NewDecimal(decimal.New(1, 0))),
@@ -462,7 +462,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestMintTesla() {
 		SyntheticDeviceSig:  vehicleSig,
 	}
 
-	vnID := types.NewDecimal(decimal.New(int64(vehicleNode), 0))
+	vnID := types.NewNullDecimal(decimal.New(int64(vehicleNode), 0))
 	syntDevice, err := models.SyntheticDevices(
 		models.SyntheticDeviceWhere.VehicleTokenID.EQ(vnID),
 		models.SyntheticDeviceWhere.IntegrationTokenID.EQ(types.NewDecimal(decimal.New(int64(integrationID), 0))),

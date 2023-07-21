@@ -124,7 +124,7 @@ func (s *StorageTestSuite) Test_SmartCar_StartPollOnMint() {
 	}
 	s.MustInsert(&syntMtr)
 
-	vnID := types.NewDecimal(decimal.New(vehicleID, 0))
+	vnID := types.NewNullDecimal(decimal.New(vehicleID, 0))
 	syntheticDevice := models.SyntheticDevice{
 		VehicleTokenID:     vnID,
 		IntegrationTokenID: types.NewDecimal(decimal.New(integrationNode, 0)),
@@ -229,7 +229,7 @@ func (s *StorageTestSuite) Test_Tesla_StartPollOnMint() {
 	}
 	s.MustInsert(&syntMtx)
 
-	vnID := types.NewDecimal(decimal.New(vehicleID, 0))
+	vnID := types.NewNullDecimal(decimal.New(vehicleID, 0))
 	syntheticDevice := models.SyntheticDevice{
 		VehicleTokenID:     vnID,
 		IntegrationTokenID: types.NewDecimal(decimal.New(integrationNode, 0)),
@@ -348,7 +348,7 @@ func (s *StorageTestSuite) Test_InvalidOEMInMetaTx() {
 	}
 	s.MustInsert(&syntMtr)
 
-	vnID := types.NewDecimal(decimal.New(vehicleID, 0))
+	vnID := types.NewNullDecimal(decimal.New(vehicleID, 0))
 	syntheticDevice := models.SyntheticDevice{
 		VehicleTokenID:     vnID,
 		IntegrationTokenID: types.NewDecimal(decimal.New(integrationNode, 0)),

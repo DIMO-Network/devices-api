@@ -1373,7 +1373,7 @@ func (o *VehicleNFT) AddVehicleTokenSyntheticDevices(ctx context.Context, exec b
 				strmangle.SetParamNames("\"", "\"", 1, []string{"vehicle_token_id"}),
 				strmangle.WhereClause("\"", "\"", 2, syntheticDevicePrimaryKeyColumns),
 			)
-			values := []interface{}{o.TokenID, rel.VehicleTokenID, rel.IntegrationTokenID}
+			values := []interface{}{o.TokenID, rel.MintRequestID}
 
 			if boil.IsDebug(ctx) {
 				writer := boil.DebugWriterFrom(ctx)
@@ -1405,6 +1405,80 @@ func (o *VehicleNFT) AddVehicleTokenSyntheticDevices(ctx context.Context, exec b
 			rel.R.VehicleToken = o
 		}
 	}
+	return nil
+}
+
+// SetVehicleTokenSyntheticDevices removes all previously related items of the
+// vehicle_nft replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.VehicleToken's VehicleTokenSyntheticDevices accordingly.
+// Replaces o.R.VehicleTokenSyntheticDevices with related.
+// Sets related.R.VehicleToken's VehicleTokenSyntheticDevices accordingly.
+func (o *VehicleNFT) SetVehicleTokenSyntheticDevices(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*SyntheticDevice) error {
+	query := "update \"devices_api\".\"synthetic_devices\" set \"vehicle_token_id\" = null where \"vehicle_token_id\" = $1"
+	values := []interface{}{o.TokenID}
+	if boil.IsDebug(ctx) {
+		writer := boil.DebugWriterFrom(ctx)
+		fmt.Fprintln(writer, query)
+		fmt.Fprintln(writer, values)
+	}
+	_, err := exec.ExecContext(ctx, query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.VehicleTokenSyntheticDevices {
+			queries.SetScanner(&rel.VehicleTokenID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.VehicleToken = nil
+		}
+		o.R.VehicleTokenSyntheticDevices = nil
+	}
+
+	return o.AddVehicleTokenSyntheticDevices(ctx, exec, insert, related...)
+}
+
+// RemoveVehicleTokenSyntheticDevices relationships from objects passed in.
+// Removes related items from R.VehicleTokenSyntheticDevices (uses pointer comparison, removal does not keep order)
+// Sets related.R.VehicleToken.
+func (o *VehicleNFT) RemoveVehicleTokenSyntheticDevices(ctx context.Context, exec boil.ContextExecutor, related ...*SyntheticDevice) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.VehicleTokenID, nil)
+		if rel.R != nil {
+			rel.R.VehicleToken = nil
+		}
+		if _, err = rel.Update(ctx, exec, boil.Whitelist("vehicle_token_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.VehicleTokenSyntheticDevices {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.VehicleTokenSyntheticDevices)
+			if ln > 1 && i < ln-1 {
+				o.R.VehicleTokenSyntheticDevices[i] = o.R.VehicleTokenSyntheticDevices[ln-1]
+			}
+			o.R.VehicleTokenSyntheticDevices = o.R.VehicleTokenSyntheticDevices[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 

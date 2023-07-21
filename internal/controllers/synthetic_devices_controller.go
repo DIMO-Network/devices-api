@@ -344,9 +344,8 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
-	vnID := types.NewDecimal(decimal.New(vid, 0))
 	syntheticDevice := &models.SyntheticDevice{
-		VehicleTokenID:     vnID,
+		VehicleTokenID:     types.NewNullDecimal(decimal.New(vid, 0)),
 		IntegrationTokenID: types.NewDecimal(decimal.New(int64(integrationNode), 0)),
 		WalletChildNumber:  childKeyNumber,
 		WalletAddress:      syntheticDeviceAddr,
