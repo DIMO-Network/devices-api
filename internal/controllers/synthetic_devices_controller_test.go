@@ -50,7 +50,7 @@ var teslaClientToken = MintSyntheticDeviceRequest{
 	Credentials: credentials{
 		AccessToken:  "accessToken",
 		RefreshToken: "refreshToken",
-		ExternalID:   "13",
+		ID:           "13",
 		ExpiresIn:    28800,
 	},
 }

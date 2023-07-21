@@ -1366,6 +1366,22 @@ paths:
       responses:
         "200":
           description: OK
+  /synthetic/device/{syntheticDeviceNode}/re-authenticate:
+    post:
+      description: |-
+        Submit new credentials for the given synthetic device. Mostly
+        used in the event of an upstream password change.
+      parameters:
+      - description: synthetic device token id
+        in: path
+        name: syntheticDeviceNode
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
   /synthetic/device/mint/{integrationNode}/{vehicleNode}:
     get:
       description: |-

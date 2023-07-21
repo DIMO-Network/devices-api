@@ -670,6 +670,28 @@
                 }
             }
         },
+        "/synthetic/device/{syntheticDeviceNode}/re-authenticate": {
+            "post": {
+                "description": "Submit new credentials for the given synthetic device. Mostly\nused in the event of an upstream password change.",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "synthetic device token id",
+                        "name": "syntheticDeviceNode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
         "/user/devices": {
             "post": {
                 "security": [
