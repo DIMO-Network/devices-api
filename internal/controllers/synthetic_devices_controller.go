@@ -712,11 +712,16 @@ func (sdc *SyntheticDevicesController) ReAuthenticate(c *fiber.Ctx) error {
 	switch i.Vendor {
 	case constants.SmartCarVendor:
 		sdc.smartcarTask.StopPoll(oldUDAI)
-
+		sdc.smartcarTask.StartPoll(newUDAI)
 		newUDAI.Update(c.Context(), sdc.DBS().Writer, boil.Infer())
 	case constants.TeslaVendor:
+		id, _ := strconv.Atoi(newUDAI.ExternalID.String)
+		mp := struct {
+			TeslaVehicleID int `json:"teslaVehicleId"`
+		}{}
+		newUDAI.Metadata.Unmarshal(&mp)
 		sdc.teslaTask.StopPoll(oldUDAI)
-		sdc.teslaTask.StartPoll(newUDAI)
+		sdc.teslaTask.StartPoll(&services.TeslaVehicle{ID: id, VehicleID: mp.TeslaVehicleID}, newUDAI)
 		newUDAI.Update(c.Context(), sdc.DBS().Writer, boil.Infer())
 	}
 
