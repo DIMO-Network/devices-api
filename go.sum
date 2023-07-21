@@ -66,6 +66,8 @@ github.com/DATA-DOG/go-sqlmock v1.4.1 h1:ThlnYciV1iM/V0OSF/dtkqWb6xo5qITT1TJBG1M
 github.com/DATA-DOG/go-sqlmock v1.4.1/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q5eFN3EC/SaM=
 github.com/DIMO-Network/device-data-api v0.4.18 h1:UF7d2uzSLLkKIAUqhXf2TDHrm6gRUfmjJfGiGVa1bec=
 github.com/DIMO-Network/device-data-api v0.4.18/go.mod h1:kVJwYVg1ThTY3DA2AFLz2hIMK9yOpxV2BgZ4Wd7qMxg=
+github.com/DIMO-Network/device-data-api v0.4.23-0.20230718210255-60a2c7be0aa7 h1:E+/o2SQ7An3ZPxbr2lMgv0MjKrk+q//PME2SUaB2hlM=
+github.com/DIMO-Network/device-data-api v0.4.23-0.20230718210255-60a2c7be0aa7/go.mod h1:kVJwYVg1ThTY3DA2AFLz2hIMK9yOpxV2BgZ4Wd7qMxg=
 github.com/DIMO-Network/device-definitions-api v1.0.7 h1:20IdqrAdPJ9YtBksgGR/edDe4K6eXBtXrEnSRs/hocQ=
 github.com/DIMO-Network/device-definitions-api v1.0.7/go.mod h1:akk+RglaLatrddxwgbTXG0Ly8nd/yfKOE++AgcqlDBw=
 github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c h1:sKuB4i3m/5NpLjO6tKyc2gSqQHmRe02sMP+pQqJNTuQ=

@@ -110,7 +110,7 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 		TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
 		VehicleTokenID:  types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
 		Beneficiary:     null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
-		EthereumAddress: ownerAddress,
+		EthereumAddress: ownerAddress.Bytes,
 	}
 
 	userDevice := models.UserDevice{
@@ -203,7 +203,7 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler() {
 				UpdatedAt:       time.Now(),
 				TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
 				Beneficiary:     null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
-				EthereumAddress: ownerAddress,
+				EthereumAddress: ownerAddress.Bytes,
 			},
 		},
 	}

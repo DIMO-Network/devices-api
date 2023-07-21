@@ -256,7 +256,7 @@ func (i *Integration) Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *b
 
 	err = i.apReg.Register2(&services.AftermarketDeviceVehicleMapping{
 		AftermarketDevice: services.AftermarketDeviceVehicleMappingAftermarketDevice{
-			Address:       common.BytesToAddress(autoPiModel.EthereumAddress.Bytes),
+			Address:       common.BytesToAddress(autoPiModel.EthereumAddress),
 			Token:         autoPiTokenID,
 			Serial:        autoPiModel.Serial,
 			IntegrationID: integ.Id,
@@ -367,7 +367,7 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 		return err
 	}
 
-	err = i.apReg.Deregister2(common.BytesToAddress(autoPiModel.EthereumAddress.Bytes))
+	err = i.apReg.Deregister2(common.BytesToAddress(autoPiModel.EthereumAddress))
 	if err != nil {
 		return err
 	}

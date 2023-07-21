@@ -1227,7 +1227,7 @@ func (o *MetaTransactionRequest) SetClaimMetaTransactionRequestAftermarketDevice
 			strmangle.SetParamNames("\"", "\"", 1, []string{"claim_meta_transaction_request_id"}),
 			strmangle.WhereClause("\"", "\"", 2, aftermarketDevicePrimaryKeyColumns),
 		)
-		values := []interface{}{o.ID, related.Serial}
+		values := []interface{}{o.ID, related.EthereumAddress}
 
 		if boil.IsDebug(ctx) {
 			writer := boil.DebugWriterFrom(ctx)
@@ -1301,7 +1301,7 @@ func (o *MetaTransactionRequest) SetPairRequestAftermarketDevice(ctx context.Con
 			strmangle.SetParamNames("\"", "\"", 1, []string{"pair_request_id"}),
 			strmangle.WhereClause("\"", "\"", 2, aftermarketDevicePrimaryKeyColumns),
 		)
-		values := []interface{}{o.ID, related.Serial}
+		values := []interface{}{o.ID, related.EthereumAddress}
 
 		if boil.IsDebug(ctx) {
 			writer := boil.DebugWriterFrom(ctx)
@@ -1375,7 +1375,7 @@ func (o *MetaTransactionRequest) SetUnpairRequestAftermarketDevice(ctx context.C
 			strmangle.SetParamNames("\"", "\"", 1, []string{"unpair_request_id"}),
 			strmangle.WhereClause("\"", "\"", 2, aftermarketDevicePrimaryKeyColumns),
 		)
-		values := []interface{}{o.ID, related.Serial}
+		values := []interface{}{o.ID, related.EthereumAddress}
 
 		if boil.IsDebug(ctx) {
 			writer := boil.DebugWriterFrom(ctx)

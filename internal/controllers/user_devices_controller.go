@@ -923,7 +923,7 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 		}
 
 		found, err := models.AftermarketDevices(
-			models.AftermarketDeviceWhere.EthereumAddress.EQ(null.BytesFrom(recAddr.Bytes())),
+			models.AftermarketDeviceWhere.EthereumAddress.EQ(recAddr.Bytes()),
 		).Exists(c.Context(), udc.DBS().Reader)
 		if err != nil {
 			return err

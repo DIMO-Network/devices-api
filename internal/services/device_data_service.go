@@ -38,5 +38,3 @@ func (ddd *deviceDataService) GetDeviceData(ctx context.Context, userDeviceID, d
 	})
 	return data, err
 }
-
-// todo add tests for nft controller and the status controller

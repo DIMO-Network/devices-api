@@ -95,7 +95,7 @@ func (s *AutoPiAPIServiceTestSuite) TestCommandRaw() {
 		apiURL     = "https://mock.town"
 		jobID      = "321"
 	)
-	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
+	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, nil, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	// http client mock
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()

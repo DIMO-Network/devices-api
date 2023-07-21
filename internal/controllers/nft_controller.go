@@ -386,7 +386,7 @@ func (nc *NFTController) GetAftermarketDeviceNFTMetadata(c *fiber.Ctx) error {
 		return err
 	}
 	var name string
-	if three, err := mnemonic.EntropyToMnemonicThreeWords(unit.EthereumAddress.Bytes); err == nil {
+	if three, err := mnemonic.EntropyToMnemonicThreeWords(unit.EthereumAddress); err == nil {
 		name = strings.Join(three, " ")
 	}
 
@@ -395,7 +395,7 @@ func (nc *NFTController) GetAftermarketDeviceNFTMetadata(c *fiber.Ctx) error {
 		Description: name + ", a DIMO hardware device.",
 		Image:       fmt.Sprintf("%s/v1/aftermarket/device/%s/image", nc.Settings.DeploymentBaseURL, tid),
 		Attributes: []NFTAttribute{
-			{TraitType: "Ethereum Address", Value: common.BytesToAddress(unit.EthereumAddress.Bytes).String()},
+			{TraitType: "Ethereum Address", Value: common.BytesToAddress(unit.EthereumAddress).String()},
 			{TraitType: "Serial Number", Value: unit.Serial},
 		},
 	})
@@ -520,7 +520,9 @@ func (nc *NFTController) GetVehicleStatus(c *fiber.Ctx) error {
 		return shared.GrpcErrorToFiber(err, "failed to get user device data grpc")
 	}
 
-	return c.JSON(udd)
+	ds := grpcDeviceDataToSnapshot(udd)
+
+	return c.JSON(ds)
 }
 
 // UnlockDoors godoc

@@ -168,7 +168,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCarFailure() {
 			"redirectURI": "http://dimo.zone/cb"
 		}`
 	s.scClient.EXPECT().ExchangeCode(gomock.Any(), "qxyz", "http://dimo.zone/cb").Times(1).Return(nil, errors.New("failure communicating with Smartcar"))
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).Times(1).Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(1).Return(dd[0], nil)
 
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := s.app.Test(request, 60*1000)
@@ -231,6 +231,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 		Region:             "Americas",
 	}).Return(nil)
 
+	// original device def
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd[0], nil)
 	s.scClient.EXPECT().GetUserID(gomock.Any(), "myAccess").Return(smartCarUserID, nil)
 	s.scClient.EXPECT().GetExternalID(gomock.Any(), "myAccess").Return("smartcar-idx", nil)
 	s.scClient.EXPECT().GetVIN(gomock.Any(), "myAccess", "smartcar-idx").Return(vin, nil)
@@ -244,8 +246,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 			return nil
 		},
 	)
-	// original device def
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).Times(2).Return(dd, nil)
 
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := s.app.Test(request)
@@ -263,6 +263,47 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 	assert.Equal(s.T(), "zlErserfu", apiInt.RefreshToken.String)
 	assert.Equal(s.T(), vin, updatedUD.VinIdentifier.String)
 	assert.Equal(s.T(), true, updatedUD.VinConfirmed)
+}
+
+func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_FailureTestVIN() {
+	model := "Mach E"
+	const vin = "0SC12312312312312"
+	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+
+	const smartCarUserID = "smartCarUserId"
+	req := `{
+			"code": "qxy",
+			"redirectURI": "http://dimo.zone/cb"
+		}`
+	expiry, _ := time.Parse(time.RFC3339, "2022-03-01T12:00:00Z")
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Return(dd[0], nil)
+	s.scClient.EXPECT().ExchangeCode(gomock.Any(), "qxy", "http://dimo.zone/cb").Times(1).Return(&smartcar.Token{
+		Access:        "myAccess",
+		AccessExpiry:  expiry,
+		Refresh:       "myRefresh",
+		RefreshExpiry: expiry.Add(24 * time.Hour),
+	}, nil)
+	s.scClient.EXPECT().GetUserID(gomock.Any(), "myAccess").Return(smartCarUserID, nil)
+	s.scClient.EXPECT().GetExternalID(gomock.Any(), "myAccess").Return("smartcar-idx", nil)
+	s.scClient.EXPECT().GetVIN(gomock.Any(), "myAccess", "smartcar-idx").Return(vin, nil)
+
+	logger := test.Logger()
+	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, s.eventSvc, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), s.autopiAPISvc, nil,
+		s.autoPiIngest, s.deviceDefinitionRegistrar, s.autoPiTaskService, nil, nil, nil, s.redisClient, nil, nil, nil, s.natsSvc)
+
+	app := test.SetupAppFiber(*logger)
+
+	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.RegisterDeviceIntegration)
+
+	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
+	response, err := app.Test(request)
+	require.NoError(s.T(), err)
+	if assert.Equal(s.T(), fiber.StatusConflict, response.StatusCode, "should return failure") == false {
+		body, _ := io.ReadAll(response.Body)
+		assert.FailNow(s.T(), "unexpected response: "+string(body))
+	}
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToken() {
@@ -340,7 +381,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 		},
 	)
 	// original device def
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).Times(2).Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd[0], nil)
 
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := s.app.Test(request)
@@ -417,7 +458,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
 		VIN:       "5YJYGDEF9NF010423",
 	}, nil)
 	s.teslaSvc.EXPECT().WakeUpVehicle("abc", 1145).Return(nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).Times(2).Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd[0], nil)
 	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dd[0], nil)
 
 	req := `{
@@ -487,7 +528,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateD
 		deviceID = "1dd96159-3bb2-9472-91f6-72fe9211cfeb"
 		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	)
-	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
+	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, nil, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
 
 	req := fmt.Sprintf(`{
@@ -495,7 +536,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateD
 		}`, unitID)
 	// no calls should be made to autopi api
 
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ud.DeviceDefinitionID}).AnyTimes().Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).AnyTimes().Return(dd[0], nil)
 
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := app.Test(request, 1000*240)
@@ -523,7 +564,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateD
 		deviceID = "1dd96159-3bb2-9472-91f6-72fe9211cfeb"
 		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	)
-	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
+	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, nil, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	// test user
 	ud2 := test.SetupCreateUserDevice(s.T(), testUser2, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 
@@ -531,7 +572,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateD
 			"externalId": "%s"
 		}`, unitID)
 
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Times(1).Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
 
 	// no calls should be made to autopi api
 	request := test.BuildRequest("POST", "/user/devices/"+ud2.ID+"/integrations/"+integration.Id, req)
@@ -553,7 +594,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AutoPi(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	test.SetupCreateAftermarketDevice(s.T(), "", unitID, nil, s.pdb)
+	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
 	autopiAPISvc.EXPECT().GetDeviceByUnitID(unitID).Times(1).Return(&services.AutoPiDongleDevice{
 		IsUpdated:         false,
 		UnitID:            unitID,
@@ -591,7 +632,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_UpToDate()
 	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AutoPi(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	test.SetupCreateAftermarketDevice(s.T(), "", unitID, nil, s.pdb)
+	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
 	autopiAPISvc.EXPECT().GetDeviceByUnitID(unitID).Times(1).Return(&services.AutoPiDongleDevice{
 		IsUpdated:         true,
 		UnitID:            unitID,
@@ -626,7 +667,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_FutureUpda
 	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AutoPi(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	test.SetupCreateAftermarketDevice(s.T(), "", unitID, nil, s.pdb)
+	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
 	autopiAPISvc.EXPECT().GetDeviceByUnitID(unitID).Times(1).Return(&services.AutoPiDongleDevice{
 		IsUpdated:         false,
 		UnitID:            unitID,
@@ -662,7 +703,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AutoPi(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	test.SetupCreateAftermarketDevice(s.T(), "", unitID, nil, s.pdb)
+	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
 	autopiAPISvc.EXPECT().GetDeviceByUnitID(unitID).Times(1).Return(&services.AutoPiDongleDevice{
 		IsUpdated:         false,
 		UnitID:            unitID,
@@ -729,22 +770,23 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 	}
 	s.Require().NoError(vnft.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer()))
 
-	apUnit := test.SetupCreateAftermarketDevice(s.T(), testUserID, unitID, &deviceID, s.pdb)
-	apUnit.TokenID = types.NewNullDecimal(decimal.New(5, 0))
-	apUnit.EthereumAddress = null.BytesFrom(common.BigToAddress(big.NewInt(2)).Bytes())
-	apUnit.OwnerAddress = null.BytesFrom(userAddr.Bytes())
-	_, err = apUnit.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
-	s.Require().NoError(err)
+	aftermarketDevice := test.SetupCreateAftermarketDevice(s.T(), testUserID, common.BigToAddress(big.NewInt(2)).Bytes(), unitID, &deviceID, s.pdb)
+	aftermarketDevice.TokenID = types.NewNullDecimal(decimal.New(5, 0))
+	aftermarketDevice.OwnerAddress = null.BytesFrom(userAddr.Bytes())
+	row, errAMD := aftermarketDevice.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Assert().Equal(int64(1), row)
+	s.Require().NoError(errAMD)
 
 	app := fiber.New()
 	app.Use(test.AuthInjectorTestHandler(userID))
 	app.Get("/:userDeviceID/pair", c.GetAutoPiPairMessage)
 	app.Post("/:userDeviceID/pair", c.PostPairAutoPi)
 
-	req := test.BuildRequest("GET", "/"+ud.ID+"/pair?external_id="+unitID, "")
+	req := test.BuildRequest("GET", "/"+ud.ID+"/pair?external_id="+aftermarketDevice.Serial, "")
 
 	res, err := app.Test(req)
 	s.Require().NoError(err)
+	s.Require().Equal(fiber.StatusOK, res.StatusCode) // todo issue - this is returning 409 instead of 200? due to change in how get unit?
 	defer res.Body.Close()
 
 	var td signer.TypedData
@@ -758,7 +800,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 	userSig[64] += 27
 
 	in := map[string]any{
-		"externalId": apUnit.Serial,
+		"externalId": aftermarketDevice.Serial,
 		"signature":  hexutil.Bytes(userSig).String(),
 	}
 

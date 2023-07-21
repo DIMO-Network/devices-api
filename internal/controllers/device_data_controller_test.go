@@ -152,15 +152,17 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
 		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
+		fuel := 0.50
+		odo := 3000.50
+		volt := 13.3
 		mockDeps.deviceDataSvc.EXPECT().GetDeviceData(gomock.Any(), ud.ID, ud.DeviceDefinitionID,
 			ud.DeviceStyleID.String, []int64{1, 3, 4}).Times(1).
 			Return(&dagrpc.UserDeviceDataResponse{
-				FuelPercentRemaining: 0.50,
-				Odometer:             3000.50,
-				Range:                0,
+				FuelPercentRemaining: &fuel,
+				Odometer:             &odo,
 				RecordUpdatedAt:      nil,
 				RecordCreatedAt:      nil,
-				BatteryVoltage:       13.3,
+				BatteryVoltage:       &volt,
 			}, nil)
 
 		request := test.BuildRequest("GET", "/user/devices/"+ud.ID+"/status", "")
@@ -173,8 +175,9 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 			fmt.Println("body response: " + string(body))
 		}
 
-		assert.Equal(t, 3000.50, gjson.GetBytes(body, "odometer").Float())
-
+		assert.Equal(t, odo, gjson.GetBytes(body, "odometer").Float())
+		assert.Equal(t, fuel, gjson.GetBytes(body, "fuelPercentRemaining").Float())
+		assert.Equal(t, volt, gjson.GetBytes(body, "batteryVoltage").Float())
 	})
 
 }
