@@ -253,6 +253,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 		sdAuth.Get("/:syntheticDeviceNode/burn", syntheticController.GetSyntheticDeviceBurnPayload)
 		sdAuth.Post("/:syntheticDeviceNode/burn", syntheticController.BurnSyntheticDevice)
+
+		sdAuth.Post("/:syntheticDeviceNode/re-authenticate", syntheticController.ReAuthenticate)
 	}
 
 	// Vehicle owner routes.
