@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
-	"github.com/tidwall/gjson"
 	"io"
 	"os"
 	"testing"
 	"time"
+
+	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
+	"github.com/tidwall/gjson"
 
 	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"

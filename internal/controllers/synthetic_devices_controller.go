@@ -711,18 +711,34 @@ func (sdc *SyntheticDevicesController) ReAuthenticate(c *fiber.Ctx) error {
 
 	switch i.Vendor {
 	case constants.SmartCarVendor:
-		sdc.smartcarTask.StopPoll(oldUDAI)
-		sdc.smartcarTask.StartPoll(newUDAI)
-		newUDAI.Update(c.Context(), sdc.DBS().Writer, boil.Infer())
+		if err := sdc.smartcarTask.StopPoll(oldUDAI); err != nil {
+			return err
+		}
+		if err := sdc.smartcarTask.StartPoll(newUDAI); err != nil {
+			return err
+		}
+		if _, err := newUDAI.Update(c.Context(), sdc.DBS().Writer, boil.Infer()); err != nil {
+			return err
+		}
 	case constants.TeslaVendor:
-		id, _ := strconv.Atoi(newUDAI.ExternalID.String)
-		mp := struct {
-			TeslaVehicleID int `json:"teslaVehicleId"`
-		}{}
-		newUDAI.Metadata.Unmarshal(&mp)
-		sdc.teslaTask.StopPoll(oldUDAI)
-		sdc.teslaTask.StartPoll(&services.TeslaVehicle{ID: id, VehicleID: mp.TeslaVehicleID}, newUDAI)
-		newUDAI.Update(c.Context(), sdc.DBS().Writer, boil.Infer())
+		// Awful
+		id, err := strconv.Atoi(newUDAI.ExternalID.String)
+		if err != nil {
+			return err
+		}
+		var md services.UserDeviceAPIIntegrationsMetadata
+		if err := newUDAI.Metadata.Unmarshal(&md); err != nil {
+			return err
+		}
+		if err := sdc.teslaTask.StopPoll(oldUDAI); err != nil {
+			return err
+		}
+		if err := sdc.teslaTask.StartPoll(&services.TeslaVehicle{ID: id, VehicleID: md.TeslaVehicleID}, newUDAI); err != nil {
+			return err
+		}
+		if _, err := newUDAI.Update(c.Context(), sdc.DBS().Writer, boil.Infer()); err != nil {
+			return err
+		}
 	}
 
 	return nil
