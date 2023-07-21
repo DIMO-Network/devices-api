@@ -1026,13 +1026,13 @@ paths:
           description: Not Found
       tags:
       - nfts
-  /autopi/unit/:unitID:
+  /aftermarket/device/hw/:serial:
     get:
-      description: gets the information about the autopi by the unitId
+      description: gets the information about the aftermarket device by the hw serial
       parameters:
-      - description: autopi unit id
+      - description: autopi unit id or macaron serial
         in: path
-        name: unitID
+        name: serial
         required: true
         type: string
       produces:
@@ -1046,13 +1046,14 @@ paths:
       - BearerAuth: []
       tags:
       - integrations
-  /autopi/unit/:unitID/commands/claim:
+  /aftermarket/device/hw/:serial/commands/claim:
     get:
-      description: Return the EIP-712 payload to be signed for AutoPi device claiming.
+      description: Return the EIP-712 payload to be signed for Aftermarket device
+        claiming.
       parameters:
       - description: AutoPi unit id
         in: path
-        name: unitID
+        name: serial
         required: true
         type: string
       produces:
@@ -1065,11 +1066,12 @@ paths:
       security:
       - BearerAuth: []
     post:
-      description: Return the EIP-712 payload to be signed for AutoPi device claiming.
+      description: Return the EIP-712 payload to be signed for Aftermarket device
+        claiming.
       parameters:
       - description: AutoPi unit id
         in: path
-        name: unitID
+        name: serial
         required: true
         type: string
       - description: Signatures from the user and AutoPi
@@ -1085,7 +1087,7 @@ paths:
           description: No Content
       security:
       - BearerAuth: []
-  /autopi/unit/:unitID/commands/unclaim:
+  /aftermarket/device/hw/:serial/commands/unclaim:
     post:
       description: |-
         Dev-only endpoint for removing a claim. Removes the flag on-chain and clears
@@ -1093,7 +1095,7 @@ paths:
       parameters:
       - description: AutoPi unit id
         in: path
-        name: unitID
+        name: serial
         required: true
         type: string
       produces:
@@ -1103,14 +1105,14 @@ paths:
           description: No Content
       security:
       - BearerAuth: []
-  /autopi/unit/:unitID/update:
+  /aftermarket/device/hw/:serial/update:
     post:
-      description: checks to see if autopi unit needs to be updated, and starts update
-        process if so.
+      description: checks to see if aftermarket device needs to be updated, and starts
+        update process if so.
       parameters:
       - description: autopi unit id
         in: path
-        name: unitID
+        name: serial
         required: true
         type: string
       produces:
@@ -1454,7 +1456,7 @@ paths:
       - BearerAuth: []
       tags:
       - user-devices
-  /user/devices/:userDeviceID/autopi/commands/cloud-repair:
+  /user/devices/:userDeviceID/aftermarket/commands/cloud-repair:
     post:
       description: Re-apply AutoPi cloud actions in an attempt to get the device transmitting
         data again.
@@ -1471,10 +1473,10 @@ paths:
           description: No Content
       security:
       - BearerAuth: []
-  /user/devices/:userDeviceID/autopi/commands/pair:
+  /user/devices/:userDeviceID/aftermarket/commands/pair:
     get:
       description: |-
-        Return the EIP-712 payload to be signed for AutoPi device pairing. The device must
+        Return the EIP-712 payload to be signed for Aftermarket device pairing. The device must
         either already be integrated with the vehicle, or you must provide its unit id
         as a query parameter. In the latter case, the integration process will start
         once the transaction confirms.
@@ -1499,7 +1501,7 @@ paths:
       - BearerAuth: []
     post:
       description: Submit the signature for pairing this device with its attached
-        AutoPi.
+        Aftermarket.
       parameters:
       - description: Device id
         in: path
@@ -1517,9 +1519,10 @@ paths:
       responses: {}
       security:
       - BearerAuth: []
-  /user/devices/:userDeviceID/autopi/commands/unpair:
+  /user/devices/:userDeviceID/aftermarket/commands/unpair:
     get:
-      description: Return the EIP-712 payload to be signed for AutoPi device unpairing.
+      description: Return the EIP-712 payload to be signed for Aftermarket device
+        unpairing.
       parameters:
       - description: Device id
         in: path
@@ -1537,7 +1540,7 @@ paths:
       - BearerAuth: []
     post:
       description: Submit the signature for unpairing this device from its attached
-        AutoPi.
+        Aftermarket.
       parameters:
       - description: Device id
         in: path

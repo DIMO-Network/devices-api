@@ -7,6 +7,163 @@
     },
     "basePath": "/v1",
     "paths": {
+        "/aftermarket/device/hw/:serial": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "gets the information about the aftermarket device by the hw serial",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "integrations"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "autopi unit id or macaron serial",
+                        "name": "serial",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.AutoPiDeviceInfo"
+                        }
+                    }
+                }
+            }
+        },
+        "/aftermarket/device/hw/:serial/commands/claim": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Return the EIP-712 payload to be signed for Aftermarket device claiming.",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "AutoPi unit id",
+                        "name": "serial",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apitypes.TypedData"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Return the EIP-712 payload to be signed for Aftermarket device claiming.",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "AutoPi unit id",
+                        "name": "serial",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Signatures from the user and AutoPi",
+                        "name": "claimRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.AutoPiClaimRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/aftermarket/device/hw/:serial/commands/unclaim": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Dev-only endpoint for removing a claim. Removes the flag on-chain and clears\nthe owner in the database.",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "AutoPi unit id",
+                        "name": "serial",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/aftermarket/device/hw/:serial/update": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "checks to see if aftermarket device needs to be updated, and starts update process if so.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "integrations"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "autopi unit id",
+                        "name": "serial",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiTask"
+                        }
+                    }
+                }
+            }
+        },
         "/aftermarket/device/{tokenId}": {
             "get": {
                 "description": "Retrieves NFT metadata for a given aftermarket device.",
@@ -62,163 +219,6 @@
                     },
                     "404": {
                         "description": "Not Found"
-                    }
-                }
-            }
-        },
-        "/autopi/unit/:unitID": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "gets the information about the autopi by the unitId",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "integrations"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "autopi unit id",
-                        "name": "unitID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.AutoPiDeviceInfo"
-                        }
-                    }
-                }
-            }
-        },
-        "/autopi/unit/:unitID/commands/claim": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Return the EIP-712 payload to be signed for AutoPi device claiming.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "AutoPi unit id",
-                        "name": "unitID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apitypes.TypedData"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Return the EIP-712 payload to be signed for AutoPi device claiming.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "AutoPi unit id",
-                        "name": "unitID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Signatures from the user and AutoPi",
-                        "name": "claimRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.AutoPiClaimRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
-        "/autopi/unit/:unitID/commands/unclaim": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Dev-only endpoint for removing a claim. Removes the flag on-chain and clears\nthe owner in the database.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "AutoPi unit id",
-                        "name": "unitID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
-        "/autopi/unit/:unitID/update": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "checks to see if autopi unit needs to be updated, and starts update process if so.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "integrations"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "autopi unit id",
-                        "name": "unitID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiTask"
-                        }
                     }
                 }
             }
@@ -733,7 +733,7 @@
                 }
             }
         },
-        "/user/devices/:userDeviceID/autopi/commands/cloud-repair": {
+        "/user/devices/:userDeviceID/aftermarket/commands/cloud-repair": {
             "post": {
                 "security": [
                     {
@@ -760,14 +760,14 @@
                 }
             }
         },
-        "/user/devices/:userDeviceID/autopi/commands/pair": {
+        "/user/devices/:userDeviceID/aftermarket/commands/pair": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Return the EIP-712 payload to be signed for AutoPi device pairing. The device must\neither already be integrated with the vehicle, or you must provide its unit id\nas a query parameter. In the latter case, the integration process will start\nonce the transaction confirms.",
+                "description": "Return the EIP-712 payload to be signed for Aftermarket device pairing. The device must\neither already be integrated with the vehicle, or you must provide its unit id\nas a query parameter. In the latter case, the integration process will start\nonce the transaction confirms.",
                 "produces": [
                     "application/json"
                 ],
@@ -801,7 +801,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Submit the signature for pairing this device with its attached AutoPi.",
+                "description": "Submit the signature for pairing this device with its attached Aftermarket.",
                 "produces": [
                     "application/json"
                 ],
@@ -826,14 +826,14 @@
                 "responses": {}
             }
         },
-        "/user/devices/:userDeviceID/autopi/commands/unpair": {
+        "/user/devices/:userDeviceID/aftermarket/commands/unpair": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Return the EIP-712 payload to be signed for AutoPi device unpairing.",
+                "description": "Return the EIP-712 payload to be signed for Aftermarket device unpairing.",
                 "produces": [
                     "application/json"
                 ],
@@ -861,7 +861,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Submit the signature for unpairing this device from its attached AutoPi.",
+                "description": "Submit the signature for unpairing this device from its attached Aftermarket.",
                 "produces": [
                     "application/json"
                 ],
