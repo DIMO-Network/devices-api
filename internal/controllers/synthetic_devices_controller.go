@@ -86,6 +86,8 @@ func NewSyntheticDevicesController(
 	smartcarClient services.SmartcarClient,
 	teslaSvc services.TeslaService,
 	cipher shared.Cipher,
+	smartcarTask services.SmartcarTaskService,
+	teslaTask services.TeslaTaskService,
 ) SyntheticDevicesController {
 	return SyntheticDevicesController{
 		Settings:       settings,
@@ -98,6 +100,8 @@ func NewSyntheticDevicesController(
 		smartcarClient: smartcarClient,
 		teslaService:   teslaSvc,
 		cipher:         cipher,
+		teslaTask:      teslaTask,
+		smartcarTask:   smartcarTask,
 	}
 }
 

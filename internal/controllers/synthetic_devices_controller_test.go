@@ -108,7 +108,7 @@ func (s *SyntheticDevicesControllerTestSuite) SetupTest() {
 
 	logger := test.Logger()
 
-	c := NewSyntheticDevicesController(mockSettings, s.pdb.DBS, logger, s.deviceDefSvc, s.userClient, s.syntheticDeviceSigSvc, client, s.smartcarClient, s.teslaService, new(shared.ROT13Cipher))
+	c := NewSyntheticDevicesController(mockSettings, s.pdb.DBS, logger, s.deviceDefSvc, s.userClient, s.syntheticDeviceSigSvc, client, s.smartcarClient, s.teslaService, new(shared.ROT13Cipher), nil, nil)
 	s.sdc = c
 
 	app := test.SetupAppFiber(*logger)
