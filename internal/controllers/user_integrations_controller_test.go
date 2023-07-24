@@ -591,7 +591,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	logger := zerolog.Nop()
-	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
+	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
@@ -608,7 +608,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	}, nil)
 
 	// act
-	request := test.BuildRequest("GET", "/autopi/unit/"+unitID, "")
+	request := test.BuildRequest("GET", "/aftermarket/device/by-serial/"+unitID, "")
 	response, err := app.Test(request)
 	require.NoError(s.T(), err)
 	// assert
@@ -629,7 +629,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_UpToDate()
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	logger := zerolog.Nop()
-	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
+	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
@@ -646,7 +646,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_UpToDate()
 	}, nil)
 
 	// act
-	request := test.BuildRequest("GET", "/autopi/unit/"+unitID, "")
+	request := test.BuildRequest("GET", "/aftermarket/device/by-serial/"+unitID, "")
 	response, err := app.Test(request)
 	require.NoError(s.T(), err)
 	// assert
@@ -664,7 +664,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_FutureUpda
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	logger := zerolog.Nop()
-	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
+	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
@@ -681,7 +681,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_FutureUpda
 	}, nil)
 
 	// act
-	request := test.BuildRequest("GET", "/autopi/unit/"+unitID, "")
+	request := test.BuildRequest("GET", "/aftermarket/device/by-serial/"+unitID, "")
 	response, err := app.Test(request)
 	require.NoError(s.T(), err)
 	// assert
@@ -692,6 +692,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_FutureUpda
 	assert.Equal(s.T(), "1.23.1", gjson.GetBytes(body, "releaseVersion").String())
 	assert.Equal(s.T(), false, gjson.GetBytes(body, "shouldUpdate").Bool())
 }
+
 func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpdate_Semver() {
 	// as of jun 12 23, versions are now correctly semverd starting with "v", so test for this too
 	const environment = "prod" // shouldUpdate only applies in prod
@@ -700,7 +701,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	logger := zerolog.Nop()
-	app.Get("/autopi/unit/:unitID", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
+	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
@@ -717,7 +718,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	}, nil)
 
 	// act
-	request := test.BuildRequest("GET", "/autopi/unit/"+unitID, "")
+	request := test.BuildRequest("GET", "/aftermarket/device/by-serial/"+unitID, "")
 	response, err := app.Test(request)
 	require.NoError(s.T(), err)
 	// assert

@@ -439,7 +439,7 @@ func (udc *UserDevicesController) OpenFrunk(c *fiber.Ctx) error {
 // @Param       serial path     string true "autopi unit id or macaron serial"
 // @Success     200    {object} controllers.AutoPiDeviceInfo
 // @Security    BearerAuth
-// @Router      /aftermarket/device/hw/:serial [get]
+// @Router      /aftermarket/device/by-serial/:serial [get]
 func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 	const minimumAutoPiRelease = "v1.22.8" // correct semver has leading v
 
@@ -567,7 +567,7 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 // @Param       serial path     string true "autopi unit id", ie. physical barcode
 // @Success     200    {object} services.AutoPiTask
 // @Security    BearerAuth
-// @Router      /aftermarket/device/hw/:serial/update [post]
+// @Router      /aftermarket/device/by-serial/:serial/update [post]
 func (udc *UserDevicesController) StartAutoPiUpdateTask(c *fiber.Ctx) error {
 	unitID := c.Locals("serial").(string)
 	userID := helpers.GetUserID(c)
@@ -610,7 +610,7 @@ func (udc *UserDevicesController) StartAutoPiUpdateTask(c *fiber.Ctx) error {
 // @Param serial path string true "AutoPi unit id"
 // @Success 200 {object} signer.TypedData
 // @Security BearerAuth
-// @Router /aftermarket/device/hw/:serial/commands/claim [get]
+// @Router /aftermarket/device/by-serial/:serial/commands/claim [get]
 func (udc *UserDevicesController) GetAutoPiClaimMessage(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 
@@ -1340,7 +1340,7 @@ type AutoPiPairRequest struct {
 // @Param serial path string true "AutoPi unit id"
 // @Success 204
 // @Security BearerAuth
-// @Router /aftermarket/device/hw/:serial/commands/unclaim [post]
+// @Router /aftermarket/device/by-serial/:serial/commands/unclaim [post]
 func (udc *UserDevicesController) PostUnclaimAutoPi(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 	unitID := c.Params("serial")
@@ -1394,7 +1394,7 @@ func (udc *UserDevicesController) PostUnclaimAutoPi(c *fiber.Ctx) error {
 // @Param claimRequest body controllers.AutoPiClaimRequest true "Signatures from the user and AutoPi"
 // @Success 204
 // @Security BearerAuth
-// @Router /aftermarket/device/hw/:serial/commands/claim [post]
+// @Router /aftermarket/device/by-serial/:serial/commands/claim [post]
 func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 	unitID := c.Params("serial")

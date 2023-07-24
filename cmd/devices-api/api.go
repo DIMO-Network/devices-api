@@ -214,7 +214,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	amdOwnerMw := owner.AftermarketDevice(pdb, usersClient, &logger)
 	apOwner := v1Auth.Group("/autopi/unit/:serial", amdOwnerMw)
 	// same as above but AftermarketDevice
-	amdOwner := v1Auth.Group("/aftermarket/device/hw/:serial", amdOwnerMw)
+	amdOwner := v1Auth.Group("/aftermarket/device/by-serial/:serial", amdOwnerMw)
 
 	apOwner.Get("/", userDeviceController.GetAutoPiUnitInfo)
 	amdOwner.Get("/", userDeviceController.GetAutoPiUnitInfo)

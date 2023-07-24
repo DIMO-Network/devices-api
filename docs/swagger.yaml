@@ -1026,7 +1026,7 @@ paths:
           description: Not Found
       tags:
       - nfts
-  /aftermarket/device/hw/:serial:
+  /aftermarket/device/by-serial/:serial:
     get:
       description: gets the information about the aftermarket device by the hw serial
       parameters:
@@ -1046,7 +1046,7 @@ paths:
       - BearerAuth: []
       tags:
       - integrations
-  /aftermarket/device/hw/:serial/commands/claim:
+  /aftermarket/device/by-serial/:serial/commands/claim:
     get:
       description: Return the EIP-712 payload to be signed for Aftermarket device
         claiming.
@@ -1087,7 +1087,7 @@ paths:
           description: No Content
       security:
       - BearerAuth: []
-  /aftermarket/device/hw/:serial/commands/unclaim:
+  /aftermarket/device/by-serial/:serial/commands/unclaim:
     post:
       description: |-
         Dev-only endpoint for removing a claim. Removes the flag on-chain and clears
@@ -1105,7 +1105,7 @@ paths:
           description: No Content
       security:
       - BearerAuth: []
-  /aftermarket/device/hw/:serial/update:
+  /aftermarket/device/by-serial/:serial/update:
     post:
       description: checks to see if aftermarket device needs to be updated, and starts
         update process if so.

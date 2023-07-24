@@ -7,7 +7,7 @@
     },
     "basePath": "/v1",
     "paths": {
-        "/aftermarket/device/hw/:serial": {
+        "/aftermarket/device/by-serial/:serial": {
             "get": {
                 "security": [
                     {
@@ -40,7 +40,7 @@
                 }
             }
         },
-        "/aftermarket/device/hw/:serial/commands/claim": {
+        "/aftermarket/device/by-serial/:serial/commands/claim": {
             "get": {
                 "security": [
                     {
@@ -104,7 +104,7 @@
                 }
             }
         },
-        "/aftermarket/device/hw/:serial/commands/unclaim": {
+        "/aftermarket/device/by-serial/:serial/commands/unclaim": {
             "post": {
                 "security": [
                     {
@@ -131,7 +131,7 @@
                 }
             }
         },
-        "/aftermarket/device/hw/:serial/update": {
+        "/aftermarket/device/by-serial/:serial/update": {
             "post": {
                 "security": [
                     {
