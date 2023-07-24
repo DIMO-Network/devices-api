@@ -101,6 +101,27 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				}
 
 				logger.Info().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msg("Vehicle minted.")
+			} else if l1.Topics[0] == syntheticDeviceMintedEvent.ID {
+				// We must be doing a combined vehicle and SD mint. This always comes second.
+				var out contracts.RegistrySyntheticDeviceNodeMinted
+
+				sd := mtr.R.MintRequestSyntheticDevice
+				if sd == nil {
+					logger.Err(err).Msg("Impossible")
+					return nil
+				}
+
+				err := p.parseLog(out, syntheticDeviceMintedEvent, l1)
+				if err != nil {
+					return err
+				}
+
+				sd.VehicleTokenID = mtr.R.MintRequestVehicleNFT.TokenID
+				sd.TokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.SyntheticDeviceNode, 0))
+				_, err = sd.Update(ctx, p.DB().Writer, boil.Infer())
+				if err != nil {
+					return err
+				}
 			}
 		}
 	case mtr.R.ClaimMetaTransactionRequestAftermarketDevice != nil:

@@ -149,6 +149,28 @@ func (m *UnPairAftermarketDeviceSign) Message() signer.TypedDataMessage {
 	}
 }
 
+// MintVehicleAndSdSign(uint256 integrationNode)
+// Only signed by the synthetic device's wallet.
+type MintVehicleAndSdSign struct {
+	IntegrationNode *big.Int
+}
+
+func (m *MintVehicleAndSdSign) Name() string {
+	return "MintVehicleAndSdSign"
+}
+
+func (m *MintVehicleAndSdSign) Type() []signer.Type {
+	return []signer.Type{
+		{Name: "integrationNode", Type: "uint256"},
+	}
+}
+
+func (m *MintVehicleAndSdSign) Message() signer.TypedDataMessage {
+	return signer.TypedDataMessage{
+		"integrationNode": hexutil.EncodeBig(m.IntegrationNode),
+	}
+}
+
 type Message interface {
 	Name() string
 	Type() []signer.Type
@@ -282,12 +304,12 @@ func (c *Client) MintVehicleAndSDign(requestID string, data contracts.MintVehicl
 		return err
 	}
 
-	data_, err := abi.Pack("mintVehicleAndSdSign", data)
+	callData, err := abi.Pack("mintVehicleAndSdSign", data)
 	if err != nil {
 		return err
 	}
 
-	return c.sendRequest(requestID, data_)
+	return c.sendRequest(requestID, callData)
 }
 
 func (c *Client) sendRequest(requestID string, data []byte) error {
