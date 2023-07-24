@@ -73,39 +73,39 @@ func UserDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.
 	}
 }
 
-// AutoPi creates a new middleware handler that checks whether an autopi is paired.
+// AftermarketDevice creates a new middleware handler that checks whether an autopi is paired.
 // For the middleware to allow the request to proceed:
 //
 //   - The request must have a valid JWT, identifying a user.
-//   - There must be a unitID path parameter, and that autopi must exist.
+//   - There must be a serial path parameter, and that autopi must exist (serial = unitID).
 //   - Either the device has not been paired on chain (anyone can access the endpoint) or
-//     the user has an address on file that is either the owner of the AutoPi or the owner
+//     the user has an address on file that is either the owner of the AftermarketDevice or the owner
 //     of the paired vehicle.
-func AutoPi(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logger) fiber.Handler {
+func AftermarketDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		userID := helpers.GetUserID(c)
-		unitID := c.Params("unitID")
-		valid, unitID := services.ValidateAndCleanUUID(unitID)
+		serial := c.Params("serial")
+		valid, serial := services.ValidateAndCleanUUID(serial) // macaron serial likely to not be UUID?
 		if !valid {
-			return fiber.NewError(fiber.StatusBadRequest, "Unit id is not a valid UUID.")
+			return fiber.NewError(fiber.StatusBadRequest, "serial is not a valid UUID.")
 		}
 
-		logger := logger.With().Str("userId", userID).Str("unitId", unitID).Logger()
+		logger := logger.With().Str("userId", userID).Str("serial", serial).Logger()
 		c.Locals("userID", userID)
-		c.Locals("unitID", unitID)
+		c.Locals("serial", serial)
 		c.Locals("logger", &logger)
 
-		autopiUnit, err := models.AftermarketDevices(models.AftermarketDeviceWhere.Serial.EQ(unitID)).One(c.Context(), dbs.DBS().Reader)
+		aftermarketDevice, err := models.AftermarketDevices(models.AftermarketDeviceWhere.Serial.EQ(serial)).One(c.Context(), dbs.DBS().Reader)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted, or unit ID invalid.")
+				return fiber.NewError(fiber.StatusNotFound, "AftermarketDevice not minted, or serial is invalid.")
 			}
 			return err
 		}
 
 		// If token_id is null, device is not paired.
 		// Also short-circuit the address checks if user is the "web2 owner".
-		if autopiUnit.VehicleTokenID.IsZero() || autopiUnit.UserID.Valid && autopiUnit.UserID.String == userID {
+		if aftermarketDevice.VehicleTokenID.IsZero() || aftermarketDevice.UserID.Valid && aftermarketDevice.UserID.String == userID {
 			return c.Next()
 		}
 
@@ -119,21 +119,21 @@ func AutoPi(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logg
 		}
 
 		userAddr := common.HexToAddress(*user.EthereumAddress)
-		apOwner := common.BytesToAddress(autopiUnit.OwnerAddress.Bytes)
+		apOwner := common.BytesToAddress(aftermarketDevice.OwnerAddress.Bytes)
 
 		if userAddr == apOwner {
 			return c.Next()
 		}
 
 		ownsVehicle, err := models.VehicleNFTS(
-			models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(autopiUnit.VehicleTokenID.Big)),
+			models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(aftermarketDevice.VehicleTokenID.Big)),
 			models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(userAddr.Bytes())),
 		).Exists(c.Context(), dbs.DBS().Reader)
 		if err != nil {
 			return err
 		}
 		if !ownsVehicle {
-			return fiber.NewError(fiber.StatusForbidden, "user is not owner of paired vehicle or AutoPi")
+			return fiber.NewError(fiber.StatusForbidden, "user is not owner of paired vehicle or AftermarketDevice")
 		}
 
 		return c.Next()

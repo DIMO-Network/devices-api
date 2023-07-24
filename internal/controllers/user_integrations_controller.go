@@ -433,17 +433,17 @@ func (udc *UserDevicesController) OpenFrunk(c *fiber.Ctx) error {
 }
 
 // GetAutoPiUnitInfo godoc
-// @Description gets the information about the autopi by the unitId
+// @Description gets the information about the aftermarket device by the hw serial
 // @Tags        integrations
 // @Produce     json
-// @Param       unitID path     string true "autopi unit id"
+// @Param       serial path     string true "autopi unit id or macaron serial"
 // @Success     200    {object} controllers.AutoPiDeviceInfo
 // @Security    BearerAuth
-// @Router      /autopi/unit/:unitID [get]
+// @Router      /aftermarket/device/by-serial/:serial [get]
 func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 	const minimumAutoPiRelease = "v1.22.8" // correct semver has leading v
 
-	unitID := c.Locals("unitID").(string)
+	unitID := c.Locals("serial").(string)
 
 	// This is hitting AutoPi.
 	unit, err := udc.autoPiSvc.GetDeviceByUnitID(unitID)
@@ -561,15 +561,15 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 }
 
 // StartAutoPiUpdateTask godoc
-// @Description checks to see if autopi unit needs to be updated, and starts update process if so.
+// @Description checks to see if aftermarket device needs to be updated, and starts update process if so.
 // @Tags        integrations
 // @Produce     json
-// @Param       unitID path     string true "autopi unit id", ie. physical barcode
+// @Param       serial path     string true "autopi unit id", ie. physical barcode
 // @Success     200    {object} services.AutoPiTask
 // @Security    BearerAuth
-// @Router      /autopi/unit/:unitID/update [post]
+// @Router      /aftermarket/device/by-serial/:serial/update [post]
 func (udc *UserDevicesController) StartAutoPiUpdateTask(c *fiber.Ctx) error {
-	unitID := c.Locals("unitID").(string)
+	unitID := c.Locals("serial").(string)
 	userID := helpers.GetUserID(c)
 
 	// check if device already updated
@@ -605,18 +605,18 @@ func (udc *UserDevicesController) StartAutoPiUpdateTask(c *fiber.Ctx) error {
 }
 
 // GetAutoPiClaimMessage godoc
-// @Description Return the EIP-712 payload to be signed for AutoPi device claiming.
+// @Description Return the EIP-712 payload to be signed for Aftermarket device claiming.
 // @Produce json
-// @Param unitID path string true "AutoPi unit id"
+// @Param serial path string true "AutoPi unit id"
 // @Success 200 {object} signer.TypedData
 // @Security BearerAuth
-// @Router /autopi/unit/:unitID/commands/claim [get]
+// @Router /aftermarket/device/by-serial/:serial/commands/claim [get]
 func (udc *UserDevicesController) GetAutoPiClaimMessage(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 
-	unitID := c.Params("unitID")
+	unitID := c.Params("serial")
 
-	logger := udc.log.With().Str("userId", userID).Str("unitId", unitID).Logger()
+	logger := udc.log.With().Str("userId", userID).Str("serial", unitID).Logger()
 	logger.Info().Msg("Got AutoPi claim request.")
 
 	unit, err := models.AftermarketDevices(
@@ -680,7 +680,7 @@ func (udc *UserDevicesController) GetAutoPiClaimMessage(c *fiber.Ctx) error {
 }
 
 // GetAutoPiPairMessage godoc
-// @Description Return the EIP-712 payload to be signed for AutoPi device pairing. The device must
+// @Description Return the EIP-712 payload to be signed for Aftermarket device pairing. The device must
 // @Description either already be integrated with the vehicle, or you must provide its unit id
 // @Description as a query parameter. In the latter case, the integration process will start
 // @Description once the transaction confirms.
@@ -689,7 +689,7 @@ func (udc *UserDevicesController) GetAutoPiClaimMessage(c *fiber.Ctx) error {
 // @Param external_id query string false "External id, for now AutoPi unit id"
 // @Success 200 {object} signer.TypedData "EIP-712 message for pairing."
 // @Security BearerAuth
-// @Router /user/devices/:userDeviceID/autopi/commands/pair [get]
+// @Router /user/devices/:userDeviceID/aftermarket/commands/pair [get]
 func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 
@@ -818,12 +818,12 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 }
 
 // PostPairAutoPi godoc
-// @Description Submit the signature for pairing this device with its attached AutoPi.
+// @Description Submit the signature for pairing this device with its attached Aftermarket.
 // @Produce json
 // @Param userDeviceID path string true "Device id"
 // @Param userSignature body controllers.AutoPiPairRequest true "User signature."
 // @Security BearerAuth
-// @Router /user/devices/:userDeviceID/autopi/commands/pair [post]
+// @Router /user/devices/:userDeviceID/aftermarket/commands/pair [post]
 func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 
@@ -1048,12 +1048,12 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 // @Param userDeviceID path string true "Device id"
 // @Success 204
 // @Security BearerAuth
-// @Router /user/devices/:userDeviceID/autopi/commands/cloud-repair [post]
+// @Router /user/devices/:userDeviceID/aftermarket/commands/cloud-repair [post]
 func (udc *UserDevicesController) CloudRepairAutoPi(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
 
 	logger := helpers.GetLogger(c, udc.log)
-	logger.Info().Msg("Got AutoPi pair request.")
+	logger.Info().Msg("Got Aftermarket pair request.")
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
@@ -1087,12 +1087,12 @@ func (udc *UserDevicesController) CloudRepairAutoPi(c *fiber.Ctx) error {
 }
 
 // UnpairAutoPi godoc
-// @Description Submit the signature for unpairing this device from its attached AutoPi.
+// @Description Submit the signature for unpairing this device from its attached Aftermarket.
 // @Produce json
 // @Param userDeviceID path string true "Device id"
 // @Param userSignature body controllers.AutoPiPairRequest true "User signature."
 // @Security BearerAuth
-// @Router /user/devices/:userDeviceID/autopi/commands/unpair [post]
+// @Router /user/devices/:userDeviceID/aftermarket/commands/unpair [post]
 func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 
@@ -1111,7 +1111,7 @@ func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
 
 	logger := helpers.GetLogger(c, udc.log)
-	logger.Info().Msg("Got AutoPi unpair request.")
+	logger.Info().Msg("Got Aftermarket unpair request.")
 
 	// TODO(elffjs): Is SELECT ... FOR UPDATE better here?
 	tx, err := udc.DBS().Writer.BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
@@ -1222,19 +1222,19 @@ func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 }
 
 // GetAutoPiUnpairMessage godoc
-// @Description Return the EIP-712 payload to be signed for AutoPi device unpairing.
+// @Description Return the EIP-712 payload to be signed for Aftermarket device unpairing.
 // @Produce json
 // @Param userDeviceID path string true "Device id"
 // @Success 200 {object} signer.TypedData
 // @Security BearerAuth
-// @Router /user/devices/:userDeviceID/autopi/commands/unpair [get]
+// @Router /user/devices/:userDeviceID/aftermarket/commands/unpair [get]
 func (udc *UserDevicesController) GetAutoPiUnpairMessage(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 
 	userDeviceID := c.Params("userDeviceID")
 
 	logger := helpers.GetLogger(c, udc.log)
-	logger.Info().Msg("Got AutoPi pair request.")
+	logger.Info().Msg("Got Aftermarket pair request.")
 
 	autoPiInt, err := udc.DeviceDefIntSvc.GetAutoPiIntegration(c.Context())
 	if err != nil {
@@ -1337,15 +1337,15 @@ type AutoPiPairRequest struct {
 // @Description Dev-only endpoint for removing a claim. Removes the flag on-chain and clears
 // @Description the owner in the database.
 // @Produce json
-// @Param unitID path string true "AutoPi unit id"
+// @Param serial path string true "AutoPi unit id"
 // @Success 204
 // @Security BearerAuth
-// @Router /autopi/unit/:unitID/commands/unclaim [post]
+// @Router /aftermarket/device/by-serial/:serial/commands/unclaim [post]
 func (udc *UserDevicesController) PostUnclaimAutoPi(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
-	unitID := c.Params("unitID")
+	unitID := c.Params("serial")
 
-	logger := udc.log.With().Str("userId", userID).Str("autoPiUnitId", unitID).Str("route", c.Route().Name).Logger()
+	logger := udc.log.With().Str("userId", userID).Str("serial", unitID).Str("route", c.Route().Name).Logger()
 
 	logger.Info().Msg("Got unclaim request.")
 
@@ -1388,18 +1388,18 @@ func (udc *UserDevicesController) PostUnclaimAutoPi(c *fiber.Ctx) error {
 }
 
 // PostClaimAutoPi godoc
-// @Description Return the EIP-712 payload to be signed for AutoPi device claiming.
+// @Description Return the EIP-712 payload to be signed for Aftermarket device claiming.
 // @Produce json
-// @Param unitID path string true "AutoPi unit id"
+// @Param serial path string true "AutoPi unit id"
 // @Param claimRequest body controllers.AutoPiClaimRequest true "Signatures from the user and AutoPi"
 // @Success 204
 // @Security BearerAuth
-// @Router /autopi/unit/:unitID/commands/claim [post]
+// @Router /aftermarket/device/by-serial/:serial/commands/claim [post]
 func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
-	unitID := c.Params("unitID")
+	unitID := c.Params("serial")
 
-	logger := udc.log.With().Str("userId", userID).Str("autoPiUnitId", unitID).Str("route", c.Route().Name).Logger()
+	logger := udc.log.With().Str("userId", userID).Str("serial", unitID).Str("route", c.Route().Name).Logger()
 
 	reqBody := AutoPiClaimRequest{}
 	err := c.BodyParser(&reqBody)

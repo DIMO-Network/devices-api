@@ -211,18 +211,27 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Get("/integrations", userDeviceController.GetIntegrations)
 
 	// Autopi specific routes.
-	apOwnerMw := owner.AutoPi(pdb, usersClient, &logger)
-	apOwner := v1Auth.Group("/autopi/unit/:unitID", apOwnerMw)
+	amdOwnerMw := owner.AftermarketDevice(pdb, usersClient, &logger)
+	apOwner := v1Auth.Group("/autopi/unit/:serial", amdOwnerMw)
+	// same as above but AftermarketDevice
+	amdOwner := v1Auth.Group("/aftermarket/device/by-serial/:serial", amdOwnerMw)
 
 	apOwner.Get("/", userDeviceController.GetAutoPiUnitInfo)
-	apOwner.Post("/update", userDeviceController.StartAutoPiUpdateTask)
+	amdOwner.Get("/", userDeviceController.GetAutoPiUnitInfo)
 
-	// AutoPi claiming
+	apOwner.Post("/update", userDeviceController.StartAutoPiUpdateTask)
+	amdOwner.Post("/update", userDeviceController.StartAutoPiUpdateTask)
+
+	// AftermarketDevice claiming, formerly AutoPi
 	apOwner.Get("/commands/claim", userDeviceController.GetAutoPiClaimMessage)
+	amdOwner.Get("/commands/claim", userDeviceController.GetAutoPiClaimMessage)
+
 	apOwner.Post("/commands/claim", userDeviceController.PostClaimAutoPi).Name("PostClaimAutoPi")
+	amdOwner.Post("/commands/claim", userDeviceController.PostClaimAutoPi).Name("PostClaimAutoPi")
 	if !settings.IsProduction() {
 		// Used by mobile to test. Easy to misuse.
 		apOwner.Post("/commands/unclaim", userDeviceController.PostUnclaimAutoPi)
+		amdOwner.Post("/commands/unclaim", userDeviceController.PostUnclaimAutoPi)
 	}
 
 	// geofence
@@ -295,13 +304,18 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	udOwner.Post("/commands/opt-in", userDeviceController.DeviceOptIn)
 
-	// AutoPi pairing and unpairing.
+	// AftermarketDevice pairing and unpairing.
 	udOwner.Get("/autopi/commands/pair", userDeviceController.GetAutoPiPairMessage)
+	udOwner.Get("/aftermarket/commands/pair", userDeviceController.GetAutoPiPairMessage)
 	udOwner.Post("/autopi/commands/pair", userDeviceController.PostPairAutoPi)
+	udOwner.Post("/aftermarket/commands/pair", userDeviceController.PostPairAutoPi)
 	udOwner.Get("/autopi/commands/unpair", userDeviceController.GetAutoPiUnpairMessage)
+	udOwner.Get("/aftermarket/commands/unpair", userDeviceController.GetAutoPiUnpairMessage)
 	udOwner.Post("/autopi/commands/unpair", userDeviceController.UnpairAutoPi)
+	udOwner.Post("/aftermarket/commands/unpair", userDeviceController.UnpairAutoPi)
 
 	udOwner.Post("/autopi/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
+	udOwner.Post("/aftermarket/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
 
 	go startValuationConsumer(settings, pdb.DBS, &logger, ddSvc, natsSvc)
 
