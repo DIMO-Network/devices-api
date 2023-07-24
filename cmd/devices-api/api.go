@@ -239,7 +239,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Get("/documents/:id/download", documentsController.DownloadDocument)
 
 	if settings.SyntheticDevicesEnabled {
-		syntheticDeviceSvc, err := services.NewSyntheticWalletInstanceService(pdb.DBS, settings)
+		syntheticDeviceSvc, err := services.NewSyntheticWalletInstanceService(settings)
 		if err != nil {
 			logger.Error().Err(err).Msg("unable to create Synthetic Device service")
 		}
