@@ -155,7 +155,7 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 	middleware := AftermarketDevice(pdb, usersClient, logger)
 
 	app := test.SetupAppFiber(*logger)
-	app.Get("/:unitID", test.AuthInjectorTestHandler(userID), middleware, func(c *fiber.Ctx) error {
+	app.Get("/:serial", test.AuthInjectorTestHandler(userID), middleware, func(c *fiber.Ctx) error {
 		logger := c.Locals("logger").(*zerolog.Logger)
 		logger.Info().Msg("Omega croggers.")
 		return nil
