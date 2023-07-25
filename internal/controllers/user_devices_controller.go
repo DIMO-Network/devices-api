@@ -1968,7 +1968,9 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				WalletAddress:      addr,
 			}
 
-			sd.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
+			if err:= sd.Insert(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
+				return err
+			}
 
 			return client.MintVehicleAndSDign(requestID, contracts.MintVehicleAndSdInput{
 				ManufacturerNode: makeTokenID,
