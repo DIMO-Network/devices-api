@@ -22,6 +22,8 @@ PRIVACY_FENCE_TOPIC: table.device.privacyfence
 NFT_INPUT_TOPIC: topic.device.nft.mint
 NFT_OUTPUT_TOPIC: topic.device.nft.mint.result
 NFT_S3_BUCKET: dimo-network-nfts
+NFT_AWS_ACCESS_KEY_ID: test
+NFT_AWS_SECRET_ACCESS_KEY: test
 REDIS_URL: localhost:6379
 REDIS_PASSWORD:
 REDIS_TLS: false
