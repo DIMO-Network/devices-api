@@ -1919,9 +1919,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 			childNum := seq.NextVal
 
-			var wallet services.SyntheticWalletInstanceService
-
-			addr, err := wallet.GetAddress(c.Context(), uint32(childNum))
+			addr, err := udc.wallet.GetAddress(c.Context(), uint32(childNum))
 			if err != nil {
 				return err
 			}
@@ -1935,7 +1933,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
-			sign, err := wallet.SignHash(c.Context(), uint32(childNum), hash.Bytes())
+			sign, err := udc.wallet.SignHash(c.Context(), uint32(childNum), hash.Bytes())
 			if err != nil {
 				return err
 			}

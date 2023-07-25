@@ -84,7 +84,7 @@ func (dc *dependencyContainer) getS3NFTServiceClient(ctx context.Context) *s3.Cl
 	if dc.s3NFTServiceClient == nil {
 
 		cfg, err := awsconfig.LoadDefaultConfig(ctx,
-			awsconfig.WithRegion(dc.settings.AWSRegion),
+			// awsconfig.WithRegion(dc.settings.AWSRegion),
 			// Comment the below out if not using localhost
 			awsconfig.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
 				func(service, region string, options ...any) (aws.Endpoint, error) {
