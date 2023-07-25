@@ -706,7 +706,7 @@ func (syntheticDeviceL) LoadVehicleToken(ctx context.Context, e boil.ContextExec
 		if foreign.R == nil {
 			foreign.R = &vehicleNFTR{}
 		}
-		foreign.R.VehicleTokenSyntheticDevices = append(foreign.R.VehicleTokenSyntheticDevices, object)
+		foreign.R.VehicleTokenSyntheticDevice = object
 		return nil
 	}
 
@@ -717,7 +717,7 @@ func (syntheticDeviceL) LoadVehicleToken(ctx context.Context, e boil.ContextExec
 				if foreign.R == nil {
 					foreign.R = &vehicleNFTR{}
 				}
-				foreign.R.VehicleTokenSyntheticDevices = append(foreign.R.VehicleTokenSyntheticDevices, local)
+				foreign.R.VehicleTokenSyntheticDevice = local
 				break
 			}
 		}
@@ -899,7 +899,7 @@ func (o *SyntheticDevice) SetMintRequest(ctx context.Context, exec boil.ContextE
 
 // SetVehicleToken of the syntheticDevice to the related item.
 // Sets o.R.VehicleToken to related.
-// Adds o to related.R.VehicleTokenSyntheticDevices.
+// Adds o to related.R.VehicleTokenSyntheticDevice.
 func (o *SyntheticDevice) SetVehicleToken(ctx context.Context, exec boil.ContextExecutor, insert bool, related *VehicleNFT) error {
 	var err error
 	if insert {
@@ -935,10 +935,10 @@ func (o *SyntheticDevice) SetVehicleToken(ctx context.Context, exec boil.Context
 
 	if related.R == nil {
 		related.R = &vehicleNFTR{
-			VehicleTokenSyntheticDevices: SyntheticDeviceSlice{o},
+			VehicleTokenSyntheticDevice: o,
 		}
 	} else {
-		related.R.VehicleTokenSyntheticDevices = append(related.R.VehicleTokenSyntheticDevices, o)
+		related.R.VehicleTokenSyntheticDevice = o
 	}
 
 	return nil
@@ -962,18 +962,7 @@ func (o *SyntheticDevice) RemoveVehicleToken(ctx context.Context, exec boil.Cont
 		return nil
 	}
 
-	for i, ri := range related.R.VehicleTokenSyntheticDevices {
-		if queries.Equal(o.VehicleTokenID, ri.VehicleTokenID) {
-			continue
-		}
-
-		ln := len(related.R.VehicleTokenSyntheticDevices)
-		if ln > 1 && i < ln-1 {
-			related.R.VehicleTokenSyntheticDevices[i] = related.R.VehicleTokenSyntheticDevices[ln-1]
-		}
-		related.R.VehicleTokenSyntheticDevices = related.R.VehicleTokenSyntheticDevices[:ln-1]
-		break
-	}
+	related.R.VehicleTokenSyntheticDevice = nil
 	return nil
 }
 

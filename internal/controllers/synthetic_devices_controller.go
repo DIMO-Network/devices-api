@@ -108,7 +108,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 	integrationID := c.Params("integrationID")
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevices)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
 	).One(c.Context(), sdc.DBS().Reader)
 	if err != nil {
@@ -119,7 +119,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 		return fiber.NewError(fiber.StatusConflict, "Vehicle not minted.")
 	}
 
-	if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevices != nil {
+	if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice != nil {
 		return fiber.NewError(fiber.StatusConflict, "Vehicle already paired with a synthetic device.")
 	}
 
@@ -164,7 +164,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevices)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
 	).One(c.Context(), sdc.DBS().Reader)
 	if err != nil {
@@ -175,7 +175,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "Vehicle not minted.")
 	}
 
-	if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevices != nil {
+	if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice != nil {
 		return fiber.NewError(fiber.StatusConflict, "Vehicle already paired with a synthetic device.")
 	}
 

@@ -230,6 +230,8 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			}
 		}
 
+		var sdStat *SyntheticDeviceStatus
+
 		var nft *NFTData
 		pu := []PrivilegeUser{}
 
@@ -277,6 +279,22 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 					Privileges: v,
 				})
 			}
+
+			if sd := vnft.R.VehicleTokenSyntheticDevice; sd != nil {
+				ii, _ := sd.IntegrationTokenID.Uint64()
+				mtr := sd.R.MintRequest
+				sdStat = &SyntheticDeviceStatus{
+					IntegrationID: ii,
+					Status:        mtr.Status,
+				}
+				if mtr.Hash.Valid {
+					h := hexutil.Encode(mtr.Hash.Bytes)
+					sdStat.TxHash = &h
+				}
+				if !sd.TokenID.IsZero() {
+					sdStat.TokenID = sd.TokenID.Int(nil)
+				}
+			}
 		}
 
 		udf := UserDeviceFull{
@@ -287,7 +305,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			CustomImageURL:   d.CustomImageURL.Ptr(),
 			CountryCode:      d.CountryCode.Ptr(),
 			DeviceDefinition: dd,
-			Integrations:     NewUserDeviceIntegrationStatusesFromDatabase(d.R.UserDeviceAPIIntegrations, integrations),
+			Integrations:     NewUserDeviceIntegrationStatusesFromDatabase(d.R.UserDeviceAPIIntegrations, integrations, sdStat),
 			Metadata:         md,
 			NFT:              nft,
 			OptedInAt:        d.OptedInAt.Ptr(),
@@ -331,7 +349,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	query = append(query,
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevices, models.SyntheticDeviceRels.MintRequest)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
 		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" DESC"))
 
 	devices, err := models.UserDevices(query...).All(c.Context(), udc.DBS().Reader)
@@ -411,6 +429,7 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 				qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 				// Would we get this backreference for free?
 				qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
+				qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
 				return err
@@ -428,7 +447,7 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 	return c.JSON(MyDevicesResp{SharedDevices: apiSharedDevices})
 }
 
-func NewUserDeviceIntegrationStatusesFromDatabase(udis []*models.UserDeviceAPIIntegration, integrations []*ddgrpc.Integration) []UserDeviceIntegrationStatus {
+func NewUserDeviceIntegrationStatusesFromDatabase(udis []*models.UserDeviceAPIIntegration, integrations []*ddgrpc.Integration, sdStat *SyntheticDeviceStatus) []UserDeviceIntegrationStatus {
 	out := make([]UserDeviceIntegrationStatus, len(udis))
 
 	for i, udi := range udis {
@@ -447,6 +466,10 @@ func NewUserDeviceIntegrationStatusesFromDatabase(udis []*models.UserDeviceAPIIn
 		for _, integration := range integrations {
 			if integration.Id == udi.IntegrationID {
 				out[i].IntegrationVendor = integration.Vendor
+
+				if sdStat != nil && integration.TokenId == sdStat.IntegrationID {
+					out[i].Mint = sdStat
+				}
 				break
 			}
 		}
@@ -1958,6 +1981,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				IntegrationNode:     new(big.Int).SetUint64(intID),
 				VehicleOwnerSig:     sigBytes,
 				SyntheticDeviceSig:  sign,
+				SyntheticDeviceAddr: common.BytesToAddress(addr),
 				AttrInfoPairsDevice: []contracts.AttributeInfoPair{},
 			})
 		}
@@ -2162,4 +2186,11 @@ type NFTData struct {
 	TxHash *string `json:"txHash,omitempty" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
 	// Status is the minting status of the NFT.
 	Status string `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed" example:"Confirmed"`
+}
+
+type SyntheticDeviceStatus struct {
+	IntegrationID uint64   `json:"-"`
+	TokenID       *big.Int `json:"tokenId,omitempty"`
+	TxHash        *string  `json:"txHash,omitempty" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
+	Status        string   `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed" example:"Confirmed"`
 }
