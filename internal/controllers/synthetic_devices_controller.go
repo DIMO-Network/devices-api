@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math/big"
+	"strconv"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -22,6 +23,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -306,6 +308,150 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Submitted synthetic device mint request."})
 }
 
+// GetSyntheticDeviceBurnPayload godoc
+// @Description Produces the payload that the user signs and submits to burn a synthetic device.
+// @Produce     json
+// @Param       syntheticDeviceNode path int true "synthetic device token id"
+// @Success     200 {array} signer.TypedData
+// @Router      /synthetic/device/{syntheticDeviceNode}/burn [get]
+func (sdc *SyntheticDevicesController) GetSyntheticDeviceBurnPayload(c *fiber.Ctx) error {
+	syntheticDeviceNodeRaw := c.Params("syntheticDeviceNode")
+	userID := helpers.GetUserID(c)
+
+	syntheticDeviceNode, err := strconv.ParseInt(syntheticDeviceNodeRaw, 10, 64)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Node id %q must be an integer.", syntheticDeviceNodeRaw))
+	}
+
+	sd, err := models.SyntheticDevices(
+		models.SyntheticDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(syntheticDeviceNode, 0))),
+		qm.Load(models.SyntheticDeviceRels.VehicleToken),
+	).One(c.Context(), sdc.DBS().Reader)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("No device with id %d found.", syntheticDeviceNode))
+		}
+		return err
+	}
+
+	vOwn := common.BytesToAddress(sd.R.VehicleToken.OwnerAddress.Bytes)
+
+	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		sdc.log.Debug().Err(err).Msg("error occurred when fetching user")
+		return helpers.GrpcErrorToFiber(err, "error occurred when fetching user")
+	}
+
+	if user.EthereumAddress == nil {
+		return fiber.NewError(fiber.StatusForbidden, "No Ethereum address on file for user.")
+	}
+
+	addr := common.HexToAddress(*user.EthereumAddress)
+
+	if vOwn != addr {
+		return fiber.NewError(fiber.StatusForbidden, fmt.Sprintf("Vehicle is owned by %s, your address is %s.", vOwn, addr))
+	}
+
+	vehicleNode, _ := sd.VehicleTokenID.Int64()
+
+	return c.JSON(sdc.getEIP712Burn(vehicleNode, syntheticDeviceNode))
+}
+
+type BurnSyntheticDeviceRequest struct {
+	OwnerSignature string `json:"ownerSignature"`
+}
+
+// BurnSyntheticDevice godoc
+// @Description Submit the signature required for the synthetic device burning meta-transaction.
+// @Produce     json
+// @Param       syntheticDeviceNode path int true "synthetic device token id"
+// @Success     200
+// @Router      /synthetic/device/{syntheticDeviceNode}/burn [post]
+func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
+	syntheticDeviceNodeRaw := c.Params("syntheticDeviceNode")
+	userID := helpers.GetUserID(c)
+
+	syntheticDeviceNode, err := strconv.ParseInt(syntheticDeviceNodeRaw, 10, 64)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Node id %q must be an integer.", syntheticDeviceNodeRaw))
+	}
+
+	sd, err := models.SyntheticDevices(
+		models.SyntheticDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(syntheticDeviceNode, 0))),
+		qm.Load(models.SyntheticDeviceRels.VehicleToken),
+	).One(c.Context(), sdc.DBS().Reader)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("No device with id %d found.", syntheticDeviceNode))
+		}
+		return err
+	}
+
+	vOwn := common.BytesToAddress(sd.R.VehicleToken.OwnerAddress.Bytes)
+
+	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		sdc.log.Debug().Err(err).Msg("error occurred when fetching user")
+		return helpers.GrpcErrorToFiber(err, "error occurred when fetching user")
+	}
+
+	if user.EthereumAddress == nil {
+		return fiber.NewError(fiber.StatusForbidden, "No Ethereum address on file for user.")
+	}
+
+	addr := common.HexToAddress(*user.EthereumAddress)
+
+	if vOwn != addr {
+		return fiber.NewError(fiber.StatusForbidden, fmt.Sprintf("Vehicle is owned by %s, your address is %s.", vOwn, addr))
+	}
+
+	vehicleNode, _ := sd.VehicleTokenID.Int64()
+
+	td := sdc.getEIP712Burn(vehicleNode, syntheticDeviceNode)
+
+	var req BurnSyntheticDeviceRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
+	}
+
+	ownerSignature := common.FromHex(req.OwnerSignature)
+	if len(ownerSignature) != 65 {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Owner signature was length %d, not 65.", len(ownerSignature)))
+	}
+
+	hash, _, err := signer.TypedDataAndHash(*td)
+	if err != nil {
+		sdc.log.Err(err).Msg("Error occurred creating has of payload")
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
+	}
+
+	if recAddr, err := helpers.Ecrecover(hash, ownerSignature); err != nil {
+		return err
+	} else if recAddr != addr {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature.")
+	}
+
+	reqID := ksuid.New().String()
+
+	if err := sdc.registryClient.BurnSyntheticDeviceSign(reqID, big.NewInt(vehicleNode), big.NewInt(syntheticDeviceNode), ownerSignature); err != nil {
+		return err
+	}
+
+	mtr := models.MetaTransactionRequest{
+		ID:     reqID,
+		Status: models.MetaTransactionRequestStatusUnsubmitted,
+	}
+
+	if err := mtr.Insert(c.Context(), sdc.DBS().Writer, boil.Infer()); err != nil {
+		return err
+	}
+
+	sd.BurnRequestID = null.StringFrom(reqID)
+	_, err = sd.Update(c.Context(), sdc.DBS().Writer, boil.Infer())
+
+	return err
+}
+
 func (sdc *SyntheticDevicesController) sendSyntheticDeviceMintPayload(ctx context.Context, requestID string, hash []byte, vehicleNode int, intTokenID uint64, ownerSignature []byte, childKeyNumber int) ([]byte, error) {
 	syntheticDeviceAddr, err := sdc.walletSvc.GetAddress(ctx, uint32(childKeyNumber))
 	if err != nil {
@@ -348,4 +494,32 @@ func (sdc *SyntheticDevicesController) generateNextChildKeyNumber(ctx context.Co
 	}
 
 	return seq.NextVal, nil
+}
+
+func (sdc *SyntheticDevicesController) getEIP712Burn(vehicleNode, syntheticDeviceNode int64) *signer.TypedData {
+	return &signer.TypedData{
+		Types: signer.Types{
+			"EIP712Domain": []signer.Type{
+				{Name: "name", Type: "string"},
+				{Name: "version", Type: "string"},
+				{Name: "chainId", Type: "uint256"},
+				{Name: "verifyingContract", Type: "address"},
+			},
+			"BurnSyntheticDeviceSign": []signer.Type{
+				{Name: "vehicleNode", Type: "uint256"},
+				{Name: "syntheticDeviceNode", Type: "uint256"},
+			},
+		},
+		PrimaryType: "BurnSyntheticDeviceSign",
+		Domain: signer.TypedDataDomain{
+			Name:              "DIMO",
+			Version:           "1",
+			ChainId:           math.NewHexOrDecimal256(sdc.Settings.DIMORegistryChainID),
+			VerifyingContract: sdc.Settings.DIMORegistryAddr,
+		},
+		Message: signer.TypedDataMessage{
+			"vehicleNode":         math.NewHexOrDecimal256(vehicleNode),
+			"syntheticDeviceNode": math.NewHexOrDecimal256(syntheticDeviceNode),
+		},
+	}
 }

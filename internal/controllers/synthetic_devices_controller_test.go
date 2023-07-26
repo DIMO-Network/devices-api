@@ -15,7 +15,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/api/users"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	smock "github.com/Shopify/sarama/mocks"
@@ -126,7 +125,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 	email := "some@email.com"
 	eth := addr.Hex()
 
-	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &users.UserReferrer{})
+	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &pb.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: mockUserID}).Return(user, nil)
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
@@ -183,7 +182,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 
 	email := "some@email.com"
 
-	user := test.BuildGetUserGRPC(mockUserID, &email, nil, &users.UserReferrer{})
+	user := test.BuildGetUserGRPC(mockUserID, &email, nil, &pb.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
@@ -211,7 +210,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 	email := "some@email.com"
 	eth := addr.Hex()
 
-	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &users.UserReferrer{})
+	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &pb.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: mockUserID}).Return(user, nil)
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
@@ -240,7 +239,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 	email := "some@email.com"
 	eth := addr.Hex()
 
-	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &users.UserReferrer{})
+	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &pb.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: mockUserID}).Return(user, nil)
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
@@ -268,7 +267,7 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceSmartcar()
 	// addr := common.HexToAddress(userEthAddress)
 	deviceEthAddr := common.HexToAddress("11")
 
-	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &users.UserReferrer{})
+	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &pb.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: mockUserID}).Return(user, nil)
 
 	integration := test.BuildIntegrationForGRPCRequest(1, "SmartCar")
@@ -371,7 +370,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayl
 	email := "some@email.com"
 	eth := addr.Hex()
 
-	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &users.UserReferrer{})
+	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &pb.UserReferrer{})
 	s.userClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: mockUserID}).Return(user, nil)
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
@@ -405,7 +404,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayl
 	// email := "some@email.com"
 	// eth := userEthAddress
 
-	// user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &users.UserReferrer{})
+	// user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &pb.UserReferrer{})
 	// s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
 	// scInt := &ddgrpc.Integration{
