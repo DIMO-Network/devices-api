@@ -2,7 +2,6 @@ package registry
 
 import (
 	"context"
-	"errors"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
@@ -30,8 +29,6 @@ type proc struct {
 	ap       *autopi.Integration
 	settings *config.Settings
 }
-
-var errInvalidOEM = errors.New("unrecognized oem for synthetic device mint request")
 
 func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	logger := p.Logger.With().
