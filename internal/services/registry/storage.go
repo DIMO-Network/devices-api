@@ -200,6 +200,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				return p.ap.Unpair(ctx, out.AftermarketDeviceNode, out.VehicleNode)
 			}
 		}
+	// It's very important that this be after the case for VehicleNodeMinted.
 	case mtr.R.MintRequestSyntheticDevice != nil:
 		for _, l1 := range data.Transaction.Logs {
 			if l1.Topics[0] == syntheticDeviceMintedEvent.ID {
@@ -217,7 +218,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				}
 			}
 		}
-	// It's very important that this be after the case for VehicleNodeMinted.
 	case mtr.R.BurnRequestSyntheticDevice != nil:
 		for _, l1 := range data.Transaction.Logs {
 			if l1.Topics[0] == sdBurnEvent.ID {
@@ -227,7 +227,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return err
 				}
 
-				if _, err := mtr.R.MintRequestSyntheticDevice.Delete(ctx, p.DB().Writer); err != nil {
+				if _, err := mtr.R.BurnRequestSyntheticDevice.Delete(ctx, p.DB().Writer); err != nil {
 					return err
 				}
 			}
