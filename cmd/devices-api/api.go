@@ -290,8 +290,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		udOwner.Get("/integrations/:integrationID/commands/mint", syntheticController.GetSyntheticDeviceMintingPayload)
 		udOwner.Post("/integrations/:integrationID/commands/mint", syntheticController.MintSyntheticDevice)
 
-		v1Auth.Get("synthetic/device/:syntheticDeviceNode/burn", syntheticController.GetSyntheticDeviceBurnPayload)
-		v1Auth.Post("synthetic/device/:syntheticDeviceNode/burn", syntheticController.BurnSyntheticDevice)
+		udOwner.Get("/integrations/:integrationID/commands/burn", syntheticController.GetSyntheticDeviceBurnPayload)
+		udOwner.Post("/integrations/:integrationID/commands/burn", syntheticController.BurnSyntheticDevice)
 	}
 
 	// Vehicle commands.

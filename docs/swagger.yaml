@@ -1355,39 +1355,6 @@ paths:
           description: Not Found
       tags:
       - nfts
-  /synthetic/device/{syntheticDeviceNode}/burn:
-    get:
-      description: Produces the payload that the user signs and submits to burn a
-        synthetic device.
-      parameters:
-      - description: synthetic device token id
-        in: path
-        name: syntheticDeviceNode
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/apitypes.TypedData'
-            type: array
-    post:
-      description: Submit the signature required for the synthetic device burning
-        meta-transaction.
-      parameters:
-      - description: synthetic device token id
-        in: path
-        name: syntheticDeviceNode
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
   /user/devices:
     post:
       consumes:
@@ -1879,14 +1846,15 @@ paths:
       tags:
       - integrations
     post:
-      description: Submit a metadata
+      description: Submit the signature required for the synthetic device burning
+        meta-transaction.
       parameters:
       - description: user device KSUID, must be minted
         in: path
         name: userDeviceID
         required: true
         type: integer
-      - description: integration KSUD, must be software-based
+      - description: integration KSUD, must be software-based and active
         in: path
         name: integrationID
         required: true
@@ -1894,10 +1862,12 @@ paths:
       produces:
       - application/json
       responses:
-        "204":
-          description: No Content
-      tags:
-      - integrations
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/apitypes.TypedData'
+            type: array
   /user/devices/{userDeviceID}/integrations/{integrationID}/commands/trunk/open:
     post:
       description: Open the device's front trunk. Currently, this only works for Teslas

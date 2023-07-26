@@ -554,54 +554,6 @@
                 }
             }
         },
-        "/synthetic/device/{syntheticDeviceNode}/burn": {
-            "get": {
-                "description": "Produces the payload that the user signs and submits to burn a synthetic device.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "synthetic device token id",
-                        "name": "syntheticDeviceNode",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/apitypes.TypedData"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Submit the signature required for the synthetic device burning meta-transaction.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "synthetic device token id",
-                        "name": "syntheticDeviceNode",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                }
-            }
-        },
         "/user/devices": {
             "post": {
                 "security": [
@@ -1475,12 +1427,9 @@
                 }
             },
             "post": {
-                "description": "Submit a metadata",
+                "description": "Submit the signature required for the synthetic device burning meta-transaction.",
                 "produces": [
                     "application/json"
-                ],
-                "tags": [
-                    "integrations"
                 ],
                 "parameters": [
                     {
@@ -1492,15 +1441,21 @@
                     },
                     {
                         "type": "integer",
-                        "description": "integration KSUD, must be software-based",
+                        "description": "integration KSUD, must be software-based and active",
                         "name": "integrationID",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "No Content"
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/apitypes.TypedData"
+                            }
+                        }
                     }
                 }
             }
