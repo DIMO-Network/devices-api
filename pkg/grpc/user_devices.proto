@@ -57,6 +57,7 @@ message UserDevice {
   bool vin_confirmed = 13;
   string country_code = 14;
   string power_train_type = 15;
+  string CAN_protocol = 16;
 }
 
 message UserDeviceIntegration {
