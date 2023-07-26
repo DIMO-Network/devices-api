@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
@@ -23,11 +24,12 @@ type StatusProcessor interface {
 }
 
 type proc struct {
-	ABI      *abi.ABI
-	DB       func() *db.ReaderWriter
-	Logger   *zerolog.Logger
-	ap       *autopi.Integration
-	settings *config.Settings
+	ABI           *abi.ABI
+	DeprecatedABI *abi.ABI
+	DB            func() *db.ReaderWriter
+	Logger        *zerolog.Logger
+	ap            *autopi.Integration
+	settings      *config.Settings
 }
 
 func (p *proc) Handle(ctx context.Context, data *ceData) error {
@@ -72,10 +74,28 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	syntheticDeviceMintedEvent := p.ABI.Events["SyntheticDeviceNodeMinted"]
 	sdBurnEvent := p.ABI.Events["SyntheticDeviceNodeBurned"]
 
+	depVehicleMintedEvent := p.ABI.Events["VehicleNodeMinted"]
+
 	switch {
 	case mtr.R.MintRequestVehicleNFT != nil:
 		for _, l1 := range data.Transaction.Logs {
 			if l1.Topics[0] == vehicleMintedEvent.ID {
+				out := new(contracts.RegistryVehicleNodeMinted)
+				err := p.parseLog(out, vehicleMintedEvent, l1)
+				if err != nil {
+					return err
+				}
+
+				mtr.R.MintRequestVehicleNFT.TokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.TokenId, 0))
+				mtr.R.MintRequestVehicleNFT.OwnerAddress = null.BytesFrom(out.Owner.Bytes())
+				_, err = mtr.R.MintRequestVehicleNFT.Update(ctx, p.DB().Writer, boil.Infer())
+				if err != nil {
+					return err
+				}
+
+				logger.Info().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msg("Vehicle minted.")
+			} else if l1.Topics[0] == depVehicleMintedEvent.ID {
+				// We won't fill in the manufacturer id, but it should be okay.
 				out := new(contracts.RegistryVehicleNodeMinted)
 				err := p.parseLog(out, vehicleMintedEvent, l1)
 				if err != nil {
@@ -228,16 +248,46 @@ func NewProcessor(
 	ap *autopi.Integration,
 	settings *config.Settings,
 ) (StatusProcessor, error) {
-	abi, err := contracts.RegistryMetaData.GetAbi()
+	regABI, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return nil, err
 	}
 
+	const deprectedABI = `
+[
+	{
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "tokenId",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "owner",
+                "type": "address"
+            }
+        ],
+        "name": "VehicleNodeMinted",
+        "type": "event"
+    }
+]`
+
+	var depABI abi.ABI
+
+	if err := json.Unmarshal([]byte(deprectedABI), &depABI); err != nil {
+		return nil, err
+	}
+
 	return &proc{
-		ABI:      abi,
-		DB:       db,
-		Logger:   logger,
-		ap:       ap,
-		settings: settings,
+		ABI:           regABI,
+		DeprecatedABI: &depABI,
+		DB:            db,
+		Logger:        logger,
+		ap:            ap,
+		settings:      settings,
 	}, nil
 }
