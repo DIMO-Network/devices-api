@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"math/big"
 
@@ -104,6 +105,19 @@ func (sdc *SyntheticDevicesController) getEIP712Mint(integrationID, vehicleNode 
 // @Success     200 {array} signer.TypedData
 // @Router 	    /user/devices/{userDeviceID}/integrations/{integrationID}/commands/mint [get]
 func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber.Ctx) error {
+	userID := helpers.GetUserID(c)
+
+	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		return helpers.GrpcErrorToFiber(err, "error occurred when fetching user")
+	}
+
+	if user.EthereumAddress == nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "User does not have an Ethereum address.")
+	}
+
+	userAddr := common.HexToAddress(*user.EthereumAddress)
+
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
 	ud, err := models.UserDevices(
@@ -112,11 +126,18 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
 	).One(c.Context(), sdc.DBS().Reader)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return fiber.NewError(fiber.StatusNotFound, "No vehicle with that id found.")
+		}
 		return err
 	}
 
 	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
 		return fiber.NewError(fiber.StatusConflict, "Vehicle not minted.")
+	}
+
+	if userAddr != common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes) {
+		return fiber.NewError(fiber.StatusUnauthorized, "User's address does not control this device.")
 	}
 
 	if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice != nil {
