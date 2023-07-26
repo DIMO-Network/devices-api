@@ -178,6 +178,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 // @Produce     json
 // @Param       userDeviceID path int true "user device KSUID, must be minted"
 // @Param       integrationID path int true "integration KSUD, must be software-based"
+// @Param       signed body controllers.MintSyntheticDeviceRequest true "only field is the signed EIP-712"
 // @Success     204
 // @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/mint [post]
 func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
@@ -380,7 +381,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceBurnPayload(c *fiber.Ct
 }
 
 type BurnSyntheticDeviceRequest struct {
-	OwnerSignature string `json:"ownerSignature"`
+	Signature string `json:"signature"`
 }
 
 // BurnSyntheticDevice godoc
@@ -388,6 +389,7 @@ type BurnSyntheticDeviceRequest struct {
 // @Produce     json
 // @Param       userDeviceID path int true "user device KSUID, must be minted"
 // @Param       integrationID path int true "integration KSUD, must be software-based and active"
+// @Param       signed body controllers.BurnSyntheticDeviceRequest true "only field is the signed EIP-712"
 // @Success     200 {array} signer.TypedData
 // @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/mint [post]
 func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
@@ -459,7 +461,7 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
 	}
 
-	ownerSignature := common.FromHex(req.OwnerSignature)
+	ownerSignature := common.FromHex(req.Signature)
 	if len(ownerSignature) != 65 {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Owner signature was length %d, not 65.", len(ownerSignature)))
 	}

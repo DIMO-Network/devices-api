@@ -359,6 +359,11 @@ definitions:
         example: "2022-10-01T09:22:26.337Z"
         type: string
     type: object
+  internal_controllers.BurnSyntheticDeviceRequest:
+    properties:
+      signature:
+        type: string
+    type: object
   internal_controllers.CommandRequestStatusResp:
     properties:
       command:
@@ -585,6 +590,11 @@ definitions:
     required:
     - imageData
     - signature
+    type: object
+  internal_controllers.MintSyntheticDeviceRequest:
+    properties:
+      signature:
+        type: string
     type: object
   internal_controllers.MyDevicesResp:
     properties:
@@ -1859,6 +1869,12 @@ paths:
         name: integrationID
         required: true
         type: integer
+      - description: only field is the signed EIP-712
+        in: body
+        name: signed
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.BurnSyntheticDeviceRequest'
       produces:
       - application/json
       responses:

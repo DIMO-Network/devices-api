@@ -1445,6 +1445,15 @@
                         "name": "integrationID",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "only field is the signed EIP-712",
+                        "name": "signed",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.BurnSyntheticDeviceRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -2706,6 +2715,14 @@
                 }
             }
         },
+        "internal_controllers.BurnSyntheticDeviceRequest": {
+            "type": "object",
+            "properties": {
+                "signature": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_controllers.CommandRequestStatusResp": {
             "type": "object",
             "properties": {
@@ -3015,6 +3032,14 @@
                 },
                 "signature": {
                     "description": "Signature is the hex encoding of the EIP-712 signature result.",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_controllers.MintSyntheticDeviceRequest": {
+            "type": "object",
+            "properties": {
+                "signature": {
                     "type": "string"
                 }
             }
