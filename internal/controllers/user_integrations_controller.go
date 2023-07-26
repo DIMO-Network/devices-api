@@ -2022,13 +2022,15 @@ func fixTeslaDeviceDefinition(ctx context.Context, logger *zerolog.Logger, ddSvc
 /** Structs for request / response **/
 
 type UserDeviceIntegrationStatus struct {
-	IntegrationID     string    `json:"integrationId"`
-	Status            string    `json:"status"`
-	CreatedAt         time.Time `json:"createdAt"`
-	ExternalID        *string   `json:"externalId"`
-	UpdatedAt         time.Time `json:"updatedAt"`
-	Metadata          null.JSON `json:"metadata" swaggertype:"string"`
-	IntegrationVendor string    `json:"integrationVendor"`
+	IntegrationID     string                 `json:"integrationId"`
+	Status            string                 `json:"status"`
+	CreatedAt         time.Time              `json:"createdAt"`
+	ExternalID        *string                `json:"externalId"`
+	UpdatedAt         time.Time              `json:"updatedAt"`
+	Metadata          null.JSON              `json:"metadata" swaggertype:"string"`
+	IntegrationVendor string                 `json:"integrationVendor"`
+	Mint              *SyntheticDeviceStatus `json:"syntheticDevice,omitempty"`
+	TokenID           *big.Int               `json:"tokenId,omitempty"`
 }
 
 // RegisterDeviceIntegrationRequest carries credentials used to connect the device to a given

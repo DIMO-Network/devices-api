@@ -199,15 +199,26 @@ var ExternalVinDatumWhere = struct {
 
 // ExternalVinDatumRels is where relationship names are stored.
 var ExternalVinDatumRels = struct {
-}{}
+	UserDevice string
+}{
+	UserDevice: "UserDevice",
+}
 
 // externalVinDatumR is where relationships are stored.
 type externalVinDatumR struct {
+	UserDevice *UserDevice `boil:"UserDevice" json:"UserDevice" toml:"UserDevice" yaml:"UserDevice"`
 }
 
 // NewStruct creates a new relationship struct
 func (*externalVinDatumR) NewStruct() *externalVinDatumR {
 	return &externalVinDatumR{}
+}
+
+func (r *externalVinDatumR) GetUserDevice() *UserDevice {
+	if r == nil {
+		return nil
+	}
+	return r.UserDevice
 }
 
 // externalVinDatumL is where Load methods for each relationship are stored.
@@ -497,6 +508,221 @@ func (q externalVinDatumQuery) Exists(ctx context.Context, exec boil.ContextExec
 	}
 
 	return count > 0, nil
+}
+
+// UserDevice pointed to by the foreign key.
+func (o *ExternalVinDatum) UserDevice(mods ...qm.QueryMod) userDeviceQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.UserDeviceID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	return UserDevices(queryMods...)
+}
+
+// LoadUserDevice allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (externalVinDatumL) LoadUserDevice(ctx context.Context, e boil.ContextExecutor, singular bool, maybeExternalVinDatum interface{}, mods queries.Applicator) error {
+	var slice []*ExternalVinDatum
+	var object *ExternalVinDatum
+
+	if singular {
+		var ok bool
+		object, ok = maybeExternalVinDatum.(*ExternalVinDatum)
+		if !ok {
+			object = new(ExternalVinDatum)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeExternalVinDatum)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeExternalVinDatum))
+			}
+		}
+	} else {
+		s, ok := maybeExternalVinDatum.(*[]*ExternalVinDatum)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeExternalVinDatum)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeExternalVinDatum))
+			}
+		}
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &externalVinDatumR{}
+		}
+		if !queries.IsNil(object.UserDeviceID) {
+			args = append(args, object.UserDeviceID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &externalVinDatumR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.UserDeviceID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.UserDeviceID) {
+				args = append(args, obj.UserDeviceID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`devices_api.user_devices`),
+		qm.WhereIn(`devices_api.user_devices.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load UserDevice")
+	}
+
+	var resultSlice []*UserDevice
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice UserDevice")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for user_devices")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for user_devices")
+	}
+
+	if len(userDeviceAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.UserDevice = foreign
+		if foreign.R == nil {
+			foreign.R = &userDeviceR{}
+		}
+		foreign.R.ExternalVinData = append(foreign.R.ExternalVinData, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.UserDeviceID, foreign.ID) {
+				local.R.UserDevice = foreign
+				if foreign.R == nil {
+					foreign.R = &userDeviceR{}
+				}
+				foreign.R.ExternalVinData = append(foreign.R.ExternalVinData, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// SetUserDevice of the externalVinDatum to the related item.
+// Sets o.R.UserDevice to related.
+// Adds o to related.R.ExternalVinData.
+func (o *ExternalVinDatum) SetUserDevice(ctx context.Context, exec boil.ContextExecutor, insert bool, related *UserDevice) error {
+	var err error
+	if insert {
+		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"devices_api\".\"external_vin_data\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"user_device_id"}),
+		strmangle.WhereClause("\"", "\"", 2, externalVinDatumPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.IsDebug(ctx) {
+		writer := boil.DebugWriterFrom(ctx)
+		fmt.Fprintln(writer, updateQuery)
+		fmt.Fprintln(writer, values)
+	}
+	if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.UserDeviceID, related.ID)
+	if o.R == nil {
+		o.R = &externalVinDatumR{
+			UserDevice: related,
+		}
+	} else {
+		o.R.UserDevice = related
+	}
+
+	if related.R == nil {
+		related.R = &userDeviceR{
+			ExternalVinData: ExternalVinDatumSlice{o},
+		}
+	} else {
+		related.R.ExternalVinData = append(related.R.ExternalVinData, o)
+	}
+
+	return nil
+}
+
+// RemoveUserDevice relationship.
+// Sets o.R.UserDevice to nil.
+// Removes o from all passed in related items' relationships struct.
+func (o *ExternalVinDatum) RemoveUserDevice(ctx context.Context, exec boil.ContextExecutor, related *UserDevice) error {
+	var err error
+
+	queries.SetScanner(&o.UserDeviceID, nil)
+	if _, err = o.Update(ctx, exec, boil.Whitelist("user_device_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.UserDevice = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.ExternalVinData {
+		if queries.Equal(o.UserDeviceID, ri.UserDeviceID) {
+			continue
+		}
+
+		ln := len(related.R.ExternalVinData)
+		if ln > 1 && i < ln-1 {
+			related.R.ExternalVinData[i] = related.R.ExternalVinData[ln-1]
+		}
+		related.R.ExternalVinData = related.R.ExternalVinData[:ln-1]
+		break
+	}
+	return nil
 }
 
 // ExternalVinData retrieves all the records using an executor.

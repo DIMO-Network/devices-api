@@ -118,8 +118,16 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		KeyPrefix: "devices-api",
 	})
 
+	var wallet services.SyntheticWalletInstanceService
+	if settings.SyntheticDevicesEnabled {
+		wallet, err = services.NewSyntheticWalletInstanceService(settings)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("Couldn't construct wallet client.")
+		}
+	}
+
 	// controllers
-	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService, smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest, deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient, ddaSvc, natsSvc)
+	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService, smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest, deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient, ddaSvc, natsSvc, wallet)
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
@@ -247,25 +255,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Delete("/documents/:id", documentsController.DeleteDocument)
 	v1Auth.Get("/documents/:id/download", documentsController.DownloadDocument)
 
-	if settings.SyntheticDevicesEnabled {
-		syntheticDeviceSvc, err := services.NewSyntheticWalletInstanceService(pdb.DBS, settings)
-		if err != nil {
-			logger.Error().Err(err).Msg("unable to create Synthetic Device service")
-		}
-
-		syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, syntheticDeviceSvc, registryClient, smartcarClient, teslaSvc, cipher)
-
-		sdAuth := v1Auth.Group("/synthetic/device")
-
-		sdAuth.Get("/mint/:integrationNode/:vehicleNode", syntheticController.GetSyntheticDeviceMintingPayload)
-		sdAuth.Post("/mint/:integrationNode/:vehicleNode", syntheticController.MintSyntheticDevice)
-
-		sdAuth.Get("/:syntheticDeviceNode/burn", syntheticController.GetSyntheticDeviceBurnPayload)
-		sdAuth.Post("/:syntheticDeviceNode/burn", syntheticController.BurnSyntheticDevice)
-
-		sdAuth.Post("/:syntheticDeviceNode/re-authenticate", syntheticController.ReAuthenticate)
-	}
-
 	// Vehicle owner routes.
 	udOwnerMw := owner.UserDevice(pdb, usersClient, &logger)
 	udOwner := v1Auth.Group("/user/devices/:userDeviceID", udOwnerMw)
@@ -295,6 +284,16 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Post("/integrations/:integrationID", userDeviceController.RegisterDeviceIntegration)
 	udOwner.Post("/commands/refresh", userDeviceController.RefreshUserDeviceStatus)
 
+	if settings.SyntheticDevicesEnabled {
+		syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, wallet, registryClient)
+
+		udOwner.Get("/integrations/:integrationID/commands/mint", syntheticController.GetSyntheticDeviceMintingPayload)
+		udOwner.Post("/integrations/:integrationID/commands/mint", syntheticController.MintSyntheticDevice)
+
+		v1Auth.Get("synthetic/device/:syntheticDeviceNode/burn", syntheticController.GetSyntheticDeviceBurnPayload)
+		v1Auth.Post("synthetic/device/:syntheticDeviceNode/burn", syntheticController.BurnSyntheticDevice)
+	}
+
 	// Vehicle commands.
 	udOwner.Post("/integrations/:integrationID/commands/doors/unlock", userDeviceController.UnlockDoors)
 	udOwner.Post("/integrations/:integrationID/commands/doors/lock", userDeviceController.LockDoors)
@@ -305,6 +304,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Post("/commands/opt-in", userDeviceController.DeviceOptIn)
 
 	// AftermarketDevice pairing and unpairing.
+	// Routes are transitioning from /autopi to /aftermarket
 	udOwner.Get("/autopi/commands/pair", userDeviceController.GetAutoPiPairMessage)
 	udOwner.Get("/aftermarket/commands/pair", userDeviceController.GetAutoPiPairMessage)
 	udOwner.Post("/autopi/commands/pair", userDeviceController.PostPairAutoPi)
@@ -346,7 +346,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		logger.Fatal().Err(err).Msg("Failed to create vin credentialer listener")
 	}
 
-	store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, settings, scTaskSvc, teslaTaskService, ddSvc)
+	store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, settings)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to create registry storage client")
 	}

@@ -2,15 +2,9 @@ package registry
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
-	"errors"
-	"strconv"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
-	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
@@ -29,17 +23,12 @@ type StatusProcessor interface {
 }
 
 type proc struct {
-	ABI             *abi.ABI
-	DB              func() *db.ReaderWriter
-	Logger          *zerolog.Logger
-	ap              *autopi.Integration
-	settings        *config.Settings
-	smartcarTaskSvc services.SmartcarTaskService
-	teslaTaskSvc    services.TeslaTaskService
-	deviceDefSvc    services.DeviceDefinitionService
+	ABI      *abi.ABI
+	DB       func() *db.ReaderWriter
+	Logger   *zerolog.Logger
+	ap       *autopi.Integration
+	settings *config.Settings
 }
-
-var errInvalidOEM = errors.New("unrecognized oem for synthetic device mint request")
 
 func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	logger := p.Logger.With().
@@ -57,8 +46,8 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		qm.Load(models.MetaTransactionRequestRels.ClaimMetaTransactionRequestAftermarketDevice),
 		qm.Load(models.MetaTransactionRequestRels.PairRequestAftermarketDevice),
 		qm.Load(models.MetaTransactionRequestRels.UnpairRequestAftermarketDevice),
-		qm.Load(qm.Rels(models.MetaTransactionRequestRels.MintRequestSyntheticDevice, models.SyntheticDeviceRels.VehicleToken)),
-		qm.Load(qm.Rels(models.MetaTransactionRequestRels.BurnRequestSyntheticDevice, models.SyntheticDeviceRels.VehicleToken)),
+		qm.Load(models.MetaTransactionRequestRels.MintRequestSyntheticDevice),
+		qm.Load(models.MetaTransactionRequestRels.BurnRequestSyntheticDevice),
 	).One(context.Background(), p.DB().Reader)
 	if err != nil {
 		return err
@@ -101,6 +90,27 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				}
 
 				logger.Info().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msg("Vehicle minted.")
+			} else if l1.Topics[0] == syntheticDeviceMintedEvent.ID {
+				// We must be doing a combined vehicle and SD mint. This always comes second.
+				out := new(contracts.RegistrySyntheticDeviceNodeMinted)
+
+				sd := mtr.R.MintRequestSyntheticDevice
+				if sd == nil {
+					logger.Err(err).Msg("Impossible")
+					return nil
+				}
+
+				err := p.parseLog(out, syntheticDeviceMintedEvent, l1)
+				if err != nil {
+					return err
+				}
+
+				sd.VehicleTokenID = mtr.R.MintRequestVehicleNFT.TokenID
+				sd.TokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.SyntheticDeviceNode, 0))
+				_, err = sd.Update(ctx, p.DB().Writer, boil.Infer())
+				if err != nil {
+					return err
+				}
 			}
 		}
 	case mtr.R.ClaimMetaTransactionRequestAftermarketDevice != nil:
@@ -173,71 +183,9 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				if _, err := sd.Update(ctx, p.DB().Writer, boil.Infer()); err != nil {
 					return err
 				}
-
-				intToken, intTkErr := sd.IntegrationTokenID.Uint64()
-				if !intTkErr {
-					return errors.New("error occurred parsing integration tokenID")
-				}
-				integration, err := p.deviceDefSvc.GetIntegrationByTokenID(ctx, intToken)
-				if err != nil {
-					return err
-				}
-
-				ud, err := models.UserDeviceAPIIntegrations(
-					models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(sd.R.VehicleToken.UserDeviceID.String),
-					models.UserDeviceAPIIntegrationWhere.Status.EQ(models.UserDeviceAPIIntegrationStatusPending),
-					models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integration.Id),
-					qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
-				).One(ctx, p.DB().Reader)
-				if err != nil {
-					if errors.Is(err, sql.ErrNoRows) {
-						p.Logger.Debug().Err(err).Str("userDeviceID", sd.R.VehicleToken.UserDeviceID.String).Msg("Device has been deleted")
-						return nil
-					}
-					return err
-				}
-
-				ud.Status = models.UserDeviceAPIIntegrationStatusPendingFirstData
-				if _, err := ud.Update(ctx, p.DB().Writer, boil.Infer()); err != nil {
-					return err
-				}
-
-				switch integration.Vendor {
-				case constants.SmartCarVendor:
-					if err := p.smartcarTaskSvc.StartPoll(ud); err != nil {
-						logger.Err(err).Msg("Couldn't start Smartcar polling.")
-						return err
-					}
-				case constants.TeslaVendor:
-					extID, err := strconv.Atoi(ud.ExternalID.String)
-					if err != nil {
-						logger.Err(err).Msg("cannot convert tesla external id to int")
-						return err
-					}
-
-					var metadata services.UserDeviceAPIIntegrationsMetadata
-					err = json.Unmarshal(ud.Metadata.JSON, &metadata)
-					if err != nil {
-						logger.Err(err).Msg("unable to parse metadata")
-						return err
-					}
-
-					v := &services.TeslaVehicle{
-						ID:        extID,
-						VIN:       ud.R.UserDevice.VinIdentifier.String,
-						VehicleID: metadata.TeslaVehicleID,
-					}
-
-					if err := p.teslaTaskSvc.StartPoll(v, ud); err != nil {
-						logger.Err(err).Msg("Couldn't start Tesla polling.")
-						return err
-					}
-				default:
-					logger.Err(err).Msg("unable to complete request")
-					return errInvalidOEM
-				}
 			}
 		}
+	// It's very important that this be after the case for VehicleNodeMinted.
 	case mtr.R.BurnRequestSyntheticDevice != nil:
 		for _, l1 := range data.Transaction.Logs {
 			if l1.Topics[0] == sdBurnEvent.ID {
@@ -247,45 +195,8 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return err
 				}
 
-				sd := mtr.R.MintRequestSyntheticDevice
-				v := sd.R.VehicleToken
-
-				if v.UserDeviceID.Valid {
-					intToken, _ := sd.IntegrationTokenID.Uint64()
-					integration, err := p.deviceDefSvc.GetIntegrationByTokenID(ctx, intToken)
-					if err != nil {
-						return err
-					}
-
-					udai, err := models.FindUserDeviceAPIIntegration(ctx, p.DB().Reader, v.UserDeviceID.String, integration.Id)
-					if err != nil {
-						if err == sql.ErrNoRows {
-							return nil
-						}
-						return err
-					}
-
-					// In these two states, the job has already stopped, or never started.
-					if udai.Status != models.UserDeviceAPIIntegrationStatusAuthenticationFailure && udai.Status != models.UserDeviceAPIIntegrationStatusFailed {
-						switch integration.Vendor {
-						case constants.SmartCarVendor:
-							if err := p.smartcarTaskSvc.StopPoll(udai); err != nil {
-								return err
-							}
-						case constants.TeslaVendor:
-							if err := p.teslaTaskSvc.StopPoll(udai); err != nil {
-								return err
-							}
-						}
-
-						if _, err := udai.Delete(ctx, p.DB().Writer); err != nil {
-							return err
-						}
-					}
-
-					if _, err := sd.Delete(ctx, p.DB().Writer); err != nil {
-						return err
-					}
+				if _, err := mtr.R.MintRequestSyntheticDevice.Delete(ctx, p.DB().Writer); err != nil {
+					return err
 				}
 			}
 		}
@@ -316,9 +227,6 @@ func NewProcessor(
 	logger *zerolog.Logger,
 	ap *autopi.Integration,
 	settings *config.Settings,
-	smartcarTaskSvc services.SmartcarTaskService,
-	teslaTaskService services.TeslaTaskService,
-	deviceDefSvc services.DeviceDefinitionService,
 ) (StatusProcessor, error) {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
@@ -326,13 +234,10 @@ func NewProcessor(
 	}
 
 	return &proc{
-		ABI:             abi,
-		DB:              db,
-		Logger:          logger,
-		ap:              ap,
-		settings:        settings,
-		smartcarTaskSvc: smartcarTaskSvc,
-		teslaTaskSvc:    teslaTaskService,
-		deviceDefSvc:    deviceDefSvc,
+		ABI:      abi,
+		DB:       db,
+		Logger:   logger,
+		ap:       ap,
+		settings: settings,
 	}, nil
 }
