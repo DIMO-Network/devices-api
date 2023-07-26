@@ -1882,7 +1882,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	sigBytes := common.FromHex(mr.Signature)
 
-	recAddr, err := helpers.Ecrecover(hash.Bytes(), sigBytes)
+	recAddr, err := helpers.Ecrecover(hash, sigBytes)
 	if err != nil {
 		return err
 	}
@@ -1956,7 +1956,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
-			sign, err := udc.wallet.SignHash(c.Context(), uint32(childNum), hash.Bytes())
+			sign, err := udc.wallet.SignHash(c.Context(), uint32(childNum), hash)
 			if err != nil {
 				return err
 			}
@@ -1968,7 +1968,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				WalletAddress:      addr,
 			}
 
-			if err:= sd.Insert(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
+			if err := sd.Insert(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
 				return err
 			}
 
