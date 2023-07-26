@@ -74,7 +74,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	syntheticDeviceMintedEvent := p.ABI.Events["SyntheticDeviceNodeMinted"]
 	sdBurnEvent := p.ABI.Events["SyntheticDeviceNodeBurned"]
 
-	depVehicleMintedEvent := p.ABI.Events["VehicleNodeMinted"]
+	depVehicleMintedEvent := p.DeprecatedABI.Events["VehicleNodeMinted"]
 
 	switch {
 	case mtr.R.MintRequestVehicleNFT != nil:
@@ -97,8 +97,20 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 			} else if l1.Topics[0] == depVehicleMintedEvent.ID {
 				// We won't fill in the manufacturer id, but it should be okay.
 				out := new(contracts.RegistryVehicleNodeMinted)
-				err := p.parseLog(out, vehicleMintedEvent, l1)
-				if err != nil {
+				if len(l1.Data) > 0 {
+					if err := p.DeprecatedABI.UnpackIntoInterface(out, depVehicleMintedEvent.Name, l1.Data); err != nil {
+						return err
+					}
+				}
+
+				var indexed abi.Arguments
+				for _, arg := range depVehicleMintedEvent.Inputs {
+					if arg.Indexed {
+						indexed = append(indexed, arg)
+					}
+				}
+
+				if err := abi.ParseTopics(out, indexed, l1.Topics[1:]); err != nil {
 					return err
 				}
 
