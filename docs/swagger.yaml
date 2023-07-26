@@ -812,6 +812,22 @@ definitions:
       vin:
         type: string
     type: object
+  internal_controllers.SyntheticDeviceStatus:
+    properties:
+      status:
+        enum:
+        - Unstarted
+        - Submitted
+        - Mined
+        - Confirmed
+        example: Confirmed
+        type: string
+      tokenId:
+        $ref: '#/definitions/big.Int'
+      txHash:
+        example: 0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e
+        type: string
+    type: object
   internal_controllers.UpdateCountryCodeReq:
     properties:
       countryCode:
@@ -884,6 +900,10 @@ definitions:
         type: string
       status:
         type: string
+      syntheticDevice:
+        $ref: '#/definitions/internal_controllers.SyntheticDeviceStatus'
+      tokenId:
+        $ref: '#/definitions/big.Int'
       updatedAt:
         type: string
     type: object
@@ -1368,69 +1388,6 @@ paths:
       responses:
         "200":
           description: OK
-  /synthetic/device/{syntheticDeviceNode}/re-authenticate:
-    post:
-      description: |-
-        Submit new credentials for the given synthetic device. Mostly
-        used in the event of an upstream password change.
-      parameters:
-      - description: synthetic device token id
-        in: path
-        name: syntheticDeviceNode
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-  /synthetic/device/mint/{integrationNode}/{vehicleNode}:
-    get:
-      description: |-
-        Produces the payload that the user signs and submits to mint a synthetic device for
-        the given vehicle and integration.
-      parameters:
-      - description: token ID
-        in: path
-        name: integrationNode
-        required: true
-        type: integer
-      - description: vehicle ID
-        in: path
-        name: vehicleNode
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/apitypes.TypedData'
-            type: array
-      tags:
-      - integrations
-    post:
-      description: Submit a metadata
-      parameters:
-      - description: token ID
-        in: path
-        name: integrationNode
-        required: true
-        type: integer
-      - description: vehicle ID
-        in: path
-        name: vehicleNode
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-      tags:
-      - integrations
   /user/devices:
     post:
       consumes:
@@ -1894,6 +1851,53 @@ paths:
       - device
       - integration
       - command
+  /user/devices/{userDeviceID}/integrations/{integrationID}/commands/mint:
+    get:
+      description: |-
+        Produces the payload that the user signs and submits to mint a synthetic device for
+        the given vehicle and integration.
+      parameters:
+      - description: user device KSUID
+        in: path
+        name: userDeviceID
+        required: true
+        type: integer
+      - description: integration KSUD, must be software-based
+        in: path
+        name: integrationID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/apitypes.TypedData'
+            type: array
+      tags:
+      - integrations
+    post:
+      description: Submit a metadata
+      parameters:
+      - description: user device KSUID, must be minted
+        in: path
+        name: userDeviceID
+        required: true
+        type: integer
+      - description: integration KSUD, must be software-based
+        in: path
+        name: integrationID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      tags:
+      - integrations
   /user/devices/{userDeviceID}/integrations/{integrationID}/commands/trunk/open:
     post:
       description: Open the device's front trunk. Currently, this only works for Teslas
