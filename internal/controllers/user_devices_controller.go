@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ericlagergren/decimal"
+
 	smartcar "github.com/smartcar/go-sdk"
 
 	"github.com/DIMO-Network/shared/redis"
