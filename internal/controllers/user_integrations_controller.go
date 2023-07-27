@@ -1905,7 +1905,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 
 	// Prevent users from connecting a vehicle if it's already connected through another user
 	// device object. Disabled outside of prod for ease of testing.
-	if udc.Settings.Environment == "prod" {
+	if udc.Settings.IsProduction() {
 		// Probably a race condition here.
 		var conflict bool
 		conflict, err = models.UserDevices(
@@ -1913,6 +1913,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 			models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(v.VIN)),
 			models.UserDeviceWhere.VinConfirmed.EQ(true),
 		).Exists(c.Context(), tx)
+
 		if err != nil {
 			return err
 		}
@@ -1975,6 +1976,28 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 
 	if err := udc.teslaService.WakeUpVehicle(reqBody.AccessToken, teslaID); err != nil {
 		logger.Err(err).Msg("Couldn't wake up Tesla.")
+	}
+
+	if udc.Settings.IsProduction() {
+		message := services.ValuationDecodeCommand{
+			VIN:          v.VIN,
+			UserDeviceID: userDeviceID,
+		}
+
+		messageBytes, err := json.Marshal(message)
+
+		if err != nil {
+			udc.log.Err(err).Msg("Failed to marshal valuation decode command.")
+		} else {
+			pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, messageBytes)
+
+			if err != nil {
+				udc.log.Err(err).Msg("Failed to publish valuation decode command for Tesla Device.")
+			} else {
+				udc.log.Info().Str("vin", v.VIN).Msgf("Published valuation decode command with sequence %d.", pubAck.Sequence)
+			}
+		}
+
 	}
 
 	if err := udc.teslaTaskService.StartPoll(v, &integration); err != nil {
