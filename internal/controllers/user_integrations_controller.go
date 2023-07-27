@@ -1774,12 +1774,13 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle's confirmed VIN does not match Smartcar's %s.", vin))
 		}
 	}
+	localLog := logger.With().Str("vin", vin).Str("userId", ud.UserID).Logger()
 
 	// Prevent users from connecting a vehicle if it's already connected through another user
 	// device object. Disabled outside of prod for ease of testing.
 	if udc.Settings.IsProduction() {
 		if vin[0:3] == "0SC" {
-			logger.Error().Msgf("Smartcar test VIN %s is not allowed.", vin)
+			localLog.Error().Msgf("Smartcar test VIN %s is not allowed.", vin)
 			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Smartcar test VIN %s is not allowed.", vin))
 		}
 		// Probably a race condition here. Need to either lock something or impose a greater
@@ -1790,19 +1791,19 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 			models.UserDeviceWhere.VinConfirmed.EQ(true),
 		).Exists(c.Context(), tx)
 		if err != nil {
-			logger.Err(err).Msg("Failed to search for VIN conflicts.")
+			localLog.Err(err).Msg("Failed to search for VIN conflicts.")
 			return opaqueInternalError
 		}
 
 		if conflict {
-			logger.Error().Msg("VIN %s already in use.")
+			localLog.Error().Msg("VIN %s already in use.")
 			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("VIN %s in use by a previously connected device.", ud.VinIdentifier.String))
 		}
 	}
 
 	endpoints, err := udc.smartcarClient.GetEndpoints(c.Context(), token.Access, externalID)
 	if err != nil {
-		logger.Err(err).Msg("Failed to retrieve permissions from Smartcar.")
+		localLog.Err(err).Msg("Failed to retrieve permissions from Smartcar.")
 		return smartcarCallErr
 	}
 
@@ -1810,7 +1811,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 
 	doorControl, err := udc.smartcarClient.HasDoorControl(c.Context(), token.Access, externalID)
 	if err != nil {
-		logger.Err(err).Msg("Failed to retrieve door control permissions from Smartcar.")
+		localLog.Err(err).Msg("Failed to retrieve door control permissions from Smartcar.")
 		return smartcarCallErr
 	}
 
@@ -1856,7 +1857,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 	}
 
 	if err := integration.Insert(c.Context(), tx, boil.Infer()); err != nil {
-		logger.Err(err).Msg("Unexpected database error inserting new Smartcar integration registration.")
+		localLog.Err(err).Msg("Unexpected database error inserting new Smartcar integration registration.")
 		return opaqueInternalError
 	}
 
@@ -1870,16 +1871,16 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 	}
 
 	if err := udc.smartcarTaskSvc.StartPoll(integration); err != nil {
-		logger.Err(err).Msg("Couldn't start Smartcar polling.")
+		localLog.Err(err).Msg("Couldn't start Smartcar polling.")
 		return opaqueInternalError
 	}
 
 	if err := tx.Commit(); err != nil {
-		logger.Error().Msg("Failed to commit new user device integration.")
+		localLog.Error().Msg("Failed to commit new user device integration.")
 		return opaqueInternalError
 	}
 
-	logger.Info().Msg("Finished Smartcar device registration.")
+	localLog.Info().Msg("Finished Smartcar device registration.")
 
 	return c.SendStatus(fiber.StatusNoContent)
 }

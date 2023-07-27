@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/ericlagergren/decimal"
+
 	smartcar "github.com/smartcar/go-sdk"
 
 	"github.com/DIMO-Network/shared/redis"
@@ -629,6 +630,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	if country == nil {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("invalid countryCode field or country not supported: %s", reg.CountryCode))
 	}
+	localLog = localLog.With().Str("countryCode", reg.CountryCode).Str("region", country.Region).Logger()
 
 	// call SC api with stuff and get VIN
 	token, err := udc.smartcarClient.ExchangeCode(c.Context(), reg.Code, reg.RedirectURI)
