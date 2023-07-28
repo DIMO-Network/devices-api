@@ -83,6 +83,9 @@ type Settings struct {
 
 	DeviceFingerprintTopic         string `yaml:"DEVICE_FINGERPRINT_TOPIC"`
 	DeviceFingerprintConsumerGroup string `yaml:"DEVICE_FINGERPRINT_CONSUMER_GROUP"`
+
+	SyntheticFingerprintTopic         string `yaml:"SYNTHETIC_FINGERPRINT_TOPIC"`
+	SyntheticFingerprintConsumerGroup string `yaml:"SYNTHETIC_FINGERPRINT_CONSUMER_GROUP"`
 }
 
 func (s *Settings) IsProduction() bool {

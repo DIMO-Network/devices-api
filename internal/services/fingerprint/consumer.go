@@ -63,7 +63,12 @@ func RunConsumer(ctx context.Context, settings *config.Settings, logger *zerolog
 	kc := sarama.NewConfig()
 	kc.Version = sarama.V3_3_1_0
 
-	group, err := sarama.NewConsumerGroup(strings.Split(settings.KafkaBrokers, ","), settings.DeviceFingerprintConsumerGroup, kc)
+	deviceGroup, err := sarama.NewConsumerGroup(strings.Split(settings.KafkaBrokers, ","), settings.DeviceFingerprintConsumerGroup, kc)
+	if err != nil {
+		return err
+	}
+
+	syntheticGroup, err := sarama.NewConsumerGroup(strings.Split(settings.KafkaBrokers, ","), settings.DeviceFingerprintConsumerGroup, kc)
 	if err != nil {
 		return err
 	}
@@ -74,8 +79,19 @@ func RunConsumer(ctx context.Context, settings *config.Settings, logger *zerolog
 
 	go func() {
 		for {
-			if err := group.Consume(ctx, []string{settings.DeviceFingerprintTopic}, c); err != nil {
-				logger.Warn().Err(err).Msg("Consumer group session ended.")
+			if err := deviceGroup.Consume(ctx, []string{settings.DeviceFingerprintTopic}, c); err != nil {
+				logger.Warn().Err(err).Msgf("Consumer group session ended: %s", settings.DeviceFingerprintTopic)
+			}
+			if ctx.Err() != nil {
+				return
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			if err := syntheticGroup.Consume(ctx, []string{settings.SyntheticFingerprintTopic}, c); err != nil {
+				logger.Warn().Err(err).Msgf("Consumer group session ended: %s", settings.SyntheticFingerprintTopic)
 			}
 			if ctx.Err() != nil {
 				return
