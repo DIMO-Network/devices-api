@@ -3040,7 +3040,8 @@
             "type": "object",
             "properties": {
                 "signature": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "0xc565d38982e1a5004efb5ee390fba0a08bb5e72b3f3e91094c66bc395c324f785425d58d5c1a601372d9c16164e380c63e89f1e0ea95fdefdf7b2854c4f938e81b"
                 }
             }
         },
@@ -3366,6 +3367,10 @@
         "internal_controllers.SyntheticDeviceStatus": {
             "type": "object",
             "properties": {
+                "address": {
+                    "type": "string",
+                    "example": "0xAED7EA8035eEc47E657B34eF5D020c7005487443"
+                },
                 "status": {
                     "type": "string",
                     "enum": [
@@ -3377,7 +3382,8 @@
                     "example": "Confirmed"
                 },
                 "tokenId": {
-                    "$ref": "#/definitions/big.Int"
+                    "type": "number",
+                    "example": 15
                 },
                 "txHash": {
                     "type": "string",

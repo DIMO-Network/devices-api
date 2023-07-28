@@ -594,6 +594,7 @@ definitions:
   internal_controllers.MintSyntheticDeviceRequest:
     properties:
       signature:
+        example: 0xc565d38982e1a5004efb5ee390fba0a08bb5e72b3f3e91094c66bc395c324f785425d58d5c1a601372d9c16164e380c63e89f1e0ea95fdefdf7b2854c4f938e81b
         type: string
     type: object
   internal_controllers.MyDevicesResp:
@@ -824,6 +825,9 @@ definitions:
     type: object
   internal_controllers.SyntheticDeviceStatus:
     properties:
+      address:
+        example: 0xAED7EA8035eEc47E657B34eF5D020c7005487443
+        type: string
       status:
         enum:
         - Unstarted
@@ -833,7 +837,8 @@ definitions:
         example: Confirmed
         type: string
       tokenId:
-        $ref: '#/definitions/big.Int'
+        example: 15
+        type: number
       txHash:
         example: 0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e
         type: string

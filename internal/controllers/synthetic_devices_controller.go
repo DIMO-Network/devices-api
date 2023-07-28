@@ -40,7 +40,7 @@ type SyntheticDevicesController struct {
 }
 
 type MintSyntheticDeviceRequest struct {
-	Signature string `json:"signature"`
+	Signature string `json:"signature" example:"0xc565d38982e1a5004efb5ee390fba0a08bb5e72b3f3e91094c66bc395c324f785425d58d5c1a601372d9c16164e380c63e89f1e0ea95fdefdf7b2854c4f938e81b"`
 }
 
 type SyntheticDeviceSequence struct {

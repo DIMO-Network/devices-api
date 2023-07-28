@@ -294,6 +294,8 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 				}
 				if !sd.TokenID.IsZero() {
 					sdStat.TokenID = sd.TokenID.Int(nil)
+					a := common.BytesToAddress(sd.WalletAddress)
+					sdStat.Address = &a
 				}
 			}
 		}
@@ -2193,8 +2195,9 @@ type NFTData struct {
 }
 
 type SyntheticDeviceStatus struct {
-	IntegrationID uint64   `json:"-"`
-	TokenID       *big.Int `json:"tokenId,omitempty"`
-	TxHash        *string  `json:"txHash,omitempty" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
-	Status        string   `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed" example:"Confirmed"`
+	IntegrationID uint64          `json:"-"`
+	TokenID       *big.Int        `json:"tokenId,omitempty" swaggertype:"number" example:"15"`
+	Address       *common.Address `json:"address,omitempty" swaggertype:"string" example:"0xAED7EA8035eEc47E657B34eF5D020c7005487443"`
+	TxHash        *string         `json:"txHash,omitempty" swaggertype:"string" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
+	Status        string          `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed" example:"Confirmed"`
 }
