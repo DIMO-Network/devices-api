@@ -114,6 +114,8 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 	).One(c.Context(), nc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			// Indexers start looking immediately.
+			c.Locals("skipErrorLog", true)
 			return fiber.NewError(fiber.StatusNotFound, "NFT not found.")
 		}
 		nc.log.Err(err).Msg("Database error retrieving NFT metadata.")
