@@ -160,10 +160,12 @@ func ErrorHandler(c *fiber.Ctx, err error, logger *zerolog.Logger, isProduction 
 	c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 	codeStr := strconv.Itoa(code)
 
-	logger.Err(err).Str("httpStatusCode", codeStr).
-		Str("httpMethod", c.Method()).
-		Str("httpPath", c.Path()).
-		Msg("caught an error from http request")
+	if !c.Locals("skipErrorLog") {
+		logger.Err(err).Str("httpStatusCode", codeStr).
+			Str("httpMethod", c.Method()).
+			Str("httpPath", c.Path()).
+			Msg("caught an error from http request")
+	}
 	// return an opaque error if we're in a higher level environment and we haven't specified an fiber type err.
 	if !fiberTypeErr && isProduction {
 		err = fiber.NewError(fiber.StatusInternalServerError, "Internal error")
