@@ -160,7 +160,7 @@ func ErrorHandler(c *fiber.Ctx, err error, logger *zerolog.Logger, isProduction 
 	c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 	codeStr := strconv.Itoa(code)
 
-	if c.Locals("skipErrorLog") == true {
+	if c.Locals("skipErrorLog") != true {
 		logger.Err(err).Str("httpStatusCode", codeStr).
 			Str("httpMethod", c.Method()).
 			Str("httpPath", c.Path()).
