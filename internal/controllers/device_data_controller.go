@@ -102,7 +102,11 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 		[]int64{NonLocationData, CurrentLocation, AllTimeLocation}, // assume all privileges when called from here
 	)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "failed to get user device data grpc")
+		err := shared.GrpcErrorToFiber(err, "failed to get user device data grpc")
+		if ferr, ok := err.(*fiber.Error); ok && ferr.Code == 404 {
+			c.Locals("skipErrorLog", true)
+			return err
+		}		
 	}
 
 	ds := grpcDeviceDataToSnapshot(udd)
