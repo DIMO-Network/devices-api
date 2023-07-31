@@ -316,6 +316,8 @@ func mergeSignals(currentData map[string]interface{}, newData map[string]interfa
 	return merged, nil
 }
 
+var ErrNoVIN = errors.New("no VIN field")
+
 var basicVINExp = regexp.MustCompile(`^[A-Z0-9]{17}$`)
 
 // ExtractVIN extracts the vin field from a status update's data object.
@@ -331,7 +333,7 @@ func ExtractVIN(data []byte) (string, error) {
 	}
 
 	if partialData.VIN == nil {
-		return "", errors.New("data payload did not have a VIN reading")
+		return "", ErrNoVIN
 	}
 
 	// Minor cleaning.
