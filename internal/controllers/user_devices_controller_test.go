@@ -357,6 +357,61 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	assert.Equal(s.T(), "06", gjson.GetBytes(userDevice.Metadata.JSON, "canProtocol").Str)
 }
 
+func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_SameUser_DuplicateVIN() {
+	// arrange DB
+	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
+	// act request
+	const vinny = "4T3R6RFVXMU023395"
+	reg := RegisterUserDeviceVIN{VIN: vinny, CountryCode: "USA", CANProtocol: "06"}
+	j, _ := json.Marshal(reg)
+	// existing UserDevice with same VIN
+	existingUD := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, vinny, s.pdb)
+	// if the vin already exists for this user, do not expect decode
+	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(0)
+
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
+	apInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 10)
+	s.deviceDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Times(1).Return(apInteg, nil)
+	// same with this - device_integration should already be created
+	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), apInteg.Id, dd[0].DeviceDefinitionId, "Americas").
+		Times(0)
+
+	request := test.BuildRequest("POST", "/user/devices/fromvin", string(j))
+	response, responseError := s.app.Test(request, 10000)
+	fmt.Println(responseError)
+	body, _ := io.ReadAll(response.Body)
+	// assert
+	if assert.Equal(s.T(), fiber.StatusCreated, response.StatusCode) == false {
+		fmt.Println("message: " + string(body))
+	}
+	regUserResp := UserDeviceFull{}
+	jsonUD := gjson.Get(string(body), "userDevice")
+	_ = json.Unmarshal([]byte(jsonUD.String()), &regUserResp)
+
+	assert.Len(s.T(), regUserResp.ID, 27)
+	assert.Equal(s.T(), existingUD.ID, regUserResp.ID, "expected to return existing user_device")
+	assert.Equal(s.T(), dd[0].DeviceDefinitionId, regUserResp.DeviceDefinition.DeviceDefinitionID)
+	if assert.Len(s.T(), regUserResp.DeviceDefinition.CompatibleIntegrations, 2) == false {
+		fmt.Println("resp body: " + string(body))
+	}
+	assert.Equal(s.T(), integration.Vendor, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Vendor)
+	assert.Equal(s.T(), integration.Type, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Type)
+	assert.Equal(s.T(), integration.Id, regUserResp.DeviceDefinition.CompatibleIntegrations[0].ID)
+
+	msg, responseError := s.natsService.JetStream.GetLastMsg(natsStreamName, s.natsService.JetStreamSubject)
+	assert.NoError(s.T(), responseError, "expected no error from nats")
+	vinResult := gjson.GetBytes(msg.Data, "vin")
+	assert.Equal(s.T(), vinny, vinResult.Str)
+
+	userDevice, err := models.UserDevices().One(s.ctx, s.pdb.DBS().Reader)
+	require.NoError(s.T(), err)
+	assert.NotNilf(s.T(), userDevice, "expected a user device in the database to exist")
+	assert.Equal(s.T(), s.testUserID, userDevice.UserID)
+	assert.Equal(s.T(), vinny, userDevice.VinIdentifier.String)
+	assert.Equal(s.T(), "06", gjson.GetBytes(userDevice.Metadata.JSON, "canProtocol").Str)
+}
+
 func (s *UserDevicesControllerTestSuite) TestPostWithExistingDefinitionID() {
 	// arrange DB
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
