@@ -540,6 +540,21 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	if country == nil {
 		return fiber.NewError(fiber.StatusBadRequest, "unsupported or invalid country: "+reg.CountryCode)
 	}
+	// check if VIN already exists
+	existingUD, err := models.UserDevices(models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(reg.VIN)),
+		models.UserDeviceWhere.VinConfirmed.EQ(true)).One(c.Context(), udc.DBS().Reader)
+	if err != nil && !errors.Is(sql.ErrNoRows, err) {
+		return err
+	}
+	if existingUD != nil {
+		if existingUD.UserID != userID {
+			return fiber.NewError(fiber.StatusConflict, "VIN already exists for a different user: "+reg.VIN)
+		}
+		// can now shortcut process
+		udc.log.Info().Msg("found duplicate user_device for same user")
+	} else {
+		// todo put in other stuff
+	}
 	// decode VIN with grpc call
 	vin := strings.ToUpper(reg.VIN)
 	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, "", 0, reg.CountryCode)
@@ -571,20 +586,18 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		}
 	}
 
+	// request valuation
 	if udc.Settings.IsProduction() {
-
 		message := services.ValuationDecodeCommand{
 			VIN:          vin,
 			UserDeviceID: udFull.ID,
 		}
-
 		messageBytes, err := json.Marshal(message)
 
 		if err != nil {
 			udc.log.Err(err).Msg("Failed to marshal message.")
 		} else {
 			pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, messageBytes)
-
 			if err != nil {
 				udc.log.Err(err).Msg("failed to publish to NATS")
 			} else {
