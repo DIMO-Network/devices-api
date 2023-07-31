@@ -175,7 +175,7 @@ func (c *ContractsEventsConsumer) routeTransferEvent(e *ContractEventData) error
 		c.log.Debug().Str("event", e.EventName).Interface("fullEventData", e).Msg("Handler not provided for contract")
 	}
 
-	return errors.New("Handler not provided for contract")
+	return nil
 }
 
 func (c *ContractsEventsConsumer) handleVehicleTransfer(e *ContractEventData) error {
