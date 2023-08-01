@@ -146,6 +146,12 @@ type ErrorRes struct {
 	Message string `json:"message"`
 }
 
+const skipErrorLogKey = "skipErrorLog"
+
+func SkipErrorLog(c *fiber.Ctx) {
+	c.Locals(skipErrorLogKey, true)
+}
+
 // ErrorHandler custom handler to log recovered errors using our logger and return json instead of string
 func ErrorHandler(c *fiber.Ctx, err error, logger *zerolog.Logger, isProduction bool) error {
 	logger = GetLogger(c, logger)
@@ -160,10 +166,12 @@ func ErrorHandler(c *fiber.Ctx, err error, logger *zerolog.Logger, isProduction 
 	c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 	codeStr := strconv.Itoa(code)
 
-	logger.Err(err).Str("httpStatusCode", codeStr).
-		Str("httpMethod", c.Method()).
-		Str("httpPath", c.Path()).
-		Msg("caught an error from http request")
+	if c.Locals(skipErrorLogKey) != true {
+		logger.Err(err).Str("httpStatusCode", codeStr).
+			Str("httpMethod", c.Method()).
+			Str("httpPath", c.Path()).
+			Msg("caught an error from http request")
+	}
 	// return an opaque error if we're in a higher level environment and we haven't specified an fiber type err.
 	if !fiberTypeErr && isProduction {
 		err = fiber.NewError(fiber.StatusInternalServerError, "Internal error")

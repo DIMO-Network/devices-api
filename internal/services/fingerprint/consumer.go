@@ -118,6 +118,9 @@ func (c *Consumer) Handle(ctx context.Context, event *Event) error {
 
 	observedVIN, err := services.ExtractVIN(event.Data)
 	if err != nil {
+		if err == services.ErrNoVIN {
+			return nil
+		}
 		return fmt.Errorf("couldn't extract VIN: %w", err)
 	}
 

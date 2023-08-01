@@ -215,13 +215,15 @@ func (g *GeofencesController) GetAll(c *fiber.Ctx) error {
 		qm.Load(qm.Rels(models.GeofenceRels.UserDeviceToGeofences, models.UserDeviceToGeofenceRels.UserDevice)),
 	).All(c.Context(), g.DBS().Reader)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return c.JSON(fiber.Map{
-				"geofences": []GetGeofence{},
-			})
-		}
 		return err
 	}
+
+	if len(items) == 0 {
+		return c.JSON(fiber.Map{
+			"geofences": []GetGeofence{},
+		})
+	}
+
 	// pull out list of udtg. device def ids
 	var ddIds []string
 	for _, item := range items {

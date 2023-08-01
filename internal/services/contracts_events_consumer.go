@@ -175,7 +175,7 @@ func (c *ContractsEventsConsumer) routeTransferEvent(e *ContractEventData) error
 		c.log.Debug().Str("event", e.EventName).Interface("fullEventData", e).Msg("Handler not provided for contract")
 	}
 
-	return errors.New("Handler not provided for contract")
+	return nil
 }
 
 func (c *ContractsEventsConsumer) handleVehicleTransfer(e *ContractEventData) error {
@@ -341,6 +341,11 @@ func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
 	var args contracts.RegistryBeneficiarySet
 	if err := json.Unmarshal(e.Arguments, &args); err != nil {
 		return err
+	}
+
+	if args.IdProxyAddress != common.HexToAddress(c.settings.AftermarketDeviceContractAddress) {
+		c.log.Warn().Msgf("Beneficiary set on an unexpected contract: %s.", args.IdProxyAddress)
+		return nil
 	}
 
 	c.log.Info().Int64("nodeID", args.NodeId.Int64()).Msgf("Aftermarket beneficiary set: %s.", args.Beneficiary)

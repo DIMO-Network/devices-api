@@ -114,6 +114,8 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 	).One(c.Context(), nc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			// Indexers start looking immediately.
+			helpers.SkipErrorLog(c)
 			return fiber.NewError(fiber.StatusNotFound, "NFT not found.")
 		}
 		nc.log.Err(err).Msg("Database error retrieving NFT metadata.")
@@ -517,7 +519,11 @@ func (nc *NFTController) GetVehicleStatus(c *fiber.Ctx) error {
 		privileges,
 	)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "failed to get user device data grpc")
+		err := shared.GrpcErrorToFiber(err, "failed to get user device data grpc")
+		if err, ok := err.(*fiber.Error); ok && err.Code == 404 {
+			helpers.SkipErrorLog(c)
+		}
+		return err
 	}
 
 	ds := grpcDeviceDataToSnapshot(udd)

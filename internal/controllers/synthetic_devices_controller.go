@@ -3,14 +3,9 @@ package controllers
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
-	"strconv"
-	"time"
 
-	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
@@ -18,7 +13,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
@@ -28,7 +22,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
-	smartcar "github.com/smartcar/go-sdk"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -44,31 +37,10 @@ type SyntheticDevicesController struct {
 	usersClient    pb.UserServiceClient
 	walletSvc      services.SyntheticWalletInstanceService
 	registryClient registry.Client
-
-	cipher shared.Cipher
-
-	smartcarClient services.SmartcarClient
-	smartcarTask   services.SmartcarTaskService
-
-	teslaService services.TeslaService
-	teslaTask    services.TeslaTaskService
 }
 
 type MintSyntheticDeviceRequest struct {
-	Credentials    credentials `json:"credentials"`
-	OwnerSignature string      `json:"ownerSignature"`
-}
-
-type credentials struct {
-	// Smartcar
-	Code        string `json:"code"`
-	RedirectURI string `json:"redirectUri"`
-
-	// Tesla
-	ID           string `json:"id"`
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
-	ExpiresIn    int64  `json:"expiresIn"`
+	Signature string `json:"signature" example:"0xc565d38982e1a5004efb5ee390fba0a08bb5e72b3f3e91094c66bc395c324f785425d58d5c1a601372d9c16164e380c63e89f1e0ea95fdefdf7b2854c4f938e81b"`
 }
 
 type SyntheticDeviceSequence struct {
@@ -83,9 +55,6 @@ func NewSyntheticDevicesController(
 	usersClient pb.UserServiceClient,
 	walletSvc services.SyntheticWalletInstanceService,
 	registryClient registry.Client,
-	smartcarClient services.SmartcarClient,
-	teslaSvc services.TeslaService,
-	cipher shared.Cipher,
 ) SyntheticDevicesController {
 	return SyntheticDevicesController{
 		Settings:       settings,
@@ -95,9 +64,6 @@ func NewSyntheticDevicesController(
 		deviceDefSvc:   deviceDefSvc,
 		walletSvc:      walletSvc,
 		registryClient: registryClient,
-		smartcarClient: smartcarClient,
-		teslaService:   teslaSvc,
-		cipher:         cipher,
 	}
 }
 
@@ -130,108 +96,78 @@ func (sdc *SyntheticDevicesController) getEIP712Mint(integrationID, vehicleNode 
 	}
 }
 
-func (sdc *SyntheticDevicesController) getEIP712Burn(vehicleNode, syntheticDeviceNode int64) *signer.TypedData {
-	return &signer.TypedData{
-		Types: signer.Types{
-			"EIP712Domain": []signer.Type{
-				{Name: "name", Type: "string"},
-				{Name: "version", Type: "string"},
-				{Name: "chainId", Type: "uint256"},
-				{Name: "verifyingContract", Type: "address"},
-			},
-			"BurnSyntheticDeviceSign": []signer.Type{
-				{Name: "vehicleNode", Type: "uint256"},
-				{Name: "syntheticDeviceNode", Type: "uint256"},
-			},
-		},
-		PrimaryType: "BurnSyntheticDeviceSign",
-		Domain: signer.TypedDataDomain{
-			Name:              "DIMO",
-			Version:           "1",
-			ChainId:           math.NewHexOrDecimal256(sdc.Settings.DIMORegistryChainID),
-			VerifyingContract: sdc.Settings.DIMORegistryAddr,
-		},
-		Message: signer.TypedDataMessage{
-			"vehicleNode":         math.NewHexOrDecimal256(vehicleNode),
-			"syntheticDeviceNode": math.NewHexOrDecimal256(syntheticDeviceNode),
-		},
-	}
-}
-
-type BurnSyntheticDeviceRequest struct {
-	OwnerSignature string `json:"ownerSignature"`
-}
-
-func (sdc *SyntheticDevicesController) verifyUserAddressAndNFTExist(ctx context.Context, user *pb.User, vehicleNode int64) (*models.VehicleNFT, error) {
-	if user.EthereumAddress == nil {
-		return nil, fiber.NewError(fiber.StatusUnauthorized, "User does not have an Ethereum address.")
-	}
-
-	uadd := common.HexToAddress(*user.EthereumAddress)
-
-	vnID := types.NewNullDecimal(decimal.New(vehicleNode, 0))
-	vehicleNFT, err := models.VehicleNFTS(models.VehicleNFTWhere.TokenID.EQ(vnID)).One(ctx, sdc.DBS().Reader)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fiber.NewError(fiber.StatusNotFound, "No vehicle with that id found.")
-		}
-		return nil, err
-	}
-
-	vown := common.BytesToAddress(vehicleNFT.OwnerAddress.Bytes)
-	if uadd != vown {
-		return nil, fiber.NewError(fiber.StatusForbidden, fmt.Sprintf("Vehicle owned by another address, %s.", vown))
-	}
-
-	if !vehicleNFT.UserDeviceID.Valid {
-		return nil, fiber.NewError(fiber.StatusConflict, "Vehicle deleted.")
-	}
-
-	return vehicleNFT, nil
-}
-
 // GetSyntheticDeviceMintingPayload godoc
 // @Description Produces the payload that the user signs and submits to mint a synthetic device for
 // @Description the given vehicle and integration.
 // @Tags        integrations
 // @Produce     json
-// @Param       integrationNode path int true "token ID"
-// @Param       vehicleNode path int true "vehicle ID"
+// @Param       userDeviceID path int true "user device KSUID"
+// @Param       integrationID path int true "integration KSUD, must be software-based"
 // @Success     200 {array} signer.TypedData
-// @Router 	    /synthetic/device/mint/{integrationNode}/{vehicleNode} [get]
+// @Router 	    /user/devices/{userDeviceID}/integrations/{integrationID}/commands/mint [get]
 func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber.Ctx) error {
-	rawIntegrationNode := c.Params("integrationNode")
-	vehicleNode := c.Params("vehicleNode")
 	userID := helpers.GetUserID(c)
 
-	integrationNode, err := strconv.ParseUint(rawIntegrationNode, 10, 64)
+	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid integrationNode provided")
-	}
-
-	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{
-		Id: userID,
-	})
-	if err != nil {
-		sdc.log.Debug().Err(err).Msg("error occurred when fetching user")
 		return helpers.GrpcErrorToFiber(err, "error occurred when fetching user")
 	}
 
-	vid, err := strconv.ParseInt(vehicleNode, 10, 64)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicleNode provided")
+	if user.EthereumAddress == nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "User does not have an Ethereum address.")
 	}
 
-	if _, err := sdc.verifyUserAddressAndNFTExist(c.Context(), user, vid); err != nil {
+	userAddr := common.HexToAddress(*user.EthereumAddress)
+
+	userDeviceID := c.Params("userDeviceID")
+	integrationID := c.Params("integrationID")
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
+	).One(c.Context(), sdc.DBS().Reader)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fiber.NewError(fiber.StatusNotFound, "No vehicle with that id found.")
+		}
 		return err
 	}
 
-	integration, err := sdc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), integrationNode)
+	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
+		return fiber.NewError(fiber.StatusConflict, "Vehicle not minted.")
+	}
+
+	if userAddr != common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes) {
+		return fiber.NewError(fiber.StatusUnauthorized, "User's address does not control this device.")
+	}
+
+	if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice != nil {
+		return fiber.NewError(fiber.StatusConflict, "Vehicle already paired with a synthetic device.")
+	}
+
+	if len(ud.R.UserDeviceAPIIntegrations) == 0 {
+		return fiber.NewError(fiber.StatusConflict, "Vehicle does not have this kind of connection.")
+	}
+
+	in, err := sdc.deviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
 	if err != nil {
 		return helpers.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
-	response := sdc.getEIP712Mint(int64(integration.TokenId), vid)
+	if in.Vendor != constants.SmartCarVendor && in.Vendor != constants.TeslaVendor {
+		return fiber.NewError(fiber.StatusConflict, "This is not a software connection.")
+	}
+
+	if in.TokenId == 0 {
+		return fiber.NewError(fiber.StatusConflict, "Connection type not yet minted.")
+	}
+
+	vid, ok := ud.R.VehicleNFT.TokenID.Int64()
+	if !ok {
+		return fmt.Errorf("vehicle token id invalid, this should never happen %d", ud.R.VehicleNFT.TokenID)
+	}
+
+	response := sdc.getEIP712Mint(int64(in.TokenId), vid)
 
 	return c.JSON(response)
 }
@@ -240,35 +176,58 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 // @Description Submit a metadata
 // @Tags        integrations
 // @Produce     json
-// @Param       integrationNode path int true "token ID"
-// @Param       vehicleNode path int true "vehicle ID"
+// @Param       userDeviceID path int true "user device KSUID, must be minted"
+// @Param       integrationID path int true "integration KSUD, must be software-based"
+// @Param       signed body controllers.MintSyntheticDeviceRequest true "only field is the signed EIP-712"
 // @Success     204
-// @Router      /synthetic/device/mint/{integrationNode}/{vehicleNode} [post]
+// @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/mint [post]
 func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
-	rawIntegrationNode := c.Params("integrationNode")
-	vehicleNode := c.Params("vehicleNode")
-	userID := helpers.GetUserID(c)
-	req := &MintSyntheticDeviceRequest{}
-	if err := c.BodyParser(req); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
-	}
+	userDeviceID := c.Params("userDeviceID")
+	integrationID := c.Params("integrationID")
 
-	integrationNode, err := strconv.ParseUint(rawIntegrationNode, 10, 64)
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
+	).One(c.Context(), sdc.DBS().Reader)
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid integrationNode provided")
+		return err
 	}
 
-	integration, err := sdc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), integrationNode)
+	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
+		return fiber.NewError(fiber.StatusConflict, "Vehicle not minted.")
+	}
+
+	if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice != nil {
+		return fiber.NewError(fiber.StatusConflict, "Vehicle already paired with a synthetic device.")
+	}
+
+	if len(ud.R.UserDeviceAPIIntegrations) == 0 {
+		return fiber.NewError(fiber.StatusConflict, "Vehicle does not have this kind of connection.")
+	}
+
+	in, err := sdc.deviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
 	if err != nil {
 		return helpers.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
-	if integration.Vendor == constants.TeslaVendor && req.Credentials.AccessToken == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid access token")
+	if in.Vendor != constants.SmartCarVendor && in.Vendor != constants.TeslaVendor {
+		return fiber.NewError(fiber.StatusConflict, "This is not a software connection.")
 	}
 
-	if integration.Vendor == constants.SmartCarVendor && req.Credentials.Code == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid authorization code")
+	if in.TokenId == 0 {
+		return fiber.NewError(fiber.StatusConflict, "Connection type not yet minted.")
+	}
+
+	vid, ok := ud.R.VehicleNFT.TokenID.Int64()
+	if !ok {
+		return fmt.Errorf("vehicle token id invalid, this should never happen %d", ud.R.VehicleNFT.TokenID)
+	}
+
+	userID := helpers.GetUserID(c)
+	var req MintSyntheticDeviceRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
 	}
 
 	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
@@ -276,18 +235,12 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return helpers.GrpcErrorToFiber(err, "error occurred when fetching user")
 	}
 
-	vid, err := strconv.ParseInt(vehicleNode, 10, 64)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid vehicle id provided")
-	}
-
-	vNFT, err := sdc.verifyUserAddressAndNFTExist(c.Context(), user, vid)
-	if err != nil {
-		return err
+	if user.EthereumAddress == nil {
+		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
 	}
 
 	userAddr := common.HexToAddress(*user.EthereumAddress)
-	rawPayload := sdc.getEIP712Mint(int64(integration.TokenId), vid)
+	rawPayload := sdc.getEIP712Mint(int64(in.TokenId), vid)
 
 	tdHash, _, err := signer.TypedDataAndHash(*rawPayload)
 	if err != nil {
@@ -295,7 +248,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
 	}
 
-	ownerSignature := common.FromHex(req.OwnerSignature)
+	ownerSignature := common.FromHex(req.Signature)
 	recAddr, err := helpers.Ecrecover(tdHash, ownerSignature)
 	if err != nil {
 		sdc.log.Err(err).Msg("unable to validate signature")
@@ -306,11 +259,6 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature.")
 	}
 
-	udai, err := sdc.generateUDAI(c.Context(), req.Credentials, vNFT.UserDeviceID.String, integration)
-	if err != nil {
-		return err
-	}
-
 	childKeyNumber, err := sdc.generateNextChildKeyNumber(c.Context())
 	if err != nil {
 		sdc.log.Err(err).Msg("failed to generate sequence from database")
@@ -319,7 +267,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	requestID := ksuid.New().String()
 
-	syntheticDeviceAddr, err := sdc.sendSyntheticDeviceMintPayload(c.Context(), requestID, tdHash, int(vid), integration.TokenId, ownerSignature, childKeyNumber)
+	syntheticDeviceAddr, err := sdc.sendSyntheticDeviceMintPayload(c.Context(), requestID, tdHash, int(vid), in.TokenId, ownerSignature, childKeyNumber)
 	if err != nil {
 		sdc.log.Err(err).Msg("synthetic device minting request failed")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
@@ -327,10 +275,6 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	tx, err := sdc.DBS().Writer.DB.BeginTx(c.Context(), nil)
 	if err != nil {
-		return err
-	}
-
-	if err := udai.Insert(c.Context(), tx, boil.Infer()); err != nil {
 		return err
 	}
 
@@ -344,10 +288,9 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
 	}
 
-	vnID := types.NewDecimal(decimal.New(vid, 0))
 	syntheticDevice := &models.SyntheticDevice{
-		VehicleTokenID:     vnID,
-		IntegrationTokenID: types.NewDecimal(decimal.New(int64(integrationNode), 0)),
+		VehicleTokenID:     types.NewNullDecimal(decimal.New(vid, 0)),
+		IntegrationTokenID: types.NewDecimal(decimal.New(int64(in.TokenId), 0)),
 		WalletChildNumber:  childKeyNumber,
 		WalletAddress:      syntheticDeviceAddr,
 		MintRequestID:      requestID,
@@ -363,6 +306,197 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"message": "Submitted synthetic device mint request."})
+}
+
+// GetSyntheticDeviceBurnPayload godoc
+// @Description Produces the payload that the user signs and submits to burn a synthetic device.
+// @Produce     json
+// @Param       userDeviceID path int true "user device KSUID, must be minted"
+// @Param       integrationID path int true "integration KSUD, must be software-based and active"
+// @Success     200 {array} signer.TypedData
+// @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/mint [post]
+func (sdc *SyntheticDevicesController) GetSyntheticDeviceBurnPayload(c *fiber.Ctx) error {
+	userDeviceID := c.Params("userDeviceID")
+	integrationID := c.Params("integrationID")
+	userID := helpers.GetUserID(c)
+
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+	).One(c.Context(), sdc.DBS().Reader)
+	if err != nil {
+		return err
+	}
+
+	in, err := sdc.deviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
+	if err != nil {
+		return helpers.GrpcErrorToFiber(err, "failed to get integration")
+	}
+
+	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
+		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
+	}
+
+	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		sdc.log.Debug().Err(err).Msg("error occurred when fetching user")
+		return helpers.GrpcErrorToFiber(err, "error occurred when fetching user")
+	}
+
+	if user.EthereumAddress == nil {
+		return fiber.NewError(fiber.StatusForbidden, "No Ethereum address on file for user.")
+	}
+
+	vOwn := common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes)
+
+	addr := common.HexToAddress(*user.EthereumAddress)
+
+	if vOwn != addr {
+		return fiber.NewError(fiber.StatusForbidden, fmt.Sprintf("Vehicle is owned by %s, your address is %s.", vOwn, addr))
+	}
+
+	if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice == nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Integration not minted.")
+	}
+
+	sd := ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice
+
+	intNode, _ := sd.IntegrationTokenID.Uint64()
+	if intNode != in.TokenId {
+		return fiber.NewError(fiber.StatusBadRequest, "The vehicle is paired with a synthetic device of a different type.")
+	}
+
+	if sd.TokenID.IsZero() {
+		return fiber.NewError(fiber.StatusBadRequest, "Device minting in progress.")
+	}
+
+	if sd.BurnRequestID.Valid {
+		return fiber.NewError(fiber.StatusConflict, "Burning in progress.")
+	}
+
+	vehicleNode, _ := ud.R.VehicleNFT.TokenID.Int64()
+	syntheticDeviceNode, _ := sd.TokenID.Int64()
+
+	return c.JSON(sdc.getEIP712Burn(vehicleNode, syntheticDeviceNode))
+}
+
+type BurnSyntheticDeviceRequest struct {
+	Signature string `json:"signature"`
+}
+
+// BurnSyntheticDevice godoc
+// @Description Submit the signature required for the synthetic device burning meta-transaction.
+// @Produce     json
+// @Param       userDeviceID path int true "user device KSUID, must be minted"
+// @Param       integrationID path int true "integration KSUD, must be software-based and active"
+// @Param       signed body controllers.BurnSyntheticDeviceRequest true "only field is the signed EIP-712"
+// @Success     200 {array} signer.TypedData
+// @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/mint [post]
+func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
+	userDeviceID := c.Params("userDeviceID")
+	integrationID := c.Params("integrationID")
+	userID := helpers.GetUserID(c)
+
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+	).One(c.Context(), sdc.DBS().Reader)
+	if err != nil {
+		return err
+	}
+
+	in, err := sdc.deviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
+	if err != nil {
+		return helpers.GrpcErrorToFiber(err, "failed to get integration")
+	}
+
+	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
+		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
+	}
+
+	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		sdc.log.Debug().Err(err).Msg("error occurred when fetching user")
+		return helpers.GrpcErrorToFiber(err, "error occurred when fetching user")
+	}
+
+	if user.EthereumAddress == nil {
+		return fiber.NewError(fiber.StatusForbidden, "No Ethereum address on file for user.")
+	}
+
+	vOwn := common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes)
+
+	addr := common.HexToAddress(*user.EthereumAddress)
+
+	if vOwn != addr {
+		return fiber.NewError(fiber.StatusForbidden, fmt.Sprintf("Vehicle is owned by %s, your address is %s.", vOwn, addr))
+	}
+
+	if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice == nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Integration not minted.")
+	}
+
+	sd := ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice
+
+	intNode, _ := sd.IntegrationTokenID.Uint64()
+	if intNode != in.TokenId {
+		return fiber.NewError(fiber.StatusBadRequest, "The vehicle is paired with a synthetic device of a different type.")
+	}
+
+	if sd.TokenID.IsZero() {
+		return fiber.NewError(fiber.StatusBadRequest, "Device minting in progress.")
+	}
+
+	if sd.BurnRequestID.Valid {
+		return fiber.NewError(fiber.StatusConflict, "Burning in progress.")
+	}
+
+	vehicleNode, _ := ud.R.VehicleNFT.TokenID.Int64()
+	syntheticDeviceNode, _ := sd.TokenID.Int64()
+
+	td := sdc.getEIP712Burn(vehicleNode, syntheticDeviceNode)
+
+	var req BurnSyntheticDeviceRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
+	}
+
+	ownerSignature := common.FromHex(req.Signature)
+	if len(ownerSignature) != 65 {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Owner signature was length %d, not 65.", len(ownerSignature)))
+	}
+
+	hash, _, err := signer.TypedDataAndHash(*td)
+	if err != nil {
+		sdc.log.Err(err).Msg("Error occurred creating has of payload")
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
+	}
+
+	if recAddr, err := helpers.Ecrecover(hash, ownerSignature); err != nil {
+		return err
+	} else if recAddr != addr {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature.")
+	}
+
+	reqID := ksuid.New().String()
+
+	if err := sdc.registryClient.BurnSyntheticDeviceSign(reqID, big.NewInt(vehicleNode), big.NewInt(syntheticDeviceNode), ownerSignature); err != nil {
+		return err
+	}
+
+	mtr := models.MetaTransactionRequest{
+		ID:     reqID,
+		Status: models.MetaTransactionRequestStatusUnsubmitted,
+	}
+
+	if err := mtr.Insert(c.Context(), sdc.DBS().Writer, boil.Infer()); err != nil {
+		return err
+	}
+
+	sd.BurnRequestID = null.StringFrom(reqID)
+	_, err = sd.Update(c.Context(), sdc.DBS().Writer, boil.Infer())
+
+	return err
 }
 
 func (sdc *SyntheticDevicesController) sendSyntheticDeviceMintPayload(ctx context.Context, requestID string, hash []byte, vehicleNode int, intTokenID uint64, ownerSignature []byte, childKeyNumber int) ([]byte, error) {
@@ -409,346 +543,30 @@ func (sdc *SyntheticDevicesController) generateNextChildKeyNumber(ctx context.Co
 	return seq.NextVal, nil
 }
 
-func (sdc *SyntheticDevicesController) generateUDAI(ctx context.Context, creds credentials, userDeviceID string, integration *grpc.Integration) (*models.UserDeviceAPIIntegration, error) {
-	udi := models.UserDeviceAPIIntegration{
-		IntegrationID: integration.Id,
-		UserDeviceID:  userDeviceID,
-		Status:        models.UserDeviceAPIIntegrationStatusPending,
-		TaskID:        null.StringFrom(ksuid.New().String()),
-	}
-
-	switch integration.Vendor {
-	case constants.SmartCarVendor:
-		token, err := sdc.exchangeSmartCarCode(ctx, creds.Code, creds.RedirectURI)
-		if err != nil {
-			return nil, err
-		}
-
-		encAccess, err := sdc.cipher.Encrypt(token.Access)
-		if err != nil {
-			return nil, opaqueInternalError
-		}
-
-		encRefresh, err := sdc.cipher.Encrypt(token.Refresh)
-		if err != nil {
-			return nil, opaqueInternalError
-		}
-
-		udi.AccessToken = null.StringFrom(encAccess)
-		udi.AccessExpiresAt = null.TimeFrom(token.AccessExpiry)
-		udi.RefreshToken = null.StringFrom(encRefresh)
-
-		externalID, err := sdc.smartcarClient.GetExternalID(ctx, token.Access)
-		if err != nil {
-			return nil, err
-		}
-
-		endpoints, err := sdc.smartcarClient.GetEndpoints(ctx, token.Access, externalID)
-		if err != nil {
-			sdc.log.Err(err).Msg("Failed to retrieve permissions from Smartcar.")
-			return nil, err
-		}
-
-		meta := services.UserDeviceAPIIntegrationsMetadata{
-			SmartcarEndpoints: endpoints,
-		}
-
-		if doorControl, err := sdc.smartcarClient.HasDoorControl(ctx, token.Access, externalID); err != nil {
-			sdc.log.Err(err).Msg("Failed to retrieve door control permissions from Smartcar.")
-			return nil, err
-		} else if doorControl {
-			meta.Commands = &services.UserDeviceAPIIntegrationsMetadataCommands{
-				Enabled: []string{"doors/unlock", "doors/lock"},
-			}
-		}
-
-		mb, _ := json.Marshal(meta)
-		udi.Metadata = null.JSONFrom(mb)
-		udi.ExternalID = null.StringFrom(externalID)
-	case constants.TeslaVendor:
-		teslaID, err := strconv.Atoi(creds.ID)
-		if err != nil {
-			sdc.log.Err(err).Msgf("unable to parse external id %q as integer", creds.ID)
-			return nil, err
-		}
-
-		v, err := sdc.teslaService.GetVehicle(creds.AccessToken, teslaID)
-		if err != nil {
-			sdc.log.Err(err).Msg("unable to retrieve vehicle from Tesla")
-			return nil, err
-		}
-
-		encAccess, err := sdc.cipher.Encrypt(creds.AccessToken)
-		if err != nil {
-			return nil, opaqueInternalError
-		}
-		encRefresh, err := sdc.cipher.Encrypt(creds.RefreshToken)
-		if err != nil {
-			return nil, opaqueInternalError
-		}
-		udi.AccessToken = null.StringFrom(encAccess)
-		udi.RefreshToken = null.StringFrom(encRefresh)
-
-		meta := services.UserDeviceAPIIntegrationsMetadata{
-			Commands: &services.UserDeviceAPIIntegrationsMetadataCommands{
-				Enabled: []string{"doors/unlock", "doors/lock", "trunk/open", "frunk/open", "charge/limit"},
+func (sdc *SyntheticDevicesController) getEIP712Burn(vehicleNode, syntheticDeviceNode int64) *signer.TypedData {
+	return &signer.TypedData{
+		Types: signer.Types{
+			"EIP712Domain": []signer.Type{
+				{Name: "name", Type: "string"},
+				{Name: "version", Type: "string"},
+				{Name: "chainId", Type: "uint256"},
+				{Name: "verifyingContract", Type: "address"},
 			},
-			TeslaVehicleID: v.ID,
-		}
-
-		mb, _ := json.Marshal(meta)
-
-		udi.ExternalID = null.StringFrom(creds.ID)
-		udi.AccessExpiresAt = null.TimeFrom(time.Now().Add(time.Duration(creds.ExpiresIn) * time.Second))
-		udi.Metadata = null.JSONFrom(mb)
-	default:
-		return nil, fmt.Errorf("unrecognized vendor %s", integration.Vendor)
+			"BurnSyntheticDeviceSign": []signer.Type{
+				{Name: "vehicleNode", Type: "uint256"},
+				{Name: "syntheticDeviceNode", Type: "uint256"},
+			},
+		},
+		PrimaryType: "BurnSyntheticDeviceSign",
+		Domain: signer.TypedDataDomain{
+			Name:              "DIMO",
+			Version:           "1",
+			ChainId:           math.NewHexOrDecimal256(sdc.Settings.DIMORegistryChainID),
+			VerifyingContract: sdc.Settings.DIMORegistryAddr,
+		},
+		Message: signer.TypedDataMessage{
+			"vehicleNode":         math.NewHexOrDecimal256(vehicleNode),
+			"syntheticDeviceNode": math.NewHexOrDecimal256(syntheticDeviceNode),
+		},
 	}
-
-	return &udi, nil
-}
-
-func (sdc *SyntheticDevicesController) exchangeSmartCarCode(ctx context.Context, authCode, redirectURI string) (*smartcar.Token, error) {
-	token, err := sdc.smartcarClient.ExchangeCode(ctx, authCode, redirectURI)
-	if err != nil {
-		var scErr *services.SmartcarError
-		if errors.As(err, &scErr) {
-			sdc.log.Err(err).Str("function", "syntheticDeviceController.exchangeSmartCarCode").Msgf("Failed exchanging Authorization code. Status code %d, request id %s`.", scErr.Code, scErr.RequestID)
-		} else {
-			sdc.log.Err(err).Str("function", "syntheticDeviceController.exchangeSmartCarCode").Msg("Failed to exchange authorization code with Smartcar.")
-		}
-
-		return nil, errors.New("failed to exchange authorization code with smartcar")
-	}
-
-	return token, nil
-}
-
-// GetSyntheticDeviceBurnPayload godoc
-// @Description Produces the payload that the user signs and submits to burn a synthetic device.
-// @Produce     json
-// @Param       syntheticDeviceNode path int true "synthetic device token id"
-// @Success     200 {array} signer.TypedData
-// @Router      /synthetic/device/{syntheticDeviceNode}/burn [get]
-func (sdc *SyntheticDevicesController) GetSyntheticDeviceBurnPayload(c *fiber.Ctx) error {
-	syntheticDeviceNodeRaw := c.Params("syntheticDeviceNode")
-	userID := helpers.GetUserID(c)
-
-	syntheticDeviceNode, err := strconv.ParseInt(syntheticDeviceNodeRaw, 10, 64)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Node id %q must be an integer.", syntheticDeviceNodeRaw))
-	}
-
-	sd, err := models.SyntheticDevices(
-		models.SyntheticDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(syntheticDeviceNode, 0))),
-		qm.Load(models.SyntheticDeviceRels.VehicleToken),
-	).One(c.Context(), sdc.DBS().Reader)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("No device with id %d found.", syntheticDeviceNode))
-		}
-		return err
-	}
-
-	vOwn := common.BytesToAddress(sd.R.VehicleToken.OwnerAddress.Bytes)
-
-	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-	if err != nil {
-		sdc.log.Debug().Err(err).Msg("error occurred when fetching user")
-		return helpers.GrpcErrorToFiber(err, "error occurred when fetching user")
-	}
-
-	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusForbidden, "No Ethereum address on file for user.")
-	}
-
-	addr := common.HexToAddress(*user.EthereumAddress)
-
-	if vOwn != addr {
-		return fiber.NewError(fiber.StatusForbidden, fmt.Sprintf("Vehicle is owned by %s, your address is %s.", vOwn, addr))
-	}
-
-	vehicleNode, _ := sd.VehicleTokenID.Int64()
-
-	return c.JSON(sdc.getEIP712Burn(vehicleNode, syntheticDeviceNode))
-}
-
-// BurnSyntheticDevice godoc
-// @Description Submit the signature required for the synthetic device burning meta-transaction.
-// @Produce     json
-// @Param       syntheticDeviceNode path int true "synthetic device token id"
-// @Success     200
-// @Router      /synthetic/device/{syntheticDeviceNode}/burn [post]
-func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
-	syntheticDeviceNodeRaw := c.Params("syntheticDeviceNode")
-	userID := helpers.GetUserID(c)
-
-	syntheticDeviceNode, err := strconv.ParseInt(syntheticDeviceNodeRaw, 10, 64)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Node id %q must be an integer.", syntheticDeviceNodeRaw))
-	}
-
-	sd, err := models.SyntheticDevices(
-		models.SyntheticDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(syntheticDeviceNode, 0))),
-		qm.Load(models.SyntheticDeviceRels.VehicleToken),
-	).One(c.Context(), sdc.DBS().Reader)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("No device with id %d found.", syntheticDeviceNode))
-		}
-		return err
-	}
-
-	vOwn := common.BytesToAddress(sd.R.VehicleToken.OwnerAddress.Bytes)
-
-	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-	if err != nil {
-		sdc.log.Debug().Err(err).Msg("error occurred when fetching user")
-		return helpers.GrpcErrorToFiber(err, "error occurred when fetching user")
-	}
-
-	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusForbidden, "No Ethereum address on file for user.")
-	}
-
-	addr := common.HexToAddress(*user.EthereumAddress)
-
-	if vOwn != addr {
-		return fiber.NewError(fiber.StatusForbidden, fmt.Sprintf("Vehicle is owned by %s, your address is %s.", vOwn, addr))
-	}
-
-	vehicleNode, _ := sd.VehicleTokenID.Int64()
-
-	td := sdc.getEIP712Burn(vehicleNode, syntheticDeviceNode)
-
-	var req BurnSyntheticDeviceRequest
-	if err := c.BodyParser(&req); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
-	}
-
-	ownerSignature := common.FromHex(req.OwnerSignature)
-	if len(ownerSignature) != 65 {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Owner signature was length %d, not 65.", len(ownerSignature)))
-	}
-
-	hash, _, err := signer.TypedDataAndHash(*td)
-	if err != nil {
-		sdc.log.Err(err).Msg("Error occurred creating has of payload")
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
-	}
-
-	if recAddr, err := helpers.Ecrecover(hash, ownerSignature); err != nil {
-		return err
-	} else if recAddr != addr {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature.")
-	}
-
-	reqID := ksuid.New().String()
-
-	if err := sdc.registryClient.BurnSyntheticDeviceSign(reqID, big.NewInt(vehicleNode), big.NewInt(syntheticDeviceNode), ownerSignature); err != nil {
-		return err
-	}
-
-	mtr := models.MetaTransactionRequest{
-		ID:     reqID,
-		Status: models.MetaTransactionRequestStatusUnsubmitted,
-	}
-
-	if err := mtr.Insert(c.Context(), sdc.DBS().Writer, boil.Infer()); err != nil {
-		return err
-	}
-
-	sd.BurnRequestID = null.StringFrom(reqID)
-	_, err = sd.Update(c.Context(), sdc.DBS().Writer, boil.Infer())
-
-	return err
-}
-
-// ReAuthenticate godoc
-// @Description Submit new credentials for the given synthetic device. Mostly
-// @Description used in the event of an upstream password change.
-// @Produce     json
-// @Param       syntheticDeviceNode path int true "synthetic device token id"
-// @Success     200
-// @Router      /synthetic/device/{syntheticDeviceNode}/re-authenticate [post]
-func (sdc *SyntheticDevicesController) ReAuthenticate(c *fiber.Ctx) error {
-	syntheticDeviceNodeRaw := c.Params("syntheticDeviceNode")
-	// userID := helpers.GetUserID(c)
-
-	sdn, err := strconv.ParseInt(syntheticDeviceNodeRaw, 10, 64)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse the given token id.")
-	}
-
-	sd, err := models.SyntheticDevices(
-		models.SyntheticDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(sdn, 0))),
-		qm.Load(models.SyntheticDeviceRels.VehicleToken),
-	).One(c.Context(), sdc.DBS().Reader)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return fiber.NewError(fiber.StatusNotFound, "No synthetic device with that id.")
-		}
-		return err
-	}
-
-	if !sd.R.VehicleToken.UserDeviceID.Valid {
-		return fiber.NewError(fiber.StatusConflict, "Vehicle deleted.")
-	}
-
-	iNode, _ := sd.IntegrationTokenID.Uint64()
-
-	i, err := sdc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), iNode)
-	if err != nil {
-		return err
-	}
-
-	oldUDAI, err := models.FindUserDeviceAPIIntegration(c.Context(), sdc.DBS().Reader, sd.R.VehicleToken.UserDeviceID.String, i.Id)
-	if err != nil {
-		return err
-	}
-
-	// Should really create a new type.
-	var req MintSyntheticDeviceRequest
-	if err := c.BodyParser(&req); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
-	}
-
-	newUDAI, err := sdc.generateUDAI(c.Context(), req.Credentials, sd.R.VehicleToken.UserDeviceID.String, i)
-	if err != nil {
-		return err
-	}
-
-	switch i.Vendor {
-	case constants.SmartCarVendor:
-		if err := sdc.smartcarTask.StopPoll(oldUDAI); err != nil {
-			return err
-		}
-		if err := sdc.smartcarTask.StartPoll(newUDAI); err != nil {
-			return err
-		}
-		if _, err := newUDAI.Update(c.Context(), sdc.DBS().Writer, boil.Infer()); err != nil {
-			return err
-		}
-	case constants.TeslaVendor:
-		// Awful
-		id, err := strconv.Atoi(newUDAI.ExternalID.String)
-		if err != nil {
-			return err
-		}
-		var md services.UserDeviceAPIIntegrationsMetadata
-		if err := newUDAI.Metadata.Unmarshal(&md); err != nil {
-			return err
-		}
-		if err := sdc.teslaTask.StopPoll(oldUDAI); err != nil {
-			return err
-		}
-		if err := sdc.teslaTask.StartPoll(&services.TeslaVehicle{ID: id, VehicleID: md.TeslaVehicleID}, newUDAI); err != nil {
-			return err
-		}
-		if _, err := newUDAI.Update(c.Context(), sdc.DBS().Writer, boil.Infer()); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

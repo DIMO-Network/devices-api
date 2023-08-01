@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ericlagergren/decimal"
+
 	smartcar "github.com/smartcar/go-sdk"
 
 	"github.com/DIMO-Network/shared/redis"
@@ -42,6 +44,7 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 
@@ -79,6 +82,7 @@ type UserDevicesController struct {
 	usersClient               pb.UserServiceClient
 	deviceDataSvc             services.DeviceDataService
 	NATSSvc                   *services.NATSService
+	wallet                    services.SyntheticWalletInstanceService
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -133,6 +137,7 @@ func NewUserDevicesController(settings *config.Settings,
 	usersClient pb.UserServiceClient,
 	deviceDataSvc services.DeviceDataService,
 	natsSvc *services.NATSService,
+	wallet services.SyntheticWalletInstanceService,
 ) UserDevicesController {
 	return UserDevicesController{
 		Settings:                  settings,
@@ -159,6 +164,7 @@ func NewUserDevicesController(settings *config.Settings,
 		usersClient:               usersClient,
 		deviceDataSvc:             deviceDataSvc,
 		NATSSvc:                   natsSvc,
+		wallet:                    wallet,
 	}
 }
 
@@ -225,6 +231,8 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			}
 		}
 
+		var sdStat *SyntheticDeviceStatus
+
 		var nft *NFTData
 		pu := []PrivilegeUser{}
 
@@ -272,6 +280,24 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 					Privileges: v,
 				})
 			}
+
+			if sd := vnft.R.VehicleTokenSyntheticDevice; sd != nil {
+				ii, _ := sd.IntegrationTokenID.Uint64()
+				mtr := sd.R.MintRequest
+				sdStat = &SyntheticDeviceStatus{
+					IntegrationID: ii,
+					Status:        mtr.Status,
+				}
+				if mtr.Hash.Valid {
+					h := hexutil.Encode(mtr.Hash.Bytes)
+					sdStat.TxHash = &h
+				}
+				if !sd.TokenID.IsZero() {
+					sdStat.TokenID = sd.TokenID.Int(nil)
+					a := common.BytesToAddress(sd.WalletAddress)
+					sdStat.Address = &a
+				}
+			}
 		}
 
 		udf := UserDeviceFull{
@@ -282,7 +308,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			CustomImageURL:   d.CustomImageURL.Ptr(),
 			CountryCode:      d.CountryCode.Ptr(),
 			DeviceDefinition: dd,
-			Integrations:     NewUserDeviceIntegrationStatusesFromDatabase(d.R.UserDeviceAPIIntegrations, integrations),
+			Integrations:     NewUserDeviceIntegrationStatusesFromDatabase(d.R.UserDeviceAPIIntegrations, integrations, sdStat),
 			Metadata:         md,
 			NFT:              nft,
 			OptedInAt:        d.OptedInAt.Ptr(),
@@ -326,6 +352,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	query = append(query,
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
 		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" DESC"))
 
 	devices, err := models.UserDevices(query...).All(c.Context(), udc.DBS().Reader)
@@ -405,6 +432,7 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 				qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 				// Would we get this backreference for free?
 				qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
+				qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
 				return err
@@ -422,7 +450,7 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 	return c.JSON(MyDevicesResp{SharedDevices: apiSharedDevices})
 }
 
-func NewUserDeviceIntegrationStatusesFromDatabase(udis []*models.UserDeviceAPIIntegration, integrations []*ddgrpc.Integration) []UserDeviceIntegrationStatus {
+func NewUserDeviceIntegrationStatusesFromDatabase(udis []*models.UserDeviceAPIIntegration, integrations []*ddgrpc.Integration, sdStat *SyntheticDeviceStatus) []UserDeviceIntegrationStatus {
 	out := make([]UserDeviceIntegrationStatus, len(udis))
 
 	for i, udi := range udis {
@@ -441,6 +469,10 @@ func NewUserDeviceIntegrationStatusesFromDatabase(udis []*models.UserDeviceAPIIn
 		for _, integration := range integrations {
 			if integration.Id == udi.IntegrationID {
 				out[i].IntegrationVendor = integration.Vendor
+
+				if sdStat != nil && integration.TokenId == sdStat.IntegrationID {
+					out[i].Mint = sdStat
+				}
 				break
 			}
 		}
@@ -508,51 +540,78 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	if country == nil {
 		return fiber.NewError(fiber.StatusBadRequest, "unsupported or invalid country: "+reg.CountryCode)
 	}
-	// decode VIN with grpc call
 	vin := strings.ToUpper(reg.VIN)
-	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, "", 0, reg.CountryCode)
-	if err != nil {
-		return errors.Wrapf(err, "could not decode vin %s for country %s", vin, reg.CountryCode)
-	}
-	if len(decodeVIN.DeviceDefinitionId) == 0 {
-		udc.log.Warn().Str("vin", vin).Str("user_id", userID).
-			Msg("unable to decode vin for customer request to create vehicle")
-		return fiber.NewError(fiber.StatusFailedDependency, "unable to decode vin")
-	}
-	// attach device def to user
-	var udMd *services.UserDeviceMetadata
-	if reg.CANProtocol != "" {
-		udMd = &services.UserDeviceMetadata{CANProtocol: &reg.CANProtocol}
-	}
-	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, reg.CountryCode, userID, &vin, udMd)
-	if err != nil {
-		return err
-	}
-	// create device_integration record in definitions just in case. If we got the VIN normally means Mobile App able to decode.
+
 	integration, err := udc.DeviceDefIntSvc.GetAutoPiIntegration(c.Context())
 	if err != nil {
 		udc.log.Err(err).Msg("failed to get autopi integration")
-	} else if integration != nil {
-		_, err := udc.DeviceDefIntSvc.CreateDeviceDefinitionIntegration(c.Context(), integration.Id, decodeVIN.DeviceDefinitionId, country.Region)
+		return err
+	}
+
+	deviceDefinitionID := ""
+
+	// check if VIN already exists
+	existingUD, err := models.UserDevices(models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
+		models.UserDeviceWhere.VinConfirmed.EQ(true)).One(c.Context(), udc.DBS().Reader)
+	if err != nil && !errors.Is(sql.ErrNoRows, err) {
+		return err
+	}
+	var udFull *UserDeviceFull
+	if existingUD != nil {
+		if existingUD.UserID != userID {
+			return fiber.NewError(fiber.StatusConflict, "VIN already exists for a different user: "+reg.VIN)
+		}
+		deviceDefinitionID = existingUD.DeviceDefinitionID
+		// shortcut process, just use the already registered UD
+		dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), deviceDefinitionID)
 		if err != nil {
-			udc.log.Warn().Err(err).Msgf("failed to add device_integration for autopi and dd_id: %s", decodeVIN.DeviceDefinitionId)
+			return err
+		}
+		udFull, err = builUserDeviceFull(existingUD, dd, reg.CountryCode)
+		if err != nil {
+			return err
+		}
+	} else {
+		// decode VIN with grpc call
+		decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, "", 0, reg.CountryCode)
+		if err != nil {
+			return errors.Wrapf(err, "could not decode vin %s for country %s", vin, reg.CountryCode)
+		}
+		if len(decodeVIN.DeviceDefinitionId) == 0 {
+			udc.log.Warn().Str("vin", vin).Str("user_id", userID).
+				Msg("unable to decode vin for customer request to create vehicle")
+			return fiber.NewError(fiber.StatusFailedDependency, "unable to decode vin")
+		}
+		deviceDefinitionID = decodeVIN.DeviceDefinitionId
+		// attach device def to user
+		var udMd *services.UserDeviceMetadata
+		if reg.CANProtocol != "" {
+			udMd = &services.UserDeviceMetadata{CANProtocol: &reg.CANProtocol}
+		}
+		udFull, err = udc.createUserDevice(c.Context(), deviceDefinitionID, reg.CountryCode, userID, &vin, udMd)
+		if err != nil {
+			return err
 		}
 	}
 
-	if udc.Settings.IsProduction() {
+	// create device_integration record in definitions just in case. If we got the VIN normally means Mobile App able to decode.
+	_, err = udc.DeviceDefIntSvc.CreateDeviceDefinitionIntegration(c.Context(), integration.Id, deviceDefinitionID, country.Region)
+	if err != nil {
+		udc.log.Warn().Err(err).Msgf("failed to add device_integration for autopi and dd_id: %s", deviceDefinitionID)
+	}
 
+	// request valuation
+	if udc.Settings.IsProduction() {
 		message := services.ValuationDecodeCommand{
 			VIN:          vin,
 			UserDeviceID: udFull.ID,
 		}
-
 		messageBytes, err := json.Marshal(message)
 
 		if err != nil {
 			udc.log.Err(err).Msg("Failed to marshal message.")
 		} else {
 			pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, messageBytes)
-
 			if err != nil {
 				udc.log.Err(err).Msg("failed to publish to NATS")
 			} else {
@@ -600,6 +659,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	if country == nil {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("invalid countryCode field or country not supported: %s", reg.CountryCode))
 	}
+	localLog = localLog.With().Str("countryCode", reg.CountryCode).Str("region", country.Region).Logger()
 
 	// call SC api with stuff and get VIN
 	token, err := udc.smartcarClient.ExchangeCode(c.Context(), reg.Code, reg.RedirectURI)
@@ -1726,6 +1786,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
+		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations)),
 	).One(c.Context(), udc.DBS().Reader.DB)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -1852,7 +1913,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	sigBytes := common.FromHex(mr.Signature)
 
-	recAddr, err := helpers.Ecrecover(hash.Bytes(), sigBytes)
+	recAddr, err := helpers.Ecrecover(hash, sigBytes)
 	if err != nil {
 		return err
 	}
@@ -1881,6 +1942,82 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	err = nft.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
 	if err != nil {
 		return err
+	}
+
+	if udais := userDevice.R.UserDeviceAPIIntegrations; !udc.Settings.IsProduction() && len(udais) != 0 {
+		intID := uint64(0)
+		for _, udai := range udais {
+			in, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), udai.IntegrationID)
+			if err != nil {
+				return err
+			}
+
+			if in.Vendor == constants.TeslaVendor {
+				intID = in.TokenId
+				break
+			} else if in.Vendor == constants.SmartCarVendor {
+				intID = in.TokenId
+			}
+		}
+
+		if intID != 0 {
+			var seq struct {
+				NextVal int `boil:"nextval"`
+			}
+
+			qry := fmt.Sprintf("SELECT nextval('%s.synthetic_devices_serial_sequence');", udc.Settings.DB.Name)
+			err := queries.Raw(qry).Bind(c.Context(), udc.DBS().Writer, &seq)
+			if err != nil {
+				return err
+			}
+
+			childNum := seq.NextVal
+
+			addr, err := udc.wallet.GetAddress(c.Context(), uint32(childNum))
+			if err != nil {
+				return err
+			}
+
+			mvss := registry.MintVehicleAndSdSign{
+				IntegrationNode: new(big.Int).SetUint64(intID),
+			}
+
+			hash, err := client.Hash(&mvss)
+			if err != nil {
+				return err
+			}
+
+			sign, err := udc.wallet.SignHash(c.Context(), uint32(childNum), hash)
+			if err != nil {
+				return err
+			}
+
+			sd := models.SyntheticDevice{
+				IntegrationTokenID: types.NewDecimal(decimal.New(int64(intID), 0)),
+				MintRequestID:      requestID,
+				WalletChildNumber:  seq.NextVal,
+				WalletAddress:      addr,
+			}
+
+			if err := sd.Insert(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
+				return err
+			}
+
+			return client.MintVehicleAndSDign(requestID, contracts.MintVehicleAndSdInput{
+				ManufacturerNode: makeTokenID,
+				Owner:            realAddr,
+				AttrInfoPairsVehicle: []contracts.AttributeInfoPair{
+					{Attribute: "Make", Info: deviceMake},
+					{Attribute: "Model", Info: deviceModel},
+					{Attribute: "Year", Info: deviceYear},
+				},
+				IntegrationNode:     new(big.Int).SetUint64(intID),
+				VehicleOwnerSig:     sigBytes,
+				SyntheticDeviceSig:  sign,
+				SyntheticDeviceAddr: common.BytesToAddress(addr),
+				AttrInfoPairsDevice: []contracts.AttributeInfoPair{},
+			})
+		}
 	}
 
 	logger.Info().Msgf("Submitted metatransaction request %s", requestID)
@@ -2082,4 +2219,12 @@ type NFTData struct {
 	TxHash *string `json:"txHash,omitempty" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
 	// Status is the minting status of the NFT.
 	Status string `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed" example:"Confirmed"`
+}
+
+type SyntheticDeviceStatus struct {
+	IntegrationID uint64          `json:"-"`
+	TokenID       *big.Int        `json:"tokenId,omitempty" swaggertype:"number" example:"15"`
+	Address       *common.Address `json:"address,omitempty" swaggertype:"string" example:"0xAED7EA8035eEc47E657B34eF5D020c7005487443"`
+	TxHash        *string         `json:"txHash,omitempty" swaggertype:"string" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
+	Status        string          `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed" example:"Confirmed"`
 }

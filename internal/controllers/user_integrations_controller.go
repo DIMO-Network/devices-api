@@ -970,7 +970,7 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Signature was not 65 bytes long.")
 	}
 
-	if recAddr, err := helpers.Ecrecover(hash.Bytes(), vehicleOwnerSig); err != nil {
+	if recAddr, err := helpers.Ecrecover(hash, vehicleOwnerSig); err != nil {
 		return err
 	} else if recAddr != userAddr {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature.")
@@ -984,7 +984,7 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Device signature required but only %d bytes long.", len(aftermarketDeviceSig)))
 		}
 
-		if recAddr, err := helpers.Ecrecover(hash.Bytes(), aftermarketDeviceSig); err != nil {
+		if recAddr, err := helpers.Ecrecover(hash, aftermarketDeviceSig); err != nil {
 			return err
 		} else if recAddr != common.BytesToAddress(autoPiUnit.EthereumAddress) {
 			return fiber.NewError(fiber.StatusBadRequest, "Incorrect aftermarket device signature.")
@@ -1185,7 +1185,7 @@ func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 
 	sigBytes := pairReq.Signature
 
-	recAddr, err := helpers.Ecrecover(hash.Bytes(), sigBytes)
+	recAddr, err := helpers.Ecrecover(hash, sigBytes)
 	if err != nil {
 		return err
 	}
@@ -1474,7 +1474,7 @@ func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("User signature has invalid length %d.", len(userSig)))
 	}
 
-	recUserAddr, err := helpers.Ecrecover(hash.Bytes(), userSig)
+	recUserAddr, err := helpers.Ecrecover(hash, userSig)
 	if err != nil {
 		return err
 	}
@@ -1490,7 +1490,7 @@ func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Device signature has invalid length %d.", len(amSig)))
 	}
 
-	recAmAddr, err := helpers.Ecrecover(hash.Bytes(), amSig)
+	recAmAddr, err := helpers.Ecrecover(hash, amSig)
 	if err != nil {
 		return err
 	}
@@ -1774,12 +1774,13 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle's confirmed VIN does not match Smartcar's %s.", vin))
 		}
 	}
+	localLog := logger.With().Str("vin", vin).Str("userId", ud.UserID).Logger()
 
 	// Prevent users from connecting a vehicle if it's already connected through another user
 	// device object. Disabled outside of prod for ease of testing.
 	if udc.Settings.IsProduction() {
 		if vin[0:3] == "0SC" {
-			logger.Error().Msgf("Smartcar test VIN %s is not allowed.", vin)
+			localLog.Error().Msgf("Smartcar test VIN %s is not allowed.", vin)
 			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Smartcar test VIN %s is not allowed.", vin))
 		}
 		// Probably a race condition here. Need to either lock something or impose a greater
@@ -1790,19 +1791,19 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 			models.UserDeviceWhere.VinConfirmed.EQ(true),
 		).Exists(c.Context(), tx)
 		if err != nil {
-			logger.Err(err).Msg("Failed to search for VIN conflicts.")
+			localLog.Err(err).Msg("Failed to search for VIN conflicts.")
 			return opaqueInternalError
 		}
 
 		if conflict {
-			logger.Error().Msg("VIN %s already in use.")
+			localLog.Error().Msg("VIN %s already in use.")
 			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("VIN %s in use by a previously connected device.", ud.VinIdentifier.String))
 		}
 	}
 
 	endpoints, err := udc.smartcarClient.GetEndpoints(c.Context(), token.Access, externalID)
 	if err != nil {
-		logger.Err(err).Msg("Failed to retrieve permissions from Smartcar.")
+		localLog.Err(err).Msg("Failed to retrieve permissions from Smartcar.")
 		return smartcarCallErr
 	}
 
@@ -1810,7 +1811,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 
 	doorControl, err := udc.smartcarClient.HasDoorControl(c.Context(), token.Access, externalID)
 	if err != nil {
-		logger.Err(err).Msg("Failed to retrieve door control permissions from Smartcar.")
+		localLog.Err(err).Msg("Failed to retrieve door control permissions from Smartcar.")
 		return smartcarCallErr
 	}
 
@@ -1856,7 +1857,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 	}
 
 	if err := integration.Insert(c.Context(), tx, boil.Infer()); err != nil {
-		logger.Err(err).Msg("Unexpected database error inserting new Smartcar integration registration.")
+		localLog.Err(err).Msg("Unexpected database error inserting new Smartcar integration registration.")
 		return opaqueInternalError
 	}
 
@@ -1870,16 +1871,16 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 	}
 
 	if err := udc.smartcarTaskSvc.StartPoll(integration); err != nil {
-		logger.Err(err).Msg("Couldn't start Smartcar polling.")
+		localLog.Err(err).Msg("Couldn't start Smartcar polling.")
 		return opaqueInternalError
 	}
 
 	if err := tx.Commit(); err != nil {
-		logger.Error().Msg("Failed to commit new user device integration.")
+		localLog.Error().Msg("Failed to commit new user device integration.")
 		return opaqueInternalError
 	}
 
-	logger.Info().Msg("Finished Smartcar device registration.")
+	localLog.Info().Msg("Finished Smartcar device registration.")
 
 	return c.SendStatus(fiber.StatusNoContent)
 }
@@ -1905,7 +1906,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 
 	// Prevent users from connecting a vehicle if it's already connected through another user
 	// device object. Disabled outside of prod for ease of testing.
-	if udc.Settings.Environment == "prod" {
+	if udc.Settings.IsProduction() {
 		// Probably a race condition here.
 		var conflict bool
 		conflict, err = models.UserDevices(
@@ -1913,6 +1914,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 			models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(v.VIN)),
 			models.UserDeviceWhere.VinConfirmed.EQ(true),
 		).Exists(c.Context(), tx)
+
 		if err != nil {
 			return err
 		}
@@ -1977,6 +1979,28 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		logger.Err(err).Msg("Couldn't wake up Tesla.")
 	}
 
+	if udc.Settings.IsProduction() {
+		message := services.ValuationDecodeCommand{
+			VIN:          v.VIN,
+			UserDeviceID: userDeviceID,
+		}
+
+		messageBytes, err := json.Marshal(message)
+
+		if err != nil {
+			udc.log.Err(err).Msg("Failed to marshal valuation decode command.")
+		} else {
+			pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, messageBytes)
+
+			if err != nil {
+				udc.log.Err(err).Msg("Failed to publish valuation decode command for Tesla Device.")
+			} else {
+				udc.log.Info().Str("vin", v.VIN).Msgf("Published valuation decode command with sequence %d.", pubAck.Sequence)
+			}
+		}
+
+	}
+
 	if err := udc.teslaTaskService.StartPoll(v, &integration); err != nil {
 		return err
 	}
@@ -2022,13 +2046,15 @@ func fixTeslaDeviceDefinition(ctx context.Context, logger *zerolog.Logger, ddSvc
 /** Structs for request / response **/
 
 type UserDeviceIntegrationStatus struct {
-	IntegrationID     string    `json:"integrationId"`
-	Status            string    `json:"status"`
-	CreatedAt         time.Time `json:"createdAt"`
-	ExternalID        *string   `json:"externalId"`
-	UpdatedAt         time.Time `json:"updatedAt"`
-	Metadata          null.JSON `json:"metadata" swaggertype:"string"`
-	IntegrationVendor string    `json:"integrationVendor"`
+	IntegrationID     string                 `json:"integrationId"`
+	Status            string                 `json:"status"`
+	CreatedAt         time.Time              `json:"createdAt"`
+	ExternalID        *string                `json:"externalId"`
+	UpdatedAt         time.Time              `json:"updatedAt"`
+	Metadata          null.JSON              `json:"metadata" swaggertype:"string"`
+	IntegrationVendor string                 `json:"integrationVendor"`
+	Mint              *SyntheticDeviceStatus `json:"syntheticDevice,omitempty"`
+	TokenID           *big.Int               `json:"tokenId,omitempty"`
 }
 
 // RegisterDeviceIntegrationRequest carries credentials used to connect the device to a given

@@ -548,13 +548,13 @@ func GenerateWallet() (*ecdsa.PrivateKey, *common.Address, error) {
 }
 
 // BuildIntegrationForGRPCRequest includes tokenID when creating mock integration
-func BuildIntegrationForGRPCRequest(autoPiDefaultTemplateID int, tokenID uint64) *ddgrpc.Integration {
+func BuildIntegrationForGRPCRequest(tokenID uint64, vendor string) *ddgrpc.Integration {
 	integration := &ddgrpc.Integration{
 		Id:                      ksuid.New().String(),
 		Type:                    constants.IntegrationTypeHardware,
 		Style:                   constants.IntegrationStyleAddon,
-		Vendor:                  constants.AutoPiVendor,
-		AutoPiDefaultTemplateId: int32(autoPiDefaultTemplateID),
+		Vendor:                  vendor,
+		AutoPiDefaultTemplateId: 0,
 		TokenId:                 tokenID,
 	}
 

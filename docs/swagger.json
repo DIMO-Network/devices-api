@@ -554,144 +554,6 @@
                 }
             }
         },
-        "/synthetic/device/mint/{integrationNode}/{vehicleNode}": {
-            "get": {
-                "description": "Produces the payload that the user signs and submits to mint a synthetic device for\nthe given vehicle and integration.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "integrations"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token ID",
-                        "name": "integrationNode",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "vehicle ID",
-                        "name": "vehicleNode",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/apitypes.TypedData"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Submit a metadata",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "integrations"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token ID",
-                        "name": "integrationNode",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "vehicle ID",
-                        "name": "vehicleNode",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
-        "/synthetic/device/{syntheticDeviceNode}/burn": {
-            "get": {
-                "description": "Produces the payload that the user signs and submits to burn a synthetic device.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "synthetic device token id",
-                        "name": "syntheticDeviceNode",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/apitypes.TypedData"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Submit the signature required for the synthetic device burning meta-transaction.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "synthetic device token id",
-                        "name": "syntheticDeviceNode",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                }
-            }
-        },
-        "/synthetic/device/{syntheticDeviceNode}/re-authenticate": {
-            "post": {
-                "description": "Submit new credentials for the given synthetic device. Mostly\nused in the event of an upstream password change.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "synthetic device token id",
-                        "name": "syntheticDeviceNode",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                }
-            }
-        },
         "/user/devices": {
             "post": {
                 "security": [
@@ -1522,6 +1384,86 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/internal_controllers.CommandResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/mint": {
+            "get": {
+                "description": "Produces the payload that the user signs and submits to mint a synthetic device for\nthe given vehicle and integration.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "integrations"
+                ],
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "user device KSUID",
+                        "name": "userDeviceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "integration KSUD, must be software-based",
+                        "name": "integrationID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/apitypes.TypedData"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Submit the signature required for the synthetic device burning meta-transaction.",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "user device KSUID, must be minted",
+                        "name": "userDeviceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "integration KSUD, must be software-based and active",
+                        "name": "integrationID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "only field is the signed EIP-712",
+                        "name": "signed",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.BurnSyntheticDeviceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/apitypes.TypedData"
+                            }
                         }
                     }
                 }
@@ -2773,6 +2715,14 @@
                 }
             }
         },
+        "internal_controllers.BurnSyntheticDeviceRequest": {
+            "type": "object",
+            "properties": {
+                "signature": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_controllers.CommandRequestStatusResp": {
             "type": "object",
             "properties": {
@@ -3083,6 +3033,15 @@
                 "signature": {
                     "description": "Signature is the hex encoding of the EIP-712 signature result.",
                     "type": "string"
+                }
+            }
+        },
+        "internal_controllers.MintSyntheticDeviceRequest": {
+            "type": "object",
+            "properties": {
+                "signature": {
+                    "type": "string",
+                    "example": "0xc565d38982e1a5004efb5ee390fba0a08bb5e72b3f3e91094c66bc395c324f785425d58d5c1a601372d9c16164e380c63e89f1e0ea95fdefdf7b2854c4f938e81b"
                 }
             }
         },
@@ -3405,6 +3364,33 @@
                 }
             }
         },
+        "internal_controllers.SyntheticDeviceStatus": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string",
+                    "example": "0xAED7EA8035eEc47E657B34eF5D020c7005487443"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "Unstarted",
+                        "Submitted",
+                        "Mined",
+                        "Confirmed"
+                    ],
+                    "example": "Confirmed"
+                },
+                "tokenId": {
+                    "type": "number",
+                    "example": 15
+                },
+                "txHash": {
+                    "type": "string",
+                    "example": "0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"
+                }
+            }
+        },
         "internal_controllers.UpdateCountryCodeReq": {
             "type": "object",
             "properties": {
@@ -3506,6 +3492,12 @@
                 },
                 "status": {
                     "type": "string"
+                },
+                "syntheticDevice": {
+                    "$ref": "#/definitions/internal_controllers.SyntheticDeviceStatus"
+                },
+                "tokenId": {
+                    "$ref": "#/definitions/big.Int"
                 },
                 "updatedAt": {
                     "type": "string"

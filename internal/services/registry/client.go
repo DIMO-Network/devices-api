@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/crypto"
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/segmentio/ksuid"
 )
@@ -149,6 +148,28 @@ func (m *UnPairAftermarketDeviceSign) Message() signer.TypedDataMessage {
 	}
 }
 
+// MintVehicleAndSdSign(uint256 integrationNode)
+// Only signed by the synthetic device's wallet.
+type MintVehicleAndSdSign struct {
+	IntegrationNode *big.Int
+}
+
+func (m *MintVehicleAndSdSign) Name() string {
+	return "MintVehicleAndSdSign"
+}
+
+func (m *MintVehicleAndSdSign) Type() []signer.Type {
+	return []signer.Type{
+		{Name: "integrationNode", Type: "uint256"},
+	}
+}
+
+func (m *MintVehicleAndSdSign) Message() signer.TypedDataMessage {
+	return signer.TypedDataMessage{
+		"integrationNode": hexutil.EncodeBig(m.IntegrationNode),
+	}
+}
+
 type Message interface {
 	Name() string
 	Type() []signer.Type
@@ -275,6 +296,21 @@ func (c *Client) BurnSyntheticDeviceSign(requestID string, vehicleNode, syntheti
 	return c.sendRequest(requestID, data)
 }
 
+// function mintVehicleAndSdSign(MintVehicleAndSdInput calldata data)
+func (c *Client) MintVehicleAndSDign(requestID string, data contracts.MintVehicleAndSdInput) error {
+	abi, err := contracts.RegistryMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
+
+	callData, err := abi.Pack("mintVehicleAndSdSign", data)
+	if err != nil {
+		return err
+	}
+
+	return c.sendRequest(requestID, callData)
+}
+
 func (c *Client) sendRequest(requestID string, data []byte) error {
 	event := shared.CloudEvent[RequestData]{
 		ID:          ksuid.New().String(),
@@ -328,21 +364,8 @@ func (c *Client) GetPayload(msg Message) *signer.TypedData {
 	}
 }
 
-func (c *Client) Hash(msg Message) (common.Hash, error) {
+func (c *Client) Hash(msg Message) ([]byte, error) {
 	td := c.GetPayload(msg)
-	domHash, err := td.HashStruct("EIP712Domain", td.Domain.Map())
-	if err != nil {
-		return common.Hash{}, err
-	}
-
-	msgHash, err := td.HashStruct(td.PrimaryType, td.Message)
-	if err != nil {
-		return common.Hash{}, err
-	}
-
-	payload := []byte{0x19, 0x01}
-	payload = append(payload, domHash...)
-	payload = append(payload, msgHash...)
-
-	return crypto.Keccak256Hash(payload), nil
+	hash, _, err := signer.TypedDataAndHash(*td)
+	return hash, err
 }
