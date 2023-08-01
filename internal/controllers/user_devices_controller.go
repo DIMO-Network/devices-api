@@ -568,6 +568,9 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 			return err
 		}
 		udFull, err = builUserDeviceFull(existingUD, dd, reg.CountryCode)
+		if err != nil {
+			return err
+		}
 	} else {
 		// decode VIN with grpc call
 		decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, "", 0, reg.CountryCode)

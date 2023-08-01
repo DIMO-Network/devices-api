@@ -223,7 +223,7 @@ func (g *GeofencesController) GetAll(c *fiber.Ctx) error {
 			"geofences": []GetGeofence{},
 		})
 	}
-	
+
 	// pull out list of udtg. device def ids
 	var ddIds []string
 	for _, item := range items {
