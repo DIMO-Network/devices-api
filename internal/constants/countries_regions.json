@@ -453,5 +453,18 @@
     "region_code": 150,
     "sub_region_code": 155,
     "intermediate_region_code": ""
+  },
+  {
+    "name": "Turkey",
+    "alpha_2": "TR",
+    "alpha_3": "TUR",
+    "id": 441,
+    "iso_3166_2": "ISO 3166-2:TR",
+    "region": "Europe",
+    "sub_region": "Mediterranean Europe",
+    "intermediate_region": "",
+    "region_code": 150,
+    "sub_region_code": 254,
+    "intermediate_region_code": ""
   }
 ]
