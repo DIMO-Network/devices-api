@@ -540,50 +540,61 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	if country == nil {
 		return fiber.NewError(fiber.StatusBadRequest, "unsupported or invalid country: "+reg.CountryCode)
 	}
+	vin := strings.ToUpper(reg.VIN)
+
+	integration, err := udc.DeviceDefIntSvc.GetAutoPiIntegration(c.Context())
+	if err != nil {
+		udc.log.Err(err).Msg("failed to get autopi integration")
+		return err
+	}
+
+	deviceDefinitionID := ""
+
 	// check if VIN already exists
-	existingUD, err := models.UserDevices(models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(reg.VIN)),
+	existingUD, err := models.UserDevices(models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
 		models.UserDeviceWhere.VinConfirmed.EQ(true)).One(c.Context(), udc.DBS().Reader)
 	if err != nil && !errors.Is(sql.ErrNoRows, err) {
 		return err
 	}
+	var udFull *UserDeviceFull
 	if existingUD != nil {
 		if existingUD.UserID != userID {
 			return fiber.NewError(fiber.StatusConflict, "VIN already exists for a different user: "+reg.VIN)
 		}
-		// can now shortcut process
-		udc.log.Info().Msg("found duplicate user_device for same user")
-	} else {
-		// todo put in other stuff
-	}
-	// decode VIN with grpc call
-	vin := strings.ToUpper(reg.VIN)
-	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, "", 0, reg.CountryCode)
-	if err != nil {
-		return errors.Wrapf(err, "could not decode vin %s for country %s", vin, reg.CountryCode)
-	}
-	if len(decodeVIN.DeviceDefinitionId) == 0 {
-		udc.log.Warn().Str("vin", vin).Str("user_id", userID).
-			Msg("unable to decode vin for customer request to create vehicle")
-		return fiber.NewError(fiber.StatusFailedDependency, "unable to decode vin")
-	}
-	// attach device def to user
-	var udMd *services.UserDeviceMetadata
-	if reg.CANProtocol != "" {
-		udMd = &services.UserDeviceMetadata{CANProtocol: &reg.CANProtocol}
-	}
-	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, reg.CountryCode, userID, &vin, udMd)
-	if err != nil {
-		return err
-	}
-	// create device_integration record in definitions just in case. If we got the VIN normally means Mobile App able to decode.
-	integration, err := udc.DeviceDefIntSvc.GetAutoPiIntegration(c.Context())
-	if err != nil {
-		udc.log.Err(err).Msg("failed to get autopi integration")
-	} else if integration != nil {
-		_, err := udc.DeviceDefIntSvc.CreateDeviceDefinitionIntegration(c.Context(), integration.Id, decodeVIN.DeviceDefinitionId, country.Region)
+		deviceDefinitionID = existingUD.DeviceDefinitionID
+		// shortcut process, just use the already registered UD
+		dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), deviceDefinitionID)
 		if err != nil {
-			udc.log.Warn().Err(err).Msgf("failed to add device_integration for autopi and dd_id: %s", decodeVIN.DeviceDefinitionId)
+			return err
 		}
+		udFull, err = builUserDeviceFull(existingUD, dd, reg.CountryCode)
+	} else {
+		// decode VIN with grpc call
+		decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, "", 0, reg.CountryCode)
+		if err != nil {
+			return errors.Wrapf(err, "could not decode vin %s for country %s", vin, reg.CountryCode)
+		}
+		if len(decodeVIN.DeviceDefinitionId) == 0 {
+			udc.log.Warn().Str("vin", vin).Str("user_id", userID).
+				Msg("unable to decode vin for customer request to create vehicle")
+			return fiber.NewError(fiber.StatusFailedDependency, "unable to decode vin")
+		}
+		deviceDefinitionID = decodeVIN.DeviceDefinitionId
+		// attach device def to user
+		var udMd *services.UserDeviceMetadata
+		if reg.CANProtocol != "" {
+			udMd = &services.UserDeviceMetadata{CANProtocol: &reg.CANProtocol}
+		}
+		udFull, err = udc.createUserDevice(c.Context(), deviceDefinitionID, reg.CountryCode, userID, &vin, udMd)
+		if err != nil {
+			return err
+		}
+	}
+
+	// create device_integration record in definitions just in case. If we got the VIN normally means Mobile App able to decode.
+	_, err = udc.DeviceDefIntSvc.CreateDeviceDefinitionIntegration(c.Context(), integration.Id, deviceDefinitionID, country.Region)
+	if err != nil {
+		udc.log.Warn().Err(err).Msgf("failed to add device_integration for autopi and dd_id: %s", deviceDefinitionID)
 	}
 
 	// request valuation

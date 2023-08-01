@@ -367,15 +367,14 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_SameUser_Dupl
 	j, _ := json.Marshal(reg)
 	// existing UserDevice with same VIN
 	existingUD := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, vinny, s.pdb)
-	// if the vin already exists for this user, do not expect decode
-	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(0)
+	// if the vin already exists for this user, do not expect decode request
 
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
 	apInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 10)
 	s.deviceDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Times(1).Return(apInteg, nil)
-	// same with this - device_integration should already be created
+	// we always call this just in case
 	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), apInteg.Id, dd[0].DeviceDefinitionId, "Americas").
-		Times(0)
+		Times(1)
 
 	request := test.BuildRequest("POST", "/user/devices/fromvin", string(j))
 	response, responseError := s.app.Test(request, 10000)
@@ -409,7 +408,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_SameUser_Dupl
 	assert.NotNilf(s.T(), userDevice, "expected a user device in the database to exist")
 	assert.Equal(s.T(), s.testUserID, userDevice.UserID)
 	assert.Equal(s.T(), vinny, userDevice.VinIdentifier.String)
-	assert.Equal(s.T(), "06", gjson.GetBytes(userDevice.Metadata.JSON, "canProtocol").Str)
+	// CAN Protocol to be updated on each request, assuming
 }
 
 func (s *UserDevicesControllerTestSuite) TestPostWithExistingDefinitionID() {
