@@ -48,8 +48,17 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 			if err := json.Unmarshal(message.Value, &event); err != nil {
 				c.logger.Err(err).Int32("partition", message.Partition).Int64("offset", message.Offset).Msg("Couldn't parse fingerprint event.")
 			} else {
-				if err := c.Handle(session.Context(), &event); err != nil {
-					c.logger.Err(err).Int32("partition", message.Partition).Int64("offset", message.Offset).Msg("Failed to process fingerprint event.")
+				switch event.Type {
+				case "zone.dimo.aftermarket.device.fingerprint":
+					if err := c.HandleDeviceFingerprint(session.Context(), &event); err != nil {
+						c.logger.Err(err).Int32("partition", message.Partition).Int64("offset", message.Offset).Msg("Failed to process device fingerprint event.")
+					}
+				case "zone.dimo.synthetic.device.fingerprint":
+					if err := c.HandleSyntheticFingerprint(session.Context(), &event, string(message.Key[:])); err != nil {
+						c.logger.Err(err).Int32("partition", message.Partition).Int64("offset", message.Offset).Msg("Failed to process synthetic fingerprint event.")
+					}
+				default:
+					c.logger.Info().Int32("partition", message.Partition).Int64("offset", message.Offset).Str("type", event.Type).Msg("Unrecognized event type.")
 				}
 			}
 			session.MarkMessage(message, "")
@@ -102,7 +111,7 @@ func RunConsumer(ctx context.Context, settings *config.Settings, logger *zerolog
 	return nil
 }
 
-func (c *Consumer) Handle(ctx context.Context, event *Event) error {
+func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) error {
 	if !common.IsHexAddress(event.Subject) {
 		return fmt.Errorf("subject %q not a valid address", event.Subject)
 	}
@@ -138,7 +147,7 @@ func (c *Consumer) Handle(ctx context.Context, event *Event) error {
 	}
 
 	if observedVIN != vn.Vin {
-		c.logger.Warn().Msgf("Observed VIN %s for vehicle %d with VIN %s.", observedVIN, vn.TokenID, vn.Vin)
+		c.logger.Warn().Str("device", vn.UserDeviceID.String).Str("verified-vin", vn.Vin).Str("observed-vin", observedVIN).Msg("invalid vin")
 		return nil
 	}
 
@@ -153,7 +162,54 @@ func (c *Consumer) Handle(ctx context.Context, event *Event) error {
 		return err
 	}
 
-	c.logger.Info().Msgf("Issued VIN credential for vehicle %d using device %s.", vn.TokenID, addr)
+	c.logger.Info().Str("device-addr", event.Subject).Msg("issued vin credential")
+
+	return nil
+}
+
+func (c *Consumer) HandleSyntheticFingerprint(ctx context.Context, event *Event, key string) error {
+	if !common.IsHexAddress(event.Subject) {
+		return fmt.Errorf("subject %q not a valid address", event.Subject)
+	}
+
+	observedVIN, err := services.ExtractVIN(event.Data)
+	if err != nil {
+		if err == services.ErrNoVIN {
+			return nil
+		}
+		return fmt.Errorf("couldn't extract VIN: %w", err)
+	}
+
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(key),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.Claim)),
+	).One(ctx, c.DBS.DBS().Reader)
+	if err != nil {
+		return fmt.Errorf("failed querying for device: %w", err)
+	}
+
+	vn := ud.R.VehicleNFT
+	if vn == nil {
+		return nil
+	}
+
+	if observedVIN != vn.Vin {
+		c.logger.Warn().Str("device", ud.ID).Str("verified-vin", vn.Vin).Str("observed-vin", observedVIN).Msg("invalid vin")
+		return nil
+	}
+
+	if vc := vn.R.Claim; vc != nil {
+		weekEnd := NumToWeekEnd(GetWeekNum(time.Now()))
+		if vc.ExpirationDate.After(weekEnd) {
+			return nil
+		}
+	}
+
+	if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), time.Now().Add(8*24*time.Hour)); err != nil {
+		return err
+	}
+
+	c.logger.Info().Str("device-addr", event.Subject).Msg("issued vin credential")
 
 	return nil
 }

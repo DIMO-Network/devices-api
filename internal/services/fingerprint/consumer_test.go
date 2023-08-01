@@ -229,7 +229,7 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 			var event Event
 			err = json.Unmarshal([]byte(msg), &event)
 			require.NoError(t, err)
-			err = s.cons.Handle(s.ctx, &event)
+			err = s.cons.HandleDeviceFingerprint(s.ctx, &event)
 
 			if c.ReturnsError {
 				assert.ErrorContains(t, err, c.ExpectedResponse)
@@ -251,18 +251,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 	mtxReq := ksuid.New().String()
 	deiceDefID := "deviceDefID"
 	claimID := "claimID1"
-
-	// tables used in tests
-	aftermarketDevice := models.AftermarketDevice{
-		UserID:          null.StringFrom("SomeID"),
-		OwnerAddress:    ownerAddress,
-		CreatedAt:       time.Now(),
-		UpdatedAt:       time.Now(),
-		TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
-		VehicleTokenID:  types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
-		Beneficiary:     null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
-		EthereumAddress: ownerAddress.Bytes,
-	}
 
 	userDevice := models.UserDevice{
 		ID:                 deviceID,
@@ -314,18 +302,17 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 		AftermarketDevice models.AftermarketDevice
 	}{
 		{
-			Name:             "No corresponding aftermarket device for address",
+			Name:             "No corresponding device for id",
 			ReturnsError:     true,
 			ExpectedResponse: "sql: no rows in result set",
 		},
 		{
-			Name:              "active credential",
-			ReturnsError:      false,
-			UserDeviceTable:   userDevice,
-			MetaTxTable:       metaTx,
-			VCTable:           credential,
-			VehicleNFT:        nft,
-			AftermarketDevice: aftermarketDevice,
+			Name:            "active credential",
+			ReturnsError:    false,
+			UserDeviceTable: userDevice,
+			MetaTxTable:     metaTx,
+			VCTable:         credential,
+			VehicleNFT:      nft,
 		},
 		{
 			Name:            "inactive credential",
@@ -337,25 +324,7 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 				Credential:     []byte{},
 				ExpirationDate: time.Now().AddDate(0, 0, -10),
 			},
-			VehicleNFT:        nft,
-			AftermarketDevice: aftermarketDevice,
-		},
-		{
-			Name:            "invalid token id",
-			ReturnsError:    false,
-			UserDeviceTable: userDevice,
-			MetaTxTable:     metaTx,
-			VCTable:         credential,
-			VehicleNFT:      nft,
-			AftermarketDevice: models.AftermarketDevice{
-				UserID:          null.StringFrom("SomeID"),
-				OwnerAddress:    ownerAddress,
-				CreatedAt:       time.Now(),
-				UpdatedAt:       time.Now(),
-				TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
-				Beneficiary:     null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
-				EthereumAddress: ownerAddress.Bytes,
-			},
+			VehicleNFT: nft,
 		},
 	}
 
@@ -380,7 +349,7 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 			var event Event
 			err = json.Unmarshal([]byte(msg), &event)
 			require.NoError(t, err)
-			err = s.cons.Handle(s.ctx, &event)
+			err = s.cons.HandleSyntheticFingerprint(s.ctx, &event, deviceID)
 
 			if c.ReturnsError {
 				assert.ErrorContains(t, err, c.ExpectedResponse)
