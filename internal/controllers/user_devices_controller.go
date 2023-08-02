@@ -449,6 +449,7 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 				// Would we get this backreference for free?
 				qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
 				qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
+				qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.Claim)),
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
 				return err
