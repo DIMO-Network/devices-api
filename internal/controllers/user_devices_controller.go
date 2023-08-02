@@ -234,6 +234,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 		var sdStat *SyntheticDeviceStatus
 
 		var nft *NFTData
+		var credential CredentialData
 		pu := []PrivilegeUser{}
 
 		if vnft := d.R.VehicleNFT; vnft != nil {
@@ -298,6 +299,19 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 					sdStat.Address = &a
 				}
 			}
+
+			if cred := vnft.R.Claim; cred != nil {
+				var c map[string]interface{}
+				err = json.Unmarshal(cred.Credential, &c)
+				if err != nil {
+					return nil, err
+				}
+				credential.ExpirationDate = cred.ExpirationDate
+				credential.IssuanceDate = cred.IssuanceDate
+				if !time.Now().After(cred.ExpirationDate) {
+					credential.Valid = true
+				}
+			}
 		}
 
 		udf := UserDeviceFull{
@@ -313,6 +327,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			NFT:              nft,
 			OptedInAt:        d.OptedInAt.Ptr(),
 			PrivilegeUsers:   pu,
+			Credential:       &credential,
 		}
 
 		apiDevices = append(apiDevices, udf)
@@ -353,6 +368,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.Claim)),
 		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" DESC"))
 
 	devices, err := models.UserDevices(query...).All(c.Context(), udc.DBS().Reader)
@@ -2208,6 +2224,7 @@ type UserDeviceFull struct {
 	NFT              *NFTData                      `json:"nft,omitempty"`
 	OptedInAt        *time.Time                    `json:"optedInAt"`
 	PrivilegeUsers   []PrivilegeUser               `json:"privilegedUsers"`
+	Credential       *CredentialData               `json:"vinCredential,omitempty"`
 }
 
 type NFTData struct {
@@ -2227,4 +2244,10 @@ type SyntheticDeviceStatus struct {
 	Address       *common.Address `json:"address,omitempty" swaggertype:"string" example:"0xAED7EA8035eEc47E657B34eF5D020c7005487443"`
 	TxHash        *string         `json:"txHash,omitempty" swaggertype:"string" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
 	Status        string          `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed" example:"Confirmed"`
+}
+
+type CredentialData struct {
+	IssuanceDate   time.Time `json:"issuedAt"`
+	ExpirationDate time.Time `json:"expiresAt"`
+	Valid          bool      `json:"valid"`
 }
