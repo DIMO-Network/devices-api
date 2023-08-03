@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -480,41 +479,42 @@ func (d *deviceDefinitionService) PullDrivlyData(ctx context.Context, userDevice
 		return SkippedDataPullStatus, nil
 	}
 
-	// get mileage for the drivly request
-	deviceMileage, err := d.getDeviceMileage(userDeviceID, int(deviceDef.Type.Year))
-	if err != nil {
-		return ErrorDataPullStatus, err
-	}
+	// get mileage for the drivly request,
+	// commenting out in case need for valuations api
+	//deviceMileage, err := d.getDeviceMileage(userDeviceID, int(deviceDef.Type.Year))
+	//if err != nil {
+	//	return ErrorDataPullStatus, err
+	//}
 
 	reqData := ValuationRequestData{
-		Mileage: deviceMileage,
+		//Mileage: deviceMileage,
 	}
 
 	udMD := new(UserDeviceMetadata)
 	_ = ud.Metadata.Unmarshal(udMD)
 
-	if udMD.PostalCode == nil {
-		lat, long := d.getDeviceLatLong(userDeviceID)
-		localLog.Info().Msgf("lat long found: %f, %f", lat, long)
-		if lat != 0 && long != 0 {
-			gl, err := GeoDecodeLatLong(lat, long, d.googleMapsAPIKey)
-			if err != nil {
-				localLog.Err(err).Msgf("failed to GeoDecode lat long %f, %f", lat, long)
-			}
-			if gl != nil {
-				// update UD, ignore if fails doesn't matter
-				udMD.PostalCode = &gl.PostalCode
-				udMD.GeoDecodedCountry = &gl.Country
-				udMD.GeoDecodedStateProv = &gl.AdminAreaLevel1
-				_ = ud.Metadata.Marshal(udMD)
-				_, err = ud.Update(ctx, d.dbs().Writer, boil.Whitelist(models.UserDeviceColumns.Metadata, models.UserDeviceColumns.UpdatedAt))
-				if err != nil {
-					localLog.Err(err).Msg("failed to update user_device.metadata with geodecode info")
-				}
-				localLog.Info().Msgf("GeoDecoded a lat long: %+v", gl)
-			}
-		}
-	}
+	//if udMD.PostalCode == nil {
+	//	//lat, long := d.getDeviceLatLong(userDeviceID)
+	//	//localLog.Info().Msgf("lat long found: %f, %f", lat, long)
+	//	if lat != 0 && long != 0 {
+	//		gl, err := GeoDecodeLatLong(lat, long, d.googleMapsAPIKey)
+	//		if err != nil {
+	//			localLog.Err(err).Msgf("failed to GeoDecode lat long %f, %f", lat, long)
+	//		}
+	//		if gl != nil {
+	//			// update UD, ignore if fails doesn't matter
+	//			udMD.PostalCode = &gl.PostalCode
+	//			udMD.GeoDecodedCountry = &gl.Country
+	//			udMD.GeoDecodedStateProv = &gl.AdminAreaLevel1
+	//			_ = ud.Metadata.Marshal(udMD)
+	//			_, err = ud.Update(ctx, d.dbs().Writer, boil.Whitelist(models.UserDeviceColumns.Metadata, models.UserDeviceColumns.UpdatedAt))
+	//			if err != nil {
+	//				localLog.Err(err).Msg("failed to update user_device.metadata with geodecode info")
+	//			}
+	//			localLog.Info().Msgf("GeoDecoded a lat long: %+v", gl)
+	//		}
+	//	}
+	//}
 
 	if udMD.PostalCode != nil {
 		reqData.ZipCode = udMD.PostalCode
@@ -693,65 +693,67 @@ func (d *deviceDefinitionService) getVINDecodeGrpcClient() (ddgrpc.VinDecoderSer
 	return client, conn, nil
 }
 
-func (d *deviceDefinitionService) getDeviceMileage(udID string, modelYear int) (mileage *float64, err error) {
-	var deviceMileage *float64
+// commenting out in case need for valuations api
+//func (d *deviceDefinitionService) getDeviceMileage(udID string, modelYear int) (mileage *float64, err error) {
+//	var deviceMileage *float64
+//
+//	// Get user device odometer
+//	deviceData, err := models.UserDeviceData(
+//		models.UserDeviceDatumWhere.UserDeviceID.EQ(udID),
+//		models.UserDeviceDatumWhere.Signals.IsNotNull(),
+//		qm.OrderBy("updated_at desc"),
+//		qm.Limit(1)).One(context.Background(), d.dbs().Writer)
+//	if err != nil {
+//		if !errors.Is(err, sql.ErrNoRows) {
+//			return nil, err
+//		}
+//	} else {
+//		deviceOdometer := gjson.GetBytes(deviceData.Signals.JSON, "odometer.value")
+//		if deviceOdometer.Exists() {
+//			deviceMileage = new(float64)
+//			*deviceMileage = deviceOdometer.Float() / MilesToKmFactor
+//		}
+//	}
+//
+//	// Estimate mileage based on model year
+//	if deviceMileage == nil {
+//		deviceMileage = new(float64)
+//		yearDiff := time.Now().Year() - modelYear
+//		switch {
+//		case yearDiff > 0:
+//			// Past model year
+//			*deviceMileage = float64(yearDiff) * EstMilesPerYear
+//		case yearDiff == 0:
+//			// Current model year
+//			*deviceMileage = EstMilesPerYear / 2
+//		default:
+//			// Next model year
+//			*deviceMileage = 0
+//		}
+//	}
+//
+//	return deviceMileage, nil
+//}
 
-	// Get user device odometer
-	deviceData, err := models.UserDeviceData(
-		models.UserDeviceDatumWhere.UserDeviceID.EQ(udID),
-		models.UserDeviceDatumWhere.Signals.IsNotNull(),
-		qm.OrderBy("updated_at desc"),
-		qm.Limit(1)).One(context.Background(), d.dbs().Writer)
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			return nil, err
-		}
-	} else {
-		deviceOdometer := gjson.GetBytes(deviceData.Signals.JSON, "odometer.value")
-		if deviceOdometer.Exists() {
-			deviceMileage = new(float64)
-			*deviceMileage = deviceOdometer.Float() / MilesToKmFactor
-		}
-	}
-
-	// Estimate mileage based on model year
-	if deviceMileage == nil {
-		deviceMileage = new(float64)
-		yearDiff := time.Now().Year() - modelYear
-		switch {
-		case yearDiff > 0:
-			// Past model year
-			*deviceMileage = float64(yearDiff) * EstMilesPerYear
-		case yearDiff == 0:
-			// Current model year
-			*deviceMileage = EstMilesPerYear / 2
-		default:
-			// Next model year
-			*deviceMileage = 0
-		}
-	}
-
-	return deviceMileage, nil
-}
-
-func (d *deviceDefinitionService) getDeviceLatLong(userDeviceID string) (lat, long float64) {
-	deviceData, err := models.UserDeviceData(
-		models.UserDeviceDatumWhere.UserDeviceID.EQ(userDeviceID),
-		models.UserDeviceDatumWhere.Signals.IsNotNull(),
-		qm.OrderBy("updated_at desc"),
-		qm.Limit(1)).One(context.Background(), d.dbs().Writer)
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			return
-		}
-	} else {
-		latitude := gjson.GetBytes(deviceData.Signals.JSON, "latitude.value")
-		longitude := gjson.GetBytes(deviceData.Signals.JSON, "longitude.value")
-		if latitude.Exists() && longitude.Exists() {
-			lat = latitude.Float()
-			long = longitude.Float()
-			return
-		}
-	}
-	return
-}
+// commenting out for now b/c may need this logic for valuations-api
+//func (d *deviceDefinitionService) getDeviceLatLong(userDeviceID string) (lat, long float64) {
+//	deviceData, err := models.UserDeviceData(
+//		models.UserDeviceDatumWhere.UserDeviceID.EQ(userDeviceID),
+//		models.UserDeviceDatumWhere.Signals.IsNotNull(),
+//		qm.OrderBy("updated_at desc"),
+//		qm.Limit(1)).One(context.Background(), d.dbs().Writer)
+//	if err != nil {
+//		if !errors.Is(err, sql.ErrNoRows) {
+//			return
+//		}
+//	} else {
+//		latitude := gjson.GetBytes(deviceData.Signals.JSON, "latitude.value")
+//		longitude := gjson.GetBytes(deviceData.Signals.JSON, "longitude.value")
+//		if latitude.Exists() && longitude.Exists() {
+//			lat = latitude.Float()
+//			long = longitude.Float()
+//			return
+//		}
+//	}
+//	return
+//}
