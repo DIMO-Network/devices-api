@@ -6,7 +6,7 @@ require (
 	github.com/DIMO-Network/device-data-api v0.4.23-0.20230718210255-60a2c7be0aa7
 	github.com/DIMO-Network/device-definitions-api v1.0.7
 	github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c
-	github.com/DIMO-Network/shared v0.9.53
+	github.com/DIMO-Network/shared v0.10.2
 	github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3
 	github.com/DIMO-Network/zflogger v1.0.0-beta
 	github.com/Shopify/sarama v1.38.1
@@ -64,6 +64,7 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
+	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/holiman/uint256 v1.2.2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
