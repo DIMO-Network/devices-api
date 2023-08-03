@@ -308,13 +308,13 @@ func Test_Ignore_Transfer_Wrong_Contract(t *testing.T) {
 		Payload: []byte(factoryResp.payload),
 	}
 
-	cm := common.BytesToAddress([]byte{uint8(9)})
+	cm := common.BytesToAddress([]byte{uint8(1)})
 	autopiUnit := models.AftermarketDevice{
 		UserID:       null.StringFrom("SomeID"),
 		OwnerAddress: null.BytesFrom(cm.Bytes()),
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
-		TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0)),
+		TokenID:      types.NewNullDecimal(decimal.New(tokenID, 0)),
 	}
 
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
@@ -323,7 +323,10 @@ func Test_Ignore_Transfer_Wrong_Contract(t *testing.T) {
 	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
 
 	err = c.processMessage(msg)
-	s.assert.EqualError(err, "Handler not provided for contract")
+	s.assert.NoError(err)
+
+	s.assert.NoError(autopiUnit.Reload(s.ctx, s.pdb.DBS().Reader))
+	s.assert.Equal(autopiUnit.OwnerAddress, null.BytesFrom(cm.Bytes()))
 }
 
 func Test_Ignore_Transfer_Unit_Not_Found(t *testing.T) {
