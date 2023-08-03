@@ -127,9 +127,9 @@ func (c *Consumer) HandleSyntheticFingerprint(ctx context.Context, event *Event)
 		return fmt.Errorf("subject %q not a valid address", event.Subject)
 	}
 
-	observedVIN, err := services.ExtractVIN(event.Data)
+	observedVIN, err := ExtractVIN(event.Data)
 	if err != nil {
-		if err == services.ErrNoVIN {
+		if err == ErrNoVIN {
 			return nil
 		}
 		return fmt.Errorf("couldn't extract VIN: %w", err)
