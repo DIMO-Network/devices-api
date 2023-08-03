@@ -234,7 +234,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 		var sdStat *SyntheticDeviceStatus
 
 		var nft *NFTData
-		var credential CredentialData
+		var credential *CredentialData
 		pu := []PrivilegeUser{}
 
 		if vnft := d.R.VehicleNFT; vnft != nil {
@@ -306,10 +306,19 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 				if err != nil {
 					return nil, err
 				}
-				credential.ExpirationDate = cred.ExpirationDate
-				credential.IssuanceDate = cred.IssuanceDate
-				if !time.Now().After(cred.ExpirationDate) {
-					credential.Valid = true
+				subj, ok := c["credentialSubject"]
+				if ok {
+					v, ok := subj.(map[string]interface{})["vehicleIdentificationNumber"]
+					if ok {
+						credential = &CredentialData{
+							Vin:            v.(string),
+							ExpirationDate: cred.ExpirationDate,
+							IssuanceDate:   cred.IssuanceDate,
+						}
+						if !time.Now().After(cred.ExpirationDate) {
+							credential.Valid = true
+						}
+					}
 				}
 			}
 		}
@@ -327,7 +336,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			NFT:              nft,
 			OptedInAt:        d.OptedInAt.Ptr(),
 			PrivilegeUsers:   pu,
-			Credential:       &credential,
+			Credential:       credential,
 		}
 
 		apiDevices = append(apiDevices, udf)
@@ -2251,4 +2260,5 @@ type CredentialData struct {
 	IssuanceDate   time.Time `json:"issuedAt"`
 	ExpirationDate time.Time `json:"expiresAt"`
 	Valid          bool      `json:"valid"`
+	Vin            string    `json:"vin"`
 }
