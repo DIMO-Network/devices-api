@@ -24,7 +24,6 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/gofiber/fiber/v2/middleware/pprof"
 	_ "github.com/lib/pq"
-	"github.com/lovoo/goka"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	_ "go.uber.org/automaxprocs"
@@ -80,7 +79,6 @@ func main() {
 		}
 		startMonitoringServer(logger, &settings)
 		eventService := services.NewEventService(&logger, &settings, deps.getKafkaProducer())
-		startDeviceStatusConsumer(logger, &settings, pdb, eventService)
 		startCredentialConsumer(logger, &settings, pdb)
 		startTaskStatusConsumer(logger, &settings, pdb)
 		startWebAPI(logger, &settings, pdb, eventService, deps.getKafkaProducer(), deps.getS3ServiceClient(ctx), deps.getS3NFTServiceClient(ctx))
@@ -156,39 +154,6 @@ func changeLogLevel(c *fiber.Ctx) error {
 	}
 	zerolog.SetGlobalLevel(level)
 	return c.Status(fiber.StatusOK).SendString("log level set to: " + level.String())
-}
-
-func startDeviceStatusConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store, eventService services.EventService) {
-	nhtsaSvc := services.NewNHTSAService()
-	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, nhtsaSvc, settings)
-	autoPISvc := services.NewAutoPiAPIService(settings, pdb.DBS)
-	ingestSvc := services.NewDeviceStatusIngestService(pdb.DBS, &logger, eventService, ddSvc, autoPISvc)
-
-	sc := goka.DefaultConfig()
-	sc.Version = sarama.V2_8_1_0
-	goka.ReplaceGlobalConfig(sc)
-
-	group := goka.DefineGroup("devices-vin-fraud",
-		goka.Input(goka.Stream(settings.DeviceStatusTopic), new(shared.JSONCodec[services.DeviceStatusEvent]), ingestSvc.ProcessDeviceStatusMessages),
-		goka.Persist(new(shared.JSONCodec[shared.CloudEvent[services.RegisteredVIN]])),
-	)
-
-	processor, err := goka.NewProcessor(strings.Split(settings.KafkaBrokers, ","),
-		group,
-		goka.WithHasher(kafkautil.MurmurHasher),
-	)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Could not start device status processor")
-	}
-
-	go func() {
-		err = processor.Run(context.Background())
-		if err != nil {
-			logger.Fatal().Err(err).Msg("could not run device status processor")
-		}
-	}()
-
-	logger.Info().Msg("Device status update consumer started")
 }
 
 func startCredentialConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store) {

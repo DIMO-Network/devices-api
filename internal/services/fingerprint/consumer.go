@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
-	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
@@ -100,9 +102,9 @@ func (c *Consumer) Handle(ctx context.Context, event *Event) error {
 		return fmt.Errorf("recovered wrong address %s", recAddr)
 	}
 
-	observedVIN, err := services.ExtractVIN(event.Data)
+	observedVIN, err := ExtractVIN(event.Data)
 	if err != nil {
-		if err == services.ErrNoVIN {
+		if err == ErrNoVIN {
 			return nil
 		}
 		return fmt.Errorf("couldn't extract VIN: %w", err)
@@ -153,4 +155,35 @@ func GetWeekNum(t time.Time) int {
 
 func NumToWeekEnd(n int) time.Time {
 	return startTime.Add(time.Duration(n+1) * weekDuration)
+}
+
+var ErrNoVIN = errors.New("no VIN field")
+
+var basicVINExp = regexp.MustCompile(`^[A-Z0-9]{17}$`)
+
+// ExtractVIN extracts the vin field from a status update's data object.
+// If this field is not present or fails basic validation, an error is returned.
+// The function does clean up the input slightly.
+func ExtractVIN(data []byte) (string, error) {
+	partialData := new(struct {
+		VIN *string `json:"vin"`
+	})
+
+	if err := json.Unmarshal(data, partialData); err != nil {
+		return "", fmt.Errorf("failed parsing data field: %w", err)
+	}
+
+	if partialData.VIN == nil {
+		return "", ErrNoVIN
+	}
+
+	// Minor cleaning.
+	vin := strings.ToUpper(strings.ReplaceAll(*partialData.VIN, " ", ""))
+
+	// We have seen crazy VINs like "\u000" before.
+	if !basicVINExp.MatchString(vin) {
+		return "", errors.New("invalid VIN")
+	}
+
+	return vin, nil
 }
