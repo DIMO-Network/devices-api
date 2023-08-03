@@ -21,6 +21,8 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
+const migrationsDirRelPath = "../../migrations"
+
 type AutoPiAPIServiceTestSuite struct {
 	suite.Suite
 	pdb       db.Store
