@@ -244,12 +244,11 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 	ctx := context.Background()
 	userDeviceID := "userDeviceID1"
-	deiceDefID := "deviceDefID"
+	userID := "userID6"
 	vin := "W1N2539531F907299"
 	claimID := "claimID1"
 	tokenID := big.NewInt(3)
 	mtxReq := ksuid.New().String()
-	deviceID := ksuid.New().String()
 	walletAddr := null.BytesFrom(common.FromHex("0x5d25D4891fdb93DFb88f8F9AAB66F6d2f714eD8f"))
 	ownerAddr := null.BytesFrom(common.FromHex("0x6e15D4891fdb93DFb88f8F9AAB66F6d2f714eD8f"))
 
@@ -259,22 +258,25 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 	}
 
 	userDevice := models.UserDevice{
-		ID:                 deviceID,
+		ID:                 userDeviceID,
 		UserID:             userDeviceID,
-		DeviceDefinitionID: deiceDefID,
+		DeviceDefinitionID: userID,
 		VinConfirmed:       true,
 		VinIdentifier:      null.StringFrom(vin),
 	}
 
+	eventTime, err := time.Parse(time.RFC3339Nano, "2023-07-04T00:00:00Z")
+	s.Require().NoError(err)
+
 	credential := models.VerifiableCredential{
 		ClaimID:        claimID,
 		Credential:     []byte{},
-		ExpirationDate: time.Now().AddDate(0, 0, 7),
+		ExpirationDate: eventTime.AddDate(0, 0, 7),
 	}
 
 	nft := models.VehicleNFT{
 		MintRequestID: mtxReq,
-		UserDeviceID:  null.StringFrom(deviceID),
+		UserDeviceID:  null.StringFrom(userDeviceID),
 		Vin:           vin,
 		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
 		OwnerAddress:  ownerAddr,
@@ -287,16 +289,15 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 		VehicleTokenID: nft.TokenID,
 	}
 
-	msg :=
-		`{
-	"data": {"vin":"W1N2539531F907299","week":7},
+	msg := fmt.Sprintf(`{
+	"data": {"vin":%q,"week":7},
 	"id": "2RvhwjUbtoePjmXN7q9qfjLQgwP",
-	"signature": "fd657d52d43e27a4063a9af1f656c6a6729fdcda4832e31b7a29fe8bad948ed52bc34f5b9c87143e5e97e87d4acaf91302d53b1c490ac2a4417b9df87c8dc41a1c",
 	"source": "aftermarket/synthetic/fingerprint",
 	"specversion": "1.0",
-	"subject": "0x5d25D4891fdb93DFb88f8F9AAB66F6d2f714eD8f",
+	"subject": %q,
+	"time": %q,
 	"type": "zone.dimo.aftermarket.synthetic.fingerprint"
-}`
+}`, vin, userDeviceID, eventTime.Format(time.RFC3339))
 
 	cases := []struct {
 		Name                 string
@@ -308,11 +309,11 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 		VehicleNFT           *models.VehicleNFT
 		AftermarketDevice    *models.AftermarketDevice
 		UserDeviceTable      *models.UserDevice
+		ExpiresAt            time.Time
 	}{
 		{
-			Name:             "No corresponding device for id",
-			ReturnsError:     true,
-			ExpectedResponse: "sql: no rows in result set",
+			Name:         "No corresponding device for id",
+			ReturnsError: true,
 		},
 		{
 			Name:                 "active credential",
@@ -322,6 +323,7 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 			VCTable:              &credential,
 			UserDeviceTable:      &userDevice,
 			VehicleNFT:           &nft,
+			ExpiresAt:            credential.ExpirationDate,
 		},
 		{
 			Name:                 "inactive credential",
@@ -332,9 +334,10 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 			VCTable: &models.VerifiableCredential{
 				ClaimID:        claimID,
 				Credential:     []byte{},
-				ExpirationDate: time.Now().AddDate(0, 0, -10),
+				ExpirationDate: eventTime.AddDate(0, 0, -10),
 			},
 			VehicleNFT: &nft,
+			ExpiresAt:  eventTime.AddDate(0, 0, 8),
 		},
 	}
 
@@ -377,6 +380,13 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 				assert.ErrorContains(t, err, c.ExpectedResponse)
 			} else {
 				require.NoError(t, err)
+				s.Require().NoError(c.VehicleNFT.Reload(s.ctx, s.pdb.DBS().Reader))
+				s.Require().True(c.VehicleNFT.ClaimID.Valid)
+
+				vc, err := models.FindVerifiableCredential(s.ctx, s.pdb.DBS().Reader.DB, c.VehicleNFT.ClaimID.String)
+				s.Require().NoError(err)
+				s.Require().Equal(c.ExpiresAt, vc.ExpirationDate)
+
 			}
 		})
 	}

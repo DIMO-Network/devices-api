@@ -2,6 +2,7 @@ package fingerprint
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -66,6 +67,10 @@ func RunConsumer(ctx context.Context, settings *config.Settings, logger *zerolog
 	return nil
 }
 
+// defaultCredDuration is the default lifetime for VIN credentials. It's meant to cover the
+// current reward week, but contains an extra day for safety.
+var defaultCredDuration = 8 * 24 * time.Hour
+
 func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) error {
 	if !common.IsHexAddress(event.Subject) {
 		return fmt.Errorf("subject %q not a valid address", event.Subject)
@@ -113,7 +118,7 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 		}
 	}
 
-	if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), time.Now().Add(8*24*time.Hour)); err != nil {
+	if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), time.Now().Add(defaultCredDuration)); err != nil {
 		return err
 	}
 
@@ -123,8 +128,21 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 }
 
 func (c *Consumer) HandleSyntheticFingerprint(ctx context.Context, event *Event) error {
-	if !common.IsHexAddress(event.Subject) {
-		return fmt.Errorf("subject %q not a valid address", event.Subject)
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(event.Subject),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.Claim)),
+	).One(ctx, c.DBS.DBS().Reader)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("no vehicle with id %q", event.Subject)
+		}
+		return err
+	}
+
+	vn := ud.R.VehicleNFT
+
+	if vn == nil {
+		return nil
 	}
 
 	observedVIN, err := ExtractVIN(event.Data)
@@ -135,33 +153,19 @@ func (c *Consumer) HandleSyntheticFingerprint(ctx context.Context, event *Event)
 		return fmt.Errorf("couldn't extract VIN: %w", err)
 	}
 
-	sd, err := models.SyntheticDevices(
-		models.SyntheticDeviceWhere.WalletAddress.EQ(common.FromHex(event.Subject)),
-		qm.Load(qm.Rels(models.SyntheticDeviceRels.VehicleToken, models.VehicleNFTRels.Claim)),
-	).One(ctx, c.DBS.DBS().Reader)
-	if err != nil {
-		return fmt.Errorf("failed querying for synthetic device: %w", err)
-	}
-
-	vn := sd.R.VehicleToken
-	if vn == nil {
-		c.logger.Warn().Str("synthetic-wallet-addr", common.Bytes2Hex(sd.WalletAddress)).Msg("no vehicle nft associated with device")
-		return nil
-	}
-
 	if observedVIN != vn.Vin {
 		c.logger.Warn().Msgf("observed vin %s does not match verified vin %s for device %s", observedVIN, vn.Vin, vn.UserDeviceID.String)
 		return nil
 	}
 
 	if vc := vn.R.Claim; vc != nil {
-		weekEnd := NumToWeekEnd(GetWeekNum(time.Now()))
+		weekEnd := NumToWeekEnd(GetWeekNum(event.Time))
 		if vc.ExpirationDate.After(weekEnd) {
 			return nil
 		}
 	}
 
-	if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), time.Now().Add(8*24*time.Hour)); err != nil {
+	if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), event.Time.Add(defaultCredDuration)); err != nil {
 		return err
 	}
 
