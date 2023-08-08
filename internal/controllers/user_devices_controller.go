@@ -301,24 +301,11 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			}
 
 			if cred := vnft.R.Claim; cred != nil {
-				var c map[string]interface{}
-				err = json.Unmarshal(cred.Credential, &c)
-				if err != nil {
-					return nil, err
-				}
-				subj, ok := c["credentialSubject"]
-				if ok {
-					v, ok := subj.(map[string]interface{})["vehicleIdentificationNumber"]
-					if ok {
-						credential = &CredentialData{
-							Vin:            v.(string),
-							ExpirationDate: cred.ExpirationDate,
-							IssuanceDate:   cred.IssuanceDate,
-						}
-						if !time.Now().After(cred.ExpirationDate) {
-							credential.Valid = true
-						}
-					}
+				credential = &CredentialData{
+					Vin:            cred.R.ClaimVehicleNFT.Vin,
+					ExpirationDate: cred.ExpirationDate,
+					IssuanceDate:   cred.IssuanceDate,
+					Valid:          time.Now().Before(cred.ExpirationDate),
 				}
 			}
 		}
@@ -353,11 +340,14 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 // @Security    BearerAuth
 // @Router      /user/devices/me [get]
 func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-	if err != nil {
-		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
-	}
+	// userID := helpers.GetUserID(c)
+	// user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	// if err != nil {
+	// 	return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
+	// }
+
+	user := new(pb.User)
+	userID := "userDeviceIDB"
 
 	var query []qm.QueryMod
 
@@ -2234,7 +2224,7 @@ type UserDeviceFull struct {
 	NFT              *NFTData                      `json:"nft,omitempty"`
 	OptedInAt        *time.Time                    `json:"optedInAt"`
 	PrivilegeUsers   []PrivilegeUser               `json:"privilegedUsers"`
-	Credential       *CredentialData               `json:"vinCredential,omitempty"`
+	Credential       *CredentialData               `json:"VINCredential,omitempty"`
 }
 
 type NFTData struct {
@@ -2257,8 +2247,8 @@ type SyntheticDeviceStatus struct {
 }
 
 type CredentialData struct {
-	IssuanceDate   time.Time `json:"issuedAt"`
-	ExpirationDate time.Time `json:"expiresAt"`
+	IssuanceDate   time.Time `json:"issuanceDate"`
+	ExpirationDate time.Time `json:"expirationDate"`
 	Valid          bool      `json:"valid"`
 	Vin            string    `json:"vin"`
 }
