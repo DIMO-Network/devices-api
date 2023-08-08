@@ -340,14 +340,11 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 // @Security    BearerAuth
 // @Router      /user/devices/me [get]
 func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
-	// userID := helpers.GetUserID(c)
-	// user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-	// if err != nil {
-	// 	return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
-	// }
-
-	user := new(pb.User)
-	userID := "userDeviceIDB"
+	userID := helpers.GetUserID(c)
+	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
+	}
 
 	var query []qm.QueryMod
 
