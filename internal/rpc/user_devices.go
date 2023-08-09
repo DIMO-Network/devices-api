@@ -280,27 +280,27 @@ func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *
 }
 
 func (s *userDeviceService) UpdateDeviceIntegrationStatus(ctx context.Context, req *pb.UpdateDeviceIntegrationStatusRequest) (*pb.UserDevice, error) {
+	logger := s.logger.With().Str("integrationId", req.IntegrationId).Str("userDeviceId", req.UserDeviceId).Logger()
 
 	apiIntegration, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(req.IntegrationId),
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(req.UserDeviceId),
 	).One(ctx, s.dbs().Reader)
-
 	if err != nil {
+		logger.Err(err).Msg("Couldn't retrieve integration.")
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, status.Error(codes.NotFound, "No UserDeviceAPIIntegrations with that ID found.")
 		}
-
-		s.logger.Err(err).
-			Str("IntegrationId", req.IntegrationId).
-			Str("UserDeviceId", req.UserDeviceId).
-			Msg("Database failure retrieving UserDeviceAPIIntegrations.")
 		return nil, status.Error(codes.Internal, "Internal error.")
 	}
 
-	apiIntegration.Status = req.Status
-	if _, err := apiIntegration.Update(ctx, s.dbs().Writer, boil.Infer()); err != nil {
-		return nil, status.Error(codes.Internal, "failed to update API integration")
+	if req.Status != apiIntegration.Status {
+		apiIntegration.Status = req.Status
+		if _, err := apiIntegration.Update(ctx, s.dbs().Writer, boil.Whitelist(models.UserDeviceAPIIntegrationColumns.Status)); err != nil {
+			logger.Info().Msgf("Failed to update integration status to %s.", req.Status)
+			return nil, status.Error(codes.Internal, "failed to update API integration")
+		}
+		logger.Info().Msgf("Updated integration status to %s.", req.Status)
 	}
 
 	return s.GetUserDevice(ctx, &pb.GetUserDeviceRequest{Id: req.UserDeviceId})
