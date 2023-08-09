@@ -8,12 +8,12 @@ cronJob:
   schedule: 0 0 1 * *
 env:
   ENVIRONMENT: prod
-  PORT: '8080'
+  PORT: "8080"
   LOG_LEVEL: info
-  DB_PORT: '5432'
+  DB_PORT: "5432"
   DB_NAME: devices_api
-  DB_MAX_OPEN_CONNECTIONS: '100'
-  DB_MAX_IDLE_CONNECTIONS: '30'
+  DB_MAX_OPEN_CONNECTIONS: "100"
+  DB_MAX_IDLE_CONNECTIONS: "30"
   SERVICE_NAME: devices-api
   JWT_KEY_SET_URL: https://auth.dimo.zone/keys
   DEPLOYMENT_BASE_URL: https://devices-api.dimo.zone
@@ -34,11 +34,11 @@ env:
   NFT_S3_BUCKET: dimo-network-nfts-prod
   DEFINITIONS_GRPC_ADDR: device-definitions-api-prod:8086
   ELASTIC_DEVICE_STATUS_INDEX: device-status-prod-*
-  DIMO_REGISTRY_ADDR: '0xFA8beC73cebB9D88FF88a2f75E7D7312f2Fd39EC'
+  DIMO_REGISTRY_ADDR: "0xFA8beC73cebB9D88FF88a2f75E7D7312f2Fd39EC"
   ENABLE_PRIVILEGES: true
   TOKEN_EXCHANGE_JWK_KEY_SET_URL: http://dex-roles-rights-prod.prod.svc.cluster.local:5556/keys
-  VEHICLE_NFT_ADDRESS: '0xba5738a18d83d41847dffbdc6101d37c69c9b0cf'
-  AFTERMARKET_DEVICE_CONTRACT_ADDRESS: '0x9c94c395cbcbde662235e0a9d3bb87ad708561ba'
+  VEHICLE_NFT_ADDRESS: "0xba5738a18d83d41847dffbdc6101d37c69c9b0cf"
+  AFTERMARKET_DEVICE_CONTRACT_ADDRESS: "0x9c94c395cbcbde662235e0a9d3bb87ad708561ba"
   DIMO_CONTRACT_APIURL: https://contracts-api.dimo.zone/
   NATS_URL: nats-prod:4222
   SYNTHETIC_DEVICES_ENABLED: false
@@ -48,10 +48,10 @@ ingress:
   className: nginx
   annotations:
     nginx.ingress.kubernetes.io/auth-tls-secret: ingress/cf-origin-ca
-    nginx.ingress.kubernetes.io/auth-tls-verify-client: 'on'
-    nginx.ingress.kubernetes.io/enable-cors: 'true'
+    nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
     nginx.ingress.kubernetes.io/cors-allow-origin: https://app.dimo.zone
-    nginx.ingress.kubernetes.io/limit-rps: '9'
+    nginx.ingress.kubernetes.io/limit-rps: "9"
     external-dns.alpha.kubernetes.io/hostname: devices-api.dimo.zone
   hosts:
     - host: devices-api.dimo.zone

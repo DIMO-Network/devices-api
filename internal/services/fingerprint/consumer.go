@@ -2,6 +2,7 @@ package fingerprint
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -16,7 +17,7 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
-	"github.com/Shopify/sarama"
+	"github.com/DIMO-Network/shared/kafka"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog"
@@ -34,61 +35,43 @@ type Consumer struct {
 	DBS    db.Store
 }
 
-func (c *Consumer) Setup(sarama.ConsumerGroupSession) error {
-	return nil
-}
-
-func (c *Consumer) Cleanup(sarama.ConsumerGroupSession) error {
-	return nil
-}
-
-func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	for {
-		select {
-		case message := <-claim.Messages():
-			var event Event
-			if err := json.Unmarshal(message.Value, &event); err != nil {
-				c.logger.Err(err).Int32("partition", message.Partition).Int64("offset", message.Offset).Msg("Couldn't parse fingerprint event.")
-			} else {
-				if err := c.Handle(session.Context(), &event); err != nil {
-					c.logger.Err(err).Int32("partition", message.Partition).Int64("offset", message.Offset).Msg("Failed to process fingerprint event.")
-				}
-			}
-			session.MarkMessage(message, "")
-		case <-session.Context().Done():
-			return nil
-		}
+func NewConsumer(dbs db.Store, iss *issuer.Issuer, log *zerolog.Logger) *Consumer {
+	return &Consumer{
+		DBS:    dbs,
+		logger: log,
+		iss:    iss,
 	}
 }
 
 func RunConsumer(ctx context.Context, settings *config.Settings, logger *zerolog.Logger, i *issuer.Issuer, dbs db.Store) error {
-	kc := sarama.NewConfig()
-	kc.Version = sarama.V3_3_1_0
+	consumer := NewConsumer(dbs, i, logger)
 
-	group, err := sarama.NewConsumerGroup(strings.Split(settings.KafkaBrokers, ","), settings.DeviceFingerprintConsumerGroup, kc)
-	if err != nil {
-		return err
+	if err := kafka.Consume(ctx, kafka.Config{
+		Brokers: strings.Split(settings.KafkaBrokers, ","),
+		Topic:   settings.DeviceFingerprintTopic,
+		Group:   settings.DeviceFingerprintConsumerGroup,
+	}, consumer.HandleDeviceFingerprint, logger); err != nil {
+		logger.Fatal().Err(err).Msg("couldn't start device fingerprint consumer")
 	}
 
-	c := &Consumer{logger: logger, iss: i, DBS: dbs}
+	if err := kafka.Consume(ctx, kafka.Config{
+		Brokers: strings.Split(settings.KafkaBrokers, ","),
+		Topic:   settings.SyntheticFingerprintTopic,
+		Group:   settings.SyntheticFingerprintConsumerGroup,
+	}, consumer.HandleSyntheticFingerprint, logger); err != nil {
+		logger.Fatal().Err(err).Msg("couldn't start synthetic fingerprint consumer")
+	}
 
 	logger.Info().Msg("Starting transaction request status listener.")
-
-	go func() {
-		for {
-			if err := group.Consume(ctx, []string{settings.DeviceFingerprintTopic}, c); err != nil {
-				logger.Warn().Err(err).Msg("Consumer group session ended.")
-			}
-			if ctx.Err() != nil {
-				return
-			}
-		}
-	}()
 
 	return nil
 }
 
-func (c *Consumer) Handle(ctx context.Context, event *Event) error {
+// defaultCredDuration is the default lifetime for VIN credentials. It's meant to cover the
+// current reward week, but contains an extra day for safety.
+var defaultCredDuration = 8 * 24 * time.Hour
+
+func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) error {
 	if !common.IsHexAddress(event.Subject) {
 		return fmt.Errorf("subject %q not a valid address", event.Subject)
 	}
@@ -124,7 +107,7 @@ func (c *Consumer) Handle(ctx context.Context, event *Event) error {
 	}
 
 	if observedVIN != vn.Vin {
-		c.logger.Warn().Msgf("Observed VIN %s for vehicle %d with VIN %s.", observedVIN, vn.TokenID, vn.Vin)
+		c.logger.Warn().Msgf("observed vin %s does not match verified vin %s for device %s", observedVIN, vn.Vin, vn.UserDeviceID.String)
 		return nil
 	}
 
@@ -135,11 +118,58 @@ func (c *Consumer) Handle(ctx context.Context, event *Event) error {
 		}
 	}
 
-	if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), time.Now().Add(8*24*time.Hour)); err != nil {
+	if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), time.Now().Add(defaultCredDuration)); err != nil {
 		return err
 	}
 
-	c.logger.Info().Msgf("Issued VIN credential for vehicle %d using device %s.", vn.TokenID, addr)
+	c.logger.Info().Str("device-addr", event.Subject).Msg("issued vin credential")
+
+	return nil
+}
+
+func (c *Consumer) HandleSyntheticFingerprint(ctx context.Context, event *Event) error {
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(event.Subject),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.Claim)),
+	).One(ctx, c.DBS.DBS().Reader)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("no vehicle with id %q", event.Subject)
+		}
+		return err
+	}
+
+	vn := ud.R.VehicleNFT
+
+	if vn == nil {
+		return nil
+	}
+
+	observedVIN, err := ExtractVIN(event.Data)
+	if err != nil {
+		if err == ErrNoVIN {
+			return nil
+		}
+		return fmt.Errorf("couldn't extract VIN: %w", err)
+	}
+
+	if observedVIN != vn.Vin {
+		c.logger.Warn().Msgf("observed vin %s does not match verified vin %s for device %s", observedVIN, vn.Vin, vn.UserDeviceID.String)
+		return nil
+	}
+
+	if vc := vn.R.Claim; vc != nil {
+		weekEnd := NumToWeekEnd(GetWeekNum(event.Time))
+		if vc.ExpirationDate.After(weekEnd) {
+			return nil
+		}
+	}
+
+	if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), event.Time.Add(defaultCredDuration)); err != nil {
+		return err
+	}
+
+	c.logger.Info().Str("device-addr", event.Subject).Msg("issued vin credential")
 
 	return nil
 }
