@@ -123,6 +123,7 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 	}
 
 	if nft.R.UserDevice == nil {
+		helpers.SkipErrorLog(c)
 		return fiber.NewError(fiber.StatusNotFound, "NFT not found.")
 	}
 

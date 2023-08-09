@@ -234,6 +234,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 		var sdStat *SyntheticDeviceStatus
 
 		var nft *NFTData
+		var credential *VINCredentialData
 		pu := []PrivilegeUser{}
 
 		if vnft := d.R.VehicleNFT; vnft != nil {
@@ -298,6 +299,15 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 					sdStat.Address = &a
 				}
 			}
+
+			if cred := vnft.R.Claim; cred != nil {
+				credential = &VINCredentialData{
+					VIN:       vnft.Vin,
+					ExpiresAt: cred.ExpirationDate,
+					IssuedAt:  cred.IssuanceDate,
+					Valid:     time.Now().Before(cred.ExpirationDate),
+				}
+			}
 		}
 
 		udf := UserDeviceFull{
@@ -313,6 +323,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			NFT:              nft,
 			OptedInAt:        d.OptedInAt.Ptr(),
 			PrivilegeUsers:   pu,
+			VINCredential:    credential,
 		}
 
 		apiDevices = append(apiDevices, udf)
@@ -353,6 +364,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.Claim)),
 		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" DESC"))
 
 	devices, err := models.UserDevices(query...).All(c.Context(), udc.DBS().Reader)
@@ -433,6 +445,7 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 				// Would we get this backreference for free?
 				qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
 				qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
+				qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.Claim)),
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
 				return err
@@ -2208,6 +2221,7 @@ type UserDeviceFull struct {
 	NFT              *NFTData                      `json:"nft,omitempty"`
 	OptedInAt        *time.Time                    `json:"optedInAt"`
 	PrivilegeUsers   []PrivilegeUser               `json:"privilegedUsers"`
+	VINCredential    *VINCredentialData            `json:"vinCredential,omitempty"`
 }
 
 type NFTData struct {
@@ -2227,4 +2241,11 @@ type SyntheticDeviceStatus struct {
 	Address       *common.Address `json:"address,omitempty" swaggertype:"string" example:"0xAED7EA8035eEc47E657B34eF5D020c7005487443"`
 	TxHash        *string         `json:"txHash,omitempty" swaggertype:"string" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
 	Status        string          `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed" example:"Confirmed"`
+}
+
+type VINCredentialData struct {
+	IssuedAt  time.Time `json:"issuedAt"`
+	ExpiresAt time.Time `json:"expiresAt"`
+	Valid     bool      `json:"valid"`
+	VIN       string    `json:"vin"`
 }
