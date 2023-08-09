@@ -302,10 +302,10 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 
 			if cred := vnft.R.Claim; cred != nil {
 				credential = &VINCredentialData{
-					VIN:            vnft.Vin,
-					ExpirationDate: cred.ExpirationDate,
-					IssuanceDate:   cred.IssuanceDate,
-					Valid:          time.Now().Before(cred.ExpirationDate),
+					VIN:       vnft.Vin,
+					ExpiresAt: cred.ExpirationDate,
+					IssuedAt:  cred.IssuanceDate,
+					Valid:     time.Now().Before(cred.ExpirationDate),
 				}
 			}
 		}
@@ -2244,8 +2244,8 @@ type SyntheticDeviceStatus struct {
 }
 
 type VINCredentialData struct {
-	IssuanceDate   time.Time `json:"issuanceDate"`
-	ExpirationDate time.Time `json:"expirationDate"`
-	Valid          bool      `json:"valid"`
-	VIN            string    `json:"vin"`
+	IssuedAt  time.Time `json:"issuedAt"`
+	ExpiresAt time.Time `json:"expiresAt"`
+	Valid     bool      `json:"valid"`
+	VIN       string    `json:"vin"`
 }
