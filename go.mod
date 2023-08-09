@@ -30,10 +30,8 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/jarcoal/httpmock v1.1.0
 	github.com/lib/pq v1.10.8
-	github.com/lovoo/goka v1.1.7
 	github.com/nats-io/nats-server/v2 v2.9.16
 	github.com/nats-io/nats.go v1.25.0
-	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/piprate/json-gold v0.5.0
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.10.0
@@ -66,6 +64,7 @@ require (
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/holiman/uint256 v1.2.2 // indirect
+	github.com/lovoo/goka v1.1.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
