@@ -234,7 +234,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 		var sdStat *SyntheticDeviceStatus
 
 		var nft *NFTData
-		var credential *CredentialData
+		var credential *VINCredentialData
 		pu := []PrivilegeUser{}
 
 		if vnft := d.R.VehicleNFT; vnft != nil {
@@ -301,8 +301,8 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			}
 
 			if cred := vnft.R.Claim; cred != nil {
-				credential = &CredentialData{
-					Vin:            cred.R.ClaimVehicleNFT.Vin,
+				credential = &VINCredentialData{
+					VIN:            vnft.Vin,
 					ExpirationDate: cred.ExpirationDate,
 					IssuanceDate:   cred.IssuanceDate,
 					Valid:          time.Now().Before(cred.ExpirationDate),
@@ -323,7 +323,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			NFT:              nft,
 			OptedInAt:        d.OptedInAt.Ptr(),
 			PrivilegeUsers:   pu,
-			Credential:       credential,
+			VINCredential:    credential,
 		}
 
 		apiDevices = append(apiDevices, udf)
@@ -2221,7 +2221,7 @@ type UserDeviceFull struct {
 	NFT              *NFTData                      `json:"nft,omitempty"`
 	OptedInAt        *time.Time                    `json:"optedInAt"`
 	PrivilegeUsers   []PrivilegeUser               `json:"privilegedUsers"`
-	Credential       *CredentialData               `json:"VINCredential,omitempty"`
+	VINCredential    *VINCredentialData            `json:"vinCredential,omitempty"`
 }
 
 type NFTData struct {
@@ -2243,9 +2243,9 @@ type SyntheticDeviceStatus struct {
 	Status        string          `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed" example:"Confirmed"`
 }
 
-type CredentialData struct {
+type VINCredentialData struct {
 	IssuanceDate   time.Time `json:"issuanceDate"`
 	ExpirationDate time.Time `json:"expirationDate"`
 	Valid          bool      `json:"valid"`
-	Vin            string    `json:"vin"`
+	VIN            string    `json:"vin"`
 }
