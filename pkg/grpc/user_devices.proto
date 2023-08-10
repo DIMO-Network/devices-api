@@ -56,8 +56,12 @@ message UserDevice {
   optional VinCredential latest_vin_credential = 12;
   bool vin_confirmed = 13;
   string country_code = 14;
+  // metadata properties
   string power_train_type = 15;
   string CAN_protocol = 16;
+  string postal_code = 17;
+  string geo_decoded_country = 18;
+  string geo_decoded_state_prov = 19;
 }
 
 message UserDeviceIntegration {

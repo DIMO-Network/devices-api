@@ -486,6 +486,7 @@ func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevi
 		out.CountryCode = ud.CountryCode.String
 	}
 
+	// metadata properties
 	md := services.UserDeviceMetadata{}
 	if err := ud.Metadata.Unmarshal(&md); err != nil {
 		s.logger.Error().Msgf("Could not unmarshal userdevice metadata for device: %s", ud.ID)
@@ -494,9 +495,17 @@ func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevi
 	if md.PowertrainType != nil {
 		out.PowerTrainType = md.PowertrainType.String()
 	}
-
 	if md.CANProtocol != nil {
 		out.CANProtocol = *md.CANProtocol
+	}
+	if md.PostalCode != nil {
+		out.PostalCode = *md.PostalCode
+	}
+	if md.GeoDecodedStateProv != nil {
+		out.GeoDecodedStateProv = *md.GeoDecodedStateProv
+	}
+	if md.GeoDecodedCountry != nil {
+		out.GeoDecodedCountry = *md.GeoDecodedCountry
 	}
 
 	return out
