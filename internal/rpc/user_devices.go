@@ -597,3 +597,29 @@ func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.Issu
 		CredentialId: credID,
 	}, nil
 }
+
+func (s *userDeviceService) UpdateUserDeviceMetadata(ctx context.Context, req *pb.UpdateUserDeviceMetadataRequest) (*emptypb.Empty, error) {
+	ud, err := models.FindUserDevice(ctx, s.dbs().Reader, req.UserDeviceId)
+	if err != nil {
+		return nil, err
+	}
+	var udMd services.UserDeviceMetadata
+	_ = ud.Metadata.Unmarshal(&udMd)
+
+	if req.GeoDecodedStateProv != nil {
+		udMd.GeoDecodedStateProv = req.GeoDecodedStateProv
+	}
+	if req.PostalCode != nil {
+		udMd.PostalCode = req.PostalCode
+	}
+	if req.GeoDecodedCountry != nil {
+		udMd.GeoDecodedCountry = req.GeoDecodedCountry
+	}
+	_ = ud.Metadata.Marshal(udMd)
+	_, err = ud.Update(ctx, s.dbs().Writer, boil.Infer())
+	if err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}

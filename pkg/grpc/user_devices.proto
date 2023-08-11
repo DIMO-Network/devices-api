@@ -28,6 +28,8 @@ service UserDeviceService {
       returns (UserDevice);
   rpc GetAllUserDevice(GetAllUserDeviceRequest) returns (stream UserDevice);
   rpc IssueVinCredential(IssueVinCredentialRequest) returns (IssueVinCredentialResponse);
+  // used to update metadata properties, currently only ones needed by valuations-api
+  rpc UpdateUserDeviceMetadata(UpdateUserDeviceMetadataRequest) returns (google.protobuf.Empty);
 }
 
 message GetUserDeviceByAutoPIUnitIdRequest { string id = 1; }
@@ -39,6 +41,13 @@ message GetUserDeviceByTokenIdRequest { int64 token_id = 1; }
 message ValuationResponse {
   float total = 1;
   float growthPercentage = 2;
+}
+
+message UpdateUserDeviceMetadataRequest {
+  string user_device_id = 1;
+  optional string postal_code = 2;
+  optional string geo_decoded_country = 3;
+  optional string geo_decoded_state_prov = 4;
 }
 
 message UserDevice {
