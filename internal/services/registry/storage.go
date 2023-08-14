@@ -120,6 +120,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 				logger.Info().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msg("Vehicle minted.")
 			} else if l1.Topics[0] == depVehicleMintedEvent.ID {
+				// TODO(elffjs): Remove this branch after Polygon upgrade.
 				// We won't fill in the manufacturer id, but it should be okay.
 				out := new(contracts.RegistryVehicleNodeMinted)
 				if len(l1.Data) > 0 {
