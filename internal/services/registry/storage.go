@@ -3,9 +3,11 @@ package registry
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
+	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
@@ -30,6 +32,7 @@ type proc struct {
 	Logger        *zerolog.Logger
 	ap            *autopi.Integration
 	settings      *config.Settings
+	Eventer       services.EventService
 }
 
 func (p *proc) Handle(ctx context.Context, data *ceData) error {
@@ -44,7 +47,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	mtr, err := models.MetaTransactionRequests(
 		models.MetaTransactionRequestWhere.ID.EQ(data.RequestID),
 		// This is really ugly. We should probably link back to the type instead of doing this.
-		qm.Load(models.MetaTransactionRequestRels.MintRequestVehicleNFT),
+		qm.Load(qm.Rels(models.MetaTransactionRequestRels.MintRequestVehicleNFT, models.VehicleNFTRels.UserDevice)),
 		qm.Load(models.MetaTransactionRequestRels.ClaimMetaTransactionRequestAftermarketDevice),
 		qm.Load(models.MetaTransactionRequestRels.PairRequestAftermarketDevice),
 		qm.Load(models.MetaTransactionRequestRels.UnpairRequestAftermarketDevice),
@@ -86,11 +89,33 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return err
 				}
 
-				mtr.R.MintRequestVehicleNFT.TokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.TokenId, 0))
-				mtr.R.MintRequestVehicleNFT.OwnerAddress = null.BytesFrom(out.Owner.Bytes())
-				_, err = mtr.R.MintRequestVehicleNFT.Update(ctx, p.DB().Writer, boil.Infer())
+				vnft := mtr.R.MintRequestVehicleNFT
+
+				vnft.TokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.TokenId, 0))
+				vnft.OwnerAddress = null.BytesFrom(out.Owner.Bytes())
+				_, err = vnft.Update(ctx, p.DB().Writer, boil.Infer())
 				if err != nil {
 					return err
+				}
+
+				if ud := vnft.R.UserDevice; ud != nil {
+					p.Eventer.Emit(&services.Event{
+						Type:    "com.dimo.zone.device.mint",
+						Subject: mtr.R.MintRequestVehicleNFT.UserDeviceID.String,
+						Source:  "devices-api",
+						Data: services.UserDeviceMintEvent{
+							Timestamp: time.Now(),
+							UserID:    ud.UserID,
+							Device: services.UserDeviceEventDevice{
+								ID: ud.ID,
+							},
+							NFT: services.UserDeviceEventNFT{
+								TokenID: out.TokenId,
+								Owner:   out.Owner,
+								TxHash:  common.HexToHash(data.Transaction.Hash),
+							},
+						},
+					})
 				}
 
 				logger.Info().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msg("Vehicle minted.")
@@ -114,11 +139,33 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return err
 				}
 
-				mtr.R.MintRequestVehicleNFT.TokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.TokenId, 0))
-				mtr.R.MintRequestVehicleNFT.OwnerAddress = null.BytesFrom(out.Owner.Bytes())
-				_, err = mtr.R.MintRequestVehicleNFT.Update(ctx, p.DB().Writer, boil.Infer())
+				vnft := mtr.R.MintRequestVehicleNFT
+
+				vnft.TokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.TokenId, 0))
+				vnft.OwnerAddress = null.BytesFrom(out.Owner.Bytes())
+				_, err = vnft.Update(ctx, p.DB().Writer, boil.Infer())
 				if err != nil {
 					return err
+				}
+
+				if ud := vnft.R.UserDevice; ud != nil {
+					p.Eventer.Emit(&services.Event{
+						Type:    "com.dimo.zone.device.mint",
+						Subject: mtr.R.MintRequestVehicleNFT.UserDeviceID.String,
+						Source:  "devices-api",
+						Data: services.UserDeviceMintEvent{
+							Timestamp: time.Now(),
+							UserID:    ud.UserID,
+							Device: services.UserDeviceEventDevice{
+								ID: ud.ID,
+							},
+							NFT: services.UserDeviceEventNFT{
+								TokenID: out.TokenId,
+								Owner:   out.Owner,
+								TxHash:  common.HexToHash(data.Transaction.Hash),
+							},
+						},
+					})
 				}
 
 				logger.Info().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msg("Vehicle minted.")
@@ -259,6 +306,7 @@ func NewProcessor(
 	logger *zerolog.Logger,
 	ap *autopi.Integration,
 	settings *config.Settings,
+	eventer services.EventService,
 ) (StatusProcessor, error) {
 	regABI, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
@@ -301,5 +349,6 @@ func NewProcessor(
 		Logger:        logger,
 		ap:            ap,
 		settings:      settings,
+		Eventer:       eventer,
 	}, nil
 }
