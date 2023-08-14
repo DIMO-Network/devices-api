@@ -101,7 +101,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				if ud := vnft.R.UserDevice; ud != nil {
 					p.Eventer.Emit(&services.Event{
 						Type:    "com.dimo.zone.device.mint",
-						Subject: mtr.R.MintRequestVehicleNFT.UserDeviceID.String,
+						Subject: ud.ID,
 						Source:  "devices-api",
 						Data: services.UserDeviceMintEvent{
 							Timestamp: time.Now(),
@@ -152,7 +152,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				if ud := vnft.R.UserDevice; ud != nil {
 					p.Eventer.Emit(&services.Event{
 						Type:    "com.dimo.zone.device.mint",
-						Subject: mtr.R.MintRequestVehicleNFT.UserDeviceID.String,
+						Subject: ud.ID,
 						Source:  "devices-api",
 						Data: services.UserDeviceMintEvent{
 							Timestamp: time.Now(),
