@@ -1764,6 +1764,59 @@ paths:
       - device
       - integration
       - command
+  /user/devices/{userDeviceID}/integrations/{integrationID}/commands/burn:
+    get:
+      description: Produces the payload that the user signs and submits to burn a
+        synthetic device.
+      parameters:
+      - description: user device KSUID, must be minted
+        in: path
+        name: userDeviceID
+        required: true
+        type: integer
+      - description: integration KSUD, must be software-based and active
+        in: path
+        name: integrationID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/apitypes.TypedData'
+            type: array
+    post:
+      description: Submit the signature required for the synthetic device burning
+        meta-transaction.
+      parameters:
+      - description: user device KSUID, must be minted
+        in: path
+        name: userDeviceID
+        required: true
+        type: integer
+      - description: integration KSUD, must be software-based and active
+        in: path
+        name: integrationID
+        required: true
+        type: integer
+      - description: only field is the signed EIP-712
+        in: body
+        name: signed
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.BurnSyntheticDeviceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/apitypes.TypedData'
+            type: array
   /user/devices/{userDeviceID}/integrations/{integrationID}/commands/doors/lock:
     post:
       description: Lock the device's doors.
@@ -1874,15 +1927,14 @@ paths:
       tags:
       - integrations
     post:
-      description: Submit the signature required for the synthetic device burning
-        meta-transaction.
+      description: Submit a metadata
       parameters:
       - description: user device KSUID, must be minted
         in: path
         name: userDeviceID
         required: true
         type: integer
-      - description: integration KSUD, must be software-based and active
+      - description: integration KSUD, must be software-based
         in: path
         name: integrationID
         required: true
@@ -1892,16 +1944,14 @@ paths:
         name: signed
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.BurnSyntheticDeviceRequest'
+          $ref: '#/definitions/internal_controllers.MintSyntheticDeviceRequest'
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/apitypes.TypedData'
-            type: array
+        "204":
+          description: No Content
+      tags:
+      - integrations
   /user/devices/{userDeviceID}/integrations/{integrationID}/commands/trunk/open:
     post:
       description: Open the device's front trunk. Currently, this only works for Teslas

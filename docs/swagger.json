@@ -1272,6 +1272,83 @@
                 }
             }
         },
+        "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/burn": {
+            "get": {
+                "description": "Produces the payload that the user signs and submits to burn a synthetic device.",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "user device KSUID, must be minted",
+                        "name": "userDeviceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "integration KSUD, must be software-based and active",
+                        "name": "integrationID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/apitypes.TypedData"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Submit the signature required for the synthetic device burning meta-transaction.",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "user device KSUID, must be minted",
+                        "name": "userDeviceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "integration KSUD, must be software-based and active",
+                        "name": "integrationID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "only field is the signed EIP-712",
+                        "name": "signed",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.BurnSyntheticDeviceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/apitypes.TypedData"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/doors/lock": {
             "post": {
                 "description": "Lock the device's doors.",
@@ -1427,9 +1504,12 @@
                 }
             },
             "post": {
-                "description": "Submit the signature required for the synthetic device burning meta-transaction.",
+                "description": "Submit a metadata",
                 "produces": [
                     "application/json"
+                ],
+                "tags": [
+                    "integrations"
                 ],
                 "parameters": [
                     {
@@ -1441,7 +1521,7 @@
                     },
                     {
                         "type": "integer",
-                        "description": "integration KSUD, must be software-based and active",
+                        "description": "integration KSUD, must be software-based",
                         "name": "integrationID",
                         "in": "path",
                         "required": true
@@ -1452,19 +1532,13 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.BurnSyntheticDeviceRequest"
+                            "$ref": "#/definitions/internal_controllers.MintSyntheticDeviceRequest"
                         }
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/apitypes.TypedData"
-                            }
-                        }
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             }

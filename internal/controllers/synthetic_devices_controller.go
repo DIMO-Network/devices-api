@@ -314,7 +314,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 // @Param       userDeviceID path int true "user device KSUID, must be minted"
 // @Param       integrationID path int true "integration KSUD, must be software-based and active"
 // @Success     200 {array} signer.TypedData
-// @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/mint [post]
+// @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/burn [get]
 func (sdc *SyntheticDevicesController) GetSyntheticDeviceBurnPayload(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
@@ -391,7 +391,7 @@ type BurnSyntheticDeviceRequest struct {
 // @Param       integrationID path int true "integration KSUD, must be software-based and active"
 // @Param       signed body controllers.BurnSyntheticDeviceRequest true "only field is the signed EIP-712"
 // @Success     200 {array} signer.TypedData
-// @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/mint [post]
+// @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/burn [post]
 func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
