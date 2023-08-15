@@ -47,6 +47,7 @@ type DeviceDefinitionService interface {
 	CreateIntegration(ctx context.Context, integrationType string, vendor string, style string) (*ddgrpc.Integration, error)
 	DecodeVIN(ctx context.Context, vin string, model string, year int, countryCode string) (*ddgrpc.DecodeVinResponse, error)
 	GetIntegrationByTokenID(ctx context.Context, tokenID uint64) (*ddgrpc.Integration, error)
+	ConvertPowerTrainStringToPowertrain(value *string) (PowertrainType, error)
 }
 
 type deviceDefinitionService struct {
@@ -754,4 +755,20 @@ func (d *deviceDefinitionService) getDeviceLatLong(userDeviceID string) (lat, lo
 		}
 	}
 	return
+}
+
+func (d *deviceDefinitionService) ConvertPowerTrainStringToPowertrain(value *string) (PowertrainType, error) {
+	if value == nil {
+		return ICE, nil
+	}
+	switch *value {
+	case "HEV":
+		return HEV, nil
+	case "PHEV":
+		return PHEV, nil
+	case "BEV":
+		return BEV, nil
+	default:
+		return "", fmt.Errorf("unrecognized electrification level id: %d", value)
+	}
 }
