@@ -56,6 +56,7 @@ func (e *eventService) Emit(event *Event) error {
 	}
 	msg := &sarama.ProducerMessage{
 		Topic: e.Settings.EventsTopic,
+		Key:   sarama.StringEncoder(event.Subject),
 		Value: sarama.ByteEncoder(msgBytes),
 	}
 	_, _, err = e.Producer.SendMessage(msg)
