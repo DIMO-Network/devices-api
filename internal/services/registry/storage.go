@@ -93,7 +93,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 				vnft.TokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.TokenId, 0))
 				vnft.OwnerAddress = null.BytesFrom(out.Owner.Bytes())
-				_, err = vnft.Update(ctx, p.DB().Writer, boil.Infer())
+				_, err = vnft.Update(ctx, p.DB().Writer, boil.Whitelist(models.VehicleNFTColumns.TokenID, models.VehicleNFTColumns.OwnerAddress))
 				if err != nil {
 					return err
 				}
@@ -144,7 +144,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 				vnft.TokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.TokenId, 0))
 				vnft.OwnerAddress = null.BytesFrom(out.Owner.Bytes())
-				_, err = vnft.Update(ctx, p.DB().Writer, boil.Infer())
+				_, err = vnft.Update(ctx, p.DB().Writer, boil.Whitelist(models.VehicleNFTColumns.TokenID, models.VehicleNFTColumns.OwnerAddress))
 				if err != nil {
 					return err
 				}
