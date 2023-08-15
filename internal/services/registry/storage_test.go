@@ -11,6 +11,7 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
+	"github.com/DIMO-Network/devices-api/internal/services"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
@@ -37,6 +38,7 @@ type StorageTestSuite struct {
 	scTaskSvc        *mock_services.MockSmartcarTaskService
 	teslaTaskService *mock_services.MockTeslaTaskService
 	deviceDefSvc     *mock_services.MockDeviceDefinitionService
+	eventSvc         *mock_services.MockEventService
 
 	proc StatusProcessor
 }
@@ -52,7 +54,8 @@ func (s *StorageTestSuite) SetupSuite() {
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(s.mockCtrl)
 	s.scTaskSvc = mock_services.NewMockSmartcarTaskService(s.mockCtrl)
 	s.teslaTaskService = mock_services.NewMockTeslaTaskService(s.mockCtrl)
-	proc, err := NewProcessor(s.dbs.DBS, logger, nil, &config.Settings{Environment: "prod"})
+	s.eventSvc = mock_services.NewMockEventService(s.mockCtrl)
+	proc, err := NewProcessor(s.dbs.DBS, logger, nil, &config.Settings{Environment: "prod"}, s.eventSvc)
 	if err != nil {
 		s.T().Fatal(err)
 	}
@@ -178,7 +181,7 @@ func (s *StorageTestSuite) TestMintVehicle() {
 	logger := zerolog.Nop()
 	s.mockCtrl = gomock.NewController(s.T())
 
-	proc, err := NewProcessor(s.dbs.DBS, &logger, nil, &config.Settings{Environment: "prod"})
+	proc, err := NewProcessor(s.dbs.DBS, &logger, nil, &config.Settings{Environment: "prod"}, s.eventSvc)
 	s.Require().NoError(err)
 
 	ud := models.UserDevice{
@@ -191,6 +194,11 @@ func (s *StorageTestSuite) TestMintVehicle() {
 		Status: models.MetaTransactionRequestStatusMined,
 	}
 	s.MustInsert(&mtr)
+
+	var emEv *services.Event
+	s.eventSvc.EXPECT().Emit(gomock.Any()).Do(func(event *services.Event) {
+		emEv = event
+	})
 
 	vnft := models.VehicleNFT{
 		MintRequestID: mtr.ID,
@@ -222,6 +230,8 @@ func (s *StorageTestSuite) TestMintVehicle() {
 
 	s.Zero(vnft.TokenID.Int(nil).Cmp(big.NewInt(14443)))
 	s.Equal(common.HexToAddress("7e74d0f663d58d12817b8bef762bcde3af1f63d6"), common.BytesToAddress(vnft.OwnerAddress.Bytes))
+
+	s.Equal(ud.ID, emEv.Subject)
 }
 
 func (s *StorageTestSuite) MustInsert(o boilInsertable) {

@@ -3,11 +3,13 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/shared"
 	"github.com/Shopify/sarama"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
 )
@@ -18,7 +20,7 @@ type Event struct {
 	Type    string
 	Subject string
 	Source  string
-	Data    interface{}
+	Data    any
 }
 
 type EventService interface {
@@ -54,6 +56,7 @@ func (e *eventService) Emit(event *Event) error {
 	}
 	msg := &sarama.ProducerMessage{
 		Topic: e.Settings.EventsTopic,
+		Key:   sarama.StringEncoder(event.Subject),
 		Value: sarama.ByteEncoder(msgBytes),
 	}
 	_, _, err = e.Producer.SendMessage(msg)
@@ -90,4 +93,17 @@ type UserDeviceIntegrationEvent struct {
 	UserID      string                     `json:"userId"`
 	Device      UserDeviceEventDevice      `json:"device"`
 	Integration UserDeviceEventIntegration `json:"integration"`
+}
+
+type UserDeviceEventNFT struct {
+	TokenID *big.Int       `json:"tokenId"`
+	Owner   common.Address `json:"address"`
+	TxHash  common.Hash    `json:"txHash"`
+}
+
+type UserDeviceMintEvent struct {
+	Timestamp time.Time             `json:"timestamp"`
+	UserID    string                `json:"userId"`
+	Device    UserDeviceEventDevice `json:"device"`
+	NFT       UserDeviceEventNFT    `json:"nft"`
 }
