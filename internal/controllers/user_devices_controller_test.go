@@ -597,15 +597,19 @@ func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*grpc.Integration{integration}, nil)
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: nil}, nil)
-	evID := "4"
-	s.nhtsaService.EXPECT().DecodeVIN("5YJYGDEE5MF085533").Return(&services.NHTSADecodeVINResponse{
-		Results: []services.NHTSAResult{
-			{
-				VariableID: 126,
-				ValueID:    &evID,
-			},
-		},
-	}, nil)
+	//evID := "4"
+	//s.nhtsaService.EXPECT().DecodeVIN("5YJYGDEE5MF085533").Return(&services.NHTSADecodeVINResponse{
+	//	Results: []services.NHTSAResult{
+	//		{
+	//			VariableID: 126,
+	//			ValueID:    &evID,
+	//		},
+	//	},
+	//}, nil)
+
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
+	powerTrainType := "ICE"
+	s.deviceDefSvc.EXPECT().ConvertPowerTrainStringToPowertrain(gomock.Any()).Times(1).Return(&powerTrainType, nil)
 	payload := `{ "vin": "5YJYGDEE5MF085533" }`
 	request := test.BuildRequest("PATCH", "/user/devices/"+ud.ID+"/vin", payload)
 	response, responseError := s.app.Test(request)

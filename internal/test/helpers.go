@@ -524,6 +524,11 @@ func BuildDeviceDefinitionGRPC(deviceDefinitionID string, mk string, model strin
 		rp.DeviceIntegrations = integrationsToAdd
 	}
 
+	rp.DeviceAttributes = append(rp.DeviceAttributes, &ddgrpc.DeviceTypeAttribute{
+		Name:  "powertrain_type",
+		Value: "ICE",
+	})
+
 	return []*ddgrpc.GetDeviceDefinitionItemResponse{rp}
 }
 
