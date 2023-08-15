@@ -608,8 +608,7 @@ func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 	//}, nil)
 
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
-	powerTrainType := "ICE"
-	s.deviceDefSvc.EXPECT().ConvertPowerTrainStringToPowertrain(gomock.Any()).Return(powerTrainType)
+	s.deviceDefSvc.EXPECT().ConvertPowerTrainStringToPowertrain(gomock.Any()).Times(1).Return(services.BEV)
 	payload := `{ "vin": "5YJYGDEE5MF085533" }`
 	request := test.BuildRequest("PATCH", "/user/devices/"+ud.ID+"/vin", payload)
 	response, responseError := s.app.Test(request)
