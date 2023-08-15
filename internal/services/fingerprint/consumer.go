@@ -147,6 +147,10 @@ func (c *Consumer) HandleSyntheticFingerprint(ctx context.Context, event *Event)
 		return nil
 	}
 
+	if vn.TokenID.IsZero() {
+		return fmt.Errorf("minting not complete for %s", ud.ID)
+	}
+
 	observedVIN, err := ExtractVIN(event.Data)
 	if err != nil {
 		if err == ErrNoVIN {
