@@ -39,12 +39,11 @@ func (m *MockDeviceDefinitionService) EXPECT() *MockDeviceDefinitionServiceMockR
 }
 
 // ConvertPowerTrainStringToPowertrain mocks base method.
-func (m *MockDeviceDefinitionService) ConvertPowerTrainStringToPowertrain(value *string) (services.PowertrainType, error) {
+func (m *MockDeviceDefinitionService) ConvertPowerTrainStringToPowertrain(value string) services.PowertrainType {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ConvertPowerTrainStringToPowertrain", value)
 	ret0, _ := ret[0].(services.PowertrainType)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	return ret0
 }
 
 // ConvertPowerTrainStringToPowertrain indicates an expected call of ConvertPowerTrainStringToPowertrain.

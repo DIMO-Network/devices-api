@@ -1104,10 +1104,7 @@ func (udc *UserDevicesController) updateUSAPowertrain(ctx context.Context, userD
 			// Find device attribute (powertrain_type)
 			for _, item := range resp.DeviceAttributes {
 				if item.Name == PowerTrainType {
-					powertrainType, err := udc.DeviceDefSvc.ConvertPowerTrainStringToPowertrain(&item.Value)
-					if err != nil {
-						return err
-					}
+					powertrainType := udc.DeviceDefSvc.ConvertPowerTrainStringToPowertrain(item.Value)
 					md.PowertrainType = &powertrainType
 					break
 				}
