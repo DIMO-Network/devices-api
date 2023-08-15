@@ -38,6 +38,21 @@ func (m *MockDeviceDefinitionService) EXPECT() *MockDeviceDefinitionServiceMockR
 	return m.recorder
 }
 
+// ConvertPowerTrainStringToPowertrain mocks base method.
+func (m *MockDeviceDefinitionService) ConvertPowerTrainStringToPowertrain(value *string) (services.PowertrainType, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConvertPowerTrainStringToPowertrain", value)
+	ret0, _ := ret[0].(services.PowertrainType)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ConvertPowerTrainStringToPowertrain indicates an expected call of ConvertPowerTrainStringToPowertrain.
+func (mr *MockDeviceDefinitionServiceMockRecorder) ConvertPowerTrainStringToPowertrain(value interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConvertPowerTrainStringToPowertrain", reflect.TypeOf((*MockDeviceDefinitionService)(nil).ConvertPowerTrainStringToPowertrain), value)
+}
+
 // CreateIntegration mocks base method.
 func (m *MockDeviceDefinitionService) CreateIntegration(ctx context.Context, integrationType, vendor, style string) (*grpc.Integration, error) {
 	m.ctrl.T.Helper()
