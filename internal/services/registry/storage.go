@@ -99,7 +99,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				}
 
 				if ud := vnft.R.UserDevice; ud != nil {
-					p.Eventer.Emit(&services.Event{
+					p.Eventer.Emit(&services.Event{ //nolint
 						Type:    "com.dimo.zone.device.mint",
 						Subject: ud.ID,
 						Source:  "devices-api",
@@ -150,7 +150,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				}
 
 				if ud := vnft.R.UserDevice; ud != nil {
-					p.Eventer.Emit(&services.Event{
+					p.Eventer.Emit(&services.Event{ // nolint
 						Type:    "com.dimo.zone.device.mint",
 						Subject: ud.ID,
 						Source:  "devices-api",
