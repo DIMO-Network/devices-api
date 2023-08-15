@@ -216,7 +216,7 @@ func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *
 			Str("vin", vin).
 			Str("user_id", req.UserDeviceId).
 			Msg("unable to decode vin for customer request to create vehicle")
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, "Unable to decode VIN")
 	}
 
 	// attach device def to user
