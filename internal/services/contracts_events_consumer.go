@@ -341,6 +341,10 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 }
 
 func (c *ContractsEventsConsumer) aftermarketDeviceClaimed(e *ContractEventData) error {
+	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
+		return fmt.Errorf("aftermarket claim from unexpected source %d/%s", e.ChainID, e.Contract)
+	}
+
 	var args contracts.RegistryAftermarketDeviceClaimed
 	if err := json.Unmarshal(e.Arguments, &args); err != nil {
 		return err
