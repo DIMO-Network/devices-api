@@ -593,6 +593,16 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
 func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 4)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Escape", 2020, integration)
+
+	const powertrain_type = "powertrain_type"
+	powertrainValue := ""
+	for _, item := range dd[0].DeviceAttributes {
+		if item.Name == powertrain_type {
+			powertrainValue = item.Value
+			break
+		}
+	}
+
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*grpc.Integration{integration}, nil)
 
@@ -608,7 +618,7 @@ func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 	//}, nil)
 
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
-	s.deviceDefSvc.EXPECT().ConvertPowerTrainStringToPowertrain(gomock.Any()).Times(1).Return(services.BEV)
+	s.deviceDefSvc.EXPECT().ConvertPowerTrainStringToPowertrain(powertrainValue).Times(1).Return(services.BEV)
 	payload := `{ "vin": "5YJYGDEE5MF085533" }`
 	request := test.BuildRequest("PATCH", "/user/devices/"+ud.ID+"/vin", payload)
 	response, responseError := s.app.Test(request)
