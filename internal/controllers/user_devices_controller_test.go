@@ -594,10 +594,10 @@ func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 4)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Escape", 2020, integration)
 
-	const powertrain_type = "powertrain_type"
+	const powertrainType = "powertrain_type"
 	powertrainValue := ""
 	for _, item := range dd[0].DeviceAttributes {
-		if item.Name == powertrain_type {
+		if item.Name == powertrainType {
 			powertrainValue = item.Value
 			break
 		}
