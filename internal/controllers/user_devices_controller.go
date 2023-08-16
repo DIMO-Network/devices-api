@@ -1061,7 +1061,7 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 
 	// TODO: Genericize this for more countries.
 	if userDevice.CountryCode.Valid && userDevice.CountryCode.String == "USA" {
-		if err := udc.updateUSAPowertrain(c.Context(), userDevice); err != nil {
+		if err := udc.updateUSAPowertrain(c.Context(), userDevice, false); err != nil {
 			logger.Err(err).Msg("Failed to update American powertrain type.")
 		}
 	}
@@ -1069,24 +1069,49 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-func (udc *UserDevicesController) updateUSAPowertrain(ctx context.Context, userDevice *models.UserDevice) error {
+func (udc *UserDevicesController) updateUSAPowertrain(ctx context.Context, userDevice *models.UserDevice, useNHTSA bool) error {
+	const (
+		PowerTrainType = "powertrain_type"
+	)
+
 	// todo grpc pull vin decoder via grpc from device definitions
-	resp, err := udc.nhtsaService.DecodeVIN(userDevice.VinIdentifier.String)
-	if err != nil {
-		return err
-	}
-
-	dt, err := resp.DriveType()
-	if err != nil {
-		return err
-	}
-
 	md := new(services.UserDeviceMetadata)
 	if err := userDevice.Metadata.Unmarshal(md); err != nil {
 		return err
 	}
 
-	md.PowertrainType = &dt
+	if useNHTSA {
+		resp, err := udc.nhtsaService.DecodeVIN(userDevice.VinIdentifier.String)
+		if err != nil {
+			return err
+		}
+
+		dt, err := resp.DriveType()
+		if err != nil {
+			return err
+		}
+
+		md.PowertrainType = &dt
+	}
+
+	if !useNHTSA {
+		resp, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, userDevice.DeviceDefinitionID)
+		if err != nil {
+			return err
+		}
+
+		if len(resp.DeviceAttributes) > 0 {
+			// Find device attribute (powertrain_type)
+			for _, item := range resp.DeviceAttributes {
+				if item.Name == PowerTrainType {
+					powertrainType := udc.DeviceDefSvc.ConvertPowerTrainStringToPowertrain(item.Value)
+					md.PowertrainType = &powertrainType
+					break
+				}
+			}
+		}
+	}
+
 	if err := userDevice.Metadata.Marshal(md); err != nil {
 		return err
 	}

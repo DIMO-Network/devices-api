@@ -593,19 +593,32 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
 func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 4)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Escape", 2020, integration)
+
+	const powertrainType = "powertrain_type"
+	powertrainValue := ""
+	for _, item := range dd[0].DeviceAttributes {
+		if item.Name == powertrainType {
+			powertrainValue = item.Value
+			break
+		}
+	}
+
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*grpc.Integration{integration}, nil)
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: nil}, nil)
-	evID := "4"
-	s.nhtsaService.EXPECT().DecodeVIN("5YJYGDEE5MF085533").Return(&services.NHTSADecodeVINResponse{
-		Results: []services.NHTSAResult{
-			{
-				VariableID: 126,
-				ValueID:    &evID,
-			},
-		},
-	}, nil)
+	//evID := "4"
+	//s.nhtsaService.EXPECT().DecodeVIN("5YJYGDEE5MF085533").Return(&services.NHTSADecodeVINResponse{
+	//	Results: []services.NHTSAResult{
+	//		{
+	//			VariableID: 126,
+	//			ValueID:    &evID,
+	//		},
+	//	},
+	//}, nil)
+
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().ConvertPowerTrainStringToPowertrain(powertrainValue).Times(1).Return(services.BEV)
 	payload := `{ "vin": "5YJYGDEE5MF085533" }`
 	request := test.BuildRequest("PATCH", "/user/devices/"+ud.ID+"/vin", payload)
 	response, responseError := s.app.Test(request)

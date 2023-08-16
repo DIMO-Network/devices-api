@@ -47,6 +47,7 @@ type DeviceDefinitionService interface {
 	CreateIntegration(ctx context.Context, integrationType string, vendor string, style string) (*ddgrpc.Integration, error)
 	DecodeVIN(ctx context.Context, vin string, model string, year int, countryCode string) (*ddgrpc.DecodeVinResponse, error)
 	GetIntegrationByTokenID(ctx context.Context, tokenID uint64) (*ddgrpc.Integration, error)
+	ConvertPowerTrainStringToPowertrain(value string) PowertrainType
 }
 
 type deviceDefinitionService struct {
@@ -754,4 +755,21 @@ func (d *deviceDefinitionService) getDeviceLatLong(userDeviceID string) (lat, lo
 		}
 	}
 	return
+}
+
+func (d *deviceDefinitionService) ConvertPowerTrainStringToPowertrain(value string) PowertrainType {
+	switch value {
+	case "HEV":
+		return HEV
+	case "PHEV":
+		return PHEV
+	case "BEV":
+		return BEV
+	case "ICE":
+		return ICE
+	case "FCEV":
+		return FCEV
+	default:
+		return ICE
+	}
 }
