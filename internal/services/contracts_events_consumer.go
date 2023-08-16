@@ -46,6 +46,7 @@ const (
 	DCNNameChanged              EventName = "NameChanged"
 	DCNNewNode                  EventName = "NewNode"
 	DCNNewExpiration            EventName = "NewExpiration"
+	AftermarketDeviceClaimed    EventName = "AftermarketDeviceClaimed"
 )
 
 func (r EventName) String() string {
@@ -150,6 +151,8 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.Raw
 	case DCNNewExpiration.String():
 		c.log.Info().Str("event", data.EventName).Msg("Event received")
 		return c.dcnNewExpiration(&data)
+	case AftermarketDeviceClaimed.String():
+		return c.aftermarketDeviceClaimed(&data)
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -335,6 +338,28 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 	}
 
 	return nil
+}
+
+func (c *ContractsEventsConsumer) aftermarketDeviceClaimed(e *ContractEventData) error {
+	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
+		return fmt.Errorf("aftermarket claim from unexpected source %d/%s", e.ChainID, e.Contract)
+	}
+
+	var args contracts.RegistryAftermarketDeviceClaimed
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return err
+	}
+
+	am, err := models.AftermarketDevices(
+		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.AftermarketDeviceNode, 0))),
+	).One(context.TODO(), c.db.DBS().Reader)
+	if err != nil {
+		return err
+	}
+
+	am.OwnerAddress = null.BytesFrom(args.Owner.Bytes())
+	_, err = am.Update(context.TODO(), c.db.DBS().Writer, boil.Whitelist(models.AftermarketDeviceColumns.OwnerAddress))
+	return err
 }
 
 func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
