@@ -47,6 +47,7 @@ const (
 	DCNNewNode                  EventName = "NewNode"
 	DCNNewExpiration            EventName = "NewExpiration"
 	AftermarketDeviceClaimed    EventName = "AftermarketDeviceClaimed"
+	AftermarketDeviceUnpaired   EventName = "AftermarketDeviceUnpaired"
 )
 
 func (r EventName) String() string {
@@ -153,6 +154,8 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.Raw
 		return c.dcnNewExpiration(&data)
 	case AftermarketDeviceClaimed.String():
 		return c.aftermarketDeviceClaimed(&data)
+	case AftermarketDeviceUnpaired.String():
+		return c.aftermarketDeviceUnpaired(&data)
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -363,6 +366,22 @@ func (c *ContractsEventsConsumer) aftermarketDeviceClaimed(e *ContractEventData)
 	_, err = am.Update(context.TODO(), c.db.DBS().Writer, boil.Whitelist(models.AftermarketDeviceColumns.OwnerAddress))
 
 	return err
+}
+
+func (c *ContractsEventsConsumer) aftermarketDeviceUnpaired(e *ContractEventData) error {
+	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
+		return fmt.Errorf("aftermarket claim from unexpected source %d/%s", e.ChainID, e.Contract)
+	}
+
+	var args contracts.RegistryAftermarketDeviceUnpaired
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return err
+	}
+
+	// Not doing anything yet. Don't want to run unpair logic twice.
+	c.log.Info().Msgf("Got unpair event for device %d and vehicle %d.", args.AftermarketDeviceNode, args.VehicleNode)
+
+	return nil
 }
 
 func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
