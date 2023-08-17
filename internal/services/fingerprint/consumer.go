@@ -54,14 +54,12 @@ func RunConsumer(ctx context.Context, settings *config.Settings, logger *zerolog
 		logger.Fatal().Err(err).Msg("couldn't start device fingerprint consumer")
 	}
 
-	if !settings.IsProduction() {
-		if err := kafka.Consume(ctx, kafka.Config{
-			Brokers: strings.Split(settings.KafkaBrokers, ","),
-			Topic:   settings.SyntheticFingerprintTopic,
-			Group:   settings.SyntheticFingerprintConsumerGroup,
-		}, consumer.HandleSyntheticFingerprint, logger); err != nil {
-			logger.Fatal().Err(err).Msg("couldn't start synthetic fingerprint consumer")
-		}
+	if err := kafka.Consume(ctx, kafka.Config{
+		Brokers: strings.Split(settings.KafkaBrokers, ","),
+		Topic:   settings.SyntheticFingerprintTopic,
+		Group:   settings.SyntheticFingerprintConsumerGroup,
+	}, consumer.HandleSyntheticFingerprint, logger); err != nil {
+		logger.Fatal().Err(err).Msg("couldn't start synthetic fingerprint consumer")
 	}
 
 	logger.Info().Msg("Starting transaction request status listener.")
