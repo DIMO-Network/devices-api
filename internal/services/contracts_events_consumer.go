@@ -357,8 +357,11 @@ func (c *ContractsEventsConsumer) aftermarketDeviceClaimed(e *ContractEventData)
 		return err
 	}
 
+	c.log.Info().Int64("tokenId", args.AftermarketDeviceNode.Int64()).Str("address", args.Owner.Hex()).Msg("Claiming device.")
+
 	am.OwnerAddress = null.BytesFrom(args.Owner.Bytes())
 	_, err = am.Update(context.TODO(), c.db.DBS().Writer, boil.Whitelist(models.AftermarketDeviceColumns.OwnerAddress))
+
 	return err
 }
 
