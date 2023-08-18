@@ -72,7 +72,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 	vehicleMintedEvent := p.ABI.Events["VehicleNodeMinted"]
 	devicePairedEvent := p.ABI.Events["AftermarketDevicePaired"]
-	deviceUnpairedEvent := p.ABI.Events["AftermarketDeviceUnpaired"]
 	syntheticDeviceMintedEvent := p.ABI.Events["SyntheticDeviceNodeMinted"]
 	sdBurnEvent := p.ABI.Events["SyntheticDeviceNodeBurned"]
 
@@ -213,26 +212,9 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 			}
 		}
 	case mtr.R.UnpairRequestAftermarketDevice != nil:
-		for _, l1 := range data.Transaction.Logs {
-			if l1.Topics[0] == deviceUnpairedEvent.ID {
-				out := new(contracts.RegistryAftermarketDeviceUnpaired)
-				err := p.parseLog(out, deviceUnpairedEvent, l1)
-				if err != nil {
-					return err
-				}
-
-				mtr.R.UnpairRequestAftermarketDevice.VehicleTokenID = types.NullDecimal{}
-				mtr.R.UnpairRequestAftermarketDevice.PairRequestID = null.String{}
-				_, err = mtr.R.UnpairRequestAftermarketDevice.Update(ctx, p.DB().Writer, boil.Infer())
-				if err != nil {
-					return err
-				}
-
-				return p.ap.Unpair(ctx, out.AftermarketDeviceNode, out.VehicleNode)
-			}
-		}
-	// It's very important that this be after the case for VehicleNodeMinted.
+		// Handled in the contract event consumer.
 	case mtr.R.MintRequestSyntheticDevice != nil:
+		// It's very important that this be after the case for VehicleNodeMinted.
 		for _, l1 := range data.Transaction.Logs {
 			if l1.Topics[0] == syntheticDeviceMintedEvent.ID {
 				out := new(contracts.RegistrySyntheticDeviceNodeMinted)

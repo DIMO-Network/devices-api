@@ -73,7 +73,7 @@ func TestProcessContractsEventsMessages(t *testing.T) {
 		Payload: []byte(factoryResp.payload),
 	}
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil)
 
 	err := c.processMessage(msg)
 	s.assert.NoError(err)
@@ -114,7 +114,7 @@ func TestIgnoreWrongEventNames(t *testing.T) {
 	msg := &message.Message{
 		Payload: []byte(factoryResp.payload),
 	}
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil)
 
 	err := c.processMessage(msg)
 	s.assert.NoError(err)
@@ -136,7 +136,7 @@ func TestUpdatedTimestamp(t *testing.T) {
 	e := privilegeEventsPayloadFactory(3, 3, "", 0, s.settings.DIMORegistryChainID)
 	factoryResp := e[0]
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil)
 
 	msg := &message.Message{
 		Payload: []byte(factoryResp.payload),
@@ -213,7 +213,7 @@ func Test_Transfer_Event_Handled_Correctly(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.assert.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil)
 
 	err = c.processMessage(msg)
 	s.assert.NoError(err)
@@ -252,7 +252,7 @@ func Test_Ignore_Transfer_Mint_Event(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.assert.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil)
 
 	err = c.processMessage(msg)
 	s.assert.NoError(err)
@@ -286,7 +286,7 @@ func Test_Ignore_Transfer_Claims_Event(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.assert.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil)
 
 	err = c.processMessage(msg)
 	s.assert.NoError(err)
@@ -320,7 +320,7 @@ func Test_Ignore_Transfer_Wrong_Contract(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.assert.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil)
 
 	err = c.processMessage(msg)
 	s.assert.NoError(err)
@@ -352,7 +352,7 @@ func Test_Ignore_Transfer_Unit_Not_Found(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.assert.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil)
 
 	err = c.processMessage(msg)
 	s.assert.EqualError(err, "record not found as this might be a newly minted device")
@@ -440,7 +440,7 @@ func TestSetBeneficiary(t *testing.T) {
 		err := c.AutopiUnitTable.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 		s.assert.NoError(err)
 
-		consumer := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings)
+		consumer := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil)
 
 		b, err := json.Marshal(c.Event)
 		s.assert.NoError(err)
@@ -611,7 +611,7 @@ func TestVehicleTransfer(t *testing.T) {
 	nft := models.VehicleNFT{MintRequestID: "xdd", OwnerAddress: null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")), TokenID: types.NewNullDecimal(decimal.New(5, 0))}
 	_ = nft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
-	consumer := NewContractsEventsConsumer(pdb, &logger, settings)
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil)
 	err := consumer.processMessage(&message.Message{Payload: []byte(`
 	{
 		"type": "zone.dimo.contract.event",
@@ -667,7 +667,7 @@ func Test_NFTPrivileges_Cleared_On_Vehicle_Transfer(t *testing.T) {
 	nft := models.VehicleNFT{MintRequestID: "xdd", OwnerAddress: ownerAddress, TokenID: tkID}
 	_ = nft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
-	consumer := NewContractsEventsConsumer(pdb, &logger, settings)
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil)
 	err := consumer.processMessage(&message.Message{Payload: []byte(`
 	{
 		"type": "zone.dimo.contract.event",

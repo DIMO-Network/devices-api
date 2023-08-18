@@ -28,12 +28,18 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
+type Integration interface {
+	Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *big.Int) error
+	Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID *big.Int) error
+}
+
 type ContractsEventsConsumer struct {
 	db               db.Store
 	log              *zerolog.Logger
 	settings         *config.Settings
 	registryAddr     common.Address
 	autopiAPIService AutoPiAPIService
+	apInt            Integration
 }
 
 type EventName string
@@ -73,7 +79,7 @@ type Block struct {
 	Time   time.Time   `json:"time,omitempty"`
 }
 
-func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings) *ContractsEventsConsumer {
+func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration) *ContractsEventsConsumer {
 	autopiAPIService := NewAutoPiAPIService(settings, pdb.DBS)
 
 	return &ContractsEventsConsumer{
@@ -82,6 +88,7 @@ func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *con
 		settings:         settings,
 		registryAddr:     common.HexToAddress(settings.DIMORegistryAddr),
 		autopiAPIService: autopiAPIService,
+		apInt:            apInt,
 	}
 }
 
@@ -360,7 +367,7 @@ func (c *ContractsEventsConsumer) aftermarketDeviceClaimed(e *ContractEventData)
 		return err
 	}
 
-	c.log.Info().Int64("tokenId", args.AftermarketDeviceNode.Int64()).Str("address", args.Owner.Hex()).Msg("Claiming device.")
+	c.log.Info().Int64("aftermarketDeviceNode", args.AftermarketDeviceNode.Int64()).Str("owner", args.Owner.Hex()).Msg("Claiming aftermarket device.")
 
 	am.OwnerAddress = null.BytesFrom(args.Owner.Bytes())
 	_, err = am.Update(context.TODO(), c.db.DBS().Writer, boil.Whitelist(models.AftermarketDeviceColumns.OwnerAddress))
@@ -378,10 +385,23 @@ func (c *ContractsEventsConsumer) aftermarketDeviceUnpaired(e *ContractEventData
 		return err
 	}
 
-	// Not doing anything yet. Don't want to run unpair logic twice.
-	c.log.Info().Msgf("Got unpair event for device %d and vehicle %d.", args.AftermarketDeviceNode, args.VehicleNode)
+	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Int64("aftermarketDeviceNode", args.AftermarketDeviceNode.Int64()).Msg("Unpairing aftermarket device and vehicle.")
 
-	return nil
+	am, err := models.AftermarketDevices(
+		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.AftermarketDeviceNode, 0))),
+	).One(context.TODO(), c.db.DBS().Reader)
+	if err != nil {
+		return err
+	}
+
+	am.VehicleTokenID = types.NullDecimal{}
+	am.PairRequestID = null.String{}
+
+	if _, err := am.Update(context.TODO(), c.db.DBS().Writer, boil.Whitelist(models.AftermarketDeviceColumns.VehicleTokenID, models.AftermarketDeviceColumns.PairRequestID)); err != nil {
+		return err
+	}
+
+	return c.apInt.Unpair(context.TODO(), args.AftermarketDeviceNode, args.VehicleNode)
 }
 
 func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
