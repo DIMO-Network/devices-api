@@ -367,7 +367,7 @@ func (c *ContractsEventsConsumer) aftermarketDeviceClaimed(e *ContractEventData)
 		return err
 	}
 
-	c.log.Info().Int64("aftermarketDeviceNode", args.AftermarketDeviceNode.Int64()).Str("owner", args.Owner.Hex()).Msg("Claiming device.")
+	c.log.Info().Int64("aftermarketDeviceNode", args.AftermarketDeviceNode.Int64()).Str("owner", args.Owner.Hex()).Msg("Claiming aftermarket device.")
 
 	am.OwnerAddress = null.BytesFrom(args.Owner.Bytes())
 	_, err = am.Update(context.TODO(), c.db.DBS().Writer, boil.Whitelist(models.AftermarketDeviceColumns.OwnerAddress))
@@ -385,8 +385,7 @@ func (c *ContractsEventsConsumer) aftermarketDeviceUnpaired(e *ContractEventData
 		return err
 	}
 
-	// Not doing anything yet. Don't want to run unpair logic twice.
-	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Int64("aftermarketDeviceNode", args.AftermarketDeviceNode.Int64()).Msg("Unpairing.")
+	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Int64("aftermarketDeviceNode", args.AftermarketDeviceNode.Int64()).Msg("Unpairing aftermarket device and vehicle.")
 
 	am, err := models.AftermarketDevices(
 		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.AftermarketDeviceNode, 0))),
