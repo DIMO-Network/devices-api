@@ -54,7 +54,7 @@ var ErrNotFound = errors.New("not found")
 
 func NewAutoPiAPIService(settings *config.Settings, dbs func() *db.ReaderWriter) AutoPiAPIService {
 	h := map[string]string{"Authorization": "APIToken " + settings.AutoPiAPIToken}
-	hcw, _ := shared.NewHTTPClientWrapper(settings.AutoPiAPIURL, "", 10*time.Second, h, true) // ok to ignore err since only used for tor check
+	hcw, _ := shared.NewHTTPClientWrapper(settings.AutoPiAPIURL, "", 60*time.Second, h, true) // ok to ignore err since only used for tor check
 
 	return &autoPiAPIService{
 		Settings:   settings,
