@@ -92,6 +92,8 @@ func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *con
 		registryAddr:     common.HexToAddress(settings.DIMORegistryAddr),
 		autopiAPIService: autopiAPIService,
 		apInt:            apInt,
+		mcInt:            mcInt,
+		ddSvc:            ddSvc,
 	}
 }
 
