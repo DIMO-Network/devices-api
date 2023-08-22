@@ -1,4 +1,4 @@
-package autopi
+package macaron
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"time"
 
-	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
@@ -52,23 +51,6 @@ func NewIntegration(
 
 func intToDec(x *big.Int) types.NullDecimal {
 	return types.NewNullDecimal(new(decimal.Big).SetBigMantScale(x, 0))
-}
-
-func powertrainToTemplate(pt *services.PowertrainType, integ *ddgrpc.Integration) int32 {
-	out := integ.AutoPiDefaultTemplateId
-	if pt != nil {
-		switch *pt {
-		case services.ICE:
-			out = integ.AutoPiPowertrainTemplate.ICE
-		case services.HEV:
-			out = integ.AutoPiPowertrainTemplate.HEV
-		case services.PHEV:
-			out = integ.AutoPiPowertrainTemplate.PHEV
-		case services.BEV:
-			out = integ.AutoPiPowertrainTemplate.BEV
-		}
-	}
-	return out
 }
 
 func (i *Integration) Pair(ctx context.Context, amTokenID, vehicleTokenID *big.Int) error {
