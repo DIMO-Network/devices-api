@@ -82,7 +82,7 @@ type Block struct {
 	Time   time.Time   `json:"time,omitempty"`
 }
 
-func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration) *ContractsEventsConsumer {
+func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration, mcInt Integration, ddSvc DeviceDefinitionService) *ContractsEventsConsumer {
 	autopiAPIService := NewAutoPiAPIService(settings, pdb.DBS)
 
 	return &ContractsEventsConsumer{
