@@ -383,6 +383,10 @@ func (c *ContractsEventsConsumer) aftermarketDeviceClaimed(e *ContractEventData)
 }
 
 func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) error {
+	if c.settings.IsProduction() {
+		return nil
+	}
+
 	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
 		return fmt.Errorf("aftermarket claim from unexpected source %d/%s", e.ChainID, e.Contract)
 	}
