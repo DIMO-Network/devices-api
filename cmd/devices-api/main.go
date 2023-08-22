@@ -15,6 +15,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/kafka"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
+	"github.com/DIMO-Network/devices-api/internal/services/macaron"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/Shopify/sarama"
@@ -202,7 +203,7 @@ func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, p
 	logger.Info().Msg("Task status consumer started")
 }
 
-func startContractEventsConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store, autoPi *autopi.Integration) {
+func startContractEventsConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store, autoPi *autopi.Integration, macaron *macaron.Integration, ddSvc services.DeviceDefinitionService) {
 	clusterConfig := sarama.NewConfig()
 	clusterConfig.Version = sarama.V2_8_1_0
 	clusterConfig.Consumer.Offsets.Initial = sarama.OffsetNewest
@@ -219,7 +220,7 @@ func startContractEventsConsumer(logger zerolog.Logger, settings *config.Setting
 		logger.Fatal().Err(err).Msg("Could not start contract event consumer")
 	}
 
-	cevConsumer := services.NewContractsEventsConsumer(pdb, &logger, settings, autoPi)
+	cevConsumer := services.NewContractsEventsConsumer(pdb, &logger, settings, autoPi, macaron, ddSvc)
 	consumer.Start(context.Background(), cevConsumer.ProcessContractsEventsMessages)
 
 	logger.Info().Msg("Contracts events consumer started")

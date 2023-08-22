@@ -33,6 +33,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
 	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
 	"github.com/DIMO-Network/devices-api/internal/services/issuer"
+	"github.com/DIMO-Network/devices-api/internal/services/macaron"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 	"github.com/DIMO-Network/shared"
@@ -103,6 +104,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	autoPiTaskService := services.NewAutoPiTaskService(settings, autoPiSvc, pdb.DBS, logger)
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, pdb.DBS, &logger)
 	autoPi := autopi.NewIntegration(pdb.DBS, ddSvc, autoPiSvc, autoPiTaskService, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &logger)
+	macaron := macaron.NewIntegration(pdb.DBS, ddSvc, autoPiIngest, eventService, deviceDefinitionRegistrar, &logger)
+
 	openAI := services.NewOpenAI(&logger, *settings)
 	dcnSvc := registry.NewDcnService(settings)
 
@@ -346,7 +349,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		logger.Fatal().Err(err).Msg("Failed to create vin credentialer listener")
 	}
 
-	startContractEventsConsumer(logger, settings, pdb, autoPi)
+	startContractEventsConsumer(logger, settings, pdb, autoPi, macaron, ddSvc)
 
 	store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, settings, eventService)
 	if err != nil {

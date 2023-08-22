@@ -40,6 +40,8 @@ type ContractsEventsConsumer struct {
 	registryAddr     common.Address
 	autopiAPIService AutoPiAPIService
 	apInt            Integration
+	mcInt            Integration
+	ddSvc            DeviceDefinitionService
 }
 
 type EventName string
@@ -53,6 +55,7 @@ const (
 	DCNNewNode                  EventName = "NewNode"
 	DCNNewExpiration            EventName = "NewExpiration"
 	AftermarketDeviceClaimed    EventName = "AftermarketDeviceClaimed"
+	AftermarketDevicePaired     EventName = "AftermarketDevicePaired"
 	AftermarketDeviceUnpaired   EventName = "AftermarketDeviceUnpaired"
 )
 
@@ -79,7 +82,7 @@ type Block struct {
 	Time   time.Time   `json:"time,omitempty"`
 }
 
-func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration) *ContractsEventsConsumer {
+func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration, mcInt Integration, ddSvc DeviceDefinitionService) *ContractsEventsConsumer {
 	autopiAPIService := NewAutoPiAPIService(settings, pdb.DBS)
 
 	return &ContractsEventsConsumer{
@@ -89,6 +92,8 @@ func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *con
 		registryAddr:     common.HexToAddress(settings.DIMORegistryAddr),
 		autopiAPIService: autopiAPIService,
 		apInt:            apInt,
+		mcInt:            mcInt,
+		ddSvc:            ddSvc,
 	}
 }
 
@@ -161,6 +166,8 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.Raw
 		return c.dcnNewExpiration(&data)
 	case AftermarketDeviceClaimed.String():
 		return c.aftermarketDeviceClaimed(&data)
+	case AftermarketDevicePaired.String():
+		return c.aftermarketDevicePaired(&data)
 	case AftermarketDeviceUnpaired.String():
 		return c.aftermarketDeviceUnpaired(&data)
 	default:
@@ -373,6 +380,47 @@ func (c *ContractsEventsConsumer) aftermarketDeviceClaimed(e *ContractEventData)
 	_, err = am.Update(context.TODO(), c.db.DBS().Writer, boil.Whitelist(models.AftermarketDeviceColumns.OwnerAddress))
 
 	return err
+}
+
+func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) error {
+	if c.settings.IsProduction() {
+		return nil
+	}
+
+	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
+		return fmt.Errorf("aftermarket claim from unexpected source %d/%s", e.ChainID, e.Contract)
+	}
+
+	var args contracts.RegistryAftermarketDevicePaired
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return err
+	}
+
+	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Int64("aftermarketDeviceNode", args.AftermarketDeviceNode.Int64()).Msg("Pairing aftermarket device and vehicle.")
+
+	am, err := models.AftermarketDevices(
+		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.AftermarketDeviceNode, 0))),
+	).One(context.TODO(), c.db.DBS().Reader)
+	if err != nil {
+		return err
+	}
+
+	dm, err := c.ddSvc.GetMakeByTokenID(context.TODO(), am.DeviceManufacturerTokenID.Int(nil))
+	if err != nil {
+		return err
+	}
+
+	if dm.Name != "Hashdog" {
+		return nil
+	}
+
+	am.VehicleTokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.VehicleNode, 0))
+
+	if _, err := am.Update(context.TODO(), c.db.DBS().Writer, boil.Whitelist(models.AftermarketDeviceColumns.VehicleTokenID)); err != nil {
+		return err
+	}
+
+	return c.mcInt.Pair(context.TODO(), args.AftermarketDeviceNode, args.VehicleNode)
 }
 
 func (c *ContractsEventsConsumer) aftermarketDeviceUnpaired(e *ContractEventData) error {
