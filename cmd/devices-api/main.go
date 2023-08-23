@@ -102,10 +102,8 @@ func main() {
 
 		subcommands.Register(&stopTaskByKeyCmd{logger: logger, settings: settings, container: deps}, "tasks")
 
-		subcommands.Register(&loadValuationsCmd{logger: logger, settings: settings, pdb: pdb}, "user devices")
 		subcommands.Register(&syncDeviceTemplatesCmd{logger: logger, settings: settings, pdb: pdb}, "user devices")
 
-		subcommands.Register(&autopiClearVINCmd{logger: logger, settings: settings, pdb: pdb}, "autopi")
 		subcommands.Register(&fixSignalTimestamps{logger: logger, settings: settings, pdb: pdb}, "data-fixes")
 
 		flag.Parse()
