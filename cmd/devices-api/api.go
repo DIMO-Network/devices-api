@@ -320,8 +320,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Post("/autopi/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
 	udOwner.Post("/aftermarket/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
 
-	go startValuationConsumer(settings, pdb.DBS, &logger, ddSvc, natsSvc)
-
 	logger.Info().Msg("Server started on port " + settings.Port)
 	// Start Server from a different go routine
 	go func() {
@@ -437,19 +435,4 @@ func createVCIssuer(settings *config.Settings, dbs db.Store, logger *zerolog.Log
 		},
 		logger,
 	)
-}
-
-func startValuationConsumer(settings *config.Settings, pdb func() *db.ReaderWriter, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService, natsSvc *services.NATSService) {
-	if settings.IsProduction() {
-
-		valuationService := services.NewValuationService(logger, pdb, ddSvc, natsSvc)
-
-		go func() {
-			err := valuationService.ValuationConsumer(context.Background())
-
-			if err != nil {
-				logger.Fatal().Err(err).Msg("Failed to start valuation consumer")
-			}
-		}()
-	}
 }

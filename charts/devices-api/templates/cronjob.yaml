@@ -26,7 +26,7 @@ spec:
               {{- toYaml .Values.securityContext | nindent 14 }}
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
             command: ['/bin/sh']
-            args: ['-c', '/devices-api valuations-pull; CODE=$?; echo "valuations-pull completed"; wget -q --post-data "hello=shutdown" http://localhost:4191/shutdown; exit $CODE;']
+            args: ['-c', 'echo "no cronjob set up"; wget -q --post-data "hello=shutdown" http://localhost:4191/shutdown; exit 0']
             envFrom:
             - configMapRef:
                 name: {{ include "devices-api.fullname" . }}-config
