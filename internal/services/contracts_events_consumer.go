@@ -331,20 +331,36 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 		return err
 	}
 
-	device, err := c.autopiAPIService.GetDeviceByEthAddress(args.AftermarketDeviceAddress.Hex())
+	mfr, err := c.ddSvc.GetMakeByTokenID(context.TODO(), args.ManufacturerId)
 	if err != nil {
-		return fmt.Errorf("couldn't fetch dongle with address %s: %w", args.AftermarketDeviceAddress, err)
+		return err
 	}
 
-	c.log.Info().Str("serial", device.UnitID).Msgf("Aftermarket device minted with address %s, token id %d.", args.AftermarketDeviceAddress, args.TokenId)
-	amdMd := AftermarketDeviceMetadata{AutoPiDeviceID: device.ID}
+	var amd models.AftermarketDevice
 
-	amd := models.AftermarketDevice{
-		Serial:          device.UnitID,
-		EthereumAddress: args.AftermarketDeviceAddress.Bytes(),
-		TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
+	switch mfr.Name {
+	case "AutoPi":
+		device, err := c.autopiAPIService.GetDeviceByEthAddress(args.AftermarketDeviceAddress.Hex())
+		if err != nil {
+			return fmt.Errorf("couldn't fetch dongle with address %s: %w", args.AftermarketDeviceAddress, err)
+		}
+
+		c.log.Info().Str("serial", device.UnitID).Msgf("Aftermarket device minted with address %s, token id %d.", args.AftermarketDeviceAddress, args.TokenId)
+
+		amd = models.AftermarketDevice{
+			Serial:          device.UnitID,
+			EthereumAddress: args.AftermarketDeviceAddress.Bytes(),
+			TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
+		}
+
+		amdMd := AftermarketDeviceMetadata{AutoPiDeviceID: device.ID}
+		_ = amd.Metadata.Marshal(amdMd)
+	case "Hashdog":
+		amd = models.AftermarketDevice{
+			EthereumAddress: args.AftermarketDeviceAddress.Bytes(),
+			TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
+		}
 	}
-	_ = amd.Metadata.Marshal(amdMd)
 
 	cols := models.AftermarketDeviceColumns
 
