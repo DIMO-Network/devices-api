@@ -2470,13 +2470,13 @@
                     "type": "string"
                 },
                 "logo_url": {
-                    "$ref": "#/definitions/null.String"
+                    "type": "string"
                 },
                 "name": {
                     "type": "string"
                 },
                 "oem_platform_name": {
-                    "$ref": "#/definitions/null.String"
+                    "type": "string"
                 }
             }
         },
@@ -3671,17 +3671,6 @@
         },
         "math.HexOrDecimal256": {
             "type": "object"
-        },
-        "null.String": {
-            "type": "object",
-            "properties": {
-                "string": {
-                    "type": "string"
-                },
-                "valid": {
-                    "type": "boolean"
-                }
-            }
         },
         "smartcar.TirePressure": {
             "type": "object",

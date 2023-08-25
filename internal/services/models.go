@@ -29,8 +29,8 @@ type DeviceDefinition struct {
 type DeviceMake struct {
 	ID              string      `json:"id"`
 	Name            string      `json:"name"`
-	LogoURL         null.String `json:"logo_url"`
-	OemPlatformName null.String `json:"oem_platform_name"`
+	LogoURL         null.String `json:"logo_url" swaggertype:"string"`
+	OemPlatformName null.String `json:"oem_platform_name" swaggertype:"string"`
 }
 
 // DeviceCompatibility represents what systems we know this is compatible with

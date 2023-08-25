@@ -135,11 +135,11 @@ definitions:
       id:
         type: string
       logo_url:
-        $ref: '#/definitions/null.String'
+        type: string
       name:
         type: string
       oem_platform_name:
-        $ref: '#/definitions/null.String'
+        type: string
     type: object
   github_com_DIMO-Network_devices-api_internal_services.DeviceType:
     properties:
@@ -995,13 +995,6 @@ definitions:
         type: string
     type: object
   math.HexOrDecimal256:
-    type: object
-  null.String:
-    properties:
-      string:
-        type: string
-      valid:
-        type: boolean
     type: object
   smartcar.TirePressure:
     properties:
