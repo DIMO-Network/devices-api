@@ -309,16 +309,22 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	// act request
 	const vinny = "4T3R6RFVXMU023395"
+	const deviceStyleID = "24GE7Mlc4c9o4j5P4mcD1Fzinx1"
 	reg := RegisterUserDeviceVIN{VIN: vinny, CountryCode: "USA", CANProtocol: "06"}
 	j, _ := json.Marshal(reg)
 
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&grpc.DecodeVinResponse{
 		DeviceMakeId:       dd[0].Make.Id,
 		DeviceDefinitionId: dd[0].DeviceDefinitionId,
-		DeviceStyleId:      "",
+		DeviceStyleId:      deviceStyleID,
 		Year:               dd[0].Type.Year,
 	}, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetDeviceStyleByID(gomock.Any(), deviceStyleID).Times(1).Return(&grpc.DeviceStyle{
+		Id:               deviceStyleID,
+		DeviceAttributes: dd[0].DeviceAttributes,
+	}, nil)
+	s.deviceDefSvc.EXPECT().ConvertPowerTrainStringToPowertrain(gomock.Any()).Times(1).Return(services.BEV)
 	apInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 10)
 	s.deviceDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Times(1).Return(apInteg, nil)
 	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), apInteg.Id, dd[0].DeviceDefinitionId, "Americas")
