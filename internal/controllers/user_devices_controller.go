@@ -601,6 +601,25 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		if reg.CANProtocol != "" {
 			udMd = &services.UserDeviceMetadata{CANProtocol: &reg.CANProtocol}
 		}
+		// Validate if it has device style id
+		if len(decodeVIN.DeviceStyleId) > 0 {
+			ds, err := udc.DeviceDefSvc.GetDeviceStyleByID(c.Context(), decodeVIN.DeviceStyleId)
+			if err != nil {
+				return errors.Wrapf(err, "failed to get device style %s", decodeVIN.DeviceStyleId)
+			}
+
+			if len(ds.DeviceAttributes) > 0 {
+				// Find device attribute (powertrain_type)
+				for _, item := range ds.DeviceAttributes {
+					if item.Name == constants.PowerTrainType {
+						powertrainType := udc.DeviceDefSvc.ConvertPowerTrainStringToPowertrain(item.Value)
+						udMd.PowertrainType = &powertrainType
+						break
+					}
+				}
+			}
+		}
+
 		udFull, err = udc.createUserDevice(c.Context(), deviceDefinitionID, reg.CountryCode, userID, &vin, udMd)
 		if err != nil {
 			return err
@@ -782,8 +801,28 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		return errors.Wrap(err, "unable to attach smartcar integration to device definition id")
 	}
 
+	// Validate if it has device style id
+	var udMd *services.UserDeviceMetadata
+	if len(decodeVIN.DeviceStyleId) > 0 {
+		ds, err := udc.DeviceDefSvc.GetDeviceStyleByID(c.Context(), decodeVIN.DeviceStyleId)
+		if err != nil {
+			return errors.Wrapf(err, "failed to get device style %s", decodeVIN.DeviceStyleId)
+		}
+
+		if len(ds.DeviceAttributes) > 0 {
+			// Find device attribute (powertrain_type)
+			for _, item := range ds.DeviceAttributes {
+				if item.Name == constants.PowerTrainType {
+					powertrainType := udc.DeviceDefSvc.ConvertPowerTrainStringToPowertrain(item.Value)
+					udMd.PowertrainType = &powertrainType
+					break
+				}
+			}
+		}
+	}
+
 	// attach device def to user
-	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, reg.CountryCode, userID, &vin, nil)
+	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, reg.CountryCode, userID, &vin, udMd)
 	if err != nil {
 		return err
 	}

@@ -48,6 +48,7 @@ type DeviceDefinitionService interface {
 	DecodeVIN(ctx context.Context, vin string, model string, year int, countryCode string) (*ddgrpc.DecodeVinResponse, error)
 	GetIntegrationByTokenID(ctx context.Context, tokenID uint64) (*ddgrpc.Integration, error)
 	ConvertPowerTrainStringToPowertrain(value string) PowertrainType
+	GetDeviceStyleByID(ctx context.Context, id string) (*ddgrpc.DeviceStyle, error)
 }
 
 type deviceDefinitionService struct {
@@ -558,6 +559,24 @@ func (d *deviceDefinitionService) PullDrivlyData(ctx context.Context, userDevice
 	defer appmetrics.DrivlyIngestTotalOps.Inc()
 
 	return PulledValuationDrivlyStatus, nil
+}
+
+func (d *deviceDefinitionService) GetDeviceStyleByID(ctx context.Context, id string) (*ddgrpc.DeviceStyle, error) {
+	definitionsClient, conn, err := d.getDeviceDefsGrpcClient()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	ds, err := definitionsClient.GetDeviceStyleByID(ctx, &ddgrpc.GetDeviceStyleByIDRequest{
+		Id: id,
+	})
+
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to call grpc endpoint GetDeviceStyleByID")
+	}
+
+	return ds, nil
 }
 
 func (d *deviceDefinitionService) updateDeviceDefAttrs(ctx context.Context, deviceDef *ddgrpc.GetDeviceDefinitionItemResponse, vinInfo map[string]any) error {

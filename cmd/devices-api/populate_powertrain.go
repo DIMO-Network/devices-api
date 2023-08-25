@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 
 	"github.com/google/subcommands"
 
@@ -48,11 +49,6 @@ func (p *populateUSAPowertrainCmd) Execute(ctx context.Context, _ *flag.FlagSet,
 }
 
 func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.Store, nhtsaService services.INHTSAService, deviceDefSvc services.DeviceDefinitionService, useNHTSA bool) error {
-
-	const (
-		PowerTrainType = "powertrain_type"
-	)
-
 	devices, err := models.UserDevices(
 		models.UserDeviceWhere.CountryCode.EQ(null.StringFrom("USA")),
 		models.UserDeviceWhere.VinIdentifier.IsNotNull(),
@@ -100,7 +96,7 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 		if len(resp.DeviceAttributes) > 0 {
 			// Find device attribute (powertrain_type)
 			for _, item := range resp.DeviceAttributes {
-				if item.Name == PowerTrainType {
+				if item.Name == constants.PowerTrainType {
 					powertrainType := deviceDefSvc.ConvertPowerTrainStringToPowertrain(item.Value)
 					md.PowertrainType = &powertrainType
 					if err := device.Metadata.Marshal(md); err != nil {

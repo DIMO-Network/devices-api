@@ -127,6 +127,21 @@ func (mr *MockDeviceDefinitionServiceMockRecorder) GetDeviceDefinitionsByIDs(ctx
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeviceDefinitionsByIDs", reflect.TypeOf((*MockDeviceDefinitionService)(nil).GetDeviceDefinitionsByIDs), ctx, ids)
 }
 
+// GetDeviceStyleByID mocks base method.
+func (m *MockDeviceDefinitionService) GetDeviceStyleByID(ctx context.Context, id string) (*grpc.DeviceStyle, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDeviceStyleByID", ctx, id)
+	ret0, _ := ret[0].(*grpc.DeviceStyle)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetDeviceStyleByID indicates an expected call of GetDeviceStyleByID.
+func (mr *MockDeviceDefinitionServiceMockRecorder) GetDeviceStyleByID(ctx, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeviceStyleByID", reflect.TypeOf((*MockDeviceDefinitionService)(nil).GetDeviceStyleByID), ctx, id)
+}
+
 // GetIntegrationByFilter mocks base method.
 func (m *MockDeviceDefinitionService) GetIntegrationByFilter(ctx context.Context, integrationType, vendor, style string) (*grpc.Integration, error) {
 	m.ctrl.T.Helper()
