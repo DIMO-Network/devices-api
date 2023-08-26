@@ -348,17 +348,19 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 		c.log.Info().Str("serial", device.UnitID).Msgf("Aftermarket device minted with address %s, token id %d.", args.AftermarketDeviceAddress, args.TokenId)
 
 		amd = models.AftermarketDevice{
-			Serial:          device.UnitID,
-			EthereumAddress: args.AftermarketDeviceAddress.Bytes(),
-			TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
+			Serial:                    device.UnitID,
+			EthereumAddress:           args.AftermarketDeviceAddress.Bytes(),
+			TokenID:                   types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
+			DeviceManufacturerTokenID: types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.ManufacturerId, 0)),
 		}
 
 		amdMd := AftermarketDeviceMetadata{AutoPiDeviceID: device.ID}
 		_ = amd.Metadata.Marshal(amdMd)
 	case "Hashdog":
 		amd = models.AftermarketDevice{
-			EthereumAddress: args.AftermarketDeviceAddress.Bytes(),
-			TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
+			EthereumAddress:           args.AftermarketDeviceAddress.Bytes(),
+			TokenID:                   types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
+			DeviceManufacturerTokenID: types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.ManufacturerId, 0)),
 		}
 	}
 
