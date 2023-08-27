@@ -231,6 +231,7 @@ func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *
 		return nil, err
 	}
 
+	// todo this needs to use udc.createUserDevice refactor method.
 	// future refactor: udc controller has a createUserDevice
 	userDeviceID := ksuid.New().String()
 	// register device for the user

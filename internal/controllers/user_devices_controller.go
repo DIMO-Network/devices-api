@@ -507,6 +507,7 @@ func NewUserDeviceIntegrationStatusesFromDatabase(udis []*models.UserDeviceAPIIn
 // @Security    BearerAuth
 // @Router      /user/devices [post]
 func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
+	// todo check in logs for ingress if this is still used
 	userID := helpers.GetUserID(c)
 	reg := &RegisterUserDevice{}
 	if err := c.BodyParser(reg); err != nil {
@@ -517,7 +518,7 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	udFull, err := udc.createUserDevice(c.Context(), *reg.DeviceDefinitionID, reg.CountryCode, userID, nil, nil)
+	udFull, err := udc.createUserDevice(c.Context(), *reg.DeviceDefinitionID, "", reg.CountryCode, userID, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -598,31 +599,8 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 			return fiber.NewError(fiber.StatusFailedDependency, "unable to decode vin")
 		}
 		deviceDefinitionID = decodeVIN.DeviceDefinitionId
-		// attach device def to user
-		var udMd *services.UserDeviceMetadata
-		if reg.CANProtocol != "" {
-			udMd = &services.UserDeviceMetadata{CANProtocol: &reg.CANProtocol}
-		}
-		// Validate if it has device style id
-		if len(decodeVIN.DeviceStyleId) > 0 {
-			ds, err := udc.DeviceDefSvc.GetDeviceStyleByID(c.Context(), decodeVIN.DeviceStyleId)
-			if err != nil {
-				return errors.Wrapf(err, "failed to get device style %s", decodeVIN.DeviceStyleId)
-			}
 
-			if len(ds.DeviceAttributes) > 0 {
-				// Find device attribute (powertrain_type)
-				for _, item := range ds.DeviceAttributes {
-					if item.Name == constants.PowerTrainType {
-						powertrainType := udc.DeviceDefSvc.ConvertPowerTrainStringToPowertrain(item.Value)
-						udMd.PowertrainType = &powertrainType
-						break
-					}
-				}
-			}
-		}
-
-		udFull, err = udc.createUserDevice(c.Context(), deviceDefinitionID, reg.CountryCode, userID, &vin, udMd)
+		udFull, err = udc.createUserDevice(c.Context(), deviceDefinitionID, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, &reg.CANProtocol)
 		if err != nil {
 			return err
 		}
@@ -803,28 +781,8 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		return errors.Wrap(err, "unable to attach smartcar integration to device definition id")
 	}
 
-	// Validate if it has device style id
-	var udMd *services.UserDeviceMetadata
-	if len(decodeVIN.DeviceStyleId) > 0 {
-		ds, err := udc.DeviceDefSvc.GetDeviceStyleByID(c.Context(), decodeVIN.DeviceStyleId)
-		if err != nil {
-			return errors.Wrapf(err, "failed to get device style %s", decodeVIN.DeviceStyleId)
-		}
-
-		if len(ds.DeviceAttributes) > 0 {
-			// Find device attribute (powertrain_type)
-			for _, item := range ds.DeviceAttributes {
-				if item.Name == constants.PowerTrainType {
-					powertrainType := udc.DeviceDefSvc.ConvertPowerTrainStringToPowertrain(item.Value)
-					udMd.PowertrainType = &powertrainType
-					break
-				}
-			}
-		}
-	}
-
 	// attach device def to user
-	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, reg.CountryCode, userID, &vin, udMd)
+	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, nil)
 	if err != nil {
 		return err
 	}
@@ -861,11 +819,37 @@ func buildSmartcarTokenKey(vin, userID string) string {
 	return fmt.Sprintf("sc-temp-tok-%s-%s", vin, userID)
 }
 
-func (udc *UserDevicesController) createUserDevice(ctx context.Context, deviceDefID, countryCode, userID string, vin *string, metadata *services.UserDeviceMetadata) (*UserDeviceFull, error) {
+// todo move to a service and also use in grpc call from admin. todo add test
+func (udc *UserDevicesController) createUserDevice(ctx context.Context, deviceDefID, styleID, countryCode, userID string, vin, canProtocol *string) (*UserDeviceFull, error) {
 	// attach device def to user
 	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, deviceDefID)
 	if err2 != nil {
 		return nil, helpers.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", deviceDefID))
+	}
+	powertrainType := services.ICE // default
+	for _, attr := range dd.DeviceAttributes {
+		if attr.Name == constants.PowerTrainTypeKey {
+			powertrainType = services.PowertrainType(attr.Value) // todo does this work? validat with test
+			break
+		}
+	}
+	// check if style exists to get powertrain
+	if len(styleID) > 0 {
+		ds, err := udc.DeviceDefSvc.GetDeviceStyleByID(ctx, styleID)
+		if err != nil {
+			// just log warn
+			udc.log.Warn().Err(err).Msgf("failed to get device style %s - continuing", styleID)
+		}
+
+		if ds != nil && len(ds.DeviceAttributes) > 0 {
+			// Find device attribute (powertrain_type)
+			for _, item := range ds.DeviceAttributes {
+				if item.Name == constants.PowerTrainTypeKey {
+					powertrainType = udc.DeviceDefSvc.ConvertPowerTrainStringToPowertrain(item.Value)
+					break
+				}
+			}
+		}
 	}
 
 	tx, err := udc.DBS().Writer.DB.BeginTx(ctx, nil)
@@ -883,12 +867,18 @@ func (udc *UserDevicesController) createUserDevice(ctx context.Context, deviceDe
 		CountryCode:        null.StringFrom(countryCode),
 		VinIdentifier:      null.StringFromPtr(vin),
 	}
-	if metadata != nil {
-		err = ud.Metadata.Marshal(metadata)
-		if err != nil {
-			udc.log.Warn().Str("func", "createUserDevice").Msg("failed to marshal user device metadata on create")
-		}
+	// always instantiate metadata with powerTrain and CANProtocol
+	udMD := &services.UserDeviceMetadata{
+		PowertrainType: &powertrainType,
 	}
+	if canProtocol != nil && len(*canProtocol) > 0 {
+		udMD.CANProtocol = canProtocol
+	}
+	err = ud.Metadata.Marshal(udMD)
+	if err != nil {
+		udc.log.Warn().Str("func", "createUserDevice").Msg("failed to marshal user device metadata on create")
+	}
+
 	err = ud.Insert(ctx, tx, boil.Infer())
 	if err != nil {
 		return nil, fiber.NewError(fiber.StatusInternalServerError, "could not create user device for def_id: "+dd.DeviceDefinitionId)
@@ -1110,11 +1100,12 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-func (udc *UserDevicesController) updateUSAPowertrain(ctx context.Context, userDevice *models.UserDevice, useNHTSA bool) error {
-	const (
-		PowerTrainType = "powertrain_type"
-	)
+const (
+	PowerTrainTypeKey = "powertrain_type"
+)
 
+// todo revisit this
+func (udc *UserDevicesController) updateUSAPowertrain(ctx context.Context, userDevice *models.UserDevice, useNHTSA bool) error {
 	// todo grpc pull vin decoder via grpc from device definitions
 	md := new(services.UserDeviceMetadata)
 	if err := userDevice.Metadata.Unmarshal(md); err != nil {
@@ -1144,7 +1135,7 @@ func (udc *UserDevicesController) updateUSAPowertrain(ctx context.Context, userD
 		if len(resp.DeviceAttributes) > 0 {
 			// Find device attribute (powertrain_type)
 			for _, item := range resp.DeviceAttributes {
-				if item.Name == PowerTrainType {
+				if item.Name == PowerTrainTypeKey {
 					powertrainType := udc.DeviceDefSvc.ConvertPowerTrainStringToPowertrain(item.Value)
 					md.PowertrainType = &powertrainType
 					break

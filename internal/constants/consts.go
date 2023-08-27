@@ -3,7 +3,7 @@ package constants
 const UserDeviceCreationEventType = "com.dimo.zone.device.create"
 
 const (
-	PowerTrainType = "powertrain_type"
+	PowerTrainTypeKey = "powertrain_type"
 )
 
 const (
