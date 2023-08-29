@@ -19,6 +19,7 @@ import (
 	"github.com/DIMO-Network/shared/redis/mocks"
 
 	"github.com/DIMO-Network/shared/db"
+	vrpc "github.com/DIMO-Network/valuations-api/pkg/grpc"
 
 	deviceDefs "github.com/DIMO-Network/device-definitions-api/pkg"
 	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
@@ -73,6 +74,7 @@ type UserDevicesControllerTestSuite struct {
 	usersClient     *mock_services.MockUserServiceClient
 	natsService     *services.NATSService
 	natsServer      *server.Server
+	valuationsSrvc  *mock_services.MockValuationsAPIService
 }
 
 const natsStreamName = "test-stream"
@@ -104,7 +106,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 		s.T().Fatal(err)
 	}
 
-	valuationsAPI := mock_services.NewMockValuationsAPIService(mockCtrl)
+	s.valuationsSrvc = mock_services.NewMockValuationsAPIService(mockCtrl)
 
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
@@ -134,7 +136,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 		nil,
 		s.natsService,
 		nil,
-		valuationsAPI)
+		s.valuationsSrvc)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUser)
 	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUserFromVIN)
@@ -797,23 +799,12 @@ func (s *UserDevicesControllerTestSuite) TestGetDeviceValuations_Format1() {
 		"PricingMetadata": []byte(testDrivlyPricingJSON),
 	}, s.pdb)
 
+	s.valuationsSrvc.EXPECT().GetUserDeviceValuations(gomock.Any(), gomock.Any()).Times(1).Return(&vrpc.DeviceValuation{}, nil)
+
 	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/valuations", ud.ID), "")
 	response, _ := s.app.Test(request)
-	body, _ := io.ReadAll(response.Body)
 
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-
-	assert.Equal(s.T(), 1, int(gjson.GetBytes(body, "valuationSets.#").Int()))
-	assert.Equal(s.T(), 49957, int(gjson.GetBytes(body, "valuationSets.#(vendor=drivly).mileage").Int()))
-	assert.Equal(s.T(), 49957, int(gjson.GetBytes(body, "valuationSets.#(vendor=drivly).odometer").Int()))
-	assert.Equal(s.T(), "miles", gjson.GetBytes(body, "valuationSets.#(vendor=drivly).odometerUnit").String())
-	assert.Equal(s.T(), 54123, int(gjson.GetBytes(body, "valuationSets.#(vendor=drivly).retail").Int()))
-	//54123 + 50151 / 2
-	assert.Equal(s.T(), 52137, int(gjson.GetBytes(body, "valuationSets.#(vendor=drivly).userDisplayPrice").Int()))
-	assert.Equal(s.T(), "USD", gjson.GetBytes(body, "valuationSets.#(vendor=drivly).currency").String())
-	// 49040 + 52173 + 49241 / 3 = 50151
-	assert.Equal(s.T(), 50151, int(gjson.GetBytes(body, "valuationSets.#(vendor=drivly).tradeIn").Int()))
-	assert.Equal(s.T(), 50151, int(gjson.GetBytes(body, "valuationSets.#(vendor=drivly).tradeInAverage").Int()))
 }
 
 func (s *UserDevicesControllerTestSuite) TestGetDeviceValuations_Format2() {
@@ -821,21 +812,13 @@ func (s *UserDevicesControllerTestSuite) TestGetDeviceValuations_Format2() {
 	// arrange db, insert some user_devices
 	ddID := ksuid.New().String()
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, ddID, nil, "", s.pdb)
-	_ = test.SetupCreateExternalVINData(s.T(), ddID, &ud, map[string][]byte{
-		"PricingMetadata": []byte(testDrivlyPricing2JSON),
-	}, s.pdb)
+
+	s.valuationsSrvc.EXPECT().GetUserDeviceValuations(gomock.Any(), gomock.Any()).Times(1).Return(&vrpc.DeviceValuation{}, nil)
 
 	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/valuations", ud.ID), "")
 	response, _ := s.app.Test(request)
-	body, _ := io.ReadAll(response.Body)
 
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-
-	assert.Equal(s.T(), 1, int(gjson.GetBytes(body, "valuationSets.#").Int()))
-	// mileage comes from request metadata, but it is also sometimes returned by payload
-	assert.Equal(s.T(), 50702, int(gjson.GetBytes(body, "valuationSets.#(vendor=drivly).mileage").Int()))
-	assert.Equal(s.T(), 40611, int(gjson.GetBytes(body, "valuationSets.#(vendor=drivly).tradeIn").Int()))
-	assert.Equal(s.T(), 50803, int(gjson.GetBytes(body, "valuationSets.#(vendor=drivly).retail").Int()))
 }
 
 func (s *UserDevicesControllerTestSuite) TestGetDeviceValuations_Vincario() {
@@ -847,22 +830,13 @@ func (s *UserDevicesControllerTestSuite) TestGetDeviceValuations_Vincario() {
 		"VincarioMetadata": []byte(testVincarioValuationJSON),
 	}, s.pdb)
 
+	s.valuationsSrvc.EXPECT().GetUserDeviceValuations(gomock.Any(), gomock.Any()).Times(1).Return(&vrpc.DeviceValuation{}, nil)
+
 	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/valuations", ud.ID), "")
 	response, _ := s.app.Test(request, 2000)
-	body, _ := io.ReadAll(response.Body)
 
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
 
-	assert.Equal(s.T(), 1, int(gjson.GetBytes(body, "valuationSets.#").Int()))
-	// mileage comes from request metadata, but it is also sometimes returned by payload
-	assert.Equal(s.T(), 30137, int(gjson.GetBytes(body, "valuationSets.#(vendor=vincario).mileage").Int()))
-	assert.Equal(s.T(), 30137, int(gjson.GetBytes(body, "valuationSets.#(vendor=vincario).odometer").Int()))
-	assert.Equal(s.T(), "km", gjson.GetBytes(body, "valuationSets.#(vendor=vincario).odometerUnit").String())
-	assert.Equal(s.T(), "EUR", gjson.GetBytes(body, "valuationSets.#(vendor=vincario).currency").String())
-
-	assert.Equal(s.T(), 44800, int(gjson.GetBytes(body, "valuationSets.#(vendor=vincario).tradeIn").Int()))
-	assert.Equal(s.T(), 55200, int(gjson.GetBytes(body, "valuationSets.#(vendor=vincario).retail").Int()))
-	assert.Equal(s.T(), 51440, int(gjson.GetBytes(body, "valuationSets.#(vendor=vincario).userDisplayPrice").Int()))
 }
 
 //go:embed test_drivly_offers_by_vin.json
@@ -872,26 +846,13 @@ func (s *UserDevicesControllerTestSuite) TestGetDeviceOffers() {
 	// arrange db, insert some user_devices
 	ddID := ksuid.New().String()
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, ddID, nil, "", s.pdb)
-	_ = test.SetupCreateExternalVINData(s.T(), ddID, &ud, map[string][]byte{
-		"OfferMetadata": []byte(testDrivlyOffersJSON),
-		// "PricingMetadata":   nil,
-		// "BlackbookMetadata": nil,
-	}, s.pdb)
+
+	s.valuationsSrvc.EXPECT().GetUserDeviceOffers(gomock.Any(), gomock.Any()).Times(1).Return(&vrpc.DeviceOffer{}, nil)
 
 	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/offers", ud.ID), "")
 	response, _ := s.app.Test(request)
-	body, _ := io.ReadAll(response.Body)
 
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-
-	assert.Equal(s.T(), 1, int(gjson.GetBytes(body, "offerSets.#").Int()))
-	assert.Equal(s.T(), "drivly", gjson.GetBytes(body, "offerSets.0.source").String())
-	assert.Equal(s.T(), 3, int(gjson.GetBytes(body, "offerSets.0.offers.#").Int()))
-	assert.Equal(s.T(), "Error in v1/acquisition/appraisal POST",
-		gjson.GetBytes(body, "offerSets.0.offers.#(vendor=vroom).error").String())
-	assert.Equal(s.T(), 10123, int(gjson.GetBytes(body, "offerSets.0.offers.#(vendor=carvana).price").Int()))
-	assert.Equal(s.T(), "Make[Ford],Model[Mustang Mach-E],Year[2022] is not eligible for offer.",
-		gjson.GetBytes(body, "offerSets.0.offers.#(vendor=carmax).declineReason").String())
 }
 
 //go:embed test_user_device_data.json
