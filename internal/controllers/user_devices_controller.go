@@ -82,6 +82,7 @@ type UserDevicesController struct {
 	deviceDataSvc             services.DeviceDataService
 	NATSSvc                   *services.NATSService
 	wallet                    services.SyntheticWalletInstanceService
+	userDeviceSvc             services.UserDeviceService
 	valuationsAPISrv          services.ValuationsAPIService
 }
 
@@ -138,6 +139,7 @@ func NewUserDevicesController(settings *config.Settings,
 	deviceDataSvc services.DeviceDataService,
 	natsSvc *services.NATSService,
 	wallet services.SyntheticWalletInstanceService,
+	userDeviceSvc services.UserDeviceService,
 	valuationsAPISrv services.ValuationsAPIService,
 ) UserDevicesController {
 	return UserDevicesController{
@@ -167,6 +169,7 @@ func NewUserDevicesController(settings *config.Settings,
 		NATSSvc:                   natsSvc,
 		wallet:                    wallet,
 		valuationsAPISrv:          valuationsAPISrv,
+		userDeviceSvc:             userDeviceSvc,
 	}
 }
 
@@ -819,97 +822,14 @@ func buildSmartcarTokenKey(vin, userID string) string {
 	return fmt.Sprintf("sc-temp-tok-%s-%s", vin, userID)
 }
 
-// todo move to a service and also use in grpc call from admin. todo add test
+// todo move this to be used directly
 func (udc *UserDevicesController) createUserDevice(ctx context.Context, deviceDefID, styleID, countryCode, userID string, vin, canProtocol *string) (*UserDeviceFull, error) {
-	// attach device def to user
-	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, deviceDefID)
-	if err2 != nil {
-		return nil, helpers.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", deviceDefID))
-	}
-	powertrainType := services.ICE // default
-	for _, attr := range dd.DeviceAttributes {
-		if attr.Name == constants.PowerTrainTypeKey {
-			powertrainType = services.PowertrainType(attr.Value) // todo does this work? validat with test
-			break
-		}
-	}
-	// check if style exists to get powertrain
-	if len(styleID) > 0 {
-		ds, err := udc.DeviceDefSvc.GetDeviceStyleByID(ctx, styleID)
-		if err != nil {
-			// just log warn
-			udc.log.Warn().Err(err).Msgf("failed to get device style %s - continuing", styleID)
-		}
-
-		if ds != nil && len(ds.DeviceAttributes) > 0 {
-			// Find device attribute (powertrain_type)
-			for _, item := range ds.DeviceAttributes {
-				if item.Name == constants.PowerTrainTypeKey {
-					powertrainType = udc.DeviceDefSvc.ConvertPowerTrainStringToPowertrain(item.Value)
-					break
-				}
-			}
-		}
-	}
-
-	tx, err := udc.DBS().Writer.DB.BeginTx(ctx, nil)
-	defer tx.Rollback() //nolint
+	ud, dd, err := udc.userDeviceSvc.CreateUserDevice(ctx, deviceDefID, styleID, countryCode, userID, vin, canProtocol)
 	if err != nil {
 		return nil, err
 	}
 
-	userDeviceID := ksuid.New().String()
-	// register device for the user
-	ud := models.UserDevice{
-		ID:                 userDeviceID,
-		UserID:             userID,
-		DeviceDefinitionID: dd.DeviceDefinitionId,
-		CountryCode:        null.StringFrom(countryCode),
-		VinIdentifier:      null.StringFromPtr(vin),
-	}
-	// always instantiate metadata with powerTrain and CANProtocol
-	udMD := &services.UserDeviceMetadata{
-		PowertrainType: &powertrainType,
-	}
-	if canProtocol != nil && len(*canProtocol) > 0 {
-		udMD.CANProtocol = canProtocol
-	}
-	err = ud.Metadata.Marshal(udMD)
-	if err != nil {
-		udc.log.Warn().Str("func", "createUserDevice").Msg("failed to marshal user device metadata on create")
-	}
-
-	err = ud.Insert(ctx, tx, boil.Infer())
-	if err != nil {
-		return nil, fiber.NewError(fiber.StatusInternalServerError, "could not create user device for def_id: "+dd.DeviceDefinitionId)
-	}
-
-	err = tx.Commit() // commmit the transaction
-	if err != nil {
-		return nil, errors.Wrapf(err, "error commiting transaction to create geofence")
-	}
-
-	// todo call devide definitions to check and pull image for this device in case don't have one
-	err = udc.eventService.Emit(&services.Event{
-		Type:    constants.UserDeviceCreationEventType,
-		Subject: userID,
-		Source:  "devices-api",
-		Data: services.UserDeviceEvent{
-			Timestamp: time.Now(),
-			UserID:    userID,
-			Device: services.UserDeviceEventDevice{
-				ID:    userDeviceID,
-				Make:  dd.Make.Name,
-				Model: dd.Type.Model,
-				Year:  int(dd.Type.Year), // Odd.
-			},
-		},
-	})
-	if err != nil {
-		udc.log.Err(err).Msg("Failed emitting device creation event")
-	}
-
-	return builUserDeviceFull(&ud, dd, countryCode)
+	return builUserDeviceFull(ud, dd, countryCode)
 }
 
 func builUserDeviceFull(ud *models.UserDevice, dd *ddgrpc.GetDeviceDefinitionItemResponse, countryCode string) (*UserDeviceFull, error) {

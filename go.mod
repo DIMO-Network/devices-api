@@ -28,6 +28,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/subcommands v1.2.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/jarcoal/httpmock v1.1.0
 	github.com/lib/pq v1.10.8
@@ -164,7 +165,7 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	golang.org/x/crypto v0.12.0 // indirect
 	google.golang.org/grpc v1.57.0
-	google.golang.org/protobuf v1.30.0
+	google.golang.org/protobuf v1.31.0
 )
 
 require (
@@ -194,7 +195,7 @@ require (
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/volatiletech/randomize v0.0.1 // indirect
-	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea
+	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/net v0.14.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/text v0.12.0 // indirect

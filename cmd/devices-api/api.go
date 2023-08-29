@@ -11,12 +11,16 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/DIMO-Network/devices-api/internal/middleware"
+
 	"github.com/DIMO-Network/devices-api/internal/rpc"
 
 	"github.com/DIMO-Network/devices-api/internal/middleware/metrics"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 
 	"github.com/DIMO-Network/shared/redis"
 
@@ -106,6 +110,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, pdb.DBS, &logger)
 	autoPi := autopi.NewIntegration(pdb.DBS, ddSvc, autoPiSvc, autoPiTaskService, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &logger)
 	macaron := macaron.NewIntegration(pdb.DBS, ddSvc, autoPiIngest, eventService, deviceDefinitionRegistrar, &logger)
+	userDeviceSvc := services.NewUserDeviceService(ddSvc, logger, pdb.DBS, eventService)
 
 	openAI := services.NewOpenAI(&logger, *settings)
 	dcnSvc := registry.NewDcnService(settings)
@@ -131,7 +136,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 
 	// controllers
-	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService, smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest, deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient, ddaSvc, natsSvc, wallet, valuationsSvc)
+	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService,
+		smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest,
+		deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient, ddaSvc, natsSvc, wallet, valuationsSvc, userDeviceSvc)
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
@@ -359,7 +366,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		logger.Fatal().Err(err).Msg("Failed to create transaction listener")
 	}
 
-	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService, iss)
+	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService, iss, userDeviceSvc)
 
 	// start task consumer for autopi
 	autoPiTaskService.StartConsumer(ctx)
@@ -397,6 +404,7 @@ func startGRPCServer(
 	deviceDefSvc services.DeviceDefinitionService,
 	eventService services.EventService,
 	vcIss *issuer.Issuer,
+	userDeviceSvc services.UserDeviceService,
 ) {
 	lis, err := net.Listen("tcp", ":"+settings.GRPCPort)
 	if err != nil {
@@ -404,16 +412,19 @@ func startGRPCServer(
 	}
 
 	logger.Info().Msgf("Starting gRPC server on port %s", settings.GRPCPort)
+	gp := middleware.GRPCPanicker{Logger: logger}
 	server := grpc.NewServer(
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 			metrics.GRPCMetricsMiddleware(),
 			grpc_ctxtags.UnaryServerInterceptor(),
 			grpc_prometheus.UnaryServerInterceptor,
+			recovery.UnaryServerInterceptor(recovery.WithRecoveryHandler(gp.GRPCPanicRecoveryHandler)),
 		)),
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 	)
 
-	pb.RegisterUserDeviceServiceServer(server, rpc.NewUserDeviceService(dbs, settings, hardwareTemplateService, logger, deviceDefSvc, eventService, vcIss))
+	pb.RegisterUserDeviceServiceServer(server, rpc.NewUserDeviceRPCService(dbs, settings, hardwareTemplateService, logger,
+		deviceDefSvc, eventService, vcIss, userDeviceSvc))
 	pb.RegisterAftermarketDeviceServiceServer(server, rpc.NewAftermarketDeviceService(dbs, logger))
 
 	if err := server.Serve(lis); err != nil {
