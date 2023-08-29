@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+
 	"github.com/DIMO-Network/devices-api/internal/constants"
 
 	"github.com/google/subcommands"

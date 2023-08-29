@@ -782,22 +782,10 @@ func (s *UserDevicesControllerTestSuite) TestPatchName() {
 	assert.Equal(s.T(), testName, ud.Name.String)
 }
 
-//go:embed test_drivly_pricing_by_vin.json
-var testDrivlyPricingJSON string
-
-//go:embed test_drivly_pricing2.json
-var testDrivlyPricing2JSON string
-
-//go:embed test_vincario_valuation.json
-var testVincarioValuationJSON string
-
 func (s *UserDevicesControllerTestSuite) TestGetDeviceValuations_Format1() {
 	// arrange db, insert some user_devices
 	ddID := ksuid.New().String()
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, ddID, nil, "", s.pdb)
-	_ = test.SetupCreateExternalVINData(s.T(), ddID, &ud, map[string][]byte{
-		"PricingMetadata": []byte(testDrivlyPricingJSON),
-	}, s.pdb)
 
 	s.valuationsSrvc.EXPECT().GetUserDeviceValuations(gomock.Any(), gomock.Any()).Times(1).Return(&vrpc.DeviceValuation{}, nil)
 
@@ -826,9 +814,6 @@ func (s *UserDevicesControllerTestSuite) TestGetDeviceValuations_Vincario() {
 	// arrange db, insert some user_devices
 	ddID := ksuid.New().String()
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, ddID, nil, "", s.pdb)
-	_ = test.SetupCreateExternalVINData(s.T(), ddID, &ud, map[string][]byte{
-		"VincarioMetadata": []byte(testVincarioValuationJSON),
-	}, s.pdb)
 
 	s.valuationsSrvc.EXPECT().GetUserDeviceValuations(gomock.Any(), gomock.Any()).Times(1).Return(&vrpc.DeviceValuation{}, nil)
 
@@ -838,9 +823,6 @@ func (s *UserDevicesControllerTestSuite) TestGetDeviceValuations_Vincario() {
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
 
 }
-
-//go:embed test_drivly_offers_by_vin.json
-var testDrivlyOffersJSON string
 
 func (s *UserDevicesControllerTestSuite) TestGetDeviceOffers() {
 	// arrange db, insert some user_devices
