@@ -72,6 +72,7 @@ type Settings struct {
 	NATSValuationSubject              string `yaml:"NATS_VALUATION_SUBJECT"`
 	NATSAckTimeout                    string `yaml:"NATS_ACK_TIMEOUT"`
 	NATSDurableConsumer               string `yaml:"NATS_DURABLE_CONSUMER"`
+	ValuationsAPIGRPCAddr             string `yaml:"VALUATIONS_GRPC_ADDR"`
 
 	DIMOContractAPIURL string `yaml:"DIMO_CONTRACT_APIURL"`
 

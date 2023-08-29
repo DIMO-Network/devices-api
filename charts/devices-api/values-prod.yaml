@@ -29,6 +29,7 @@ env:
   EVENTS_TOPIC: topic.event
   DEVICE_DATA_INDEX_NAME: device-status-prod*
   USERS_API_GRPC_ADDR: users-api-prod:8086
+  VALUATIONS_GRPC_ADDR: valuations-api-prod:8086
   AWS_DOCUMENTS_BUCKET_NAME: dimo-network-documents-prod
   DIMO_REGISTRY_CHAIN_ID: 137
   NFT_S3_BUCKET: dimo-network-nfts-prod

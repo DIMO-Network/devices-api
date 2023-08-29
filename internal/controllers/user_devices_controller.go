@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -83,6 +82,7 @@ type UserDevicesController struct {
 	deviceDataSvc             services.DeviceDataService
 	NATSSvc                   *services.NATSService
 	wallet                    services.SyntheticWalletInstanceService
+	valuationsAPISrv          services.ValuationsAPIService
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -138,6 +138,7 @@ func NewUserDevicesController(settings *config.Settings,
 	deviceDataSvc services.DeviceDataService,
 	natsSvc *services.NATSService,
 	wallet services.SyntheticWalletInstanceService,
+	valuationsAPISrv services.ValuationsAPIService,
 ) UserDevicesController {
 	return UserDevicesController{
 		Settings:                  settings,
@@ -165,6 +166,7 @@ func NewUserDevicesController(settings *config.Settings,
 		deviceDataSvc:             deviceDataSvc,
 		NATSSvc:                   natsSvc,
 		wallet:                    wallet,
+		valuationsAPISrv:          valuationsAPISrv,
 	}
 }
 
@@ -1303,132 +1305,14 @@ func (udc *UserDevicesController) GetValuations(c *fiber.Ctx) error {
 
 	logger := helpers.GetLogger(c, udc.log).With().Str("route", c.Route().Path).Logger()
 
-	dVal := DeviceValuation{
-		ValuationSets: []ValuationSet{},
-	}
+	dVal, err := udc.valuationsAPISrv.GetUserDeviceValuations(c.Context(), udi)
 
-	// Drivly data
-	valuationData, err := models.ExternalVinData(
-		models.ExternalVinDatumWhere.UserDeviceID.EQ(null.StringFrom(udi)),
-		qm.Where("pricing_metadata is not null or vincario_metadata is not null"),
-		qm.OrderBy("updated_at desc"),
-		qm.Limit(1)).One(c.Context(), udc.DBS().Reader)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil {
+		logger.Err(err).Msg("Failed to retrieve valuations from valuations-api.")
 		return err
-	}
-	if valuationData != nil {
-		if valuationData.PricingMetadata.Valid {
-			drivlyVal := ValuationSet{
-				Vendor:        "drivly",
-				TradeInSource: "drivly",
-				RetailSource:  "drivly",
-				Updated:       valuationData.UpdatedAt.Format(time.RFC3339),
-			}
-			drivlyJSON := valuationData.PricingMetadata.JSON
-			requestJSON := valuationData.RequestMetadata.JSON
-			drivlyMileage := gjson.GetBytes(drivlyJSON, "mileage")
-			if drivlyMileage.Exists() {
-				drivlyVal.Mileage = int(drivlyMileage.Int())
-				drivlyVal.Odometer = int(drivlyMileage.Int())
-				drivlyVal.OdometerUnit = "miles"
-			} else {
-				requestMileage := gjson.GetBytes(requestJSON, "mileage")
-				if requestMileage.Exists() {
-					drivlyVal.Mileage = int(requestMileage.Int())
-				}
-			}
-			requestZipCode := gjson.GetBytes(requestJSON, "zipCode")
-			if requestZipCode.Exists() {
-				drivlyVal.ZipCode = requestZipCode.String()
-			}
-			// Drivly Trade-In
-			drivlyVal.TradeIn = extractDrivlyValuation(drivlyJSON, "trade")
-			drivlyVal.TradeInAverage = drivlyVal.TradeIn
-			// Drivly Retail
-			drivlyVal.Retail = extractDrivlyValuation(drivlyJSON, "retail")
-			drivlyVal.RetailAverage = drivlyVal.Retail
-			drivlyVal.Currency = "USD"
-
-			// often drivly saves valuations with 0 for value, if this is case do not consider it
-			if drivlyVal.Retail > 0 || drivlyVal.TradeIn > 0 {
-				// set the price to display to users
-				drivlyVal.UserDisplayPrice = (drivlyVal.Retail + drivlyVal.TradeIn) / 2
-				dVal.ValuationSets = append(dVal.ValuationSets, drivlyVal)
-			} else {
-				logger.Warn().Msg("did not find a drivly trade-in or retail value, or json in unexpected format")
-			}
-		} else if valuationData.VincarioMetadata.Valid {
-			vincarioVal := ValuationSet{
-				Vendor:        "vincario",
-				TradeInSource: "vincario",
-				RetailSource:  "vincario",
-				Updated:       valuationData.UpdatedAt.Format(time.RFC3339),
-			}
-			valJSON := valuationData.VincarioMetadata.JSON
-			requestJSON := valuationData.RequestMetadata.JSON
-			odometerMarket := gjson.GetBytes(valJSON, "market_odometer.odometer_avg")
-			if odometerMarket.Exists() {
-				vincarioVal.Mileage = int(odometerMarket.Int())
-				vincarioVal.Odometer = int(odometerMarket.Int())
-				vincarioVal.OdometerUnit = gjson.GetBytes(valJSON, "market_odometer.odometer_unit").String()
-			}
-			// todo this needs to be implemented in the load_valuations script
-			requestPostalCode := gjson.GetBytes(requestJSON, "postalCode")
-			if requestPostalCode.Exists() {
-				vincarioVal.ZipCode = requestPostalCode.String()
-			}
-			// vincario Trade-In - just using the price below mkt mean
-			vincarioVal.TradeIn = int(gjson.GetBytes(valJSON, "market_price.price_below").Int())
-			vincarioVal.TradeInAverage = vincarioVal.TradeIn
-			// vincario Retail - just using the price above mkt mean
-			vincarioVal.Retail = int(gjson.GetBytes(valJSON, "market_price.price_above").Int())
-			vincarioVal.RetailAverage = vincarioVal.Retail
-
-			vincarioVal.UserDisplayPrice = int(gjson.GetBytes(valJSON, "market_price.price_avg").Int())
-			vincarioVal.Currency = gjson.GetBytes(valJSON, "market_price.price_currency").String()
-
-			// often drivly saves valuations with 0 for value, if this is case do not consider it
-			if vincarioVal.Retail > 0 || vincarioVal.TradeIn > 0 {
-				dVal.ValuationSets = append(dVal.ValuationSets, vincarioVal)
-			} else {
-				logger.Warn().Msg("did not find a market value from vincario, or valJSON in unexpected format")
-			}
-
-		}
 	}
 
 	return c.JSON(dVal)
-}
-
-// extractDrivlyValuation pulls out the price from the drivly json, based on the passed in key, eg. trade or retail. calculates average if no root property found
-func extractDrivlyValuation(drivlyJSON []byte, key string) int {
-	if gjson.GetBytes(drivlyJSON, key).Exists() && !gjson.GetBytes(drivlyJSON, key).IsObject() {
-		v := gjson.GetBytes(drivlyJSON, key).String()
-		vf, _ := strconv.ParseFloat(v, 64)
-		return int(vf)
-	}
-	// get all values
-	pricings := map[string]int{}
-	if gjson.GetBytes(drivlyJSON, key+".blackBook.totalAvg").Exists() {
-		values := gjson.GetManyBytes(drivlyJSON, key+".blackBook.totalRough", key+".blackBook.totalAvg", key+".blackBook.totalClean")
-		pricings["blackbook"] = int(values[1].Int())
-	}
-	if gjson.GetBytes(drivlyJSON, key+".kelley.good").Exists() {
-		pricings["kbb"] = int(gjson.GetBytes(drivlyJSON, key+".kelley.good").Int())
-	}
-	if gjson.GetBytes(drivlyJSON, key+".edmunds.average").Exists() {
-		values := gjson.GetManyBytes(drivlyJSON, key+".edmunds.rough", key+".edmunds.average", key+".edmunds.clean")
-		pricings["edmunds"] = int(values[1].Int())
-	}
-	if len(pricings) > 1 {
-		sum := 0
-		for _, v := range pricings {
-			sum += v
-		}
-		return sum / len(pricings)
-	}
-
-	return 0
 }
 
 type DeviceOffer struct {
@@ -1472,72 +1356,16 @@ type Offer struct {
 func (udc *UserDevicesController) GetOffers(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
 
-	dOffer := DeviceOffer{
-		OfferSets: []OfferSet{},
-	}
+	logger := helpers.GetLogger(c, udc.log).With().Str("route", c.Route().Path).Logger()
 
-	// Drivly data
-	drivlyVinData, err := models.ExternalVinData(
-		models.ExternalVinDatumWhere.UserDeviceID.EQ(null.StringFrom(udi)),
-		models.ExternalVinDatumWhere.OfferMetadata.IsNotNull(), // offer_metadata is sourced from drivly
-		qm.OrderBy("updated_at desc"),
-		qm.Limit(1)).One(c.Context(), udc.DBS().Reader)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	dOffer, err := udc.valuationsAPISrv.GetUserDeviceOffers(c.Context(), udi)
+
+	if err != nil {
+		logger.Err(err).Msg("Failed to retrieve offers from valuations-api.")
 		return err
-	}
-	if drivlyVinData != nil {
-		drivlyOffers := OfferSet{}
-		drivlyOffers.Source = "drivly"
-		drivlyJSON := drivlyVinData.OfferMetadata.JSON
-		requestJSON := drivlyVinData.RequestMetadata.JSON
-		drivlyOffers.Updated = drivlyVinData.UpdatedAt.Format(time.RFC3339)
-		requestMileage := gjson.GetBytes(requestJSON, "mileage")
-		if requestMileage.Exists() {
-			drivlyOffers.Mileage = int(requestMileage.Int())
-		}
-		requestZipCode := gjson.GetBytes(requestJSON, "zipCode")
-		if requestZipCode.Exists() {
-			drivlyOffers.ZipCode = requestZipCode.String()
-		}
-		// Drivly Offers
-		gjson.GetBytes(drivlyJSON, `@keys.#(%"*Price")#`).ForEach(func(key, value gjson.Result) bool {
-			offer := Offer{}
-			offer.Vendor = strings.TrimSuffix(value.String(), "Price") // eg. vroom, carvana, or carmax
-			gjson.GetBytes(drivlyJSON, `@keys.#(%"`+offer.Vendor+`*")#`).ForEach(func(key, value gjson.Result) bool {
-				prop := strings.TrimPrefix(value.String(), offer.Vendor)
-				if prop == "Url" {
-					prop = "URL"
-				}
-				if !reflect.ValueOf(&offer).Elem().FieldByName(prop).CanSet() {
-					return true
-				}
-				val := gjson.GetBytes(drivlyJSON, value.String())
-				switch val.Type {
-				case gjson.Null: // ignore null values
-					return true
-				case gjson.Number: // for "Price"
-					reflect.ValueOf(&offer).Elem().FieldByName(prop).Set(reflect.ValueOf(int(val.Int())))
-				case gjson.JSON: // for "Error"
-					if prop == "Error" {
-						val = gjson.GetBytes(drivlyJSON, value.String()+".error.title")
-						if val.Exists() {
-							offer.Error = val.String()
-							// reflect.ValueOf(&offer).Elem().FieldByName(prop).Set(reflect.ValueOf(val.String()))
-						}
-					}
-				default: // for everything else
-					reflect.ValueOf(&offer).Elem().FieldByName(prop).Set(reflect.ValueOf(val.String()))
-				}
-				return true
-			})
-			drivlyOffers.Offers = append(drivlyOffers.Offers, offer)
-			return true
-		})
-		dOffer.OfferSets = append(dOffer.OfferSets, drivlyOffers)
 	}
 
 	return c.JSON(dOffer)
-
 }
 
 type DeviceRange struct {

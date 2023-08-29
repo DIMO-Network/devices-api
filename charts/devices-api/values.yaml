@@ -58,6 +58,7 @@ env:
   AWS_DOCUMENTS_BUCKET_NAME: dimo-network-documents-dev
   NFT_S3_BUCKET: dimo-network-nfts-dev
   USERS_API_GRPC_ADDR: users-api-dev:8086
+  VALUATIONS_GRPC_ADDR: valuations-api-dev:8086
   DIMO_REGISTRY_CHAIN_ID: 80001
   IPFS_NODE_ENDPOINT: http://cluster-ipfs-cluster.web3.svc.cluster.local:9094
   DRIVLY_VIN_API_URL: https://vin.dev.driv.ly
