@@ -18,7 +18,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-//go:generate mockgen -source user_device_service.go -destination mocks/user_device_service_mock.go
+//go:generate mockgen -source user_device_service.go -destination mocks/user_device_service_mock.go -package mock_services
 
 type UserDeviceService interface {
 	CreateUserDevice(ctx context.Context, deviceDefID, styleID, countryCode, userID string, vin, canProtocol *string) (*models.UserDevice, *ddgrpc.GetDeviceDefinitionItemResponse, error)

@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/golang/mock/gomock"
@@ -39,8 +41,21 @@ func Test_userDeviceService_CreateUserDevice(t *testing.T) {
 	userID := ksuid.New().String()
 	vin := "VINNNY1231231"
 	can := "7"
-	deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ddID).Times(1).Return() // todo
-	deviceDefSvc.EXPECT().GetDeviceStyleByID(gomock.Any(), styleID).Times(1).Return()   // todo
+	apInt := test.BuildIntegrationGRPC("autopi", 10, 12)
+	dd := test.BuildDeviceDefinitionGRPC(ddID, "Ford", "Escaped", 2023, apInt)
+	deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ddID).Times(1).Return(dd, nil)
+	// style will have hybrid name in it and powertrain attr HEV
+	deviceDefSvc.EXPECT().GetDeviceStyleByID(gomock.Any(), styleID).Times(1).Return(&ddgrpc.DeviceStyle{
+		Id:                 ksuid.New().String(),
+		Name:               "Super Hybrid",
+		DeviceDefinitionId: ddID,
+		DeviceAttributes: []*ddgrpc.DeviceTypeAttribute{
+			{
+				Name:  constants.PowerTrainTypeKey,
+				Value: HEV.String(),
+			},
+		},
+	}, nil)
 
 	userDeviceSvc := NewUserDeviceService(deviceDefSvc, logger, pdb.DBS, eventSvc)
 
