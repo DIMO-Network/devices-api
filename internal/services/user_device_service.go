@@ -7,7 +7,6 @@ import (
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/gofiber/fiber/v2"
@@ -47,7 +46,7 @@ func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID,
 	// attach device def to user
 	dd, err2 := uds.deviceDefSvc.GetDeviceDefinitionByID(ctx, deviceDefID)
 	if err2 != nil {
-		return nil, nil, helpers.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", deviceDefID))
+		return nil, nil, errors.Wrap(err2, fmt.Sprintf("error querying for device definition id: %s ", deviceDefID))
 	}
 	powertrainType := ICE // default
 	for _, attr := range dd.DeviceAttributes {

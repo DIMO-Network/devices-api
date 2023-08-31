@@ -44,7 +44,3 @@ const (
 func (r AutoPiSubStatusEnum) String() string {
 	return string(r)
 }
-
-const (
-	ValuationTopic = "table.device.valuation"
-)
