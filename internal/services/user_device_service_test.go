@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
-	"github.com/DIMO-Network/devices-api/internal/constants"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/golang/mock/gomock"
@@ -51,8 +50,8 @@ func Test_userDeviceService_CreateUserDevice(t *testing.T) {
 		DeviceDefinitionId: ddID,
 		DeviceAttributes: []*ddgrpc.DeviceTypeAttribute{
 			{
-				Name:  constants.PowerTrainTypeKey,
-				Value: HEV.String(),
+				Name:  "powertrain_type",
+				Value: "HEV",
 			},
 		},
 	}, nil)

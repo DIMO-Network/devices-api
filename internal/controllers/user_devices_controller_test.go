@@ -109,7 +109,6 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 		s.T().Fatal(err)
 	}
 
-
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
@@ -314,9 +313,10 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	// act request
-	const vinny = "4T3R6RFVXMU023395"
 	const deviceStyleID = "24GE7Mlc4c9o4j5P4mcD1Fzinx1"
-	reg := RegisterUserDeviceVIN{VIN: vinny, CountryCode: "USA", CANProtocol: "06"}
+	vinny := "4T3R6RFVXMU023395"
+	canProtocol := "06"
+	reg := RegisterUserDeviceVIN{VIN: vinny, CountryCode: "USA", CANProtocol: canProtocol}
 	j, _ := json.Marshal(reg)
 
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&grpc.DecodeVinResponse{
@@ -325,15 +325,21 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 		DeviceStyleId:      deviceStyleID,
 		Year:               dd[0].Type.Year,
 	}, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
-	s.deviceDefSvc.EXPECT().GetDeviceStyleByID(gomock.Any(), deviceStyleID).Times(1).Return(&grpc.DeviceStyle{
-		Id:               deviceStyleID,
-		DeviceAttributes: dd[0].DeviceAttributes,
-	}, nil)
-	s.deviceDefSvc.EXPECT().ConvertPowerTrainStringToPowertrain(gomock.Any()).Times(1).Return(services.BEV)
+
 	apInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 10)
 	s.deviceDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Times(1).Return(apInteg, nil)
 	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), apInteg.Id, dd[0].DeviceDefinitionId, "Americas")
+	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].DeviceDefinitionId, deviceStyleID, "USA", s.testUserID, &vinny, &canProtocol).Times(1).
+		Return(&models.UserDevice{
+			ID:                 ksuid.New().String(),
+			UserID:             s.testUserID,
+			DeviceDefinitionID: dd[0].DeviceDefinitionId,
+			VinIdentifier:      null.StringFrom(vinny),
+			CountryCode:        null.StringFrom("USA"),
+			VinConfirmed:       true,
+			Metadata:           null.JSONFrom([]byte(`{ "powertrainType": "ICE", "canProtocol": "6" }`)),
+			DeviceStyleID:      null.StringFrom(deviceStyleID),
+		}, dd[0], nil)
 
 	request := test.BuildRequest("POST", "/user/devices/fromvin", string(j))
 	response, responseError := s.app.Test(request, 10000)
@@ -355,18 +361,17 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	assert.Equal(s.T(), integration.Vendor, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Vendor)
 	assert.Equal(s.T(), integration.Type, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Type)
 	assert.Equal(s.T(), integration.Id, regUserResp.DeviceDefinition.CompatibleIntegrations[0].ID)
+	assert.Equal(s.T(), "USA", *regUserResp.CountryCode)
+	assert.Equal(s.T(), vinny, *regUserResp.VIN)
+	assert.Equal(s.T(), true, regUserResp.VINConfirmed)
+	require.NotNil(s.T(), regUserResp.Metadata.CANProtocol)
+	assert.Equal(s.T(), "6", *regUserResp.Metadata.CANProtocol)
+	assert.EqualValues(s.T(), "ICE", *regUserResp.Metadata.PowertrainType)
 
 	msg, responseError := s.natsService.JetStream.GetLastMsg(natsStreamName, s.natsService.JetStreamSubject)
 	assert.NoError(s.T(), responseError, "expected no error from nats")
 	vinResult := gjson.GetBytes(msg.Data, "vin")
 	assert.Equal(s.T(), vinny, vinResult.Str)
-
-	userDevice, err := models.UserDevices().One(s.ctx, s.pdb.DBS().Reader)
-	require.NoError(s.T(), err)
-	assert.NotNilf(s.T(), userDevice, "expected a user device in the database to exist")
-	assert.Equal(s.T(), s.testUserID, userDevice.UserID)
-	assert.Equal(s.T(), vinny, userDevice.VinIdentifier.String)
-	assert.Equal(s.T(), "06", gjson.GetBytes(userDevice.Metadata.JSON, "canProtocol").Str)
 }
 
 func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_SameUser_DuplicateVIN() {

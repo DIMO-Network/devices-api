@@ -842,6 +842,9 @@ func builUserDeviceFull(ud *models.UserDevice, dd *ddgrpc.GetDeviceDefinitionIte
 		ddNice.CompatibleIntegrations[i].Country = countryCode
 	}
 
+	udMd := &services.UserDeviceMetadata{}
+	_ = ud.Metadata.Unmarshal(udMd)
+
 	return &UserDeviceFull{
 		ID:               ud.ID,
 		VIN:              ud.VinIdentifier.Ptr(),
@@ -850,6 +853,7 @@ func builUserDeviceFull(ud *models.UserDevice, dd *ddgrpc.GetDeviceDefinitionIte
 		CustomImageURL:   ud.CustomImageURL.Ptr(),
 		DeviceDefinition: ddNice,
 		CountryCode:      ud.CountryCode.Ptr(),
+		Metadata:         *udMd,
 		Integrations:     nil, // userDevice just created, there would never be any integrations setup
 	}, nil
 }
