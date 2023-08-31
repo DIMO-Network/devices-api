@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -15,9 +16,7 @@ import (
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared/api/users"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/docker/go-connections/nat"
@@ -150,7 +149,23 @@ func getTestDbSettings() config.Settings {
 func SetupAppFiber(logger zerolog.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
-			return helpers.ErrorHandler(c, err, &logger, false)
+			// copied from controllers.helpers.ErrorHandler - but temporarily in here to see if resolved circular deps issue
+			code := fiber.StatusInternalServerError // Default 500 statuscode
+
+			e, fiberTypeErr := err.(*fiber.Error)
+			if fiberTypeErr {
+				// Override status code if fiber.Error type
+				code = e.Code
+			}
+			logger.Err(err).Str("httpStatusCode", strconv.Itoa(code)).
+				Str("httpMethod", c.Method()).
+				Str("httpPath", c.Path()).
+				Msg("caught an error from http request")
+
+			return c.Status(code).JSON(fiber.Map{
+				"code":    code,
+				"message": err.Error(),
+			})
 		},
 	})
 	return app
@@ -432,7 +447,7 @@ func SetupCreateExternalVINData(t *testing.T, ddID string, ud *models.UserDevice
 	return &evd
 }
 
-// BuildIntegrationGRPC depending on integration vendor, defines an integration object with typical settings. Smartcar refresh limit default is 100 seconds.
+// BuildIntegrationDefaultGRPC depending on integration vendor, defines an integration object with typical settings. Smartcar refresh limit default is 100 seconds.
 func BuildIntegrationDefaultGRPC(integrationVendor string, autoPiDefaultTemplateID int, bevTemplateID int, includeAutoPiPowertrainTemplate bool) *ddgrpc.Integration {
 	var integration *ddgrpc.Integration
 	switch integrationVendor {
@@ -472,7 +487,7 @@ func BuildIntegrationDefaultGRPC(integrationVendor string, autoPiDefaultTemplate
 	return integration
 }
 
-// BuildIntegrationWithOutAutoPiPowertrainTemplateGRPC depending on integration vendor, defines an integration object with typical settings. Smartcar refresh limit default is 100 seconds.
+// BuildIntegrationGRPC depending on integration vendor, defines an integration object with typical settings. Smartcar refresh limit default is 100 seconds.
 func BuildIntegrationGRPC(integrationVendor string, autoPiDefaultTemplateID int, bevTemplateID int) *ddgrpc.Integration {
 	return BuildIntegrationDefaultGRPC(integrationVendor, autoPiDefaultTemplateID, bevTemplateID, false)
 }
@@ -532,7 +547,7 @@ func BuildDeviceDefinitionGRPC(deviceDefinitionID string, mk string, model strin
 	return []*ddgrpc.GetDeviceDefinitionItemResponse{rp}
 }
 
-func BuildGetUserGRPC(id string, email *string, ethereumAddress *string, referredBy *users.UserReferrer) *pb.User {
+func BuildGetUserGRPC(id string, email *string, ethereumAddress *string, referredBy *pb.UserReferrer) *pb.User {
 	return &pb.User{
 		Id:              id,
 		EthereumAddress: ethereumAddress,

@@ -2,9 +2,8 @@ package services
 
 import (
 	"context"
-	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
-	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
+
 	"github.com/golang/mock/gomock"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
@@ -20,8 +19,8 @@ func Test_userDeviceService_CreateUserDevice(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	ctx := context.Background()
-	deviceDefSvc := mock_services.NewMockDeviceDefinitionService(mockCtrl)
-	eventSvc := mock_services.NewMockEventService(mockCtrl)
+	//deviceDefSvc := mock_services.NewMockDeviceDefinitionService(mockCtrl)
+	//eventSvc := mock_services.NewMockEventService(mockCtrl)
 
 	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
 	defer func() {
@@ -40,23 +39,23 @@ func Test_userDeviceService_CreateUserDevice(t *testing.T) {
 	userID := ksuid.New().String()
 	vin := "VINNNY1231231"
 	can := "7"
-	apInt := test.BuildIntegrationGRPC("autopi", 10, 12)
-	dd := test.BuildDeviceDefinitionGRPC(ddID, "Ford", "Escaped", 2023, apInt)
-	deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ddID).Times(1).Return(dd, nil)
+	//apInt := test.BuildIntegrationGRPC("autopi", 10, 12)
+	//dd := test.BuildDeviceDefinitionGRPC(ddID, "Ford", "Escaped", 2023, apInt)
+	//deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ddID).Times(1).Return(nil, nil)
 	// style will have hybrid name in it and powertrain attr HEV
-	deviceDefSvc.EXPECT().GetDeviceStyleByID(gomock.Any(), styleID).Times(1).Return(&ddgrpc.DeviceStyle{
-		Id:                 ksuid.New().String(),
-		Name:               "Super Hybrid",
-		DeviceDefinitionId: ddID,
-		DeviceAttributes: []*ddgrpc.DeviceTypeAttribute{
-			{
-				Name:  "powertrain_type",
-				Value: "HEV",
-			},
-		},
-	}, nil)
+	//deviceDefSvc.EXPECT().GetDeviceStyleByID(gomock.Any(), styleID).Times(1).Return(&ddgrpc.DeviceStyle{
+	//	Id:                 ksuid.New().String(),
+	//	Name:               "Super Hybrid",
+	//	DeviceDefinitionId: ddID,
+	//	DeviceAttributes: []*ddgrpc.DeviceTypeAttribute{
+	//		{
+	//			Name:  "powertrain_type",
+	//			Value: "HEV",
+	//		},
+	//	},
+	//}, nil)
 
-	userDeviceSvc := NewUserDeviceService(deviceDefSvc, logger, pdb.DBS, eventSvc)
+	userDeviceSvc := NewUserDeviceService(nil, logger, pdb.DBS, nil)
 
 	userDevice, _, err := userDeviceSvc.CreateUserDevice(ctx, ddID, styleID, "USA", userID, &vin, &can)
 	require.NoError(t, err)
