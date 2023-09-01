@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	grpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockDeviceDataService is a mock of DeviceDataService interface.

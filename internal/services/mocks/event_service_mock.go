@@ -7,8 +7,8 @@ package mock_services
 import (
 	reflect "reflect"
 
-	services "github.com/DIMO-Network/devices-api/internal/services"
-	gomock "github.com/golang/mock/gomock"
+	shared "github.com/DIMO-Network/shared"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockEventService is a mock of EventService interface.
@@ -35,7 +35,7 @@ func (m *MockEventService) EXPECT() *MockEventServiceMockRecorder {
 }
 
 // Emit mocks base method.
-func (m *MockEventService) Emit(event *services.Event) error {
+func (m *MockEventService) Emit(event *shared.CloudEvent[any]) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Emit", event)
 	ret0, _ := ret[0].(error)

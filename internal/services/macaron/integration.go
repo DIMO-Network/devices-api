@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/DIMO-Network/shared"
+
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
@@ -133,7 +135,7 @@ func (i *Integration) Pair(ctx context.Context, amTokenID, vehicleTokenID *big.I
 	}
 
 	_ = i.eventer.Emit(
-		&services.Event{
+		&shared.CloudEvent[any]{
 			Type:    "com.dimo.zone.device.integration.create",
 			Source:  "devices-api",
 			Subject: ud.ID,
@@ -234,7 +236,7 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 		return err
 	}
 
-	_ = i.eventer.Emit(&services.Event{
+	_ = i.eventer.Emit(&shared.CloudEvent[any]{
 		Type:    "com.dimo.zone.device.integration.delete",
 		Source:  "devices-api",
 		Subject: ud.ID,

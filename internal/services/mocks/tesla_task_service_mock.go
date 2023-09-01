@@ -9,7 +9,7 @@ import (
 
 	services "github.com/DIMO-Network/devices-api/internal/services"
 	models "github.com/DIMO-Network/devices-api/models"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockTeslaTaskService is a mock of TeslaTaskService interface.

@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	users "github.com/DIMO-Network/shared/api/users"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 	grpc "google.golang.org/grpc"
 )
 

@@ -38,6 +38,13 @@ var (
 		[]string{"method", "status"},
 	)
 
+	GRPCPanicCount = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Name: "devices_api_grpc_panic_count",
+			Help: "The total number of panics served by the GRPC Server",
+		},
+	)
+
 	GRPCResponseTime = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "devices_api_grpc_response_time",

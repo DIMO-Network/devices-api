@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/DIMO-Network/shared"
+
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
@@ -271,7 +273,7 @@ func (i *Integration) Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *b
 	}
 
 	_ = i.eventer.Emit(
-		&services.Event{
+		&shared.CloudEvent[any]{
 			Type:    "com.dimo.zone.device.integration.create",
 			Source:  "devices-api",
 			Subject: ud.ID,
@@ -377,7 +379,7 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 		return err
 	}
 
-	_ = i.eventer.Emit(&services.Event{
+	_ = i.eventer.Emit(&shared.CloudEvent[any]{
 		Type:    "com.dimo.zone.device.integration.delete",
 		Source:  "devices-api",
 		Subject: ud.ID,

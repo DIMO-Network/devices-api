@@ -5,7 +5,7 @@ package services
 //	"context"
 //	"github.com/DIMO-Network/devices-api/internal/constants"
 //	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
-//	"github.com/golang/mock/gomock"
+//	"go.uber.org/mock/gomock"
 //	"os"
 //	"testing"
 //
@@ -49,7 +49,7 @@ package services
 //	}()
 //
 //	cio := new(fakeCIO)
-//	ingest := NewTaskStatusListener(pdb.DBS, &logger, cio, deviceDefSvc)
+//	ingest := NewTaskStatusListener(pdb.dbs, &logger, cio, deviceDefSvc)
 //
 //	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
 //	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2021, integration)
@@ -60,7 +60,7 @@ package services
 //		IntegrationID: integration.ID,
 //		Status:        models.UserDeviceAPIIntegrationStatusActive,
 //	}
-//	err := udai.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+//	err := udai.Insert(ctx, pdb.dbs().Writer, boil.Infer())
 //	assert.NoError(t, err)
 //
 //	input := &shared.CloudEvent[TaskStatusData]{
@@ -80,7 +80,7 @@ package services
 //		t.Fatalf("Got an unexpected error processing status update: %v", err)
 //	}
 //
-//	if err := udai.Reload(ctx, pdb.DBS().Writer); err != nil {
+//	if err := udai.Reload(ctx, pdb.dbs().Writer); err != nil {
 //		t.Fatalf("Couldn't reload UDAI: %v", err)
 //	}
 //

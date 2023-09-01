@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	grpc "github.com/DIMO-Network/valuations-api/pkg/grpc"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockValuationsAPIService is a mock of ValuationsAPIService interface.

@@ -8,7 +8,7 @@ import (
 	big "math/big"
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockVCService is a mock of VCService interface.

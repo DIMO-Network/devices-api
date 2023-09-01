@@ -97,8 +97,8 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 		if len(resp.DeviceAttributes) > 0 {
 			// Find device attribute (powertrain_type)
 			for _, item := range resp.DeviceAttributes {
-				if item.Name == constants.PowerTrainType {
-					powertrainType := deviceDefSvc.ConvertPowerTrainStringToPowertrain(item.Value)
+				if item.Name == constants.PowerTrainTypeKey {
+					powertrainType := services.ConvertPowerTrainStringToPowertrain(item.Value)
 					md.PowertrainType = &powertrainType
 					if err := device.Metadata.Marshal(md); err != nil {
 						return err

@@ -9,7 +9,7 @@ import (
 
 	services "github.com/DIMO-Network/devices-api/internal/services"
 	common "github.com/ethereum/go-ethereum/common"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockIngestRegistrar is a mock of IngestRegistrar interface.

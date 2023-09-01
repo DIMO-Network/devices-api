@@ -6,15 +6,12 @@ import (
 	"errors"
 	"math/big"
 
-	"fmt"
 	"strings"
-	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -39,7 +36,7 @@ const (
 	euroToUsd float64 = 1.10
 )
 
-func NewUserDeviceService(
+func NewUserDeviceRPCService(
 	dbs func() *db.ReaderWriter,
 	settings *config.Settings,
 	hardwareTemplateService autopi.HardwareTemplateService,
@@ -47,18 +44,21 @@ func NewUserDeviceService(
 	deviceDefSvc services.DeviceDefinitionService,
 	eventService services.EventService,
 	vcIss *issuer.Issuer,
+	userDeviceService services.UserDeviceService,
 ) pb.UserDeviceServiceServer {
-	return &userDeviceService{dbs: dbs,
+	return &userDeviceRPCServer{dbs: dbs,
 		logger:                  logger,
 		settings:                settings,
 		hardwareTemplateService: hardwareTemplateService,
 		deviceDefSvc:            deviceDefSvc,
 		eventService:            eventService,
 		vcIss:                   vcIss,
+		userDeviceSvc:           userDeviceService,
 	}
 }
 
-type userDeviceService struct {
+// userDeviceRPCServer is the grpc server implementation for the proto services
+type userDeviceRPCServer struct {
 	pb.UnimplementedUserDeviceServiceServer
 	dbs                     func() *db.ReaderWriter
 	hardwareTemplateService autopi.HardwareTemplateService
@@ -67,9 +67,10 @@ type userDeviceService struct {
 	deviceDefSvc            services.DeviceDefinitionService
 	eventService            services.EventService
 	vcIss                   *issuer.Issuer
+	userDeviceSvc           services.UserDeviceService
 }
 
-func (s *userDeviceService) GetUserDevice(ctx context.Context, req *pb.GetUserDeviceRequest) (*pb.UserDevice, error) {
+func (s *userDeviceRPCServer) GetUserDevice(ctx context.Context, req *pb.GetUserDeviceRequest) (*pb.UserDevice, error) {
 	dbDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(req.Id),
 		qm.Load(
@@ -95,7 +96,7 @@ func (s *userDeviceService) GetUserDevice(ctx context.Context, req *pb.GetUserDe
 	return s.deviceModelToAPI(dbDevice), nil
 }
 
-func (s *userDeviceService) GetUserDeviceByTokenId(ctx context.Context, req *pb.GetUserDeviceByTokenIdRequest) (*pb.UserDevice, error) { //nolint
+func (s *userDeviceRPCServer) GetUserDeviceByTokenId(ctx context.Context, req *pb.GetUserDeviceByTokenIdRequest) (*pb.UserDevice, error) { //nolint
 
 	tknID := types.NewNullDecimal(decimal.New(req.TokenId, 0))
 
@@ -119,7 +120,7 @@ func (s *userDeviceService) GetUserDeviceByTokenId(ctx context.Context, req *pb.
 	return out, nil
 }
 
-func (s *userDeviceService) ListUserDevicesForUser(ctx context.Context, req *pb.ListUserDevicesForUserRequest) (*pb.ListUserDevicesForUserResponse, error) {
+func (s *userDeviceRPCServer) ListUserDevicesForUser(ctx context.Context, req *pb.ListUserDevicesForUserRequest) (*pb.ListUserDevicesForUserResponse, error) {
 	var query []qm.QueryMod
 
 	if req.UserId == "" {
@@ -159,7 +160,7 @@ func (s *userDeviceService) ListUserDevicesForUser(ctx context.Context, req *pb.
 	return &pb.ListUserDevicesForUserResponse{UserDevices: out}, nil
 }
 
-func (s *userDeviceService) ApplyHardwareTemplate(ctx context.Context, req *pb.ApplyHardwareTemplateRequest) (*pb.ApplyHardwareTemplateResponse, error) {
+func (s *userDeviceRPCServer) ApplyHardwareTemplate(ctx context.Context, req *pb.ApplyHardwareTemplateRequest) (*pb.ApplyHardwareTemplateResponse, error) {
 	resp, err := s.hardwareTemplateService.ApplyHardwareTemplate(ctx, req)
 	if err != nil {
 		s.logger.Err(err).Str("autopi_unit_id", req.AutoApiUnitId).Str("user_device_id", req.UserDeviceId).Msgf("failed to apply hardware template id %s", req.HardwareTemplateId)
@@ -169,7 +170,7 @@ func (s *userDeviceService) ApplyHardwareTemplate(ctx context.Context, req *pb.A
 	return resp, err
 }
 
-func (s *userDeviceService) CreateTemplate(_ context.Context, req *pb.CreateTemplateRequest) (*pb.CreateTemplateResponse, error) {
+func (s *userDeviceRPCServer) CreateTemplate(_ context.Context, req *pb.CreateTemplateRequest) (*pb.CreateTemplateResponse, error) {
 	resp, err := s.hardwareTemplateService.CreateTemplate(req)
 	if err != nil {
 		s.logger.Err(err).Str("template name", req.Name).Msgf("failed to create template %s", req.Name)
@@ -179,7 +180,7 @@ func (s *userDeviceService) CreateTemplate(_ context.Context, req *pb.CreateTemp
 	return resp, err
 }
 
-func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *pb.RegisterUserDeviceFromVINRequest) (*pb.RegisterUserDeviceFromVINResponse, error) {
+func (s *userDeviceRPCServer) RegisterUserDeviceFromVIN(ctx context.Context, req *pb.RegisterUserDeviceFromVINRequest) (*pb.RegisterUserDeviceFromVINResponse, error) {
 	country := constants.FindCountry(req.CountryCode)
 	if country == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid countryCode field or country not supported: %s", req.CountryCode)
@@ -231,55 +232,17 @@ func (s *userDeviceService) RegisterUserDeviceFromVIN(ctx context.Context, req *
 		return nil, err
 	}
 
+	// todo this needs to use udc.createUserDevice refactor method.
 	// future refactor: udc controller has a createUserDevice
-	userDeviceID := ksuid.New().String()
-	// register device for the user
-	ud := models.UserDevice{
-		ID:                 userDeviceID,
-		UserID:             req.UserDeviceId,
-		DeviceDefinitionID: dd.DeviceDefinitionId,
-		VinIdentifier:      null.StringFrom(vin),
-		CountryCode:        null.StringFrom(req.CountryCode),
-		VinConfirmed:       true,
-		Metadata:           null.JSON{}, // todo set powertrain
-	}
-	if len(resp.DeviceStyleId) > 0 {
-		ud.DeviceStyleID = null.StringFrom(resp.DeviceStyleId)
-	}
-	err = ud.Insert(ctx, tx, boil.Infer())
-	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Errorf("could not create user device for def_id: %s", dd.DeviceDefinitionId).Error())
-	}
-
-	err = tx.Commit() // commmit the transaction
+	_, _, err = s.userDeviceSvc.CreateUserDevice(ctx, dd.DeviceDefinitionId, resp.DeviceStyleId, req.CountryCode, req.UserDeviceId, &vin, nil)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	err = s.eventService.Emit(&services.Event{
-		Type:    constants.UserDeviceCreationEventType,
-		Subject: req.UserDeviceId,
-		Source:  "devices-api",
-		Data: services.UserDeviceEvent{
-			Timestamp: time.Now(),
-			UserID:    req.UserDeviceId,
-			Device: services.UserDeviceEventDevice{
-				ID:    userDeviceID,
-				Make:  dd.Make.Name,
-				Model: dd.Type.Model,
-				Year:  int(dd.Type.Year), // Odd.
-			},
-		},
-	})
-
-	if err != nil {
-		s.logger.Err(err).Msg("Failed emitting device creation event")
 	}
 
 	return &pb.RegisterUserDeviceFromVINResponse{Created: true}, err
 }
 
-func (s *userDeviceService) UpdateDeviceIntegrationStatus(ctx context.Context, req *pb.UpdateDeviceIntegrationStatusRequest) (*pb.UserDevice, error) {
+func (s *userDeviceRPCServer) UpdateDeviceIntegrationStatus(ctx context.Context, req *pb.UpdateDeviceIntegrationStatusRequest) (*pb.UserDevice, error) {
 	logger := s.logger.With().Str("integrationId", req.IntegrationId).Str("userDeviceId", req.UserDeviceId).Logger()
 
 	apiIntegration, err := models.UserDeviceAPIIntegrations(
@@ -307,7 +270,7 @@ func (s *userDeviceService) UpdateDeviceIntegrationStatus(ctx context.Context, r
 }
 
 //nolint:all
-func (s *userDeviceService) GetUserDeviceByAutoPIUnitId(ctx context.Context, req *pb.GetUserDeviceByAutoPIUnitIdRequest) (*pb.UserDeviceAutoPIUnitResponse, error) {
+func (s *userDeviceRPCServer) GetUserDeviceByAutoPIUnitId(ctx context.Context, req *pb.GetUserDeviceByAutoPIUnitIdRequest) (*pb.UserDeviceAutoPIUnitResponse, error) {
 	dbDevice, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.Serial.EQ(null.StringFrom(req.Id)),
 		qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
@@ -333,7 +296,7 @@ func (s *userDeviceService) GetUserDeviceByAutoPIUnitId(ctx context.Context, req
 	return result, nil
 }
 
-func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *emptypb.Empty) (*pb.ValuationResponse, error) {
+func (s *userDeviceRPCServer) GetAllUserDeviceValuation(ctx context.Context, _ *emptypb.Empty) (*pb.ValuationResponse, error) {
 
 	query := `select sum(evd.retail_price) as total_retail,
 					 sum(evd.vincario_price) as total_vincario
@@ -405,7 +368,7 @@ func (s *userDeviceService) GetAllUserDeviceValuation(ctx context.Context, _ *em
 	}, nil
 }
 
-func (s *userDeviceService) GetAllUserDevice(req *pb.GetAllUserDeviceRequest, stream pb.UserDeviceService_GetAllUserDeviceServer) error {
+func (s *userDeviceRPCServer) GetAllUserDevice(req *pb.GetAllUserDeviceRequest, stream pb.UserDeviceService_GetAllUserDeviceServer) error {
 	ctx := context.Background()
 	all, err := models.UserDevices(
 		models.UserDeviceWhere.VinConfirmed.EQ(true)).
@@ -436,7 +399,7 @@ func (s *userDeviceService) GetAllUserDevice(req *pb.GetAllUserDeviceRequest, st
 	return nil
 }
 
-func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevice {
+func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevice {
 	out := &pb.UserDevice{
 		Id:                 ud.ID,
 		UserId:             ud.UserID,
@@ -511,7 +474,7 @@ func (s *userDeviceService) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevi
 	return out
 }
 
-func (s *userDeviceService) GetClaimedVehiclesGrowth(ctx context.Context, _ *emptypb.Empty) (*pb.ClaimedVehiclesGrowth, error) {
+func (s *userDeviceRPCServer) GetClaimedVehiclesGrowth(ctx context.Context, _ *emptypb.Empty) (*pb.ClaimedVehiclesGrowth, error) {
 	// Checking both that the nft exists and is linked to a device.
 
 	query := `select count(1)
@@ -553,7 +516,7 @@ func (s *userDeviceService) GetClaimedVehiclesGrowth(ctx context.Context, _ *emp
 // toUint64 takes a nullable decimal and returns nil if there is no value, or
 // a reference to the uint64 value of the decimal otherwise. If the value does not
 // fit then we return nil and log.
-func (s *userDeviceService) toUint64(dec types.NullDecimal) *uint64 {
+func (s *userDeviceRPCServer) toUint64(dec types.NullDecimal) *uint64 {
 	if dec.IsZero() {
 		return nil
 	}
@@ -575,7 +538,7 @@ func nullTimeToPB(t null.Time) *timestamppb.Timestamp {
 	return timestamppb.New(t.Time)
 }
 
-func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.IssueVinCredentialRequest) (*pb.IssueVinCredentialResponse, error) {
+func (s *userDeviceRPCServer) IssueVinCredential(ctx context.Context, req *pb.IssueVinCredentialRequest) (*pb.IssueVinCredentialResponse, error) {
 	v, err := models.VehicleNFTS(models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(int64(req.TokenId), 0)))).One(ctx, s.dbs().Reader)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -598,7 +561,7 @@ func (s *userDeviceService) IssueVinCredential(ctx context.Context, req *pb.Issu
 	}, nil
 }
 
-func (s *userDeviceService) UpdateUserDeviceMetadata(ctx context.Context, req *pb.UpdateUserDeviceMetadataRequest) (*emptypb.Empty, error) {
+func (s *userDeviceRPCServer) UpdateUserDeviceMetadata(ctx context.Context, req *pb.UpdateUserDeviceMetadataRequest) (*emptypb.Empty, error) {
 	ud, err := models.FindUserDevice(ctx, s.dbs().Reader, req.UserDeviceId)
 	if err != nil {
 		return nil, err

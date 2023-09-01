@@ -3,7 +3,7 @@ package constants
 const UserDeviceCreationEventType = "com.dimo.zone.device.create"
 
 const (
-	PowerTrainType = "powertrain_type"
+	PowerTrainTypeKey = "powertrain_type"
 )
 
 const (
@@ -44,7 +44,3 @@ const (
 func (r AutoPiSubStatusEnum) String() string {
 	return string(r)
 }
-
-const (
-	ValuationTopic = "table.device.valuation"
-)
