@@ -33,7 +33,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/math"
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang/mock/gomock"
 	_ "github.com/lib/pq"
 	"github.com/segmentio/ksuid"
 	smartcar "github.com/smartcar/go-sdk"
@@ -44,13 +43,14 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"go.uber.org/mock/gomock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type fakeEventService struct{}
 
-func (f *fakeEventService) Emit(event *services.Event) error {
+func (f *fakeEventService) Emit(event *shared.CloudEvent[any]) error {
 	fmt.Printf("Emitting %v\n", event)
 	return nil
 }
@@ -621,31 +621,30 @@ func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 4)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Escape", 2020, integration)
 
-	const powertrainType = "powertrain_type"
-	powertrainValue := ""
-	for _, item := range dd[0].DeviceAttributes {
-		if item.Name == powertrainType {
-			powertrainValue = item.Value
-			break
-		}
-	}
+	//const powertrainType = "powertrain_type"
+	//powertrainValue := "BEV"
+	//for _, item := range dd[0].DeviceAttributes {
+	//	if item.Name == powertrainType {
+	//		powertrainValue = item.Value
+	//		break
+	//	}
+	//}
 
-	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*grpc.Integration{integration}, nil)
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: nil}, nil)
-	//evID := "4"
-	//s.nhtsaService.EXPECT().DecodeVIN("5YJYGDEE5MF085533").Return(&services.NHTSADecodeVINResponse{
-	//	Results: []services.NHTSAResult{
-	//		{
-	//			VariableID: 126,
-	//			ValueID:    &evID,
-	//		},
-	//	},
-	//}, nil)
+	// validates that if country=USA we update the powertrain based on what the NHTSA vin decoder says
+	evID := "4"
+	s.nhtsaService.EXPECT().DecodeVIN("5YJYGDEE5MF085533").Return(&services.NHTSADecodeVINResponse{
+		Results: []services.NHTSAResult{
+			{
+				VariableID: 126,
+				ValueID:    &evID,
+			},
+		},
+	}, nil)
 
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
-	s.deviceDefSvc.EXPECT().ConvertPowerTrainStringToPowertrain(powertrainValue).Times(1).Return(services.BEV)
 	payload := `{ "vin": "5YJYGDEE5MF085533" }`
 	request := test.BuildRequest("PATCH", "/user/devices/"+ud.ID+"/vin", payload)
 	response, responseError := s.app.Test(request)
@@ -654,11 +653,11 @@ func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 		body, _ := io.ReadAll(response.Body)
 		fmt.Println("message: " + string(body))
 	}
-
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Times(1).Return(dd, nil)
-
+	// seperate request to validate info persisted to user_device table
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Times(1).
+		Return(dd, nil)
 	request = test.BuildRequest("GET", "/user/devices/me", "")
-	response, responseError = s.app.Test(request)
+	response, responseError = s.app.Test(request, 120*1000)
 	require.NoError(s.T(), responseError)
 
 	body, _ := io.ReadAll(response.Body)

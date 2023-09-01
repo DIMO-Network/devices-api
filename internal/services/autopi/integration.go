@@ -3,6 +3,7 @@ package autopi
 import (
 	"context"
 	"database/sql"
+	"github.com/DIMO-Network/shared"
 	"math/big"
 	"strconv"
 	"time"
@@ -271,7 +272,7 @@ func (i *Integration) Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *b
 	}
 
 	_ = i.eventer.Emit(
-		&services.Event{
+		&shared.CloudEvent[any]{
 			Type:    "com.dimo.zone.device.integration.create",
 			Source:  "devices-api",
 			Subject: ud.ID,
@@ -377,7 +378,7 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 		return err
 	}
 
-	_ = i.eventer.Emit(&services.Event{
+	_ = i.eventer.Emit(&shared.CloudEvent[any]{
 		Type:    "com.dimo.zone.device.integration.delete",
 		Source:  "devices-api",
 		Subject: ud.ID,

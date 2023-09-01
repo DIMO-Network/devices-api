@@ -11,11 +11,11 @@ import (
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/shared/db"
-	"github.com/golang/mock/gomock"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
+	"go.uber.org/mock/gomock"
 )
 
 type DevicesControllerTestSuite struct {

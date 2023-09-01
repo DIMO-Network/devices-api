@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/DIMO-Network/shared"
 
 	"github.com/DIMO-Network/devices-api/internal/constants"
 
@@ -90,7 +91,7 @@ func generateEvents(logger zerolog.Logger, pdb db.Store, eventService services.E
 		}
 
 		err = eventService.Emit(
-			&services.Event{
+			&shared.CloudEvent[any]{
 				Type:    constants.UserDeviceCreationEventType,
 				Subject: device.UserID,
 				Source:  "devices-api",
@@ -149,7 +150,7 @@ func generateEvents(logger zerolog.Logger, pdb db.Store, eventService services.E
 		}
 
 		err = eventService.Emit(
-			&services.Event{
+			&shared.CloudEvent[any]{
 				Type:    "com.dimo.zone.device.integration.create",
 				Subject: scInteg.UserDeviceID,
 				Source:  "devices-api",

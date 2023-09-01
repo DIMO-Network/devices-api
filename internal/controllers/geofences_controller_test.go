@@ -18,7 +18,6 @@ import (
 	"github.com/Shopify/sarama"
 	saramamocks "github.com/Shopify/sarama/mocks"
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang/mock/gomock"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
 	"github.com/stretchr/testify/assert"
@@ -26,6 +25,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/tidwall/gjson"
+	"go.uber.org/mock/gomock"
 )
 
 type partialFenceCloudEvent struct {

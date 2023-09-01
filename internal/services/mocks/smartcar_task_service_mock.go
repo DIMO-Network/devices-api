@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	models "github.com/DIMO-Network/devices-api/models"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockSmartcarTaskService is a mock of SmartcarTaskService interface.

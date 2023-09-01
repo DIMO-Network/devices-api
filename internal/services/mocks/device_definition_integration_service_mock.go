@@ -11,7 +11,7 @@ import (
 	grpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	services "github.com/DIMO-Network/devices-api/internal/services"
 	models "github.com/DIMO-Network/devices-api/models"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 	boil "github.com/volatiletech/sqlboiler/v4/boil"
 )
 

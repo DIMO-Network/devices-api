@@ -11,7 +11,7 @@ import (
 
 	services "github.com/DIMO-Network/devices-api/internal/services"
 	redis "github.com/go-redis/redis/v8"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockAutoPiTaskService is a mock of AutoPiTaskService interface.

@@ -6,7 +6,7 @@ require (
 	github.com/DIMO-Network/device-data-api v0.4.23-0.20230718210255-60a2c7be0aa7
 	github.com/DIMO-Network/device-definitions-api v1.0.16
 	github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c
-	github.com/DIMO-Network/shared v0.10.2
+	github.com/DIMO-Network/shared v0.10.4
 	github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3
 	github.com/DIMO-Network/valuations-api v0.2.0
 	github.com/DIMO-Network/zflogger v1.0.0-beta
@@ -25,7 +25,6 @@ require (
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/gofiber/fiber/v2 v2.48.0
 	github.com/golang-jwt/jwt/v5 v5.0.0
-	github.com/golang/mock v1.6.0
 	github.com/google/subcommands v1.2.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.0
@@ -49,6 +48,7 @@ require (
 	github.com/volatiletech/sqlboiler/v4 v4.14.2
 	github.com/volatiletech/strmangle v0.0.4
 	go.uber.org/automaxprocs v1.5.1
+	go.uber.org/mock v0.2.0
 	golang.org/x/mod v0.12.0
 )
 
@@ -66,6 +66,7 @@ require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
+	github.com/golang/mock v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/holiman/uint256 v1.2.2 // indirect
 	github.com/lovoo/goka v1.1.7 // indirect

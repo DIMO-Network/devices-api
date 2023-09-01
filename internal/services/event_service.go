@@ -14,17 +14,17 @@ import (
 	"github.com/segmentio/ksuid"
 )
 
-//go:generate mockgen -source event_service.go -destination mocks/event_service_mock.go
+//go:generate mockgen -source event_service.go -destination mocks/event_service_mock.go -package mock_services
 
-type Event struct {
-	Type    string
-	Subject string
-	Source  string
-	Data    any
-}
+//type Event struct {
+//	Type    string
+//	Subject string
+//	Source  string
+//	Data    any
+//}
 
 type EventService interface {
-	Emit(event *Event) error
+	Emit(event *shared.CloudEvent[any]) error
 }
 
 type eventService struct {
@@ -41,7 +41,7 @@ func NewEventService(logger *zerolog.Logger, settings *config.Settings, producer
 	}
 }
 
-func (e *eventService) Emit(event *Event) error {
+func (e *eventService) Emit(event *shared.CloudEvent[any]) error {
 	msgBytes, err := json.Marshal(shared.CloudEvent[any]{
 		ID:          ksuid.New().String(),
 		Source:      event.Source,

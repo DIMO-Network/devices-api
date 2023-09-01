@@ -5,7 +5,7 @@ package services
 //	"context"
 //	"github.com/DIMO-Network/devices-api/internal/constants"
 //	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
-//	"github.com/golang/mock/gomock"
+//	"go.uber.org/mock/gomock"
 //	"os"
 //	"testing"
 //

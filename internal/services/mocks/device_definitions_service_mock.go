@@ -10,8 +10,7 @@ import (
 	reflect "reflect"
 
 	grpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
-	services "github.com/DIMO-Network/devices-api/internal/services"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 	boil "github.com/volatiletech/sqlboiler/v4/boil"
 )
 
@@ -36,20 +35,6 @@ func NewMockDeviceDefinitionService(ctrl *gomock.Controller) *MockDeviceDefiniti
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockDeviceDefinitionService) EXPECT() *MockDeviceDefinitionServiceMockRecorder {
 	return m.recorder
-}
-
-// ConvertPowerTrainStringToPowertrain mocks base method.
-func (m *MockDeviceDefinitionService) ConvertPowerTrainStringToPowertrain(value string) services.PowertrainType {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ConvertPowerTrainStringToPowertrain", value)
-	ret0, _ := ret[0].(services.PowertrainType)
-	return ret0
-}
-
-// ConvertPowerTrainStringToPowertrain indicates an expected call of ConvertPowerTrainStringToPowertrain.
-func (mr *MockDeviceDefinitionServiceMockRecorder) ConvertPowerTrainStringToPowertrain(value interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConvertPowerTrainStringToPowertrain", reflect.TypeOf((*MockDeviceDefinitionService)(nil).ConvertPowerTrainStringToPowertrain), value)
 }
 
 // CreateIntegration mocks base method.
@@ -245,36 +230,6 @@ func (m *MockDeviceDefinitionService) GetOrCreateMake(ctx context.Context, tx bo
 func (mr *MockDeviceDefinitionServiceMockRecorder) GetOrCreateMake(ctx, tx, makeName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrCreateMake", reflect.TypeOf((*MockDeviceDefinitionService)(nil).GetOrCreateMake), ctx, tx, makeName)
-}
-
-// PullDrivlyData mocks base method.
-func (m *MockDeviceDefinitionService) PullDrivlyData(ctx context.Context, userDeviceID, deviceDefinitionID, vin string) (services.DataPullStatusEnum, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PullDrivlyData", ctx, userDeviceID, deviceDefinitionID, vin)
-	ret0, _ := ret[0].(services.DataPullStatusEnum)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// PullDrivlyData indicates an expected call of PullDrivlyData.
-func (mr *MockDeviceDefinitionServiceMockRecorder) PullDrivlyData(ctx, userDeviceID, deviceDefinitionID, vin interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PullDrivlyData", reflect.TypeOf((*MockDeviceDefinitionService)(nil).PullDrivlyData), ctx, userDeviceID, deviceDefinitionID, vin)
-}
-
-// PullVincarioValuation mocks base method.
-func (m *MockDeviceDefinitionService) PullVincarioValuation(ctx context.Context, userDeiceID, deviceDefinitionID, vin string) (services.DataPullStatusEnum, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PullVincarioValuation", ctx, userDeiceID, deviceDefinitionID, vin)
-	ret0, _ := ret[0].(services.DataPullStatusEnum)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// PullVincarioValuation indicates an expected call of PullVincarioValuation.
-func (mr *MockDeviceDefinitionServiceMockRecorder) PullVincarioValuation(ctx, userDeiceID, deviceDefinitionID, vin interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PullVincarioValuation", reflect.TypeOf((*MockDeviceDefinitionService)(nil).PullVincarioValuation), ctx, userDeiceID, deviceDefinitionID, vin)
 }
 
 // UpdateDeviceDefinitionFromNHTSA mocks base method.

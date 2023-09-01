@@ -1013,9 +1013,9 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 		return err
 	}
 
-	// TODO: Genericize this for more countries.
+	// this is kinda funky, ideally we set it based on device styleId we have for the VIN. But not sure if nhtsa is more precise for Hybrid variants?
 	if userDevice.CountryCode.Valid && userDevice.CountryCode.String == "USA" {
-		if err := udc.updateUSAPowertrain(c.Context(), userDevice, false); err != nil {
+		if err := udc.updateUSAPowertrain(c.Context(), userDevice, true); err != nil {
 			logger.Err(err).Msg("Failed to update American powertrain type.")
 		}
 	}
@@ -1027,9 +1027,8 @@ const (
 	PowerTrainTypeKey = "powertrain_type"
 )
 
-// todo revisit this
+// todo revisit this depending on what observe with below log message
 func (udc *UserDevicesController) updateUSAPowertrain(ctx context.Context, userDevice *models.UserDevice, useNHTSA bool) error {
-	// todo grpc pull vin decoder via grpc from device definitions
 	md := new(services.UserDeviceMetadata)
 	if err := userDevice.Metadata.Unmarshal(md); err != nil {
 		return err
@@ -1045,7 +1044,10 @@ func (udc *UserDevicesController) updateUSAPowertrain(ctx context.Context, userD
 		if err != nil {
 			return err
 		}
-
+		if &md.PowertrainType != nil && !strings.EqualFold(md.PowertrainType.String(), dt.String()) {
+			udc.log.Info().Str("user_device_id", userDevice.ID).
+				Msgf("NHTSA decoder returned different powertrain_type. original: %s, new: %s", md.PowertrainType.String(), dt.String())
+		}
 		md.PowertrainType = &dt
 	}
 
@@ -1059,7 +1061,7 @@ func (udc *UserDevicesController) updateUSAPowertrain(ctx context.Context, userD
 			// Find device attribute (powertrain_type)
 			for _, item := range resp.DeviceAttributes {
 				if item.Name == PowerTrainTypeKey {
-					powertrainType := udc.DeviceDefSvc.ConvertPowerTrainStringToPowertrain(item.Value)
+					powertrainType := services.ConvertPowerTrainStringToPowertrain(item.Value)
 					md.PowertrainType = &powertrainType
 					break
 				}
@@ -1412,7 +1414,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	err = udc.eventService.Emit(&services.Event{
+	err = udc.eventService.Emit(&shared.CloudEvent[any]{
 		Type:    "com.dimo.zone.device.delete",
 		Subject: userID,
 		Source:  "devices-api",

@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"encoding/json"
+	"github.com/DIMO-Network/shared"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -97,7 +98,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				}
 
 				if ud := vnft.R.UserDevice; ud != nil {
-					p.Eventer.Emit(&services.Event{ //nolint
+					p.Eventer.Emit(&shared.CloudEvent[any]{ //nolint
 						Type:    "com.dimo.zone.device.mint",
 						Subject: ud.ID,
 						Source:  "devices-api",
@@ -148,7 +149,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				}
 
 				if ud := vnft.R.UserDevice; ud != nil {
-					p.Eventer.Emit(&services.Event{ // nolint
+					p.Eventer.Emit(&shared.CloudEvent[any]{ // nolint
 						Type:    "com.dimo.zone.device.mint",
 						Subject: ud.ID,
 						Source:  "devices-api",

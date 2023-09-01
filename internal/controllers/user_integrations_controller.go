@@ -124,7 +124,7 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 		return err
 	}
 
-	err = udc.eventService.Emit(&services.Event{
+	err = udc.eventService.Emit(&shared.CloudEvent[any]{
 		Type:    "com.dimo.zone.device.integration.delete",
 		Source:  "devices-api",
 		Subject: userDeviceID,
@@ -1656,7 +1656,7 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 	}
 
 	err = udc.eventService.Emit(
-		&services.Event{
+		&shared.CloudEvent[any]{
 			Type:    "com.dimo.zone.device.integration.create",
 			Source:  "devices-api",
 			Subject: userDeviceID,

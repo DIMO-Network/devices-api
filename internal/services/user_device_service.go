@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"github.com/DIMO-Network/shared"
 	"time"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
@@ -65,7 +66,7 @@ func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID,
 			// Find device attribute (powertrain_type)
 			for _, item := range ds.DeviceAttributes {
 				if item.Name == constants.PowerTrainTypeKey {
-					powertrainType = uds.deviceDefSvc.ConvertPowerTrainStringToPowertrain(item.Value)
+					powertrainType = ConvertPowerTrainStringToPowertrain(item.Value)
 					break
 				}
 			}
@@ -110,7 +111,8 @@ func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID,
 	}
 
 	// todo call devide definitions to check and pull image for this device in case don't have one
-	err = uds.eventService.Emit(&Event{
+
+	err = uds.eventService.Emit(&shared.CloudEvent[any]{
 		Type:    constants.UserDeviceCreationEventType,
 		Subject: userID,
 		Source:  "devices-api",
@@ -128,6 +130,5 @@ func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID,
 	if err != nil {
 		uds.log.Err(err).Msg("Failed emitting device creation event")
 	}
-
 	return &ud, dd, nil
 }

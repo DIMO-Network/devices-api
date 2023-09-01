@@ -37,7 +37,6 @@ import (
 	"github.com/DIMO-Network/shared"
 	smock "github.com/Shopify/sarama/mocks"
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
 	"github.com/segmentio/ksuid"
 	smartcar "github.com/smartcar/go-sdk"
@@ -49,6 +48,7 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
+	"go.uber.org/mock/gomock"
 )
 
 type UserIntegrationsControllerTestSuite struct {
@@ -206,7 +206,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 	}, nil)
 
 	s.eventSvc.EXPECT().Emit(gomock.Any()).Return(nil).Do(
-		func(event *services.Event) error {
+		func(event *shared.CloudEvent[any]) error {
 			assert.Equal(s.T(), ud.ID, event.Subject)
 			assert.Equal(s.T(), "com.dimo.zone.device.integration.create", event.Type)
 
@@ -343,7 +343,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 	s.redisClient.EXPECT().Get(gomock.Any(), buildSmartcarTokenKey(vin, testUserID)).Return(redis.NewStringResult(encrypted, nil))
 	s.redisClient.EXPECT().Del(gomock.Any(), buildSmartcarTokenKey(vin, testUserID)).Return(redis.NewIntResult(1, nil))
 	s.eventSvc.EXPECT().Emit(gomock.Any()).Return(nil).Do(
-		func(event *services.Event) error {
+		func(event *shared.CloudEvent[any]) error {
 			assert.Equal(s.T(), ud.ID, event.Subject)
 			assert.Equal(s.T(), "com.dimo.zone.device.integration.create", event.Type)
 
@@ -420,7 +420,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
 	oUdai := &models.UserDeviceAPIIntegration{}
 
 	s.eventSvc.EXPECT().Emit(gomock.Any()).Return(nil).Do(
-		func(event *services.Event) error {
+		func(event *shared.CloudEvent[any]) error {
 			assert.Equal(s.T(), ud.ID, event.Subject)
 			assert.Equal(s.T(), "com.dimo.zone.device.integration.create", event.Type)
 

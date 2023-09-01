@@ -3,6 +3,7 @@ package macaron
 import (
 	"context"
 	"database/sql"
+	"github.com/DIMO-Network/shared"
 	"math/big"
 	"time"
 
@@ -133,7 +134,7 @@ func (i *Integration) Pair(ctx context.Context, amTokenID, vehicleTokenID *big.I
 	}
 
 	_ = i.eventer.Emit(
-		&services.Event{
+		&shared.CloudEvent[any]{
 			Type:    "com.dimo.zone.device.integration.create",
 			Source:  "devices-api",
 			Subject: ud.ID,
@@ -234,7 +235,7 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 		return err
 	}
 
-	_ = i.eventer.Emit(&services.Event{
+	_ = i.eventer.Emit(&shared.CloudEvent[any]{
 		Type:    "com.dimo.zone.device.integration.delete",
 		Source:  "devices-api",
 		Subject: ud.ID,
