@@ -445,7 +445,16 @@ func (s *UserDevicesControllerTestSuite) TestPostWithExistingDefinitionID() {
 	}
 	j, _ := json.Marshal(reg)
 
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
+	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].DeviceDefinitionId, "", "USA", s.testUserID, nil, nil).Times(1).
+		Return(&models.UserDevice{
+			ID:                 ksuid.New().String(),
+			UserID:             testUserID,
+			DeviceDefinitionID: dd[0].DeviceDefinitionId,
+			CountryCode:        null.StringFrom("USA"),
+			VinConfirmed:       true,
+			Metadata:           null.JSONFrom([]byte(`{ "powertrainType": "ICE" }`)),
+		}, dd[0], nil)
+
 	request := test.BuildRequest("POST", "/user/devices", string(j))
 	response, responseError := s.app.Test(request)
 	fmt.Println(responseError)
@@ -467,12 +476,6 @@ func (s *UserDevicesControllerTestSuite) TestPostWithExistingDefinitionID() {
 	assert.Equal(s.T(), integration.Vendor, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Vendor)
 	assert.Equal(s.T(), integration.Type, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Type)
 	assert.Equal(s.T(), integration.Id, regUserResp.DeviceDefinition.CompatibleIntegrations[0].ID)
-
-	userDevice, err := models.UserDevices().One(s.ctx, s.pdb.DBS().Reader)
-	require.NoError(s.T(), err)
-	assert.NotNilf(s.T(), userDevice, "expected a user device in the database to exist")
-	assert.Equal(s.T(), s.testUserID, userDevice.UserID)
-	assert.Nil(s.T(), userDevice.VinIdentifier.Ptr())
 }
 
 func (s *UserDevicesControllerTestSuite) TestPostWithoutDefinitionID_BadRequest() {
