@@ -510,7 +510,6 @@ func NewUserDeviceIntegrationStatusesFromDatabase(udis []*models.UserDeviceAPIIn
 // @Security    BearerAuth
 // @Router      /user/devices [post]
 func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
-	// todo check in logs for ingress if this is still used
 	userID := helpers.GetUserID(c)
 	reg := &RegisterUserDevice{}
 	if err := c.BodyParser(reg); err != nil {
@@ -523,7 +522,7 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 
 	udFull, err := udc.createUserDevice(c.Context(), *reg.DeviceDefinitionID, "", reg.CountryCode, userID, nil, nil)
 	if err != nil {
-		return err
+		return helpers.GrpcErrorToFiber(err, "")
 	}
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,

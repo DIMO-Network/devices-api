@@ -160,7 +160,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	// act request
-	const vinny = "4T3R6RFVXMU023395"
+	vinny := "4T3R6RFVXMU023395"
 	reg := RegisterUserDeviceSmartcar{Code: "XX", RedirectURI: "https://mobile-app", CountryCode: "USA"}
 	j, _ := json.Marshal(reg)
 
@@ -184,7 +184,18 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), "22N2xaPOq2WW2gAHBHd0Ikn4Zob", dd[0].DeviceDefinitionId, "Americas").Times(1).
 		Return(nil, nil)
 	s.redisClient.EXPECT().Set(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID), gomock.Any(), time.Hour*2).Return(nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
+	//s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
+	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].DeviceDefinitionId, "", "USA", testUserID, &vinny, nil).
+		Return(&models.UserDevice{
+			ID:                 ksuid.New().String(),
+			UserID:             testUserID,
+			DeviceDefinitionID: dd[0].DeviceDefinitionId,
+			VinIdentifier:      null.StringFrom(vinny),
+			CountryCode:        null.StringFrom("USA"),
+			VinConfirmed:       true,
+			Metadata:           null.JSONFrom([]byte(`{ "powertrainType": "ICE" }`)),
+		}, dd[0], nil)
+
 	request := test.BuildRequest("POST", "/user/devices/fromsmartcar", string(j))
 	response, responseError := s.app.Test(request, 10000)
 	fmt.Println(responseError)
@@ -205,12 +216,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 	assert.Equal(s.T(), integration.Vendor, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Vendor)
 	assert.Equal(s.T(), integration.Type, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Type)
 	assert.Equal(s.T(), integration.Id, regUserResp.DeviceDefinition.CompatibleIntegrations[0].ID)
-
-	userDevice, err := models.UserDevices().One(s.ctx, s.pdb.DBS().Reader)
-	require.NoError(s.T(), err)
-	assert.NotNilf(s.T(), userDevice, "expected a user device in the database to exist")
-	assert.Equal(s.T(), s.testUserID, userDevice.UserID)
-	assert.Equal(s.T(), vinny, userDevice.VinIdentifier.String)
+	assert.Equal(s.T(), &vinny, regUserResp.VIN)
 }
 
 func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_Fail_Decode() {
@@ -501,8 +507,9 @@ func (s *UserDevicesControllerTestSuite) TestPostBadPayload() {
 
 func (s *UserDevicesControllerTestSuite) TestPostInvalidDefinitionID() {
 	invalidDD := "caca"
-	grpcErr := status.Error(codes.NotFound, "dd not found")
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), invalidDD).Times(1).Return(nil, grpcErr)
+	grpcErr := status.Error(codes.NotFound, "dd not found: "+invalidDD)
+	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), invalidDD, "", "USA", s.testUserID, nil, nil).
+		Return(nil, nil, grpcErr)
 	reg := RegisterUserDevice{
 		DeviceDefinitionID: &invalidDD,
 		CountryCode:        "USA",

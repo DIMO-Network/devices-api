@@ -39,8 +39,6 @@ func NewUserDeviceService(deviceDefSvc DeviceDefinitionService, log zerolog.Logg
 	}
 }
 
-// todo test
-
 // CreateUserDevice creates the user_device record with all the logic we manage, including setting the countryCode, setting the powertrain based on the def or style, and setting the protocol
 func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID, styleID, countryCode, userID string, vin, canProtocol *string) (*models.UserDevice, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
 	// attach device def to user
