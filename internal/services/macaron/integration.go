@@ -3,9 +3,10 @@ package macaron
 import (
 	"context"
 	"database/sql"
-	"github.com/DIMO-Network/shared"
 	"math/big"
 	"time"
+
+	"github.com/DIMO-Network/shared"
 
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"

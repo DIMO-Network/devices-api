@@ -2,22 +2,15 @@ package services
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
 	"fmt"
 	"math/big"
-	"time"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/tidwall/gjson"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -368,25 +361,6 @@ func (d *deviceDefinitionService) GetDeviceStyleByID(ctx context.Context, id str
 	return ds, nil
 }
 
-func (d *deviceDefinitionService) updateDeviceDefAttrs(ctx context.Context, deviceDef *ddgrpc.GetDeviceDefinitionItemResponse, vinInfo map[string]any) error {
-	deviceAttributes := buildDeviceAttributes(deviceDef.DeviceAttributes, vinInfo)
-
-	definitionsClient, conn, err := d.getDeviceDefsGrpcClient()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	_, err = definitionsClient.UpdateDeviceDefinition(ctx, &ddgrpc.UpdateDeviceDefinitionRequest{
-		DeviceDefinitionId: deviceDef.DeviceDefinitionId,
-		DeviceAttributes:   deviceAttributes,
-	})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // buildDeviceAttributes returns list of set attributes based on what already exists and vinInfo pulled from drivly. based on a predetermined list
 func buildDeviceAttributes(existingDeviceAttrs []*ddgrpc.DeviceTypeAttribute, vinInfo map[string]any) []*ddgrpc.DeviceTypeAttributeRequest {
 	// TODO: replace seekAttributes with a better solution based on device_types.attributes
@@ -447,41 +421,6 @@ func buildDeviceAttributes(existingDeviceAttrs []*ddgrpc.DeviceTypeAttribute, vi
 	return deviceAttributes
 }
 
-// setUserDeviceStyleFromEdmunds given edmunds json, sets the device style_id in the user_device per what edmunds says.
-// If errors just logs and continues, since non critical
-func (d *deviceDefinitionService) setUserDeviceStyleFromEdmunds(ctx context.Context, edmunds map[string]interface{}, ud *models.UserDevice) {
-	edmundsJSON, err := json.Marshal(edmunds)
-	if err != nil {
-		d.log.Err(err).Msg("could not marshal edmunds response to json")
-		return
-	}
-	styleIDResult := gjson.GetBytes(edmundsJSON, "edmundsStyle.data.style.id")
-	styleID := styleIDResult.String()
-	if styleIDResult.Exists() && len(styleID) > 0 {
-
-		definitionsClient, conn, err := d.getDeviceDefsGrpcClient()
-		if err != nil {
-			return
-		}
-		defer conn.Close()
-
-		deviceStyle, err := definitionsClient.GetDeviceStyleByExternalID(ctx, &ddgrpc.GetDeviceStyleByIDRequest{
-			Id: styleID,
-		})
-
-		if err != nil {
-			d.log.Err(err).Msgf("unable to find device_style for edmunds style_id %s", styleID)
-			return
-		}
-		ud.DeviceStyleID = null.StringFrom(deviceStyle.Id) // set foreign key
-		_, err = ud.Update(ctx, d.dbs().Writer, boil.Whitelist("updated_at", "device_style_id"))
-		if err != nil {
-			d.log.Err(err).Msgf("unable to update user_device_id %s with styleID %s", ud.ID, deviceStyle.Id)
-			return
-		}
-	}
-}
-
 // getDeviceDefsGrpcClient instanties new connection with client to dd service. You must defer conn.close from returned connection
 func (d *deviceDefinitionService) getDeviceDefsGrpcClient() (ddgrpc.DeviceDefinitionServiceClient, *grpc.ClientConn, error) {
 	conn, err := grpc.Dial(d.definitionsGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -500,69 +439,6 @@ func (d *deviceDefinitionService) getVINDecodeGrpcClient() (ddgrpc.VinDecoderSer
 	}
 	client := ddgrpc.NewVinDecoderServiceClient(conn)
 	return client, conn, nil
-}
-
-func (d *deviceDefinitionService) getDeviceMileage(udID string, modelYear int) (mileage *float64, err error) {
-	var deviceMileage *float64
-
-	// Get user device odometer
-	deviceData, err := models.UserDeviceData(
-		models.UserDeviceDatumWhere.UserDeviceID.EQ(udID),
-		models.UserDeviceDatumWhere.Signals.IsNotNull(),
-		qm.OrderBy("updated_at desc"),
-		qm.Limit(1)).One(context.Background(), d.dbs().Writer)
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			return nil, err
-		}
-	} else {
-		deviceOdometer := gjson.GetBytes(deviceData.Signals.JSON, "odometer.value")
-		if deviceOdometer.Exists() {
-			deviceMileage = new(float64)
-			*deviceMileage = deviceOdometer.Float() / MilesToKmFactor
-		}
-	}
-
-	// Estimate mileage based on model year
-	if deviceMileage == nil {
-		deviceMileage = new(float64)
-		yearDiff := time.Now().Year() - modelYear
-		switch {
-		case yearDiff > 0:
-			// Past model year
-			*deviceMileage = float64(yearDiff) * EstMilesPerYear
-		case yearDiff == 0:
-			// Current model year
-			*deviceMileage = EstMilesPerYear / 2
-		default:
-			// Next model year
-			*deviceMileage = 0
-		}
-	}
-
-	return deviceMileage, nil
-}
-
-func (d *deviceDefinitionService) getDeviceLatLong(userDeviceID string) (lat, long float64) {
-	deviceData, err := models.UserDeviceData(
-		models.UserDeviceDatumWhere.UserDeviceID.EQ(userDeviceID),
-		models.UserDeviceDatumWhere.Signals.IsNotNull(),
-		qm.OrderBy("updated_at desc"),
-		qm.Limit(1)).One(context.Background(), d.dbs().Writer)
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			return
-		}
-	} else {
-		latitude := gjson.GetBytes(deviceData.Signals.JSON, "latitude.value")
-		longitude := gjson.GetBytes(deviceData.Signals.JSON, "longitude.value")
-		if latitude.Exists() && longitude.Exists() {
-			lat = latitude.Float()
-			long = longitude.Float()
-			return
-		}
-	}
-	return
 }
 
 func ConvertPowerTrainStringToPowertrain(value string) PowertrainType {

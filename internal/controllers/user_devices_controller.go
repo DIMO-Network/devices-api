@@ -1044,7 +1044,7 @@ func (udc *UserDevicesController) updateUSAPowertrain(ctx context.Context, userD
 		if err != nil {
 			return err
 		}
-		if &md.PowertrainType != nil && !strings.EqualFold(md.PowertrainType.String(), dt.String()) {
+		if md.PowertrainType != nil && !strings.EqualFold(md.PowertrainType.String(), dt.String()) {
 			udc.log.Info().Str("user_device_id", userDevice.ID).
 				Msgf("NHTSA decoder returned different powertrain_type. original: %s, new: %s", md.PowertrainType.String(), dt.String())
 		}

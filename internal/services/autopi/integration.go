@@ -3,10 +3,11 @@ package autopi
 import (
 	"context"
 	"database/sql"
-	"github.com/DIMO-Network/shared"
 	"math/big"
 	"strconv"
 	"time"
+
+	"github.com/DIMO-Network/shared"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/constants"

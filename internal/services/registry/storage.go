@@ -3,8 +3,9 @@ package registry
 import (
 	"context"
 	"encoding/json"
-	"github.com/DIMO-Network/shared"
 	"time"
+
+	"github.com/DIMO-Network/shared"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
