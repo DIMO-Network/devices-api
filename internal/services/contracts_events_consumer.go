@@ -237,24 +237,39 @@ func (c *ContractsEventsConsumer) handleVehicleTransfer(e *ContractEventData) er
 		return err
 	}
 
-	nft.OwnerAddress = null.BytesFrom(args.To.Bytes())
-	if _, err := nft.Update(ctx, tx, boil.Whitelist(models.VehicleNFTColumns.OwnerAddress)); err != nil {
-		return err
-	}
-
-	if ud := nft.R.UserDevice; ud != nil {
-		s := dex.IDTokenSubject{
-			UserId: args.To.Hex(),
-			ConnId: "web3",
-		}
-		b, err := proto.Marshal(&s)
+	if IsZeroAddress(args.To) {
+		_, err = nft.Delete(ctx, tx)
 		if err != nil {
 			return err
 		}
 
-		ud.UserID = base64.RawURLEncoding.EncodeToString(b)
-		if _, err := ud.Update(ctx, tx, boil.Whitelist(models.UserDeviceColumns.UserID)); err != nil {
+		if nft.R.UserDevice != nil {
+			_, err = nft.R.UserDevice.Delete(ctx, tx)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+
+		nft.OwnerAddress = null.BytesFrom(args.To.Bytes())
+		if _, err := nft.Update(ctx, tx, boil.Whitelist(models.VehicleNFTColumns.OwnerAddress)); err != nil {
 			return err
+		}
+
+		if ud := nft.R.UserDevice; ud != nil {
+			s := dex.IDTokenSubject{
+				UserId: args.To.Hex(),
+				ConnId: "web3",
+			}
+			b, err := proto.Marshal(&s)
+			if err != nil {
+				return err
+			}
+
+			ud.UserID = base64.RawURLEncoding.EncodeToString(b)
+			if _, err := ud.Update(ctx, tx, boil.Whitelist(models.UserDeviceColumns.UserID)); err != nil {
+				return err
+			}
 		}
 	}
 
