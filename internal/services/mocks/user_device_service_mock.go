@@ -37,7 +37,7 @@ func (m *MockUserDeviceService) EXPECT() *MockUserDeviceServiceMockRecorder {
 }
 
 // CreateUserDevice mocks base method.
-func (m *MockUserDeviceService) CreateUserDevice(ctx context.Context, deviceDefID, styleID, countryCode, userID string, vin, canProtocol *string) (*models.UserDevice, *grpc.GetDeviceDefinitionItemResponse, error) {
+func (m *MockUserDeviceService) CreateUserDevice(ctx context.Context, deviceDefID, styleID, countryCode, userID string, vin, canProtocol *string, vinConfirmed bool) (*models.UserDevice, *grpc.GetDeviceDefinitionItemResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateUserDevice", ctx, deviceDefID, styleID, countryCode, userID, vin, canProtocol)
 	ret0, _ := ret[0].(*models.UserDevice)

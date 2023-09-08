@@ -823,7 +823,7 @@ func buildSmartcarTokenKey(vin, userID string) string {
 
 // todo move this to be used directly
 func (udc *UserDevicesController) createUserDevice(ctx context.Context, deviceDefID, styleID, countryCode, userID string, vin, canProtocol *string) (*UserDeviceFull, error) {
-	ud, dd, err := udc.userDeviceSvc.CreateUserDevice(ctx, deviceDefID, styleID, countryCode, userID, vin, canProtocol)
+	ud, dd, err := udc.userDeviceSvc.CreateUserDevice(ctx, deviceDefID, styleID, countryCode, userID, vin, canProtocol, false)
 	if err != nil {
 		return nil, err
 	}

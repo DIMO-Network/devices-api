@@ -22,7 +22,7 @@ import (
 //go:generate mockgen -source user_device_service.go -destination mocks/user_device_service_mock.go -package mock_services
 
 type UserDeviceService interface {
-	CreateUserDevice(ctx context.Context, deviceDefID, styleID, countryCode, userID string, vin, canProtocol *string) (*models.UserDevice, *ddgrpc.GetDeviceDefinitionItemResponse, error)
+	CreateUserDevice(ctx context.Context, deviceDefID, styleID, countryCode, userID string, vin, canProtocol *string, vinConfirmed bool) (*models.UserDevice, *ddgrpc.GetDeviceDefinitionItemResponse, error)
 }
 
 type userDeviceService struct {
@@ -42,7 +42,7 @@ func NewUserDeviceService(deviceDefSvc DeviceDefinitionService, log zerolog.Logg
 }
 
 // CreateUserDevice creates the user_device record with all the logic we manage, including setting the countryCode, setting the powertrain based on the def or style, and setting the protocol
-func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID, styleID, countryCode, userID string, vin, canProtocol *string) (*models.UserDevice, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
+func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID, styleID, countryCode, userID string, vin, canProtocol *string, vinConfirmed bool) (*models.UserDevice, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
 	// attach device def to user
 	dd, err2 := uds.deviceDefSvc.GetDeviceDefinitionByID(ctx, deviceDefID)
 	if err2 != nil {
@@ -88,6 +88,7 @@ func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID,
 		DeviceDefinitionID: dd.DeviceDefinitionId,
 		CountryCode:        null.StringFrom(countryCode),
 		VinIdentifier:      null.StringFromPtr(vin),
+		VinConfirmed:       vinConfirmed,
 	}
 	// always instantiate metadata with powerTrain and CANProtocol
 	udMD := &UserDeviceMetadata{
