@@ -233,7 +233,7 @@ func (s *userDeviceRPCServer) RegisterUserDeviceFromVIN(ctx context.Context, req
 		return nil, err
 	}
 
-	_, _, err = s.userDeviceSvc.CreateUserDevice(ctx, dd.DeviceDefinitionId, resp.DeviceStyleId, req.CountryCode, req.UserDeviceId, &vin, nil, false)
+	_, _, err = s.userDeviceSvc.CreateUserDevice(ctx, dd.DeviceDefinitionId, resp.DeviceStyleId, req.CountryCode, req.UserDeviceId, &vin, nil, req.VinConfirmed)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

@@ -119,6 +119,7 @@ message RegisterUserDeviceFromVINRequest {
   string user_device_id = 1;
   string vin = 2;
   string country_code = 3;
+  bool vinConfirmed = 4;
 }
 
 message RegisterUserDeviceFromVINResponse {
