@@ -180,6 +180,7 @@ func (s *userDeviceRPCServer) CreateTemplate(_ context.Context, req *pb.CreateTe
 	return resp, err
 }
 
+// RegisterUserDeviceFromVIN used from admin to add a vehicle to a user when we can't get the VIN via hardware
 func (s *userDeviceRPCServer) RegisterUserDeviceFromVIN(ctx context.Context, req *pb.RegisterUserDeviceFromVINRequest) (*pb.RegisterUserDeviceFromVINResponse, error) {
 	country := constants.FindCountry(req.CountryCode)
 	if country == nil {
@@ -232,9 +233,7 @@ func (s *userDeviceRPCServer) RegisterUserDeviceFromVIN(ctx context.Context, req
 		return nil, err
 	}
 
-	// todo this needs to use udc.createUserDevice refactor method.
-	// future refactor: udc controller has a createUserDevice
-	_, _, err = s.userDeviceSvc.CreateUserDevice(ctx, dd.DeviceDefinitionId, resp.DeviceStyleId, req.CountryCode, req.UserDeviceId, &vin, nil)
+	_, _, err = s.userDeviceSvc.CreateUserDevice(ctx, dd.DeviceDefinitionId, resp.DeviceStyleId, req.CountryCode, req.UserDeviceId, &vin, nil, req.VinConfirmed)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
