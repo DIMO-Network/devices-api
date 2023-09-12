@@ -4,8 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
-	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"time"
 
@@ -80,7 +78,7 @@ func updateState(ctx context.Context, pdb db.Store, logger *zerolog.Logger, auto
 		autoPiDevice, err := autoPiSvc.GetDeviceByUnitID(apiInt.Serial.String)
 		if err == nil {
 			dd, _ := deviceDefSvc.GetDeviceDefinitionByID(ctx, apiInt.R.UserDevice.DeviceDefinitionID)
-			nm := buildCallName(apiInt.R.UserDevice.Name.Ptr(), dd)
+			nm := services.BuildCallName(apiInt.R.UserDevice.Name.Ptr(), dd)
 			_ = autoPiSvc.PatchVehicleProfile(autoPiDevice.Vehicle.ID, services.PatchVehicleProfile{
 				CallName: &nm,
 			})
@@ -88,19 +86,4 @@ func updateState(ctx context.Context, pdb db.Store, logger *zerolog.Logger, auto
 	}
 
 	return nil
-}
-
-func buildCallName(callName *string, dd *ddgrpc.GetDeviceDefinitionItemResponse) string {
-	uniquer := ksuid.New().String()[6:10]
-	if dd == nil {
-		if callName != nil {
-			return *callName
-		}
-		return uniquer
-	}
-	mmy := fmt.Sprintf("%d %s %s", dd.Type.Year, dd.Type.MakeSlug, dd.Type.ModelSlug)
-	if callName == nil {
-		return uniquer + ":" + mmy
-	}
-	return *callName + ":" + mmy
 }

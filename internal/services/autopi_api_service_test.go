@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"net/http"
 	"testing"
 
@@ -142,4 +143,65 @@ func (s *AutoPiAPIServiceTestSuite) TestGetDeviceByUnitID_Should_Be_NotFound() {
 
 	// assert
 	require.ErrorIs(s.T(), err, ErrNotFound)
+}
+
+func TestBuildCallName(t *testing.T) {
+	callName := "supercar"
+	dd := &ddgrpc.GetDeviceDefinitionItemResponse{
+		Type: &ddgrpc.DeviceType{
+			Year:      2024,
+			MakeSlug:  "ford",
+			ModelSlug: "escape",
+		},
+	}
+	type args struct {
+		callName *string
+		dd       *ddgrpc.GetDeviceDefinitionItemResponse
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "both dd and callname",
+			args: args{
+				callName: &callName,
+				dd:       dd,
+			},
+			want: "supercar:2024 ford escape",
+		},
+		{
+			name: "only dd",
+			args: args{
+				dd: dd,
+			},
+			want: ":2024 ford escape",
+		},
+		{
+			name: "only callname",
+			args: args{
+				callName: &callName,
+			},
+			want: "supercar",
+		},
+		{
+			name: "neither dd or callname",
+			args: args{},
+			want: "any",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			nm := BuildCallName(tt.args.callName, tt.args.dd)
+			if tt.want == "any" {
+				assert.Len(t, nm, 4)
+			} else {
+				if tt.want[0:1] == ":" {
+					tt.want = nm[0:4] + tt.want
+				}
+				assert.Equalf(t, tt.want, nm, "BuildCallName(%v, %v)", tt.args.callName, tt.args.dd)
+			}
+		})
+	}
 }

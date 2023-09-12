@@ -1126,8 +1126,10 @@ func (udc *UserDevicesController) UpdateName(c *fiber.Ctx) error {
 		if udapi.Serial.Valid {
 			autoPiDevice, err := udc.autoPiSvc.GetDeviceByUnitID(udapi.Serial.String)
 			if err == nil {
+				dd, _ := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
+				nm := services.BuildCallName(req.Name, dd)
 				_ = udc.autoPiSvc.PatchVehicleProfile(autoPiDevice.Vehicle.ID, services.PatchVehicleProfile{
-					CallName: req.Name,
+					CallName: &nm,
 				})
 			}
 			break

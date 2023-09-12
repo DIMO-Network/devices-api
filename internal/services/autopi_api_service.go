@@ -6,6 +6,8 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
+	"github.com/segmentio/ksuid"
 	"io"
 	"time"
 
@@ -513,4 +515,20 @@ func newAddPIDReqWithDefaults(templateID, pid, interval int) *addPIDRequest {
 		Template:  templateID,
 	}
 	return &req
+}
+
+// BuildCallName returns the standard naming convention we want to use for autopi vehicles
+func BuildCallName(callName *string, dd *ddgrpc.GetDeviceDefinitionItemResponse) string {
+	uniquer := ksuid.New().String()[6:10]
+	if dd == nil {
+		if callName != nil {
+			return *callName
+		}
+		return uniquer
+	}
+	mmy := fmt.Sprintf("%d %s %s", dd.Type.Year, dd.Type.MakeSlug, dd.Type.ModelSlug)
+	if callName == nil {
+		return uniquer + ":" + mmy
+	}
+	return *callName + ":" + mmy
 }
