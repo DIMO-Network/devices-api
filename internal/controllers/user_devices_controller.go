@@ -622,6 +622,9 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		}
 		messageBytes, err := json.Marshal(message)
 
+		udc.log.Error().Msgf("I got here xdt. NATS service is %v", udc.NATSSvc)
+		udc.log.Error().Msgf("I got here xdx. NATS Jetstream is %v", udc.NATSSvc.JetStream)
+
 		if err != nil {
 			udc.log.Err(err).Msg("Failed to marshal message.")
 		} else {
