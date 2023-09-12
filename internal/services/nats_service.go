@@ -30,16 +30,6 @@ func NewNATSService(settings *config.Settings, log *zerolog.Logger) (*NATSServic
 		return nil, err
 	}
 
-	_, err = js.AddStream(&nats.StreamConfig{
-		Name:      settings.NATSStreamName,
-		Retention: nats.WorkQueuePolicy,
-		Subjects:  []string{settings.NATSValuationSubject},
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
 	to, err := time.ParseDuration(settings.NATSAckTimeout)
 	if err != nil {
 		return nil, err
