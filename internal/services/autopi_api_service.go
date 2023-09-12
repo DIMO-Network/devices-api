@@ -6,10 +6,11 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
-	"github.com/segmentio/ksuid"
 	"io"
 	"time"
+
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
+	"github.com/segmentio/ksuid"
 
 	"github.com/tidwall/gjson"
 

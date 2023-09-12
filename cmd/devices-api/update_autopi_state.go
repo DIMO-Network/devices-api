@@ -4,8 +4,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"time"
+
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/shared/db"
@@ -79,9 +80,16 @@ func updateState(ctx context.Context, pdb db.Store, logger *zerolog.Logger, auto
 		if err == nil {
 			dd, _ := deviceDefSvc.GetDeviceDefinitionByID(ctx, apiInt.R.UserDevice.DeviceDefinitionID)
 			nm := services.BuildCallName(apiInt.R.UserDevice.Name.Ptr(), dd)
-			_ = autoPiSvc.PatchVehicleProfile(autoPiDevice.Vehicle.ID, services.PatchVehicleProfile{
+			err = autoPiSvc.PatchVehicleProfile(autoPiDevice.Vehicle.ID, services.PatchVehicleProfile{
 				CallName: &nm,
 			})
+			if err != nil {
+				logger.Err(err).Msgf("unable to patch vehicle profile. unitID: %s, callname: %s", apiInt.Serial.String, nm)
+			} else {
+				logger.Info().Msgf("also updated callname to: %s", nm)
+			}
+		} else {
+			logger.Err(err).Msgf("could not get device by unitID: %s", apiInt.Serial.String)
 		}
 	}
 

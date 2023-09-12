@@ -3,9 +3,10 @@ package services
 import (
 	"context"
 	"fmt"
-	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"net/http"
 	"testing"
+
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/test"
