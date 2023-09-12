@@ -23,12 +23,12 @@ type updateStateCmd struct {
 	pdb      db.Store
 }
 
-func (*updateStateCmd) Name() string     { return "autopi-notify-status" }
-func (*updateStateCmd) Synopsis() string { return "autopi-notify-status args to stdout." }
+func (*updateStateCmd) Name() string { return "autopi-notify-status" }
+func (*updateStateCmd) Synopsis() string {
+	return "syncs our autopi integration status to their cloud. also syncs Name + MMY"
+}
 func (*updateStateCmd) Usage() string {
-	return `autopi-notify-status [] <some text>:
-	autopi-notify-status args.
-  `
+	return `autopi-notify-status`
 }
 
 // nolint
