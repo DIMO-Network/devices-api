@@ -22,7 +22,7 @@ import (
 	vrpc "github.com/DIMO-Network/valuations-api/pkg/grpc"
 
 	deviceDefs "github.com/DIMO-Network/device-definitions-api/pkg"
-	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
@@ -175,7 +175,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 	s.scClient.EXPECT().GetVIN(gomock.Any(), "AA", "123").Times(1).Return(vinny, nil)
 	s.scClient.EXPECT().GetInfo(gomock.Any(), "AA", "123").Times(1).Return(nil, nil)
 
-	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&grpc.DecodeVinResponse{
+	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&ddgrpc.DecodeVinResponse{
 		DeviceMakeId:       dd[0].Make.Id,
 		DeviceDefinitionId: dd[0].DeviceDefinitionId,
 		DeviceStyleId:      "",
@@ -325,7 +325,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	reg := RegisterUserDeviceVIN{VIN: vinny, CountryCode: "USA", CANProtocol: canProtocol}
 	j, _ := json.Marshal(reg)
 
-	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&grpc.DecodeVinResponse{
+	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&ddgrpc.DecodeVinResponse{
 		DeviceMakeId:       dd[0].Make.Id,
 		DeviceDefinitionId: dd[0].DeviceDefinitionId,
 		DeviceStyleId:      deviceStyleID,
@@ -552,7 +552,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 	_ = test.SetupCreateVehicleNFT(s.T(), deviceID2, "vin", big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
-	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*grpc.Integration{integration}, nil)
+	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId, dd[0].DeviceDefinitionId}).Times(1).Return(dd, nil)
 
 	s.controller.Settings.Environment = "dev"
@@ -596,7 +596,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
 	_ = test.SetupCreateVehicleNFT(s.T(), deviceID, "vin", big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
-	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*grpc.Integration{integration}, nil)
+	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Times(1).Return(dd, nil)
 
 	request := test.BuildRequest("GET", "/user/devices/me", "")
@@ -631,7 +631,7 @@ func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 	//}
 
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*grpc.Integration{integration}, nil)
+	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: nil}, nil)
 	// validates that if country=USA we update the powertrain based on what the NHTSA vin decoder says
@@ -760,8 +760,15 @@ func (s *UserDevicesControllerTestSuite) TestPatchName() {
 	s.autoPiSvc.EXPECT().GetDeviceByUnitID(apunit.Serial).Times(1).Return(&services.AutoPiDongleDevice{
 		ID: deviceID, UnitID: apunit.Serial, Vehicle: services.AutoPiDongleVehicle{ID: vehicleID},
 	}, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(1).Return(&ddgrpc.GetDeviceDefinitionItemResponse{
+		Type: &ddgrpc.DeviceType{
+			Year:      2024,
+			MakeSlug:  "ford",
+			ModelSlug: "escape",
+		}}, nil)
+	nm := testName + ":2024 ford escape"
 	s.autoPiSvc.EXPECT().PatchVehicleProfile(vehicleID, services.PatchVehicleProfile{
-		CallName: &testName,
+		CallName: &nm,
 	}).Times(1).Return(nil)
 	request = test.BuildRequest("PATCH", "/user/devices/"+ud.ID+"/name", payload)
 	response, _ = s.app.Test(request)
@@ -840,14 +847,14 @@ func (s *UserDevicesControllerTestSuite) TestGetRange() {
 	smartCarIntegration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
 	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, nil, autoPiUnitID, &autoPiDeviceID, s.pdb)
 
-	gddir := []*grpc.GetDeviceDefinitionItemResponse{
+	gddir := []*ddgrpc.GetDeviceDefinitionItemResponse{
 		{
-			DeviceAttributes: []*grpc.DeviceTypeAttribute{
+			DeviceAttributes: []*ddgrpc.DeviceTypeAttribute{
 				{Name: "mpg", Value: "38.0"},
 				{Name: "mpg_highway", Value: "40.0"},
 				{Name: "fuel_tank_capacity_gal", Value: "14.5"},
 			},
-			Make: &grpc.DeviceMake{
+			Make: &ddgrpc.DeviceMake{
 				Name: "Ford",
 			},
 			Name:               "F-150",
