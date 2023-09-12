@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/google/subcommands"
@@ -37,7 +39,8 @@ func (p *updateStateCmd) SetFlags(f *flag.FlagSet) {
 func (p *updateStateCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 
 	autoPiSvc := services.NewAutoPiAPIService(&p.settings, p.pdb.DBS)
-	err := updateState(ctx, p.pdb, &p.logger, autoPiSvc)
+	ddSvc := services.NewDeviceDefinitionService(p.pdb.DBS, &p.logger, nil, &p.settings)
+	err := updateState(ctx, p.pdb, &p.logger, autoPiSvc, ddSvc)
 	if err != nil {
 		p.logger.Fatal().Err(err).Msg("failed to sync autopi notify status")
 	}
@@ -47,16 +50,17 @@ func (p *updateStateCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...inte
 }
 
 // updateStatus re-populates the autopi ingest registrar topic based on data we have in user_device_api_integrations
-func updateState(ctx context.Context, pdb db.Store, logger *zerolog.Logger, autoPiSvc services.AutoPiAPIService) error {
+func updateState(ctx context.Context, pdb db.Store, logger *zerolog.Logger, autoPiSvc services.AutoPiAPIService, deviceDefSvc services.DeviceDefinitionService) error {
 	reader := pdb.DBS().Reader
 
 	const (
-		autopi = "27qftVRWQYpVDcO5DltO5Ojbjxk"
+		autopiInteg = "27qftVRWQYpVDcO5DltO5Ojbjxk"
 	)
 
 	apiInts, err := models.UserDeviceAPIIntegrations(
-		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(autopi),
+		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(autopiInteg),
 		models.UserDeviceAPIIntegrationWhere.ExternalID.IsNotNull(),
+		qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
 	).All(ctx, reader)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve all API integrations with external IDs: %w", err)
@@ -71,6 +75,22 @@ func updateState(ctx context.Context, pdb db.Store, logger *zerolog.Logger, auto
 			logger.Info().Msgf("successfully updated state for %s", apiInt.ExternalID.String)
 		}
 		time.Sleep(500)
+
+		autoPiDevice, err := autoPiSvc.GetDeviceByUnitID(apiInt.Serial.String)
+		if err == nil {
+			dd, _ := deviceDefSvc.GetDeviceDefinitionByID(ctx, apiInt.R.UserDevice.DeviceDefinitionID)
+			nm := services.BuildCallName(apiInt.R.UserDevice.Name.Ptr(), dd)
+			err = autoPiSvc.PatchVehicleProfile(autoPiDevice.Vehicle.ID, services.PatchVehicleProfile{
+				CallName: &nm,
+			})
+			if err != nil {
+				logger.Err(err).Msgf("unable to patch vehicle profile. unitID: %s, callname: %s", apiInt.Serial.String, nm)
+			} else {
+				logger.Info().Msgf("also updated callname to: %s", nm)
+			}
+		} else {
+			logger.Err(err).Msgf("could not get device by unitID: %s", apiInt.Serial.String)
+		}
 	}
 
 	return nil
