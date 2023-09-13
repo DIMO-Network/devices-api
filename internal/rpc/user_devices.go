@@ -96,6 +96,32 @@ func (s *userDeviceRPCServer) GetUserDevice(ctx context.Context, req *pb.GetUser
 	return s.deviceModelToAPI(dbDevice), nil
 }
 
+func (s *userDeviceRPCServer) GetUserDeviceByVIN(ctx context.Context, req *pb.GetUserDeviceByVINRequest) (*pb.UserDevice, error) {
+	dbDevice, err := models.UserDevices(
+		models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(req.Vin)),
+		qm.Load(
+			qm.Rels(models.UserDeviceRels.VehicleNFT,
+				models.VehicleNFTRels.VehicleTokenAftermarketDevice),
+		),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
+		qm.Load(
+			qm.Rels(
+				models.UserDeviceRels.VehicleNFT,
+				models.VehicleNFTRels.Claim,
+			),
+		),
+	).One(ctx, s.dbs().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, status.Error(codes.NotFound, "No device with that VIN found.")
+		}
+		s.logger.Err(err).Str("userDeviceVIN", req.Vin).Msg("Database failure retrieving device by VIN.")
+		return nil, status.Error(codes.Internal, "Internal error.")
+	}
+
+	return s.deviceModelToAPI(dbDevice), nil
+}
+
 func (s *userDeviceRPCServer) GetUserDeviceByTokenId(ctx context.Context, req *pb.GetUserDeviceByTokenIdRequest) (*pb.UserDevice, error) { //nolint
 
 	tknID := types.NewNullDecimal(decimal.New(req.TokenId, 0))
