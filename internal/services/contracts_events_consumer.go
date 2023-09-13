@@ -47,16 +47,17 @@ type ContractsEventsConsumer struct {
 type EventName string
 
 const (
-	PrivilegeSet                EventName = "PrivilegeSet"
-	AftermarketDeviceNodeMinted EventName = "AftermarketDeviceNodeMinted"
-	Transfer                    EventName = "Transfer"
-	BeneficiarySet              EventName = "BeneficiarySet"
-	DCNNameChanged              EventName = "NameChanged"
-	DCNNewNode                  EventName = "NewNode"
-	DCNNewExpiration            EventName = "NewExpiration"
-	AftermarketDeviceClaimed    EventName = "AftermarketDeviceClaimed"
-	AftermarketDevicePaired     EventName = "AftermarketDevicePaired"
-	AftermarketDeviceUnpaired   EventName = "AftermarketDeviceUnpaired"
+	PrivilegeSet                  EventName = "PrivilegeSet"
+	AftermarketDeviceNodeMinted   EventName = "AftermarketDeviceNodeMinted"
+	Transfer                      EventName = "Transfer"
+	BeneficiarySet                EventName = "BeneficiarySet"
+	DCNNameChanged                EventName = "NameChanged"
+	DCNNewNode                    EventName = "NewNode"
+	DCNNewExpiration              EventName = "NewExpiration"
+	AftermarketDeviceClaimed      EventName = "AftermarketDeviceClaimed"
+	AftermarketDevicePaired       EventName = "AftermarketDevicePaired"
+	AftermarketDeviceUnpaired     EventName = "AftermarketDeviceUnpaired"
+	AftermarketDeviceAttributeSet EventName = "AftermarketDeviceAttributeSet"
 )
 
 func (r EventName) String() string {
@@ -170,6 +171,8 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.Raw
 		return c.aftermarketDevicePaired(&data)
 	case AftermarketDeviceUnpaired.String():
 		return c.aftermarketDeviceUnpaired(&data)
+	case AftermarketDeviceAttributeSet.String():
+		return c.aftermarketDeviceAttributeSet(&data)
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -336,8 +339,6 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 		return err
 	}
 
-	var amd models.AftermarketDevice
-
 	switch mfr.Name {
 	case "AutoPi":
 		device, err := c.autopiAPIService.GetDeviceByEthAddress(args.AftermarketDeviceAddress.Hex())
@@ -347,7 +348,7 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 
 		c.log.Info().Str("serial", device.UnitID).Msgf("Aftermarket device minted with address %s, token id %d.", args.AftermarketDeviceAddress, args.TokenId)
 
-		amd = models.AftermarketDevice{
+		amd := models.AftermarketDevice{
 			Serial:                    device.UnitID,
 			EthereumAddress:           args.AftermarketDeviceAddress.Bytes(),
 			TokenID:                   types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
@@ -356,20 +357,24 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 
 		amdMd := AftermarketDeviceMetadata{AutoPiDeviceID: device.ID}
 		_ = amd.Metadata.Marshal(amdMd)
-	case "Hashdog":
-		amd = models.AftermarketDevice{
-			EthereumAddress:           args.AftermarketDeviceAddress.Bytes(),
-			TokenID:                   types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
-			DeviceManufacturerTokenID: types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.ManufacturerId, 0)),
+
+		cols := models.AftermarketDeviceColumns
+
+		err = amd.Upsert(context.Background(), c.db.DBS().Writer, true, []string{cols.Serial}, boil.Whitelist(cols.Metadata, cols.EthereumAddress, cols.TokenID, cols.UpdatedAt), boil.Infer())
+		if err != nil {
+			c.log.Error().Err(err).Msg("Failed to insert aftermarket device.")
+			return err
 		}
-	}
+	case "Hashdog":
+		pad := models.PartialAftermarketDevice{
+			EthereumAddress:     args.AftermarketDeviceAddress.Bytes(),
+			TokenID:             types.NewDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
+			ManufacturerTokenID: types.NewDecimal(new(decimal.Big).SetBigMantScale(args.ManufacturerId, 0)),
+		}
 
-	cols := models.AftermarketDeviceColumns
-
-	err = amd.Upsert(context.Background(), c.db.DBS().Writer, true, []string{cols.Serial}, boil.Whitelist(cols.Metadata, cols.EthereumAddress, cols.TokenID, cols.UpdatedAt), boil.Infer())
-	if err != nil {
-		c.log.Error().Err(err).Msg("Failed to insert privilege record.")
-		return err
+		if err := pad.Upsert(context.TODO(), c.db.DBS().Writer, false, []string{models.PartialAftermarketDeviceColumns.TokenID}, boil.Infer(), boil.Infer()); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -439,6 +444,57 @@ func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) 
 	}
 
 	return c.mcInt.Pair(context.TODO(), args.AftermarketDeviceNode, args.VehicleNode)
+}
+
+func (c *ContractsEventsConsumer) aftermarketDeviceAttributeSet(e *ContractEventData) error {
+	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
+		return fmt.Errorf("aftermarket claim from unexpected source %d/%s", e.ChainID, e.Contract)
+	}
+
+	var args contracts.RegistryAftermarketDeviceAttributeSet
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return err
+	}
+
+	if args.Attribute != "Serial" {
+		return nil
+	}
+
+	tx, err := c.db.DBS().Writer.BeginTx(context.TODO(), nil)
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback() //nolint
+
+	pad, err := models.PartialAftermarketDevices(
+		models.PartialAftermarketDeviceWhere.TokenID.EQ(types.NewDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0))),
+	).One(context.TODO(), tx)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
+		return err
+	}
+
+	ad := models.AftermarketDevice{
+		Serial:                    args.Info,
+		EthereumAddress:           pad.EthereumAddress,
+		TokenID:                   types.NewNullDecimal(pad.TokenID.Big),
+		DeviceManufacturerTokenID: types.NewNullDecimal(pad.ManufacturerTokenID.Big),
+	}
+
+	err = ad.Upsert(context.TODO(), tx, false, []string{models.AftermarketDeviceColumns.EthereumAddress}, boil.Infer(), boil.Infer())
+	if err != nil {
+		return err
+	}
+
+	_, err = pad.Delete(context.TODO(), tx)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (c *ContractsEventsConsumer) aftermarketDeviceUnpaired(e *ContractEventData) error {
