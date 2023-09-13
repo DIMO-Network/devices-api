@@ -368,8 +368,8 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 	case "Hashdog":
 		pad := models.PartialAftermarketDevice{
 			EthereumAddress:     args.AftermarketDeviceAddress.Bytes(),
-			TokenID:             types.NewDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
-			ManufacturerTokenID: types.NewDecimal(new(decimal.Big).SetBigMantScale(args.ManufacturerId, 0)),
+			TokenID:             types.NewDecimal(bigToDecimal(args.TokenId)),
+			ManufacturerTokenID: types.NewDecimal(bigToDecimal(args.ManufacturerId)),
 		}
 
 		if err := pad.Upsert(context.TODO(), c.db.DBS().Writer, false, []string{models.PartialAftermarketDeviceColumns.TokenID}, boil.Infer(), boil.Infer()); err != nil {
@@ -468,7 +468,7 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAttributeSet(e *ContractEvent
 	defer tx.Rollback() //nolint
 
 	pad, err := models.PartialAftermarketDevices(
-		models.PartialAftermarketDeviceWhere.TokenID.EQ(types.NewDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0))),
+		models.PartialAftermarketDeviceWhere.TokenID.EQ(types.NewDecimal(bigToDecimal(args.TokenId))),
 	).One(context.TODO(), tx)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -654,4 +654,8 @@ type DCNNameChangedContract struct {
 	Node [32]byte
 	Name string `json:"name_"`
 	//Raw  types.Log // Blockchain specific contextual infos
+}
+
+func bigToDecimal(x *big.Int) *decimal.Big {
+	return new(decimal.Big).SetBigMantScale(x, 0)
 }
