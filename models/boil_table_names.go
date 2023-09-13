@@ -9,7 +9,6 @@ var TableNames = struct {
 	DCN                       string
 	DeviceCommandRequests     string
 	ErrorCodeQueries          string
-	ExternalVinData           string
 	Geofences                 string
 	MetaTransactionRequests   string
 	NFTPrivileges             string
@@ -27,7 +26,6 @@ var TableNames = struct {
 	DCN:                       "dcn",
 	DeviceCommandRequests:     "device_command_requests",
 	ErrorCodeQueries:          "error_code_queries",
-	ExternalVinData:           "external_vin_data",
 	Geofences:                 "geofences",
 	MetaTransactionRequests:   "meta_transaction_requests",
 	NFTPrivileges:             "nft_privileges",
