@@ -557,12 +557,10 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 		return c.JSON(adi)
 	}
 	if err != nil {
-		if errors.Is(err, services.ErrNotFound) {
-			return fiber.NewError(fiber.StatusNotFound, "AutoPi has no record of this unit.")
-		}
 		return err
 	}
 
+	// Must be an AutoPi.
 	shouldUpdate := false
 	if udc.Settings.IsProduction() {
 		version := unit.Release.Version
