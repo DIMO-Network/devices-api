@@ -3,9 +3,9 @@ package owner
 import (
 	"database/sql"
 	"errors"
+	"strings"
 
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
-	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
@@ -84,11 +84,9 @@ func UserDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.
 func AftermarketDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		userID := helpers.GetUserID(c)
+
 		serial := c.Params("serial")
-		valid, serial := services.ValidateAndCleanUUID(serial) // macaron serial likely to not be UUID?
-		if !valid {
-			return fiber.NewError(fiber.StatusBadRequest, "serial is not a valid UUID.")
-		}
+		serial = strings.TrimSpace(strings.ToLower(serial)) // A UUID for AutoPi. An 11-digit number for Macaron.
 
 		logger := logger.With().Str("userId", userID).Str("serial", serial).Logger()
 		c.Locals("userID", userID)
