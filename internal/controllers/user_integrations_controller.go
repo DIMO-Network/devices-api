@@ -443,33 +443,17 @@ func (udc *UserDevicesController) OpenFrunk(c *fiber.Ctx) error {
 func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 	const minimumAutoPiRelease = "v1.22.8" // correct semver has leading v
 
-	unitID := c.Locals("serial").(string)
-
-	// This is hitting AutoPi.
-	unit, err := udc.autoPiSvc.GetDeviceByUnitID(unitID)
-	if err != nil {
-		if errors.Is(err, services.ErrNotFound) {
-			return fiber.NewError(fiber.StatusNotFound, "AutoPi has no record of this unit.")
-		}
-		return err
-	}
-
-	shouldUpdate := false
-	if udc.Settings.IsProduction() {
-		version := unit.Release.Version
-		if string(unit.Release.Version[0]) != "v" {
-			version = "v" + version
-		}
-		shouldUpdate = semver.Compare(version, minimumAutoPiRelease) < 0
-	}
+	serial := c.Locals("serial").(string)
 
 	var claim, pair, unpair *AutoPiTransactionStatus
 
 	var tokenID *big.Int
 	var ethereumAddress, ownerAddress, beneficiaryAddress *common.Address
 
+	var mfr *ManufacturerInfo
+
 	dbUnit, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.Serial.EQ(unitID),
+		models.AftermarketDeviceWhere.Serial.EQ(serial),
 		qm.Load(models.AftermarketDeviceRels.ClaimMetaTransactionRequest),
 		qm.Load(models.AftermarketDeviceRels.PairRequest),
 		qm.Load(models.AftermarketDeviceRels.UnpairRequest),
@@ -537,6 +521,53 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 				unpair.Hash = &hash
 			}
 		}
+
+		if !dbUnit.DeviceManufacturerTokenID.IsZero() {
+			tib := dbUnit.DeviceManufacturerTokenID.Int(nil)
+
+			dm, err := udc.DeviceDefSvc.GetMakeByTokenID(c.Context(), tib)
+			if err != nil {
+				return err
+			}
+
+			mfr = &ManufacturerInfo{
+				TokenID: tib,
+				Name:    dm.Name,
+			}
+		}
+	}
+
+	// This is hitting AutoPi.
+	unit, err := udc.autoPiSvc.GetDeviceByUnitID(serial)
+	if errors.Is(err, services.ErrNotFound) {
+		// Might be a Macaron
+		adi := AutoPiDeviceInfo{
+			IsUpdated:          true,
+			UnitID:             serial,
+			ShouldUpdate:       false,
+			TokenID:            tokenID,
+			EthereumAddress:    ethereumAddress,
+			OwnerAddress:       ownerAddress,
+			BeneficiaryAddress: beneficiaryAddress,
+			Claim:              claim,
+			Pair:               pair,
+			Unpair:             unpair,
+			Manufacturer:       mfr,
+		}
+		return c.JSON(adi)
+	}
+	if err != nil {
+		return err
+	}
+
+	// Must be an AutoPi.
+	shouldUpdate := false
+	if udc.Settings.IsProduction() {
+		version := unit.Release.Version
+		if string(unit.Release.Version[0]) != "v" {
+			version = "v" + version
+		}
+		shouldUpdate = semver.Compare(version, minimumAutoPiRelease) < 0
 	}
 
 	adi := AutoPiDeviceInfo{
@@ -556,6 +587,7 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 		Claim:              claim,
 		Pair:               pair,
 		Unpair:             unpair,
+		Manufacturer:       mfr,
 	}
 	return c.JSON(adi)
 }
@@ -2085,6 +2117,11 @@ type AutoPiCommandRequest struct {
 	Command string `json:"command"`
 }
 
+type ManufacturerInfo struct {
+	TokenID *big.Int `json:"tokenId"`
+	Name    string   `json:"name"`
+}
+
 // AutoPiDeviceInfo is used to get the info about a unit
 type AutoPiDeviceInfo struct {
 	IsUpdated         bool      `json:"isUpdated"`
@@ -2108,6 +2145,8 @@ type AutoPiDeviceInfo struct {
 	Pair *AutoPiTransactionStatus `json:"pair,omitempty"`
 	// Unpair contains the status of the on-chain unpairing meta-transaction.
 	Unpair *AutoPiTransactionStatus `json:"unpair,omitempty"`
+
+	Manufacturer *ManufacturerInfo `json:"manufacturer,omitempty"`
 }
 
 // AutoPiTransactionStatus summarizes the state of an on-chain AutoPi operation.
