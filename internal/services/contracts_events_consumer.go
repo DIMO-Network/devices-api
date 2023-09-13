@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/services/dex"
 	"google.golang.org/protobuf/proto"
@@ -340,7 +341,7 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 	}
 
 	switch mfr.Name {
-	case "AutoPi":
+	case constants.AutoPiVendor:
 		device, err := c.autopiAPIService.GetDeviceByEthAddress(args.AftermarketDeviceAddress.Hex())
 		if err != nil {
 			return fmt.Errorf("couldn't fetch dongle with address %s: %w", args.AftermarketDeviceAddress, err)
@@ -365,7 +366,8 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 			c.log.Error().Err(err).Msg("Failed to insert aftermarket device.")
 			return err
 		}
-	case "Hashdog":
+	default:
+		// Place this in a holding table until we receive AftermarketDeviceAttributeSet with the serial.
 		pad := models.PartialAftermarketDevice{
 			EthereumAddress:     args.AftermarketDeviceAddress.Bytes(),
 			TokenID:             types.NewDecimal(bigToDecimal(args.TokenId)),
@@ -375,6 +377,8 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 		if err := pad.Upsert(context.TODO(), c.db.DBS().Writer, false, []string{models.PartialAftermarketDeviceColumns.TokenID}, boil.Infer(), boil.Infer()); err != nil {
 			return err
 		}
+
+		c.log.Info().Str("address", args.AftermarketDeviceAddress.Hex()).Msgf("Aftermarket device %d minted under manufacturer %d. Waiting for serial.", args.TokenId, args.ManufacturerId)
 	}
 
 	return nil
@@ -446,7 +450,10 @@ func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) 
 	return c.mcInt.Pair(context.TODO(), args.AftermarketDeviceNode, args.VehicleNode)
 }
 
+// aftermarketDeviceAttributeSet handles the event of the same name from the registry contract.
+// At present this is only used to grab the serial number for Macarons.
 func (c *ContractsEventsConsumer) aftermarketDeviceAttributeSet(e *ContractEventData) error {
+	// TODO(elffjs): Stop repeating the next eight lines in every handler.
 	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
 		return fmt.Errorf("aftermarket claim from unexpected source %d/%s", e.ChainID, e.Contract)
 	}
@@ -464,7 +471,6 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAttributeSet(e *ContractEvent
 	if err != nil {
 		return err
 	}
-
 	defer tx.Rollback() //nolint
 
 	pad, err := models.PartialAftermarketDevices(
@@ -488,6 +494,8 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAttributeSet(e *ContractEvent
 	if err != nil {
 		return err
 	}
+
+	c.log.Info().Str("address", common.BytesToAddress(ad.EthereumAddress).Hex()).Msgf("Aftermarket device serial set to %s.", args.Info)
 
 	_, err = pad.Delete(context.TODO(), tx)
 	if err != nil {
