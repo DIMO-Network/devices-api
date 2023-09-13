@@ -45,8 +45,8 @@ require (
 	github.com/tidwall/gjson v1.14.4
 	github.com/vmihailenco/taskq/v3 v3.2.8
 	github.com/volatiletech/null/v8 v8.1.2
-	github.com/volatiletech/sqlboiler/v4 v4.14.2
-	github.com/volatiletech/strmangle v0.0.4
+	github.com/volatiletech/sqlboiler/v4 v4.15.0
+	github.com/volatiletech/strmangle v0.0.5
 	go.uber.org/automaxprocs v1.5.1
 	go.uber.org/mock v0.2.0
 	golang.org/x/mod v0.12.0
