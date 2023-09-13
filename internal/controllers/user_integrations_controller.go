@@ -445,24 +445,6 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 
 	unitID := c.Locals("serial").(string)
 
-	// This is hitting AutoPi.
-	unit, err := udc.autoPiSvc.GetDeviceByUnitID(unitID)
-	if err != nil {
-		if errors.Is(err, services.ErrNotFound) {
-			return fiber.NewError(fiber.StatusNotFound, "AutoPi has no record of this unit.")
-		}
-		return err
-	}
-
-	shouldUpdate := false
-	if udc.Settings.IsProduction() {
-		version := unit.Release.Version
-		if string(unit.Release.Version[0]) != "v" {
-			version = "v" + version
-		}
-		shouldUpdate = semver.Compare(version, minimumAutoPiRelease) < 0
-	}
-
 	var claim, pair, unpair *AutoPiTransactionStatus
 
 	var tokenID *big.Int
@@ -537,6 +519,24 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 				unpair.Hash = &hash
 			}
 		}
+	}
+
+	// This is hitting AutoPi.
+	unit, err := udc.autoPiSvc.GetDeviceByUnitID(unitID)
+	if err != nil {
+		if errors.Is(err, services.ErrNotFound) {
+			return fiber.NewError(fiber.StatusNotFound, "AutoPi has no record of this unit.")
+		}
+		return err
+	}
+
+	shouldUpdate := false
+	if udc.Settings.IsProduction() {
+		version := unit.Release.Version
+		if string(unit.Release.Version[0]) != "v" {
+			version = "v" + version
+		}
+		shouldUpdate = semver.Compare(version, minimumAutoPiRelease) < 0
 	}
 
 	adi := AutoPiDeviceInfo{
