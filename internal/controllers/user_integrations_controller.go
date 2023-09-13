@@ -450,6 +450,8 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 	var tokenID *big.Int
 	var ethereumAddress, ownerAddress, beneficiaryAddress *common.Address
 
+	var mfr *ManufacturerInfo
+
 	dbUnit, err := models.AftermarketDevices(
 		models.AftermarketDeviceWhere.Serial.EQ(serial),
 		qm.Load(models.AftermarketDeviceRels.ClaimMetaTransactionRequest),
@@ -519,6 +521,20 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 				unpair.Hash = &hash
 			}
 		}
+
+		if !dbUnit.DeviceManufacturerTokenID.IsZero() {
+			tib := dbUnit.DeviceManufacturerTokenID.Int(nil)
+
+			dm, err := udc.DeviceDefSvc.GetMakeByTokenID(c.Context(), tib)
+			if err != nil {
+				return err
+			}
+
+			mfr = &ManufacturerInfo{
+				TokenID: tib,
+				Name:    dm.Name,
+			}
+		}
 	}
 
 	// This is hitting AutoPi.
@@ -536,6 +552,7 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 			Claim:              claim,
 			Pair:               pair,
 			Unpair:             unpair,
+			Manufacturer:       mfr,
 		}
 		return c.JSON(adi)
 	}
@@ -572,6 +589,7 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 		Claim:              claim,
 		Pair:               pair,
 		Unpair:             unpair,
+		Manufacturer:       mfr,
 	}
 	return c.JSON(adi)
 }
@@ -2101,6 +2119,11 @@ type AutoPiCommandRequest struct {
 	Command string `json:"command"`
 }
 
+type ManufacturerInfo struct {
+	TokenID *big.Int `json:"tokenId"`
+	Name    string   `json:"name"`
+}
+
 // AutoPiDeviceInfo is used to get the info about a unit
 type AutoPiDeviceInfo struct {
 	IsUpdated         bool      `json:"isUpdated"`
@@ -2124,6 +2147,8 @@ type AutoPiDeviceInfo struct {
 	Pair *AutoPiTransactionStatus `json:"pair,omitempty"`
 	// Unpair contains the status of the on-chain unpairing meta-transaction.
 	Unpair *AutoPiTransactionStatus `json:"unpair,omitempty"`
+
+	Manufacturer *ManufacturerInfo `json:"manufacturer,omitempty"`
 }
 
 // AutoPiTransactionStatus summarizes the state of an on-chain AutoPi operation.
