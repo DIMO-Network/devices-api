@@ -418,35 +418,6 @@ func SetupCreateGeofence(t *testing.T, userID, name string, ud *models.UserDevic
 	return &gf
 }
 
-func SetupCreateExternalVINData(t *testing.T, ddID string, ud *models.UserDevice, md map[string][]byte, pdb db.Store) *models.ExternalVinDatum {
-	evd := models.ExternalVinDatum{
-		ID:                 ksuid.New().String(),
-		DeviceDefinitionID: null.StringFrom(ddID),
-		Vin:                ud.VinIdentifier.String,
-		UserDeviceID:       null.StringFrom(ud.ID),
-		RequestMetadata:    null.JSONFrom([]byte(`{"mileage":49957,"zipCode":"48216"}`)), // default request metadata
-	}
-	if rmd, ok := md["RequestMetadata"]; ok {
-		evd.RequestMetadata = null.JSONFrom(rmd)
-	}
-	if omd, ok := md["OfferMetadata"]; ok {
-		evd.OfferMetadata = null.JSONFrom(omd)
-	}
-	if pmd, ok := md["PricingMetadata"]; ok {
-		evd.PricingMetadata = null.JSONFrom(pmd)
-	}
-	if vmd, ok := md["VincarioMetadata"]; ok {
-		evd.VincarioMetadata = null.JSONFrom(vmd)
-	}
-	if bmd, ok := md["BlackbookMetadata"]; ok {
-		evd.BlackbookMetadata = null.JSONFrom(bmd)
-	}
-	err := evd.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
-	assert.NoError(t, err)
-
-	return &evd
-}
-
 // BuildIntegrationDefaultGRPC depending on integration vendor, defines an integration object with typical settings. Smartcar refresh limit default is 100 seconds.
 func BuildIntegrationDefaultGRPC(integrationVendor string, autoPiDefaultTemplateID int, bevTemplateID int, includeAutoPiPowertrainTemplate bool) *ddgrpc.Integration {
 	var integration *ddgrpc.Integration
