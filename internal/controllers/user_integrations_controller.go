@@ -443,7 +443,7 @@ func (udc *UserDevicesController) OpenFrunk(c *fiber.Ctx) error {
 func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 	const minimumAutoPiRelease = "v1.22.8" // correct semver has leading v
 
-	unitID := c.Locals("serial").(string)
+	serial := c.Locals("serial").(string)
 
 	var claim, pair, unpair *AutoPiTransactionStatus
 
@@ -451,7 +451,7 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 	var ethereumAddress, ownerAddress, beneficiaryAddress *common.Address
 
 	dbUnit, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.Serial.EQ(unitID),
+		models.AftermarketDeviceWhere.Serial.EQ(serial),
 		qm.Load(models.AftermarketDeviceRels.ClaimMetaTransactionRequest),
 		qm.Load(models.AftermarketDeviceRels.PairRequest),
 		qm.Load(models.AftermarketDeviceRels.UnpairRequest),
@@ -522,7 +522,23 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 	}
 
 	// This is hitting AutoPi.
-	unit, err := udc.autoPiSvc.GetDeviceByUnitID(unitID)
+	unit, err := udc.autoPiSvc.GetDeviceByUnitID(serial)
+	if errors.Is(err, services.ErrNotFound) {
+		// Might be a Macaron
+		adi := AutoPiDeviceInfo{
+			IsUpdated:          true,
+			UnitID:             serial,
+			ShouldUpdate:       false,
+			TokenID:            tokenID,
+			EthereumAddress:    ethereumAddress,
+			OwnerAddress:       ownerAddress,
+			BeneficiaryAddress: beneficiaryAddress,
+			Claim:              claim,
+			Pair:               pair,
+			Unpair:             unpair,
+		}
+		return c.JSON(adi)
+	}
 	if err != nil {
 		if errors.Is(err, services.ErrNotFound) {
 			return fiber.NewError(fiber.StatusNotFound, "AutoPi has no record of this unit.")
