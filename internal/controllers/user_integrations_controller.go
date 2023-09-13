@@ -537,9 +537,7 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 		}
 	}
 
-	// This is hitting AutoPi.
-	unit, err := udc.autoPiSvc.GetDeviceByUnitID(serial)
-	if errors.Is(err, services.ErrNotFound) {
+	if mfr != nil && mfr.Name != constants.AutoPiVendor {
 		// Might be a Macaron
 		adi := AutoPiDeviceInfo{
 			IsUpdated:          true,
@@ -554,9 +552,16 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 			Unpair:             unpair,
 			Manufacturer:       mfr,
 		}
+
 		return c.JSON(adi)
 	}
+
+	// This is hitting AutoPi.
+	unit, err := udc.autoPiSvc.GetDeviceByUnitID(serial)
 	if err != nil {
+		if errors.Is(err, services.ErrNotFound) {
+			return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("Serial %s unknown to AutoPi.", serial))
+		}
 		return err
 	}
 
