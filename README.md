@@ -1,4 +1,6 @@
 # devices-api
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FDIMO-Network%2Fdevices-api.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FDIMO-Network%2Fdevices-api?ref=badge_shield)
+
 
 API & worker for managing devices on the DIMO platform.
 
@@ -220,3 +222,6 @@ protoc --go_out=. --go_opt=paths=source_relative \
     --go-grpc_out=. --go-grpc_opt=paths=source_relative \
     pkg/grpc/*.proto
 ```
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FDIMO-Network%2Fdevices-api.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FDIMO-Network%2Fdevices-api?ref=badge_large)
