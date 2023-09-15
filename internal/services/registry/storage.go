@@ -73,7 +73,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	}
 
 	vehicleMintedEvent := p.ABI.Events["VehicleNodeMinted"]
-	devicePairedEvent := p.ABI.Events["AftermarketDevicePaired"]
 	syntheticDeviceMintedEvent := p.ABI.Events["SyntheticDeviceNodeMinted"]
 	sdBurnEvent := p.ABI.Events["SyntheticDeviceNodeBurned"]
 
