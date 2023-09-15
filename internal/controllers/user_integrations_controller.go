@@ -794,6 +794,8 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
 	}
 
+	logger.Info().Interface("request", pairReq).Msg("Pairing request body.")
+
 	vnft, ad, err := udc.checkPairable(c.Context(), userDeviceID, pairReq.ExternalID)
 	if err != nil {
 		return err
