@@ -756,7 +756,6 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 	aftermarketDevice, err := models.AftermarketDevices(
 		models.AftermarketDeviceWhere.Serial.EQ(serial),
 		qm.Load(models.AftermarketDeviceRels.PairRequest),
-		qm.Load(models.AftermarketDeviceRels.UnpairRequest),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -863,7 +862,6 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 	aftermarketDevice, err := models.AftermarketDevices(
 		models.AftermarketDeviceWhere.Serial.EQ(serial),
 		qm.Load(models.AftermarketDeviceRels.PairRequest),
-		qm.Load(models.AftermarketDeviceRels.UnpairRequest),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -944,7 +942,7 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 	}
 
 	if common.BytesToAddress(aftermarketDevice.OwnerAddress.Bytes) != common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes) {
-		// It must not be prod, and we must be trying to do a host pair.
+		// We must be trying to do a host pair.
 		aftermarketDeviceSig := pairReq.AftermarketDeviceSignature
 		if len(aftermarketDeviceSig) != 65 {
 			// Not great English.
