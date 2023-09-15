@@ -736,9 +736,6 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 	// This is only a query parameter because we want to maintain the path shape for POST.
 	// We also had a legacy mode for web2-paired devices. This was never used in production.
 	externalID := c.Query("external_id")
-	if externalID == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "Query parameter external_id (serial) required.")
-	}
 
 	vnft, ad, err := udc.checkPairable(c.Context(), userDeviceID, externalID)
 	if err != nil {
