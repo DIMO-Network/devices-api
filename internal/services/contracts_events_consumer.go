@@ -425,10 +425,6 @@ func (c *ContractsEventsConsumer) aftermarketDeviceClaimed(e *ContractEventData)
 }
 
 func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) error {
-	if c.settings.IsProduction() {
-		return nil
-	}
-
 	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
 		return fmt.Errorf("aftermarket claim from unexpected source %d/%s", e.ChainID, e.Contract)
 	}
@@ -441,28 +437,36 @@ func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) 
 	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Int64("aftermarketDeviceNode", args.AftermarketDeviceNode.Int64()).Msg("Pairing aftermarket device and vehicle.")
 
 	am, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.AftermarketDeviceNode, 0))),
+		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(bigToDecimal(args.AftermarketDeviceNode))),
 	).One(context.TODO(), c.db.DBS().Reader)
 	if err != nil {
 		return err
 	}
 
+	if am.DeviceManufacturerTokenID.IsZero() {
+		return fmt.Errorf("aftermarket device %d has no associated manufacturer", args.AftermarketDeviceNode)
+	}
+
 	dm, err := c.ddSvc.GetMakeByTokenID(context.TODO(), am.DeviceManufacturerTokenID.Int(nil))
+	if err != nil {
+		return fmt.Errorf("error retrieving manufacturer %d: %w", am.DeviceManufacturerTokenID, err)
+	}
+
+	am.VehicleTokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.VehicleNode, 0))
+	_, err = am.Update(context.TODO(), c.db.DBS().Writer, boil.Whitelist(models.AftermarketDeviceColumns.VehicleTokenID))
 	if err != nil {
 		return err
 	}
 
-	if dm.Name != "Hashdog" {
-		return nil
+	switch dm.Name {
+	case constants.AutoPiVendor:
+		err = c.apInt.Pair(context.TODO(), args.AftermarketDeviceNode, args.VehicleNode)
+	case "Hashdog":
+		err = c.mcInt.Pair(context.TODO(), args.AftermarketDeviceNode, args.VehicleNode)
 	}
 
-	am.VehicleTokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.VehicleNode, 0))
+	return err
 
-	if _, err := am.Update(context.TODO(), c.db.DBS().Writer, boil.Whitelist(models.AftermarketDeviceColumns.VehicleTokenID)); err != nil {
-		return err
-	}
-
-	return c.mcInt.Pair(context.TODO(), args.AftermarketDeviceNode, args.VehicleNode)
 }
 
 // aftermarketDeviceAttributeSet handles the event of the same name from the registry contract.

@@ -196,23 +196,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	case mtr.R.ClaimMetaTransactionRequestAftermarketDevice != nil:
 		// Handled in the contract event consumer.
 	case mtr.R.PairRequestAftermarketDevice != nil:
-		for _, l1 := range data.Transaction.Logs {
-			if l1.Topics[0] == devicePairedEvent.ID {
-				out := new(contracts.RegistryAftermarketDevicePaired)
-				err := p.parseLog(out, devicePairedEvent, l1)
-				if err != nil {
-					return err
-				}
-
-				mtr.R.PairRequestAftermarketDevice.VehicleTokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.VehicleNode, 0))
-				_, err = mtr.R.PairRequestAftermarketDevice.Update(ctx, p.DB().Writer, boil.Infer())
-				if err != nil {
-					return err
-				}
-
-				return p.ap.Pair(ctx, out.AftermarketDeviceNode, out.VehicleNode)
-			}
-		}
+		// Handled in the contract event consumer.
 	case mtr.R.UnpairRequestAftermarketDevice != nil:
 		// Handled in the contract event consumer.
 	case mtr.R.MintRequestSyntheticDevice != nil:
