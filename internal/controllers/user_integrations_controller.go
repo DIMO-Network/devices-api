@@ -24,7 +24,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
@@ -729,93 +728,22 @@ func (udc *UserDevicesController) GetAutoPiClaimMessage(c *fiber.Ctx) error {
 // @Router /user/devices/:userDeviceID/aftermarket/commands/pair [get]
 func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
-
 	userDeviceID := c.Params("userDeviceID")
-
 	logger := helpers.GetLogger(c, udc.log)
 
-	logger.Info().Msg("Got AutoPi pair request.")
+	logger.Info().Msg("Got aftermarket device pair payload request.")
 
-	autoPiInt, err := udc.DeviceDefIntSvc.GetAutoPiIntegration(c.Context())
+	// This is only a query parameter because we want to maintain the path shape for POST.
+	// We also had a legacy mode for web2-paired devices. This was never used in production.
+	externalID := c.Query("external_id")
+
+	vnft, ad, err := udc.checkPairable(c.Context(), userDeviceID, externalID)
 	if err != nil {
-		logger.Err(err).Msg("Failed to retrieve AutoPi integration.")
-		return helpers.GrpcErrorToFiber(err, "failed to retrieve AutoPi integration.")
+		return err
 	}
 
-	ud, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(models.UserDeviceRels.VehicleNFT),
-	).One(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "No device with that id found.")
-		}
-		logger.Err(err).Msg("Database failure searching for device.")
-		return opaqueInternalError
-	}
-
-	var aftermarketDevice *models.AftermarketDevice
-
-	if extID := c.Query("external_id"); extID != "" {
-		unitID, err := uuid.Parse(extID)
-		if err != nil {
-			return err
-		}
-
-		aftermarketDevice, err = models.AftermarketDevices(
-			models.AftermarketDeviceWhere.Serial.EQ(unitID.String()),
-			qm.Load(models.AftermarketDeviceRels.PairRequest),
-			qm.Load(models.AftermarketDeviceRels.UnpairRequest),
-		).One(c.Context(), udc.DBS().Reader)
-		if err != nil {
-			return err
-		}
-	}
-
-	udai, err := ud.UserDeviceAPIIntegrations(
-		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(autoPiInt.Id),
-		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.SerialAftermarketDevice, models.AftermarketDeviceRels.PairRequest)),
-		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.SerialAftermarketDevice, models.AftermarketDeviceRels.UnpairRequest)),
-	).One(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			logger.Err(err).Msg("Database failure searching for device's AutoPi integration.")
-			return opaqueInternalError
-		}
-	} else {
-		if !udai.Serial.Valid {
-			return opaqueInternalError
-		}
-
-		// Conflict with web2 pairing?
-		if aftermarketDevice != nil && (!udai.Serial.Valid || udai.Serial.String != aftermarketDevice.Serial) {
-			return fiber.NewError(fiber.StatusConflict, "Vehicle already paired with another AutoPi.")
-		}
-
-		aftermarketDevice = udai.R.SerialAftermarketDevice
-	}
-
-	if aftermarketDevice.R.PairRequest != nil && aftermarketDevice.R.PairRequest.Status != "Failed" {
-		if aftermarketDevice.R.PairRequest.Status == models.MetaTransactionRequestStatusConfirmed {
-			return fiber.NewError(fiber.StatusConflict, "AutoPi already paired.")
-		}
-		return fiber.NewError(fiber.StatusConflict, "AutoPi pairing in process.")
-	}
-
-	if aftermarketDevice.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusConflict, "AutoPi not yet minted.")
-	}
-
-	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusConflict, "Vehicle not yet minted.")
-	}
-
-	if !aftermarketDevice.OwnerAddress.Valid {
-		return fiber.NewError(fiber.StatusConflict, "Device not yet claimed.")
-	}
-
-	apToken := aftermarketDevice.TokenID.Int(nil)
-	vehicleToken := ud.R.VehicleNFT.TokenID.Int(nil)
+	vehicleToken := vnft.TokenID.Int(nil)
+	apToken := ad.TokenID.Int(nil)
 
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
@@ -825,12 +753,6 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 
 	if user.EthereumAddress == nil {
 		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
-	}
-
-	if udc.Settings.IsProduction() {
-		if common.HexToAddress(*user.EthereumAddress) != common.BytesToAddress(aftermarketDevice.OwnerAddress.Bytes) {
-			return fiber.NewError(fiber.StatusConflict, "AutoPi claimed by another user.")
-		}
 	}
 
 	client := registry.Client{
@@ -849,9 +771,7 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 		VehicleNode:           vehicleToken,
 	}
 
-	var out *signer.TypedData = client.GetPayload(pads)
-
-	return c.JSON(out)
+	return c.JSON(client.GetPayload(pads))
 }
 
 // PostPairAutoPi godoc
@@ -863,98 +783,20 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 // @Router /user/devices/:userDeviceID/aftermarket/commands/pair [post]
 func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
-
 	userDeviceID := c.Params("userDeviceID")
-
 	logger := helpers.GetLogger(c, udc.log)
-	logger.Info().Msg("Got AutoPi pair request.")
 
-	autoPiInt, err := udc.DeviceDefIntSvc.GetAutoPiIntegration(c.Context())
-	if err != nil {
-		logger.Err(err).Msg("Failed to retrieve AutoPi integration.")
-		return helpers.GrpcErrorToFiber(err, "failed to retrieve AutoPi integration.")
-	}
-
-	ud, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(models.UserDeviceRels.VehicleNFT),
-	).One(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "No device with that id found.")
-		}
-		logger.Err(err).Msg("Database failure searching for device.")
-		return opaqueInternalError
-	}
+	logger.Info().Msg("Got aftermarket device pair submission request.")
 
 	var pairReq AutoPiPairRequest
-	err = c.BodyParser(&pairReq)
+	err := c.BodyParser(&pairReq)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
 	}
 
-	var autoPiUnit *models.AftermarketDevice
-
-	if extIDStr := pairReq.ExternalID; extIDStr != "" {
-		unitID, err := uuid.Parse(extIDStr)
-		if err != nil {
-			return err
-		}
-
-		autoPiUnit, err = models.AftermarketDevices(
-			models.AftermarketDeviceWhere.Serial.EQ(unitID.String()),
-			qm.Load(models.AftermarketDeviceRels.PairRequest),
-			qm.Load(models.AftermarketDeviceRels.UnpairRequest),
-			qm.Load(models.AftermarketDeviceRels.SerialUserDeviceAPIIntegrations),
-		).One(c.Context(), udc.DBS().Reader)
-		if err != nil {
-			return err
-		}
-
-		for _, udai := range autoPiUnit.R.SerialUserDeviceAPIIntegrations {
-			if udai.UserDeviceID != userDeviceID {
-				logger.Error().Str("existingUserDeviceId", udai.UserDeviceID).Msg("AutoPi already web2-paired with another vehicle.")
-				return fiber.NewError(fiber.StatusConflict, "AutoPi connected to another vehicle.")
-			}
-		}
-	}
-
-	udai, err := ud.UserDeviceAPIIntegrations(
-		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(autoPiInt.Id),
-		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.SerialAftermarketDevice, models.AftermarketDeviceRels.PairRequest)),
-		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.SerialAftermarketDevice, models.AftermarketDeviceRels.UnpairRequest)),
-	).One(c.Context(), udc.DBS().Reader)
+	vnft, ad, err := udc.checkPairable(c.Context(), userDeviceID, pairReq.ExternalID)
 	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			logger.Err(err).Msg("Database failure searching for device's AutoPi integration.")
-			return opaqueInternalError
-		}
-	} else {
-		// Conflict with web2 pairing?
-		if autoPiUnit != nil && (!udai.Serial.Valid || udai.Serial.String != autoPiUnit.Serial) {
-			return fiber.NewError(fiber.StatusConflict, "Vehicle already paired with another AutoPi.")
-		}
-
-		if !udai.Serial.Valid {
-			return opaqueInternalError
-		}
-
-		autoPiUnit = udai.R.SerialAftermarketDevice
-	}
-
-	if autoPiUnit.R.PairRequest != nil && autoPiUnit.R.PairRequest.Status != "Failed" {
-		if autoPiUnit.R.PairRequest.Status == models.MetaTransactionRequestStatusConfirmed {
-			return fiber.NewError(fiber.StatusConflict, "AutoPi already paired.")
-		}
-		return fiber.NewError(fiber.StatusConflict, "AutoPi pairing in process.")
-	}
-
-	if autoPiUnit.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusConflict, "AutoPi not yet minted.")
-	}
-
-	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusConflict, "Vehicle not yet minted.")
+		return err
 	}
 
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
@@ -969,16 +811,8 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 
 	userAddr := common.HexToAddress(*user.EthereumAddress)
 
-	if common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes) != userAddr {
-		return fiber.NewError(fiber.StatusForbidden, "Your wallet does not own the NFT for this vehicle.")
-	}
-
-	if !autoPiUnit.OwnerAddress.Valid {
-		return fiber.NewError(fiber.StatusConflict, "Device not yet claimed.")
-	}
-
-	apToken := autoPiUnit.TokenID.Int(nil)
-	vehicleToken := ud.R.VehicleNFT.TokenID.Int(nil)
+	apToken := ad.TokenID.Int(nil)
+	vehicleToken := vnft.TokenID.Int(nil)
 
 	client := registry.Client{
 		Producer:     udc.producer,
@@ -1004,26 +838,26 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 	vehicleOwnerSig := pairReq.Signature
 
 	if len(vehicleOwnerSig) != 65 {
-		return fiber.NewError(fiber.StatusBadRequest, "Signature was not 65 bytes long.")
+		return fiber.NewError(fiber.StatusBadRequest, "User signature was not 65 bytes long.")
 	}
 
 	if recAddr, err := helpers.Ecrecover(hash, vehicleOwnerSig); err != nil {
 		return err
 	} else if recAddr != userAddr {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature.")
+		return fiber.NewError(fiber.StatusBadRequest, "Incorrect user signature.")
 	}
 
-	if common.BytesToAddress(autoPiUnit.OwnerAddress.Bytes) != common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes) {
-		// It must not be prod, and we must be trying to do a host pair.
+	if common.BytesToAddress(ad.OwnerAddress.Bytes) != common.BytesToAddress(vnft.OwnerAddress.Bytes) {
+		// We must be trying to do a host pair.
 		aftermarketDeviceSig := pairReq.AftermarketDeviceSignature
 		if len(aftermarketDeviceSig) != 65 {
 			// Not great English.
-			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Device signature required but only %d bytes long.", len(aftermarketDeviceSig)))
+			return fiber.NewError(fiber.StatusBadRequest, "Aftermarket device signature was not 65 bytes long.")
 		}
 
 		if recAddr, err := helpers.Ecrecover(hash, aftermarketDeviceSig); err != nil {
 			return err
-		} else if recAddr != common.BytesToAddress(autoPiUnit.EthereumAddress) {
+		} else if recAddr != common.BytesToAddress(ad.EthereumAddress) {
 			return fiber.NewError(fiber.StatusBadRequest, "Incorrect aftermarket device signature.")
 		}
 
@@ -1038,9 +872,9 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 			return err
 		}
 
-		autoPiUnit.UnpairRequestID = null.String{}
-		autoPiUnit.PairRequestID = null.StringFrom(requestID)
-		_, err = autoPiUnit.Update(c.Context(), udc.DBS().Writer, boil.Infer())
+		ad.UnpairRequestID = null.String{}
+		ad.PairRequestID = null.StringFrom(requestID)
+		_, err = ad.Update(c.Context(), udc.DBS().Writer, boil.Infer())
 		if err != nil {
 			return err
 		}
@@ -1064,9 +898,9 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 		return err
 	}
 
-	autoPiUnit.UnpairRequestID = null.String{}
-	autoPiUnit.PairRequestID = null.StringFrom(requestID)
-	_, err = autoPiUnit.Update(c.Context(), udc.DBS().Writer, boil.Infer())
+	ad.UnpairRequestID = null.String{}
+	ad.PairRequestID = null.StringFrom(requestID)
+	_, err = ad.Update(c.Context(), udc.DBS().Writer, boil.Infer())
 	if err != nil {
 		return err
 	}
@@ -1077,6 +911,67 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 	}
 
 	return nil
+}
+
+func (udc *UserDevicesController) checkPairable(ctx context.Context, userDeviceID, serial string) (*models.VehicleNFT, *models.AftermarketDevice, error) {
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAftermarketDevice)),
+	).One(ctx, udc.DBS().Reader)
+	if err != nil {
+		// Access middleware will catch "not found".
+		return nil, nil, err
+	}
+
+	vnft := ud.R.VehicleNFT
+
+	// Vehicle must be minted.
+	if vnft == nil || vnft.TokenID.IsZero() {
+		return nil, nil, fiber.NewError(fiber.StatusConflict, "Vehicle not yet minted.")
+	}
+
+	if serial == "" {
+		return nil, nil, fiber.NewError(fiber.StatusBadRequest, "Serial required.")
+	}
+
+	serial = strings.TrimSpace(strings.ToLower(serial))
+
+	ad, err := models.AftermarketDevices(
+		models.AftermarketDeviceWhere.Serial.EQ(serial),
+		qm.Load(models.AftermarketDeviceRels.PairRequest),
+	).One(ctx, udc.DBS().Reader)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil, fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("No aftermarket device with serial %q known.", serial))
+		}
+		return nil, nil, err
+	}
+
+	if ad.TokenID.IsZero() {
+		// This should never happen.
+		return nil, nil, fiber.NewError(fiber.StatusConflict, "Aftermarket device not yet minted.", serial)
+	}
+
+	if !ad.OwnerAddress.Valid {
+		return nil, nil, fiber.NewError(fiber.StatusConflict, "Aftermarket device not yet claimed.")
+	}
+
+	// TODO(elffjs): It's difficult to tell if the vehicle is in the process of being paired.
+	if vad := ud.R.VehicleNFT.R.VehicleTokenAftermarketDevice; vad != nil {
+		if vad.TokenID.Cmp(vad.TokenID.Big) == 0 {
+			return nil, nil, fiber.NewError(fiber.StatusConflict, "Specified vehicle and aftermarket device are already paired.")
+		}
+		return nil, nil, fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle already paired with aftermarket device %s.", vad.TokenID))
+	}
+
+	if ad.R.PairRequest != nil {
+		if ad.R.PairRequest.Status == models.MetaTransactionRequestStatusConfirmed {
+			return nil, nil, fiber.NewError(fiber.StatusConflict, "Aftermarket device already paired.")
+		}
+		return nil, nil, fiber.NewError(fiber.StatusConflict, "Aftermarket device already in the pairing process.")
+	}
+
+	return vnft, ad, nil
 }
 
 // CloudRepairAutoPi godoc
