@@ -214,9 +214,10 @@ func (s *StorageTestSuite) TestMintVehicle() {
 				{
 					Topics: []common.Hash{
 						// keccack256("VehicleNodeMinted(uint256,address)")
-						common.HexToHash("0x09ec7fe5281be92443463e1061ce315afc1142b6c31c98a90b711012a54cc32f"),
+						common.HexToHash("0xd471ae8ab3c01edc986909c344bb50f982b21772fcac173103ef8b9924375ec6"),
 					},
 					Data: common.FromHex(
+						"000000000000000000000000000000000000000000000000000000000000386b" +
 						"000000000000000000000000000000000000000000000000000000000000386b" +
 							"0000000000000000000000007e74d0f663d58d12817b8bef762bcde3af1f63d6",
 					),
