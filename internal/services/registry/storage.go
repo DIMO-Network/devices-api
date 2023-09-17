@@ -2,7 +2,6 @@ package registry
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/DIMO-Network/shared"
