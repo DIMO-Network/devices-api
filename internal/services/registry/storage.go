@@ -28,13 +28,12 @@ type StatusProcessor interface {
 }
 
 type proc struct {
-	ABI           *abi.ABI
-	DeprecatedABI *abi.ABI
-	DB            func() *db.ReaderWriter
-	Logger        *zerolog.Logger
-	ap            *autopi.Integration
-	settings      *config.Settings
-	Eventer       services.EventService
+	ABI      *abi.ABI
+	DB       func() *db.ReaderWriter
+	Logger   *zerolog.Logger
+	ap       *autopi.Integration
+	settings *config.Settings
+	Eventer  services.EventService
 }
 
 func (p *proc) Handle(ctx context.Context, data *ceData) error {
@@ -76,8 +75,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	syntheticDeviceMintedEvent := p.ABI.Events["SyntheticDeviceNodeMinted"]
 	sdBurnEvent := p.ABI.Events["SyntheticDeviceNodeBurned"]
 
-	depVehicleMintedEvent := p.DeprecatedABI.Events["VehicleNodeMinted"]
-
 	switch {
 	case mtr.R.MintRequestVehicleNFT != nil:
 		for _, l1 := range data.Transaction.Logs {
@@ -99,57 +96,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 				if ud := vnft.R.UserDevice; ud != nil {
 					p.Eventer.Emit(&shared.CloudEvent[any]{ //nolint
-						Type:    "com.dimo.zone.device.mint",
-						Subject: ud.ID,
-						Source:  "devices-api",
-						Data: services.UserDeviceMintEvent{
-							Timestamp: time.Now(),
-							UserID:    ud.UserID,
-							Device: services.UserDeviceEventDevice{
-								ID: ud.ID,
-							},
-							NFT: services.UserDeviceEventNFT{
-								TokenID: out.TokenId,
-								Owner:   out.Owner,
-								TxHash:  common.HexToHash(data.Transaction.Hash),
-							},
-						},
-					})
-				}
-
-				logger.Info().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msg("Vehicle minted.")
-			} else if l1.Topics[0] == depVehicleMintedEvent.ID {
-				// TODO(elffjs): Remove this branch after Polygon upgrade.
-				// We won't fill in the manufacturer id, but it should be okay.
-				out := new(contracts.RegistryVehicleNodeMinted)
-				if len(l1.Data) > 0 {
-					if err := p.DeprecatedABI.UnpackIntoInterface(out, depVehicleMintedEvent.Name, l1.Data); err != nil {
-						return err
-					}
-				}
-
-				var indexed abi.Arguments
-				for _, arg := range depVehicleMintedEvent.Inputs {
-					if arg.Indexed {
-						indexed = append(indexed, arg)
-					}
-				}
-
-				if err := abi.ParseTopics(out, indexed, l1.Topics[1:]); err != nil {
-					return err
-				}
-
-				vnft := mtr.R.MintRequestVehicleNFT
-
-				vnft.TokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.TokenId, 0))
-				vnft.OwnerAddress = null.BytesFrom(out.Owner.Bytes())
-				_, err = vnft.Update(ctx, p.DB().Writer, boil.Whitelist(models.VehicleNFTColumns.TokenID, models.VehicleNFTColumns.OwnerAddress))
-				if err != nil {
-					return err
-				}
-
-				if ud := vnft.R.UserDevice; ud != nil {
-					p.Eventer.Emit(&shared.CloudEvent[any]{ // nolint
 						Type:    "com.dimo.zone.device.mint",
 						Subject: ud.ID,
 						Source:  "devices-api",
@@ -265,42 +211,12 @@ func NewProcessor(
 		return nil, err
 	}
 
-	const deprectedABI = `
-[
-	{
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "tokenId",
-                "type": "uint256"
-            },
-            {
-                "indexed": false,
-                "internalType": "address",
-                "name": "owner",
-                "type": "address"
-            }
-        ],
-        "name": "VehicleNodeMinted",
-        "type": "event"
-    }
-]`
-
-	var depABI abi.ABI
-
-	if err := json.Unmarshal([]byte(deprectedABI), &depABI); err != nil {
-		return nil, err
-	}
-
 	return &proc{
-		ABI:           regABI,
-		DeprecatedABI: &depABI,
-		DB:            db,
-		Logger:        logger,
-		ap:            ap,
-		settings:      settings,
-		Eventer:       eventer,
+		ABI:      regABI,
+		DB:       db,
+		Logger:   logger,
+		ap:       ap,
+		settings: settings,
+		Eventer:  eventer,
 	}, nil
 }
