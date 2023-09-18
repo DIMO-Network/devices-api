@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
 	"math/big"
 
 	"strings"
@@ -124,13 +123,18 @@ func (s *userDeviceRPCServer) GetUserDeviceByVIN(ctx context.Context, req *pb.Ge
 }
 
 func (s *userDeviceRPCServer) GetUserDeviceByEthAddr(ctx context.Context, req *pb.GetUserDeviceByEthAddrRequest) (*pb.UserDevice, error) {
-	aftermarketDevice, err := models.FindAftermarketDevice(ctx, s.dbs().Reader, req.EthAddr)
+
+	aftermarketDevice, err := models.AftermarketDevices(
+		models.AftermarketDeviceWhere.EthereumAddress.EQ(req.EthAddr),
+		qm.Load(models.AftermarketDeviceRels.VehicleToken),
+	).One(ctx, s.dbs().Reader)
+
 	if err != nil {
-		log.Printf("Error finding AftermarketDevice: %v", err)
-		return nil, err
-	}
-	if aftermarketDevice == nil {
-		return nil, status.Error(codes.NotFound, "No AftermarketDevice found for the given Ethereum address")
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, status.Error(codes.NotFound, "No AftermarketDevice found for the given Ethereum address")
+		}
+		s.logger.Err(err).Msg("Error finding AftermarketDevice")
+		return nil, status.Error(codes.Internal, "Failed to fetch AftermarketDevice.")
 	}
 
 	if aftermarketDevice.R == nil || aftermarketDevice.R.VehicleToken == nil {
@@ -156,6 +160,7 @@ func (s *userDeviceRPCServer) GetUserDeviceByEthAddr(ctx context.Context, req *p
 			),
 		),
 	).One(ctx, s.dbs().Reader)
+
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, status.Error(codes.NotFound, "No device with that ID found.")
