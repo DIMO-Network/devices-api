@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log"
 	"math/big"
 
 	"strings"
@@ -116,6 +117,50 @@ func (s *userDeviceRPCServer) GetUserDeviceByVIN(ctx context.Context, req *pb.Ge
 			return nil, status.Error(codes.NotFound, "No device with that VIN found.")
 		}
 		s.logger.Err(err).Str("userDeviceVIN", req.Vin).Msg("Database failure retrieving device by VIN.")
+		return nil, status.Error(codes.Internal, "Internal error.")
+	}
+
+	return s.deviceModelToAPI(dbDevice), nil
+}
+
+func (s *userDeviceRPCServer) GetUserDeviceByEthAddr(ctx context.Context, req *pb.GetUserDeviceByEthAddrRequest) (*pb.UserDevice, error) {
+	aftermarketDevice, err := models.FindAftermarketDevice(ctx, s.dbs().Reader, req.EthAddr)
+	if err != nil {
+		log.Printf("Error finding AftermarketDevice: %v", err)
+		return nil, err
+	}
+	if aftermarketDevice == nil {
+		return nil, status.Error(codes.NotFound, "No AftermarketDevice found for the given Ethereum address")
+	}
+
+	if aftermarketDevice.R == nil || aftermarketDevice.R.VehicleToken == nil {
+		return nil, status.Error(codes.NotFound, "No VehicleToken associated with the AftermarketDevice")
+	}
+
+	userDeviceID := aftermarketDevice.R.VehicleToken.UserDeviceID
+	if !userDeviceID.Valid {
+		return nil, status.Error(codes.NotFound, "No UserDeviceID found in VehicleNFT")
+	}
+
+	dbDevice, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID.String),
+		qm.Load(
+			qm.Rels(models.UserDeviceRels.VehicleNFT,
+				models.VehicleNFTRels.VehicleTokenAftermarketDevice),
+		),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
+		qm.Load(
+			qm.Rels(
+				models.UserDeviceRels.VehicleNFT,
+				models.VehicleNFTRels.Claim,
+			),
+		),
+	).One(ctx, s.dbs().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, status.Error(codes.NotFound, "No device with that ID found.")
+		}
+		s.logger.Err(err).Str("userDeviceId", userDeviceID.String).Msg("Database failure retrieving device.")
 		return nil, status.Error(codes.Internal, "Internal error.")
 	}
 

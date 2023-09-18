@@ -14,6 +14,7 @@ service UserDeviceService {
   rpc GetUserDeviceByTokenId(GetUserDeviceByTokenIdRequest)
       returns (UserDevice);
   rpc GetUserDeviceByVIN(GetUserDeviceByVINRequest) returns (UserDevice);
+  rpc GetUserDeviceByEthAddr(GetUserDeviceByEthAddrRequest) returns (UserDevice);
   rpc ListUserDevicesForUser(ListUserDevicesForUserRequest)
       returns (ListUserDevicesForUserResponse);
   rpc ApplyHardwareTemplate(ApplyHardwareTemplateRequest)
@@ -38,6 +39,8 @@ message GetUserDeviceByAutoPIUnitIdRequest { string id = 1; }
 message GetUserDeviceRequest { string id = 1; }
 
 message GetUserDeviceByVINRequest { string vin = 1; }
+
+message GetUserDeviceByEthAddrRequest { bytes eth_addr = 1; }
 
 message GetUserDeviceByTokenIdRequest { int64 token_id = 1; }
 

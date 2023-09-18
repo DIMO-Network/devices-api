@@ -23,6 +23,7 @@ const (
 	UserDeviceService_GetUserDevice_FullMethodName                 = "/devices.UserDeviceService/GetUserDevice"
 	UserDeviceService_GetUserDeviceByTokenId_FullMethodName        = "/devices.UserDeviceService/GetUserDeviceByTokenId"
 	UserDeviceService_GetUserDeviceByVIN_FullMethodName            = "/devices.UserDeviceService/GetUserDeviceByVIN"
+	UserDeviceService_GetUserDeviceByEthAddr_FullMethodName        = "/devices.UserDeviceService/GetUserDeviceByEthAddr"
 	UserDeviceService_ListUserDevicesForUser_FullMethodName        = "/devices.UserDeviceService/ListUserDevicesForUser"
 	UserDeviceService_ApplyHardwareTemplate_FullMethodName         = "/devices.UserDeviceService/ApplyHardwareTemplate"
 	UserDeviceService_GetAllUserDeviceValuation_FullMethodName     = "/devices.UserDeviceService/GetAllUserDeviceValuation"
@@ -43,6 +44,7 @@ type UserDeviceServiceClient interface {
 	GetUserDevice(ctx context.Context, in *GetUserDeviceRequest, opts ...grpc.CallOption) (*UserDevice, error)
 	GetUserDeviceByTokenId(ctx context.Context, in *GetUserDeviceByTokenIdRequest, opts ...grpc.CallOption) (*UserDevice, error)
 	GetUserDeviceByVIN(ctx context.Context, in *GetUserDeviceByVINRequest, opts ...grpc.CallOption) (*UserDevice, error)
+	GetUserDeviceByEthAddr(ctx context.Context, in *GetUserDeviceByEthAddrRequest, opts ...grpc.CallOption) (*UserDevice, error)
 	ListUserDevicesForUser(ctx context.Context, in *ListUserDevicesForUserRequest, opts ...grpc.CallOption) (*ListUserDevicesForUserResponse, error)
 	ApplyHardwareTemplate(ctx context.Context, in *ApplyHardwareTemplateRequest, opts ...grpc.CallOption) (*ApplyHardwareTemplateResponse, error)
 	GetAllUserDeviceValuation(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ValuationResponse, error)
@@ -86,6 +88,15 @@ func (c *userDeviceServiceClient) GetUserDeviceByTokenId(ctx context.Context, in
 func (c *userDeviceServiceClient) GetUserDeviceByVIN(ctx context.Context, in *GetUserDeviceByVINRequest, opts ...grpc.CallOption) (*UserDevice, error) {
 	out := new(UserDevice)
 	err := c.cc.Invoke(ctx, UserDeviceService_GetUserDeviceByVIN_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userDeviceServiceClient) GetUserDeviceByEthAddr(ctx context.Context, in *GetUserDeviceByEthAddrRequest, opts ...grpc.CallOption) (*UserDevice, error) {
+	out := new(UserDevice)
+	err := c.cc.Invoke(ctx, UserDeviceService_GetUserDeviceByEthAddr_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -221,6 +232,7 @@ type UserDeviceServiceServer interface {
 	GetUserDevice(context.Context, *GetUserDeviceRequest) (*UserDevice, error)
 	GetUserDeviceByTokenId(context.Context, *GetUserDeviceByTokenIdRequest) (*UserDevice, error)
 	GetUserDeviceByVIN(context.Context, *GetUserDeviceByVINRequest) (*UserDevice, error)
+	GetUserDeviceByEthAddr(context.Context, *GetUserDeviceByEthAddrRequest) (*UserDevice, error)
 	ListUserDevicesForUser(context.Context, *ListUserDevicesForUserRequest) (*ListUserDevicesForUserResponse, error)
 	ApplyHardwareTemplate(context.Context, *ApplyHardwareTemplateRequest) (*ApplyHardwareTemplateResponse, error)
 	GetAllUserDeviceValuation(context.Context, *emptypb.Empty) (*ValuationResponse, error)
@@ -248,6 +260,9 @@ func (UnimplementedUserDeviceServiceServer) GetUserDeviceByTokenId(context.Conte
 }
 func (UnimplementedUserDeviceServiceServer) GetUserDeviceByVIN(context.Context, *GetUserDeviceByVINRequest) (*UserDevice, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUserDeviceByVIN not implemented")
+}
+func (UnimplementedUserDeviceServiceServer) GetUserDeviceByEthAddr(context.Context, *GetUserDeviceByEthAddrRequest) (*UserDevice, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUserDeviceByEthAddr not implemented")
 }
 func (UnimplementedUserDeviceServiceServer) ListUserDevicesForUser(context.Context, *ListUserDevicesForUserRequest) (*ListUserDevicesForUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListUserDevicesForUser not implemented")
@@ -345,6 +360,24 @@ func _UserDeviceService_GetUserDeviceByVIN_Handler(srv interface{}, ctx context.
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserDeviceServiceServer).GetUserDeviceByVIN(ctx, req.(*GetUserDeviceByVINRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserDeviceService_GetUserDeviceByEthAddr_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserDeviceByEthAddrRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserDeviceServiceServer).GetUserDeviceByEthAddr(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserDeviceService_GetUserDeviceByEthAddr_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserDeviceServiceServer).GetUserDeviceByEthAddr(ctx, req.(*GetUserDeviceByEthAddrRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -568,6 +601,10 @@ var UserDeviceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUserDeviceByVIN",
 			Handler:    _UserDeviceService_GetUserDeviceByVIN_Handler,
+		},
+		{
+			MethodName: "GetUserDeviceByEthAddr",
+			Handler:    _UserDeviceService_GetUserDeviceByEthAddr_Handler,
 		},
 		{
 			MethodName: "ListUserDevicesForUser",
