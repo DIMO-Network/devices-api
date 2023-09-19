@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
+	"strings"
 
 	"github.com/DIMO-Network/devices-api/internal/constants"
 
@@ -13,7 +15,6 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/rs/zerolog"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
@@ -27,11 +28,12 @@ type populateUSAPowertrainCmd struct {
 	useNHTSA bool
 }
 
-func (*populateUSAPowertrainCmd) Name() string     { return "populate-usa-powertrain" }
-func (*populateUSAPowertrainCmd) Synopsis() string { return "populate-usa-powertrain args to stdout." }
+func (*populateUSAPowertrainCmd) Name() string { return "populate-powertrain" }
+func (*populateUSAPowertrainCmd) Synopsis() string {
+	return "populate-powertrain runs through all user devices trying to set the powertrain"
+}
 func (*populateUSAPowertrainCmd) Usage() string {
-	return `populate-usa-powertrain:
-	populate-usa-powertrain [-useNHTSA].
+	return `populate-powertrain[-useNHTSA].
   `
 }
 
@@ -41,7 +43,7 @@ func (p *populateUSAPowertrainCmd) SetFlags(f *flag.FlagSet) {
 }
 
 func (p *populateUSAPowertrainCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
-	p.logger.Info().Msg("Populating USA powertrain data from VINs")
+	p.logger.Info().Msg("Iterating over all confirmed user devices to set their Powertrain")
 	err := populateUSAPowertrain(ctx, &p.logger, p.pdb, p.nhtsaService, p.deviceDefSvc, p.useNHTSA)
 	if err != nil {
 		p.logger.Fatal().Err(err).Msg("Error filling in powertrain data.")
@@ -51,13 +53,17 @@ func (p *populateUSAPowertrainCmd) Execute(ctx context.Context, _ *flag.FlagSet,
 
 func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.Store, nhtsaService services.INHTSAService, deviceDefSvc services.DeviceDefinitionService, useNHTSA bool) error {
 	devices, err := models.UserDevices(
-		models.UserDeviceWhere.CountryCode.EQ(null.StringFrom("USA")),
+		models.UserDeviceWhere.CountryCode.IsNotNull(),
 		models.UserDeviceWhere.VinIdentifier.IsNotNull(),
+		models.UserDeviceWhere.VinConfirmed.EQ(true),
 	).All(ctx, pdb.DBS().Writer)
 	if err != nil {
 		return err
 	}
 
+	// todo: if metadta.powertrain is null, just set it. Otherwise compare what we have vs. what we get from DD.
+	// prompt user to select which one to use.
+	// do we still want to use nhtsa - keep optional?
 	processFromNTHSA := func(device *models.UserDevice) error {
 		resp, err := nhtsaService.DecodeVIN(device.VinIdentifier.String)
 		if err != nil {
@@ -84,7 +90,7 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 	}
 
 	processFromDeviceDefinition := func(device *models.UserDevice) error {
-		resp, err := deviceDefSvc.GetDeviceDefinitionByID(ctx, device.DeviceDefinitionID)
+		dd, err := deviceDefSvc.GetDeviceDefinitionByID(ctx, device.DeviceDefinitionID)
 		if err != nil {
 			return err
 		}
@@ -94,19 +100,41 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 			return err
 		}
 
-		if len(resp.DeviceAttributes) > 0 {
+		if len(dd.DeviceAttributes) > 0 {
 			// Find device attribute (powertrain_type)
-			for _, item := range resp.DeviceAttributes {
+			for _, item := range dd.DeviceAttributes {
 				if item.Name == constants.PowerTrainTypeKey {
 					powertrainType := services.ConvertPowerTrainStringToPowertrain(item.Value)
+					if md.PowertrainType != nil {
+						if !strings.EqualFold(powertrainType.String(), md.PowertrainType.String()) {
+							fmt.Println("------------------------------------------------")
+							fmt.Println(dd.Name)
+							fmt.Println("Current powertrain is different than what Device Definitions proposes:")
+							fmt.Println("Current:" + md.PowertrainType.String())
+							fmt.Println("Proposed:" + powertrainType.String())
+							fmt.Println("y/n accept proposed? [n]")
+							accept := "n"
+							_, _ = fmt.Scanln(accept)
+							if strings.ToLower(strings.TrimSpace(accept)) == "n" {
+								fmt.Println("leaving Powertrain as is.")
+								return nil
+							}
+							fmt.Println("updating Powertrain to proposed.")
+						}
+					}
+
 					md.PowertrainType = &powertrainType
 					if err := device.Metadata.Marshal(md); err != nil {
 						return err
 					}
 
+					fmt.Printf("Updating powertrain for %s to %s \n", dd.Name, md.PowertrainType.String())
+
 					break
 				}
 			}
+		} else {
+			fmt.Println("skipping - no powertrain found for: " + dd.Name)
 		}
 
 		if _, err := device.Update(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
