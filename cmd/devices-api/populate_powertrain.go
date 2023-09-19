@@ -118,9 +118,8 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 							if strings.ToLower(strings.TrimSpace(accept)) == "n" {
 								fmt.Println("leaving Powertrain as is.")
 								return nil
-							} else {
-								fmt.Println("updating Powertrain to proposed.")
 							}
+							fmt.Println("updating Powertrain to proposed.")
 						}
 					}
 
@@ -134,6 +133,8 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 					break
 				}
 			}
+		} else {
+			fmt.Println("skipping - no powertrain found for: " + dd.Name)
 		}
 
 		if _, err := device.Update(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
