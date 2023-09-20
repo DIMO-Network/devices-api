@@ -419,20 +419,33 @@ func (nc *NFTController) GetAftermarketDeviceNFTImage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
 	}
 
-	exists, err := models.AftermarketDevices(
+	ad, err := models.AftermarketDevices(
 		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))),
-	).Exists(c.Context(), nc.DBS().Reader)
+	).One(c.Context(), nc.DBS().Reader)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fiber.NewError(fiber.StatusNotFound, "No device with id.")
+		}
+		return err
+	}
+
+	dm, err := nc.deviceDefSvc.GetMakeByTokenID(c.Context(), ad.DeviceManufacturerTokenID.Int(nil))
 	if err != nil {
 		return err
 	}
 
-	if !exists {
-		return fiber.NewError(fiber.StatusNotFound, "No device with id.")
+	var key string
+
+	switch dm.Name {
+	case constants.AutoPiVendor:
+		key = nc.Settings.AutoPiNFTImage
+	case "Hashdog":
+		key = nc.Settings.MacaronNFTImage
 	}
 
 	s3o, err := nc.s3.GetObject(c.Context(), &s3.GetObjectInput{
 		Bucket: aws.String(nc.Settings.NFTS3Bucket),
-		Key:    aws.String(nc.Settings.AutoPiNFTImage),
+		Key:    aws.String(key),
 	})
 	if err != nil {
 		nc.log.Err(err).Msg("Failure communicating with S3.")

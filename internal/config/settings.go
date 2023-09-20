@@ -61,6 +61,7 @@ type Settings struct {
 	VehicleNFTAddress                 string `yaml:"VEHICLE_NFT_ADDRESS"`
 	ContractsEventTopic               string `yaml:"CONTRACT_EVENT_TOPIC"`
 	AutoPiNFTImage                    string `yaml:"AUTOPI_NFT_IMAGE"`
+	MacaronNFTImage                   string `yaml:"MACARON_NFT_IMAGE"`
 	VincarioAPIURL                    string `yaml:"VINCARIO_API_URL"`
 	VincarioAPISecret                 string `yaml:"VINCARIO_API_SECRET"`
 	VincarioAPIKey                    string `yaml:"VINCARIO_API_KEY"`
