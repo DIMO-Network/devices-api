@@ -976,6 +976,37 @@ func (udc *UserDevicesController) checkPairable(ctx context.Context, userDeviceI
 	return vnft, ad, nil
 }
 
+func (udc *UserDevicesController) checkUnpairable(ctx context.Context, exec boil.ContextExecutor, userDeviceID string) (*models.VehicleNFT, *models.AftermarketDevice, error) {
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAftermarketDevice)),
+	).One(ctx, exec)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil, fiber.NewError(fiber.StatusNotFound, "No vehicle with that id found.")
+		}
+		return nil, nil, err
+	}
+
+	vnft := ud.R.VehicleNFT
+
+	if vnft == nil || vnft.TokenID.IsZero() {
+		return nil, nil, fiber.NewError(fiber.StatusConflict, "Vehicle not yet minted.")
+	}
+
+	if vnft.R.VehicleTokenAftermarketDevice == nil {
+		return nil, nil, fiber.NewError(fiber.StatusConflict, "Vehicle not paired with an aftermarket device.")
+	}
+
+	ad := vnft.R.VehicleTokenAftermarketDevice
+
+	if ad.UnpairRequestID.Valid {
+		return nil, nil, fiber.NewError(fiber.StatusConflict, "Unpairing already in progress.")
+	}
+
+	return vnft, ad, nil
+}
+
 // CloudRepairAutoPi godoc
 // @Description Re-apply AutoPi cloud actions in an attempt to get the device transmitting data again.
 // @Produce json
@@ -1054,37 +1085,9 @@ func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 	}
 	defer tx.Rollback() //nolint
 
-	ud, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAftermarketDevice)),
-	).One(c.Context(), tx)
+	vnft, apnft, err := udc.checkUnpairable(c.Context(), tx, userDeviceID)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return fiber.NewError(fiber.StatusNotFound, "No device with that id found.")
-		}
 		return err
-	}
-
-	vnft := ud.R.VehicleNFT
-
-	if vnft == nil || vnft.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusConflict, "Vehicle not yet minted.")
-	}
-
-	if owner := common.BytesToAddress(vnft.OwnerAddress.Bytes); owner != realAddr {
-		logger.Error().Str("ownerAddress", owner.Hex()).Str("userAddress", realAddr.Hex()).Msg("Vehicle owner and user Ethereum address no longer match.")
-		return opaqueInternalError
-	}
-
-	apnft := vnft.R.VehicleTokenAftermarketDevice
-
-	if apnft == nil {
-		return fiber.NewError(fiber.StatusConflict, "Vehicle not paired to an AutoPi on-chain.")
-	}
-
-	if apnft.UnpairRequestID.Valid {
-		// If unpairing had finished, we wouldn't have a link from the vehicle NFT.
-		return fiber.NewError(fiber.StatusConflict, "Unpairing already in progress.")
 	}
 
 	vehicleToken := vnft.TokenID.Int(nil)
@@ -1166,59 +1169,16 @@ func (udc *UserDevicesController) GetAutoPiUnpairMessage(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 
 	userDeviceID := c.Params("userDeviceID")
-
 	logger := helpers.GetLogger(c, udc.log)
 	logger.Info().Msg("Got Aftermarket pair request.")
 
-	autoPiInt, err := udc.DeviceDefIntSvc.GetAutoPiIntegration(c.Context())
+	vnft, autoPiUnit, err := udc.checkUnpairable(c.Context(), udc.DBS().Writer, userDeviceID)
 	if err != nil {
-		logger.Err(err).Msg("Failed to retrieve AutoPi integration.")
-		return helpers.GrpcErrorToFiber(err, "failed to retrieve AutoPi integration.")
-	}
-
-	ud, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(models.UserDeviceRels.VehicleNFT),
-	).One(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "No device with that id found.")
-		}
-		logger.Err(err).Msg("Database failure searching for device.")
-		return opaqueInternalError
-	}
-
-	udai, err := ud.UserDeviceAPIIntegrations(models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(autoPiInt.Id)).One(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusConflict, "Device does not have an AutoPi associated.")
-		}
-		logger.Err(err).Msg("Database failure searching for device's AutoPi integration.")
-		return opaqueInternalError
-	}
-
-	if !udai.Serial.Valid {
-		// This shouldn't happen.
-		logger.Error().Msg("Active AutoPi integration with no associated unit id.")
-		return opaqueInternalError
-	}
-
-	autoPiUnit, err := udai.SerialAftermarketDevice().One(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		logger.Error().Msg("Failed to retrieve AutoPi record.")
-		return opaqueInternalError
-	}
-
-	if autoPiUnit.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusConflict, "AutoPi not yet minted.")
-	}
-
-	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusConflict, "Vehicle not yet minted.")
+		return err
 	}
 
 	apToken := autoPiUnit.TokenID.Int(nil)
-	vehicleToken := ud.R.VehicleNFT.TokenID.Int(nil)
+	vehicleToken := vnft.TokenID.Int(nil)
 
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
