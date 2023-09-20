@@ -429,6 +429,10 @@ func (nc *NFTController) GetAftermarketDeviceNFTImage(c *fiber.Ctx) error {
 		return err
 	}
 
+	if ad.DeviceManufacturerTokenID.IsZero() {
+		return fiber.NewError(fiber.StatusInternalServerError, "No manufacturer specified for device.")
+	}
+
 	dm, err := nc.deviceDefSvc.GetMakeByTokenID(c.Context(), ad.DeviceManufacturerTokenID.Int(nil))
 	if err != nil {
 		return err
