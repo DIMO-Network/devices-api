@@ -75,6 +75,7 @@ env:
   CONTRACT_EVENT_TOPIC: topic.contract.event
   VEHICLE_NFT_ADDRESS: '0x90c4d6113ec88dd4bdf12f26db2b3998fd13a144'
   AUTOPI_NFT_IMAGE: autopi.png
+  MACARON_NFT_IMAGE: macaron.png
   VINCARIO_API_URL: https://api.vindecoder.eu/3.2
   CHATGPT_URL: https://api.openai.com/v1/chat/completions
   AFTERMARKET_DEVICE_CONTRACT_ADDRESS: '0xcf9af64522162da85164a714c23a7705e6e466b3'
