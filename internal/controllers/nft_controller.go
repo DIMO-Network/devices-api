@@ -441,6 +441,8 @@ func (nc *NFTController) GetAftermarketDeviceNFTImage(c *fiber.Ctx) error {
 		key = nc.Settings.AutoPiNFTImage
 	case "Hashdog":
 		key = nc.Settings.MacaronNFTImage
+	default:
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("No NFT image for manufacturer %s.", dm.Name))
 	}
 
 	s3o, err := nc.s3.GetObject(c.Context(), &s3.GetObjectInput{
