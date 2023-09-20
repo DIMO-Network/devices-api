@@ -1382,6 +1382,8 @@ func (udc *UserDevicesController) GetRange(c *fiber.Ctx) error {
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID} [delete]
 func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
+	logger := helpers.GetLogger(c, udc.log)
+
 	udi := c.Params("userDeviceID")
 	userID := helpers.GetUserID(c)
 
@@ -1436,6 +1438,12 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	if userDevice.VinConfirmed {
+		logger.Info().Msgf("Deleted vehicle with VIN %s.", userDevice.VinIdentifier.String)
+	} else {
+		logger.Info().Msg("Deleted vehicle.")
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
