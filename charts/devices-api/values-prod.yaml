@@ -43,6 +43,7 @@ env:
   DIMO_CONTRACT_APIURL: https://contracts-api.dimo.zone/
   NATS_URL: nats-prod:4222
   SYNTHETIC_DEVICES_ENABLED: true
+  SYNTHETIC_WALLET_GRPC_ADDR: synthetic-wallet-instance-prod:8086
   DEVICE_DATA_GRPC_ADDR: device-data-api-prod:8086
 ingress:
   enabled: true
