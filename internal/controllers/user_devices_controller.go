@@ -1778,7 +1778,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	if udais := userDevice.R.UserDeviceAPIIntegrations; !udc.Settings.IsProduction() && len(udais) != 0 {
+	if udais := userDevice.R.UserDeviceAPIIntegrations; len(udais) != 0 {
 		intID := uint64(0)
 		for _, udai := range udais {
 			in, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), udai.IntegrationID)
