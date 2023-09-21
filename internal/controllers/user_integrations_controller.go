@@ -447,7 +447,8 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 	var claim, pair, unpair *AutoPiTransactionStatus
 
 	var tokenID *big.Int
-	var ethereumAddress, ownerAddress, beneficiaryAddress *common.Address
+	var ethereumAddress, beneficiaryAddress *common.Address
+	var ownerAddress *string // Frontend is doing a case-sensitive match.
 
 	var mfr *ManufacturerInfo
 
@@ -471,7 +472,8 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 
 		if dbUnit.OwnerAddress.Valid {
 			addr := common.BytesToAddress(dbUnit.OwnerAddress.Bytes)
-			ownerAddress = &addr
+			addrStr := addr.Hex()
+			ownerAddress = &addrStr
 			beneficiaryAddress = &addr
 			claim = &AutoPiTransactionStatus{
 				Status: models.MetaTransactionRequestStatusConfirmed,
@@ -1998,7 +2000,7 @@ type AutoPiDeviceInfo struct {
 
 	TokenID            *big.Int        `json:"tokenId,omitempty"`
 	EthereumAddress    *common.Address `json:"ethereumAddress,omitempty"`
-	OwnerAddress       *common.Address `json:"ownerAddress,omitempty"`
+	OwnerAddress       *string         `json:"ownerAddress,omitempty"`
 	BeneficiaryAddress *common.Address `json:"beneficiaryAddress,omitempty"`
 
 	// Claim contains the status of the on-chain claiming meta-transaction.
