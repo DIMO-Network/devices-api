@@ -31,11 +31,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// Euro to USD conversion rate, used for calculating the price of the device, hardcoded for now
-const (
-	euroToUsd float64 = 1.10
-)
-
 func NewUserDeviceRPCService(
 	dbs func() *db.ReaderWriter,
 	settings *config.Settings,
