@@ -19,7 +19,6 @@ service UserDeviceService {
       returns (ListUserDevicesForUserResponse);
   rpc ApplyHardwareTemplate(ApplyHardwareTemplateRequest)
       returns (ApplyHardwareTemplateResponse);
-  rpc GetAllUserDeviceValuation(google.protobuf.Empty) returns (ValuationResponse);
 	rpc GetUserDeviceByAutoPIUnitId(GetUserDeviceByAutoPIUnitIdRequest) returns (UserDeviceAutoPIUnitResponse);
   rpc GetClaimedVehiclesGrowth(google.protobuf.Empty) returns (ClaimedVehiclesGrowth);
   rpc CreateTemplate(CreateTemplateRequest)
@@ -43,11 +42,6 @@ message GetUserDeviceByVINRequest { string vin = 1; }
 message GetUserDeviceByEthAddrRequest { bytes eth_addr = 1; }
 
 message GetUserDeviceByTokenIdRequest { int64 token_id = 1; }
-
-message ValuationResponse {
-  float total = 1;
-  float growthPercentage = 2;
-}
 
 message UpdateUserDeviceMetadataRequest {
   string user_device_id = 1;
