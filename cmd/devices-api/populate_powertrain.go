@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
+	"github.com/pkg/errors"
 	"strings"
 
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -95,6 +97,13 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 		if err != nil {
 			return err
 		}
+		var ds *grpc.DeviceStyle
+		if device.DeviceStyleID.Valid {
+			ds, err = deviceDefSvc.GetDeviceStyleByID(ctx, device.DeviceStyleID.String)
+			if err != nil {
+				return errors.Wrapf(err, "failed to get device style for id: %s", device.DeviceStyleID.String)
+			}
+		}
 
 		md := new(services.UserDeviceMetadata)
 		if err := device.Metadata.Unmarshal(md); err != nil {
@@ -102,9 +111,16 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 		}
 		initialPowertrain := md.PowertrainType
 		proposedPowertrain := services.ICE
-
-		// get the powertrain from the device definition
-		if len(dd.DeviceAttributes) > 0 {
+		// try to get powertrain from style level
+		if ds != nil && len(ds.DeviceAttributes) > 0 {
+			for _, item := range ds.DeviceAttributes {
+				if item.Name == constants.PowerTrainTypeKey {
+					proposedPowertrain = services.ConvertPowerTrainStringToPowertrain(item.Value)
+					break
+				}
+			}
+		} else if len(dd.DeviceAttributes) > 0 {
+			// otherwise powertrain from the device definition
 			// Find device attribute (powertrain_type)
 			for _, item := range dd.DeviceAttributes {
 				if item.Name == constants.PowerTrainTypeKey {
@@ -126,6 +142,9 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 				fmt.Println("Current powertrain is different than what Device Definitions proposes:")
 				fmt.Println("Current:" + md.PowertrainType.String())
 				fmt.Println("Proposed:" + proposedPowertrain.String())
+				if ds != nil {
+					fmt.Println("Powertrain came from Device Style")
+				}
 				fmt.Println("y/n accept proposed? [n]")
 				accept := "n"
 				_, err = fmt.Scanln(accept)
