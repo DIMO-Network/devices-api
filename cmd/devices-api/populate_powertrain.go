@@ -146,8 +146,8 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 					fmt.Println("Powertrain came from Device Style")
 				}
 				fmt.Println("y/n accept proposed? [n]")
-				accept := "n"
-				_, err = fmt.Scanln(accept)
+				var accept string
+				_, err := fmt.Scanln(&accept)
 				if err != nil {
 					fmt.Println("Error:", err)
 					return err
