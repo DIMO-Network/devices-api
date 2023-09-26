@@ -138,12 +138,12 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 		if initialPowertrain != nil {
 			if !strings.EqualFold(proposedPowertrain.String(), initialPowertrain.String()) {
 				fmt.Println("------------------------------------------------")
-				fmt.Println(dd.Name)
+				fmt.Printf("%s https://admin.team.dimo.zone/device-definitions/%s \n", dd.Name, dd.DeviceDefinitionId)
 				fmt.Println("Current powertrain is different than what Device Definitions proposes:")
 				fmt.Println("Current:" + md.PowertrainType.String())
 				fmt.Println("Proposed:" + proposedPowertrain.String())
 				if ds != nil {
-					fmt.Println("Powertrain came from Device Style")
+					fmt.Printf("Powertrain came from Device Style: %s : %s\n", ds.Name, ds.Id)
 				}
 				fmt.Println("y/n accept proposed? [n]")
 				var accept string
