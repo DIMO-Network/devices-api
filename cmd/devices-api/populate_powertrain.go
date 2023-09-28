@@ -4,9 +4,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"strings"
+
 	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/pkg/errors"
-	"strings"
 
 	"github.com/DIMO-Network/devices-api/internal/constants"
 
@@ -110,12 +111,15 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 			return err
 		}
 		initialPowertrain := md.PowertrainType
-		proposedPowertrain := services.ICE
+		powertrainFromStyle := false
+		var proposedPowertrain *services.PowertrainType
 		// try to get powertrain from style level
 		if ds != nil && len(ds.DeviceAttributes) > 0 {
 			for _, item := range ds.DeviceAttributes {
 				if item.Name == constants.PowerTrainTypeKey {
-					proposedPowertrain = services.ConvertPowerTrainStringToPowertrain(item.Value)
+					pt := services.ConvertPowerTrainStringToPowertrain(item.Value)
+					proposedPowertrain = &pt
+					powertrainFromStyle = true
 					break
 				}
 			}
@@ -124,15 +128,19 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 			// Find device attribute (powertrain_type)
 			for _, item := range dd.DeviceAttributes {
 				if item.Name == constants.PowerTrainTypeKey {
-					proposedPowertrain = services.ConvertPowerTrainStringToPowertrain(item.Value)
+					pt := services.ConvertPowerTrainStringToPowertrain(item.Value)
+					proposedPowertrain = &pt
 					break
 				}
 			}
 		} else {
 			fmt.Println("no attributes found, using default powertrain ICE for: " + dd.Name)
+			ice := services.ICE
+			proposedPowertrain = &ice
 		}
-		if initialPowertrain == &proposedPowertrain {
-			return nil // no need to update in this case
+		// short circuit if don't need to update
+		if initialPowertrain != nil && strings.EqualFold(proposedPowertrain.String(), initialPowertrain.String()) {
+			return nil
 		}
 		// find case where we have a mismatch and want user input
 		if initialPowertrain != nil {
@@ -143,7 +151,11 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 				fmt.Println("Current:" + md.PowertrainType.String())
 				fmt.Println("Proposed:" + proposedPowertrain.String())
 				if ds != nil {
-					fmt.Printf("Powertrain came from Device Style: %s : %s\n", ds.Name, ds.Id)
+					if powertrainFromStyle {
+						fmt.Printf("Powertrain came from Device Style: %s : %s\n", ds.Name, ds.Id)
+					} else {
+						fmt.Printf("Issue: No Powertrain found in Device Style: %s : %s\n", ds.Name, ds.Id)
+					}
 				}
 				fmt.Println("y/n accept proposed? [n]")
 				var accept string
@@ -161,7 +173,7 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 			}
 		}
 
-		md.PowertrainType = &proposedPowertrain
+		md.PowertrainType = proposedPowertrain
 		if err := device.Metadata.Marshal(md); err != nil {
 			return err
 		}
