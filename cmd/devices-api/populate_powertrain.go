@@ -117,6 +117,7 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 		if ds != nil && len(ds.DeviceAttributes) > 0 {
 			for _, item := range ds.DeviceAttributes {
 				if item.Name == constants.PowerTrainTypeKey {
+					fmt.Println("found powertrain value from device_style: " + item.Value)
 					pt := services.ConvertPowerTrainStringToPowertrain(item.Value)
 					proposedPowertrain = &pt
 					powertrainFromStyle = true
@@ -137,6 +138,10 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 			fmt.Println("no attributes found, using default powertrain ICE for: " + dd.Name)
 			ice := services.ICE
 			proposedPowertrain = &ice
+		}
+		// short circuit if can't propose anything - very edge case
+		if proposedPowertrain == nil {
+			return nil
 		}
 		// short circuit if don't need to update
 		if initialPowertrain != nil && strings.EqualFold(proposedPowertrain.String(), initialPowertrain.String()) {
