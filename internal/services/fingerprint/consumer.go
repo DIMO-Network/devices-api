@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/DIMO-Network/devices-api/internal/services"
 	"regexp"
 	"strings"
 	"time"
@@ -122,6 +123,31 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 		return err
 	}
 
+	// Save Protocol
+	if ad.R.VehicleToken.R.UserDevice != nil {
+		md := services.UserDeviceMetadata{}
+		if err = ad.R.VehicleToken.R.UserDevice.Metadata.Unmarshal(&md); err != nil {
+			c.logger.Error().Msgf("Could not unmarshal userdevice metadata for device: %s", ad.R.VehicleToken.R.UserDevice.ID)
+			return err
+		}
+
+		if md.CANProtocol == nil {
+			protocol, err := ExtractProtocol(event.Data)
+			if err == nil {
+				md.CANProtocol = &protocol
+			}
+			if err != nil {
+				c.logger.Error().Err(err)
+			}
+		}
+
+		err = ad.R.VehicleToken.R.UserDevice.Metadata.Marshal(&md)
+		if err != nil {
+			c.logger.Error().Msgf("could not marshal userdevice metadata for device: %s", ad.R.VehicleToken.R.UserDevice.ID)
+			return err
+		}
+	}
+
 	c.logger.Info().Str("device-addr", event.Subject).Msg("issued vin credential")
 
 	return nil
@@ -192,7 +218,6 @@ func NumToWeekEnd(n int) time.Time {
 }
 
 var ErrNoVIN = errors.New("no VIN field")
-
 var basicVINExp = regexp.MustCompile(`^[A-Z0-9]{17}$`)
 
 // ExtractVIN extracts the vin field from a status update's data object.
@@ -220,4 +245,18 @@ func ExtractVIN(data []byte) (string, error) {
 	}
 
 	return vin, nil
+}
+
+func ExtractProtocol(data []byte) (string, error) {
+	partialData := new(struct {
+		Protocol *string `json:"protocol"`
+	})
+
+	if err := json.Unmarshal(data, partialData); err != nil {
+		return "", fmt.Errorf("failed parsing data field: %w", err)
+	}
+
+	protocol := *partialData.Protocol
+
+	return protocol, nil
 }
