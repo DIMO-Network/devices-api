@@ -117,7 +117,6 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 		if ds != nil && len(ds.DeviceAttributes) > 0 {
 			for _, item := range ds.DeviceAttributes {
 				if item.Name == constants.PowerTrainTypeKey {
-					fmt.Println("found powertrain value from device_style: " + item.Value)
 					pt := services.ConvertPowerTrainStringToPowertrain(item.Value)
 					proposedPowertrain = &pt
 					powertrainFromStyle = true
@@ -150,6 +149,23 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 		// find case where we have a mismatch and want user input
 		if initialPowertrain != nil {
 			if !strings.EqualFold(proposedPowertrain.String(), initialPowertrain.String()) {
+				nhtsaWorked := false
+				country := constants.FindCountry(device.CountryCode.String)
+				// if in americas check with nhtsa
+				if country.Region == "Americas" {
+					// call out to nhtsa with vin
+					resp, err := nhtsaService.DecodeVIN(device.VinIdentifier.String)
+					if err == nil {
+						dt, err2 := resp.DriveType()
+						if err2 == nil {
+							proposedPowertrain = &dt
+							nhtsaWorked = true
+							if strings.EqualFold(proposedPowertrain.String(), initialPowertrain.String()) {
+								return nil // continue if no update
+							}
+						}
+					}
+				}
 				fmt.Println("------------------------------------------------")
 				fmt.Printf("%s https://admin.team.dimo.zone/device-definitions/%s \n", dd.Name, dd.DeviceDefinitionId)
 				fmt.Println("Current powertrain is different than what Device Definitions proposes:")
@@ -162,19 +178,23 @@ func populateUSAPowertrain(ctx context.Context, logger *zerolog.Logger, pdb db.S
 						fmt.Printf("Issue: No Powertrain found in Device Style: %s : %s\n", ds.Name, ds.Id)
 					}
 				}
-				fmt.Println("y/n accept proposed? [n]")
-				var accept string
-				_, err := fmt.Scanln(&accept)
-				if err != nil {
-					fmt.Println("Error:", err)
-					return err
+				if nhtsaWorked {
+					fmt.Printf("auto continuing - nhtsa proposed powertrain value: %s\n", proposedPowertrain.String())
+				} else {
+					fmt.Println("y/n accept proposed? [n]")
+					var accept string
+					_, err := fmt.Scanln(&accept)
+					if err != nil {
+						fmt.Println("Error:", err)
+						return err
+					}
+					if strings.ToLower(strings.TrimSpace(accept)) == "n" {
+						fmt.Println("leaving Powertrain as is.")
+						return nil
+					}
+					fmt.Println("updating Powertrain to proposed.")
+					fmt.Println("------------------------------------------------")
 				}
-				if strings.ToLower(strings.TrimSpace(accept)) == "n" {
-					fmt.Println("leaving Powertrain as is.")
-					return nil
-				}
-				fmt.Println("updating Powertrain to proposed.")
-				fmt.Println("------------------------------------------------")
 			}
 		}
 
