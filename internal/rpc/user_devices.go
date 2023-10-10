@@ -432,7 +432,7 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 				}
 			}
 
-			// these fields have been depricated but are populated for backwards compatability
+			// These fields have been deprecated but are populated for backwards compatibility.
 			out.AftermarketDeviceBeneficiaryAddress = out.AftermarketDevice.Beneficiary // nolint
 			out.AftermarketDeviceTokenId = out.AftermarketDevice.TokenId                // nolint
 		}
