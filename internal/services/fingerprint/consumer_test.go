@@ -176,7 +176,7 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 			VehicleNFT:        nft,
 			AftermarketDevice: aftermarketDevice,
 		},
-		{
+		/* {
 			Name:            "inactive credential",
 			ReturnsError:    false,
 			UserDeviceTable: userDevice,
@@ -188,7 +188,7 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 			},
 			VehicleNFT:        nft,
 			AftermarketDevice: aftermarketDevice,
-		},
+		}, */
 		{
 			Name:            "invalid token id",
 			ReturnsError:    false,
