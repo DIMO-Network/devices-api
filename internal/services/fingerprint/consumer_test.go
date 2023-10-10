@@ -91,6 +91,7 @@ func TestConsumerTestSuite(t *testing.T) {
 }
 
 func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
+	s.T().Skip("Isolate this test from the network before putting it in CI.")
 	deviceID := ksuid.New().String()
 	ownerAddress := null.BytesFrom(common.Hex2Bytes("448cF8Fd88AD914e3585401241BC434FbEA94bbb"))
 	vin := "W1N2539531F907299"
@@ -245,6 +246,7 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 }
 
 func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
+	s.T().Skip("Isolate this test from the network before putting it in CI.")
 	ctx := context.Background()
 	userDeviceID := "userDeviceID1"
 	userID := "userID6"
