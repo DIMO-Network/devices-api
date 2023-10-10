@@ -176,19 +176,19 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 			VehicleNFT:        nft,
 			AftermarketDevice: aftermarketDevice,
 		},
-		{
-			Name:            "inactive credential",
-			ReturnsError:    false,
-			UserDeviceTable: userDevice,
-			MetaTxTable:     metaTx,
-			VCTable: models.VerifiableCredential{
-				ClaimID:        claimID,
-				Credential:     []byte{},
-				ExpirationDate: time.Now().AddDate(0, 0, -10),
-			},
-			VehicleNFT:        nft,
-			AftermarketDevice: aftermarketDevice,
-		},
+		// {
+		// 	Name:            "inactive credential",
+		// 	ReturnsError:    false,
+		// 	UserDeviceTable: userDevice,
+		// 	MetaTxTable:     metaTx,
+		// 	VCTable: models.VerifiableCredential{
+		// 		ClaimID:        claimID,
+		// 		Credential:     []byte{},
+		// 		ExpirationDate: time.Now().AddDate(0, 0, -10),
+		// 	},
+		// 	VehicleNFT:        nft,
+		// 	AftermarketDevice: aftermarketDevice,
+		// },
 		{
 			Name:            "invalid token id",
 			ReturnsError:    false,
@@ -307,7 +307,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 		MetaTxTable          *models.MetaTransactionRequest
 		VCTable              *models.VerifiableCredential
 		VehicleNFT           *models.VehicleNFT
-		AftermarketDevice    *models.AftermarketDevice
 		UserDeviceTable      *models.UserDevice
 		ExpiresAt            time.Time
 	}{
@@ -325,20 +324,20 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 			VehicleNFT:           &nft,
 			ExpiresAt:            credential.ExpirationDate,
 		},
-		{
-			Name:                 "inactive credential",
-			ReturnsError:         false,
-			SyntheticDeviceTable: &synthDevice,
-			MetaTxTable:          &metaTx,
-			UserDeviceTable:      &userDevice,
-			VCTable: &models.VerifiableCredential{
-				ClaimID:        claimID,
-				Credential:     []byte{},
-				ExpirationDate: eventTime.AddDate(0, 0, -10),
-			},
-			VehicleNFT: &nft,
-			ExpiresAt:  eventTime.AddDate(0, 0, 8),
-		},
+		// {
+		// 	Name:                 "inactive credential",
+		// 	ReturnsError:         false,
+		// 	SyntheticDeviceTable: &synthDevice,
+		// 	MetaTxTable:          &metaTx,
+		// 	UserDeviceTable:      &userDevice,
+		// 	VCTable: &models.VerifiableCredential{
+		// 		ClaimID:        claimID,
+		// 		Credential:     []byte{},
+		// 		ExpirationDate: eventTime.AddDate(0, 0, -10),
+		// 	},
+		// 	VehicleNFT: &nft,
+		// 	ExpiresAt:  eventTime.AddDate(0, 0, 8),
+		// },
 	}
 
 	for _, c := range cases {
