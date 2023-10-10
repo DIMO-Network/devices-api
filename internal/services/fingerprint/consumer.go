@@ -133,11 +133,12 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 
 		if md.CANProtocol == nil {
 			protocol, err := ExtractProtocol(event.Data)
-			if err == nil {
-				md.CANProtocol = &protocol
-			}
 			if err != nil {
 				c.logger.Error().Err(err)
+			}
+
+			if err == nil && protocol != nil {
+				md.CANProtocol = protocol
 			}
 		}
 
@@ -247,16 +248,14 @@ func ExtractVIN(data []byte) (string, error) {
 	return vin, nil
 }
 
-func ExtractProtocol(data []byte) (string, error) {
+func ExtractProtocol(data []byte) (*string, error) {
 	partialData := new(struct {
 		Protocol *string `json:"protocol"`
 	})
 
 	if err := json.Unmarshal(data, partialData); err != nil {
-		return "", fmt.Errorf("failed parsing data field: %w", err)
+		return nil, fmt.Errorf("failed parsing data field: %w", err)
 	}
 
-	protocol := *partialData.Protocol
-
-	return protocol, nil
+	return partialData.Protocol, nil
 }
