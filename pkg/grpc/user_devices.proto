@@ -71,6 +71,12 @@ message UserDevice {
   string postal_code = 17;
   string geo_decoded_country = 18;
   string geo_decoded_state_prov = 19;
+  SyntheticDevice syntheticDevice = 20;
+}
+
+message SyntheticDevice {
+  int64 tokenId = 1;
+  int64 integrationTokenId = 2;
 }
 
 message UserDeviceIntegration {
