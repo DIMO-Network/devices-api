@@ -415,20 +415,26 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 		}
 
 		if amnft := vnft.R.VehicleTokenAftermarketDevice; amnft != nil {
-			out.AftermarketDevice.Serial = amnft.Serial
-			out.AftermarketDevice.UserId = &amnft.UserID.String
-			out.AftermarketDevice.TokenId = s.toUint64(amnft.TokenID)
-			out.AftermarketDevice.ManufacturerTokenId = s.toUint64(amnft.DeviceManufacturerTokenID)
+			out.AftermarketDevice = &pb.AftermarketDevice{
+				Serial:              amnft.Serial,
+				UserId:              amnft.UserID.Ptr(),
+				TokenId:             s.toUint64(amnft.TokenID),
+				ManufacturerTokenId: s.toUint64(amnft.DeviceManufacturerTokenID),
+			}
 
 			if amnft.OwnerAddress.Valid {
 				out.AftermarketDevice.OwnerAddress = amnft.OwnerAddress.Bytes
 
 				if amnft.Beneficiary.Valid {
-					out.AftermarketDevice.Beneficiary = append(out.AftermarketDevice.Beneficiary, amnft.Beneficiary.Bytes)
+					out.AftermarketDevice.Beneficiary = amnft.Beneficiary.Bytes
 				} else {
-					out.AftermarketDevice.Beneficiary = append(out.AftermarketDevice.Beneficiary, amnft.OwnerAddress.Bytes)
+					out.AftermarketDevice.Beneficiary = amnft.OwnerAddress.Bytes
 				}
 			}
+
+			// these fields have been depricated but are populated for backwards compatability
+			out.AftermarketDeviceBeneficiaryAddress = out.AftermarketDevice.Beneficiary
+			out.AftermarketDeviceTokenId = out.AftermarketDevice.TokenId
 		}
 
 		if vc := vnft.R.Claim; vc != nil {

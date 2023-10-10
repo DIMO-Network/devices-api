@@ -22,5 +22,5 @@ message AftermarketDevice {
 	optional bytes owner_address = 3;
 	optional uint64 token_id = 4;
 	optional uint64 manufacturer_token_id = 5;
-	repeated bytes beneficiary = 6;
+	optional bytes beneficiary = 6;
 }
