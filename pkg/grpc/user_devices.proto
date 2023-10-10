@@ -6,6 +6,7 @@ option go_package = "github.com/DIMO-Network/devices-api/pkg/grpc";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
+import "pkg/grpc/aftermarket_devices.proto";
 
 package devices;
 
@@ -56,12 +57,12 @@ message UserDevice {
   optional uint64 token_id = 3;
   optional google.protobuf.Timestamp opted_in_at = 4;
   optional bytes owner_address = 5;
-  optional uint64 aftermarket_device_token_id = 6;
+  optional uint64 aftermarket_device_token_id = 6 [deprecated = true];
   repeated UserDeviceIntegration integrations = 7;
   optional string vin = 8;
   string device_definition_id = 9;
   optional string device_style_id = 10;
-  optional bytes aftermarket_device_beneficiary_address = 11;
+  optional bytes aftermarket_device_beneficiary_address = 11 [deprecated = true];
   optional VinCredential latest_vin_credential = 12;
   bool vin_confirmed = 13;
   string country_code = 14;
@@ -71,6 +72,7 @@ message UserDevice {
   string postal_code = 17;
   string geo_decoded_country = 18;
   string geo_decoded_state_prov = 19;
+  optional AftermarketDevice aftermarket_device = 20;
 }
 
 message UserDeviceIntegration {
