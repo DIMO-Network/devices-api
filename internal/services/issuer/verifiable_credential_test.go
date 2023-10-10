@@ -81,6 +81,7 @@ func TestCredentialTestSuite(t *testing.T) {
 }
 
 func (s *CredentialTestSuite) TestVerifiableCredential() {
+	s.T().Skip("Isolate this test from the network before putting it in CI.")
 	ctx := context.Background()
 	vin := "1G6AL1RY2K0111939"
 	tokenID := big.NewInt(3)
