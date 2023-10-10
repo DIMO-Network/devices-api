@@ -415,12 +415,19 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 		}
 
 		if amnft := vnft.R.VehicleTokenAftermarketDevice; amnft != nil {
-			out.AftermarketDeviceTokenId = s.toUint64(amnft.TokenID)
+			out.AftermarketDevice.Serial = amnft.Serial
+			out.AftermarketDevice.UserId = &amnft.UserID.String
+			out.AftermarketDevice.TokenId = s.toUint64(amnft.TokenID)
+			out.AftermarketDevice.ManufacturerTokenId = s.toUint64(amnft.DeviceManufacturerTokenID)
 
-			if amnft.Beneficiary.Valid {
-				out.AftermarketDeviceBeneficiaryAddress = amnft.Beneficiary.Bytes
-			} else if amnft.OwnerAddress.Valid {
-				out.AftermarketDeviceBeneficiaryAddress = amnft.OwnerAddress.Bytes
+			if amnft.OwnerAddress.Valid {
+				out.AftermarketDevice.OwnerAddress = amnft.OwnerAddress.Bytes
+
+				if amnft.Beneficiary.Valid {
+					out.AftermarketDevice.Beneficiary = append(out.AftermarketDevice.Beneficiary, amnft.Beneficiary.Bytes)
+				} else {
+					out.AftermarketDevice.Beneficiary = append(out.AftermarketDevice.Beneficiary, amnft.OwnerAddress.Bytes)
+				}
 			}
 		}
 
