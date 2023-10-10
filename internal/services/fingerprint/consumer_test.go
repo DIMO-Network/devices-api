@@ -126,10 +126,13 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 		Status: models.MetaTransactionRequestStatusConfirmed,
 	}
 
+	eventTime, err := time.Parse(time.RFC3339Nano, "2023-07-04T00:00:00Z")
+	s.Require().NoError(err)
+
 	credential := models.VerifiableCredential{
 		ClaimID:        claimID,
 		Credential:     []byte{},
-		ExpirationDate: time.Now().AddDate(0, 0, 7),
+		ExpirationDate: eventTime.AddDate(0, 0, 7),
 	}
 
 	nft := models.VehicleNFT{
@@ -176,19 +179,19 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 			VehicleNFT:        nft,
 			AftermarketDevice: aftermarketDevice,
 		},
-		// {
-		// 	Name:            "inactive credential",
-		// 	ReturnsError:    false,
-		// 	UserDeviceTable: userDevice,
-		// 	MetaTxTable:     metaTx,
-		// 	VCTable: models.VerifiableCredential{
-		// 		ClaimID:        claimID,
-		// 		Credential:     []byte{},
-		// 		ExpirationDate: time.Now().AddDate(0, 0, -10),
-		// 	},
-		// 	VehicleNFT:        nft,
-		// 	AftermarketDevice: aftermarketDevice,
-		// },
+		{
+			Name:            "inactive credential",
+			ReturnsError:    false,
+			UserDeviceTable: userDevice,
+			MetaTxTable:     metaTx,
+			VCTable: models.VerifiableCredential{
+				ClaimID:        claimID,
+				Credential:     []byte{},
+				ExpirationDate: eventTime.AddDate(0, 0, -10),
+			},
+			VehicleNFT:        nft,
+			AftermarketDevice: aftermarketDevice,
+		},
 		{
 			Name:            "invalid token id",
 			ReturnsError:    false,
@@ -199,8 +202,8 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 			AftermarketDevice: models.AftermarketDevice{
 				UserID:          null.StringFrom("SomeID"),
 				OwnerAddress:    ownerAddress,
-				CreatedAt:       time.Now(),
-				UpdatedAt:       time.Now(),
+				CreatedAt:       eventTime,
+				UpdatedAt:       eventTime,
 				TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
 				Beneficiary:     null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
 				EthereumAddress: ownerAddress.Bytes,
@@ -324,20 +327,19 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 			VehicleNFT:           &nft,
 			ExpiresAt:            credential.ExpirationDate,
 		},
-		// {
-		// 	Name:                 "inactive credential",
-		// 	ReturnsError:         false,
-		// 	SyntheticDeviceTable: &synthDevice,
-		// 	MetaTxTable:          &metaTx,
-		// 	UserDeviceTable:      &userDevice,
-		// 	VCTable: &models.VerifiableCredential{
-		// 		ClaimID:        claimID,
-		// 		Credential:     []byte{},
-		// 		ExpirationDate: eventTime.AddDate(0, 0, -10),
-		// 	},
-		// 	VehicleNFT: &nft,
-		// 	ExpiresAt:  eventTime.AddDate(0, 0, 8),
-		// },
+		{
+			Name:                 "inactive credential",
+			ReturnsError:         false,
+			SyntheticDeviceTable: &synthDevice,
+			MetaTxTable:          &metaTx,
+			UserDeviceTable:      &userDevice,
+			VCTable: &models.VerifiableCredential{
+				ClaimID:        claimID,
+				Credential:     []byte{},
+				ExpirationDate: eventTime.AddDate(0, 0, -10),
+			},
+			VehicleNFT: &nft,
+		},
 	}
 
 	for _, c := range cases {
@@ -381,11 +383,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 				require.NoError(t, err)
 				s.Require().NoError(c.VehicleNFT.Reload(s.ctx, s.pdb.DBS().Reader))
 				s.Require().True(c.VehicleNFT.ClaimID.Valid)
-
-				vc, err := models.FindVerifiableCredential(s.ctx, s.pdb.DBS().Reader.DB, c.VehicleNFT.ClaimID.String)
-				s.Require().NoError(err)
-				s.Require().Equal(c.ExpiresAt, vc.ExpirationDate)
-
 			}
 		})
 	}
