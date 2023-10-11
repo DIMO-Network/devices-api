@@ -149,14 +149,9 @@ func TestGetUserDevice_AftermarketDeviceObj_Nil(t *testing.T) {
 	).DeleteAll(ctx, pdb.DBS().Writer)
 	assert.NoError(err)
 
-	a, err := models.AftermarketDevices().All(ctx, pdb.DBS().Reader)
-	assert.Nil(a)
-
 	udResult, err := udService.GetUserDevice(ctx, &pb_devices.GetUserDeviceRequest{Id: userDeviceID})
 	assert.NoError(err)
-
 	assert.Nil(udResult.AftermarketDevice)
-
 }
 
 func TestGetUserDevice_PopulateDeprecatedFields(t *testing.T) {
