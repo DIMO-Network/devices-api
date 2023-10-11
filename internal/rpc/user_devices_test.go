@@ -59,11 +59,11 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 		OwnerAddress:              ownerAddress,
 		CreatedAt:                 time.Now(),
 		UpdatedAt:                 time.Now(),
-		TokenID:                   types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
+		TokenID:                   types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
 		VehicleTokenID:            vnft.TokenID,
 		Beneficiary:               null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
 		EthereumAddress:           ownerAddress.Bytes,
-		DeviceManufacturerTokenID: types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(42), 0)),
+		DeviceManufacturerTokenID: types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(42), 0)),
 	}
 
 	credential := models.VerifiableCredential{
