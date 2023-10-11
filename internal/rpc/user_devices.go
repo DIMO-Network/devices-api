@@ -433,8 +433,8 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 			}
 
 			// These fields have been deprecated but are populated for backwards compatibility.
-			out.AftermarketDeviceBeneficiaryAddress = out.AftermarketDevice.Beneficiary // nolint
-			out.AftermarketDeviceTokenId = out.AftermarketDevice.TokenId                // nolint
+			out.AftermarketDeviceBeneficiaryAddress = out.AftermarketDevice.Beneficiary //nolint:staticcheck
+			out.AftermarketDeviceTokenId = out.AftermarketDevice.TokenId                //nolint:staticcheck
 		}
 
 		if vc := vnft.R.Claim; vc != nil {

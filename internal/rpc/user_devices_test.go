@@ -146,8 +146,8 @@ func TestGetUserDevice_PopulateDeprecatedFields(t *testing.T) {
 	assert.NoError(err)
 
 	// Deprecated fields still populated
-	assert.Equal(udResult.AftermarketDevice.Beneficiary, udResult.AftermarketDeviceBeneficiaryAddress) // nolint
-	assert.Equal(udResult.AftermarketDevice.TokenId, udResult.AftermarketDeviceTokenId)                // nolint
-	assert.NotEmpty(udResult.AftermarketDeviceBeneficiaryAddress)                                      // nolint
+	assert.Equal(udResult.AftermarketDevice.Beneficiary, udResult.AftermarketDeviceBeneficiaryAddress) //nolint:staticcheck
+	assert.Equal(udResult.AftermarketDevice.TokenId, udResult.AftermarketDeviceTokenId)                //nolint:staticcheck
+	assert.NotEmpty(udResult.AftermarketDeviceBeneficiaryAddress)                                      //nolint:staticcheck
 
 }
