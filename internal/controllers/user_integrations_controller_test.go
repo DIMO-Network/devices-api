@@ -776,7 +776,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 	s.Require().NoError(vnft.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer()))
 
 	aftermarketDevice := test.SetupCreateAftermarketDevice(s.T(), testUserID, common.BigToAddress(big.NewInt(2)).Bytes(), unitID, &deviceID, s.pdb)
-	aftermarketDevice.TokenID = types.NewNullDecimal(decimal.New(5, 0))
+	aftermarketDevice.TokenID = types.NewDecimal(decimal.New(5, 0))
 	aftermarketDevice.OwnerAddress = null.BytesFrom(userAddr.Bytes())
 	row, errAMD := aftermarketDevice.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.Assert().Equal(int64(1), row)

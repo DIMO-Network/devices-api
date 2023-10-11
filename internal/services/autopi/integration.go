@@ -64,6 +64,10 @@ func intToDec(x *big.Int) types.NullDecimal {
 	return types.NewNullDecimal(new(decimal.Big).SetBigMantScale(x, 0))
 }
 
+func realIntToDec(x *big.Int) types.Decimal {
+	return types.NewDecimal(new(decimal.Big).SetBigMantScale(x, 0))
+}
+
 func powertrainToTemplate(pt *services.PowertrainType, integ *ddgrpc.Integration) int32 {
 	out := integ.AutoPiDefaultTemplateId
 	if pt != nil {
@@ -95,7 +99,7 @@ func (i *Integration) Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *b
 	var autoPiUnitID string
 
 	autoPiModel, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(intToDec(autoPiTokenID)),
+		models.AftermarketDeviceWhere.TokenID.EQ(realIntToDec(autoPiTokenID)),
 	).One(ctx, tx)
 	if err != nil {
 		return err
@@ -341,7 +345,7 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 	ud := nft.R.UserDevice
 
 	autoPiModel, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(intToDec(autoPiTokenID)),
+		models.AftermarketDeviceWhere.TokenID.EQ(realIntToDec(autoPiTokenID)),
 	).One(ctx, tx)
 	if err != nil {
 		return err

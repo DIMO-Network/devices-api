@@ -380,7 +380,7 @@ func (nc *NFTController) GetAftermarketDeviceNFTMetadata(c *fiber.Ctx) error {
 	}
 
 	unit, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tid, 0))),
+		models.AftermarketDeviceWhere.TokenID.EQ(types.NewDecimal(new(decimal.Big).SetBigMantScale(tid, 0))),
 	).One(c.Context(), nc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -420,17 +420,13 @@ func (nc *NFTController) GetAftermarketDeviceNFTImage(c *fiber.Ctx) error {
 	}
 
 	ad, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))),
+		models.AftermarketDeviceWhere.TokenID.EQ(types.NewDecimal(new(decimal.Big).SetBigMantScale(ti, 0))),
 	).One(c.Context(), nc.DBS().Reader)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return fiber.NewError(fiber.StatusNotFound, "No device with id.")
 		}
 		return err
-	}
-
-	if ad.DeviceManufacturerTokenID.IsZero() {
-		return fiber.NewError(fiber.StatusInternalServerError, "No manufacturer specified for device.")
 	}
 
 	dm, err := nc.deviceDefSvc.GetMakeByTokenID(c.Context(), ad.DeviceManufacturerTokenID.Int(nil))
