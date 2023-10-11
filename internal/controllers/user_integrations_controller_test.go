@@ -611,6 +611,8 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 		}(struct{ Version string }{Version: "1.21.6"}),
 	}, nil)
 
+	s.deviceDefSvc.EXPECT().GetMakeByTokenID(gomock.Any(), gomock.Any()).Return(&ddgrpc.DeviceMake{Name: "AutoPi"}, nil)
+
 	// act
 	request := test.BuildRequest("GET", "/aftermarket/device/by-serial/"+unitID, "")
 	response, err := app.Test(request)
@@ -649,6 +651,8 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_UpToDate()
 		}(struct{ Version string }{Version: "1.22.8"}),
 	}, nil)
 
+	s.deviceDefSvc.EXPECT().GetMakeByTokenID(gomock.Any(), gomock.Any()).Return(&ddgrpc.DeviceMake{Name: "AutoPi"}, nil)
+
 	// act
 	request := test.BuildRequest("GET", "/aftermarket/device/by-serial/"+unitID, "")
 	response, err := app.Test(request)
@@ -683,6 +687,8 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_FutureUpda
 			Version string `json:"version"`
 		}(struct{ Version string }{Version: "1.23.1"}),
 	}, nil)
+
+	s.deviceDefSvc.EXPECT().GetMakeByTokenID(gomock.Any(), gomock.Any()).Return(&ddgrpc.DeviceMake{Name: "AutoPi"}, nil)
 
 	// act
 	request := test.BuildRequest("GET", "/aftermarket/device/by-serial/"+unitID, "")
@@ -720,6 +726,8 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 			Version string `json:"version"`
 		}(struct{ Version string }{Version: "v1.22.8"}),
 	}, nil)
+
+	s.deviceDefSvc.EXPECT().GetMakeByTokenID(gomock.Any(), gomock.Any()).Return(&ddgrpc.DeviceMake{Name: "AutoPi"}, nil)
 
 	// act
 	request := test.BuildRequest("GET", "/aftermarket/device/by-serial/"+unitID, "")
