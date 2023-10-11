@@ -57,11 +57,13 @@ message UserDevice {
   optional uint64 token_id = 3;
   optional google.protobuf.Timestamp opted_in_at = 4;
   optional bytes owner_address = 5;
+  // Use aftermarket_device.token_id instead.
   optional uint64 aftermarket_device_token_id = 6 [deprecated = true];
   repeated UserDeviceIntegration integrations = 7;
   optional string vin = 8;
   string device_definition_id = 9;
   optional string device_style_id = 10;
+  // Use aftermarket_device.beneficiary instead.
   optional bytes aftermarket_device_beneficiary_address = 11 [deprecated = true];
   optional VinCredential latest_vin_credential = 12;
   bool vin_confirmed = 13;
