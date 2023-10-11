@@ -87,6 +87,7 @@ func (s *ConsumerTestSuite) TearDownSuite() {
 }
 
 func TestConsumerTestSuite(t *testing.T) {
+	t.Skip("Isolate this test from the network before putting it in CI.")
 	suite.Run(t, new(ConsumerTestSuite))
 }
 
@@ -108,7 +109,7 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 		OwnerAddress:    ownerAddress,
 		CreatedAt:       time.Now(),
 		UpdatedAt:       time.Now(),
-		TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
+		TokenID:         types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
 		VehicleTokenID:  types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
 		Beneficiary:     null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
 		EthereumAddress: ownerAddress.Bytes,
@@ -205,7 +206,7 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 				OwnerAddress:    ownerAddress,
 				CreatedAt:       eventTime,
 				UpdatedAt:       eventTime,
-				TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
+				TokenID:         types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
 				Beneficiary:     null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
 				EthereumAddress: ownerAddress.Bytes,
 			},

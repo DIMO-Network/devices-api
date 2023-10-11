@@ -10,6 +10,7 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
@@ -65,7 +66,7 @@ func (i *Integration) Pair(ctx context.Context, amTokenID, vehicleTokenID *big.I
 	}
 
 	amDev, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(intToDec(amTokenID)),
+		models.AftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(amTokenID)),
 	).One(ctx, tx)
 	if err != nil {
 		return err
@@ -203,7 +204,7 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 	ud := nft.R.UserDevice
 
 	autoPiModel, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(intToDec(autoPiTokenID)),
+		models.AftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(autoPiTokenID)),
 	).One(ctx, tx)
 	if err != nil {
 		return err

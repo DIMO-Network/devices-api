@@ -397,6 +397,11 @@ func (s *userDeviceRPCServer) GetAllUserDevice(req *pb.GetAllUserDeviceRequest, 
 	return nil
 }
 
+func decimalToUint(x types.Decimal) uint64 {
+	y, _ := x.Uint64()
+	return y
+}
+
 func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevice {
 	out := &pb.UserDevice{
 		Id:                 ud.ID,
@@ -418,8 +423,8 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 			out.AftermarketDevice = &pb.AftermarketDevice{
 				Serial:              amnft.Serial,
 				UserId:              amnft.UserID.Ptr(),
-				TokenId:             *s.toUint64(amnft.TokenID),
-				ManufacturerTokenId: *s.toUint64(amnft.DeviceManufacturerTokenID),
+				TokenId:             decimalToUint(amnft.TokenID),
+				ManufacturerTokenId: decimalToUint(amnft.DeviceManufacturerTokenID),
 			}
 
 			if amnft.OwnerAddress.Valid {
