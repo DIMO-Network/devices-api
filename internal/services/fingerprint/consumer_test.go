@@ -87,6 +87,7 @@ func (s *ConsumerTestSuite) TearDownSuite() {
 }
 
 func TestConsumerTestSuite(t *testing.T) {
+	t.Skip("Isolate this test from the network before putting it in CI.")
 	suite.Run(t, new(ConsumerTestSuite))
 }
 
