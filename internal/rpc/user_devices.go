@@ -397,6 +397,11 @@ func (s *userDeviceRPCServer) GetAllUserDevice(req *pb.GetAllUserDeviceRequest, 
 	return nil
 }
 
+func decimalToUint(x types.Decimal) uint64 {
+	y, _ := x.Uint64()
+	return y
+}
+
 func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevice {
 	out := &pb.UserDevice{
 		Id:                 ud.ID,
@@ -415,15 +420,26 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 		}
 
 		if amnft := vnft.R.VehicleTokenAftermarketDevice; amnft != nil {
-			if ti, ok := amnft.TokenID.Uint64(); ok {
-				out.AftermarketDeviceTokenId = &ti
+			out.AftermarketDevice = &pb.AftermarketDevice{
+				Serial:              amnft.Serial,
+				UserId:              amnft.UserID.Ptr(),
+				TokenId:             decimalToUint(amnft.TokenID),
+				ManufacturerTokenId: decimalToUint(amnft.DeviceManufacturerTokenID),
 			}
 
-			if amnft.Beneficiary.Valid {
-				out.AftermarketDeviceBeneficiaryAddress = amnft.Beneficiary.Bytes
-			} else if amnft.OwnerAddress.Valid {
-				out.AftermarketDeviceBeneficiaryAddress = amnft.OwnerAddress.Bytes
+			if amnft.OwnerAddress.Valid {
+				out.AftermarketDevice.OwnerAddress = amnft.OwnerAddress.Bytes
+
+				if amnft.Beneficiary.Valid {
+					out.AftermarketDevice.Beneficiary = amnft.Beneficiary.Bytes
+				} else {
+					out.AftermarketDevice.Beneficiary = amnft.OwnerAddress.Bytes
+				}
 			}
+
+			// These fields have been deprecated but are populated for backwards compatibility.
+			out.AftermarketDeviceBeneficiaryAddress = out.AftermarketDevice.Beneficiary //nolint:staticcheck
+			out.AftermarketDeviceTokenId = &out.AftermarketDevice.TokenId               //nolint:staticcheck
 		}
 
 		if vc := vnft.R.Claim; vc != nil {

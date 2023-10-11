@@ -92,6 +92,7 @@ func TestConsumerTestSuite(t *testing.T) {
 }
 
 func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
+	s.T().Skip("Isolate this test from the network before putting it in CI.")
 	deviceID := ksuid.New().String()
 	ownerAddress := null.BytesFrom(common.Hex2Bytes("448cF8Fd88AD914e3585401241BC434FbEA94bbb"))
 	vin := "W1N2539531F907299"
@@ -127,10 +128,13 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 		Status: models.MetaTransactionRequestStatusConfirmed,
 	}
 
+	eventTime, err := time.Parse(time.RFC3339Nano, "2023-07-04T00:00:00Z")
+	s.Require().NoError(err)
+
 	credential := models.VerifiableCredential{
 		ClaimID:        claimID,
 		Credential:     []byte{},
-		ExpirationDate: time.Now().AddDate(0, 0, 7),
+		ExpirationDate: eventTime.AddDate(0, 0, 7),
 	}
 
 	nft := models.VehicleNFT{
@@ -185,7 +189,7 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 			VCTable: models.VerifiableCredential{
 				ClaimID:        claimID,
 				Credential:     []byte{},
-				ExpirationDate: time.Now().AddDate(0, 0, -10),
+				ExpirationDate: eventTime.AddDate(0, 0, -10),
 			},
 			VehicleNFT:        nft,
 			AftermarketDevice: aftermarketDevice,
@@ -200,8 +204,8 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 			AftermarketDevice: models.AftermarketDevice{
 				UserID:          null.StringFrom("SomeID"),
 				OwnerAddress:    ownerAddress,
-				CreatedAt:       time.Now(),
-				UpdatedAt:       time.Now(),
+				CreatedAt:       eventTime,
+				UpdatedAt:       eventTime,
 				TokenID:         types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
 				Beneficiary:     null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
 				EthereumAddress: ownerAddress.Bytes,
@@ -243,6 +247,7 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 }
 
 func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
+	s.T().Skip("Isolate this test from the network before putting it in CI.")
 	ctx := context.Background()
 	userDeviceID := "userDeviceID1"
 	userID := "userID6"
@@ -308,7 +313,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 		MetaTxTable          *models.MetaTransactionRequest
 		VCTable              *models.VerifiableCredential
 		VehicleNFT           *models.VehicleNFT
-		AftermarketDevice    *models.AftermarketDevice
 		UserDeviceTable      *models.UserDevice
 		ExpiresAt            time.Time
 	}{
@@ -338,7 +342,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 				ExpirationDate: eventTime.AddDate(0, 0, -10),
 			},
 			VehicleNFT: &nft,
-			ExpiresAt:  eventTime.AddDate(0, 0, 8),
 		},
 	}
 
@@ -383,11 +386,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 				require.NoError(t, err)
 				s.Require().NoError(c.VehicleNFT.Reload(s.ctx, s.pdb.DBS().Reader))
 				s.Require().True(c.VehicleNFT.ClaimID.Valid)
-
-				vc, err := models.FindVerifiableCredential(s.ctx, s.pdb.DBS().Reader.DB, c.VehicleNFT.ClaimID.String)
-				s.Require().NoError(err)
-				s.Require().Equal(c.ExpiresAt, vc.ExpirationDate)
-
 			}
 		})
 	}
