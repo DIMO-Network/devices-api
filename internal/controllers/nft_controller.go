@@ -12,6 +12,7 @@ import (
 	"text/template"
 
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/shared"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -380,7 +381,7 @@ func (nc *NFTController) GetAftermarketDeviceNFTMetadata(c *fiber.Ctx) error {
 	}
 
 	unit, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(types.NewDecimal(new(decimal.Big).SetBigMantScale(tid, 0))),
+		models.AftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(tid)),
 	).One(c.Context(), nc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -420,7 +421,7 @@ func (nc *NFTController) GetAftermarketDeviceNFTImage(c *fiber.Ctx) error {
 	}
 
 	ad, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(types.NewDecimal(new(decimal.Big).SetBigMantScale(ti, 0))),
+		models.AftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(ti)),
 	).One(c.Context(), nc.DBS().Reader)
 	if err != nil {
 		if err == sql.ErrNoRows {
