@@ -463,6 +463,8 @@ func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) 
 		err = c.apInt.Pair(context.TODO(), args.AftermarketDeviceNode, args.VehicleNode)
 	case "Hashdog":
 		err = c.mcInt.Pair(context.TODO(), args.AftermarketDeviceNode, args.VehicleNode)
+	default:
+		err = fmt.Errorf("unexpected aftermarket device manufacturer vendor %s", dm.Name)
 	}
 
 	return err
@@ -543,6 +545,15 @@ func (c *ContractsEventsConsumer) aftermarketDeviceUnpaired(e *ContractEventData
 		return err
 	}
 
+	if am.DeviceManufacturerTokenID.IsZero() {
+		return fmt.Errorf("aftermarket device %d has no associated manufacturer", args.AftermarketDeviceNode)
+	}
+
+	dm, err := c.ddSvc.GetMakeByTokenID(context.TODO(), am.DeviceManufacturerTokenID.Int(nil))
+	if err != nil {
+		return fmt.Errorf("error retrieving manufacturer %d: %w", am.DeviceManufacturerTokenID, err)
+	}
+
 	am.VehicleTokenID = types.NullDecimal{}
 	am.PairRequestID = null.String{}
 
@@ -550,7 +561,16 @@ func (c *ContractsEventsConsumer) aftermarketDeviceUnpaired(e *ContractEventData
 		return err
 	}
 
-	return c.apInt.Unpair(context.TODO(), args.AftermarketDeviceNode, args.VehicleNode)
+	switch dm.Name {
+	case constants.AutoPiVendor:
+		err = c.apInt.Unpair(context.TODO(), args.AftermarketDeviceNode, args.VehicleNode)
+	case "Hashdog":
+		err = c.mcInt.Unpair(context.TODO(), args.AftermarketDeviceNode, args.VehicleNode)
+	default:
+		err = fmt.Errorf("unexpected aftermarket device manufacturer vendor %s", dm.Name)
+	}
+
+	return err
 }
 
 func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
