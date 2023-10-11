@@ -457,7 +457,6 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 				IntegrationTokenId: iTkID,
 			}
 		}
-
 	}
 
 	for i, udai := range ud.R.UserDeviceAPIIntegrations {
