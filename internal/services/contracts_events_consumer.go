@@ -13,6 +13,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/services/dex"
+	"github.com/DIMO-Network/devices-api/internal/utils"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/DIMO-Network/devices-api/models"
@@ -288,7 +289,7 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 		return err
 	}
 
-	tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0))
+	tkID := utils.BigToDecimal(args.TokenId)
 
 	if IsZeroAddress(args.From) {
 		c.log.Debug().Str("tokenID", tkID.String()).Msg("ignoring mint event")
@@ -333,7 +334,7 @@ func (c *ContractsEventsConsumer) setPrivilegeHandler(e *ContractEventData) erro
 	udp := models.NFTPrivilege{
 		UserAddress:     args.User.Bytes(),
 		ContractAddress: e.Contract.Bytes(),
-		TokenID:         types.NewDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
+		TokenID:         utils.BigToDecimal(args.TokenId),
 		Privilege:       args.PrivId.Int64(),
 		Expiry:          time.Unix(args.Expires.Int64(), 0),
 	}
@@ -367,8 +368,8 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 		amd := models.AftermarketDevice{
 			Serial:                    device.UnitID,
 			EthereumAddress:           args.AftermarketDeviceAddress.Bytes(),
-			TokenID:                   types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
-			DeviceManufacturerTokenID: types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.ManufacturerId, 0)),
+			TokenID:                   utils.BigToDecimal(args.TokenId),
+			DeviceManufacturerTokenID: utils.BigToDecimal(args.ManufacturerId),
 		}
 
 		amdMd := AftermarketDeviceMetadata{AutoPiDeviceID: device.ID}
@@ -385,8 +386,8 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 		// Place this in a holding table until we receive AftermarketDeviceAttributeSet with the serial.
 		pad := models.PartialAftermarketDevice{
 			EthereumAddress:     args.AftermarketDeviceAddress.Bytes(),
-			TokenID:             types.NewDecimal(bigToDecimal(args.TokenId)),
-			ManufacturerTokenID: types.NewDecimal(bigToDecimal(args.ManufacturerId)),
+			TokenID:             utils.BigToDecimal(args.TokenId),
+			ManufacturerTokenID: utils.BigToDecimal(args.ManufacturerId),
 		}
 
 		if err := pad.Upsert(context.TODO(), c.db.DBS().Writer, false, []string{models.PartialAftermarketDeviceColumns.TokenID}, boil.Infer(), boil.Infer()); err != nil {
@@ -410,7 +411,7 @@ func (c *ContractsEventsConsumer) aftermarketDeviceClaimed(e *ContractEventData)
 	}
 
 	am, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.AftermarketDeviceNode, 0))),
+		models.AftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(args.AftermarketDeviceNode)),
 	).One(context.TODO(), c.db.DBS().Reader)
 	if err != nil {
 		return err
@@ -437,14 +438,10 @@ func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) 
 	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Int64("aftermarketDeviceNode", args.AftermarketDeviceNode.Int64()).Msg("Pairing aftermarket device and vehicle.")
 
 	am, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(bigToDecimal(args.AftermarketDeviceNode))),
+		models.AftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(args.AftermarketDeviceNode)),
 	).One(context.TODO(), c.db.DBS().Reader)
 	if err != nil {
 		return err
-	}
-
-	if am.DeviceManufacturerTokenID.IsZero() {
-		return fmt.Errorf("aftermarket device %d has no associated manufacturer", args.AftermarketDeviceNode)
 	}
 
 	dm, err := c.ddSvc.GetMakeByTokenID(context.TODO(), am.DeviceManufacturerTokenID.Int(nil))
@@ -452,7 +449,7 @@ func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) 
 		return fmt.Errorf("error retrieving manufacturer %d: %w", am.DeviceManufacturerTokenID, err)
 	}
 
-	am.VehicleTokenID = types.NewNullDecimal(bigToDecimal(args.VehicleNode))
+	am.VehicleTokenID = types.NewNullDecimal(utils.BigToDecimal(args.VehicleNode).Big)
 	_, err = am.Update(context.TODO(), c.db.DBS().Writer, boil.Whitelist(models.AftermarketDeviceColumns.VehicleTokenID))
 	if err != nil {
 		return err
@@ -495,7 +492,7 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAttributeSet(e *ContractEvent
 	defer tx.Rollback() //nolint
 
 	pad, err := models.PartialAftermarketDevices(
-		models.PartialAftermarketDeviceWhere.TokenID.EQ(types.NewDecimal(bigToDecimal(args.TokenId))),
+		models.PartialAftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(args.TokenId)),
 	).One(context.TODO(), tx)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -507,8 +504,8 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAttributeSet(e *ContractEvent
 	ad := models.AftermarketDevice{
 		Serial:                    args.Info,
 		EthereumAddress:           pad.EthereumAddress,
-		TokenID:                   types.NewNullDecimal(pad.TokenID.Big),
-		DeviceManufacturerTokenID: types.NewNullDecimal(pad.ManufacturerTokenID.Big),
+		TokenID:                   pad.TokenID,
+		DeviceManufacturerTokenID: pad.ManufacturerTokenID,
 	}
 
 	err = ad.Upsert(context.TODO(), tx, false, []string{models.AftermarketDeviceColumns.EthereumAddress}, boil.Infer(), boil.Infer())
@@ -539,14 +536,10 @@ func (c *ContractsEventsConsumer) aftermarketDeviceUnpaired(e *ContractEventData
 	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Int64("aftermarketDeviceNode", args.AftermarketDeviceNode.Int64()).Msg("Unpairing aftermarket device and vehicle.")
 
 	am, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.AftermarketDeviceNode, 0))),
+		models.AftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(args.AftermarketDeviceNode)),
 	).One(context.TODO(), c.db.DBS().Reader)
 	if err != nil {
 		return err
-	}
-
-	if am.DeviceManufacturerTokenID.IsZero() {
-		return fmt.Errorf("aftermarket device %d has no associated manufacturer", args.AftermarketDeviceNode)
 	}
 
 	dm, err := c.ddSvc.GetMakeByTokenID(context.TODO(), am.DeviceManufacturerTokenID.Int(nil))
@@ -587,7 +580,7 @@ func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
 	c.log.Info().Int64("nodeID", args.NodeId.Int64()).Msgf("Aftermarket beneficiary set: %s.", args.Beneficiary)
 
 	device, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(args.NodeId.Int64()), 0))),
+		models.AftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(args.NodeId)),
 	).One(context.Background(), c.db.DBS().Reader)
 	if err != nil {
 		return err
@@ -701,8 +694,4 @@ type DCNNameChangedContract struct {
 	Node [32]byte
 	Name string `json:"name_"`
 	//Raw  types.Log // Blockchain specific contextual infos
-}
-
-func bigToDecimal(x *big.Int) *decimal.Big {
-	return new(decimal.Big).SetBigMantScale(x, 0)
 }

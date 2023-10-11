@@ -5,10 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/DIMO-Network/devices-api/internal/services"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/DIMO-Network/devices-api/internal/services"
 
 	"github.com/pkg/errors"
 

@@ -415,7 +415,9 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 		}
 
 		if amnft := vnft.R.VehicleTokenAftermarketDevice; amnft != nil {
-			out.AftermarketDeviceTokenId = s.toUint64(amnft.TokenID)
+			if ti, ok := amnft.TokenID.Uint64(); ok {
+				out.AftermarketDeviceTokenId = &ti
+			}
 
 			if amnft.Beneficiary.Valid {
 				out.AftermarketDeviceBeneficiaryAddress = amnft.Beneficiary.Bytes
