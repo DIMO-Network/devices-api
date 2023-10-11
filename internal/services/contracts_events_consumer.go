@@ -542,10 +542,6 @@ func (c *ContractsEventsConsumer) aftermarketDeviceUnpaired(e *ContractEventData
 		return err
 	}
 
-	if am.DeviceManufacturerTokenID.IsZero() {
-		return fmt.Errorf("aftermarket device %d has no associated manufacturer", args.AftermarketDeviceNode)
-	}
-
 	dm, err := c.ddSvc.GetMakeByTokenID(context.TODO(), am.DeviceManufacturerTokenID.Int(nil))
 	if err != nil {
 		return fmt.Errorf("error retrieving manufacturer %d: %w", am.DeviceManufacturerTokenID, err)
