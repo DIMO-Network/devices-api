@@ -463,9 +463,7 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 			return err
 		}
 	} else {
-		if !dbUnit.TokenID.IsZero() {
-			tokenID = dbUnit.TokenID.Int(nil)
-		}
+		tokenID = dbUnit.TokenID.Int(nil)
 
 		addr := common.BytesToAddress(dbUnit.EthereumAddress)
 		ethereumAddress = &addr
@@ -523,18 +521,16 @@ func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
 			}
 		}
 
-		if !dbUnit.DeviceManufacturerTokenID.IsZero() {
-			tib := dbUnit.DeviceManufacturerTokenID.Int(nil)
+		tib := dbUnit.DeviceManufacturerTokenID.Int(nil)
 
-			dm, err := udc.DeviceDefSvc.GetMakeByTokenID(c.Context(), tib)
-			if err != nil {
-				return err
-			}
+		dm, err := udc.DeviceDefSvc.GetMakeByTokenID(c.Context(), tib)
+		if err != nil {
+			return err
+		}
 
-			mfr = &ManufacturerInfo{
-				TokenID: tib,
-				Name:    dm.Name,
-			}
+		mfr = &ManufacturerInfo{
+			TokenID: tib,
+			Name:    dm.Name,
 		}
 	}
 
@@ -676,11 +672,6 @@ func (udc *UserDevicesController) GetAutoPiClaimMessage(c *fiber.Ctx) error {
 
 	if unit.R.ClaimMetaTransactionRequest != nil && unit.R.ClaimMetaTransactionRequest.Status != "Failed" {
 		return fiber.NewError(fiber.StatusConflict, "Claiming transaction in progress.")
-	}
-
-	if unit.TokenID.IsZero() {
-		logger.Error().Msg("AutoPi not minted.")
-		return fiber.NewError(fiber.StatusConflict, "AutoPi not minted.")
 	}
 
 	apToken := unit.TokenID.Int(nil)
@@ -949,11 +940,6 @@ func (udc *UserDevicesController) checkPairable(ctx context.Context, userDeviceI
 			return nil, nil, fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("No aftermarket device with serial %q known.", serial))
 		}
 		return nil, nil, err
-	}
-
-	if ad.TokenID.IsZero() {
-		// This should never happen.
-		return nil, nil, fiber.NewError(fiber.StatusConflict, "Aftermarket device not yet minted.", serial)
 	}
 
 	if !ad.OwnerAddress.Valid {
@@ -1253,10 +1239,6 @@ func (udc *UserDevicesController) PostUnclaimAutoPi(c *fiber.Ctx) error {
 		return err
 	}
 
-	if unit.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted.")
-	}
-
 	apToken := unit.TokenID.Int(nil)
 
 	client := registry.Client{
@@ -1314,10 +1296,6 @@ func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted, or unit ID invalid.")
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal error.")
-	}
-
-	if unit.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted.")
 	}
 
 	if unit.OwnerAddress.Valid {

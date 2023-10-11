@@ -193,7 +193,7 @@ func Test_Transfer_Event_Handled_Correctly(t *testing.T) {
 	defer s.destroy()
 
 	tokenID := int64(4)
-	nullTkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0))
+	nullTkID := types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0))
 	factoryResp := transferEventsPayloadFactory(2, 3, tokenID, s.settings.DIMORegistryChainID, AftermarketDeviceContractAddress)
 
 	msg := &message.Message{
@@ -206,7 +206,7 @@ func Test_Transfer_Event_Handled_Correctly(t *testing.T) {
 		OwnerAddress: null.BytesFrom(cm.Bytes()),
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
-		TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0)),
+		TokenID:      types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0)),
 		Beneficiary:  null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
 	}
 
@@ -238,7 +238,7 @@ func Test_Ignore_Transfer_Mint_Event(t *testing.T) {
 		Payload: []byte(factoryResp.payload),
 	}
 
-	tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0))
+	tkID := types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0))
 
 	cm := common.BytesToAddress([]byte{uint8(9)})
 	autopiUnit := models.AftermarketDevice{
@@ -274,7 +274,7 @@ func Test_Ignore_Transfer_Claims_Event(t *testing.T) {
 		Payload: []byte(factoryResp.payload),
 	}
 
-	tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0))
+	tkID := types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0))
 
 	autopiUnit := models.AftermarketDevice{
 		UserID:    null.StringFrom("SomeID"),
@@ -314,7 +314,7 @@ func Test_Ignore_Transfer_Wrong_Contract(t *testing.T) {
 		OwnerAddress: null.BytesFrom(cm.Bytes()),
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
-		TokenID:      types.NewNullDecimal(decimal.New(tokenID, 0)),
+		TokenID:      types.NewDecimal(decimal.New(tokenID, 0)),
 	}
 
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
@@ -346,7 +346,7 @@ func Test_Ignore_Transfer_Unit_Not_Found(t *testing.T) {
 		OwnerAddress: null.BytesFrom(cm.Bytes()),
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
-		TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0)),
+		TokenID:      types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0)),
 	}
 
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
@@ -386,7 +386,7 @@ func TestSetBeneficiary(t *testing.T) {
 			},
 			AutopiUnitTable: models.AftermarketDevice{
 				OwnerAddress: null.BytesFrom(common.BigToAddress(big.NewInt(2)).Bytes()),
-				TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(2), 0)),
+				TokenID:      types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(2), 0)),
 			},
 			ExpectedBeneficiaryResult: null.Bytes{Bytes: []byte{}},
 		},
@@ -400,7 +400,7 @@ func TestSetBeneficiary(t *testing.T) {
 			},
 			AutopiUnitTable: models.AftermarketDevice{
 				OwnerAddress: null.BytesFrom(common.BigToAddress(big.NewInt(1)).Bytes()),
-				TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(1), 0)),
+				TokenID:      types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(1), 0)),
 			},
 			ExpectedBeneficiaryResult: null.BytesFrom(common.BigToAddress(big.NewInt(1)).Bytes()),
 		},
@@ -414,7 +414,7 @@ func TestSetBeneficiary(t *testing.T) {
 			},
 			AutopiUnitTable: models.AftermarketDevice{
 				OwnerAddress: null.BytesFrom(common.BigToAddress(big.NewInt(1)).Bytes()),
-				TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(3), 0)),
+				TokenID:      types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(3), 0)),
 				Beneficiary:  null.BytesFrom(common.BigToAddress(big.NewInt(2)).Bytes()),
 			},
 			ExpectedBeneficiaryResult: null.BytesFrom(common.BigToAddress(big.NewInt(3)).Bytes()),
@@ -429,7 +429,7 @@ func TestSetBeneficiary(t *testing.T) {
 			},
 			AutopiUnitTable: models.AftermarketDevice{
 				OwnerAddress: null.BytesFrom(common.BigToAddress(big.NewInt(1)).Bytes()),
-				TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(3), 0)),
+				TokenID:      types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(3), 0)),
 				Beneficiary:  null.BytesFrom(common.BigToAddress(big.NewInt(2)).Bytes()),
 			},
 			ExpectedBeneficiaryResult: null.Bytes{Bytes: []byte{}},
