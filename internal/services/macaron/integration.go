@@ -65,7 +65,7 @@ func (i *Integration) Pair(ctx context.Context, amTokenID, vehicleTokenID *big.I
 	}
 
 	amDev, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(intToDec(amTokenID)),
+		models.AftermarketDeviceWhere.TokenID.EQ(realIntToDec(amTokenID)),
 	).One(ctx, tx)
 	if err != nil {
 		return err
@@ -182,6 +182,10 @@ func (i *Integration) Pair(ctx context.Context, amTokenID, vehicleTokenID *big.I
 	return nil
 }
 
+func realIntToDec(x *big.Int) types.Decimal {
+	return types.NewDecimal(new(decimal.Big).SetBigMantScale(x, 0))
+}
+
 func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID *big.Int) error {
 	tx, err := i.db().Writer.BeginTx(ctx, nil)
 	if err != nil {
@@ -203,7 +207,7 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 	ud := nft.R.UserDevice
 
 	autoPiModel, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(intToDec(autoPiTokenID)),
+		models.AftermarketDeviceWhere.TokenID.EQ(realIntToDec(autoPiTokenID)),
 	).One(ctx, tx)
 	if err != nil {
 		return err

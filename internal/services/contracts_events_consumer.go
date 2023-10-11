@@ -288,7 +288,7 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 		return err
 	}
 
-	tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0))
+	tkID := types.NewDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0))
 
 	if IsZeroAddress(args.From) {
 		c.log.Debug().Str("tokenID", tkID.String()).Msg("ignoring mint event")
@@ -367,8 +367,8 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 		amd := models.AftermarketDevice{
 			Serial:                    device.UnitID,
 			EthereumAddress:           args.AftermarketDeviceAddress.Bytes(),
-			TokenID:                   types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
-			DeviceManufacturerTokenID: types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.ManufacturerId, 0)),
+			TokenID:                   types.NewDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0)),
+			DeviceManufacturerTokenID: types.NewDecimal(new(decimal.Big).SetBigMantScale(args.ManufacturerId, 0)),
 		}
 
 		amdMd := AftermarketDeviceMetadata{AutoPiDeviceID: device.ID}
@@ -410,7 +410,7 @@ func (c *ContractsEventsConsumer) aftermarketDeviceClaimed(e *ContractEventData)
 	}
 
 	am, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.AftermarketDeviceNode, 0))),
+		models.AftermarketDeviceWhere.TokenID.EQ(types.NewDecimal(new(decimal.Big).SetBigMantScale(args.AftermarketDeviceNode, 0))),
 	).One(context.TODO(), c.db.DBS().Reader)
 	if err != nil {
 		return err
@@ -437,14 +437,10 @@ func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) 
 	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Int64("aftermarketDeviceNode", args.AftermarketDeviceNode.Int64()).Msg("Pairing aftermarket device and vehicle.")
 
 	am, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(bigToDecimal(args.AftermarketDeviceNode))),
+		models.AftermarketDeviceWhere.TokenID.EQ(types.NewDecimal(bigToDecimal(args.AftermarketDeviceNode))),
 	).One(context.TODO(), c.db.DBS().Reader)
 	if err != nil {
 		return err
-	}
-
-	if am.DeviceManufacturerTokenID.IsZero() {
-		return fmt.Errorf("aftermarket device %d has no associated manufacturer", args.AftermarketDeviceNode)
 	}
 
 	dm, err := c.ddSvc.GetMakeByTokenID(context.TODO(), am.DeviceManufacturerTokenID.Int(nil))
@@ -505,8 +501,8 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAttributeSet(e *ContractEvent
 	ad := models.AftermarketDevice{
 		Serial:                    args.Info,
 		EthereumAddress:           pad.EthereumAddress,
-		TokenID:                   types.NewNullDecimal(pad.TokenID.Big),
-		DeviceManufacturerTokenID: types.NewNullDecimal(pad.ManufacturerTokenID.Big),
+		TokenID:                   types.NewDecimal(pad.TokenID.Big),
+		DeviceManufacturerTokenID: types.NewDecimal(pad.ManufacturerTokenID.Big),
 	}
 
 	err = ad.Upsert(context.TODO(), tx, false, []string{models.AftermarketDeviceColumns.EthereumAddress}, boil.Infer(), boil.Infer())
@@ -537,7 +533,7 @@ func (c *ContractsEventsConsumer) aftermarketDeviceUnpaired(e *ContractEventData
 	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Int64("aftermarketDeviceNode", args.AftermarketDeviceNode.Int64()).Msg("Unpairing aftermarket device and vehicle.")
 
 	am, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.AftermarketDeviceNode, 0))),
+		models.AftermarketDeviceWhere.TokenID.EQ(types.NewDecimal(new(decimal.Big).SetBigMantScale(args.AftermarketDeviceNode, 0))),
 	).One(context.TODO(), c.db.DBS().Reader)
 	if err != nil {
 		return err
@@ -567,7 +563,7 @@ func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
 	c.log.Info().Int64("nodeID", args.NodeId.Int64()).Msgf("Aftermarket beneficiary set: %s.", args.Beneficiary)
 
 	device, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(args.NodeId.Int64()), 0))),
+		models.AftermarketDeviceWhere.TokenID.EQ(types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(args.NodeId.Int64()), 0))),
 	).One(context.Background(), c.db.DBS().Reader)
 	if err != nil {
 		return err
