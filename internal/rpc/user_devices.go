@@ -418,8 +418,8 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 			out.AftermarketDevice = &pb.AftermarketDevice{
 				Serial:              amnft.Serial,
 				UserId:              amnft.UserID.Ptr(),
-				TokenId:             s.toUint64(amnft.TokenID),
-				ManufacturerTokenId: s.toUint64(amnft.DeviceManufacturerTokenID),
+				TokenId:             *s.toUint64(amnft.TokenID),
+				ManufacturerTokenId: *s.toUint64(amnft.DeviceManufacturerTokenID),
 			}
 
 			if amnft.OwnerAddress.Valid {
@@ -434,7 +434,7 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 
 			// These fields have been deprecated but are populated for backwards compatibility.
 			out.AftermarketDeviceBeneficiaryAddress = out.AftermarketDevice.Beneficiary //nolint:staticcheck
-			out.AftermarketDeviceTokenId = out.AftermarketDevice.TokenId                //nolint:staticcheck
+			out.AftermarketDeviceTokenId = &out.AftermarketDevice.TokenId               //nolint:staticcheck
 		}
 
 		if vc := vnft.R.Claim; vc != nil {

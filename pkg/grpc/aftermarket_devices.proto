@@ -20,7 +20,7 @@ message AftermarketDevice {
 	string serial = 1;
 	optional string user_id = 2;
 	optional bytes owner_address = 3;
-	optional uint64 token_id = 4;
-	optional uint64 manufacturer_token_id = 5;
+	uint64 token_id = 4;
+	uint64 manufacturer_token_id = 5;
 	optional bytes beneficiary = 6;
 }

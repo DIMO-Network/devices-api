@@ -55,14 +55,15 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 	}
 
 	ad := models.AftermarketDevice{
-		UserID:          null.StringFrom(ud.ID),
-		OwnerAddress:    ownerAddress,
-		CreatedAt:       time.Now(),
-		UpdatedAt:       time.Now(),
-		TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
-		VehicleTokenID:  vnft.TokenID,
-		Beneficiary:     null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
-		EthereumAddress: ownerAddress.Bytes,
+		UserID:                    null.StringFrom(ud.ID),
+		OwnerAddress:              ownerAddress,
+		CreatedAt:                 time.Now(),
+		UpdatedAt:                 time.Now(),
+		TokenID:                   types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
+		VehicleTokenID:            vnft.TokenID,
+		Beneficiary:               null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
+		EthereumAddress:           ownerAddress.Bytes,
+		DeviceManufacturerTokenID: types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(42), 0)),
 	}
 
 	credential := models.VerifiableCredential{
@@ -99,7 +100,8 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 	return ud.ID, nil
 }
 
-func TestGetUserDevice_AftermarketDeviceObj(t *testing.T) {
+func TestGetUserDevice_AftermarketDeviceObj_NotNil(t *testing.T) {
+	// AftermarketDevice obj is not nil when valid data is present
 	assert := assert.New(t)
 	ctx := context.Background()
 	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
@@ -122,6 +124,38 @@ func TestGetUserDevice_AftermarketDeviceObj(t *testing.T) {
 	// AftermarketDevice obj set correctly (not nil)
 	assert.NotNil(udResult.AftermarketDevice)
 	assert.Equal(*udResult.AftermarketDevice.UserId, userDeviceID)
+}
+
+func TestGetUserDevice_AftermarketDeviceObj_Nil(t *testing.T) {
+	// AftermarketDevice obj is nil when no associated AD is set
+	assert := assert.New(t)
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			assert.NoError(err)
+		}
+	}()
+
+	userDeviceID, err := populateDB(ctx, pdb)
+	assert.NoError(err)
+
+	logger := zerolog.Logger{}
+	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+
+	_, err = models.AftermarketDevices(
+		models.AftermarketDeviceWhere.UserID.EQ(null.StringFrom(userDeviceID)),
+	).DeleteAll(ctx, pdb.DBS().Writer)
+	assert.NoError(err)
+
+	a, err := models.AftermarketDevices().All(ctx, pdb.DBS().Reader)
+	assert.Nil(a)
+
+	udResult, err := udService.GetUserDevice(ctx, &pb_devices.GetUserDeviceRequest{Id: userDeviceID})
+	assert.NoError(err)
+
+	assert.Nil(udResult.AftermarketDevice)
 
 }
 
@@ -147,7 +181,7 @@ func TestGetUserDevice_PopulateDeprecatedFields(t *testing.T) {
 
 	// Deprecated fields still populated
 	assert.Equal(udResult.AftermarketDevice.Beneficiary, udResult.AftermarketDeviceBeneficiaryAddress) //nolint:staticcheck
-	assert.Equal(udResult.AftermarketDevice.TokenId, udResult.AftermarketDeviceTokenId)                //nolint:staticcheck
+	assert.Equal(udResult.AftermarketDevice.TokenId, *udResult.AftermarketDeviceTokenId)               //nolint:staticcheck
 	assert.NotEmpty(udResult.AftermarketDeviceBeneficiaryAddress)                                      //nolint:staticcheck
 
 }

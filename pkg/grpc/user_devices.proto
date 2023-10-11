@@ -72,7 +72,7 @@ message UserDevice {
   string postal_code = 17;
   string geo_decoded_country = 18;
   string geo_decoded_state_prov = 19;
-  optional AftermarketDevice aftermarket_device = 20;
+  AftermarketDevice aftermarket_device = 20;
 }
 
 message UserDeviceIntegration {
