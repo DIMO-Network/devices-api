@@ -1,0 +1,153 @@
+package rpc
+
+import (
+	"context"
+	"math/big"
+	"testing"
+	"time"
+
+	pb_devices "github.com/DIMO-Network/devices-api/pkg/grpc"
+	"github.com/DIMO-Network/shared/db"
+	"github.com/ericlagergren/decimal"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/segmentio/ksuid"
+
+	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/internal/test"
+	"github.com/DIMO-Network/devices-api/models"
+	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/assert"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/types"
+)
+
+const migrationsDirRelPath = "../../migrations"
+
+func populateDB(ctx context.Context, pdb db.Store) (string, error) {
+	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
+	vin := "W1N2539531F907299"
+	deviceStyleID := "24GE7Mlc4c9o4j5P4mcD1Fzinx1"
+	userID := ksuid.New().String()
+	ownerAddress := null.BytesFrom(common.Hex2Bytes("448cF8Fd88AD914e3585401241BC434FbEA94bbb"))
+	claimID := ksuid.New().String()
+
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		UserID:             userID,
+		DeviceDefinitionID: dd[0].DeviceDefinitionId,
+		VinIdentifier:      null.StringFrom(vin),
+		CountryCode:        null.StringFrom("USA"),
+		VinConfirmed:       true,
+		Metadata:           null.JSONFrom([]byte(`{ "powertrainType": "ICE", "canProtocol": "6" }`)),
+		DeviceStyleID:      null.StringFrom(deviceStyleID),
+	}
+
+	vnft := models.VehicleNFT{
+		UserDeviceID:  null.StringFrom(ud.ID),
+		Vin:           ud.VinIdentifier.String,
+		TokenID:       types.NewNullDecimal(decimal.New(4, 0)),
+		OwnerAddress:  null.BytesFrom(common.BigToAddress(big.NewInt(7)).Bytes()),
+		MintRequestID: ksuid.New().String(),
+		ClaimID:       null.StringFrom(claimID),
+	}
+
+	ad := models.AftermarketDevice{
+		UserID:          null.StringFrom(ud.ID),
+		OwnerAddress:    ownerAddress,
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+		TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
+		VehicleTokenID:  vnft.TokenID,
+		Beneficiary:     null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
+		EthereumAddress: ownerAddress.Bytes,
+	}
+
+	credential := models.VerifiableCredential{
+		ClaimID:        claimID,
+		Credential:     []byte{},
+		ExpirationDate: time.Now().AddDate(0, 0, 7),
+	}
+
+	metaTx := models.MetaTransactionRequest{
+		ID:     vnft.MintRequestID,
+		Status: models.MetaTransactionRequestStatusConfirmed,
+	}
+
+	if err := ud.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
+		return "", err
+	}
+
+	if err := metaTx.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
+		return "", err
+	}
+
+	if err := credential.Insert(ctx, pdb.DBS().Reader, boil.Infer()); err != nil {
+		return "", err
+	}
+
+	if err := vnft.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
+		return "", err
+	}
+
+	if err := ad.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
+		return "", err
+	}
+
+	return ud.ID, nil
+}
+
+func TestGetUserDevice_AftermarketDeviceObj(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			assert.NoError(err)
+		}
+	}()
+
+	userDeviceID, err := populateDB(ctx, pdb)
+	assert.NoError(err)
+
+	logger := zerolog.Logger{}
+	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+
+	udResult, err := udService.GetUserDevice(ctx, &pb_devices.GetUserDeviceRequest{Id: userDeviceID})
+	assert.NoError(err)
+
+	// AftermarketDevice obj set correctly (not nil)
+	assert.NotNil(udResult.AftermarketDevice)
+	assert.Equal(*udResult.AftermarketDevice.UserId, userDeviceID)
+
+}
+
+func TestGetUserDevice_PopulateDeprecatedFields(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	userDeviceID, err := populateDB(ctx, pdb)
+	assert.NoError(err)
+
+	logger := zerolog.Logger{}
+	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+
+	udResult, err := udService.GetUserDevice(ctx, &pb_devices.GetUserDeviceRequest{Id: userDeviceID})
+	assert.NoError(err)
+
+	// Deprecated fields still populated
+	assert.Equal(udResult.AftermarketDevice.Beneficiary, udResult.AftermarketDeviceBeneficiaryAddress) // no lint
+	assert.Equal(udResult.AftermarketDevice.TokenId, udResult.AftermarketDeviceTokenId)                // no lint
+	assert.NotEmpty(udResult.AftermarketDeviceBeneficiaryAddress)                                      // no lint
+
+}
