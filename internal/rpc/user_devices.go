@@ -430,6 +430,16 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 				Expiration: timestamppb.New(vc.ExpirationDate),
 			}
 		}
+
+		if sd := vnft.R.VehicleTokenSyntheticDevice; sd != nil {
+			stk, _ := sd.VehicleTokenID.Int64()
+			iTkID, _ := sd.IntegrationTokenID.Int64()
+			out.SyntheticDevice = &pb.SyntheticDevice{
+				TokenId:            stk,
+				IntegrationTokenId: iTkID,
+			}
+		}
+
 	}
 
 	for i, udai := range ud.R.UserDeviceAPIIntegrations {
