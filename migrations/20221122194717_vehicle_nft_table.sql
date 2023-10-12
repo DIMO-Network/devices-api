@@ -9,7 +9,7 @@ CREATE TABLE vehicle_nfts(
     user_device_id char(27)
         CONSTRAINT vehicle_nfts_user_device_id_fkey REFERENCES user_devices(id) ON DELETE SET NULL
         CONSTRAINT vehicle_nfts_user_device_id_key UNIQUE,
-    vin char(17) NOT NULL, -- Want some constraint on minting the same VIN, but it's not clear what.
+    vin char(17) NOT NULL, -- Want some constraint on minting the same vin, but it's not clear what.
     token_id numeric(78, 0)
         CONSTRAINT vehicle_nfts_token_id_key UNIQUE,
     owner_address bytea

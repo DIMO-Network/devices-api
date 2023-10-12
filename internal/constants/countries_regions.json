@@ -466,5 +466,44 @@
     "region_code": 150,
     "sub_region_code": 254,
     "intermediate_region_code": ""
+  },
+  {
+    "name": "Peru",
+    "alpha_2": "PE",
+    "alpha_3": "PER",
+    "id": 604,
+    "iso_3166_2": "ISO 3166-2:PE",
+    "region": "South America",
+    "sub_region": "Western South America",
+    "intermediate_region": "",
+    "region_code": 419,
+    "sub_region_code": 5,
+    "intermediate_region_code": ""
+  },
+  {
+    "name": "Malaysia",
+    "alpha_2": "MY",
+    "alpha_3": "MYS",
+    "id": 458,
+    "iso_3166_2": "ISO 3166-2:MY",
+    "region": "Asia",
+    "sub_region": "Southeast Asia",
+    "intermediate_region": "",
+    "region_code": 142,
+    "sub_region_code": 35,
+    "intermediate_region_code": ""
+  },
+  {
+    "name": "Pakistan",
+    "alpha_2": "PK",
+    "alpha_3": "PAK",
+    "id": 586,
+    "iso_3166_2": "ISO 3166-2:PK",
+    "region": "Asia",
+    "sub_region": "Southern Asia",
+    "intermediate_region": "",
+    "region_code": 142,
+    "sub_region_code": 34,
+    "intermediate_region_code": ""
   }
 ]

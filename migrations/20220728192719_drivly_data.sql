@@ -8,7 +8,7 @@ CREATE TABLE drivly_data
 (
     id                   char(27), -- ksuid
     device_definition_id char(27), -- ksuid
-    VIN                  text        not null,
+    vin                  text        not null,
     user_device_id       char(27), -- ksuid
     vin_metadata         json,
     offer_metadata       json,
