@@ -611,6 +611,8 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 		}(struct{ Version string }{Version: "1.21.6"}),
 	}, nil)
 
+	s.deviceDefSvc.EXPECT().GetMakeByTokenID(gomock.Any(), gomock.Any()).Return(&ddgrpc.DeviceMake{Name: "AutoPi"}, nil)
+
 	// act
 	request := test.BuildRequest("GET", "/aftermarket/device/by-serial/"+unitID, "")
 	response, err := app.Test(request)
@@ -649,6 +651,8 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_UpToDate()
 		}(struct{ Version string }{Version: "1.22.8"}),
 	}, nil)
 
+	s.deviceDefSvc.EXPECT().GetMakeByTokenID(gomock.Any(), gomock.Any()).Return(&ddgrpc.DeviceMake{Name: "AutoPi"}, nil)
+
 	// act
 	request := test.BuildRequest("GET", "/aftermarket/device/by-serial/"+unitID, "")
 	response, err := app.Test(request)
@@ -683,6 +687,8 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_FutureUpda
 			Version string `json:"version"`
 		}(struct{ Version string }{Version: "1.23.1"}),
 	}, nil)
+
+	s.deviceDefSvc.EXPECT().GetMakeByTokenID(gomock.Any(), gomock.Any()).Return(&ddgrpc.DeviceMake{Name: "AutoPi"}, nil)
 
 	// act
 	request := test.BuildRequest("GET", "/aftermarket/device/by-serial/"+unitID, "")
@@ -720,6 +726,8 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 			Version string `json:"version"`
 		}(struct{ Version string }{Version: "v1.22.8"}),
 	}, nil)
+
+	s.deviceDefSvc.EXPECT().GetMakeByTokenID(gomock.Any(), gomock.Any()).Return(&ddgrpc.DeviceMake{Name: "AutoPi"}, nil)
 
 	// act
 	request := test.BuildRequest("GET", "/aftermarket/device/by-serial/"+unitID, "")
@@ -776,7 +784,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 	s.Require().NoError(vnft.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer()))
 
 	aftermarketDevice := test.SetupCreateAftermarketDevice(s.T(), testUserID, common.BigToAddress(big.NewInt(2)).Bytes(), unitID, &deviceID, s.pdb)
-	aftermarketDevice.TokenID = types.NewNullDecimal(decimal.New(5, 0))
+	aftermarketDevice.TokenID = types.NewDecimal(decimal.New(5, 0))
 	aftermarketDevice.OwnerAddress = null.BytesFrom(userAddr.Bytes())
 	row, errAMD := aftermarketDevice.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.Assert().Equal(int64(1), row)

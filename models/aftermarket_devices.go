@@ -30,7 +30,7 @@ type AftermarketDevice struct {
 	EthereumAddress               []byte            `boil:"ethereum_address" json:"ethereum_address" toml:"ethereum_address" yaml:"ethereum_address"`
 	CreatedAt                     time.Time         `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt                     time.Time         `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	TokenID                       types.NullDecimal `boil:"token_id" json:"token_id,omitempty" toml:"token_id" yaml:"token_id,omitempty"`
+	TokenID                       types.Decimal     `boil:"token_id" json:"token_id" toml:"token_id" yaml:"token_id"`
 	ClaimMetaTransactionRequestID null.String       `boil:"claim_meta_transaction_request_id" json:"claim_meta_transaction_request_id,omitempty" toml:"claim_meta_transaction_request_id" yaml:"claim_meta_transaction_request_id,omitempty"`
 	OwnerAddress                  null.Bytes        `boil:"owner_address" json:"owner_address,omitempty" toml:"owner_address" yaml:"owner_address,omitempty"`
 	PairRequestID                 null.String       `boil:"pair_request_id" json:"pair_request_id,omitempty" toml:"pair_request_id" yaml:"pair_request_id,omitempty"`
@@ -38,7 +38,7 @@ type AftermarketDevice struct {
 	VehicleTokenID                types.NullDecimal `boil:"vehicle_token_id" json:"vehicle_token_id,omitempty" toml:"vehicle_token_id" yaml:"vehicle_token_id,omitempty"`
 	Beneficiary                   null.Bytes        `boil:"beneficiary" json:"beneficiary,omitempty" toml:"beneficiary" yaml:"beneficiary,omitempty"`
 	Metadata                      null.JSON         `boil:"metadata" json:"metadata,omitempty" toml:"metadata" yaml:"metadata,omitempty"`
-	DeviceManufacturerTokenID     types.NullDecimal `boil:"device_manufacturer_token_id" json:"device_manufacturer_token_id,omitempty" toml:"device_manufacturer_token_id" yaml:"device_manufacturer_token_id,omitempty"`
+	DeviceManufacturerTokenID     types.Decimal     `boil:"device_manufacturer_token_id" json:"device_manufacturer_token_id" toml:"device_manufacturer_token_id" yaml:"device_manufacturer_token_id"`
 
 	R *aftermarketDeviceR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L aftermarketDeviceL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -217,30 +217,25 @@ func (w whereHelpertime_Time) GTE(x time.Time) qm.QueryMod {
 	return qmhelper.Where(w.field, qmhelper.GTE, x)
 }
 
-type whereHelpertypes_NullDecimal struct{ field string }
+type whereHelpertypes_Decimal struct{ field string }
 
-func (w whereHelpertypes_NullDecimal) EQ(x types.NullDecimal) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, false, x)
+func (w whereHelpertypes_Decimal) EQ(x types.Decimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.EQ, x)
 }
-func (w whereHelpertypes_NullDecimal) NEQ(x types.NullDecimal) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, true, x)
+func (w whereHelpertypes_Decimal) NEQ(x types.Decimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.NEQ, x)
 }
-func (w whereHelpertypes_NullDecimal) LT(x types.NullDecimal) qm.QueryMod {
+func (w whereHelpertypes_Decimal) LT(x types.Decimal) qm.QueryMod {
 	return qmhelper.Where(w.field, qmhelper.LT, x)
 }
-func (w whereHelpertypes_NullDecimal) LTE(x types.NullDecimal) qm.QueryMod {
+func (w whereHelpertypes_Decimal) LTE(x types.Decimal) qm.QueryMod {
 	return qmhelper.Where(w.field, qmhelper.LTE, x)
 }
-func (w whereHelpertypes_NullDecimal) GT(x types.NullDecimal) qm.QueryMod {
+func (w whereHelpertypes_Decimal) GT(x types.Decimal) qm.QueryMod {
 	return qmhelper.Where(w.field, qmhelper.GT, x)
 }
-func (w whereHelpertypes_NullDecimal) GTE(x types.NullDecimal) qm.QueryMod {
+func (w whereHelpertypes_Decimal) GTE(x types.Decimal) qm.QueryMod {
 	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
-
-func (w whereHelpertypes_NullDecimal) IsNull() qm.QueryMod { return qmhelper.WhereIsNull(w.field) }
-func (w whereHelpertypes_NullDecimal) IsNotNull() qm.QueryMod {
-	return qmhelper.WhereIsNotNull(w.field)
 }
 
 type whereHelpernull_Bytes struct{ field string }
@@ -266,6 +261,32 @@ func (w whereHelpernull_Bytes) GTE(x null.Bytes) qm.QueryMod {
 
 func (w whereHelpernull_Bytes) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
 func (w whereHelpernull_Bytes) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
+
+type whereHelpertypes_NullDecimal struct{ field string }
+
+func (w whereHelpertypes_NullDecimal) EQ(x types.NullDecimal) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpertypes_NullDecimal) NEQ(x types.NullDecimal) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpertypes_NullDecimal) LT(x types.NullDecimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpertypes_NullDecimal) LTE(x types.NullDecimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpertypes_NullDecimal) GT(x types.NullDecimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpertypes_NullDecimal) GTE(x types.NullDecimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelpertypes_NullDecimal) IsNull() qm.QueryMod { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpertypes_NullDecimal) IsNotNull() qm.QueryMod {
+	return qmhelper.WhereIsNotNull(w.field)
+}
 
 type whereHelpernull_JSON struct{ field string }
 
@@ -297,7 +318,7 @@ var AftermarketDeviceWhere = struct {
 	EthereumAddress               whereHelper__byte
 	CreatedAt                     whereHelpertime_Time
 	UpdatedAt                     whereHelpertime_Time
-	TokenID                       whereHelpertypes_NullDecimal
+	TokenID                       whereHelpertypes_Decimal
 	ClaimMetaTransactionRequestID whereHelpernull_String
 	OwnerAddress                  whereHelpernull_Bytes
 	PairRequestID                 whereHelpernull_String
@@ -305,14 +326,14 @@ var AftermarketDeviceWhere = struct {
 	VehicleTokenID                whereHelpertypes_NullDecimal
 	Beneficiary                   whereHelpernull_Bytes
 	Metadata                      whereHelpernull_JSON
-	DeviceManufacturerTokenID     whereHelpertypes_NullDecimal
+	DeviceManufacturerTokenID     whereHelpertypes_Decimal
 }{
 	Serial:                        whereHelperstring{field: "\"devices_api\".\"aftermarket_devices\".\"serial\""},
 	UserID:                        whereHelpernull_String{field: "\"devices_api\".\"aftermarket_devices\".\"user_id\""},
 	EthereumAddress:               whereHelper__byte{field: "\"devices_api\".\"aftermarket_devices\".\"ethereum_address\""},
 	CreatedAt:                     whereHelpertime_Time{field: "\"devices_api\".\"aftermarket_devices\".\"created_at\""},
 	UpdatedAt:                     whereHelpertime_Time{field: "\"devices_api\".\"aftermarket_devices\".\"updated_at\""},
-	TokenID:                       whereHelpertypes_NullDecimal{field: "\"devices_api\".\"aftermarket_devices\".\"token_id\""},
+	TokenID:                       whereHelpertypes_Decimal{field: "\"devices_api\".\"aftermarket_devices\".\"token_id\""},
 	ClaimMetaTransactionRequestID: whereHelpernull_String{field: "\"devices_api\".\"aftermarket_devices\".\"claim_meta_transaction_request_id\""},
 	OwnerAddress:                  whereHelpernull_Bytes{field: "\"devices_api\".\"aftermarket_devices\".\"owner_address\""},
 	PairRequestID:                 whereHelpernull_String{field: "\"devices_api\".\"aftermarket_devices\".\"pair_request_id\""},
@@ -320,7 +341,7 @@ var AftermarketDeviceWhere = struct {
 	VehicleTokenID:                whereHelpertypes_NullDecimal{field: "\"devices_api\".\"aftermarket_devices\".\"vehicle_token_id\""},
 	Beneficiary:                   whereHelpernull_Bytes{field: "\"devices_api\".\"aftermarket_devices\".\"beneficiary\""},
 	Metadata:                      whereHelpernull_JSON{field: "\"devices_api\".\"aftermarket_devices\".\"metadata\""},
-	DeviceManufacturerTokenID:     whereHelpertypes_NullDecimal{field: "\"devices_api\".\"aftermarket_devices\".\"device_manufacturer_token_id\""},
+	DeviceManufacturerTokenID:     whereHelpertypes_Decimal{field: "\"devices_api\".\"aftermarket_devices\".\"device_manufacturer_token_id\""},
 }
 
 // AftermarketDeviceRels is where relationship names are stored.
@@ -402,8 +423,8 @@ type aftermarketDeviceL struct{}
 
 var (
 	aftermarketDeviceAllColumns            = []string{"serial", "user_id", "ethereum_address", "created_at", "updated_at", "token_id", "claim_meta_transaction_request_id", "owner_address", "pair_request_id", "unpair_request_id", "vehicle_token_id", "beneficiary", "metadata", "device_manufacturer_token_id"}
-	aftermarketDeviceColumnsWithoutDefault = []string{"serial", "ethereum_address"}
-	aftermarketDeviceColumnsWithDefault    = []string{"user_id", "created_at", "updated_at", "token_id", "claim_meta_transaction_request_id", "owner_address", "pair_request_id", "unpair_request_id", "vehicle_token_id", "beneficiary", "metadata", "device_manufacturer_token_id"}
+	aftermarketDeviceColumnsWithoutDefault = []string{"serial", "ethereum_address", "token_id", "device_manufacturer_token_id"}
+	aftermarketDeviceColumnsWithDefault    = []string{"user_id", "created_at", "updated_at", "claim_meta_transaction_request_id", "owner_address", "pair_request_id", "unpair_request_id", "vehicle_token_id", "beneficiary", "metadata"}
 	aftermarketDevicePrimaryKeyColumns     = []string{"ethereum_address"}
 	aftermarketDeviceGeneratedColumns      = []string{}
 )

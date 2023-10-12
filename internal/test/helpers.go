@@ -279,7 +279,7 @@ func SetupCreateMintedAftermarketDevice(t *testing.T, userID, unitID string, tok
 	amd := models.AftermarketDevice{
 		Serial:          unitID,
 		UserID:          null.StringFrom(userID),
-		TokenID:         types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+		TokenID:         types.NewDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
 		EthereumAddress: addr.Bytes(),
 	}
 	if deviceID != nil {

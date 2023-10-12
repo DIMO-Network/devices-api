@@ -35,12 +35,20 @@ func (s *aftermarketDeviceService) ListAftermarketDevicesForUser(ctx context.Con
 
 	for i, unit := range units {
 		out[i] = &pb.AftermarketDevice{
-			Serial: unit.Serial,
-			UserId: &req.UserId,
+			Serial:              unit.Serial,
+			UserId:              &req.UserId,
+			TokenId:             decimalToUint(unit.TokenID),
+			ManufacturerTokenId: decimalToUint(unit.DeviceManufacturerTokenID),
 		}
 
 		if unit.OwnerAddress.Valid {
 			out[i].OwnerAddress = unit.OwnerAddress.Bytes
+
+			if unit.Beneficiary.Valid {
+				out[i].Beneficiary = unit.Beneficiary.Bytes
+			} else {
+				out[i].Beneficiary = unit.OwnerAddress.Bytes
+			}
 		}
 	}
 
