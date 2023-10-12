@@ -79,6 +79,10 @@ func (s *userDeviceRPCServer) GetUserDevice(ctx context.Context, req *pb.GetUser
 				models.VehicleNFTRels.Claim,
 			),
 		),
+		qm.Load(
+			qm.Rels(models.UserDeviceRels.VehicleNFT,
+				models.VehicleNFTRels.VehicleTokenSyntheticDevice),
+		),
 	).One(ctx, s.dbs().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -104,6 +108,10 @@ func (s *userDeviceRPCServer) GetUserDeviceByVIN(ctx context.Context, req *pb.Ge
 				models.UserDeviceRels.VehicleNFT,
 				models.VehicleNFTRels.Claim,
 			),
+		),
+		qm.Load(
+			qm.Rels(models.UserDeviceRels.VehicleNFT,
+				models.VehicleNFTRels.VehicleTokenSyntheticDevice),
 		),
 	).One(ctx, s.dbs().Reader)
 	if err != nil {
@@ -154,6 +162,7 @@ func (s *userDeviceRPCServer) GetUserDeviceByEthAddr(ctx context.Context, req *p
 				models.VehicleNFTRels.Claim,
 			),
 		),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
 	).One(ctx, s.dbs().Reader)
 
 	if err != nil {
@@ -212,6 +221,7 @@ func (s *userDeviceRPCServer) ListUserDevicesForUser(ctx context.Context, req *p
 
 	query = append(query,
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAftermarketDevice)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 		qm.OrderBy(models.UserDeviceTableColumns.CreatedAt+" DESC"),
 	)
@@ -369,8 +379,9 @@ func (s *userDeviceRPCServer) GetUserDeviceByAutoPIUnitId(ctx context.Context, r
 func (s *userDeviceRPCServer) GetAllUserDevice(req *pb.GetAllUserDeviceRequest, stream pb.UserDeviceService_GetAllUserDeviceServer) error {
 	ctx := context.Background()
 	all, err := models.UserDevices(
-		models.UserDeviceWhere.VinConfirmed.EQ(true)).
-		All(ctx, s.dbs().Reader)
+		models.UserDeviceWhere.VinConfirmed.EQ(true),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+	).All(ctx, s.dbs().Reader)
 	if err != nil {
 		s.logger.Err(err).Msg("Database failure retrieving all user devices.")
 		return status.Error(codes.Internal, "Internal error.")
