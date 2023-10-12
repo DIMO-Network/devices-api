@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
 	"math/big"
 
 	"strings"
@@ -462,7 +461,6 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 		}
 
 		if sd := vnft.R.VehicleTokenSyntheticDevice; sd != nil && !sd.TokenID.IsZero() {
-			log.Println(sd.TokenID.IsZero(), sd != nil, sd != nil && !sd.TokenID.IsZero())
 			stk, _ := sd.TokenID.Uint64()
 			iTkID, _ := sd.IntegrationTokenID.Uint64()
 			out.SyntheticDevice = &pb.SyntheticDevice{
