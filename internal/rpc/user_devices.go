@@ -462,10 +462,12 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 
 		if sd := vnft.R.VehicleTokenSyntheticDevice; sd != nil {
 			stk, _ := sd.TokenID.Uint64()
-			iTkID, _ := sd.IntegrationTokenID.Uint64()
-			out.SyntheticDevice = &pb.SyntheticDevice{
-				TokenId:            stk,
-				IntegrationTokenId: iTkID,
+			if stk != 0 {
+				iTkID, _ := sd.IntegrationTokenID.Uint64()
+				out.SyntheticDevice = &pb.SyntheticDevice{
+					TokenId:            stk,
+					IntegrationTokenId: iTkID,
+				}
 			}
 		}
 	}
