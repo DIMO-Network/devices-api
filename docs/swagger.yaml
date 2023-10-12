@@ -293,10 +293,10 @@ definitions:
         type: boolean
       lastCommunication:
         type: string
+      manufacturer:
+        $ref: '#/definitions/internal_controllers.ManufacturerInfo'
       ownerAddress:
-        items:
-          type: integer
-        type: array
+        type: string
       pair:
         allOf:
         - $ref: '#/definitions/internal_controllers.AutoPiTransactionStatus'
@@ -572,6 +572,13 @@ definitions:
         description: Status is one of "Pending", "PendingFirstData", "Active", "Failed",
           "DuplicateIntegration".
         type: string
+    type: object
+  internal_controllers.ManufacturerInfo:
+    properties:
+      name:
+        type: string
+      tokenId:
+        $ref: '#/definitions/big.Int'
     type: object
   internal_controllers.MintRequest:
     properties:
@@ -1063,6 +1070,28 @@ paths:
       responses:
         "200":
           description: OK
+        "404":
+          description: Not Found
+      tags:
+      - nfts
+  /aftermarket/device/by-address/{address}:
+    get:
+      description: |-
+        Retrieves NFT metadata for a given aftermarket device, using the device's
+        Ethereum address.
+      parameters:
+      - description: Ethereum address for the device.
+        in: path
+        name: address
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.NFTMetadataResp'
         "404":
           description: Not Found
       tags:
