@@ -7,6 +7,37 @@
     },
     "basePath": "/v1",
     "paths": {
+        "/aftermarket/device/by-address/{address}": {
+            "get": {
+                "description": "Retrieves NFT metadata for a given aftermarket device, using the device's\nEthereum address.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nfts"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ethereum address for the device.",
+                        "name": "address",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.NFTMetadataResp"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
+            }
+        },
         "/aftermarket/device/by-serial/:serial": {
             "get": {
                 "security": [
@@ -2698,11 +2729,11 @@
                 "lastCommunication": {
                     "type": "string"
                 },
+                "manufacturer": {
+                    "$ref": "#/definitions/internal_controllers.ManufacturerInfo"
+                },
                 "ownerAddress": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "type": "string"
                 },
                 "pair": {
                     "description": "Pair contains the status of the on-chain pairing meta-transaction.",
@@ -3086,6 +3117,17 @@
                 "status": {
                     "description": "Status is one of \"Pending\", \"PendingFirstData\", \"Active\", \"Failed\", \"DuplicateIntegration\".",
                     "type": "string"
+                }
+            }
+        },
+        "internal_controllers.ManufacturerInfo": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "tokenId": {
+                    "$ref": "#/definitions/big.Int"
                 }
             }
         },

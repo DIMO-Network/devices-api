@@ -364,6 +364,50 @@ func (nc *NFTController) GetNFTImage(c *fiber.Ctx) error {
 	return c.Send(b)
 }
 
+// GetAftermarketDeviceNFTByAddress godoc
+// @Description Retrieves NFT metadata for a given aftermarket device, using the device's
+// @Description Ethereum address.
+// @Tags        nfts
+// @Param       address path string true "Ethereum address for the device."
+// @Produce     json
+// @Success     200 {object} controllers.NFTMetadataResp
+// @Failure     404
+// @Router      /aftermarket/device/by-address/{address} [get]
+func (nc *NFTController) GetAftermarketDeviceNFTMetadataByAddress(c *fiber.Ctx) error {
+	maybeAddr := c.Params("address")
+
+	if !common.IsHexAddress(maybeAddr) {
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse device address.")
+	}
+
+	addr := common.HexToAddress(maybeAddr)
+
+	ad, err := models.AftermarketDevices(
+		models.AftermarketDeviceWhere.EthereumAddress.EQ(addr.Bytes()),
+	).One(c.Context(), nc.DBS().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fiber.NewError(fiber.StatusNotFound, "No device with that address.")
+		}
+		return err
+	}
+
+	var name string
+	if three, err := mnemonic.EntropyToMnemonicThreeWords(ad.EthereumAddress); err == nil {
+		name = strings.Join(three, " ")
+	}
+
+	return c.JSON(NFTMetadataResp{
+		Name:        name,
+		Description: name + ", a DIMO hardware device.",
+		Image:       fmt.Sprintf("%s/v1/aftermarket/device/%s/image", nc.Settings.DeploymentBaseURL, ad.TokenID),
+		Attributes: []NFTAttribute{
+			{TraitType: "Ethereum Address", Value: common.BytesToAddress(ad.EthereumAddress).String()},
+			{TraitType: "Serial Number", Value: ad.Serial},
+		},
+	})
+}
+
 // GetAftermarketDeviceNFTMetadata godoc
 // @Description Retrieves NFT metadata for a given aftermarket device.
 // @Tags        nfts
