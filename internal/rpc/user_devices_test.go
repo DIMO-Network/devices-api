@@ -237,7 +237,8 @@ func TestGetUserDevice_NoSyntheticDeviceFields_WhenNoTokenID(t *testing.T) {
 	).One(ctx, pdb.DBS().Reader)
 	assert.NoError(err)
 
-	sd.TokenID = types.NewNullDecimal(decimal.New(0, 0))
+	sd.TokenID = types.NullDecimal{}
+
 	_, err = sd.Update(ctx, pdb.DBS().Writer, boil.Whitelist(models.SyntheticDeviceColumns.TokenID))
 	assert.NoError(err)
 
