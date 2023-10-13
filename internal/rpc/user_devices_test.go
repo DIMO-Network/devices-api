@@ -33,6 +33,7 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 	userID := ksuid.New().String()
 	ownerAddress := null.BytesFrom(common.Hex2Bytes("448cF8Fd88AD914e3585401241BC434FbEA94bbb"))
 	claimID := ksuid.New().String()
+	_, childWallet, _ := test.GenerateWallet()
 
 	ud := models.UserDevice{
 		ID:                 ksuid.New().String(),
@@ -66,6 +67,15 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 		DeviceManufacturerTokenID: types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(42), 0)),
 	}
 
+	sd := models.SyntheticDevice{
+		VehicleTokenID:     vnft.TokenID,
+		IntegrationTokenID: types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(19), 0)),
+		MintRequestID:      vnft.MintRequestID,
+		WalletChildNumber:  100,
+		TokenID:            types.NewNullDecimal(decimal.New(6, 0)),
+		WalletAddress:      childWallet.Bytes(),
+	}
+
 	credential := models.VerifiableCredential{
 		ClaimID:        claimID,
 		Credential:     []byte{},
@@ -94,6 +104,10 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 	}
 
 	if err := ad.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
+		return "", err
+	}
+
+	if err := sd.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
 		return "", err
 	}
 
@@ -178,5 +192,62 @@ func TestGetUserDevice_PopulateDeprecatedFields(t *testing.T) {
 	assert.Equal(udResult.AftermarketDevice.Beneficiary, udResult.AftermarketDeviceBeneficiaryAddress) //nolint:staticcheck
 	assert.Equal(udResult.AftermarketDevice.TokenId, *udResult.AftermarketDeviceTokenId)               //nolint:staticcheck
 	assert.NotEmpty(udResult.AftermarketDeviceBeneficiaryAddress)                                      //nolint:staticcheck
+}
 
+func TestGetUserDevice_PopulateSyntheticDeviceFields(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	userDeviceID, err := populateDB(ctx, pdb)
+	assert.NoError(err)
+
+	logger := zerolog.Logger{}
+	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+
+	udResult, err := udService.GetUserDevice(ctx, &pb_devices.GetUserDeviceRequest{Id: userDeviceID})
+	assert.NoError(err)
+
+	assert.Equal(udResult.SyntheticDevice.TokenId, uint64(6))
+	assert.Equal(udResult.SyntheticDevice.IntegrationTokenId, uint64(19))
+}
+
+func TestGetUserDevice_NoSyntheticDeviceFields_WhenNoTokenID(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	userDeviceID, err := populateDB(ctx, pdb)
+	assert.NoError(err)
+
+	sd, err := models.SyntheticDevices(
+		models.SyntheticDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(6, 0))),
+		models.SyntheticDeviceWhere.IntegrationTokenID.EQ(types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(19), 0))),
+	).One(ctx, pdb.DBS().Reader)
+	assert.NoError(err)
+
+	sd.TokenID = types.NullDecimal{}
+
+	_, err = sd.Update(ctx, pdb.DBS().Writer, boil.Whitelist(models.SyntheticDeviceColumns.TokenID))
+	assert.NoError(err)
+
+	logger := zerolog.Logger{}
+	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+
+	udResult, err := udService.GetUserDevice(ctx, &pb_devices.GetUserDeviceRequest{Id: userDeviceID})
+	assert.NoError(err)
+
+	assert.Nil(udResult.SyntheticDevice)
 }

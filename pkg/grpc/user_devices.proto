@@ -75,6 +75,12 @@ message UserDevice {
   string geo_decoded_country = 18;
   string geo_decoded_state_prov = 19;
   optional AftermarketDevice aftermarket_device = 20;
+  optional SyntheticDevice syntheticDevice = 21;
+}
+
+message SyntheticDevice {
+  uint64 token_id = 1;
+  uint64 integration_token_id = 2;
 }
 
 message UserDeviceIntegration {
