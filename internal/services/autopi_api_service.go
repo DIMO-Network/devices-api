@@ -33,6 +33,8 @@ type AutoPiAPIService interface {
 	GetDeviceByEthAddress(ethAddress string) (*AutoPiDongleDevice, error)
 	PatchVehicleProfile(vehicleID int, profile PatchVehicleProfile) error
 	UnassociateDeviceTemplate(deviceID string, templateID int) error
+	GetVehicleLoggers(vehicle AutoPiDongleVehicle, loggers *[]AutoPiVehicleLogger) error
+	DeleteVehicleLogger(loggerType string, loggerID int) error
 	AssociateDeviceToTemplate(deviceID string, templateID int) error
 	CreateNewTemplate(templateName string, parent int, description string) (int, error)
 	AddDefaultPIDsToTemplate(templateID int) error
@@ -157,6 +159,30 @@ func (a *autoPiAPIService) UnassociateDeviceTemplate(deviceID string, templateID
 	}
 	defer res.Body.Close() // nolint
 
+	return nil
+}
+
+// GetVehicleLoggers Get slice of loggers from vehicleID, populates parameter "loggers *[]AutoPiVehicleLogger"
+func (a *autoPiAPIService) GetVehicleLoggers(vehicle AutoPiDongleVehicle, loggers *[]AutoPiVehicleLogger) error {
+	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/obd/loggers/?vehicle=%d", vehicle.ID), "GET", nil)
+	if err != nil {
+		return errors.Wrapf(err, "error calling autopi api to GetVehicleLoggers. vehicle %d", vehicle.ID)
+	}
+	defer res.Body.Close() // nolint
+	err = json.NewDecoder(res.Body).Decode(loggers)
+	if err != nil {
+		return errors.Wrapf(err, "error decoding json from autopi api to get vehicle loggers for vehicleID %d", vehicle.ID)
+	}
+	return nil
+}
+
+// DeleteVehicleLogger delete a single logger by type and ID
+func (a *autoPiAPIService) DeleteVehicleLogger(loggerType string, loggerID int) error {
+	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/obd/loggers/%s/%d/", loggerType, loggerID), "DELETE", nil)
+	if err != nil {
+		return errors.Wrapf(err, "error calling autopi api to DeleteVehicleLogger. type %s, ID  %d", loggerType, loggerID)
+	}
+	defer res.Body.Close() // nolint
 	return nil
 }
 
@@ -487,6 +513,21 @@ type AutoPiCommandResult struct {
 	Value string `json:"value"`
 	// corresponds to webhook response.tag
 	Tag string `json:"tag"`
+}
+
+type AutoPiVehicleLogger struct {
+	ID           int    `json:"id"`
+	Enabled      bool   `json:"enabled"`
+	Bus          int    `json:"bus"`
+	Vehicle      int    `json:"vehicle"`
+	Type         string `json:"type"`
+	Name         string `json:"name"`
+	Description  string `json:"description"`
+	LoggerType   string `json:"logger_type"`
+	State        string `json:"state"`
+	Parent       int    `json:"parent"`
+	Hash         string `json:"hash"`
+	NameOverride string `json:"name_override"`
 }
 
 type addPIDRequest struct {

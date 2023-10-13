@@ -2,6 +2,7 @@ package autopi
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"google.golang.org/grpc/codes"
@@ -151,6 +152,24 @@ func (a *hardwareTemplateService) ApplyHardwareTemplate(ctx context.Context, req
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to unassociate template")
 		}
+
+		vehicleLoggers := new([]services.AutoPiVehicleLogger)
+		err = a.ap.GetVehicleLoggers(autoPi.Vehicle, vehicleLoggers)
+		if err != nil {
+			return nil, errors.Wrap(err, fmt.Sprintf("failed to get vehicle loggers for vehicleID %d", autoPi.Vehicle.ID))
+		} else {
+			for _, logger := range *vehicleLoggers {
+				if logger.Parent == 0 {
+					loggerType := logger.LoggerType
+					loggerID := logger.ID
+					err := a.ap.DeleteVehicleLogger(loggerType, loggerID)
+					if err != nil {
+						return nil, errors.Wrap(err, fmt.Sprintf("failed to delete vehicle logger %d", loggerID))
+					}
+				}
+			}
+		}
+
 	}
 
 	hardwareTemplateID, err := strconv.Atoi(req.HardwareTemplateId)
