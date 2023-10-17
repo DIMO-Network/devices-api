@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	services "github.com/DIMO-Network/devices-api/internal/services"
-	gomock "go.uber.org/mock/gomock"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockDrivlyAPIService is a mock of DrivlyAPIService interface.

@@ -33,7 +33,7 @@ type AutoPiAPIService interface {
 	GetDeviceByEthAddress(ethAddress string) (*AutoPiDongleDevice, error)
 	PatchVehicleProfile(vehicleID int, profile PatchVehicleProfile) error
 	UnassociateDeviceTemplate(deviceID string, templateID int) error
-	GetVehicleLoggers(vehicleID int) ([]AutoPiVehicleLogger, error)
+	GetVehicleLoggers(vehicleID int) (*[]AutoPiVehicleLogger, error)
 	DeleteVehicleLogger(loggerType string, loggerID int) error
 	AssociateDeviceToTemplate(deviceID string, templateID int) error
 	CreateNewTemplate(templateName string, parent int, description string) (int, error)
@@ -163,7 +163,7 @@ func (a *autoPiAPIService) UnassociateDeviceTemplate(deviceID string, templateID
 }
 
 // GetVehicleLoggers Get slice of loggers from vehicleID, populates parameter "loggers *[]AutoPiVehicleLogger"
-func (a *autoPiAPIService) GetVehicleLoggers(vehicleID int) ([]AutoPiVehicleLogger, error) {
+func (a *autoPiAPIService) GetVehicleLoggers(vehicleID int) (*[]AutoPiVehicleLogger, error) {
 	loggers := new([]AutoPiVehicleLogger)
 	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/obd/loggers/?vehicle=%d", vehicleID), "GET", nil)
 	if err != nil {
@@ -174,7 +174,7 @@ func (a *autoPiAPIService) GetVehicleLoggers(vehicleID int) ([]AutoPiVehicleLogg
 	if err != nil {
 		return nil, errors.Wrapf(err, "error decoding json from autopi api to get vehicle loggers for vehicleID %d", vehicleID)
 	}
-	return *loggers, nil
+	return loggers, nil
 }
 
 // DeleteVehicleLogger delete a single logger by type and ID

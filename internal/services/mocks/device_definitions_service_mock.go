@@ -10,7 +10,7 @@ import (
 	reflect "reflect"
 
 	grpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
-	gomock "go.uber.org/mock/gomock"
+	gomock "github.com/golang/mock/gomock"
 	boil "github.com/volatiletech/sqlboiler/v4/boil"
 )
 

@@ -153,8 +153,8 @@ func (a *hardwareTemplateService) ApplyHardwareTemplate(ctx context.Context, req
 			return nil, errors.Wrap(err, fmt.Sprintf("failed to unassociate template %d on device %s", autoPi.Template, autoPi.ID))
 		}
 
-		vehicleLoggers := new([]services.AutoPiVehicleLogger)
-		*vehicleLoggers, err = a.ap.GetVehicleLoggers(autoPi.Vehicle.ID)
+		var vehicleLoggers *[]services.AutoPiVehicleLogger
+		vehicleLoggers, err = a.ap.GetVehicleLoggers(autoPi.Vehicle.ID)
 		if err != nil {
 			return nil, errors.Wrap(err, fmt.Sprintf("failed to get vehicle loggers for vehicleID %d", autoPi.Vehicle.ID))
 		} else {

@@ -10,7 +10,7 @@ import (
 
 	services "github.com/DIMO-Network/devices-api/internal/services"
 	models "github.com/DIMO-Network/devices-api/models"
-	gomock "go.uber.org/mock/gomock"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockAutoPiAPIService is a mock of AutoPiAPIService interface.
@@ -138,6 +138,20 @@ func (mr *MockAutoPiAPIServiceMockRecorder) CreateNewTemplate(templateName, pare
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateNewTemplate", reflect.TypeOf((*MockAutoPiAPIService)(nil).CreateNewTemplate), templateName, parent, description)
 }
 
+// DeleteVehicleLogger mocks base method.
+func (m *MockAutoPiAPIService) DeleteVehicleLogger(loggerType string, loggerID int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteVehicleLogger", loggerType, loggerID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteVehicleLogger indicates an expected call of DeleteVehicleLogger.
+func (mr *MockAutoPiAPIServiceMockRecorder) DeleteVehicleLogger(loggerType, loggerID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteVehicleLogger", reflect.TypeOf((*MockAutoPiAPIService)(nil).DeleteVehicleLogger), loggerType, loggerID)
+}
+
 // GetCommandStatus mocks base method.
 func (m *MockAutoPiAPIService) GetCommandStatus(ctx context.Context, jobID string) (*services.AutoPiCommandJob, *models.AutopiJob, error) {
 	m.ctrl.T.Helper()
@@ -227,6 +241,21 @@ func (m *MockAutoPiAPIService) GetUserDeviceIntegrationByUnitID(ctx context.Cont
 func (mr *MockAutoPiAPIServiceMockRecorder) GetUserDeviceIntegrationByUnitID(ctx, unitID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserDeviceIntegrationByUnitID", reflect.TypeOf((*MockAutoPiAPIService)(nil).GetUserDeviceIntegrationByUnitID), ctx, unitID)
+}
+
+// GetVehicleLoggers mocks base method.
+func (m *MockAutoPiAPIService) GetVehicleLoggers(vehicleID int) (*[]services.AutoPiVehicleLogger, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetVehicleLoggers", vehicleID)
+	ret0, _ := ret[0].(*[]services.AutoPiVehicleLogger)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetVehicleLoggers indicates an expected call of GetVehicleLoggers.
+func (mr *MockAutoPiAPIServiceMockRecorder) GetVehicleLoggers(vehicleID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVehicleLoggers", reflect.TypeOf((*MockAutoPiAPIService)(nil).GetVehicleLoggers), vehicleID)
 }
 
 // PatchVehicleProfile mocks base method.
