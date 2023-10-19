@@ -155,9 +155,10 @@ func (a *hardwareTemplateService) ApplyHardwareTemplate(ctx context.Context, req
 		vehicleLoggers, err := a.ap.GetVehicleLoggers(autoPi.Vehicle.ID)
 		if err != nil {
 			return nil, errors.Wrap(err, fmt.Sprintf("failed to get vehicle loggers for vehicleID %d", autoPi.Vehicle.ID))
-		} else {
+		}
+		if vehicleLoggers != nil {
 			for _, logger := range *vehicleLoggers {
-				if logger.Parent == nil { // IF (logger was not assigned via template)
+				if logger.Parent == nil {
 					// Autopi's API returns a NULL value for "AutoPiVehicleLogger.Parent" when the logger was not assigned via template
 					err := a.ap.DeleteVehicleLogger(logger.LoggerType, logger.ID)
 					if err != nil {
@@ -166,7 +167,6 @@ func (a *hardwareTemplateService) ApplyHardwareTemplate(ctx context.Context, req
 				}
 			}
 		}
-
 	}
 
 	hardwareTemplateID, err := strconv.Atoi(req.HardwareTemplateId)
