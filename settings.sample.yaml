@@ -72,3 +72,6 @@ DEVICE_DATA_GRPC_ADDR: localhost:8282
 
 DEVICE_FINGERPRINT_TOPIC: topic.device.fingerprint
 DEVICE_FINGERPRINT_CONSUMER_GROUP: device-fingerprint-vc-issuer
+
+SYNTHETIC_FINGERPRINT_TOPIC: topic.synthetic.fingerprint
+SYNTHETIC_FINGERPRINT_CONSUMER_GROUP: consumer.synthetic.fingerprint
