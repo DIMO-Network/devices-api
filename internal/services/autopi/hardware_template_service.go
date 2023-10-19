@@ -152,16 +152,13 @@ func (a *hardwareTemplateService) ApplyHardwareTemplate(ctx context.Context, req
 		if err != nil {
 			return nil, errors.Wrap(err, fmt.Sprintf("failed to unassociate template %d on device %s", autoPi.Template, autoPi.ID))
 		}
-
-		var vehicleLoggers *[]services.AutoPiVehicleLogger
-		vehicleLoggers, err = a.ap.GetVehicleLoggers(autoPi.Vehicle.ID)
+		vehicleLoggers, err := a.ap.GetVehicleLoggers(autoPi.Vehicle.ID)
 		if err != nil {
 			return nil, errors.Wrap(err, fmt.Sprintf("failed to get vehicle loggers for vehicleID %d", autoPi.Vehicle.ID))
 		} else {
 			for _, logger := range *vehicleLoggers {
-				if logger.Parent == 0 { // IF (logger was not assigned via template)
+				if logger.Parent == nil { // IF (logger was not assigned via template)
 					// Autopi's API returns a NULL value for "AutoPiVehicleLogger.Parent" when the logger was not assigned via template
-					// Since integers in Golang cannot be NIL, this will be represented as value 0 after converting from JSON
 					err := a.ap.DeleteVehicleLogger(logger.LoggerType, logger.ID)
 					if err != nil {
 						return nil, errors.Wrap(err, fmt.Sprintf("failed to delete vehicle logger %d", logger.ID))

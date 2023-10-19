@@ -519,14 +519,14 @@ type AutoPiCommandResult struct {
 type AutoPiVehicleLogger struct {
 	ID           int    `json:"id"`
 	Enabled      bool   `json:"enabled"`
-	Bus          int    `json:"bus"`
-	Vehicle      int    `json:"vehicle"`
+	Bus          *int   `json:"bus"`
+	Vehicle      *int   `json:"vehicle"`
 	Type         string `json:"type"`
 	Name         string `json:"name"`
 	Description  string `json:"description"`
 	LoggerType   string `json:"logger_type"`
 	State        string `json:"state"`
-	Parent       int    `json:"parent"`
+	Parent       *int   `json:"parent"`
 	Hash         string `json:"hash"`
 	NameOverride string `json:"name_override"`
 }
