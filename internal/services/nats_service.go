@@ -1,7 +1,5 @@
 package services
 
-//go:generate mockgen -source nats_service.go -destination mocks/nats_service_mock.go
-
 import (
 	"time"
 
