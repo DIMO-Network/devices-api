@@ -104,7 +104,7 @@ func syncDeviceTemplates(ctx context.Context, logger *zerolog.Logger, settings *
 	for templateID, dds := range templateXDefinitions {
 		fmt.Printf("\nFound %d device definitions for template %s\n", len(dds), templateID)
 
-		query := fmt.Sprintf(`select ud.id, udai.autopi_unit_id, (udai.metadata -> 'autoPiTemplateApplied')::text template_id from user_devices ud 
+		query := fmt.Sprintf(`select ud.id, udai.serial, (udai.metadata -> 'autoPiTemplateApplied')::text template_id from user_devices ud 
         inner join user_device_api_integrations udai on ud.id = udai.user_device_id
         where udai.integration_id = '27qftVRWQYpVDcO5DltO5Ojbjxk' and udai.metadata -> 'autoPiTemplateApplied' != '%s'`, templateID)
 
@@ -116,7 +116,7 @@ func syncDeviceTemplates(ctx context.Context, logger *zerolog.Logger, settings *
 
 		type Result struct {
 			UserDeviceID    string `boil:"id"`
-			AutoPiUnitID    string `boil:"autopi_unit_id"`
+			AutoPiUnitID    string `boil:"serial"`
 			CurrentTemplate string `boil:"template_id"`
 		}
 		var userDevices []Result
