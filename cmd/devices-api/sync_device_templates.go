@@ -28,20 +28,22 @@ type syncDeviceTemplatesCmd struct {
 	settings           config.Settings
 	pdb                db.Store
 	moveFromTemplateID *string
+	targetTemplateID   *string
 }
 
 func (*syncDeviceTemplatesCmd) Name() string { return "sync-device-templates" }
 func (*syncDeviceTemplatesCmd) Synopsis() string {
-	return "iterate through all UD's and set the template to what our config says should be"
+	return "iterate through all UD's and set the template to what our config says should be, or filter down impact with options"
 }
 func (*syncDeviceTemplatesCmd) Usage() string {
-	return `sync-device-templates [] <some text>:
-	sync-device-templates args.
+	return `sync-device-templates [-move-from-template] <template ID, 0 to move from any>
+									[-target-template] <template ID>
   `
 }
 
 func (p *syncDeviceTemplatesCmd) SetFlags(f *flag.FlagSet) {
 	p.moveFromTemplateID = f.String("move-from-template", "10", "By default only moves devices in template 10, specify this to change or 0 for any")
+	p.targetTemplateID = f.String("target-template", "", "Filter device definitions to apply for where the template is this value. Good for moving only certain autopi's.")
 }
 
 func (p *syncDeviceTemplatesCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
@@ -54,7 +56,7 @@ func (p *syncDeviceTemplatesCmd) Execute(ctx context.Context, _ *flag.FlagSet, _
 		"\n Only moving from template ID: %s. To change specify --move-from-template XX. Set to 0 for none.", moveFromTemplateID)
 	autoPiSvc := services.NewAutoPiAPIService(&p.settings, p.pdb.DBS)
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, p.pdb.DBS, &p.logger)
-	err := syncDeviceTemplates(ctx, &p.logger, &p.settings, p.pdb, hardwareTemplateService, moveFromTemplateID)
+	err := syncDeviceTemplates(ctx, &p.logger, &p.settings, p.pdb, hardwareTemplateService, moveFromTemplateID, p.targetTemplateID)
 	if err != nil {
 		p.logger.Fatal().Err(err).Msg("failed to sync all devices with their templates")
 	}
@@ -64,8 +66,7 @@ func (p *syncDeviceTemplatesCmd) Execute(ctx context.Context, _ *flag.FlagSet, _
 
 // syncDeviceTemplates looks for DD's with a templateID set, and then compares to all UD's connected and Applies the template if doesn't match.
 // If onlyMoveFromTemplate is > 0, then only apply the template if the current template is this value.
-func syncDeviceTemplates(ctx context.Context, logger *zerolog.Logger, settings *config.Settings, pdb db.Store, autoPiHWSvc autopi.HardwareTemplateService,
-	onlyMoveFromTemplate string) error {
+func syncDeviceTemplates(ctx context.Context, logger *zerolog.Logger, settings *config.Settings, pdb db.Store, autoPiHWSvc autopi.HardwareTemplateService, onlyMoveFromTemplate string, targetTemplateID *string) error {
 	conn, err := grpc.Dial(settings.DefinitionsGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return err
@@ -77,10 +78,20 @@ func syncDeviceTemplates(ctx context.Context, logger *zerolog.Logger, settings *
 		return err
 	}
 
+	if targetTemplateID != nil && len(*targetTemplateID) > 0 {
+		fmt.Printf("Selected Target Template: %s\n", *targetTemplateID)
+	}
+
 	// group by template id
 	templateXDefinitions := map[string][]*ddgrpc.GetDevicesMMYItemResponse{}
 
 	for _, dd := range resp.Device {
+		if targetTemplateID != nil && len(*targetTemplateID) > 0 {
+			if dd.HardwareTemplateId != *targetTemplateID {
+				// skip all template ID's that do not match the target
+				continue
+			}
+		}
 		// we currently only allow integer type template ID's
 		tIDInt, err := strconv.Atoi(dd.HardwareTemplateId)
 		if tIDInt == 0 || err != nil {
@@ -121,14 +132,17 @@ func syncDeviceTemplates(ctx context.Context, logger *zerolog.Logger, settings *
 				fmt.Printf("%d Skipped ud: %s because it is not currently in template %s\n", i+1, ud.UserDeviceID, onlyMoveFromTemplate)
 				continue
 			}
-			fmt.Printf("%d Update template for ud: %s from template %s to template %s\n", i+1, ud.UserDeviceID, ud.CurrentTemplate, templateID)
+			fmt.Printf("%d Update template for ud: %s from template %s to template %s", i+1, ud.UserDeviceID, ud.CurrentTemplate, templateID)
 			_, err = autoPiHWSvc.ApplyHardwareTemplate(ctx, &pb.ApplyHardwareTemplateRequest{
 				UserDeviceId:       ud.UserDeviceID,
 				AutoApiUnitId:      ud.AutoPiUnitID,
 				HardwareTemplateId: templateID,
 			})
 			if err != nil {
+				fmt.Printf(" : failed\n")
 				logger.Err(err).Str("user_device_id", ud.UserDeviceID).Msg("failed to update template")
+			} else {
+				fmt.Printf(" : ok\n")
 			}
 			time.Sleep(time.Millisecond * 400)
 		}
