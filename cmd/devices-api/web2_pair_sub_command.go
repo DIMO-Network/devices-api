@@ -8,8 +8,12 @@ import (
 	"math/big"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
+	"github.com/DIMO-Network/devices-api/internal/services/macaron"
+	"github.com/DIMO-Network/devices-api/internal/utils"
+	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/google/subcommands"
 	"github.com/rs/zerolog"
@@ -53,6 +57,18 @@ func (p *web2PairCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interfa
 		p.logger.Fatal().Msgf("Couldn't parse vehicle_token_id %q", os.Args[3])
 	}
 
+	am, err := models.AftermarketDevices(
+		models.AftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(amToken)),
+	).One(context.TODO(), p.container.dbs().Reader)
+	if err != nil {
+		p.logger.Fatal().Msgf("Can't find aftermarket device %d.", am.TokenID)
+	}
+
+	dm, err := ddSvc.GetMakeByTokenID(context.TODO(), am.DeviceManufacturerTokenID.Int(nil))
+	if err != nil {
+		p.logger.Fatal().Msgf("Can't retrieve manufacturer %d.", am.DeviceManufacturerTokenID)
+	}
+
 	p.logger.Info().Msgf("Attempting to web2 pair am device %s to vehicle %s.", amToken, vToken)
 
 	autoPiSvc := services.NewAutoPiAPIService(&p.settings, p.pdb.DBS)
@@ -62,11 +78,21 @@ func (p *web2PairCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interfa
 	deviceDefinitionRegistrar := services.NewDeviceDefinitionRegistrar(producer, &p.settings)
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, p.pdb.DBS, &p.logger)
 
-	i := autopi.NewIntegration(p.pdb.DBS, ddSvc, autoPiSvc, autoPiTaskService, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &p.logger)
+	switch dm.Name {
+	case constants.AutoPiVendor:
+		autoPi := autopi.NewIntegration(p.pdb.DBS, ddSvc, autoPiSvc, autoPiTaskService, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &p.logger)
 
-	err := i.Pair(ctx, amToken, vToken)
-	if err != nil {
-		p.logger.Fatal().Err(err).Msg("Pairing failure.")
+		err = autoPi.Pair(ctx, amToken, vToken)
+		if err != nil {
+			p.logger.Fatal().Err(err).Msg("Pairing failure.")
+		}
+	case "Hashdog":
+		macaron := macaron.NewIntegration(p.pdb.DBS, ddSvc, autoPiIngest, eventService, deviceDefinitionRegistrar, &p.logger)
+
+		err := macaron.Pair(ctx, amToken, vToken)
+		if err != nil {
+			p.logger.Fatal().Err(err).Msg("Pairing failure.")
+		}
 	}
 
 	p.logger.Info().Msg("Pairing success.")
