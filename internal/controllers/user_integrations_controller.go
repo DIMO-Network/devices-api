@@ -1760,6 +1760,14 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 }
 
 func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zerolog.Logger, tx *sql.Tx, userDeviceID string, integ *ddgrpc.Integration, ud *models.UserDevice) error {
+	if existingIntegrations, err := models.UserDeviceAPIIntegrations(
+		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
+	).Count(c.Context(), tx); err != nil {
+		return err
+	} else if existingIntegrations > 0 {
+		return fiber.NewError(fiber.StatusConflict, "Delete existing integration before connecting through Tesla.")
+	}
+
 	reqBody := new(RegisterDeviceIntegrationRequest)
 	if err := c.BodyParser(reqBody); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
