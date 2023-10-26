@@ -89,7 +89,7 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 
 	observedVIN, err := ExtractVIN(event.Data)
 	if err != nil {
-		if err == ErrNoVIN {
+		if errors.Is(err, ErrNoVIN) {
 			return nil
 		}
 		return fmt.Errorf("couldn't extract VIN: %w", err)
@@ -161,7 +161,7 @@ func (c *Consumer) HandleSyntheticFingerprint(ctx context.Context, event *Event)
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.Claim)),
 	).One(ctx, c.DBS.DBS().Reader)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("no vehicle with id %q", event.Subject)
 		}
 		return err
@@ -179,7 +179,7 @@ func (c *Consumer) HandleSyntheticFingerprint(ctx context.Context, event *Event)
 
 	observedVIN, err := ExtractVIN(event.Data)
 	if err != nil {
-		if err == ErrNoVIN {
+		if errors.Is(err, ErrNoVIN) {
 			return nil
 		}
 		return fmt.Errorf("couldn't extract VIN: %w", err)
