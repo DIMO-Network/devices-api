@@ -3,6 +3,7 @@ package fingerprint
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -90,7 +91,7 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 		return fmt.Errorf("recovered wrong address %s", recAddr)
 	}
 
-	observedVIN, err := ExtractVIN(event.Data)
+	observedVIN, err := ExtractVIN(string(event.Data))
 	if err != nil {
 		if errors.Is(err, ErrNoVIN) {
 			return nil
@@ -185,7 +186,7 @@ func (c *Consumer) HandleSyntheticFingerprint(ctx context.Context, event *Event)
 		return fmt.Errorf("minting not complete for %s", ud.ID)
 	}
 
-	observedVIN, err := ExtractVIN(event.Data)
+	observedVIN, err := ExtractVIN(string(event.Data))
 	if err != nil {
 		if errors.Is(err, ErrNoVIN) {
 			return nil
@@ -231,24 +232,21 @@ func NumToWeekEnd(n int) time.Time {
 var ErrNoVIN = errors.New("no VIN field")
 var basicVINExp = regexp.MustCompile(`^[A-Z0-9]{17}$`)
 
-// ExtractVIN extracts the vin field from a status update's data object.
-// If this field is not present or fails basic validation, an error is returned.
-// The function does clean up the input slightly.
-func ExtractVIN(data []byte) (string, error) {
-	partialData := new(struct {
-		VIN *string `json:"vin"`
-	})
-
-	if err := json.Unmarshal(data, partialData); err != nil {
-		return "", fmt.Errorf("failed parsing data field: %w", err)
+// ExtractVIN extracts the vin field from protobuf message type 1
+func ExtractVIN(data string) (string, error) {
+	// Decode base64 data
+	decodedBytes, err := base64.StdEncoding.DecodeString(data)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode base64 data: %w", err)
+	}
+	// Check length of decodedBytes
+	if len(decodedBytes) < 17 {
+		return "", errors.New("decoded bytes too short to decode VIN")
 	}
 
-	if partialData.VIN == nil {
-		return "", ErrNoVIN
-	}
-
-	// Minor cleaning.
-	vin := strings.ToUpper(strings.ReplaceAll(*partialData.VIN, " ", ""))
+	// Extract bytes 5-17
+	vinBytes := decodedBytes[4:17]
+	vin := string(vinBytes)
 
 	// We have seen crazy VINs like "\u000" before.
 	if !basicVINExp.MatchString(vin) {
