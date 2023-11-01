@@ -232,7 +232,7 @@ func NumToWeekEnd(n int) time.Time {
 var ErrNoVIN = errors.New("no VIN field")
 var basicVINExp = regexp.MustCompile(`^[A-Z0-9]{17}$`)
 
-// ExtractVIN extracts the vin field from protobuf message type 1
+// ExtractVIN extracts the vin field from message type 1
 func ExtractVIN(data string) (string, error) {
 	// Decode base64 data
 	decodedBytes, err := base64.StdEncoding.DecodeString(data)
