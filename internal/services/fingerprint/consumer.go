@@ -239,13 +239,13 @@ func ExtractVIN(data string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to decode base64 data: %w", err)
 	}
-	// Check length of decodedBytes
+	// Verify the length of decodedBytes
 	if len(decodedBytes) < 17 {
 		return "", errors.New("decoded bytes too short to decode VIN")
 	}
 
 	// Extract bytes 5-17
-	vinBytes := decodedBytes[4:17]
+	vinBytes := decodedBytes[4:22]
 	vin := string(vinBytes)
 
 	// We have seen crazy VINs like "\u000" before.
@@ -256,14 +256,19 @@ func ExtractVIN(data string) (string, error) {
 	return vin, nil
 }
 
-func ExtractProtocol(data []byte) (*string, error) {
-	partialData := new(struct {
-		Protocol *string `json:"protocol"`
-	})
+func ExtractProtocol(data string) (string, error) {
 
-	if err := json.Unmarshal(data, partialData); err != nil {
-		return nil, fmt.Errorf("failed parsing data field: %w", err)
+	decodedBytes, err := base64.StdEncoding.DecodeString(data)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode base64 data: %w", err)
+	}
+	if len(decodedBytes) < 1 {
+		return "", errors.New("decoded bytes too short to decode protocol")
 	}
 
-	return partialData.Protocol, nil
+	//Extract protocol
+	protocolBytes := decodedBytes[22:23]
+	protocol := string(protocolBytes)
+
+	return protocol, nil
 }
