@@ -4,10 +4,11 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"strings"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
@@ -15,7 +16,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/tidwall/gjson"
 	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -100,29 +100,33 @@ func (wc *WebhooksController) ProcessCommand(c *fiber.Ctx) error {
 			logger.Err(err).Msg("failed to unmarshal user device api integrations metadata column into struct")
 			return c.SendStatus(fiber.StatusNoContent)
 		}
-		// update the integration state, Pending first data means we are succesfully paired and template applied, just waiting for data to stream
-		apiIntegration.Status = models.UserDeviceAPIIntegrationStatusPendingFirstData
-		ss := constants.TemplateConfirmed.String()
-		udMetadata.AutoPiSubStatus = &ss
-		// update database
-		err = apiIntegration.Metadata.Marshal(udMetadata)
-		if err != nil {
-			logger.Err(err).Msg("failed to marshal user device api integration metadata json from autopi webhook")
-			return c.SendStatus(fiber.StatusNoContent)
-		}
-		_, err = apiIntegration.Update(c.Context(), wc.dbs().Writer, boil.Whitelist(
-			models.UserDeviceAPIIntegrationColumns.Metadata, models.UserDeviceAPIIntegrationColumns.Status,
-			models.UserDeviceAPIIntegrationColumns.UpdatedAt))
-		if err != nil {
-			logger.Err(err).Msg("failed to save user device integration changes")
-			return c.SendStatus(fiber.StatusNoContent)
+		
+		if apiIntegration.Status != models.UserDeviceAPIIntegrationStatusActive {
+			// update the integration state, Pending first data means we are succesfully paired and template applied, just waiting for data to stream
+			apiIntegration.Status = models.UserDeviceAPIIntegrationStatusPendingFirstData
+			ss := constants.TemplateConfirmed.String()
+			udMetadata.AutoPiSubStatus = &ss
+			// update database
+			err = apiIntegration.Metadata.Marshal(udMetadata)
+			if err != nil {
+				logger.Err(err).Msg("failed to marshal user device api integration metadata json from autopi webhook")
+				return c.SendStatus(fiber.StatusNoContent)
+			}
+			_, err = apiIntegration.Update(c.Context(), wc.dbs().Writer, boil.Whitelist(
+				models.UserDeviceAPIIntegrationColumns.Metadata, models.UserDeviceAPIIntegrationColumns.Status,
+				models.UserDeviceAPIIntegrationColumns.UpdatedAt))
+			if err != nil {
+				logger.Err(err).Msg("failed to save user device integration changes")
+				return c.SendStatus(fiber.StatusNoContent)
+			}
+
+			err = wc.autoPiSvc.UpdateState(apiIntegration.ExternalID.String, apiIntegration.Status)
+			if err != nil {
+				logger.Err(err).Msgf("failed to update status when calling autopi api for deviceId: %s", apiIntegration.ExternalID.String)
+				return c.SendStatus(fiber.StatusNoContent)
+			}
 		}
 
-		err = wc.autoPiSvc.UpdateState(apiIntegration.ExternalID.String, apiIntegration.Status)
-		if err != nil {
-			logger.Err(err).Msgf("failed to update status when calling autopi api for deviceId: %s", apiIntegration.ExternalID.String)
-			return c.SendStatus(fiber.StatusNoContent)
-		}
 	}
 	logger.Info().Msg("processed webhook successfully")
 
