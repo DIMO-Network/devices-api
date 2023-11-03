@@ -397,10 +397,16 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 	integrationID := c.Params("integrationID")
 	userID := helpers.GetUserID(c)
 
+	tx, err := sdc.DBS().Writer.BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint
+
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
-	).One(c.Context(), sdc.DBS().Reader)
+	).One(c.Context(), tx)
 	if err != nil {
 		return err
 	}
@@ -480,23 +486,27 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 
 	reqID := ksuid.New().String()
 
-	if err := sdc.registryClient.BurnSyntheticDeviceSign(reqID, big.NewInt(vehicleNode), big.NewInt(syntheticDeviceNode), ownerSignature); err != nil {
-		return err
-	}
-
 	mtr := models.MetaTransactionRequest{
 		ID:     reqID,
 		Status: models.MetaTransactionRequestStatusUnsubmitted,
 	}
 
-	if err := mtr.Insert(c.Context(), sdc.DBS().Writer, boil.Infer()); err != nil {
+	if err := mtr.Insert(c.Context(), tx, boil.Infer()); err != nil {
 		return err
 	}
 
 	sd.BurnRequestID = null.StringFrom(reqID)
-	_, err = sd.Update(c.Context(), sdc.DBS().Writer, boil.Infer())
+	_, err = sd.Update(c.Context(), tx, boil.Infer())
+	if err != nil {
+		return err
+	}
 
-	return err
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return sdc.registryClient.BurnSyntheticDeviceSign(reqID, big.NewInt(vehicleNode), big.NewInt(syntheticDeviceNode), ownerSignature)
 }
 
 func (sdc *SyntheticDevicesController) sendSyntheticDeviceMintPayload(ctx context.Context, requestID string, hash []byte, vehicleNode int, intTokenID uint64, ownerSignature []byte, childKeyNumber int) ([]byte, error) {
