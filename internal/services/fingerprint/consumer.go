@@ -72,9 +72,9 @@ func RunConsumer(ctx context.Context, settings *config.Settings, logger *zerolog
 	return nil
 }
 
-// defaultCredDuration is the default lifetime for VIN credentials. It's meant to cover the
+// DefaultCredDuration is the default lifetime for VIN credentials. It's meant to cover the
 // current reward week, but contains an extra day for safety.
-var defaultCredDuration = 8 * 24 * time.Hour
+var DefaultCredDuration = 8 * 24 * time.Hour
 
 func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) error {
 	if !common.IsHexAddress(event.Subject) {
@@ -124,7 +124,7 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 	}
 
 	// Disable this until it stops chain-failing. See SI-2175.
-	// if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), time.Now().Add(defaultCredDuration)); err != nil {
+	// if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), time.Now().Add(DefaultCredDuration)); err != nil {
 	// 	return err
 	// }
 
@@ -205,7 +205,7 @@ func (c *Consumer) HandleSyntheticFingerprint(ctx context.Context, event *Event)
 	}
 
 	// Disable this until it stops chain-failing. See SI-2175.
-	// if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), event.Time.Add(defaultCredDuration)); err != nil {
+	// if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), event.Time.Add(DefaultCredDuration)); err != nil {
 	// 	return err
 	// }
 
