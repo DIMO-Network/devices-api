@@ -146,7 +146,6 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.Raw
 		c.log.Info().Str("event", data.EventName).Msg("Event received")
 		return c.setPrivilegeHandler(&data)
 	case Transfer.String():
-		c.log.Info().Str("event", data.EventName).Msg("Event received")
 		return c.routeTransferEvent(&data)
 	case AftermarketDeviceNodeMinted.String():
 		if data.Contract == c.registryAddr {
@@ -193,8 +192,10 @@ type PrivilegeArgs struct {
 func (c *ContractsEventsConsumer) routeTransferEvent(e *ContractEventData) error {
 	switch e.Contract {
 	case common.HexToAddress(c.settings.AftermarketDeviceContractAddress):
+		c.log.Info().Str("event", e.EventName).Msg("Event received")
 		return c.handleAfterMarketTransferEvent(e)
 	case common.HexToAddress(c.settings.VehicleNFTAddress):
+		c.log.Info().Str("event", e.EventName).Msg("Event received")
 		return c.handleVehicleTransfer(e)
 	default:
 		c.log.Debug().Str("event", e.EventName).Interface("fullEventData", e).Msg("Handler not provided for contract")
