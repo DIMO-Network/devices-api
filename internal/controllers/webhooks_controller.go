@@ -4,9 +4,10 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"strings"
+
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"strings"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services"
@@ -100,7 +101,7 @@ func (wc *WebhooksController) ProcessCommand(c *fiber.Ctx) error {
 			logger.Err(err).Msg("failed to unmarshal user device api integrations metadata column into struct")
 			return c.SendStatus(fiber.StatusNoContent)
 		}
-		
+
 		if apiIntegration.Status != models.UserDeviceAPIIntegrationStatusActive {
 			// update the integration state, Pending first data means we are succesfully paired and template applied, just waiting for data to stream
 			apiIntegration.Status = models.UserDeviceAPIIntegrationStatusPendingFirstData
