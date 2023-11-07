@@ -70,4 +70,12 @@ var (
 		},
 		[]string{"method", "path", "status"},
 	)
+
+	FingerprintRequestCount = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "devices_api_fingerprint_request_count",
+			Help: "The total number of requests by the Fingerprint",
+		},
+		[]string{"protocol"},
+	)
 )

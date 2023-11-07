@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/DIMO-Network/devices-api/internal/appmetrics"
+	"github.com/prometheus/client_golang/prometheus"
 	"regexp"
 	"strings"
 	"time"
@@ -148,6 +150,8 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 			c.logger.Error().Msgf("could not marshal userdevice metadata for device: %s", ad.R.VehicleToken.R.UserDevice.ID)
 			return err
 		}
+
+		appmetrics.FingerprintRequestCount.With(prometheus.Labels{"protocol": *md.CANProtocol}).Inc()
 	}
 
 	c.logger.Info().Str("device-addr", event.Subject).Msg("issued vin credential")
