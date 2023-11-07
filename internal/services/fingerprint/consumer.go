@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/DIMO-Network/devices-api/internal/appmetrics"
-	"github.com/prometheus/client_golang/prometheus"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/DIMO-Network/devices-api/internal/appmetrics"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/DIMO-Network/devices-api/internal/services"
 
@@ -122,9 +123,10 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 		}
 	}
 
-	if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), time.Now().Add(defaultCredDuration)); err != nil {
-		return err
-	}
+	// Disable this until it stops chain-failing. See SI-2175.
+	// if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), time.Now().Add(defaultCredDuration)); err != nil {
+	// 	return err
+	// }
 
 	// Save Protocol
 	if ad.R.VehicleToken.R.UserDevice != nil {
@@ -202,11 +204,12 @@ func (c *Consumer) HandleSyntheticFingerprint(ctx context.Context, event *Event)
 		}
 	}
 
-	if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), event.Time.Add(defaultCredDuration)); err != nil {
-		return err
-	}
+	// Disable this until it stops chain-failing. See SI-2175.
+	// if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), event.Time.Add(defaultCredDuration)); err != nil {
+	// 	return err
+	// }
 
-	c.logger.Info().Str("device-addr", event.Subject).Msg("issued vin credential")
+	// c.logger.Info().Str("device-addr", event.Subject).Msg("issued vin credential")
 
 	return nil
 }
