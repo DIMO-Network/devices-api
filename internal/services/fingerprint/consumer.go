@@ -139,7 +139,7 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 
 		var protocol *string
 		if md.CANProtocol == nil {
-			protocol, err = ExtractProtocol(event.Data)
+			protocol, err = ExtractProtocol(string(event.Data))
 			if err != nil {
 				c.logger.Error().Err(err)
 			}
@@ -257,19 +257,19 @@ func ExtractVIN(data string) (string, error) {
 	return vin, nil
 }
 
-func ExtractProtocol(data string) (string, error) {
+func ExtractProtocol(data string) (*string, error) {
 
 	decodedBytes, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
-		return "", fmt.Errorf("failed to decode base64 data: %w", err)
+		return nil, fmt.Errorf("failed to decode base64 data: %w", err)
 	}
 	if len(decodedBytes) < 14 {
-		return "", errors.New("decoded bytes too short to decode protocol")
+		return nil, errors.New("decoded bytes too short to decode protocol")
 	}
 
 	//Extract protocol
 	protocolByte := decodedBytes[1+4+8]
 	protocol := fmt.Sprintf("%02x", protocolByte)
 
-	return protocol, nil
+	return &protocol, nil
 }
