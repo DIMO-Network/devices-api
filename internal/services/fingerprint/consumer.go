@@ -3,6 +3,7 @@ package fingerprint
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -90,7 +91,7 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 		return fmt.Errorf("recovered wrong address %s", recAddr)
 	}
 
-	observedVIN, err := ExtractVIN(event.Data)
+	observedVIN, err := ExtractVIN(string(event.Data))
 	if err != nil {
 		if errors.Is(err, ErrNoVIN) {
 			return nil
@@ -138,7 +139,7 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 
 		var protocol *string
 		if md.CANProtocol == nil {
-			protocol, err = ExtractProtocol(event.Data)
+			protocol, err = ExtractProtocol(string(event.Data))
 			if err != nil {
 				c.logger.Error().Err(err)
 			}
@@ -185,7 +186,7 @@ func (c *Consumer) HandleSyntheticFingerprint(ctx context.Context, event *Event)
 		return fmt.Errorf("minting not complete for %s", ud.ID)
 	}
 
-	observedVIN, err := ExtractVIN(event.Data)
+	observedVIN, err := ExtractVIN(string(event.Data))
 	if err != nil {
 		if errors.Is(err, ErrNoVIN) {
 			return nil
@@ -231,24 +232,22 @@ func NumToWeekEnd(n int) time.Time {
 var ErrNoVIN = errors.New("no VIN field")
 var basicVINExp = regexp.MustCompile(`^[A-Z0-9]{17}$`)
 
-// ExtractVIN extracts the vin field from a status update's data object.
-// If this field is not present or fails basic validation, an error is returned.
-// The function does clean up the input slightly.
-func ExtractVIN(data []byte) (string, error) {
-	partialData := new(struct {
-		VIN *string `json:"vin"`
-	})
-
-	if err := json.Unmarshal(data, partialData); err != nil {
-		return "", fmt.Errorf("failed parsing data field: %w", err)
+// ExtractVIN extracts the vin field from message type 1
+func ExtractVIN(data string) (string, error) {
+	// Decode base64 data
+	decodedBytes, err := base64.StdEncoding.DecodeString(data)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode base64 data: %w", err)
 	}
 
-	if partialData.VIN == nil {
-		return "", ErrNoVIN
+	// Verify the length of decodedBytes: 1 byte header, 4 bytes timestamp, 8 bytes location, 1 byte protocol, 17 bytes VIN
+	if len(decodedBytes) < 14+17 {
+		return "", errors.New("decoded bytes too short to decode VIN")
 	}
-
-	// Minor cleaning.
-	vin := strings.ToUpper(strings.ReplaceAll(*partialData.VIN, " ", ""))
+	// Extract VIN bytes
+	vinStart := 1 + 4 + 8 + 1
+	vinBytes := decodedBytes[vinStart : vinStart+17]
+	vin := string(vinBytes)
 
 	// We have seen crazy VINs like "\u000" before.
 	if !basicVINExp.MatchString(vin) {
@@ -258,14 +257,19 @@ func ExtractVIN(data []byte) (string, error) {
 	return vin, nil
 }
 
-func ExtractProtocol(data []byte) (*string, error) {
-	partialData := new(struct {
-		Protocol *string `json:"protocol"`
-	})
+func ExtractProtocol(data string) (*string, error) {
 
-	if err := json.Unmarshal(data, partialData); err != nil {
-		return nil, fmt.Errorf("failed parsing data field: %w", err)
+	decodedBytes, err := base64.StdEncoding.DecodeString(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base64 data: %w", err)
+	}
+	if len(decodedBytes) < 14 {
+		return nil, errors.New("decoded bytes too short to decode protocol")
 	}
 
-	return partialData.Protocol, nil
+	//Extract protocol
+	protocolByte := decodedBytes[1+4+8]
+	protocol := fmt.Sprintf("%02x", protocolByte)
+
+	return &protocol, nil
 }
