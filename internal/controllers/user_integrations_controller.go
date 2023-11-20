@@ -1025,7 +1025,7 @@ func (udc *UserDevicesController) CloudRepairAutoPi(c *fiber.Ctx) error {
 	}
 
 	if ud.R.VehicleNFT.R.VehicleTokenAftermarketDevice == nil {
-		return fiber.NewError(fiber.StatusConflict, "Vehicle not paired on-chain with any aftermarket device.")
+		return fiber.NewError(fiber.StatusConflict, "Vehicle not paired on-chain with an aftermarket device.")
 	}
 
 	vehicleID := ud.R.VehicleNFT.TokenID.Int(nil)
