@@ -959,7 +959,7 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 			return err
 		}
 		if !found {
-			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Signature author %s does not match any known aftermarket device.", recAddr))
+			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("VIN signature author %s does not match any known aftermarket device.", recAddr))
 		}
 	}
 
