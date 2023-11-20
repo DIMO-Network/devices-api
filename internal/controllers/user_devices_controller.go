@@ -959,7 +959,7 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 			return err
 		}
 		if !found {
-			return fiber.NewError(fiber.StatusBadRequest, "Signature does not match any known AutoPi.")
+			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("VIN signature author %s does not match any known aftermarket device.", recAddr))
 		}
 	}
 
@@ -1405,7 +1405,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 
 	for _, apiInteg := range userDevice.R.UserDeviceAPIIntegrations {
 		if unit := apiInteg.R.SerialAftermarketDevice; unit != nil && !unit.VehicleTokenID.IsZero() {
-			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Cannot delete vehicle before unpairing AutoPi %s on-chain.", unit.Serial))
+			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Cannot delete vehicle before unpairing aftermarket device %s on-chain.", unit.Serial))
 		}
 	}
 
