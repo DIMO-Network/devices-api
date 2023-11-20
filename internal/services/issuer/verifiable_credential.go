@@ -5,10 +5,12 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
+	_ "embed" //nolint
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"os"
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil/base58"
@@ -27,6 +29,9 @@ import (
 
 var secp256k1Prefix = []byte{0xe7, 0x01}
 var period byte = '.'
+
+//go:embed w3c_2018_credentials_v1.json
+var w3c2018CredentialsV1 string
 
 type Config struct {
 	PrivateKey        []byte
@@ -60,8 +65,31 @@ func New(c Config, log *zerolog.Logger) (*Issuer, error) {
 
 	ldProc := ld.NewJsonLdProcessor()
 	options := ld.NewJsonLdOptions("")
+
+	rfcDocLoader := ld.NewRFC7324CachingDocumentLoader(nil)
+	dl := ld.NewCachingDocumentLoader(rfcDocLoader)
+
+	f, err := os.CreateTemp("", "")
+	if err != nil {
+		return nil, err
+	}
+	if _, err := f.Write([]byte(w3c2018CredentialsV1)); err != nil {
+		return nil, err
+	}
+	if err := f.Close(); err != nil {
+		return nil, err
+	}
+
+	err = dl.PreloadWithMapping(map[string]string{
+		"https://www.w3.org/2018/credentials/v1": f.Name(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	options.Format = "application/n-quads"
 	options.Algorithm = ld.AlgorithmURDNA2015
+	options.DocumentLoader = dl
 
 	return &Issuer{
 		PrivateKey:         privateKey,
@@ -85,7 +113,6 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int, expirationDate time.Time) (id
 	credential := map[string]any{
 		"@context": []any{
 			"https://www.w3.org/2018/credentials/v1",
-			"https://schema.org/",
 		},
 		"id":             "urn:uuid:" + id,
 		"type":           []any{"VerifiableCredential", "Vehicle"},
