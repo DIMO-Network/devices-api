@@ -1,0 +1,5 @@
+{
+  "@context": {
+    "vehicleIdentificationNumber": "https://schema.org/vehicleIdentificationNumber"
+  }
+}

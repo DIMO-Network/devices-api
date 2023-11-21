@@ -33,6 +33,9 @@ var period byte = '.'
 //go:embed w3c_2018_credentials_v1.json
 var w3c2018CredentialsV1 string
 
+//go:embed schema_vin.json
+var vinSchema string
+
 type Config struct {
 	PrivateKey        []byte
 	ChainID           *big.Int
@@ -69,19 +72,31 @@ func New(c Config, log *zerolog.Logger) (*Issuer, error) {
 	rfcDocLoader := ld.NewRFC7324CachingDocumentLoader(nil)
 	dl := ld.NewCachingDocumentLoader(rfcDocLoader)
 
-	f, err := os.CreateTemp("", "")
+	w3c, err := os.CreateTemp("", "")
 	if err != nil {
 		return nil, err
 	}
-	if _, err := f.Write([]byte(w3c2018CredentialsV1)); err != nil {
+	if _, err := w3c.Write([]byte(w3c2018CredentialsV1)); err != nil {
 		return nil, err
 	}
-	if err := f.Close(); err != nil {
+	if err := w3c.Close(); err != nil {
+		return nil, err
+	}
+
+	schema, err := os.CreateTemp("", "")
+	if err != nil {
+		return nil, err
+	}
+	if _, err := schema.Write([]byte(vinSchema)); err != nil {
+		return nil, err
+	}
+	if err := schema.Close(); err != nil {
 		return nil, err
 	}
 
 	err = dl.PreloadWithMapping(map[string]string{
-		"https://www.w3.org/2018/credentials/v1": f.Name(),
+		"https://www.w3.org/2018/credentials/v1": w3c.Name(),
+		"https://schema.org/":                    schema.Name(),
 	})
 	if err != nil {
 		return nil, err
@@ -113,6 +128,7 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int, expirationDate time.Time) (id
 	credential := map[string]any{
 		"@context": []any{
 			"https://www.w3.org/2018/credentials/v1",
+			"https://schema.org",
 		},
 		"id":             "urn:uuid:" + id,
 		"type":           []any{"VerifiableCredential", "Vehicle"},
