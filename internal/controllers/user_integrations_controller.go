@@ -660,7 +660,7 @@ func (udc *UserDevicesController) GetAutoPiClaimMessage(c *fiber.Ctx) error {
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			logger.Info().Msg("Unknown unit id.")
-			return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted, or unit ID invalid.")
+			return fiber.NewError(fiber.StatusNotFound, "Aftermarket device not minted.")
 		}
 		logger.Err(err).Msg("Database failure searching for AutoPi.")
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal error.")
@@ -1025,7 +1025,7 @@ func (udc *UserDevicesController) CloudRepairAutoPi(c *fiber.Ctx) error {
 	}
 
 	if ud.R.VehicleNFT.R.VehicleTokenAftermarketDevice == nil {
-		return fiber.NewError(fiber.StatusConflict, "Vehicle not paired on-chain with any AutoPi.")
+		return fiber.NewError(fiber.StatusConflict, "Vehicle not paired on-chain with an aftermarket device.")
 	}
 
 	vehicleID := ud.R.VehicleNFT.TokenID.Int(nil)
@@ -1234,7 +1234,7 @@ func (udc *UserDevicesController) PostUnclaimAutoPi(c *fiber.Ctx) error {
 	unit, err := models.AftermarketDevices(models.AftermarketDeviceWhere.Serial.EQ(unitID)).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted, or unit ID invalid.")
+			return fiber.NewError(fiber.StatusNotFound, "Aftermarket device not minted.")
 		}
 		return err
 	}
@@ -1293,7 +1293,7 @@ func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "AutoPi not minted, or unit ID invalid.")
+			return fiber.NewError(fiber.StatusNotFound, "Aftermarket device not minted.")
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal error.")
 	}

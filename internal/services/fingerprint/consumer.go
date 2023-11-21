@@ -124,10 +124,9 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 		}
 	}
 
-	// Disable this until it stops chain-failing. See SI-2175.
-	// if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), time.Now().Add(DefaultCredDuration)); err != nil {
-	// 	return err
-	// }
+	if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), time.Now().Add(DefaultCredDuration)); err != nil {
+		return err
+	}
 
 	// Save Protocol
 	if ad.R.VehicleToken.R.UserDevice != nil {
@@ -159,7 +158,7 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 		appmetrics.FingerprintRequestCount.With(prometheus.Labels{"protocol": *protocol, "status": "Success"}).Inc()
 	}
 
-	// c.logger.Info().Str("device-addr", event.Subject).Msg("issued vin credential")
+	c.logger.Info().Str("device-addr", event.Subject).Msg("issued vin credential")
 
 	return nil
 }
@@ -206,12 +205,11 @@ func (c *Consumer) HandleSyntheticFingerprint(ctx context.Context, event *Event)
 		}
 	}
 
-	// Disable this until it stops chain-failing. See SI-2175.
-	// if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), event.Time.Add(DefaultCredDuration)); err != nil {
-	// 	return err
-	// }
+	if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), event.Time.Add(DefaultCredDuration)); err != nil {
+		return err
+	}
 
-	// c.logger.Info().Str("device-addr", event.Subject).Msg("issued vin credential")
+	c.logger.Info().Str("device-addr", event.Subject).Msg("issued vin credential")
 
 	return nil
 }

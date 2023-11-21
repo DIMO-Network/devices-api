@@ -96,7 +96,7 @@ func New(c Config, log *zerolog.Logger) (*Issuer, error) {
 
 	err = dl.PreloadWithMapping(map[string]string{
 		"https://www.w3.org/2018/credentials/v1": w3c.Name(),
-		"https://schema.org/":                    schema.Name(),
+		"https://schema.org":                     schema.Name(),
 	})
 	if err != nil {
 		return nil, err
