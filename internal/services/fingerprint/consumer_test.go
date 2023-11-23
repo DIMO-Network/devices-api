@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"math/big"
 	"os"
 	"testing"
@@ -461,4 +462,108 @@ func (s *ConsumerTestSuite) TestInvalidSignature() {
 	s.Error(err)
 	s.Equal(err.Error(), "invalid signature recovery id")
 	s.NotEqual(recAddr, addr)
+}
+
+func TestExtractVIN(t *testing.T) {
+
+	tests := []struct {
+		name    string
+		data    []byte
+		want    string
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name: "happy path",
+			data: []byte(`{"vin":"W1N2539531F907299"}`),
+			want: "W1N2539531F907299",
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return err == nil
+			},
+		},
+		{
+			name: "vin with space",
+			data: []byte(`{"vin":"W1N2539531F907299 "}`),
+			want: "W1N2539531F907299",
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return err == nil
+			},
+		},
+		{
+			name: "invalid VIN",
+			data: []byte(`{"vin":"xxx"}`),
+			want: "",
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return err.Error() == "invalid VIN"
+			},
+		},
+		{
+			name: "no VIN",
+			data: []byte(`{"caca":"xxx"}`),
+			want: "",
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return errors.Is(err, ErrNoVIN)
+			},
+		},
+		{
+			name: "can't parse",
+			data: []byte(`caca`),
+			want: "",
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return err != nil
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ExtractVIN(tt.data)
+			if !tt.wantErr(t, err, fmt.Sprintf("ExtractVIN(%v)", tt.data)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "ExtractVIN(%v)", tt.data)
+		})
+	}
+}
+
+func TestExtractProtocol(t *testing.T) {
+	p7 := "7"
+	tests := []struct {
+		name    string
+		data    []byte
+		want    *string
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name: "happy path",
+			data: []byte(`{"protocol":"7"}`),
+			want: &p7,
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return err == nil
+			},
+		},
+		{
+			name: "no protocol",
+			data: []byte(`{"protocol":null}`),
+			want: nil,
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return err == nil
+			},
+		},
+		{
+			name: "can't parse",
+			data: []byte(`caca`),
+			want: nil,
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return err != nil
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ExtractProtocol(tt.data)
+			if !tt.wantErr(t, err, fmt.Sprintf("ExtractProtocol(%v)", tt.data)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "ExtractProtocol(%v)", tt.data)
+		})
+	}
 }
