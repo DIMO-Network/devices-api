@@ -481,6 +481,19 @@
     "intermediate_region_code": ""
   },
   {
+    "name": "Chile",
+    "alpha_2": "CL",
+    "alpha_3": "CHL",
+    "id": 605,
+    "iso_3166_2": "ISO 3166-2:CL",
+    "region": "South America",
+    "sub_region": "Western South America",
+    "intermediate_region": "",
+    "region_code": 419,
+    "sub_region_code": 5,
+    "intermediate_region_code": ""
+  },
+  {
     "name": "Malaysia",
     "alpha_2": "MY",
     "alpha_3": "MYS",
