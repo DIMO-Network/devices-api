@@ -1109,6 +1109,9 @@ func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 	}
 
 	sigBytes := pairReq.Signature
+	if len(sigBytes) != 65 {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Signature has length %d, not the required 65.", len(sigBytes)))
+	}
 
 	recAddr, err := helpers.Ecrecover(hash, sigBytes)
 	if err != nil {

@@ -245,8 +245,8 @@ var zeroAddr common.Address
 const sigLen = 65
 
 // Ecrecover mimics the ecrecover opcode, returning the address that signed
-// hash with signature. sig must have length 65 and the last byte, the v value,
-// must be 27 or 28.
+// hash with signature. sig must have length 65 and the last byte, the recovery
+// byte usually denoted v, must be 27 or 28.
 func Ecrecover(hash, sig []byte) (common.Address, error) {
 	if len(sig) != sigLen {
 		return zeroAddr, fmt.Errorf("signature has invalid length %d", len(sig))
