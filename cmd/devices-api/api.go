@@ -42,7 +42,7 @@ import (
 	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 	"github.com/DIMO-Network/shared"
 	pbuser "github.com/DIMO-Network/shared/api/users"
-	pr "github.com/DIMO-Network/shared/middleware/privilegetoken"
+	"github.com/DIMO-Network/shared/middleware/privilegetoken"
 	"github.com/DIMO-Network/zflogger"
 	"github.com/Shopify/sarama"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -196,21 +196,19 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	vPriv := app.Group("/v1/vehicle/:tokenID", privilegeAuth)
 
-	tk := pr.New(pr.Config{
-		Log: &logger,
-	})
+	privTokenWare := privilegetoken.New(privilegetoken.Config{Log: &logger})
 
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 
 	// vehicle command privileges
-	vPriv.Get("/status", tk.OneOf(vehicleAddr, []int64{controllers.NonLocationData, controllers.CurrentLocation, controllers.AllTimeLocation}), nftController.GetVehicleStatus)
+	vPriv.Get("/status", privTokenWare.OneOf(vehicleAddr, []int64{controllers.NonLocationData, controllers.CurrentLocation, controllers.AllTimeLocation}), nftController.GetVehicleStatus)
 	if !settings.IsProduction() {
-		vPriv.Get("/vin-credential", tk.OneOf(vehicleAddr, []int64{controllers.VinCredential}), nftController.GetVinCredential)
+		vPriv.Get("/vin-credential", privTokenWare.OneOf(vehicleAddr, []int64{controllers.VinCredential}), nftController.GetVinCredential)
 	}
-	vPriv.Post("/commands/doors/unlock", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.UnlockDoors)
-	vPriv.Post("/commands/doors/lock", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.LockDoors)
-	vPriv.Post("/commands/trunk/open", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.OpenTrunk)
-	vPriv.Post("/commands/frunk/open", tk.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.OpenFrunk)
+	vPriv.Post("/commands/doors/unlock", privTokenWare.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.UnlockDoors)
+	vPriv.Post("/commands/doors/lock", privTokenWare.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.LockDoors)
+	vPriv.Post("/commands/trunk/open", privTokenWare.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.OpenTrunk)
+	vPriv.Post("/commands/frunk/open", privTokenWare.OneOf(vehicleAddr, []int64{controllers.Commands}), nftController.OpenFrunk)
 
 	// Traditional tokens
 

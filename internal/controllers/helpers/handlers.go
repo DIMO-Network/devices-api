@@ -1,7 +1,6 @@
 package helpers
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -17,17 +16,6 @@ import (
 	"google.golang.org/grpc/status"
 	//d "github.com/dexidp/dex/api/v2"
 )
-
-type CustomClaims struct {
-	ContractAddress common.Address `json:"contract_address"`
-	TokenID         string         `json:"token_id"`
-	PrivilegeIDs    []int64        `json:"privilege_ids"`
-}
-
-type Token struct {
-	jwt.RegisteredClaims
-	CustomClaims
-}
 
 // ErrorResponseHandler is deprecated. it doesn't log. We prefer to return an err and have the ErrorHandler in api.go handle stuff.
 func ErrorResponseHandler(c *fiber.Ctx, err error, status int) error {
@@ -45,58 +33,6 @@ func GetUserID(c *fiber.Ctx) string {
 	claims := token.Claims.(jwt.MapClaims)
 	userID := claims["sub"].(string)
 	return userID
-}
-
-type VehicleTokenClaims struct {
-	VehicleTokenID string
-	UserEthAddress string
-	Privileges     []int64
-}
-
-type VehicleTokenClaimsResponseRaw struct {
-	Sub        string
-	UserID     string
-	Privileges []int64
-}
-
-func GetVehicleTokenClaims(c *fiber.Ctx) (VehicleTokenClaims, error) {
-	token := c.Locals("user").(*jwt.Token)
-	claims := token.Claims.(jwt.MapClaims)
-
-	jsonbody, err := json.Marshal(claims)
-	if err != nil {
-		return VehicleTokenClaims{}, err
-	}
-
-	p := VehicleTokenClaimsResponseRaw{}
-
-	if err := json.Unmarshal(jsonbody, &p); err != nil {
-		return VehicleTokenClaims{}, err
-	}
-
-	return VehicleTokenClaims{
-		VehicleTokenID: p.Sub,
-		UserEthAddress: p.UserID,
-		Privileges:     p.Privileges,
-	}, nil
-}
-
-func GetPrivilegeTokenClaims(c *fiber.Ctx) (Token, error) {
-	token := c.Locals("user").(*jwt.Token)
-	claims := token.Claims.(jwt.MapClaims)
-
-	jsonbody, err := json.Marshal(claims)
-	if err != nil {
-		return Token{}, err
-	}
-
-	var t Token
-	err = json.Unmarshal(jsonbody, &t)
-	if err != nil {
-		return Token{}, err
-	}
-
-	return t, nil
 }
 
 // CreateResponse is a generic response with an ID of the created entity
