@@ -567,3 +567,101 @@ func TestExtractProtocol(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractVINMacaronType1(t *testing.T) {
+	tests := []struct {
+		name    string
+		data    string
+		want    string
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name: "valid macaron data",
+			data: "AW+yb2VVFVFCV6pmvwZXQkFXWjMyMDMwMEY4Njc1Ng==",
+			want: "WBAWZ320300F86756",
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.NoError(t, err)
+			},
+		},
+		{
+			name: "invalid base64 encoding",
+			data: "not base64 data",
+			want: "",
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.Error(t, err)
+			},
+		},
+		{
+			name: "data too short",
+			data: base64.StdEncoding.EncodeToString([]byte{0x01}),
+			want: "",
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.Error(t, err)
+			},
+		},
+		{
+			name: "invalid VIN format",
+			data: "AW+yb2VVFVFCV6pmvwZXQkFXWjMyMDMwMEY4Njc1@=",
+			want: "",
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ExtractVINMacaronType1(tt.data)
+			if !tt.wantErr(t, err, fmt.Sprintf("ExtractVINMacaronType1(%v)", tt.data)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "ExtractVINMacaronType1(%v)", tt.data)
+		})
+	}
+}
+func TestExtractProtocolMacaronType1(t *testing.T) {
+
+	expectedProtocol := "06"
+
+	tests := []struct {
+		name    string
+		data    string
+		want    *string
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name: "valid protocol data",
+			data: "AW+yb2VVFVFCV6pmvwZXQkFXWjMyMDMwMEY4Njc1Ng==",
+			want: &expectedProtocol,
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.NoError(t, err)
+			},
+		},
+		{
+			name: "invalid base64 encoding",
+			data: "not base64 data",
+			want: nil,
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.Error(t, err)
+			},
+		},
+		{
+			name: "data too short",
+			data: base64.StdEncoding.EncodeToString([]byte{0x01}), // Too short
+			want: nil,
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				return assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ExtractProtocolMacaronType1(tt.data)
+			if !tt.wantErr(t, err, fmt.Sprintf("ExtractProtocolMacaronType1(%v)", tt.data)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "ExtractProtocolMacaronType1(%v)", tt.data)
+		})
+	}
+}
