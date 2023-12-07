@@ -181,7 +181,7 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	}
 
 	if len(device.R.UserDeviceAPIIntegrations) == 0 {
-		return fiber.NewError(fiber.StatusNotFound, "Device does presently have that integration.")
+		return fiber.NewError(fiber.StatusNotFound, "Device does not have that integration.")
 	}
 
 	// Need this for activity log.
