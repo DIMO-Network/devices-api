@@ -694,6 +694,7 @@ func (c *ContractsEventsConsumer) dcnNewExpiration(e *ContractEventData) error {
 
 // aftermarketDeviceAddressReset handles the event of the same name from the registry contract.
 func (c *ContractsEventsConsumer) aftermarketDeviceAddressReset(e *ContractEventData) error {
+	ctx := context.Background()
 	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
 		return fmt.Errorf("aftermarket device address reset from unexpected source %d/%s", e.ChainID, e.Contract)
 	}
@@ -703,22 +704,33 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAddressReset(e *ContractEvent
 		return err
 	}
 
+	tx, err := c.db.DBS().Writer.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint
+
 	amd, err := models.AftermarketDevices(
 		models.AftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(args.TokenId)),
-	).One(context.Background(), c.db.DBS().Reader)
+	).One(ctx, tx)
+	if err != nil {
+		return err
+	}
+
+	_, err = amd.Delete(ctx, tx)
 	if err != nil {
 		return err
 	}
 
 	amd.EthereumAddress = args.AftermarketDeviceAddress.Bytes()
 
-	return amd.Upsert(
-		context.Background(),
-		c.db.DBS().Writer,
-		true,
-		[]string{models.AftermarketDeviceColumns.EthereumAddress},
-		boil.Columns{Cols: []string{models.AftermarketDeviceColumns.EthereumAddress}},
-		boil.Columns{Cols: []string{models.AftermarketDeviceColumns.EthereumAddress}})
+	err = amd.Insert(ctx, tx, boil.Infer())
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+
 }
 
 // DCNNameChangedContract represents a NameChanged event raised by the FullAbi contract.

@@ -700,3 +700,53 @@ func Test_NFTPrivileges_Cleared_On_Vehicle_Transfer(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(nftPrivileges))
 }
+
+func Test_RegistryAftermarketDeviceAddressReset(t *testing.T) {
+	s := initCEventsTestHelper(t)
+	defer s.destroy()
+
+	logger := zerolog.Nop()
+	s.settings.DIMORegistryAddr = common.BigToAddress(big.NewInt(7)).Hex()
+
+	tokenID := types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(1), 0))
+	updatedEthAddr := common.HexToAddress("0x19995Cee27AbBe71b85A09B73D24EA26Fa9325a0")
+
+	amd := models.AftermarketDevice{
+		UserID:          null.StringFrom("SomeID"),
+		EthereumAddress: common.BigToAddress(big.NewInt(1)).Bytes(),
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+		TokenID:         tokenID,
+	}
+
+	payload :=
+		fmt.Sprintf(`{
+			"type": "zone.dimo.contract.event",
+			"source": "chain/%d",
+			"data": {
+				"contract": "%s",
+				"eventName": "%s",
+				"chainId": %d,
+				"arguments": {
+				"manufacturerId": 2,
+				"tokenId": 1,
+				"aftermarketDeviceAddress": "%s"
+				}
+			}
+		}`,
+			s.settings.DIMORegistryChainID,
+			s.settings.DIMORegistryAddr,
+			AftermarketDeviceAddressReset.String(),
+			s.settings.DIMORegistryChainID, updatedEthAddr)
+	err := amd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.assert.NoError(err)
+
+	consumer := NewContractsEventsConsumer(s.pdb, &logger, s.settings, nil, nil, nil)
+	err = consumer.processMessage(&message.Message{Payload: []byte(payload)})
+	s.assert.NoError(err)
+
+	updatedAmd, err := models.AftermarketDevices(models.AftermarketDeviceWhere.TokenID.EQ(tokenID)).One(s.ctx, s.pdb.DBS().Reader)
+	s.assert.NoError(err)
+
+	s.assert.Equal(updatedEthAddr, common.BytesToAddress(updatedAmd.EthereumAddress))
+}
