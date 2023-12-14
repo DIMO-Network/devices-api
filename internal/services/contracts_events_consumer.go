@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -26,6 +27,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
@@ -694,7 +696,6 @@ func (c *ContractsEventsConsumer) dcnNewExpiration(e *ContractEventData) error {
 
 // aftermarketDeviceAddressReset handles the event of the same name from the registry contract.
 func (c *ContractsEventsConsumer) aftermarketDeviceAddressReset(e *ContractEventData) error {
-	ctx := context.Background()
 	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
 		return fmt.Errorf("aftermarket device address reset from unexpected source %d/%s", e.ChainID, e.Contract)
 	}
@@ -704,32 +705,15 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAddressReset(e *ContractEvent
 		return err
 	}
 
-	tx, err := c.db.DBS().Writer.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback() //nolint
-
-	amd, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(args.TokenId)),
-	).One(ctx, tx)
-	if err != nil {
-		return err
-	}
-
-	_, err = amd.Delete(ctx, tx)
-	if err != nil {
-		return err
-	}
-
-	amd.EthereumAddress = args.AftermarketDeviceAddress.Bytes()
-
-	err = amd.Insert(ctx, tx, boil.Infer())
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit()
+	_, err := queries.Raw(fmt.Sprintf(
+		`UPDATE devices_api.%s 
+		SET ethereum_address = decode('%s', 'hex')
+		WHERE token_id = %d;`,
+		models.TableNames.AftermarketDevices,
+		strings.TrimPrefix(args.AftermarketDeviceAddress.String(), "0x"),
+		args.TokenId,
+	)).Exec(c.db.DBS().Writer)
+	return err
 
 }
 
