@@ -10,7 +10,8 @@
     "intermediate_region": "",
     "region_code": 19,
     "sub_region_code": 21,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "US915"
   },
   {
     "name": "Canada",
@@ -23,7 +24,8 @@
     "intermediate_region": "",
     "region_code": 19,
     "sub_region_code": 21,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "US915"
   },
   {
     "name": "Puerto Rico",
@@ -36,7 +38,8 @@
     "intermediate_region": "Caribbean",
     "region_code": 19,
     "sub_region_code": 419,
-    "intermediate_region_code": 29
+    "intermediate_region_code": 29,
+    "lora_region":"US915"
   },
   {
     "name": "United States Minor Outlying Islands",
@@ -49,7 +52,8 @@
     "intermediate_region": "",
     "region_code": 9,
     "sub_region_code": 57,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "US915"
   },
   {
     "name": "United Kingdom of Great Britain and Northern Ireland",
@@ -62,7 +66,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 154,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Austria",
@@ -75,7 +80,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 155,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Belgium",
@@ -88,7 +94,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 155,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Bulgaria",
@@ -101,7 +108,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 151,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Croatia",
@@ -114,7 +122,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 39,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Cyprus",
@@ -127,7 +136,8 @@
     "intermediate_region": "",
     "region_code": 142,
     "sub_region_code": 145,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Czechia",
@@ -140,7 +150,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 151,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Denmark",
@@ -153,7 +164,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 154,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Estonia",
@@ -166,7 +178,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 154,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Finland",
@@ -179,7 +192,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 154,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "France",
@@ -192,7 +206,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 155,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Germany",
@@ -205,7 +220,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 155,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Greece",
@@ -218,7 +234,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 39,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Hungary",
@@ -231,7 +248,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 151,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Ireland",
@@ -244,7 +262,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 154,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Italy",
@@ -257,7 +276,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 39,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Latvia",
@@ -270,7 +290,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 154,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Lithuania",
@@ -283,7 +304,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 154,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Luxembourg",
@@ -296,7 +318,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 155,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Malta",
@@ -309,7 +332,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 39,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Netherlands",
@@ -322,7 +346,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 155,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Norway",
@@ -335,7 +360,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 154,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Poland",
@@ -348,7 +374,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 151,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Ukraine",
@@ -361,7 +388,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 151,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Portugal",
@@ -374,7 +402,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 39,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Romania",
@@ -387,7 +416,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 151,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Slovakia",
@@ -400,7 +430,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 151,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Slovenia",
@@ -413,7 +444,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 39,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Spain",
@@ -426,7 +458,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 39,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Sweden",
@@ -439,7 +472,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 154,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Switzerland",
@@ -452,7 +486,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 155,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Turkey",
@@ -465,7 +500,8 @@
     "intermediate_region": "",
     "region_code": 150,
     "sub_region_code": 254,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
   {
     "name": "Peru",
@@ -478,7 +514,8 @@
     "intermediate_region": "",
     "region_code": 419,
     "sub_region_code": 5,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "US915"
   },
   {
     "name": "Chile",
@@ -491,7 +528,8 @@
     "intermediate_region": "",
     "region_code": 419,
     "sub_region_code": 5,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "US915"
   },
   {
     "name": "Ecuador",
@@ -504,7 +542,8 @@
     "intermediate_region": "",
     "region_code": 419,
     "sub_region_code": 5,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "US915"
   },
   {
     "name": "Argentina",
@@ -517,7 +556,8 @@
     "intermediate_region": "",
     "region_code": 419,
     "sub_region_code": 5,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "AU915"
   },
   {
     "name": "Colombia",
@@ -530,7 +570,8 @@
     "intermediate_region": "",
     "region_code": 419,
     "sub_region_code": 5,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "US915"
   },
   {
     "name": "Australia",
@@ -543,7 +584,8 @@
     "intermediate_region": "",
     "region_code": 420,
     "sub_region_code": 5,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "AU915"
   },
   {
     "name": "Taiwan",
@@ -556,7 +598,8 @@
     "intermediate_region": "",
     "region_code": 142,
     "sub_region_code": 0,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "AS923"
   },
   {
     "name": "United Arab Emirates",
@@ -569,7 +612,8 @@
     "intermediate_region": "",
     "region_code": 0,
     "sub_region_code": 0,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
   },
 
   {
@@ -583,7 +627,8 @@
     "intermediate_region": "",
     "region_code": 142,
     "sub_region_code": 35,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "AS923"
   },
   {
     "name": "Pakistan",
@@ -596,6 +641,7 @@
     "intermediate_region": "",
     "region_code": 142,
     "sub_region_code": 34,
-    "intermediate_region_code": ""
+    "intermediate_region_code": "",
+    "lora_region": "AS923"
   }
 ]
