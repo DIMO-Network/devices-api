@@ -29,6 +29,11 @@ func FindCountry(countryCode string) *CountryInfo {
 	return c
 }
 
+// GetCountriesRaw just returns the json string from countries_regions
+func GetCountriesRaw() string {
+	return countriesJSON
+}
+
 // CountryInfo represent a country with it's region and sub-region
 type CountryInfo struct {
 	Name          string `json:"name"`
@@ -38,6 +43,7 @@ type CountryInfo struct {
 	SubRegion     string `json:"sub_region"`
 	RegionCode    int    `json:"region_code"`
 	SubRegionCode int    `json:"sub_region_code"`
+	LoraRegion    string `json:"lora_region"`
 }
 
 type RegionEnum string
