@@ -143,6 +143,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
+	countriesController := controllers.NewCountriesController()
 
 	// commenting this out b/c the library includes the path in the metrics which saturates prometheus queries - need to fork / make our own
 	//prometheus := fiberprometheus.New("devices-api")
@@ -186,6 +187,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1.Get("/dcn/:nodeID", nftController.GetDcnNFTMetadata)
 	v1.Get("/dcn/:nodeID/image", nftController.GetDCNNFTImage)
 	v1.Get("/integration/:tokenID", nftController.GetIntegrationNFTMetadata)
+
+	v1.Get("/countries", countriesController.GetSupportedCountries)
+	v1.Get("/countries/:countryCode", countriesController.GetCountry)
 
 	// webhooks, performs signature validation
 	v1.Post(constants.AutoPiWebhookPath, webhooksController.ProcessCommand)
