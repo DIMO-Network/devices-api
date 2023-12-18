@@ -16,11 +16,12 @@ func NewCountriesController() CountriesController {
 // @Description Returns all the supported countries
 // @Tags        countries
 // @Produce     json
-// @Success     200            {object} constants.CountryInfo
+// @Success     200        {object} constants.CountryInfo
 // @Router      /countries [get]
 func (cc CountriesController) GetSupportedCountries(c *fiber.Ctx) error {
 	// read countries json and return it
-	return c.JSON(constants.GetCountriesRaw())
+	c.Set("Content-Type", "application/json")
+	return c.SendString(constants.GetCountriesRaw())
 }
 
 // GetCountry godoc
