@@ -714,7 +714,6 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAddressReset(e *ContractEvent
 		args.TokenId,
 	)).Exec(c.db.DBS().Writer)
 	return err
-
 }
 
 // DCNNameChangedContract represents a NameChanged event raised by the FullAbi contract.
