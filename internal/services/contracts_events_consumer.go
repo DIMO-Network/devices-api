@@ -27,7 +27,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
@@ -694,6 +693,12 @@ func (c *ContractsEventsConsumer) dcnNewExpiration(e *ContractEventData) error {
 	return nil
 }
 
+// $1 is the updated aftermarket device address, $2 is the token id
+const aftermarketDeviceAddressResetQuery = `
+	UPDATE devices_api.aftermarket_devices 
+	SET ethereum_address = decode($1, 'hex')
+	WHERE token_id = $2;`
+
 // aftermarketDeviceAddressReset handles the event of the same name from the registry contract.
 func (c *ContractsEventsConsumer) aftermarketDeviceAddressReset(e *ContractEventData) error {
 	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
@@ -705,14 +710,10 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAddressReset(e *ContractEvent
 		return err
 	}
 
-	_, err := queries.Raw(fmt.Sprintf(
-		`UPDATE devices_api.%s 
-		SET ethereum_address = decode('%s', 'hex')
-		WHERE token_id = %d;`,
-		models.TableNames.AftermarketDevices,
+	_, err := c.db.DBS().Writer.Exec(
+		aftermarketDeviceAddressResetQuery,
 		strings.TrimPrefix(args.AftermarketDeviceAddress.String(), "0x"),
-		args.TokenId,
-	)).Exec(c.db.DBS().Writer)
+		args.TokenId.Int64())
 	return err
 }
 
