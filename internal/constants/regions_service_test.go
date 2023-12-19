@@ -23,6 +23,7 @@ func TestFindRegionForCountry(t *testing.T) {
 				SubRegion:     "Northern America",
 				RegionCode:    19,
 				SubRegionCode: 21,
+				LoraRegion:    "US915",
 			},
 		},
 		{
@@ -36,6 +37,7 @@ func TestFindRegionForCountry(t *testing.T) {
 				SubRegion:     "Eastern Europe",
 				RegionCode:    150,
 				SubRegionCode: 151,
+				LoraRegion:    "EU868",
 			},
 		},
 		{
