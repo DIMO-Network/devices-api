@@ -172,6 +172,7 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	device, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
 	).One(c.Context(), tx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -182,6 +183,24 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 
 	if len(device.R.UserDeviceAPIIntegrations) == 0 {
 		return fiber.NewError(fiber.StatusNotFound, "Device does not have that integration.")
+	}
+
+	if device.R.VehicleNFT != nil && device.R.VehicleNFT.R.VehicleTokenSyntheticDevice != nil {
+		sd := device.R.VehicleNFT.R.VehicleTokenSyntheticDevice
+
+		integr, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
+		if err != nil {
+			return err
+		}
+
+		integrTokenID, _ := device.R.VehicleNFT.R.VehicleTokenSyntheticDevice.IntegrationTokenID.Uint64()
+		if integr.TokenId == integrTokenID {
+			if sd.BurnRequestID.Valid {
+				return fiber.NewError(fiber.StatusConflict, "Synthetic device burn in progress.")
+			} else {
+				return fiber.NewError(fiber.StatusConflict, "Burn synthetic device before deleting integration.")
+			}
+		}
 	}
 
 	// Need this for activity log.
