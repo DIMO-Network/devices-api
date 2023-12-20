@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -60,6 +61,7 @@ const (
 	AftermarketDevicePaired       EventName = "AftermarketDevicePaired"
 	AftermarketDeviceUnpaired     EventName = "AftermarketDeviceUnpaired"
 	AftermarketDeviceAttributeSet EventName = "AftermarketDeviceAttributeSet"
+	AftermarketDeviceAddressReset EventName = "AftermarketDeviceAddressReset"
 )
 
 func (r EventName) String() string {
@@ -174,6 +176,8 @@ func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.Raw
 		return c.aftermarketDeviceUnpaired(&data)
 	case AftermarketDeviceAttributeSet.String():
 		return c.aftermarketDeviceAttributeSet(&data)
+	case AftermarketDeviceAddressReset.String():
+		return c.aftermarketDeviceAddressReset(&data)
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -687,6 +691,26 @@ func (c *ContractsEventsConsumer) dcnNewExpiration(e *ContractEventData) error {
 	}
 
 	return nil
+}
+
+// aftermarketDeviceAddressReset handles the event of the same name from the registry contract.
+func (c *ContractsEventsConsumer) aftermarketDeviceAddressReset(e *ContractEventData) error {
+	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
+		return fmt.Errorf("aftermarket device address reset from unexpected source %d/%s", e.ChainID, e.Contract)
+	}
+
+	var args contracts.RegistryAftermarketDeviceAddressReset
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return err
+	}
+
+	_, err := c.db.DBS().Writer.Exec(
+		`UPDATE devices_api.aftermarket_devices 
+		SET ethereum_address = decode($1, 'hex')
+		WHERE token_id = $2;`,
+		strings.TrimPrefix(args.AftermarketDeviceAddress.String(), "0x"),
+		args.TokenId.Int64())
+	return err
 }
 
 // DCNNameChangedContract represents a NameChanged event raised by the FullAbi contract.
