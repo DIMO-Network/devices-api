@@ -693,12 +693,6 @@ func (c *ContractsEventsConsumer) dcnNewExpiration(e *ContractEventData) error {
 	return nil
 }
 
-// $1 is the updated aftermarket device address, $2 is the token id
-const aftermarketDeviceAddressResetQuery = `
-	UPDATE devices_api.aftermarket_devices 
-	SET ethereum_address = decode($1, 'hex')
-	WHERE token_id = $2;`
-
 // aftermarketDeviceAddressReset handles the event of the same name from the registry contract.
 func (c *ContractsEventsConsumer) aftermarketDeviceAddressReset(e *ContractEventData) error {
 	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
@@ -711,7 +705,9 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAddressReset(e *ContractEvent
 	}
 
 	_, err := c.db.DBS().Writer.Exec(
-		aftermarketDeviceAddressResetQuery,
+		`UPDATE devices_api.aftermarket_devices 
+		SET ethereum_address = decode($1, 'hex')
+		WHERE token_id = $2;`,
 		strings.TrimPrefix(args.AftermarketDeviceAddress.String(), "0x"),
 		args.TokenId.Int64())
 	return err
