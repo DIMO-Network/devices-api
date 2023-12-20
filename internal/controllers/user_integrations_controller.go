@@ -197,9 +197,8 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 		if integr.TokenId == integrTokenID {
 			if sd.BurnRequestID.Valid {
 				return fiber.NewError(fiber.StatusConflict, "Synthetic device burn in progress.")
-			} else {
-				return fiber.NewError(fiber.StatusConflict, "Burn synthetic device before deleting integration.")
 			}
+			return fiber.NewError(fiber.StatusConflict, "Burn synthetic device before deleting integration.")
 		}
 	}
 
