@@ -116,6 +116,7 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 	app := test.SetupAppFiber(*logger)
 
 	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.RegisterDeviceIntegration)
+	app.Delete("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.DeleteUserDeviceIntegration)
 
 	app.Post("/user2/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUser2), c.RegisterDeviceIntegration)
 	app.Get("/integrations", c.GetIntegrations)
@@ -184,6 +185,43 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCarFailure() {
 	exists, _ := models.UserDeviceAPIIntegrationExists(s.ctx, s.pdb.DBS().Writer, ud.ID, integration.Id)
 	assert.False(s.T(), exists, "no integration should have been created")
 }
+
+func (s *UserIntegrationsControllerTestSuite) TestDeleteIntegration_BlockedBySyntheticDevice() {
+	model := "Mach E"
+	const vin = "CARVIN"
+	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	vnft := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, big.NewInt(5), null.BytesFrom(common.HexToAddress("0xA1").Bytes()), s.pdb)
+
+	mtr := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusConfirmed,
+	}
+
+	s.Require().NoError(mtr.Insert(context.TODO(), s.pdb.DBS().Writer, boil.Infer()))
+
+	sd := models.SyntheticDevice{
+		VehicleTokenID:     vnft.TokenID,
+		IntegrationTokenID: types.NewDecimal(decimal.New(int64(integration.TokenId), 0)),
+		MintRequestID:      mtr.ID,
+		WalletChildNumber:  4,
+		WalletAddress:      common.HexToAddress("0xB").Bytes(),
+		TokenID:            types.NewNullDecimal(decimal.New(6, 0)),
+	}
+	s.Require().NoError(sd.Insert(context.TODO(), s.pdb.DBS().Writer, boil.Infer()))
+
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
+
+	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "c005c7dd-9568-4083-8989-109205cdff28", ud.ID, integration.Id, s.pdb)
+
+	request := test.BuildRequest("DELETE", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, "")
+	response, err := s.app.Test(request)
+	s.Require().NoError(err)
+	s.Require().Equal(fiber.StatusConflict, response.StatusCode)
+	fmt.Println(response, err)
+}
+
 func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken() {
 	model := "Mach E"
 	const vin = "CARVIN"

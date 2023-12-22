@@ -446,13 +446,15 @@ func BuildIntegrationDefaultGRPC(integrationVendor string, autoPiDefaultTemplate
 			Style:            constants.IntegrationStyleWebhook,
 			Vendor:           constants.SmartCarVendor,
 			RefreshLimitSecs: 100,
+			TokenId:          1,
 		}
 	case constants.TeslaVendor:
 		integration = &ddgrpc.Integration{
-			Id:     ksuid.New().String(),
-			Type:   constants.IntegrationTypeAPI,
-			Style:  constants.IntegrationStyleOEM,
-			Vendor: constants.TeslaVendor,
+			Id:      ksuid.New().String(),
+			Type:    constants.IntegrationTypeAPI,
+			Style:   constants.IntegrationStyleOEM,
+			Vendor:  constants.TeslaVendor,
+			TokenId: 2,
 		}
 	}
 	return integration
