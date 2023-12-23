@@ -19,7 +19,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -210,7 +209,8 @@ func (g *GeofencesController) EmitPrivacyFenceUpdates(ctx context.Context, db bo
 func (g *GeofencesController) GetAll(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 	//could not find LoadUserDevices method for eager loading
-	items, err := models.Geofences(models.GeofenceWhere.UserID.EQ(userID),
+	items, err := models.Geofences(
+		models.GeofenceWhere.UserID.EQ(userID),
 		qm.Load(models.GeofenceRels.UserDeviceToGeofences),
 		qm.Load(qm.Rels(models.GeofenceRels.UserDeviceToGeofences, models.UserDeviceToGeofenceRels.UserDevice)),
 	).All(c.Context(), g.DBS().Reader)
@@ -235,8 +235,8 @@ func (g *GeofencesController) GetAll(c *fiber.Ctx) error {
 	}
 	// log in odd case ddIds is empty
 	if len(ddIds) == 0 {
-		log.Warn().Str("userId", userID).Str("httpPath", c.Path()).Str("geofenceItemsLen", fmt.Sprint(len(items))).
-			Msg("unexpected case: device definition IDs was empty from geofences with values")
+		g.log.Debug().Str("userId", userID).Str("httpPath", c.Path()).Str("geofenceItemsLen", fmt.Sprint(len(items))).
+			Msg("Geofences are not attached to any vehicles.")
 		return c.JSON(fiber.Map{
 			"geofences": []GetGeofence{},
 		})
