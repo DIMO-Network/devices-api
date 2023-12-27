@@ -211,7 +211,7 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int, expirationDate time.Time) (id
 		ExpirationDate: expirationDate,
 	}
 
-	if err := vc.Insert(context.Background(), i.DBS.DBS().Writer, boil.Infer()); err != nil {
+	if err := vc.Insert(context.Background(), tx, boil.Infer()); err != nil {
 		return "", err
 	}
 
@@ -221,7 +221,7 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int, expirationDate time.Time) (id
 	}
 
 	nft.ClaimID = null.StringFrom(id)
-	if _, err := nft.Update(context.Background(), i.DBS.DBS().Writer, boil.Whitelist(models.VehicleNFTColumns.ClaimID)); err != nil {
+	if _, err := nft.Update(context.Background(), tx, boil.Whitelist(models.VehicleNFTColumns.ClaimID)); err != nil {
 		return "", err
 	}
 
