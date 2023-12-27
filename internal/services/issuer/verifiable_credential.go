@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil/base58"
+	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -22,6 +23,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/types"
 
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
@@ -211,17 +213,17 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int, expirationDate time.Time) (id
 		ExpirationDate: expirationDate,
 	}
 
-	if err := vc.Insert(context.Background(), i.DBS.DBS().Writer, boil.Infer()); err != nil {
+	if err := vc.Insert(context.Background(), tx, boil.Infer()); err != nil {
 		return "", err
 	}
 
-	nft, err := models.VehicleNFTS(models.VehicleNFTWhere.Vin.EQ(vin)).One(context.Background(), tx)
+	nft, err := models.VehicleNFTS(models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)))).One(context.Background(), tx)
 	if err != nil {
 		return "", err
 	}
 
 	nft.ClaimID = null.StringFrom(id)
-	if _, err := nft.Update(context.Background(), i.DBS.DBS().Writer, boil.Whitelist(models.VehicleNFTColumns.ClaimID)); err != nil {
+	if _, err := nft.Update(context.Background(), tx, boil.Whitelist(models.VehicleNFTColumns.ClaimID)); err != nil {
 		return "", err
 	}
 
