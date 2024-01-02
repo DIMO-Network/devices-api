@@ -290,6 +290,16 @@ func (s *userDeviceRPCServer) RegisterUserDeviceFromVIN(ctx context.Context, req
 	}
 
 	resp, err := s.deviceDefSvc.DecodeVIN(ctx, vin, "", 0, "")
+
+	if resp.Year < 2008 {
+		s.logger.Warn().
+			Str("vin", vin).
+			Str("user_id", req.UserDeviceId).
+			Msg("VIN is too old")
+
+		return nil, status.Errorf(codes.InvalidArgument, "VIN %s is too old", vin)
+	}
+
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
