@@ -46,7 +46,7 @@ type AutoPiAPIService interface {
 	GetCommandStatus(ctx context.Context, jobID string) (*AutoPiCommandJob, *models.AutopiJob, error)
 	GetCommandStatusFromAutoPi(deviceID string, jobID string) ([]byte, error)
 	UpdateJob(ctx context.Context, jobID, newState string, result *AutoPiCommandResult) (*models.AutopiJob, error)
-	UpdateState(deviceID string, state string) error
+	UpdateState(deviceID string, state, country, region string) error
 }
 
 type autoPiAPIService struct {
@@ -400,9 +400,16 @@ func (a *autoPiAPIService) GetCommandStatus(ctx context.Context, jobID string) (
 }
 
 // UpdateState calls https://api.dimo.autopi.io/dongle/devices/{DEVICE_ID}/ Note that the deviceID is the autoPi one.
-func (a *autoPiAPIService) UpdateState(deviceID string, state string) error {
+// state is the device pairing state from our end for AP's troubleshooting usage, country and region to be used by AP for region balancing traffic
+func (a *autoPiAPIService) UpdateState(deviceID string, state, country, region string) error {
 	userMetaDataStateInfo := make(map[string]interface{})
 	userMetaDataStateInfo["state"] = state
+	if country != "" {
+		userMetaDataStateInfo["country_code_iso3"] = country
+	}
+	if region != "" {
+		userMetaDataStateInfo["region"] = region
+	}
 
 	userMetaDataInfo := make(map[string]interface{})
 	userMetaDataInfo["user_metadata"] = userMetaDataStateInfo
