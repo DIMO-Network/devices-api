@@ -320,15 +320,15 @@ func (mr *MockAutoPiAPIServiceMockRecorder) UpdateJob(ctx, jobID, newState, resu
 }
 
 // UpdateState mocks base method.
-func (m *MockAutoPiAPIService) UpdateState(deviceID, state string) error {
+func (m *MockAutoPiAPIService) UpdateState(deviceID, state, country, region string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateState", deviceID, state)
+	ret := m.ctrl.Call(m, "UpdateState", deviceID, state, country, region)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdateState indicates an expected call of UpdateState.
-func (mr *MockAutoPiAPIServiceMockRecorder) UpdateState(deviceID, state any) *gomock.Call {
+func (mr *MockAutoPiAPIServiceMockRecorder) UpdateState(deviceID, state, country, region any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateState", reflect.TypeOf((*MockAutoPiAPIService)(nil).UpdateState), deviceID, state)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateState", reflect.TypeOf((*MockAutoPiAPIService)(nil).UpdateState), deviceID, state, country, region)
 }

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/DIMO-Network/devices-api/internal/constants"
+
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -56,7 +58,7 @@ func updateState(ctx context.Context, pdb db.Store, logger *zerolog.Logger, auto
 	const (
 		autopiInteg = "27qftVRWQYpVDcO5DltO5Ojbjxk"
 	)
-
+	// get all autopi paired devices
 	apiInts, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(autopiInteg),
 		models.UserDeviceAPIIntegrationWhere.ExternalID.IsNotNull(),
@@ -68,14 +70,19 @@ func updateState(ctx context.Context, pdb db.Store, logger *zerolog.Logger, auto
 	logger.Info().Msgf("found %d connected autopis to update status for", len(apiInts))
 
 	for _, apiInt := range apiInts {
-		err := autoPiSvc.UpdateState(apiInt.ExternalID.String, apiInt.Status)
+		reg := ""
+		ci := constants.FindCountry(apiInt.R.UserDevice.CountryCode.String)
+		if ci != nil {
+			reg = ci.Region
+		}
+		err := autoPiSvc.UpdateState(apiInt.ExternalID.String, apiInt.Status, apiInt.R.UserDevice.CountryCode.String, reg)
 		if err != nil {
 			logger.Err(err).Msgf("failed to update status when calling autopi api for deviceId: %s", apiInt.ExternalID.String)
 		} else {
 			logger.Info().Msgf("successfully updated state for %s", apiInt.ExternalID.String)
 		}
 		time.Sleep(500)
-
+		// also update the AP vehicle Call Name to make it easier to find in AP dashboard
 		autoPiDevice, err := autoPiSvc.GetDeviceByUnitID(apiInt.Serial.String)
 		if err == nil {
 			dd, _ := deviceDefSvc.GetDeviceDefinitionByID(ctx, apiInt.R.UserDevice.DeviceDefinitionID)

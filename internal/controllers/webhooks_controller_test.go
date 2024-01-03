@@ -123,7 +123,8 @@ func (s *WebHooksControllerTestSuite) TestPostWebhookSyncCommand() {
 	ddDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Return(integ, nil)
 
 	autoAPISvc.EXPECT().UpdateJob(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(autopiJob, nil)
-	autoAPISvc.EXPECT().UpdateState(gomock.Any(), gomock.Any()).Return(nil)
+	ci := constants.FindCountry(ud.CountryCode.String)
+	autoAPISvc.EXPECT().UpdateState(gomock.Any(), gomock.Any(), ud.CountryCode.String, ci.Region).Return(nil)
 
 	udiai := models.UserDeviceAPIIntegration{
 		// create user device api integration

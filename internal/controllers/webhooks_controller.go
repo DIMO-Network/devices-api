@@ -89,6 +89,7 @@ func (wc *WebhooksController) ProcessCommand(c *fiber.Ctx) error {
 		apiIntegration, err := models.UserDeviceAPIIntegrations(models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(autoPiInteg.Id),
 			models.UserDeviceAPIIntegrationWhere.ExternalID.EQ(null.StringFrom(apwDeviceID.String())),
 			models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(autopiJob.UserDeviceID.String),
+			qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
 			qm.OrderBy("updated_at desc"), qm.Limit(1)).One(c.Context(), wc.dbs().Reader)
 		if err != nil {
 			logger.Err(err).Msg("could not get user device api integrations")
@@ -121,7 +122,12 @@ func (wc *WebhooksController) ProcessCommand(c *fiber.Ctx) error {
 				return c.SendStatus(fiber.StatusNoContent)
 			}
 
-			err = wc.autoPiSvc.UpdateState(apiIntegration.ExternalID.String, apiIntegration.Status)
+			reg := ""
+			ci := constants.FindCountry(apiIntegration.R.UserDevice.CountryCode.String)
+			if ci != nil {
+				reg = ci.Region
+			}
+			err = wc.autoPiSvc.UpdateState(apiIntegration.ExternalID.String, apiIntegration.Status, apiIntegration.R.UserDevice.CountryCode.String, reg)
 			if err != nil {
 				logger.Err(err).Msgf("failed to update status when calling autopi api for deviceId: %s", apiIntegration.ExternalID.String)
 				return c.SendStatus(fiber.StatusNoContent)
