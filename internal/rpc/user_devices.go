@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"math/big"
 
 	"strings"
@@ -294,10 +295,11 @@ func (s *userDeviceRPCServer) RegisterUserDeviceFromVIN(ctx context.Context, req
 	if resp.Year < 2008 {
 		s.logger.Warn().
 			Str("vin", vin).
+			Str("year", fmt.Sprint(resp.Year)).
 			Str("user_id", req.UserDeviceId).
 			Msg("VIN is too old")
 
-		return nil, status.Errorf(codes.InvalidArgument, "VIN %s is too old", vin)
+		return nil, status.Errorf(codes.InvalidArgument, "VIN %s from year %v is too old", vin, resp.Year)
 	}
 
 	if err != nil {
