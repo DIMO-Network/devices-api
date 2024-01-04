@@ -12,8 +12,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	//d "github.com/dexidp/dex/api/v2"
 )
 
@@ -38,29 +36,6 @@ func GetUserID(c *fiber.Ctx) string {
 // CreateResponse is a generic response with an ID of the created entity
 type CreateResponse struct {
 	ID string `json:"id"`
-}
-
-// GrpcErrorToFiber useful anywhere calling a grpc underlying service and wanting to augment the error for fiber from grpc status codes
-// meant to play nicely with the ErrorHandler in api.go that this would hand off errors to.
-// msgAppend appends to error string, to eg. help if this gets logged
-func GrpcErrorToFiber(err error, msgAppend string) error {
-	if err == nil {
-		return nil
-	}
-	// pull out grpc error status to then convert to fiber http equivalent
-	errStatus, _ := status.FromError(err)
-
-	switch errStatus.Code() {
-	case codes.InvalidArgument:
-		return fiber.NewError(fiber.StatusBadRequest, errStatus.Message()+". "+msgAppend)
-	case codes.NotFound:
-		return fiber.NewError(fiber.StatusNotFound, errStatus.Message()+". "+msgAppend)
-	case codes.Aborted:
-		return fiber.NewError(fiber.StatusConflict, errStatus.Message()+". "+msgAppend)
-	case codes.Internal:
-		return fiber.NewError(fiber.StatusInternalServerError, errStatus.Message()+". "+msgAppend)
-	}
-	return errors.Wrap(err, msgAppend)
 }
 
 func GetLogger(c *fiber.Ctx, d *zerolog.Logger) *zerolog.Logger {
@@ -94,8 +69,9 @@ func ErrorHandler(c *fiber.Ctx, err error, logger *zerolog.Logger, isProduction 
 
 	code := fiber.StatusInternalServerError // Default 500 statuscode
 
-	e, fiberTypeErr := err.(*fiber.Error)
-	if fiberTypeErr {
+	var e *fiber.Error
+	isFiberErr := errors.As(err, &e)
+	if isFiberErr {
 		// Override status code if fiber.Error type
 		code = e.Code
 	}
@@ -109,7 +85,7 @@ func ErrorHandler(c *fiber.Ctx, err error, logger *zerolog.Logger, isProduction 
 			Msg("caught an error from http request")
 	}
 	// return an opaque error if we're in a higher level environment and we haven't specified an fiber type err.
-	if !fiberTypeErr && isProduction {
+	if !isFiberErr && isProduction {
 		err = fiber.NewError(fiber.StatusInternalServerError, "Internal error")
 	}
 

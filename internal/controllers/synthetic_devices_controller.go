@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/DIMO-Network/shared"
+
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
@@ -110,7 +112,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 
 	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "error occurred when fetching user")
+		return shared.GrpcErrorToFiber(err, "error occurred when fetching user")
 	}
 
 	if user.EthereumAddress == nil {
@@ -151,7 +153,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 
 	in, err := sdc.deviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "failed to get integration")
+		return shared.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
 	if in.Vendor != constants.SmartCarVendor && in.Vendor != constants.TeslaVendor {
@@ -208,7 +210,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	in, err := sdc.deviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "failed to get integration")
+		return shared.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
 	if in.Vendor != constants.SmartCarVendor && in.Vendor != constants.TeslaVendor {
@@ -232,7 +234,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "error occurred when fetching user")
+		return shared.GrpcErrorToFiber(err, "error occurred when fetching user")
 	}
 
 	if user.EthereumAddress == nil {
@@ -330,7 +332,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceBurnPayload(c *fiber.Ct
 
 	in, err := sdc.deviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "failed to get integration")
+		return shared.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
 	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
@@ -340,7 +342,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceBurnPayload(c *fiber.Ct
 	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		sdc.log.Debug().Err(err).Msg("error occurred when fetching user")
-		return helpers.GrpcErrorToFiber(err, "error occurred when fetching user")
+		return shared.GrpcErrorToFiber(err, "error occurred when fetching user")
 	}
 
 	if user.EthereumAddress == nil {
@@ -413,7 +415,7 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 
 	in, err := sdc.deviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "failed to get integration")
+		return shared.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
 	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
@@ -423,7 +425,7 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		sdc.log.Debug().Err(err).Msg("error occurred when fetching user")
-		return helpers.GrpcErrorToFiber(err, "error occurred when fetching user")
+		return shared.GrpcErrorToFiber(err, "error occurred when fetching user")
 	}
 
 	if user.EthereumAddress == nil {

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/DIMO-Network/shared"
+
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/models"
 	pb "github.com/DIMO-Network/shared/api/users"
@@ -109,7 +111,7 @@ func AftermarketDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *z
 
 		user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 		if err != nil {
-			return helpers.GrpcErrorToFiber(err, "Error retrieving user")
+			return shared.GrpcErrorToFiber(err, "Error retrieving user")
 		}
 
 		if user.EthereumAddress == nil {

@@ -133,7 +133,7 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 
 	def, err := nc.deviceDefSvc.GetDeviceDefinitionByID(c.Context(), deviceDefinitionID)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "failed to get device definition")
+		return shared.GrpcErrorToFiber(err, "failed to get device definition")
 	}
 
 	description := fmt.Sprintf("%s %s %d", def.Make.Name, def.Type.Model, def.Type.Year)
@@ -269,7 +269,7 @@ func (nc *NFTController) GetIntegrationNFTMetadata(c *fiber.Ctx) error {
 
 	integration, err := nc.deviceDefSvc.GetIntegrationByTokenID(c.Context(), uTokenID)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "failed to get integration")
+		return shared.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
 	return c.JSON(NFTMetadataResp{
@@ -569,7 +569,7 @@ func (nc *NFTController) GetManufacturerNFTMetadata(c *fiber.Ctx) error {
 
 	dm, err := nc.deviceDefSvc.GetMakeByTokenID(c.Context(), tid)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "Couldn't retrieve manufacturer")
+		return shared.GrpcErrorToFiber(err, "Couldn't retrieve manufacturer")
 	}
 
 	return c.JSON(NFTMetadataResp{
@@ -758,7 +758,7 @@ func (nc *NFTController) handleEnqueueCommand(c *fiber.Ctx, commandPath string) 
 
 	integration, err := nc.deviceDefSvc.GetIntegrationByID(c.Context(), udai.IntegrationID)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting integration id: "+udai.IntegrationID)
+		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting integration id: "+udai.IntegrationID)
 	}
 
 	vendorCommandMap, ok := commandMap[integration.Vendor]

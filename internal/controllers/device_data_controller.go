@@ -58,7 +58,7 @@ func calculateRange(ctx context.Context, ddSvc services.DeviceDefinitionService,
 	dd, err := ddSvc.GetDeviceDefinitionByID(ctx, deviceDefinitionID)
 
 	if err != nil {
-		return nil, helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+deviceDefinitionID)
+		return nil, shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+deviceDefinitionID)
 	}
 
 	rangeData := helpers.GetActualDeviceDefinitionMetadataValues(dd, deviceStyleID)
@@ -179,7 +179,7 @@ func (udc *UserDevicesController) RefreshUserDeviceStatus(c *fiber.Ctx) error {
 	}
 	smartCarInteg, err := udc.DeviceDefSvc.GetIntegrationByVendor(c.Context(), constants.SmartCarVendor)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "failed to get smartcar integration")
+		return shared.GrpcErrorToFiber(err, "failed to get smartcar integration")
 	}
 
 	for _, deviceDatum := range ud.R.UserDeviceData {
@@ -232,7 +232,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), ud.DeviceDefinitionID)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ud.DeviceDefinitionID)
+		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ud.DeviceDefinitionID)
 	}
 
 	req := &QueryDeviceErrorCodesReq{}

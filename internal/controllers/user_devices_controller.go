@@ -187,7 +187,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 
 	deviceDefinitionResponse, err := udc.DeviceDefSvc.GetDeviceDefinitionsByIDs(ctx, ddIDs)
 	if err != nil {
-		return nil, helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ddIDs[0])
+		return nil, shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ddIDs[0])
 	}
 
 	filterDeviceDefinition := func(id string, items []*ddgrpc.GetDeviceDefinitionItemResponse) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
@@ -201,7 +201,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 
 	integrations, err := udc.DeviceDefSvc.GetIntegrations(ctx)
 	if err != nil {
-		return nil, helpers.GrpcErrorToFiber(err, "failed to get integrations")
+		return nil, shared.GrpcErrorToFiber(err, "failed to get integrations")
 	}
 
 	for _, d := range devices {
@@ -522,7 +522,7 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 
 	udFull, err := udc.createUserDevice(c.Context(), *reg.DeviceDefinitionID, "", reg.CountryCode, userID, nil, nil)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "")
+		return shared.GrpcErrorToFiber(err, "")
 	}
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,
@@ -593,7 +593,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		// decode VIN with grpc call
 		decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, "", 0, reg.CountryCode)
 		if err != nil {
-			return errors.Wrapf(err, "could not decode vin %s for country %s", vin, reg.CountryCode)
+			return shared.GrpcErrorToFiber(err, "unable to decode vin: "+vin)
 		}
 		if len(decodeVIN.DeviceDefinitionId) == 0 {
 			udc.log.Warn().Str("vin", vin).Str("user_id", userID).
@@ -740,7 +740,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	if isSameUserConflict {
 		dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), existingUd.DeviceDefinitionID)
 		if err2 != nil {
-			return helpers.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", existingUd.DeviceDefinitionID))
+			return shared.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", existingUd.DeviceDefinitionID))
 		}
 		udFull, err := builUserDeviceFull(existingUd, dd, reg.CountryCode)
 		if err != nil {
@@ -1323,7 +1323,7 @@ func (udc *UserDevicesController) GetRange(c *fiber.Ctx) error {
 
 	dds, err := udc.DeviceDefSvc.GetDeviceDefinitionsByIDs(c.Context(), []string{userDevice.DeviceDefinitionID})
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DeviceDefinitionID)
+		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DeviceDefinitionID)
 	}
 
 	deviceRange := DeviceRange{
@@ -1397,7 +1397,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DeviceDefinitionID)
+		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DeviceDefinitionID)
 	}
 
 	for _, apiInteg := range userDevice.R.UserDeviceAPIIntegrations {
@@ -1464,7 +1464,7 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, fmt.Sprintf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID))
+		return shared.GrpcErrorToFiber(err, fmt.Sprintf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID))
 	}
 
 	if dd.Make.TokenId == 0 {
@@ -1641,7 +1641,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
 	if err2 != nil {
-		return helpers.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID))
+		return shared.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID))
 	}
 
 	if dd.Make.TokenId == 0 {

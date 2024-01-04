@@ -84,7 +84,7 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 
 	integ, err := udc.DeviceDefSvc.GetIntegrationByID(ctx, integrationID)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting integration id: "+integrationID)
+		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting integration id: "+integrationID)
 	}
 
 	switch integ.Vendor {
@@ -205,7 +205,7 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	// Need this for activity log.
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), device.DeviceDefinitionID)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+device.DeviceDefinitionID)
+		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+device.DeviceDefinitionID)
 	}
 
 	err = udc.deleteDeviceIntegration(c.Context(), userID, userDeviceID, integrationID, dd)
@@ -226,7 +226,7 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 func (udc *UserDevicesController) GetIntegrations(c *fiber.Ctx) error {
 	all, err := udc.DeviceDefSvc.GetIntegrations(c.Context())
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "failed to get integrations")
+		return shared.GrpcErrorToFiber(err, "failed to get integrations")
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
@@ -345,7 +345,7 @@ func (udc *UserDevicesController) handleEnqueueCommand(c *fiber.Ctx, commandPath
 	integration, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), udai.IntegrationID)
 
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting integration id: "+udai.IntegrationID)
+		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting integration id: "+udai.IntegrationID)
 	}
 
 	vendorCommandMap, ok := commandMap[integration.Vendor]
@@ -1455,7 +1455,7 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), ud.DeviceDefinitionID)
 	if err != nil {
 		logger.Err(err).Msg("grpc error searching for device definition")
-		return helpers.GrpcErrorToFiber(err, "failed to get device definition with id: "+ud.DeviceDefinitionID)
+		return shared.GrpcErrorToFiber(err, "failed to get device definition with id: "+ud.DeviceDefinitionID)
 	}
 	logger.Info().Msgf("get device definition id result during registration %+v", dd)
 
