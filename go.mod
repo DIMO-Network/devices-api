@@ -6,7 +6,7 @@ require (
 	github.com/DIMO-Network/device-data-api v0.4.23-0.20230718210255-60a2c7be0aa7
 	github.com/DIMO-Network/device-definitions-api v1.0.16
 	github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c
-	github.com/DIMO-Network/shared v0.10.4
+	github.com/DIMO-Network/shared v0.10.6
 	github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3
 	github.com/DIMO-Network/valuations-api v0.2.0
 	github.com/DIMO-Network/zflogger v1.0.0-beta
