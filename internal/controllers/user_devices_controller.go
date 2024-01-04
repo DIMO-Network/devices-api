@@ -20,7 +20,6 @@ import (
 
 	"github.com/DIMO-Network/shared/redis"
 
-	deviceDefs "github.com/DIMO-Network/device-definitions-api/pkg"
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -565,6 +564,8 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		udc.log.Err(err).Msg("failed to get autopi integration")
 		return err
 	}
+	localLog := udc.log.With().Str("userId", userID).Str("integrationId", integration.Id).
+		Str("countryCode", country.Alpha3).Str("vin", vin).Logger()
 
 	deviceDefinitionID := ""
 
@@ -593,11 +594,11 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		// decode VIN with grpc call
 		decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, "", 0, reg.CountryCode)
 		if err != nil {
+			localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle")
 			return shared.GrpcErrorToFiber(err, "unable to decode vin: "+vin)
 		}
 		if len(decodeVIN.DeviceDefinitionId) == 0 {
-			udc.log.Warn().Str("vin", vin).Str("user_id", userID).
-				Msg("unable to decode vin for customer request to create vehicle")
+			localLog.Warn().Msg("unable to decode vin for customer request to create vehicle")
 			return fiber.NewError(fiber.StatusFailedDependency, "unable to decode vin")
 		}
 		deviceDefinitionID = decodeVIN.DeviceDefinitionId
@@ -611,7 +612,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	// create device_integration record in definitions just in case. If we got the VIN normally means Mobile App able to decode.
 	_, err = udc.DeviceDefIntSvc.CreateDeviceDefinitionIntegration(c.Context(), integration.Id, deviceDefinitionID, country.Region)
 	if err != nil {
-		udc.log.Warn().Err(err).Msgf("failed to add device_integration for autopi and dd_id: %s", deviceDefinitionID)
+		localLog.Warn().Err(err).Msgf("failed to add device_integration for autopi and dd_id: %s", deviceDefinitionID)
 	}
 
 	// request valuation
@@ -623,13 +624,13 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		messageBytes, err := json.Marshal(message)
 
 		if err != nil {
-			udc.log.Err(err).Msg("Failed to marshal message.")
+			localLog.Err(err).Msg("Failed to marshal message.")
 		} else {
 			pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, messageBytes)
 			if err != nil {
-				udc.log.Err(err).Msg("failed to publish to NATS")
+				localLog.Err(err).Msg("failed to publish to NATS")
 			} else {
-				udc.log.Info().Str("vin", vin).Str("user_id", userID).Str("user_device_id", udFull.ID).Msgf("published valuation request to NATS with Ack: %+v", pubAck)
+				localLog.Info().Str("user_device_id", udFull.ID).Msgf("published valuation request to NATS with Ack: %+v", pubAck)
 			}
 		}
 	}
@@ -761,17 +762,13 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	// decode VIN with grpc call, including any possible smartcar known info
 	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, info.Model, info.Year, reg.CountryCode)
 	if err != nil {
-		if strings.Contains(err.Error(), deviceDefs.ErrFailedVINDecode.Error()) {
-			localLog.Err(err).
-				Msg("unable to decode vin for customer request to create vehicle")
-			return fiber.NewError(fiber.StatusFailedDependency, err.Error())
-		}
-		return errors.Wrapf(err, "could not decode vin %s for country %s", vin, reg.CountryCode)
+		localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle")
+		return shared.GrpcErrorToFiber(err, "unable to decode vin: "+vin)
 	}
+
 	// in case err is nil but we don't get a valid decode
 	if len(decodeVIN.DeviceDefinitionId) == 0 {
-		localLog.Err(err).
-			Msg("unable to decode vin for customer request to create vehicle")
+		localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle")
 		return fiber.NewError(fiber.StatusFailedDependency, "failed to decode vin")
 	}
 	// attach smartcar integration to device definition
