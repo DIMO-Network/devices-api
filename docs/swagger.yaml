@@ -250,6 +250,10 @@ definitions:
         $ref: '#/definitions/grpc.Integration_AutoPiPowertrainTemplate'
       id:
         type: string
+      manufacturer_token_id:
+        type: integer
+      points:
+        type: integer
       refresh_limit_secs:
         type: integer
       style:
@@ -1441,6 +1445,26 @@ paths:
   /manufacturer/{tokenId}:
     get:
       description: Retrieves NFT metadata for a given manufacturer.
+      parameters:
+      - description: token id
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.NFTMetadataResp'
+        "404":
+          description: Not Found
+      tags:
+      - nfts
+  /synthetic/device/{tokenId}:
+    get:
+      description: Retrieves NFT metadata for a given synthetic device.
       parameters:
       - description: token id
         in: path
