@@ -108,7 +108,7 @@ $$ LANGUAGE plpgsql;
 	}
 
 	goose.SetTableName("devices_api.migrations")
-	if err := goose.Run("up", pdb.DBS().Writer.DB, migrationsDirRelPath); err != nil {
+	if err := goose.RunContext(ctx, "up", pdb.DBS().Writer.DB, migrationsDirRelPath); err != nil {
 		return handleContainerStartErr(ctx, errors.Wrap(err, "failed to apply goose migrations for test"), pgContainer, t)
 	}
 
