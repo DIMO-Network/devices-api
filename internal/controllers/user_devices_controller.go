@@ -20,7 +20,6 @@ import (
 
 	"github.com/DIMO-Network/shared/redis"
 
-	deviceDefs "github.com/DIMO-Network/device-definitions-api/pkg"
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -187,7 +186,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 
 	deviceDefinitionResponse, err := udc.DeviceDefSvc.GetDeviceDefinitionsByIDs(ctx, ddIDs)
 	if err != nil {
-		return nil, helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ddIDs[0])
+		return nil, shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ddIDs[0])
 	}
 
 	filterDeviceDefinition := func(id string, items []*ddgrpc.GetDeviceDefinitionItemResponse) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
@@ -201,7 +200,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 
 	integrations, err := udc.DeviceDefSvc.GetIntegrations(ctx)
 	if err != nil {
-		return nil, helpers.GrpcErrorToFiber(err, "failed to get integrations")
+		return nil, shared.GrpcErrorToFiber(err, "failed to get integrations")
 	}
 
 	for _, d := range devices {
@@ -522,7 +521,7 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 
 	udFull, err := udc.createUserDevice(c.Context(), *reg.DeviceDefinitionID, "", reg.CountryCode, userID, nil, nil)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "")
+		return shared.GrpcErrorToFiber(err, "")
 	}
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,
@@ -565,6 +564,8 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		udc.log.Err(err).Msg("failed to get autopi integration")
 		return err
 	}
+	localLog := udc.log.With().Str("userId", userID).Str("integrationId", integration.Id).
+		Str("countryCode", country.Alpha3).Str("vin", vin).Logger()
 
 	deviceDefinitionID := ""
 
@@ -593,11 +594,11 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		// decode VIN with grpc call
 		decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, "", 0, reg.CountryCode)
 		if err != nil {
-			return errors.Wrapf(err, "could not decode vin %s for country %s", vin, reg.CountryCode)
+			localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle")
+			return shared.GrpcErrorToFiber(err, "unable to decode vin: "+vin)
 		}
 		if len(decodeVIN.DeviceDefinitionId) == 0 {
-			udc.log.Warn().Str("vin", vin).Str("user_id", userID).
-				Msg("unable to decode vin for customer request to create vehicle")
+			localLog.Warn().Msg("unable to decode vin for customer request to create vehicle")
 			return fiber.NewError(fiber.StatusFailedDependency, "unable to decode vin")
 		}
 		deviceDefinitionID = decodeVIN.DeviceDefinitionId
@@ -611,7 +612,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	// create device_integration record in definitions just in case. If we got the VIN normally means Mobile App able to decode.
 	_, err = udc.DeviceDefIntSvc.CreateDeviceDefinitionIntegration(c.Context(), integration.Id, deviceDefinitionID, country.Region)
 	if err != nil {
-		udc.log.Warn().Err(err).Msgf("failed to add device_integration for autopi and dd_id: %s", deviceDefinitionID)
+		localLog.Warn().Err(err).Msgf("failed to add device_integration for autopi and dd_id: %s", deviceDefinitionID)
 	}
 
 	// request valuation
@@ -623,13 +624,13 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		messageBytes, err := json.Marshal(message)
 
 		if err != nil {
-			udc.log.Err(err).Msg("Failed to marshal message.")
+			localLog.Err(err).Msg("Failed to marshal message.")
 		} else {
 			pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, messageBytes)
 			if err != nil {
-				udc.log.Err(err).Msg("failed to publish to NATS")
+				localLog.Err(err).Msg("failed to publish to NATS")
 			} else {
-				udc.log.Info().Str("vin", vin).Str("user_id", userID).Str("user_device_id", udFull.ID).Msgf("published valuation request to NATS with Ack: %+v", pubAck)
+				localLog.Info().Str("user_device_id", udFull.ID).Msgf("published valuation request to NATS with Ack: %+v", pubAck)
 			}
 		}
 	}
@@ -740,7 +741,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	if isSameUserConflict {
 		dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), existingUd.DeviceDefinitionID)
 		if err2 != nil {
-			return helpers.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", existingUd.DeviceDefinitionID))
+			return shared.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", existingUd.DeviceDefinitionID))
 		}
 		udFull, err := builUserDeviceFull(existingUd, dd, reg.CountryCode)
 		if err != nil {
@@ -761,17 +762,13 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	// decode VIN with grpc call, including any possible smartcar known info
 	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, info.Model, info.Year, reg.CountryCode)
 	if err != nil {
-		if strings.Contains(err.Error(), deviceDefs.ErrFailedVINDecode.Error()) {
-			localLog.Err(err).
-				Msg("unable to decode vin for customer request to create vehicle")
-			return fiber.NewError(fiber.StatusFailedDependency, err.Error())
-		}
-		return errors.Wrapf(err, "could not decode vin %s for country %s", vin, reg.CountryCode)
+		localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle")
+		return shared.GrpcErrorToFiber(err, "unable to decode vin: "+vin)
 	}
+
 	// in case err is nil but we don't get a valid decode
 	if len(decodeVIN.DeviceDefinitionId) == 0 {
-		localLog.Err(err).
-			Msg("unable to decode vin for customer request to create vehicle")
+		localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle")
 		return fiber.NewError(fiber.StatusFailedDependency, "failed to decode vin")
 	}
 	// attach smartcar integration to device definition
@@ -1323,7 +1320,7 @@ func (udc *UserDevicesController) GetRange(c *fiber.Ctx) error {
 
 	dds, err := udc.DeviceDefSvc.GetDeviceDefinitionsByIDs(c.Context(), []string{userDevice.DeviceDefinitionID})
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DeviceDefinitionID)
+		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DeviceDefinitionID)
 	}
 
 	deviceRange := DeviceRange{
@@ -1397,7 +1394,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DeviceDefinitionID)
+		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DeviceDefinitionID)
 	}
 
 	for _, apiInteg := range userDevice.R.UserDeviceAPIIntegrations {
@@ -1464,7 +1461,7 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
 	if err != nil {
-		return helpers.GrpcErrorToFiber(err, fmt.Sprintf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID))
+		return shared.GrpcErrorToFiber(err, fmt.Sprintf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID))
 	}
 
 	if dd.Make.TokenId == 0 {
@@ -1641,7 +1638,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
 	if err2 != nil {
-		return helpers.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID))
+		return shared.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID))
 	}
 
 	if dd.Make.TokenId == 0 {

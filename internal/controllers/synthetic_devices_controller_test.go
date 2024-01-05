@@ -173,7 +173,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 	body, _ := io.ReadAll(response.Body)
 
 	assert.Equal(s.T(), fiber.StatusInternalServerError, response.StatusCode)
-	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"error occurred when fetching user: User not found"}`, fiber.StatusInternalServerError)), body)
+	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"User not found"}`, fiber.StatusInternalServerError)), body)
 }
 
 func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload_NoEthereumAddressForUser() {
@@ -229,7 +229,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 	body, _ := io.ReadAll(response.Body)
 
 	s.Equal(fiber.StatusInternalServerError, response.StatusCode)
-	s.JSONEq(`{"code":500,"message":"failed to get integration: could not find integration"}`, string(body))
+	s.JSONEq(`{"code":500,"message":"could not find integration"}`, string(body))
 }
 
 func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload_VehicleNodeNotExist() {
