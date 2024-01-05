@@ -21,7 +21,6 @@ import (
 	"github.com/DIMO-Network/shared/db"
 	vrpc "github.com/DIMO-Network/valuations-api/pkg/grpc"
 
-	deviceDefs "github.com/DIMO-Network/device-definitions-api/pkg"
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -238,9 +237,9 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_Fail_Dec
 	s.scClient.EXPECT().GetVIN(gomock.Any(), "AA", "123").Times(1).Return(vinny, nil)
 	s.redisClient.EXPECT().Set(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID), gomock.Any(), time.Hour*2).Return(nil)
 	s.scClient.EXPECT().GetInfo(gomock.Any(), "AA", "123").Times(1).Return(nil, nil)
-
+	grpcErr := status.Error(codes.InvalidArgument, "failed to decode vin")
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(nil,
-		deviceDefs.ErrFailedVINDecode)
+		grpcErr)
 
 	request := test.BuildRequest("POST", "/user/devices/fromsmartcar", string(j))
 	response, responseError := s.app.Test(request)
