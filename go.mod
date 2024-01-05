@@ -189,7 +189,7 @@ require (
 	github.com/go-openapi/spec v0.20.12 // indirect
 	github.com/go-openapi/swag v0.22.5 // indirect
 	github.com/gofiber/contrib/jwt v1.0.2
-	github.com/gofiber/swagger v0.1.12
+	github.com/gofiber/swagger v0.1.14
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/josharian/intern v1.0.0 // indirect
