@@ -246,8 +246,8 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_Fail_Dec
 	response, responseError := s.app.Test(request)
 	fmt.Println(responseError)
 
-	// assert
-	assert.Equal(s.T(), fiber.StatusFailedDependency, response.StatusCode)
+	// assert we get bad request and not 500
+	assert.Equal(s.T(), fiber.StatusBadRequest, response.StatusCode)
 }
 
 func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_SameUser_DuplicateVIN() {
@@ -378,6 +378,33 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	assert.NoError(s.T(), responseError, "expected no error from nats")
 	vinResult := gjson.GetBytes(msg.Data, "vin")
 	assert.Equal(s.T(), vinny, vinResult.Str)
+}
+
+func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_FailDecode() {
+	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	_ = test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
+
+	vinny := "4T3R6RFVXMU023395"
+	canProtocol := "06"
+	reg := RegisterUserDeviceVIN{VIN: vinny, CountryCode: "USA", CANProtocol: canProtocol}
+	j, _ := json.Marshal(reg)
+
+	grpcErr := status.Error(codes.InvalidArgument, "failed to decode vin")
+
+	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).
+		Return(nil, grpcErr)
+
+	apInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 10)
+	s.deviceDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Times(1).Return(apInteg, nil)
+
+	request := test.BuildRequest("POST", "/user/devices/fromvin", string(j))
+	response, responseError := s.app.Test(request, 10000)
+	require.NoError(s.T(), responseError)
+	body, _ := io.ReadAll(response.Body)
+	fmt.Println("resp body: " + string(body))
+	// assert we get bad request and not 500
+	assert.Equal(s.T(), fiber.StatusBadRequest, response.StatusCode)
+	assert.Equal(s.T(), "failed to decode vin. unable to decode vin: 4T3R6RFVXMU023395", gjson.GetBytes(body, "message").String())
 }
 
 func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_SameUser_DuplicateVIN() {
