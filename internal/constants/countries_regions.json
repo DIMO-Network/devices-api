@@ -224,6 +224,20 @@
     "lora_region": "EU868"
   },
   {
+    "name": "Gibraltar",
+    "alpha_2": "GI",
+    "alpha_3": "GIB",
+    "id": 292,
+    "iso_3166_2": "ISO 3166-2:GI",
+    "region": "Europe",
+    "sub_region": "Southern Europe",
+    "intermediate_region": "",
+    "region_code": 150,
+    "sub_region_code": 39,
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
+  },
+  {
     "name": "Greece",
     "alpha_2": "GR",
     "alpha_3": "GRC",
