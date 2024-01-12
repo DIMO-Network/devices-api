@@ -835,5 +835,5 @@ func (nc *NFTController) GetVinCredential(c *fiber.Ctx) error {
 	}
 
 	c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
-	return c.Send(nft.R.Claim.Credential)
+	return c.Send(nft.R.Claim.Credential.JSON)
 }
