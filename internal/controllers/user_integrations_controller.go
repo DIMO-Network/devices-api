@@ -1306,12 +1306,18 @@ func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
 	}
 
+	tx, err := udc.DBS().Writer.BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint
+
 	udc.log.Info().Interface("payload", reqBody).Msg("Got claim request.")
 
 	unit, err := models.AftermarketDevices(
 		models.AftermarketDeviceWhere.Serial.EQ(unitID),
 		qm.Load(models.AftermarketDeviceRels.ClaimMetaTransactionRequest),
-	).One(c.Context(), udc.DBS().Reader)
+	).One(c.Context(), tx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return fiber.NewError(fiber.StatusNotFound, "Aftermarket device not minted.")
@@ -1402,14 +1408,19 @@ func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
 		ID:     requestID,
 		Status: models.MetaTransactionRequestStatusUnsubmitted,
 	}
-	err = mtr.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
+	err = mtr.Insert(c.Context(), tx, boil.Infer())
 	if err != nil {
 		return err
 	}
 
 	unit.UserID = null.StringFrom(userID)
 	unit.ClaimMetaTransactionRequestID = null.StringFrom(requestID)
-	_, err = unit.Update(c.Context(), udc.DBS().Writer, boil.Infer())
+	_, err = unit.Update(c.Context(), tx, boil.Infer())
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		return err
 	}
