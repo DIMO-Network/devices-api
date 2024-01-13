@@ -748,7 +748,7 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 	// We also had a legacy mode for web2-paired devices. This was never used in production.
 	externalID := c.Query("external_id")
 
-	vnft, ad, err := udc.checkPairable(c.Context(), userDeviceID, externalID)
+	vnft, ad, err := udc.checkPairable(c.Context(), udc.DBS().Reader, userDeviceID, externalID)
 	if err != nil {
 		return err
 	}
@@ -807,7 +807,13 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 
 	logger.Info().Interface("request", pairReq).Msg("Pairing request body.")
 
-	vnft, ad, err := udc.checkPairable(c.Context(), userDeviceID, pairReq.ExternalID)
+	tx, err := udc.DBS().Writer.BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint
+
+	vnft, ad, err := udc.checkPairable(c.Context(), tx, userDeviceID, pairReq.ExternalID)
 	if err != nil {
 		return err
 	}
@@ -880,17 +886,22 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 			ID:     requestID,
 			Status: models.MetaTransactionRequestStatusUnsubmitted,
 		}
-		err = mtr.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
+		err = mtr.Insert(c.Context(), tx, boil.Infer())
 		if err != nil {
 			return err
 		}
 
 		ad.UnpairRequestID = null.String{}
 		ad.PairRequestID = null.StringFrom(requestID)
-		_, err = ad.Update(c.Context(), udc.DBS().Writer, boil.Infer())
+		_, err = ad.Update(c.Context(), tx, boil.Infer())
 		if err != nil {
 			return err
 		}
+
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+
 		err = client.PairAftermarketDeviceSignTwoOwners(requestID, apToken, vehicleToken, aftermarketDeviceSig, vehicleOwnerSig)
 		if err != nil {
 			return err
@@ -906,15 +917,19 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 		ID:     requestID,
 		Status: models.MetaTransactionRequestStatusUnsubmitted,
 	}
-	err = mtr.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
+	err = mtr.Insert(c.Context(), tx, boil.Infer())
 	if err != nil {
 		return err
 	}
 
 	ad.UnpairRequestID = null.String{}
 	ad.PairRequestID = null.StringFrom(requestID)
-	_, err = ad.Update(c.Context(), udc.DBS().Writer, boil.Infer())
+	_, err = ad.Update(c.Context(), tx, boil.Infer())
 	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
 		return err
 	}
 
@@ -926,11 +941,11 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 	return nil
 }
 
-func (udc *UserDevicesController) checkPairable(ctx context.Context, userDeviceID, serial string) (*models.VehicleNFT, *models.AftermarketDevice, error) {
+func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.ContextExecutor, userDeviceID, serial string) (*models.VehicleNFT, *models.AftermarketDevice, error) {
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAftermarketDevice)),
-	).One(ctx, udc.DBS().Reader)
+	).One(ctx, exec)
 	if err != nil {
 		// Access middleware will catch "not found".
 		return nil, nil, err
@@ -952,7 +967,7 @@ func (udc *UserDevicesController) checkPairable(ctx context.Context, userDeviceI
 	ad, err := models.AftermarketDevices(
 		models.AftermarketDeviceWhere.Serial.EQ(serial),
 		qm.Load(models.AftermarketDeviceRels.PairRequest),
-	).One(ctx, udc.DBS().Reader)
+	).One(ctx, exec)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil, fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("No aftermarket device with serial %q known.", serial))
