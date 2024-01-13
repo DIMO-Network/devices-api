@@ -893,7 +893,7 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 
 		ad.UnpairRequestID = null.String{}
 		ad.PairRequestID = null.StringFrom(requestID)
-		_, err = ad.Update(c.Context(), tx, boil.Infer())
+		_, err = ad.Update(c.Context(), tx, boil.Whitelist(models.AftermarketDeviceColumns.UnpairRequestID, models.AftermarketDeviceColumns.PairRequestID, models.AftermarketDeviceColumns.UpdatedAt))
 		if err != nil {
 			return err
 		}
@@ -902,12 +902,7 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 			return err
 		}
 
-		err = client.PairAftermarketDeviceSignTwoOwners(requestID, apToken, vehicleToken, aftermarketDeviceSig, vehicleOwnerSig)
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return client.PairAftermarketDeviceSignTwoOwners(requestID, apToken, vehicleToken, aftermarketDeviceSig, vehicleOwnerSig)
 	}
 
 	// Yes, this is ugly, we'll fix it.
@@ -924,7 +919,7 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 
 	ad.UnpairRequestID = null.String{}
 	ad.PairRequestID = null.StringFrom(requestID)
-	_, err = ad.Update(c.Context(), tx, boil.Infer())
+	_, err = ad.Update(c.Context(), tx, boil.Whitelist(models.AftermarketDeviceColumns.UnpairRequestID, models.AftermarketDeviceColumns.PairRequestID, models.AftermarketDeviceColumns.UpdatedAt))
 	if err != nil {
 		return err
 	}
@@ -933,12 +928,7 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 		return err
 	}
 
-	err = client.PairAftermarketDeviceSignSameOwner(requestID, apToken, vehicleToken, vehicleOwnerSig)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return client.PairAftermarketDeviceSignSameOwner(requestID, apToken, vehicleToken, vehicleOwnerSig)
 }
 
 func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.ContextExecutor, userDeviceID, serial string) (*models.VehicleNFT, *models.AftermarketDevice, error) {
@@ -1167,7 +1157,7 @@ func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 	}
 
 	apnft.UnpairRequestID = null.StringFrom(requestID)
-	_, err = apnft.Update(c.Context(), tx, boil.Whitelist(models.AftermarketDeviceColumns.UnpairRequestID))
+	_, err = apnft.Update(c.Context(), tx, boil.Whitelist(models.AftermarketDeviceColumns.UnpairRequestID, models.AftermarketDeviceColumns.UpdatedAt))
 	if err != nil {
 		return err
 	}
