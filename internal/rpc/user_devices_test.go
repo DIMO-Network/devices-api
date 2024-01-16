@@ -78,7 +78,6 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 
 	credential := models.VerifiableCredential{
 		ClaimID:        claimID,
-		Credential:     []byte{},
 		ExpirationDate: time.Now().AddDate(0, 0, 7),
 	}
 

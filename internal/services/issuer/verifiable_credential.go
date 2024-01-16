@@ -209,7 +209,7 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int, expirationDate time.Time) (id
 
 	vc := models.VerifiableCredential{
 		ClaimID:        id,
-		Credential:     signedBytes,
+		Credential:     null.JSONFrom(signedBytes),
 		ExpirationDate: expirationDate,
 	}
 
