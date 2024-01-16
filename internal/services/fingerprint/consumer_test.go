@@ -189,7 +189,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 			MetaTxTable:     metaTx,
 			VCTable: models.VerifiableCredential{
 				ClaimID:        claimID,
-				Credential:     null.JSONFrom([]byte{}),
 				ExpirationDate: eventTime.AddDate(0, 0, -10),
 			},
 			VehicleNFT:        nft,
@@ -277,7 +276,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 
 	credential := models.VerifiableCredential{
 		ClaimID:        claimID,
-		Credential:     null.JSONFrom([]byte{}),
 		ExpirationDate: eventTime.AddDate(0, 0, 7),
 	}
 
@@ -339,7 +337,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 			UserDeviceTable:      &userDevice,
 			VCTable: &models.VerifiableCredential{
 				ClaimID:        claimID,
-				Credential:     null.JSONFrom([]byte{}),
 				ExpirationDate: eventTime.AddDate(0, 0, -10),
 			},
 			VehicleNFT: &nft,
