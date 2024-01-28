@@ -99,6 +99,7 @@ func (s *userDeviceRPCServer) GetUserDevice(ctx context.Context, req *pb.GetUser
 func (s *userDeviceRPCServer) GetUserDeviceByVIN(ctx context.Context, req *pb.GetUserDeviceByVINRequest) (*pb.UserDevice, error) {
 	dbDevice, err := models.UserDevices(
 		models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(req.Vin)),
+		qm.OrderBy("vin_confirmed desc"),
 		qm.Load(
 			qm.Rels(models.UserDeviceRels.VehicleNFT,
 				models.VehicleNFTRels.VehicleTokenAftermarketDevice),
