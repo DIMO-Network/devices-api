@@ -118,34 +118,7 @@ func (c *ContractsEventsConsumer) RunConsumer() error {
 	return nil
 }
 
-/*
-	func (c *ContractsEventsConsumer) ProcessContractsEventsMessages(messages <-chan *message.Message) {
-		for msg := range messages {
-			err := c.processMessage(msg)
-			if err != nil {
-				c.log.Err(err).Msg("error processing contract events messages")
-			}
-		}
-	}
-
-	func (c *ContractsEventsConsumer) processMessage(msg *message.Message) error {
-		// Keep the pipeline moving no matter what.
-		defer func() { msg.Ack() }()
-
-		// Deletion messages. We're the only actor that produces these, so ignore them.
-		if msg.Payload == nil {
-			return nil
-		}
-
-		event := new(shared.CloudEvent[json.RawMessage])
-		if err := json.Unmarshal(msg.Payload, event); err != nil {
-			return errors.Wrap(err, "error parsing device event payload")
-		}
-
-	return c.processEvent(event)
-}*/
-
-func (c *ContractsEventsConsumer) processEvent(ctx context.Context, event *shared.CloudEvent[json.RawMessage]) error {
+func (c *ContractsEventsConsumer) processEvent(_ context.Context, event *shared.CloudEvent[json.RawMessage]) error {
 	if event == nil || event.Type != contractEventCEType {
 		return nil
 	}
