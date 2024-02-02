@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/DIMO-Network/shared/kafka"
 	"math/big"
 	"strings"
 	"time"
@@ -20,7 +21,6 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
-	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
@@ -102,34 +102,51 @@ func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *con
 	}
 }
 
-func (c *ContractsEventsConsumer) ProcessContractsEventsMessages(messages <-chan *message.Message) {
-	for msg := range messages {
-		err := c.processMessage(msg)
-		if err != nil {
-			c.log.Err(err).Msg("error processing contract events messages")
+func (c *ContractsEventsConsumer) RunConsumer() error {
+	ctx := context.Background()
+
+	if err := kafka.Consume[*shared.CloudEvent[json.RawMessage]](ctx, kafka.Config{
+		Brokers: strings.Split(c.settings.KafkaBrokers, ","),
+		Topic:   c.settings.ContractsEventTopic,
+		Group:   "user-devices",
+	}, c.processEvent, c.log); err != nil {
+		c.log.Fatal().Err(err).Msg("error starting contracts events consumer")
+	}
+
+	c.log.Info().Msg("Starting contracts event consumer.")
+
+	return nil
+}
+
+/*
+	func (c *ContractsEventsConsumer) ProcessContractsEventsMessages(messages <-chan *message.Message) {
+		for msg := range messages {
+			err := c.processMessage(msg)
+			if err != nil {
+				c.log.Err(err).Msg("error processing contract events messages")
+			}
 		}
 	}
-}
 
-func (c *ContractsEventsConsumer) processMessage(msg *message.Message) error {
-	// Keep the pipeline moving no matter what.
-	defer func() { msg.Ack() }()
+	func (c *ContractsEventsConsumer) processMessage(msg *message.Message) error {
+		// Keep the pipeline moving no matter what.
+		defer func() { msg.Ack() }()
 
-	// Deletion messages. We're the only actor that produces these, so ignore them.
-	if msg.Payload == nil {
-		return nil
-	}
+		// Deletion messages. We're the only actor that produces these, so ignore them.
+		if msg.Payload == nil {
+			return nil
+		}
 
-	event := new(shared.CloudEvent[json.RawMessage])
-	if err := json.Unmarshal(msg.Payload, event); err != nil {
-		return errors.Wrap(err, "error parsing device event payload")
-	}
+		event := new(shared.CloudEvent[json.RawMessage])
+		if err := json.Unmarshal(msg.Payload, event); err != nil {
+			return errors.Wrap(err, "error parsing device event payload")
+		}
 
 	return c.processEvent(event)
-}
+}*/
 
-func (c *ContractsEventsConsumer) processEvent(event *shared.CloudEvent[json.RawMessage]) error {
-	if event.Type != contractEventCEType {
+func (c *ContractsEventsConsumer) processEvent(ctx context.Context, event *shared.CloudEvent[json.RawMessage]) error {
+	if event == nil || event.Type != contractEventCEType {
 		return nil
 	}
 
