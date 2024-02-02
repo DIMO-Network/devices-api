@@ -252,7 +252,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			}
 			if !vnft.TokenID.IsZero() {
 				nft.TokenID = vnft.TokenID.Int(nil)
-				nft.TokenURI = fmt.Sprintf("%s/v1/nfts/%s", udc.Settings.DeploymentBaseURL, nft.TokenID)
+				nft.TokenURI = fmt.Sprintf("%s/v1/vehicle/%s", udc.Settings.DeploymentBaseURL, nft.TokenID)
 			}
 			if vnft.OwnerAddress.Valid {
 				addr := common.BytesToAddress(vnft.OwnerAddress.Bytes)
