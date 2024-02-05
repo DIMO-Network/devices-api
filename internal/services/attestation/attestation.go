@@ -37,7 +37,7 @@ type attestor struct {
 func New(pdb db.Store) *attestor {
 	return &attestor{
 		config: mt.Config{
-			SortSiblingPairs: true,
+			SortSiblingPairs: true, // parameter for OpenZeppelin compatibility
 			HashFunc: func(data []byte) ([]byte, error) {
 				return crypto.Keccak256(crypto.Keccak256(data)), nil
 			},
