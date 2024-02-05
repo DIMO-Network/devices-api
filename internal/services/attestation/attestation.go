@@ -26,11 +26,10 @@ type leaf struct {
 }
 
 func (l *onChainAttestation) Serialize() ([]byte, error) {
-	// return crypto.Keccak256(crypto.Keccak256(l.data)), nil
-	return l.data, nil
+	return crypto.Keccak256(crypto.Keccak256(l.data)), nil
 }
 
-type attestor struct { // idk if this makes any sense.. bc witnesses attest to things? seems too cheeky
+type attestor struct {
 	config mt.Config
 	pdb    db.Store
 }
