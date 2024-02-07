@@ -110,7 +110,8 @@ func (c *ContractsEventsConsumer) RunConsumer() error {
 		Topic:   c.settings.ContractsEventTopic,
 		Group:   "user-devices",
 	}, c.processEvent, c.log); err != nil {
-		c.log.Fatal().Err(err).Msg("error starting contracts events consumer")
+		c.log.Error().Err(err).Msg("error starting contracts events consumer")
+		return err
 	}
 
 	c.log.Info().Msg("Starting contracts event consumer.")
