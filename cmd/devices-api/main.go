@@ -203,24 +203,10 @@ func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, p
 }
 
 func startContractEventsConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store, autoPi *autopi.Integration, macaron *macaron.Integration, ddSvc services.DeviceDefinitionService) {
-	clusterConfig := sarama.NewConfig()
-	clusterConfig.Version = sarama.V2_8_1_0
-	clusterConfig.Consumer.Offsets.Initial = sarama.OffsetNewest
-
-	cfg := &kafka.Config{
-		ClusterConfig:   clusterConfig,
-		BrokerAddresses: strings.Split(settings.KafkaBrokers, ","),
-		Topic:           settings.ContractsEventTopic,
-		GroupID:         "user-devices",
-		MaxInFlight:     int64(5), // TODO(elffjs): Probably need to bump this up.
-	}
-	consumer, err := kafka.NewConsumer(cfg, &logger)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Could not start contract event consumer")
-	}
-
 	cevConsumer := services.NewContractsEventsConsumer(pdb, &logger, settings, autoPi, macaron, ddSvc)
-	consumer.Start(context.Background(), cevConsumer.ProcessContractsEventsMessages)
+	if err := cevConsumer.RunConsumer(); err != nil {
+		logger.Fatal().Err(err).Msg("error occurred processing contract events")
+	}
 
 	logger.Info().Msg("Contracts events consumer started")
 }
