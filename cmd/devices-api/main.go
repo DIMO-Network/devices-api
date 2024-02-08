@@ -1,18 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"flag"
 	"fmt"
 	"os"
-	"reflect"
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/subcommands"
 
 	_ "github.com/DIMO-Network/devices-api/docs"
@@ -33,63 +28,8 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
-	mt "github.com/txaty/go-merkletree"
 	_ "go.uber.org/automaxprocs"
 )
-
-type leaf struct {
-	Data []byte
-}
-
-func concatSortHash(b1 []byte, b2 []byte) []byte {
-	if bytes.Compare(b1, b2) < 0 {
-		return concatHash(b1, b2)
-	}
-	return concatHash(b2, b1)
-}
-
-// type onChainAttestation struct {
-// 	VehicleTokenId         int
-// 	DeviceDefinitionId     string
-// 	VerifiableCredentialId string
-// 	VCSignature            string
-// }
-
-// TODO (ae): will this work for all types? need to check, might not want to infer
-func abiEncode(values []interface{}) ([]byte, error) {
-	argTypes := []reflect.Type{}
-	for _, val := range values {
-		argTypes = append(argTypes, reflect.TypeOf(val))
-	}
-
-	args := abi.Arguments{}
-	for _, argType := range argTypes {
-		abiType, err := abi.NewType(argType.Name(), "", nil)
-		if err != nil {
-			return nil, err
-		}
-		args = append(args, abi.Argument{Type: abiType})
-	}
-
-	return args.Pack(values...)
-}
-
-func (l *leaf) Serialize() ([]byte, error) {
-	codeBytes, err := abiEncode([]interface{}{string(l.Data)})
-	if err != nil {
-		return nil, err
-	}
-
-	return crypto.Keccak256(crypto.Keccak256(codeBytes)), nil
-}
-
-// concatHash concatenates two byte slices, b1 and b2.
-func concatHash(b1 []byte, b2 []byte) []byte {
-	result := make([]byte, len(b1)+len(b2))
-	copy(result, b1)
-	copy(result[len(b1):], b2)
-	return result
-}
 
 // @title                      DIMO Devices API
 // @version                    1.0
@@ -126,92 +66,6 @@ func main() {
 		}
 		time.Sleep(time.Second)
 		totalTime++
-	}
-
-	if len(os.Args) >= 1 && os.Args[len(os.Args)-1] == "merkle-test" {
-
-		conf := mt.Config{
-			SortSiblingPairs: true, // parameter for OpenZeppelin compatibility
-			HashFunc: func(data []byte) ([]byte, error) {
-				return crypto.Keccak256(data), nil
-				// return data, nil
-
-			},
-			Mode:               mt.ModeProofGenAndTreeBuild,
-			RunInParallel:      true,
-			DisableLeafHashing: true,
-			NumRoutines:        0,
-		}
-
-		//  need to make sure this is sorted BEFORE creating the tree bc openzep will hash this
-		valid := []string{
-			"bob -> dave",
-			"dave -> bob",
-			"carol -> alice",
-			"alice -> bob",
-		}
-		// the following order would also work OTHERS WILL NOT
-		// "carol -> alice",
-		// "alice -> bob",
-		// "bob -> dave",
-		// "dave -> bob",
-
-		blocks := []mt.DataBlock{}
-		for _, vc := range valid { // Actual data
-			blocks = append(blocks, &leaf{Data: []byte(vc)})
-		}
-
-		tree, err := mt.New(&conf, blocks)
-		if err != nil {
-			fmt.Println("couldnt make tree")
-			panic(err)
-		}
-
-		fmt.Println(" Tree Root: ", hexutil.Encode(tree.Root))
-
-		for n, b := range blocks {
-			s, _ := b.Serialize()
-			fmt.Println("Block ", n, "\t\t", hexutil.Encode(s))
-
-		}
-
-		for _, l := range blocks {
-			// The following proofs can all be validated using openzeppelin MerkleProof verify function
-			for _, p := range tree.Proofs {
-
-				for _, x := range blocks {
-					s2, _ := x.Serialize()
-					s1, _ := x.Serialize()
-					if string(s2) != string(s1) {
-						fmt.Println("\t\t", hexutil.Encode(concatHash(s2, s1)))
-					}
-				}
-
-				valid, err := mt.Verify(l, p, tree.Root, &conf)
-				if err != nil {
-					fmt.Println("couldnt verify")
-					panic(err)
-				}
-
-				if valid {
-					a := l.(*leaf)
-					data, _ := l.Serialize()
-					fmt.Println("\nValidated: ", hexutil.Encode(data), data, string(a.Data))
-					codeBytes, err := abiEncode([]interface{}{string(a.Data)})
-					if err != nil {
-						panic(err)
-					}
-					fmt.Println("\tSingle Hash:", hexutil.Encode(crypto.Keccak256(codeBytes)))
-					fmt.Println("\tPath: ", p.Path)
-					fmt.Println("\tSiblings: ")
-					for _, s := range p.Siblings {
-						fmt.Println("\t\t", hexutil.Encode(s))
-					}
-				}
-			}
-		}
-
-		return
 	}
 
 	deps := newDependencyContainer(&settings, logger, pdb.DBS)
