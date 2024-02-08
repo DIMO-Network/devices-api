@@ -21,6 +21,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.48.0
 	github.com/btcsuite/btcd/btcutil v1.1.3
 	github.com/burdiyan/kafkautil v0.0.0-20190131162249-eaf83ed22d5b
+	github.com/docker/cli v24.0.7+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/elastic/go-elasticsearch/v8 v8.6.0
 	github.com/friendsofgo/errors v0.9.2
@@ -50,7 +51,7 @@ require (
 	github.com/volatiletech/null/v8 v8.1.2
 	github.com/volatiletech/sqlboiler/v4 v4.15.0
 	github.com/volatiletech/strmangle v0.0.5
-	go.uber.org/automaxprocs v1.5.1
+	go.uber.org/automaxprocs v1.5.2
 	go.uber.org/mock v0.3.0
 	golang.org/x/mod v0.14.0
 )
@@ -74,7 +75,7 @@ require (
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/holiman/uint256 v1.2.2 // indirect
+	github.com/holiman/uint256 v1.2.4 // indirect
 	github.com/lovoo/goka v1.1.7 // indirect
 	github.com/lufia/plan9stats v0.0.0-20231016141302-07b5767bb0ed // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -176,7 +177,7 @@ require (
 	github.com/prometheus/common v0.45.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
-	golang.org/x/crypto v0.16.0 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
 	google.golang.org/grpc v1.60.1
 	google.golang.org/protobuf v1.31.0
 )
@@ -210,7 +211,7 @@ require (
 	github.com/volatiletech/randomize v0.0.1 // indirect
 	golang.org/x/exp v0.0.0-20231219180239-dc181d75b848
 	golang.org/x/net v0.19.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.16.1 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
