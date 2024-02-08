@@ -288,6 +288,7 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 	tkID := utils.BigToDecimal(args.TokenId)
 
 	if IsZeroAddress(args.From) {
+		// Handled in setMintedAfterMarketDevice.
 		c.log.Debug().Str("tokenID", tkID.String()).Msg("ignoring mint event")
 		return nil
 	}
@@ -300,6 +301,13 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 		}
 		c.log.Err(err).Str("tokenID", tkID.String()).Msg("error occurred transferring device")
 		return errors.New("error occurred transferring device")
+	}
+
+	if IsZeroAddress(args.To) {
+		// Burn.
+		c.log.Info().Msgf("Burning aftermarket device %d.", tkID)
+		_, err := apUnit.Delete(ctx, c.db.DBS().Writer)
+		return err
 	}
 
 	if !apUnit.OwnerAddress.Valid {
