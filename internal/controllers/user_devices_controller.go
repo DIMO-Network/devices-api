@@ -1856,6 +1856,63 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}, sigBytes)
 }
 
+// GetUserDevicesByIntegration godoc
+// @Description Get user devices using integration id
+// @Tags        user-devices
+// @Produce     json
+// @Accept      json
+// @Param       user_device body controllers.GetUserDevicesByIntegration true "all fields are required"
+// @Security    ApiKeyAuth
+// @Success     200 {object} controllers.GetUserDevicesByIntegrationResponse
+// @Security    BearerAuth
+// @Router      /user/devices/:integrationID [post]
+func (udc *UserDevicesController) GetUserDevicesByIntegration(c *fiber.Ctx) error {
+	ctx := context.Background()
+	integrationID := c.Params("integrationID")
+	reqBody := new(GetUserDevicesByIntegration)
+	if err := c.BodyParser(reqBody); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request JSON body.")
+	}
+
+	logger := udc.log.With().
+		Str("integrationId", integrationID).
+		Str("route", c.Route().Path).
+		Logger()
+	logger.Info().Msg("Attempting to fetch devices by integrationID")
+
+	deviceInteg, err := udc.DeviceDefSvc.GetIntegrationByID(ctx, integrationID)
+	if err != nil {
+		return shared.GrpcErrorToFiber(err, "failed to get integration by id")
+	}
+
+	switch vendor := deviceInteg.Vendor; vendor {
+	case constants.TeslaVendor:
+		teslaAuth, err := udc.teslaService.CompleteTeslaAuthCodeExchange(reqBody.AuthorizationCode, reqBody.RedirectURI, reqBody.Region)
+		if err != nil {
+			return err // swap this for http response
+		}
+
+		vehicles, err := udc.teslaService.GetVehicles(teslaAuth.AccessToken, reqBody.Region)
+		if err != nil {
+			return err
+		}
+
+		response := []GetUserDevicesByIntegrationResponse{}
+
+		for _, v := range vehicles {
+			response = append(response, GetUserDevicesByIntegrationResponse{
+				ID:        v.ID,
+				VehicleID: v.VehicleID,
+				VIN:       v.VIN,
+			})
+		}
+		return c.JSON(response)
+	default:
+		logger.Error().Str("vendor", vendor).Msg("Attempted to fetch devices by integration")
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("unsupported integration %s", integrationID))
+	}
+}
+
 type MintEventData struct {
 	RequestID    string   `json:"requestId"`
 	UserDeviceID string   `json:"userDeviceId"`
@@ -1917,6 +1974,18 @@ type AdminRegisterUserDevice struct {
 	VIN         string  `json:"vin"`
 	ImageURL    *string `json:"imageUrl"`
 	Verified    bool    `json:"verified"`
+}
+
+type GetUserDevicesByIntegration struct {
+	AuthorizationCode string `json:"authorizationCode"`
+	RedirectURI       string `json:"redirectUri"`
+	Region            string `json:"region"`
+}
+
+type GetUserDevicesByIntegrationResponse struct {
+	ID        int    `json:"id"`
+	VehicleID int    `json:"vehicle_id"`
+	VIN       string `json:"vin"`
 }
 
 type UpdateVINReq struct {
