@@ -102,6 +102,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	smartcarClient := services.NewSmartcarClient(settings)
 	teslaTaskService := services.NewTeslaTaskService(settings, producer)
 	teslaSvc := services.NewTeslaService(settings)
+	teslaAPISvc := services.NewTeslaAPIService(settings, &logger)
 	autoPiSvc := services.NewAutoPiAPIService(settings, pdb.DBS)
 	valuationsSvc := services.NewValuationsAPIService(settings, &logger)
 	autoPiIngest := services.NewIngestRegistrar(producer)
@@ -139,7 +140,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService,
 		smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest,
 		deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient,
-		ddaSvc, natsSvc, wallet, userDeviceSvc, valuationsSvc)
+		ddaSvc, natsSvc, wallet, userDeviceSvc, valuationsSvc, teslaAPISvc)
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
@@ -232,7 +233,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices/fromvin", userDeviceController.RegisterDeviceForUserFromVIN)
 	v1Auth.Post("/user/devices/fromsmartcar", userDeviceController.RegisterDeviceForUserFromSmartcar)
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
-	v1Auth.Post("/user/devices/:integrationID", userDeviceController.GetUserDevicesByIntegration)
+	v1Auth.Post("/user/devices/:tokenID/credentials", userDeviceController.GetUserDevicesWithCredentials)
 
 	v1Auth.Get("/integrations", userDeviceController.GetIntegrations)
 

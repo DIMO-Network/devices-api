@@ -83,6 +83,7 @@ type UserDevicesController struct {
 	wallet                    services.SyntheticWalletInstanceService
 	userDeviceSvc             services.UserDeviceService
 	valuationsAPISrv          services.ValuationsAPIService
+	teslaAPIService           services.TeslaAPIService
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -140,6 +141,7 @@ func NewUserDevicesController(settings *config.Settings,
 	wallet services.SyntheticWalletInstanceService,
 	userDeviceSvc services.UserDeviceService,
 	valuationsAPISrv services.ValuationsAPIService,
+	teslaAPIService services.TeslaAPIService,
 ) UserDevicesController {
 	return UserDevicesController{
 		Settings:                  settings,
@@ -169,6 +171,7 @@ func NewUserDevicesController(settings *config.Settings,
 		wallet:                    wallet,
 		valuationsAPISrv:          valuationsAPISrv,
 		userDeviceSvc:             userDeviceSvc,
+		teslaAPIService:           teslaAPIService,
 	}
 }
 
@@ -1856,61 +1859,58 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}, sigBytes)
 }
 
-// GetUserDevicesByIntegration godoc
-// @Description Get user devices using integration id
+// GetUserDevicesWithCredentials godoc
+// @Description Complete Tesla auth and get devices for authenticated user
 // @Tags        user-devices
 // @Produce     json
 // @Accept      json
-// @Param       user_device body controllers.GetUserDevicesByIntegration true "all fields are required"
+// @Param       user_device body controllers.GetUserDevicesByIntegrationRequest true "all fields are required"
 // @Security    ApiKeyAuth
 // @Success     200 {object} controllers.GetUserDevicesByIntegrationResponse
 // @Security    BearerAuth
-// @Router      /user/devices/:integrationID [post]
-func (udc *UserDevicesController) GetUserDevicesByIntegration(c *fiber.Ctx) error {
-	ctx := context.Background()
-	integrationID := c.Params("integrationID")
-	reqBody := new(GetUserDevicesByIntegration)
+// @Router      /user/devices/{tokenID}/credentials [post]
+func (udc *UserDevicesController) GetUserDevicesWithCredentials(c *fiber.Ctx) error {
+	reqBody := new(GetUserDevicesWithCredentialsRequest)
 	if err := c.BodyParser(reqBody); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request JSON body.")
 	}
 
+	if reqBody.Region != "na" && reqBody.Region != "eu" {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid value provided for region, only na and eu are allowed")
+	}
+
 	logger := udc.log.With().
-		Str("integrationId", integrationID).
+		Str("region", reqBody.Region).
+		Str("redirectURI", reqBody.RedirectURI).
 		Str("route", c.Route().Path).
 		Logger()
-	logger.Info().Msg("Attempting to fetch devices by integrationID")
+	logger.Info().Msg("Attempting to complete Tesla authorization")
 
-	deviceInteg, err := udc.DeviceDefSvc.GetIntegrationByID(ctx, integrationID)
+	teslaAuth, err := udc.teslaAPIService.CompleteTeslaAuthCodeExchange(reqBody.AuthorizationCode, reqBody.RedirectURI, reqBody.Region)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "failed to get integration by id")
+		return err
 	}
 
-	switch vendor := deviceInteg.Vendor; vendor {
-	case constants.TeslaVendor:
-		teslaAuth, err := udc.teslaService.CompleteTeslaAuthCodeExchange(reqBody.AuthorizationCode, reqBody.RedirectURI, reqBody.Region)
-		if err != nil {
-			return err // swap this for http response
-		}
-
-		vehicles, err := udc.teslaService.GetVehicles(teslaAuth.AccessToken, reqBody.Region)
-		if err != nil {
-			return err
-		}
-
-		response := []GetUserDevicesByIntegrationResponse{}
-
-		for _, v := range vehicles {
-			response = append(response, GetUserDevicesByIntegrationResponse{
-				ID:        v.ID,
-				VehicleID: v.VehicleID,
-				VIN:       v.VIN,
-			})
-		}
-		return c.JSON(response)
-	default:
-		logger.Error().Str("vendor", vendor).Msg("Attempted to fetch devices by integration")
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("unsupported integration %s", integrationID))
+	vehicles, err := udc.teslaAPIService.GetVehicles(teslaAuth.AccessToken, reqBody.Region)
+	if err != nil {
+		return err
 	}
+
+	response := make([]GetUserDevicesWithCredentialsResponse, 0, len(vehicles))
+
+	for _, v := range vehicles {
+		response = append(response, GetUserDevicesWithCredentialsResponse{
+			ID:        v.ID,
+			VehicleID: v.VehicleID,
+			VIN:       v.VIN,
+		})
+	}
+
+	vehicleResp := &GetUserDevicesWithCredentialsResponseWrapper{
+		Vehicles: response,
+	}
+
+	return c.JSON(vehicleResp)
 }
 
 type MintEventData struct {
@@ -1976,16 +1976,24 @@ type AdminRegisterUserDevice struct {
 	Verified    bool    `json:"verified"`
 }
 
-type GetUserDevicesByIntegration struct {
+type GetUserDevicesWithCredentialsRequest struct {
 	AuthorizationCode string `json:"authorizationCode"`
 	RedirectURI       string `json:"redirectUri"`
 	Region            string `json:"region"`
 }
 
-type GetUserDevicesByIntegrationResponse struct {
-	ID        int    `json:"id"`
-	VehicleID int    `json:"vehicle_id"`
-	VIN       string `json:"vin"`
+type GetUserDevicesWithCredentialsResponseWrapper struct {
+	Vehicles []GetUserDevicesWithCredentialsResponse
+}
+
+type GetUserDevicesWithCredentialsResponse struct {
+	ID                 int    `json:"id"`
+	VehicleID          int    `json:"vehicleID"`
+	VIN                string `json:"vin"`
+	Make               string
+	Model              string
+	Year               int
+	DeviceDefinitionID string
 }
 
 type UpdateVINReq struct {

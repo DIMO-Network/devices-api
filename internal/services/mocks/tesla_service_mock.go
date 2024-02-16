@@ -39,21 +39,6 @@ func (m *MockTeslaService) EXPECT() *MockTeslaServiceMockRecorder {
 	return m.recorder
 }
 
-// CompleteTeslaAuthCodeExchange mocks base method.
-func (m *MockTeslaService) CompleteTeslaAuthCodeExchange(authCode, redirectURI, region string) (*services.TeslaAuthCodeResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CompleteTeslaAuthCodeExchange", authCode, redirectURI, region)
-	ret0, _ := ret[0].(*services.TeslaAuthCodeResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CompleteTeslaAuthCodeExchange indicates an expected call of CompleteTeslaAuthCodeExchange.
-func (mr *MockTeslaServiceMockRecorder) CompleteTeslaAuthCodeExchange(authCode, redirectURI, region any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompleteTeslaAuthCodeExchange", reflect.TypeOf((*MockTeslaService)(nil).CompleteTeslaAuthCodeExchange), authCode, redirectURI, region)
-}
-
 // GetVehicle mocks base method.
 func (m *MockTeslaService) GetVehicle(ownerAccessToken string, id int) (*services.TeslaVehicle, error) {
 	m.ctrl.T.Helper()
@@ -67,21 +52,6 @@ func (m *MockTeslaService) GetVehicle(ownerAccessToken string, id int) (*service
 func (mr *MockTeslaServiceMockRecorder) GetVehicle(ownerAccessToken, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVehicle", reflect.TypeOf((*MockTeslaService)(nil).GetVehicle), ownerAccessToken, id)
-}
-
-// GetVehicles mocks base method.
-func (m *MockTeslaService) GetVehicles(token, region string) ([]services.TeslaVehicle, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetVehicles", token, region)
-	ret0, _ := ret[0].([]services.TeslaVehicle)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetVehicles indicates an expected call of GetVehicles.
-func (mr *MockTeslaServiceMockRecorder) GetVehicles(token, region any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVehicles", reflect.TypeOf((*MockTeslaService)(nil).GetVehicles), token, region)
 }
 
 // WakeUpVehicle mocks base method.
