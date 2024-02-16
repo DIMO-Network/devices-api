@@ -1988,7 +1988,7 @@ type GetUserDevicesWithCredentialsResponseWrapper struct {
 
 type GetUserDevicesWithCredentialsResponse struct {
 	ID                 int    `json:"id"`
-	VehicleID          int    `json:"vehicleID"`
+	VehicleID          int    `json:"vehicleId"`
 	VIN                string `json:"vin"`
 	Make               string
 	Model              string
