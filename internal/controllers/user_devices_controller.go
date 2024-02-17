@@ -1916,7 +1916,7 @@ func (udc *UserDevicesController) CompleteOAuthExchange(c *fiber.Ctx) error {
 			VehicleID:  v.VehicleID,
 			VIN:        v.VIN,
 			Definition: DeviceDefinition{
-				Make:               dd.Make.Name,
+				Make:               dd.Type.Make,
 				Model:              dd.Type.Model,
 				Year:               int(dd.Type.Year),
 				DeviceDefinitionID: decodeVIN.DeviceDefinitionId,

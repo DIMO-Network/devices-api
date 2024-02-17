@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"math/big"
 	"testing"
 	"time"
@@ -1032,6 +1031,25 @@ func (s *UserDevicesControllerTestSuite) TestCompleteOAuthExchanges() {
 		TokenType:    "",
 	}
 	s.teslaAPISvc.EXPECT().CompleteTeslaAuthCodeExchange(mockAuthCode, mockRedirectURI, mockRegion).Return(mockAuthCodeResp, nil)
+	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "1GBGC24U93Z337558", "", 0, "").Return(&ddgrpc.DecodeVinResponse{DeviceDefinitionId: "someID-1"}, nil)
+	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "WAUAF78E95A553420", "", 0, "").Return(&ddgrpc.DecodeVinResponse{DeviceDefinitionId: "someID-2"}, nil)
+
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), "someID-1").Return(&ddgrpc.GetDeviceDefinitionItemResponse{
+		DeviceDefinitionId: "someID-1",
+		Type: &ddgrpc.DeviceType{
+			Make:  "Tesla",
+			Model: "Y",
+			Year:  2022,
+		},
+	}, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), "someID-2").Return(&ddgrpc.GetDeviceDefinitionItemResponse{
+		DeviceDefinitionId: "someID-1",
+		Type: &ddgrpc.DeviceType{
+			Make:  "Tesla",
+			Model: "X",
+			Year:  2020,
+		},
+	}, nil)
 
 	resp := []services.TeslaVehicle{
 		{
@@ -1053,21 +1071,33 @@ func (s *UserDevicesControllerTestSuite) TestCompleteOAuthExchanges() {
 		"region": "na"
 	}`, mockAuthCode, mockRedirectURI))
 	response, _ := s.app.Test(request)
-	log.Println(response, "----")
+
 	s.Assert().Equal(fiber.StatusOK, response.StatusCode)
 	body, _ := io.ReadAll(response.Body)
 
 	expResp := &CompleteOAuthExchangeResponseWrapper{
 		Vehicles: []CompleteOAuthExchangeResponse{
 			{
-				ID:        11114464922222,
-				VehicleID: 44444699777777,
-				VIN:       "1GBGC24U93Z337558",
+				ExternalID: "11114464922222",
+				VehicleID:  44444699777777,
+				VIN:        "1GBGC24U93Z337558",
+				Definition: DeviceDefinition{
+					Make:               "Tesla",
+					Model:              "Y",
+					Year:               2022,
+					DeviceDefinitionID: "someID-1",
+				},
 			},
 			{
-				ID:        22222464999999,
-				VehicleID: 44444699000000,
-				VIN:       "WAUAF78E95A553420",
+				ExternalID: "22222464999999",
+				VehicleID:  44444699000000,
+				VIN:        "WAUAF78E95A553420",
+				Definition: DeviceDefinition{
+					Make:               "Tesla",
+					Model:              "X",
+					Year:               2020,
+					DeviceDefinitionID: "someID-2",
+				},
 			},
 		},
 	}
