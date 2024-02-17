@@ -3,12 +3,13 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/rs/zerolog"
+	"golang.org/x/oauth2"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 )
 
@@ -16,6 +17,27 @@ import (
 type TeslaAPIService interface {
 	CompleteTeslaAuthCodeExchange(authCode, redirectURI, region string) (*TeslaAuthCodeResponse, error)
 	GetVehicles(token, region string) ([]TeslaVehicle, error)
+}
+
+var teslaScopes = []string{"openid offline_access", "user_data", "vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds", "energy_device_data", "energy_device_data", "energy_cmds"}
+
+type GetVehiclesResponse struct {
+	Response []TeslaVehicle `json:"response"`
+}
+
+type TeslaError struct {
+	Error            string `json:"error"`
+	ErrorDescription string `json:"error_description"`
+	ReferenceID      string `json:"ReferenceID"`
+}
+
+type TeslaAuthCodeResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	IDToken      string `json:"id_token"`
+	ExpiresIn    int    `json:"expires_in"`
+	State        string `json:"state"`
+	TokenType    string `json:"token_type"`
 }
 
 type teslaAPIService struct {
@@ -26,61 +48,39 @@ type teslaAPIService struct {
 
 func NewTeslaAPIService(settings *config.Settings, logger *zerolog.Logger) TeslaAPIService {
 	return &teslaAPIService{
-		Settings: settings,
-		HTTPClient: &http.Client{
-			Timeout: 5 * time.Second,
-		},
-		log: logger,
+		Settings:   settings,
+		HTTPClient: &http.Client{},
+		log:        logger,
 	}
 }
 
 func (t *teslaAPIService) CompleteTeslaAuthCodeExchange(authCode, redirectURI, region string) (*TeslaAuthCodeResponse, error) {
-	u, err := url.Parse(t.Settings.TeslaAuthorization.TokenAuthURL)
-	if err != nil {
-		return nil, fmt.Errorf("Could not complete tesla auth: %w", err)
+	conf := oauth2.Config{
+		ClientID:     t.Settings.Tesla.ClientID,
+		ClientSecret: t.Settings.Tesla.ClientSecret,
+		Endpoint: oauth2.Endpoint{
+			TokenURL: t.Settings.Tesla.TokenAuthURL,
+		},
+		RedirectURL: redirectURI,
+		Scopes:      teslaScopes,
 	}
-	f := url.Values{}
-	f.Set("grant_type", "authorization_code")
-	f.Set("client_id", t.Settings.TeslaAuthorization.ClientID)
-	f.Set("client_secret", t.Settings.TeslaAuthorization.ClientSecret)
-	f.Set("code", authCode)
-	f.Set("redirect_uri", redirectURI)
-	f.Set("scope", "openid offline_access "+strings.Join(teslaScopes, " "))
-	f.Set("audience", fmt.Sprintf("https://fleet-api.prd.%s.vn.cloud.tesla.com", region))
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), strings.NewReader(f.Encode()))
+	tok, err := conf.Exchange(ctx, authCode, oauth2.SetAuthURLParam("audience", fmt.Sprintf("https://fleet-api.prd.%s.vn.cloud.tesla.com", region)), oauth2.SetAuthURLParam("grant_type", "authorization_code"))
 	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		errBody := new(TeslaError)
-		if err := json.NewDecoder(res.Body).Decode(errBody); err != nil {
-			t.log.
-				Err(err).
-				Str("url", t.Settings.TeslaAuthorization.TokenAuthURL).
-				Msg("An error occurred when attempting to decode the error message from the api.")
-			return nil, fmt.Errorf("error occurred completing authorization, invalid response received from during authorization process: %s", errBody.ErrorDescription)
-		}
-		return nil, fmt.Errorf("error occurred completing authorization: %s", errBody.ErrorDescription)
+		var e *oauth2.RetrieveError
+		errors.As(err, &e)
+		return nil, fmt.Errorf("error occurred completing authorization: %s", e.ErrorDescription)
 	}
 
-	teslaAuth := new(TeslaAuthCodeResponse)
-	if err := json.NewDecoder(res.Body).Decode(teslaAuth); err != nil {
-		return nil, err
-	}
-
-	return teslaAuth, nil
+	return &TeslaAuthCodeResponse{
+		AccessToken:  tok.AccessToken,
+		RefreshToken: tok.RefreshToken,
+		ExpiresIn:    int(tok.Expiry.Unix()),
+		TokenType:    tok.TokenType,
+	}, nil
 }
 
 func (t *teslaAPIService) GetVehicles(token, region string) ([]TeslaVehicle, error) {
@@ -96,9 +96,9 @@ func (t *teslaAPIService) GetVehicles(token, region string) ([]TeslaVehicle, err
 	if err != nil {
 		return nil, err
 	}
-
 	req.Header.Set("Authorization", "Bearer "+token)
-	resp, err := http.DefaultClient.Do(req)
+
+	resp, err := t.HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func (t *teslaAPIService) GetVehicles(token, region string) ([]TeslaVehicle, err
 	}
 
 	if vehicles.Response == nil {
-		return nil, fmt.Errorf("Error occurred fetching vehicles")
+		return nil, fmt.Errorf("error occurred fetching vehicles")
 	}
 
 	return vehicles.Response, nil

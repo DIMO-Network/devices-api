@@ -233,7 +233,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices/fromvin", userDeviceController.RegisterDeviceForUserFromVIN)
 	v1Auth.Post("/user/devices/fromsmartcar", userDeviceController.RegisterDeviceForUserFromSmartcar)
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
-	v1Auth.Post("/user/devices/:tokenID/credentials", userDeviceController.GetUserDevicesWithCredentials)
+	v1Auth.Post("/integration/:tokenID/credentials", userDeviceController.CompleteOAuthExchange)
 
 	v1Auth.Get("/integrations", userDeviceController.GetIntegrations)
 

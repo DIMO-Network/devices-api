@@ -88,7 +88,7 @@ type Settings struct {
 
 	SyntheticFingerprintTopic         string `yaml:"SYNTHETIC_FINGERPRINT_TOPIC"`
 	SyntheticFingerprintConsumerGroup string `yaml:"SYNTHETIC_FINGERPRINT_CONSUMER_GROUP"`
-	TeslaAuthorization                Tesla  `yaml:"TESLA_AUTHORIZATION"`
+	Tesla                             Tesla  `yaml:"TESLA_AUTHORIZATION"`
 }
 
 func (s *Settings) IsProduction() bool {

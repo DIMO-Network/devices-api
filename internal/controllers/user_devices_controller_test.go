@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math/big"
 	"testing"
 	"time"
@@ -127,7 +128,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	app.Get("/user/devices/:userDeviceID/valuations", test.AuthInjectorTestHandler(s.testUserID), c.GetValuations)
 	app.Get("/user/devices/:userDeviceID/range", test.AuthInjectorTestHandler(s.testUserID), c.GetRange)
 	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID), c.RefreshUserDeviceStatus)
-	app.Post("/user/devices/:tokenID/credentials", test.AuthInjectorTestHandler(s.testUserID), c.GetUserDevicesWithCredentials)
+	app.Post("/integration/:tokenID/credentials", test.AuthInjectorTestHandler(s.testUserID), c.CompleteOAuthExchange)
 
 	s.controller = &c
 
@@ -1017,7 +1018,7 @@ func (s *UserDevicesControllerTestSuite) TestPostRefreshSmartCarRateLimited() {
 	}
 }
 
-func (s *UserDevicesControllerTestSuite) TestGetUserDevicesWithCredentials() {
+func (s *UserDevicesControllerTestSuite) TestCompleteOAuthExchanges() {
 	mockAuthCode := "Mock_fd941f8da609db8cd66b1734f84ab289e2975b1889a5bedf478f02cf0cc4"
 	mockRedirectURI := "https://mock-redirect.test.dimo.zone"
 	mockRegion := "na"
@@ -1046,18 +1047,18 @@ func (s *UserDevicesControllerTestSuite) TestGetUserDevicesWithCredentials() {
 	}
 	s.teslaAPISvc.EXPECT().GetVehicles(mockAuthCodeResp.AccessToken, mockRegion).Return(resp, nil)
 
-	request := test.BuildRequest("POST", "/user/devices/2/credentials", fmt.Sprintf(`{
+	request := test.BuildRequest("POST", "/integration/2/credentials", fmt.Sprintf(`{
 		"authorizationCode": "%s",
 		"redirectUri": "%s",
 		"region": "na"
 	}`, mockAuthCode, mockRedirectURI))
 	response, _ := s.app.Test(request)
-
+	log.Println(response, "----")
 	s.Assert().Equal(fiber.StatusOK, response.StatusCode)
 	body, _ := io.ReadAll(response.Body)
 
-	expResp := &GetUserDevicesWithCredentialsResponseWrapper{
-		Vehicles: []GetUserDevicesWithCredentialsResponse{
+	expResp := &CompleteOAuthExchangeResponseWrapper{
+		Vehicles: []CompleteOAuthExchangeResponse{
 			{
 				ID:        11114464922222,
 				VehicleID: 44444699777777,
@@ -1077,8 +1078,8 @@ func (s *UserDevicesControllerTestSuite) TestGetUserDevicesWithCredentials() {
 	s.Assert().Equal(expected, body)
 }
 
-func (s *UserDevicesControllerTestSuite) TestGetUserDevicesWithCredentials_InvalidRegion() {
-	request := test.BuildRequest("POST", "/user/devices/2/credentials", fmt.Sprintf(`{
+func (s *UserDevicesControllerTestSuite) TestCompleteOAuthExchange_InvalidRegion() {
+	request := test.BuildRequest("POST", "/integration/2/credentials", fmt.Sprintf(`{
 		"authorizationCode": "%s",
 		"redirectUri": "%s",
 		"region": "us-central"

@@ -82,24 +82,3 @@ type TeslaVehicle struct {
 	VehicleID int    `json:"vehicle_id"`
 	VIN       string `json:"vin"`
 }
-
-type GetVehiclesResponse struct {
-	Response []TeslaVehicle `json:"response"`
-}
-
-type TeslaError struct {
-	Error            string
-	ErrorDescription string `json:"error_description"`
-	ReferenceID      string
-}
-
-var teslaScopes = []string{"user_data", "vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds", "energy_device_data", "energy_device_data", "energy_cmds"}
-
-type TeslaAuthCodeResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	IDToken      string `json:"id_token"`
-	ExpiresIn    int    `json:"expires_in"`
-	State        string `json:"state"`
-	TokenType    string `json:"token_type"`
-}
