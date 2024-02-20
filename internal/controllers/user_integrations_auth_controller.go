@@ -4,10 +4,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
-	"github.com/DIMO-Network/shared/redis"
-	"github.com/Shopify/sarama"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
 	"strconv"
@@ -18,9 +15,6 @@ type UserIntegrationAuthController struct {
 	DBS              func() *db.ReaderWriter
 	DeviceDefSvc     services.DeviceDefinitionService
 	log              *zerolog.Logger
-	cipher           shared.Cipher
-	producer         sarama.SyncProducer
-	redisCache       redis.CacheService
 	teslaFleetAPISvc services.TeslaFleetAPIService
 }
 
@@ -87,6 +81,10 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 	}
 
 	intd, err := u.DeviceDefSvc.GetIntegrationByTokenID(c.Context(), tkID)
+	if err != nil {
+		u.log.Err(err).Str("Calling Function", "GetIntegrationByTokenID").Uint64("tokenID", tkID).Msg("Error occurred trying to get integration using tokenID")
+		return fiber.NewError(fiber.StatusInternalServerError, "an error occurred completing authorization")
+	}
 	if intd.Vendor != constants.TeslaVendor {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid value provided for tokenId!")
 	}
