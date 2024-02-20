@@ -6,10 +6,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/DIMO-Network/shared/kafka"
 	"math/big"
 	"strings"
 	"time"
+
+	"github.com/DIMO-Network/shared/kafka"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
