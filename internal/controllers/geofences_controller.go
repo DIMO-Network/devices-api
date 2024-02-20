@@ -225,23 +225,23 @@ func (g *GeofencesController) GetAll(c *fiber.Ctx) error {
 	}
 
 	// pull out list of udtg. device def ids
-	var ddIds []string
+	var ddIDs []string
 	for _, item := range items {
 		for _, udtg := range item.R.UserDeviceToGeofences {
-			if !services.Contains(ddIds, udtg.R.UserDevice.DeviceDefinitionID) {
-				ddIds = append(ddIds, udtg.R.UserDevice.DeviceDefinitionID)
+			if !services.Contains(ddIDs, udtg.R.UserDevice.DeviceDefinitionID) {
+				ddIDs = append(ddIDs, udtg.R.UserDevice.DeviceDefinitionID)
 			}
 		}
 	}
 	// log in odd case ddIds is empty
-	if len(ddIds) == 0 {
+	if len(ddIDs) == 0 {
 		g.log.Debug().Str("userId", userID).Str("httpPath", c.Path()).Str("geofenceItemsLen", fmt.Sprint(len(items))).
 			Msg("Geofences are not attached to any vehicles.")
 		return c.JSON(fiber.Map{
 			"geofences": []GetGeofence{},
 		})
 	}
-	dds, err := g.deviceDefSvc.GetDeviceDefinitionsByIDs(c.Context(), ddIds)
+	dds, err := g.deviceDefSvc.GetDeviceDefinitionsByIDs(c.Context(), ddIDs)
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "failed to pull device definitions")
 	}
