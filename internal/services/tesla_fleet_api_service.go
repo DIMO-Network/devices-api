@@ -70,7 +70,7 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 		Scopes:      teslaScopes,
 	}
 
-	ctxTimeout, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
 	tok, err := conf.Exchange(ctxTimeout, authCode, oauth2.SetAuthURLParam("audience", fmt.Sprintf("https://fleet-api.prd.%s.vn.cloud.tesla.com", region)), oauth2.SetAuthURLParam("grant_type", "authorization_code"))
@@ -98,10 +98,10 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region string) ([]TeslaVehicle, error) {
 	u := &url.URL{
 		Scheme: "https",
-		Host:   fmt.Sprintf("fleet-api.prd.%s.vn.cloud.tesla.com", region),
+		Host:   fmt.Sprintf(t.Settings.Tesla.FleetAPI, region),
 		Path:   "api/1/vehicles",
 	}
-	ctxTimeout, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctxTimeout, "GET", u.String(), nil)

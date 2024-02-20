@@ -39,21 +39,31 @@ func NewUserIntegrationAuthController(
 	}
 }
 
+// CompleteOAuthExchangeResponseWrapper response wrapper for list of user vehicles
 type CompleteOAuthExchangeResponseWrapper struct {
 	Vehicles []CompleteOAuthExchangeResponse `json:"vehicles"`
 }
 
+// CompleteOAuthExchangeRequest request object for completing tesla OAuth
+type CompleteOAuthExchangeRequest struct {
+	AuthorizationCode string `json:"authorizationCode"`
+	RedirectURI       string `json:"redirectUri"`
+	Region            string `json:"region"`
+}
+
+// CompleteOAuthExchangeResponse response object for tesla vehicles attached to user account
+type CompleteOAuthExchangeResponse struct {
+	ExternalID string           `json:"externalId"`
+	VIN        string           `json:"vin"`
+	Definition DeviceDefinition `json:"definition"`
+}
+
+// DeviceDefinition inner definition object containing meta data for each tesla vehicle
 type DeviceDefinition struct {
 	Make               string `json:"make"`
 	Model              string `json:"model"`
 	Year               int    `json:"year"`
 	DeviceDefinitionID string `json:"id"`
-}
-
-type CompleteOAuthExchangeResponse struct {
-	ExternalID string           `json:"externalId"`
-	VIN        string           `json:"vin"`
-	Definition DeviceDefinition `json:"definition"`
 }
 
 // CompleteOAuthExchange godoc

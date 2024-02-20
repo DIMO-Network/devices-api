@@ -1919,12 +1919,6 @@ type AdminRegisterUserDevice struct {
 	Verified    bool    `json:"verified"`
 }
 
-type CompleteOAuthExchangeRequest struct {
-	AuthorizationCode string `json:"authorizationCode"`
-	RedirectURI       string `json:"redirectUri"`
-	Region            string `json:"region"`
-}
-
 type UpdateVINReq struct {
 	// VIN is a vehicle identification number. At the very least, it must be
 	// 17 characters in length and contain only letters and numbers.
