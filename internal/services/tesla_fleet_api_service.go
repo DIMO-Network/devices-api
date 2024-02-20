@@ -74,7 +74,7 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	tok, err := conf.Exchange(ctxTimeout, authCode, oauth2.SetAuthURLParam("audience", fmt.Sprintf("https://fleet-api.prd.%s.vn.cloud.tesla.com", region)), oauth2.SetAuthURLParam("grant_type", "authorization_code"))
+	tok, err := conf.Exchange(ctxTimeout, authCode, oauth2.SetAuthURLParam("audience", fmt.Sprintf("https://fleet-api.prd.%s.vn.cloud.tesla.com", region)))
 	if err != nil {
 		var e *oauth2.RetrieveError
 		errString := ""
