@@ -76,7 +76,6 @@ type UserDevicesControllerTestSuite struct {
 	userDeviceSvc   *mock_services.MockUserDeviceService
 	valuationsSrvc  *mock_services.MockValuationsAPIService
 	teslaSvc        *mock_services.MockTeslaService
-	teslaAPISvc     *mock_services.MockTeslaAPIService
 }
 
 const natsStreamName = "test-stream"
@@ -95,7 +94,6 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.scClient = mock_services.NewMockSmartcarClient(mockCtrl)
 	s.scTaskSvc = mock_services.NewMockSmartcarTaskService(mockCtrl)
 	teslaSvc := mock_services.NewMockTeslaService(mockCtrl)
-	s.teslaAPISvc = mock_services.NewMockTeslaAPIService(mockCtrl)
 	teslaTaskService := mock_services.NewMockTeslaTaskService(mockCtrl)
 	s.nhtsaService = mock_services.NewMockINHTSAService(mockCtrl)
 	autoPiIngest := mock_services.NewMockIngestRegistrar(mockCtrl)
@@ -114,7 +112,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
-		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, nil, s.redisClient, nil, s.usersClient, nil, s.natsService, nil, s.userDeviceSvc, s.valuationsSrvc, s.teslaAPISvc)
+		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, nil, s.redisClient, nil, s.usersClient, nil, s.natsService, nil, s.userDeviceSvc, s.valuationsSrvc)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUser)
 	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUserFromVIN)
@@ -127,10 +125,8 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	app.Get("/user/devices/:userDeviceID/valuations", test.AuthInjectorTestHandler(s.testUserID), c.GetValuations)
 	app.Get("/user/devices/:userDeviceID/range", test.AuthInjectorTestHandler(s.testUserID), c.GetRange)
 	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID), c.RefreshUserDeviceStatus)
-	app.Post("/integration/:tokenID/credentials", test.AuthInjectorTestHandler(s.testUserID), c.CompleteOAuthExchange)
 
 	s.controller = &c
-
 	s.app = app
 }
 
@@ -1015,111 +1011,6 @@ func (s *UserDevicesControllerTestSuite) TestPostRefreshSmartCarRateLimited() {
 		body, _ := io.ReadAll(response.Body)
 		fmt.Println("unexpected response: " + string(body))
 	}
-}
-
-func (s *UserDevicesControllerTestSuite) TestCompleteOAuthExchanges() {
-	mockAuthCode := "Mock_fd941f8da609db8cd66b1734f84ab289e2975b1889a5bedf478f02cf0cc4"
-	mockRedirectURI := "https://mock-redirect.test.dimo.zone"
-	mockRegion := "na"
-
-	mockAuthCodeResp := &services.TeslaAuthCodeResponse{
-		AccessToken:  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-		RefreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw",
-		IDToken:      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.ouLgsgz-xUWN7lLuo8qE2nueNgJIrBz49QLr_GLHRno",
-		ExpiresIn:    int(time.Now().Add(time.Hour * 1).Unix()),
-		State:        "pmXw63l3ax",
-		TokenType:    "",
-	}
-	s.teslaAPISvc.EXPECT().CompleteTeslaAuthCodeExchange(mockAuthCode, mockRedirectURI, mockRegion).Return(mockAuthCodeResp, nil)
-	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "1GBGC24U93Z337558", "", 0, "").Return(&ddgrpc.DecodeVinResponse{DeviceDefinitionId: "someID-1"}, nil)
-	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "WAUAF78E95A553420", "", 0, "").Return(&ddgrpc.DecodeVinResponse{DeviceDefinitionId: "someID-2"}, nil)
-
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), "someID-1").Return(&ddgrpc.GetDeviceDefinitionItemResponse{
-		DeviceDefinitionId: "someID-1",
-		Type: &ddgrpc.DeviceType{
-			Make:  "Tesla",
-			Model: "Y",
-			Year:  2022,
-		},
-	}, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), "someID-2").Return(&ddgrpc.GetDeviceDefinitionItemResponse{
-		DeviceDefinitionId: "someID-1",
-		Type: &ddgrpc.DeviceType{
-			Make:  "Tesla",
-			Model: "X",
-			Year:  2020,
-		},
-	}, nil)
-
-	resp := []services.TeslaVehicle{
-		{
-			ID:        11114464922222,
-			VehicleID: 44444699777777,
-			VIN:       "1GBGC24U93Z337558",
-		},
-		{
-			ID:        22222464999999,
-			VehicleID: 44444699000000,
-			VIN:       "WAUAF78E95A553420",
-		},
-	}
-	s.teslaAPISvc.EXPECT().GetVehicles(mockAuthCodeResp.AccessToken, mockRegion).Return(resp, nil)
-
-	request := test.BuildRequest("POST", "/integration/2/credentials", fmt.Sprintf(`{
-		"authorizationCode": "%s",
-		"redirectUri": "%s",
-		"region": "na"
-	}`, mockAuthCode, mockRedirectURI))
-	response, _ := s.app.Test(request)
-
-	s.Assert().Equal(fiber.StatusOK, response.StatusCode)
-	body, _ := io.ReadAll(response.Body)
-
-	expResp := &CompleteOAuthExchangeResponseWrapper{
-		Vehicles: []CompleteOAuthExchangeResponse{
-			{
-				ExternalID: "11114464922222",
-				VehicleID:  44444699777777,
-				VIN:        "1GBGC24U93Z337558",
-				Definition: DeviceDefinition{
-					Make:               "Tesla",
-					Model:              "Y",
-					Year:               2022,
-					DeviceDefinitionID: "someID-1",
-				},
-			},
-			{
-				ExternalID: "22222464999999",
-				VehicleID:  44444699000000,
-				VIN:        "WAUAF78E95A553420",
-				Definition: DeviceDefinition{
-					Make:               "Tesla",
-					Model:              "X",
-					Year:               2020,
-					DeviceDefinitionID: "someID-2",
-				},
-			},
-		},
-	}
-
-	expected, err := json.Marshal(expResp)
-	s.Assert().NoError(err)
-
-	s.Assert().Equal(expected, body)
-}
-
-func (s *UserDevicesControllerTestSuite) TestCompleteOAuthExchange_InvalidRegion() {
-	request := test.BuildRequest("POST", "/integration/2/credentials", fmt.Sprintf(`{
-		"authorizationCode": "%s",
-		"redirectUri": "%s",
-		"region": "us-central"
-	}`, "mockAuthCode", "mockRedirectURI"))
-	response, _ := s.app.Test(request)
-
-	s.Assert().Equal(fiber.StatusBadRequest, response.StatusCode)
-	body, _ := io.ReadAll(response.Body)
-
-	s.Assert().Equal(`{"code":400,"message":"invalid value provided for region, only na and eu are allowed"}`, string(body))
 }
 
 func TestEIP712Hash(t *testing.T) {

@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-//go:generate mockgen -source tesla_api_service.go -destination mocks/tesla_api_service_mock.go
-type TeslaAPIService interface {
+//go:generate mockgen -source tesla_fleet_api_service.go -destination mocks/tesla_fleet_api_service_mock.go
+type TeslaFleetAPIService interface {
 	CompleteTeslaAuthCodeExchange(authCode, redirectURI, region string) (*TeslaAuthCodeResponse, error)
 	GetVehicles(token, region string) ([]TeslaVehicle, error)
 }
@@ -25,7 +25,7 @@ type GetVehiclesResponse struct {
 	Response []TeslaVehicle `json:"response"`
 }
 
-type TeslaError struct {
+type TeslaFleetAPIError struct {
 	Error            string `json:"error"`
 	ErrorDescription string `json:"error_description"`
 	ReferenceID      string `json:"ReferenceID"`
@@ -40,21 +40,27 @@ type TeslaAuthCodeResponse struct {
 	TokenType    string `json:"token_type"`
 }
 
-type teslaAPIService struct {
+type teslaFleetAPIService struct {
 	Settings   *config.Settings
 	HTTPClient *http.Client
 	log        *zerolog.Logger
 }
 
-func NewTeslaAPIService(settings *config.Settings, logger *zerolog.Logger) TeslaAPIService {
-	return &teslaAPIService{
+func NewTeslaFleetAPIService(settings *config.Settings, logger *zerolog.Logger) TeslaFleetAPIService {
+	return &teslaFleetAPIService{
 		Settings:   settings,
 		HTTPClient: &http.Client{},
 		log:        logger,
 	}
 }
 
-func (t *teslaAPIService) CompleteTeslaAuthCodeExchange(authCode, redirectURI, region string) (*TeslaAuthCodeResponse, error) {
+// CompleteTeslaAuthCodeExchange godoc
+// @Description Call Tesla Fleet API and exchange auth code for a new auth and refresh token
+// @Param       authCode - authorization code to exchange
+// @Param       redirectURI - redirect uri to pass on as part of the request to for oauth exchange
+// @Param       region - API region which is used to determine which fleet api to call
+// @Success     200 {object} services.TeslaAuthCodeResponse
+func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(authCode, redirectURI, region string) (*TeslaAuthCodeResponse, error) {
 	conf := oauth2.Config{
 		ClientID:     t.Settings.Tesla.ClientID,
 		ClientSecret: t.Settings.Tesla.ClientSecret,
@@ -83,7 +89,12 @@ func (t *teslaAPIService) CompleteTeslaAuthCodeExchange(authCode, redirectURI, r
 	}, nil
 }
 
-func (t *teslaAPIService) GetVehicles(token, region string) ([]TeslaVehicle, error) {
+// GetVehicles godoc
+// @Description Call Tesla Fleet API to get a list of vehicles using authorization token
+// @Param       token - authorization token to be used as bearer token
+// @Param       region - API region which is used to determine which fleet api to call
+// @Success     200 {object} []services.TeslaVehicle
+func (t *teslaFleetAPIService) GetVehicles(token, region string) ([]TeslaVehicle, error) {
 	u := &url.URL{
 		Scheme: "https",
 		Host:   fmt.Sprintf("fleet-api.prd.%s.vn.cloud.tesla.com", region),
@@ -105,7 +116,7 @@ func (t *teslaAPIService) GetVehicles(token, region string) ([]TeslaVehicle, err
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		errBody := new(TeslaError)
+		errBody := new(TeslaFleetAPIError)
 		if err := json.NewDecoder(resp.Body).Decode(errBody); err != nil {
 			t.log.
 				Err(err).

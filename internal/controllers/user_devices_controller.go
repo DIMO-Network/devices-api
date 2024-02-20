@@ -83,7 +83,6 @@ type UserDevicesController struct {
 	wallet                    services.SyntheticWalletInstanceService
 	userDeviceSvc             services.UserDeviceService
 	valuationsAPISrv          services.ValuationsAPIService
-	teslaAPIService           services.TeslaAPIService
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -141,7 +140,6 @@ func NewUserDevicesController(settings *config.Settings,
 	wallet services.SyntheticWalletInstanceService,
 	userDeviceSvc services.UserDeviceService,
 	valuationsAPISrv services.ValuationsAPIService,
-	teslaAPIService services.TeslaAPIService,
 ) UserDevicesController {
 	return UserDevicesController{
 		Settings:                  settings,
@@ -171,7 +169,6 @@ func NewUserDevicesController(settings *config.Settings,
 		wallet:                    wallet,
 		valuationsAPISrv:          valuationsAPISrv,
 		userDeviceSvc:             userDeviceSvc,
-		teslaAPIService:           teslaAPIService,
 	}
 }
 
@@ -1859,78 +1856,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}, sigBytes)
 }
 
-// CompleteOAuthExchange godoc
-// @Description Complete Tesla auth and get devices for authenticated user
-// @Tags        user-devices
-// @Produce     json
-// @Accept      json
-// @Param       user_device body controllers.CompleteOAuthExchangeRequest true "all fields are required"
-// @Security    ApiKeyAuth
-// @Success     200 {object} controllers.CompleteOAuthExchangeResponse
-// @Security    BearerAuth
-// @Router      /integration/:tokenID/credentials [post]
-func (udc *UserDevicesController) CompleteOAuthExchange(c *fiber.Ctx) error {
-	reqBody := new(CompleteOAuthExchangeRequest)
-	if err := c.BodyParser(reqBody); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request JSON body.")
-	}
-
-	if reqBody.Region != "na" && reqBody.Region != "eu" {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid value provided for region, only na and eu are allowed")
-	}
-
-	logger := udc.log.With().
-		Str("region", reqBody.Region).
-		Str("redirectUri", reqBody.RedirectURI).
-		Str("route", c.Route().Path).
-		Logger()
-	logger.Info().Msg("Attempting to complete Tesla authorization")
-
-	teslaAuth, err := udc.teslaAPIService.CompleteTeslaAuthCodeExchange(reqBody.AuthorizationCode, reqBody.RedirectURI, reqBody.Region)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "failed to get tesla authCode:"+err.Error())
-	}
-
-	vehicles, err := udc.teslaAPIService.GetVehicles(teslaAuth.AccessToken, reqBody.Region)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "error occurred fetching vehicles:"+err.Error())
-	}
-
-	response := make([]CompleteOAuthExchangeResponse, 0, len(vehicles))
-
-	for _, v := range vehicles {
-		decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), v.VIN, "", 0, "")
-		if err != nil || len(decodeVIN.DeviceDefinitionId) == 0 {
-			udc.log.Err(err).Msg("An error occurred decoding vin for tesla vehicle")
-			return fiber.NewError(fiber.StatusFailedDependency, "An error occurred completing tesla authorization")
-		}
-
-		dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), decodeVIN.DeviceDefinitionId)
-		if err != nil || len(decodeVIN.DeviceDefinitionId) == 0 {
-			udc.log.Err(err).Str("deviceDefinitionID", decodeVIN.DeviceDefinitionId).Msg("An error occurred fetching device definition using ID")
-			return fiber.NewError(fiber.StatusFailedDependency, "An error occurred completing tesla authorization")
-		}
-
-		response = append(response, CompleteOAuthExchangeResponse{
-			ExternalID: strconv.Itoa(v.ID),
-			VehicleID:  v.VehicleID,
-			VIN:        v.VIN,
-			Definition: DeviceDefinition{
-				Make:               dd.Type.Make,
-				Model:              dd.Type.Model,
-				Year:               int(dd.Type.Year),
-				DeviceDefinitionID: decodeVIN.DeviceDefinitionId,
-			},
-		})
-	}
-
-	vehicleResp := &CompleteOAuthExchangeResponseWrapper{
-		Vehicles: response,
-	}
-
-	return c.JSON(vehicleResp)
-}
-
 type MintEventData struct {
 	RequestID    string   `json:"requestId"`
 	UserDeviceID string   `json:"userDeviceId"`
@@ -1998,24 +1923,6 @@ type CompleteOAuthExchangeRequest struct {
 	AuthorizationCode string `json:"authorizationCode"`
 	RedirectURI       string `json:"redirectUri"`
 	Region            string `json:"region"`
-}
-
-type CompleteOAuthExchangeResponseWrapper struct {
-	Vehicles []CompleteOAuthExchangeResponse
-}
-
-type DeviceDefinition struct {
-	Make               string `json:"make"`
-	Model              string `json:"model"`
-	Year               int    `json:"year"`
-	DeviceDefinitionID string `json:"deviceDefinitionId"`
-}
-
-type CompleteOAuthExchangeResponse struct {
-	ExternalID string `json:"id"`
-	VehicleID  int    `json:"vehicleId"`
-	VIN        string `json:"vin"`
-	Definition DeviceDefinition
 }
 
 type UpdateVINReq struct {
