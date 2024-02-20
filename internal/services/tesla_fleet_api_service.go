@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/rs/zerolog"
-	"golang.org/x/oauth2"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/rs/zerolog"
+	"golang.org/x/oauth2"
 )
 
 //go:generate mockgen -source tesla_fleet_api_service.go -destination mocks/tesla_fleet_api_service_mock.go
