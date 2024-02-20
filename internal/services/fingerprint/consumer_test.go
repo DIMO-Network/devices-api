@@ -473,7 +473,7 @@ func TestExtractVIN(t *testing.T) {
 			name: "happy path",
 			data: []byte(`{"vin":"W1N2539531F907299"}`),
 			want: "W1N2539531F907299",
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
 				return err == nil
 			},
 		},
@@ -481,7 +481,7 @@ func TestExtractVIN(t *testing.T) {
 			name: "vin with space",
 			data: []byte(`{"vin":"W1N2539531F907299 "}`),
 			want: "W1N2539531F907299",
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
 				return err == nil
 			},
 		},
@@ -489,7 +489,7 @@ func TestExtractVIN(t *testing.T) {
 			name: "invalid VIN",
 			data: []byte(`{"vin":"xxx"}`),
 			want: "",
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
 				return err.Error() == "invalid VIN"
 			},
 		},
@@ -497,7 +497,7 @@ func TestExtractVIN(t *testing.T) {
 			name: "no VIN",
 			data: []byte(`{"caca":"xxx"}`),
 			want: "",
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
 				return errors.Is(err, ErrNoVIN)
 			},
 		},
@@ -505,7 +505,7 @@ func TestExtractVIN(t *testing.T) {
 			name: "can't parse",
 			data: []byte(`caca`),
 			want: "",
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
 				return err != nil
 			},
 		},
@@ -533,7 +533,7 @@ func TestExtractProtocol(t *testing.T) {
 			name: "happy path",
 			data: []byte(`{"protocol":"7"}`),
 			want: &p7,
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
 				return err == nil
 			},
 		},
@@ -541,7 +541,7 @@ func TestExtractProtocol(t *testing.T) {
 			name: "no protocol",
 			data: []byte(`{"protocol":null}`),
 			want: nil,
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
 				return err == nil
 			},
 		},
@@ -549,7 +549,7 @@ func TestExtractProtocol(t *testing.T) {
 			name: "can't parse",
 			data: []byte(`caca`),
 			want: nil,
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
 				return err != nil
 			},
 		},
@@ -576,7 +576,7 @@ func TestExtractVINMacaronType1(t *testing.T) {
 			name: "valid macaron data",
 			data: "AW+yb2VVFVFCV6pmvwZXQkFXWjMyMDMwMEY4Njc1Ng==",
 			want: "WBAWZ320300F86756",
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
 				return assert.NoError(t, err)
 			},
 		},
@@ -584,7 +584,7 @@ func TestExtractVINMacaronType1(t *testing.T) {
 			name: "invalid base64 encoding",
 			data: "not base64 data",
 			want: "",
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
 				return assert.Error(t, err)
 			},
 		},
@@ -592,7 +592,7 @@ func TestExtractVINMacaronType1(t *testing.T) {
 			name: "data too short",
 			data: base64.StdEncoding.EncodeToString([]byte{0x01}),
 			want: "",
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
 				return assert.Error(t, err)
 			},
 		},
@@ -600,7 +600,7 @@ func TestExtractVINMacaronType1(t *testing.T) {
 			name: "invalid VIN format",
 			data: "AW+yb2VVFVFCV6pmvwZXQkFXWjMyMDMwMEY4Njc1@=",
 			want: "",
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
 				return assert.Error(t, err)
 			},
 		},
@@ -630,7 +630,7 @@ func TestExtractProtocolMacaronType1(t *testing.T) {
 			name: "valid protocol data",
 			data: "AW+yb2VVFVFCV6pmvwZXQkFXWjMyMDMwMEY4Njc1Ng==",
 			want: &expectedProtocol,
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
 				return assert.NoError(t, err)
 			},
 		},
@@ -638,7 +638,7 @@ func TestExtractProtocolMacaronType1(t *testing.T) {
 			name: "invalid base64 encoding",
 			data: "not base64 data",
 			want: nil,
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
 				return assert.Error(t, err)
 			},
 		},
@@ -646,7 +646,7 @@ func TestExtractProtocolMacaronType1(t *testing.T) {
 			name: "data too short",
 			data: base64.StdEncoding.EncodeToString([]byte{0x01}), // Too short
 			want: nil,
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
 				return assert.Error(t, err)
 			},
 		},

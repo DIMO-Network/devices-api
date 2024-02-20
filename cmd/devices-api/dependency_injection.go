@@ -58,7 +58,7 @@ func (dc *dependencyContainer) getS3ServiceClient(ctx context.Context) *s3.Clien
 			awsconfig.WithRegion(dc.settings.AWSRegion),
 			// Comment the below out if not using localhost
 			awsconfig.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
-				func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+				func(_, _ string, _ ...interface{}) (aws.Endpoint, error) {
 
 					if dc.settings.Environment == "local" {
 						return aws.Endpoint{PartitionID: "aws", URL: dc.settings.DocumentsAWSEndpoint, SigningRegion: dc.settings.AWSRegion}, nil // The SigningRegion key was what's was missing! D'oh.
@@ -87,7 +87,7 @@ func (dc *dependencyContainer) getS3NFTServiceClient(ctx context.Context) *s3.Cl
 			awsconfig.WithRegion(dc.settings.AWSRegion),
 			// Comment the below out if not using localhost
 			awsconfig.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
-				func(service, region string, options ...any) (aws.Endpoint, error) {
+				func(_, _ string, _ ...any) (aws.Endpoint, error) {
 					if dc.settings.DocumentsAWSEndpoint != "" {
 						return aws.Endpoint{PartitionID: "aws", URL: dc.settings.DocumentsAWSEndpoint, SigningRegion: dc.settings.AWSRegion}, nil // The SigningRegion key was what's was missing! D'oh.
 					}

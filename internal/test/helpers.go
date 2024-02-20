@@ -46,7 +46,7 @@ const testDbName = "devices_api"
 func StartContainerDatabase(ctx context.Context, t *testing.T, migrationsDirRelPath string) (db.Store, testcontainers.Container) {
 	settings := getTestDbSettings()
 	pgPort := "5432/tcp"
-	dbURL := func(host string, port nat.Port) string {
+	dbURL := func(_ string, port nat.Port) string {
 		return fmt.Sprintf("postgres://%s:%s@localhost:%s/%s?sslmode=disable", settings.DB.User, settings.DB.Password, port.Port(), settings.DB.Name)
 	}
 	cr := testcontainers.ContainerRequest{
