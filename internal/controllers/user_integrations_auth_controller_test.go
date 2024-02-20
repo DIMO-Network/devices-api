@@ -93,6 +93,9 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 		IDToken:      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.ouLgsgz-xUWN7lLuo8qE2nueNgJIrBz49QLr_GLHRno",
 		Expiry:       time.Now().Add(time.Hour * 1),
 	}
+	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&ddgrpc.Integration{
+		Vendor: constants.TeslaVendor,
+	}, nil)
 	s.teslaFleetAPISvc.EXPECT().CompleteTeslaAuthCodeExchange(gomock.Any(), mockAuthCode, mockRedirectURI, mockRegion).Return(mockAuthCodeResp, nil)
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "1GBGC24U93Z337558", "", 0, "").Return(&ddgrpc.DecodeVinResponse{DeviceDefinitionId: "someID-1"}, nil)
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "WAUAF78E95A553420", "", 0, "").Return(&ddgrpc.DecodeVinResponse{DeviceDefinitionId: "someID-2"}, nil)
@@ -168,6 +171,9 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 }
 
 func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_InvalidRegion() {
+	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&ddgrpc.Integration{
+		Vendor: constants.TeslaVendor,
+	}, nil)
 	request := test.BuildRequest("POST", "/integration/2/credentials", fmt.Sprintf(`{
 		"authorizationCode": "%s",
 		"redirectUri": "%s",
