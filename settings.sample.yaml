@@ -79,4 +79,4 @@ TESLA:
   CLIENT_ID:
   CLIENT_SECRET:
   TOKEN_AUTH_URL:
-  FLEET_API: https://fleet-api.prd.<region>.vn.cloud.tesla.com
+  FLEET_API: https://fleet-api.prd.%s.vn.cloud.tesla.com

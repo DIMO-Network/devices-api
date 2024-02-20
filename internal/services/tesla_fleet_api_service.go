@@ -33,11 +33,11 @@ type TeslaFleetAPIError struct {
 }
 
 type TeslaAuthCodeResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	IDToken      string `json:"id_token"`
-	Expiry       int    `json:"expiry"`
-	TokenType    string `json:"token_type"`
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token"`
+	IDToken      string    `json:"id_token"`
+	Expiry       time.Time `json:"expiry"`
+	TokenType    string    `json:"token_type"`
 }
 
 type teslaFleetAPIService struct {
@@ -74,10 +74,10 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	tok, err := conf.Exchange(ctxTimeout, authCode, oauth2.SetAuthURLParam("audience", fmt.Sprintf("https://fleet-api.prd.%s.vn.cloud.tesla.com", region)))
+	tok, err := conf.Exchange(ctxTimeout, authCode, oauth2.SetAuthURLParam("audience", fmt.Sprintf(t.Settings.Tesla.FleetAPI, region)))
 	if err != nil {
 		var e *oauth2.RetrieveError
-		errString := ""
+		errString := err.Error()
 		if errors.As(err, &e) {
 			errString = e.ErrorDescription
 		}
@@ -87,7 +87,7 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 	return &TeslaAuthCodeResponse{
 		AccessToken:  tok.AccessToken,
 		RefreshToken: tok.RefreshToken,
-		Expiry:       int(tok.Expiry.Unix()),
+		Expiry:       tok.Expiry,
 		TokenType:    tok.TokenType,
 	}, nil
 }
