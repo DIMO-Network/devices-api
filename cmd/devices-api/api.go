@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
 	"math/big"
 	"net"
 	"os"
@@ -144,7 +145,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
 	countriesController := controllers.NewCountriesController()
-	userIntegrationAuthController := controllers.NewUserIntegrationAuthController(settings, pdb.DBS, &logger, ddSvc, cipher, producer, redisCache, teslaFleetAPISvc)
+	userIntegrationAuthController := controllers.NewUserIntegrationAuthController(settings, pdb.DBS, &logger, ddSvc, teslaFleetAPISvc)
 
 	// commenting this out b/c the library includes the path in the metrics which saturates prometheus queries - need to fork / make our own
 	//prometheus := fiberprometheus.New("devices-api")
@@ -359,9 +360,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		logger.Fatal().Err(err).Msg("Failed to create issuer.")
 	}
 
-	/*if err := fingerprint.RunConsumer(ctx, settings, &logger, iss, pdb); err != nil {
+	if err := fingerprint.RunConsumer(ctx, settings, &logger, iss, pdb); err != nil {
 		logger.Fatal().Err(err).Msg("Failed to create vin credentialer listener")
-	}*/
+	}
 
 	startContractEventsConsumer(logger, settings, pdb, autoPi, macaron, ddSvc)
 

@@ -75,7 +75,6 @@ type UserDevicesControllerTestSuite struct {
 	natsServer      *server.Server
 	userDeviceSvc   *mock_services.MockUserDeviceService
 	valuationsSrvc  *mock_services.MockValuationsAPIService
-	teslaSvc        *mock_services.MockTeslaService
 }
 
 const natsStreamName = "test-stream"

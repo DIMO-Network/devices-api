@@ -28,9 +28,6 @@ func NewUserIntegrationAuthController(
 	dbs func() *db.ReaderWriter,
 	logger *zerolog.Logger,
 	ddSvc services.DeviceDefinitionService,
-	cipher shared.Cipher,
-	producer sarama.SyncProducer,
-	cache redis.CacheService,
 	teslaFleetAPISvc services.TeslaFleetAPIService,
 ) UserIntegrationAuthController {
 	return UserIntegrationAuthController{
@@ -38,9 +35,6 @@ func NewUserIntegrationAuthController(
 		DBS:              dbs,
 		DeviceDefSvc:     ddSvc,
 		log:              logger,
-		cipher:           cipher,
-		producer:         producer,
-		redisCache:       cache,
 		teslaFleetAPISvc: teslaFleetAPISvc,
 	}
 }
@@ -53,12 +47,11 @@ type DeviceDefinition struct {
 	Make               string `json:"make"`
 	Model              string `json:"model"`
 	Year               int    `json:"year"`
-	DeviceDefinitionID string `json:"deviceDefinitionId"`
+	DeviceDefinitionID string `json:"id"`
 }
 
 type CompleteOAuthExchangeResponse struct {
 	ExternalID string           `json:"externalId"`
-	VehicleID  int              `json:"vehicleId"`
 	VIN        string           `json:"vin"`
 	Definition DeviceDefinition `json:"definition"`
 }
@@ -68,7 +61,7 @@ type CompleteOAuthExchangeResponse struct {
 // @Tags        user-devices
 // @Produce     json
 // @Accept      json
-// @Param       tokenID path string                   true "token id"
+// @Param       tokenID path string                   true "token id for integration"
 // @Param       user_device body controllers.CompleteOAuthExchangeRequest true "all fields are required"
 // @Security    ApiKeyAuth
 // @Success     200 {object} controllers.CompleteOAuthExchangeResponse
@@ -91,12 +84,12 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 		Logger()
 	logger.Info().Msg("Attempting to complete Tesla authorization")
 
-	teslaAuth, err := u.teslaFleetAPISvc.CompleteTeslaAuthCodeExchange(reqBody.AuthorizationCode, reqBody.RedirectURI, reqBody.Region)
+	teslaAuth, err := u.teslaFleetAPISvc.CompleteTeslaAuthCodeExchange(c.Context(), reqBody.AuthorizationCode, reqBody.RedirectURI, reqBody.Region)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to get tesla authCode:"+err.Error())
 	}
 
-	vehicles, err := u.teslaFleetAPISvc.GetVehicles(teslaAuth.AccessToken, reqBody.Region)
+	vehicles, err := u.teslaFleetAPISvc.GetVehicles(c.Context(), teslaAuth.AccessToken, reqBody.Region)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "error occurred fetching vehicles:"+err.Error())
 	}
@@ -117,7 +110,6 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 
 		response = append(response, CompleteOAuthExchangeResponse{
 			ExternalID: strconv.Itoa(v.ID),
-			VehicleID:  v.VehicleID,
 			VIN:        v.VIN,
 			Definition: DeviceDefinition{
 				Make:               dd.Type.Make,

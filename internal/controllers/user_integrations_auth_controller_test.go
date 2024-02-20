@@ -9,7 +9,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
-	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/DIMO-Network/shared/redis/mocks"
 	"github.com/gofiber/fiber/v2"
@@ -23,16 +22,16 @@ import (
 
 type UserIntegrationAuthControllerTestSuite struct {
 	suite.Suite
-	pdb          db.Store
-	controller   *UserIntegrationAuthController
-	container    testcontainers.Container
-	ctx          context.Context
-	mockCtrl     *gomock.Controller
-	app          *fiber.App
-	deviceDefSvc *mock_services.MockDeviceDefinitionService
-	testUserID   string
-	redisClient  *mocks.MockCacheService
-	teslaAPISvc  *mock_services.MockTeslaFleetAPIService
+	pdb              db.Store
+	controller       *UserIntegrationAuthController
+	container        testcontainers.Container
+	ctx              context.Context
+	mockCtrl         *gomock.Controller
+	app              *fiber.App
+	deviceDefSvc     *mock_services.MockDeviceDefinitionService
+	testUserID       string
+	redisClient      *mocks.MockCacheService
+	teslaFleetAPISvc *mock_services.MockTeslaFleetAPIService
 }
 
 // SetupSuite starts container db
@@ -44,14 +43,14 @@ func (s *UserIntegrationAuthControllerTestSuite) SetupSuite() {
 	s.mockCtrl = mockCtrl
 
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(mockCtrl)
-	s.teslaAPISvc = mock_services.NewMockTeslaFleetAPIService(mockCtrl)
+	s.teslaFleetAPISvc = mock_services.NewMockTeslaFleetAPIService(mockCtrl)
 	s.redisClient = mocks.NewMockCacheService(mockCtrl)
 	s.testUserID = "123123"
 
 	c := NewUserIntegrationAuthController(&config.Settings{
 		Port:        "3000",
 		Environment: "prod",
-	}, s.pdb.DBS, logger, s.deviceDefSvc, new(shared.ROT13Cipher), nil, s.redisClient, s.teslaAPISvc)
+	}, s.pdb.DBS, logger, s.deviceDefSvc, s.teslaFleetAPISvc)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/integration/:tokenID/credentials", test.AuthInjectorTestHandler(s.testUserID), c.CompleteOAuthExchange)
 
@@ -91,11 +90,9 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 		AccessToken:  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
 		RefreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw",
 		IDToken:      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.ouLgsgz-xUWN7lLuo8qE2nueNgJIrBz49QLr_GLHRno",
-		ExpiresIn:    int(time.Now().Add(time.Hour * 1).Unix()),
-		State:        "pmXw63l3ax",
-		TokenType:    "",
+		Expiry:       int(time.Now().Add(time.Hour * 1).Unix()),
 	}
-	s.teslaAPISvc.EXPECT().CompleteTeslaAuthCodeExchange(mockAuthCode, mockRedirectURI, mockRegion).Return(mockAuthCodeResp, nil)
+	s.teslaFleetAPISvc.EXPECT().CompleteTeslaAuthCodeExchange(gomock.Any(), mockAuthCode, mockRedirectURI, mockRegion).Return(mockAuthCodeResp, nil)
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "1GBGC24U93Z337558", "", 0, "").Return(&ddgrpc.DecodeVinResponse{DeviceDefinitionId: "someID-1"}, nil)
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "WAUAF78E95A553420", "", 0, "").Return(&ddgrpc.DecodeVinResponse{DeviceDefinitionId: "someID-2"}, nil)
 
@@ -118,17 +115,15 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 
 	resp := []services.TeslaVehicle{
 		{
-			ID:        11114464922222,
-			VehicleID: 44444699777777,
-			VIN:       "1GBGC24U93Z337558",
+			ID:  11114464922222,
+			VIN: "1GBGC24U93Z337558",
 		},
 		{
-			ID:        22222464999999,
-			VehicleID: 44444699000000,
-			VIN:       "WAUAF78E95A553420",
+			ID:  22222464999999,
+			VIN: "WAUAF78E95A553420",
 		},
 	}
-	s.teslaAPISvc.EXPECT().GetVehicles(mockAuthCodeResp.AccessToken, mockRegion).Return(resp, nil)
+	s.teslaFleetAPISvc.EXPECT().GetVehicles(gomock.Any(), mockAuthCodeResp.AccessToken, mockRegion).Return(resp, nil)
 
 	request := test.BuildRequest("POST", "/integration/2/credentials", fmt.Sprintf(`{
 		"authorizationCode": "%s",
@@ -144,7 +139,6 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 		Vehicles: []CompleteOAuthExchangeResponse{
 			{
 				ExternalID: "11114464922222",
-				VehicleID:  44444699777777,
 				VIN:        "1GBGC24U93Z337558",
 				Definition: DeviceDefinition{
 					Make:               "Tesla",
@@ -155,7 +149,6 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 			},
 			{
 				ExternalID: "22222464999999",
-				VehicleID:  44444699000000,
 				VIN:        "WAUAF78E95A553420",
 				Definition: DeviceDefinition{
 					Make:               "Tesla",

@@ -10,6 +10,7 @@
 package mock_services
 
 import (
+	context "context"
 	reflect "reflect"
 
 	services "github.com/DIMO-Network/devices-api/internal/services"
@@ -40,31 +41,31 @@ func (m *MockTeslaFleetAPIService) EXPECT() *MockTeslaFleetAPIServiceMockRecorde
 }
 
 // CompleteTeslaAuthCodeExchange mocks base method.
-func (m *MockTeslaFleetAPIService) CompleteTeslaAuthCodeExchange(authCode, redirectURI, region string) (*services.TeslaAuthCodeResponse, error) {
+func (m *MockTeslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context, authCode, redirectURI, region string) (*services.TeslaAuthCodeResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CompleteTeslaAuthCodeExchange", authCode, redirectURI, region)
+	ret := m.ctrl.Call(m, "CompleteTeslaAuthCodeExchange", ctx, authCode, redirectURI, region)
 	ret0, _ := ret[0].(*services.TeslaAuthCodeResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CompleteTeslaAuthCodeExchange indicates an expected call of CompleteTeslaAuthCodeExchange.
-func (mr *MockTeslaFleetAPIServiceMockRecorder) CompleteTeslaAuthCodeExchange(authCode, redirectURI, region any) *gomock.Call {
+func (mr *MockTeslaFleetAPIServiceMockRecorder) CompleteTeslaAuthCodeExchange(ctx, authCode, redirectURI, region any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompleteTeslaAuthCodeExchange", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).CompleteTeslaAuthCodeExchange), authCode, redirectURI, region)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompleteTeslaAuthCodeExchange", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).CompleteTeslaAuthCodeExchange), ctx, authCode, redirectURI, region)
 }
 
 // GetVehicles mocks base method.
-func (m *MockTeslaFleetAPIService) GetVehicles(token, region string) ([]services.TeslaVehicle, error) {
+func (m *MockTeslaFleetAPIService) GetVehicles(ctx context.Context, token, region string) ([]services.TeslaVehicle, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetVehicles", token, region)
+	ret := m.ctrl.Call(m, "GetVehicles", ctx, token, region)
 	ret0, _ := ret[0].([]services.TeslaVehicle)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetVehicles indicates an expected call of GetVehicles.
-func (mr *MockTeslaFleetAPIServiceMockRecorder) GetVehicles(token, region any) *gomock.Call {
+func (mr *MockTeslaFleetAPIServiceMockRecorder) GetVehicles(ctx, token, region any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVehicles", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).GetVehicles), token, region)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVehicles", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).GetVehicles), ctx, token, region)
 }
