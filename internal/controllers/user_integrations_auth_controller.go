@@ -68,6 +68,7 @@ type CompleteOAuthExchangeResponse struct {
 // @Tags        user-devices
 // @Produce     json
 // @Accept      json
+// @Param       tokenID path string                   true "token id"
 // @Param       user_device body controllers.CompleteOAuthExchangeRequest true "all fields are required"
 // @Security    ApiKeyAuth
 // @Success     200 {object} controllers.CompleteOAuthExchangeResponse
