@@ -307,9 +307,9 @@
                 }
             }
         },
-        "/dcn/{nodeID}": {
+        "/dcn/{tokenID}": {
             "get": {
-                "description": "retrieves the DCN NFT metadata for a given node address",
+                "description": "retrieves the DCN NFT metadata for a given token ID address",
                 "produces": [
                     "application/json"
                 ],
@@ -320,7 +320,7 @@
                     {
                         "type": "string",
                         "description": "DCN node id decimal representation",
-                        "name": "nodeID",
+                        "name": "tokenID",
                         "in": "path",
                         "required": true
                     }
@@ -341,9 +341,9 @@
                 }
             }
         },
-        "/dcn/{nodeID}/image": {
+        "/dcn/{tokenID}/image": {
             "get": {
-                "description": "retrieves the DCN NFT metadata for a given node address",
+                "description": "retrieves the DCN NFT metadata for a given token address",
                 "produces": [
                     "image/svg+xml"
                 ],
@@ -354,7 +354,7 @@
                     {
                         "type": "string",
                         "description": "DCN node id decimal representation",
-                        "name": "nodeID",
+                        "name": "tokenID",
                         "in": "path",
                         "required": true
                     }
