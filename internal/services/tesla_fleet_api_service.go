@@ -20,7 +20,7 @@ type TeslaFleetAPIService interface {
 	GetVehicles(ctx context.Context, token, region string) ([]TeslaVehicle, error)
 }
 
-var teslaScopes = []string{"openid offline_access", "user_data", "vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds", "energy_device_data", "energy_device_data", "energy_cmds"}
+var teslaScopes = []string{"openid", "offline_access", "user_data", "vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds", "energy_device_data", "energy_device_data", "energy_cmds"}
 
 type GetVehiclesResponse struct {
 	Response []TeslaVehicle `json:"response"`
