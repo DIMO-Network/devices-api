@@ -158,16 +158,16 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 }
 
 // GetDcnNFTMetadata godoc
-// @Description retrieves the DCN NFT metadata for a given node address
+// @Description retrieves the DCN NFT metadata for a given token ID address
 // @Tags        dcn
-// @Param       nodeID path string true "DCN node id decimal representation"
+// @Param       tokenID path string true "DCN node id decimal representation"
 // @Produce     json
 // @Success     200 {object} controllers.NFTMetadataResp
 // @Failure     404
 // @Failure     400
-// @Router      /dcn/{nodeID} [get]
+// @Router      /dcn/{tokenID} [get]
 func (nc *NFTController) GetDcnNFTMetadata(c *fiber.Ctx) error {
-	ndStr := c.Params("nodeID")
+	ndStr := c.Params("tokenID")
 	ndid, ok := new(big.Int).SetString(ndStr, 10)
 	if !ok {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", ndStr))
@@ -220,16 +220,16 @@ func (nc *NFTController) GetDcnNFTMetadata(c *fiber.Ctx) error {
 }
 
 // GetDCNNFTImage godoc
-// @Description retrieves the DCN NFT metadata for a given node address
+// @Description retrieves the DCN NFT metadata for a given token address
 // @Tags        dcn
-// @Param       nodeID path string true "DCN node id decimal representation"
+// @Param       tokenID path string true "DCN node id decimal representation"
 // @Produce     image/svg+xml
 // @Success     200 {object} controllers.NFTMetadataResp
 // @Failure     404
 // @Failure     400
-// @Router      /dcn/{nodeID}/image [get]
+// @Router      /dcn/{tokenID}/image [get]
 func (nc *NFTController) GetDCNNFTImage(c *fiber.Ctx) error {
-	ndStr := c.Params("nodeID")
+	ndStr := c.Params("tokenID")
 	ndid, ok := new(big.Int).SetString(ndStr, 10)
 	if !ok {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", ndStr))

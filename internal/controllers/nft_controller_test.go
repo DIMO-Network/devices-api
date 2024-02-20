@@ -45,9 +45,9 @@ func TestNFTController_GetDcnNFTMetadata(t *testing.T) {
 		nil, deviceDefSvc, nil, nil, nil, nil, nil)
 
 	app := fiber.New()
-	app.Get("/dcn/:nodeID", c.GetDcnNFTMetadata)
+	app.Get("/dcn/:tokenID", c.GetDcnNFTMetadata)
 
-	t.Run("GET - dcn by node id decimal", func(t *testing.T) {
+	t.Run("GET - dcn by token id decimal", func(t *testing.T) {
 		ndhex, _ := hex.DecodeString("37B0403A1C4B24E0865A97B4C64206E478444EC9B9D21947048DFDC31BE9DC7F")
 		ownerHex, _ := hex.DecodeString("B8E514DA5E7B2918AEBC139AE7CBEFC3727F05D3")
 		// setup data

@@ -1253,13 +1253,13 @@ paths:
           description: country not found with that country code
       tags:
       - countries
-  /dcn/{nodeID}:
+  /dcn/{tokenID}:
     get:
-      description: retrieves the DCN NFT metadata for a given node address
+      description: retrieves the DCN NFT metadata for a given token ID address
       parameters:
       - description: DCN node id decimal representation
         in: path
-        name: nodeID
+        name: tokenID
         required: true
         type: string
       produces:
@@ -1275,13 +1275,13 @@ paths:
           description: Not Found
       tags:
       - dcn
-  /dcn/{nodeID}/image:
+  /dcn/{tokenID}/image:
     get:
-      description: retrieves the DCN NFT metadata for a given node address
+      description: retrieves the DCN NFT metadata for a given token address
       parameters:
       - description: DCN node id decimal representation
         in: path
-        name: nodeID
+        name: tokenID
         required: true
         type: string
       produces:
