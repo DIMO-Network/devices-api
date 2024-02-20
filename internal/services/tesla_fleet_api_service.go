@@ -65,7 +65,7 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 		ClientID:     t.Settings.Tesla.ClientID,
 		ClientSecret: t.Settings.Tesla.ClientSecret,
 		Endpoint: oauth2.Endpoint{
-			TokenURL: t.Settings.Tesla.TokenAuthURL,
+			TokenURL: t.Settings.Tesla.TokenURL,
 		},
 		RedirectURL: redirectURI,
 		Scopes:      teslaScopes,
