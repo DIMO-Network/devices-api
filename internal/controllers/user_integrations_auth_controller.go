@@ -74,7 +74,7 @@ type DeviceDefinition struct {
 // @Param       tokenID path string                   true "token id for integration"
 // @Param       user_device body controllers.CompleteOAuthExchangeRequest true "all fields are required"
 // @Security    ApiKeyAuth
-// @Success     200 {object} controllers.CompleteOAuthExchangeResponse
+// @Success     200 {object} controllers.CompleteOAuthExchangeResponseWrapper
 // @Security    BearerAuth
 // @Router      /integration/:tokenID/credentials [post]
 func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) error {
