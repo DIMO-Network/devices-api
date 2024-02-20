@@ -98,6 +98,6 @@ func (s *Settings) IsProduction() bool {
 type Tesla struct {
 	ClientID     string `yaml:"CLIENT_ID"`
 	ClientSecret string `yaml:"CLIENT_SECRET"`
-	TokenAuthURL string `yaml:"TOKEN_AUTH_URL"`
+	TokenURL     string `yaml:"TOKEN_URL"`
 	FleetAPI     string `yaml:"FLEET_API"`
 }
