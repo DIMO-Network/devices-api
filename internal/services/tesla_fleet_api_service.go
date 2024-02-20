@@ -37,6 +37,7 @@ type TeslaAuthCodeResponse struct {
 	RefreshToken string `json:"refresh_token"`
 	IDToken      string `json:"id_token"`
 	Expiry       int    `json:"expiry"`
+	TokenType    string `json:"token_type"`
 }
 
 type teslaFleetAPIService struct {
@@ -87,6 +88,7 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 		AccessToken:  tok.AccessToken,
 		RefreshToken: tok.RefreshToken,
 		Expiry:       int(tok.Expiry.Unix()),
+		TokenType:    tok.TokenType,
 	}, nil
 }
 
