@@ -88,7 +88,7 @@ type Settings struct {
 
 	SyntheticFingerprintTopic         string `yaml:"SYNTHETIC_FINGERPRINT_TOPIC"`
 	SyntheticFingerprintConsumerGroup string `yaml:"SYNTHETIC_FINGERPRINT_CONSUMER_GROUP"`
-	Tesla                             Tesla  `yaml:"TESLA_AUTHORIZATION"`
+	Tesla                             Tesla  `yaml:"TESLA"`
 }
 
 func (s *Settings) IsProduction() bool {
@@ -98,5 +98,5 @@ func (s *Settings) IsProduction() bool {
 type Tesla struct {
 	ClientID     string `yaml:"CLIENT_ID"`
 	ClientSecret string `yaml:"CLIENT_SECRET"`
-	TokenAuthURL string `yaml:"TOKEN_AUTH_URL"`
+	TokenURL     string `yaml:"TOKEN_URL"`
 }

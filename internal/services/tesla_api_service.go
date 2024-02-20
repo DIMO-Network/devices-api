@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/rs/zerolog"
-	"golang.org/x/oauth2"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/rs/zerolog"
+	"golang.org/x/oauth2"
 )
 
 //go:generate mockgen -source tesla_api_service.go -destination mocks/tesla_api_service_mock.go
@@ -59,7 +60,7 @@ func (t *teslaAPIService) CompleteTeslaAuthCodeExchange(authCode, redirectURI, r
 		ClientID:     t.Settings.Tesla.ClientID,
 		ClientSecret: t.Settings.Tesla.ClientSecret,
 		Endpoint: oauth2.Endpoint{
-			TokenURL: t.Settings.Tesla.TokenAuthURL,
+			TokenURL: t.Settings.Tesla.TokenURL,
 		},
 		RedirectURL: redirectURI,
 		Scopes:      teslaScopes,
