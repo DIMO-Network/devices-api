@@ -6,6 +6,7 @@ import (
 	"fmt"
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
@@ -90,7 +91,7 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 		AccessToken:  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
 		RefreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw",
 		IDToken:      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.ouLgsgz-xUWN7lLuo8qE2nueNgJIrBz49QLr_GLHRno",
-		Expiry:       int(time.Now().Add(time.Hour * 1).Unix()),
+		Expiry:       time.Now().Add(time.Hour * 1),
 	}
 	s.teslaFleetAPISvc.EXPECT().CompleteTeslaAuthCodeExchange(gomock.Any(), mockAuthCode, mockRedirectURI, mockRegion).Return(mockAuthCodeResp, nil)
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "1GBGC24U93Z337558", "", 0, "").Return(&ddgrpc.DecodeVinResponse{DeviceDefinitionId: "someID-1"}, nil)
@@ -178,4 +179,36 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_Inval
 	body, _ := io.ReadAll(response.Body)
 
 	s.Assert().Equal(`{"code":400,"message":"invalid value provided for region, only na and eu are allowed"}`, string(body))
+}
+
+func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_UnprocessableTokenID() {
+	request := test.BuildRequest("POST", "/integration/wrongTokenID/credentials", fmt.Sprintf(`{
+		"authorizationCode": "%s",
+		"redirectUri": "%s",
+		"region": "us-central"
+	}`, "mockAuthCode", "mockRedirectURI"))
+	response, _ := s.app.Test(request)
+
+	s.Assert().Equal(fiber.StatusBadRequest, response.StatusCode)
+	body, _ := io.ReadAll(response.Body)
+
+	s.Assert().Equal(`{"code":400,"message":"could not process the provided tokenId!"}`, string(body))
+}
+
+func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_InvalidTokenID() {
+	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(1)).Return(&ddgrpc.Integration{
+		Vendor: constants.SmartCarVendor,
+	}, nil)
+
+	request := test.BuildRequest("POST", "/integration/1/credentials", fmt.Sprintf(`{
+		"authorizationCode": "%s",
+		"redirectUri": "%s",
+		"region": "us-central"
+	}`, "mockAuthCode", "mockRedirectURI"))
+	response, _ := s.app.Test(request)
+
+	s.Assert().Equal(fiber.StatusBadRequest, response.StatusCode)
+	body, _ := io.ReadAll(response.Body)
+
+	s.Assert().Equal(`{"code":400,"message":"invalid value provided for tokenId!"}`, string(body))
 }

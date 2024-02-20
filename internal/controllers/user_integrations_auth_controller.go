@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
@@ -78,6 +79,18 @@ type DeviceDefinition struct {
 // @Security    BearerAuth
 // @Router      /integration/:tokenID/credentials [post]
 func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) error {
+	tokenID := c.Params("tokenID")
+
+	tkID, err := strconv.ParseUint(tokenID, 10, 64)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "could not process the provided tokenId!")
+	}
+
+	intd, err := u.DeviceDefSvc.GetIntegrationByTokenID(c.Context(), tkID)
+	if intd.Vendor != constants.TeslaVendor {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid value provided for tokenId!")
+	}
+
 	reqBody := new(CompleteOAuthExchangeRequest)
 	if err := c.BodyParser(reqBody); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request JSON body.")
