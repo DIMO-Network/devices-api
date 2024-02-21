@@ -52,6 +52,7 @@ require (
 	go.uber.org/automaxprocs v1.5.1
 	go.uber.org/mock v0.3.0
 	golang.org/x/mod v0.14.0
+	golang.org/x/oauth2 v0.13.0
 )
 
 require (
@@ -104,6 +105,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
+	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231212172506-995d672761c0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 )

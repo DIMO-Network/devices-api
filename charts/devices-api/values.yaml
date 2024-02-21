@@ -92,6 +92,8 @@ env:
   DEVICE_DATA_GRPC_ADDR: device-data-api-dev:8086
   SYNTHETIC_FINGERPRINT_TOPIC: topic.synthetic.fingerprint
   SYNTHETIC_FINGERPRINT_CONSUMER_GROUP: consumer.synthetic.fingerprint
+  TESLA_TOKEN_URL: https://auth.tesla.com/oauth2/v3/token
+  TESLA_FLEET_API: https://fleet-api.prd.%s.vn.cloud.tesla.com
 service:
   type: ClusterIP
   ports:

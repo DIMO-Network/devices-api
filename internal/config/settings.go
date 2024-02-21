@@ -88,8 +88,16 @@ type Settings struct {
 
 	SyntheticFingerprintTopic         string `yaml:"SYNTHETIC_FINGERPRINT_TOPIC"`
 	SyntheticFingerprintConsumerGroup string `yaml:"SYNTHETIC_FINGERPRINT_CONSUMER_GROUP"`
+	Tesla                             Tesla  `yaml:"TESLA"`
 }
 
 func (s *Settings) IsProduction() bool {
 	return s.Environment == "prod" // this string is set in the helm chart values-prod.yaml
+}
+
+type Tesla struct {
+	ClientID     string `yaml:"CLIENT_ID"`
+	ClientSecret string `yaml:"CLIENT_SECRET"`
+	TokenURL     string `yaml:"TOKEN_URL"`
+	FleetAPI     string `yaml:"FLEET_API"`
 }
