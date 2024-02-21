@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -98,15 +97,13 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 // @Param       region - API region which is used to determine which fleet api to call
 // @Returns     {array} []services.TeslaVehicle
 func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region string) ([]TeslaVehicle, error) {
-	u := &url.URL{
-		Scheme: "https",
-		Host:   fmt.Sprintf(t.Settings.Tesla.FleetAPI, region),
-		Path:   "api/1/vehicles",
-	}
+	baseURL := fmt.Sprintf(t.Settings.Tesla.FleetAPI, region)
+	url := baseURL + "/api/1/vehicles"
+
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctxTimeout, "GET", u.String(), nil)
+	req, err := http.NewRequestWithContext(ctxTimeout, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch vehicles for user: %w", err)
 	}
