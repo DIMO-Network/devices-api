@@ -90,7 +90,7 @@ type DeviceDefinition struct {
 // @Security    BearerAuth
 // @Router      /integration/:tokenID/credentials [post]
 func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) error {
-	//Get the current user
+	// Get the current user
 	userID := helpers.GetUserID(c)
 	user, err := u.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
