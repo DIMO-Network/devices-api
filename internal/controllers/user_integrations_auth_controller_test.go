@@ -188,6 +188,8 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 }
 
 func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_InvalidRegion() {
+	mockUserEthAddr := common.HexToAddress("1").String()
+	s.usersClient.EXPECT().GetUser(gomock.Any(), &users.GetUserRequest{Id: s.testUserID}).Return(&users.User{EthereumAddress: &mockUserEthAddr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&ddgrpc.Integration{
 		Vendor: constants.TeslaVendor,
 	}, nil)
@@ -205,6 +207,8 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_Inval
 }
 
 func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_UnprocessableTokenID() {
+	mockUserEthAddr := common.HexToAddress("1").String()
+	s.usersClient.EXPECT().GetUser(gomock.Any(), &users.GetUserRequest{Id: s.testUserID}).Return(&users.User{EthereumAddress: &mockUserEthAddr}, nil)
 	request := test.BuildRequest("POST", "/integration/wrongTokenID/credentials", fmt.Sprintf(`{
 		"authorizationCode": "%s",
 		"redirectUri": "%s",
@@ -219,6 +223,8 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_Unpro
 }
 
 func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_InvalidTokenID() {
+	mockUserEthAddr := common.HexToAddress("1").String()
+	s.usersClient.EXPECT().GetUser(gomock.Any(), &users.GetUserRequest{Id: s.testUserID}).Return(&users.User{EthereumAddress: &mockUserEthAddr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(1)).Return(&ddgrpc.Integration{
 		Vendor: constants.SmartCarVendor,
 	}, nil)
