@@ -1,13 +1,21 @@
 package controllers
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/shared"
+	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/redis"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
 	"strconv"
+	"time"
 )
 
 type UserIntegrationAuthController struct {
@@ -16,6 +24,9 @@ type UserIntegrationAuthController struct {
 	DeviceDefSvc     services.DeviceDefinitionService
 	log              *zerolog.Logger
 	teslaFleetAPISvc services.TeslaFleetAPIService
+	cache            redis.CacheService
+	cipher           shared.Cipher
+	usersClient      pb.UserServiceClient
 }
 
 func NewUserIntegrationAuthController(
@@ -24,6 +35,9 @@ func NewUserIntegrationAuthController(
 	logger *zerolog.Logger,
 	ddSvc services.DeviceDefinitionService,
 	teslaFleetAPISvc services.TeslaFleetAPIService,
+	cache redis.CacheService,
+	cipher shared.Cipher,
+	usersClient pb.UserServiceClient,
 ) UserIntegrationAuthController {
 	return UserIntegrationAuthController{
 		Settings:         settings,
@@ -31,6 +45,9 @@ func NewUserIntegrationAuthController(
 		DeviceDefSvc:     ddSvc,
 		log:              logger,
 		teslaFleetAPISvc: teslaFleetAPISvc,
+		cache:            cache,
+		cipher:           cipher,
+		usersClient:      usersClient,
 	}
 }
 
@@ -73,8 +90,18 @@ type DeviceDefinition struct {
 // @Security    BearerAuth
 // @Router      /integration/:tokenID/credentials [post]
 func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) error {
-	tokenID := c.Params("tokenID")
+	// Get the current user
+	userID := helpers.GetUserID(c)
+	user, err := u.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
+	}
 
+	if user.EthereumAddress == nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "missing eth address for user!")
+	}
+
+	tokenID := c.Params("tokenID")
 	tkID, err := strconv.ParseUint(tokenID, 10, 64)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "could not process the provided tokenId!")
@@ -108,6 +135,13 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 	teslaAuth, err := u.teslaFleetAPISvc.CompleteTeslaAuthCodeExchange(c.Context(), reqBody.AuthorizationCode, reqBody.RedirectURI, reqBody.Region)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to get tesla authCode:"+err.Error())
+	}
+
+	// Save tesla oauth credentials in cache
+	err = u.persistOauthCredentials(c.Context(), *teslaAuth, *user.EthereumAddress)
+	if err != nil {
+		u.log.Err(err).Msg("an error occurred while trying to persist user auth credentials to cache")
+		return fiber.NewError(fiber.StatusInternalServerError, "an error occurred during tesla authorization")
 	}
 
 	vehicles, err := u.teslaFleetAPISvc.GetVehicles(c.Context(), teslaAuth.AccessToken, reqBody.Region)
@@ -146,4 +180,24 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 	}
 
 	return c.JSON(vehicleResp)
+}
+
+func (u *UserIntegrationAuthController) persistOauthCredentials(ctx context.Context, teslaAuth services.TeslaAuthCodeResponse, userEthAddr string) error {
+	tokenStr, err := json.Marshal(teslaAuth)
+	if err != nil {
+		return fmt.Errorf("an error occurred json encoding auth credentials: %w", err)
+	}
+
+	encToken, err := u.cipher.Encrypt(string(tokenStr))
+	if err != nil {
+		return fmt.Errorf("an error occurred encrypting auth credentials: %w", err)
+	}
+
+	cacheKey := "integration_credentials_" + userEthAddr
+	status := u.cache.Set(ctx, cacheKey, encToken, 5*time.Minute)
+	if status.Err() != nil {
+		return fmt.Errorf("an error occurred saving auth credentials to cache: %w", status.Err())
+	}
+
+	return nil
 }
