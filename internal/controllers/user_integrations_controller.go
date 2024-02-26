@@ -1798,7 +1798,6 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 
 func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zerolog.Logger, tx *sql.Tx, userDeviceID string, integ *ddgrpc.Integration, ud *models.UserDevice) error {
 	// Flag for which api version should be used
-	apiVersion := c.QueryInt("version", 1)
 	if existingIntegrations, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
 	).Count(c.Context(), tx); err != nil {
@@ -1812,14 +1811,18 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
 	}
 
+	if reqBody.TeslaAPIVersion == 0 {
+		reqBody.TeslaAPIVersion = 1
+	}
+
 	if reqBody.ExternalID == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "Missing externalID parameter")
 	}
 
-	if apiVersion == 2 { // If version is 2, we are using fleet api which, which has token stored in cache
+	if reqBody.TeslaAPIVersion == 2 { // If version is 2, we are using fleet api which, which has token stored in cache
 		deviceIntReq, err := udc.getTeslaAuthFromCache(c.Context(), ud.UserID)
 		if err != nil {
-			return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
+			return fiber.NewError(fiber.StatusBadRequest, "Couldn't retrieve stored credentials: "+err.Error())
 		}
 		reqBody.RefreshToken = deviceIntReq.RefreshToken
 		reqBody.AccessToken = deviceIntReq.AccessToken
@@ -1878,7 +1881,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		Commands: &services.UserDeviceAPIIntegrationsMetadataCommands{
 			Enabled: []string{"doors/unlock", "doors/lock", "trunk/open", "frunk/open", "charge/limit"},
 		},
-		TeslaAPIVersion: apiVersion,
+		TeslaAPIVersion: reqBody.TeslaAPIVersion,
 	}
 
 	b, err := json.Marshal(meta)
@@ -1964,10 +1967,10 @@ func (udc *UserDevicesController) getTeslaAuthFromCache(ctx context.Context, use
 	encTeslaAuth, err := udc.redisCache.Get(ctx, cacheKey).Result()
 	if err != nil {
 		udc.log.Err(err).Str("Cache Key", cacheKey).Msg("Error occurred retrieving tesla auth from cache using the key")
-		return nil, errors.Wrap(err, "an error occurred completing tesla device registration")
+		return nil, errors.Wrap(err, "could not retrieve Tesla credentials")
 	}
 	if len(encTeslaAuth) == 0 {
-		return nil, fmt.Errorf("an error occurred completing tesla device registration")
+		return nil, fmt.Errorf("no credential found")
 	}
 	decrypted, err := udc.cipher.Decrypt(encTeslaAuth)
 	if err != nil {
@@ -1982,8 +1985,8 @@ func (udc *UserDevicesController) getTeslaAuthFromCache(ctx context.Context, use
 		return nil, errors.Wrap(err, "failed to parse tesla authorization token")
 	}
 
-	if teslaAuth == nil {
-		return nil, fmt.Errorf("could not find any tesla authorization for user")
+	if teslaAuth.AccessToken == "" || teslaAuth.RefreshToken == "" || teslaAuth.Expiry.IsZero() {
+		return nil, fmt.Errorf("missing tesla auth credentials")
 	}
 
 	return &RegisterDeviceIntegrationRequest{
@@ -2044,10 +2047,11 @@ type RegisterDeviceIntegrationRequest struct {
 	// RedirectURI is the OAuth redirect URI used by the frontend. Not used in all integrations.
 	RedirectURI string `json:"redirectURI"`
 	// ExternalID is the only field needed for AutoPi registrations. It is the UnitID.
-	ExternalID   string `json:"externalId"`
-	AccessToken  string `json:"accessToken"`
-	ExpiresIn    int    `json:"expiresIn"`
-	RefreshToken string `json:"refreshToken"`
+	ExternalID      string `json:"externalId"`
+	AccessToken     string `json:"accessToken"`
+	ExpiresIn       int    `json:"expiresIn"`
+	RefreshToken    string `json:"refreshToken"`
+	TeslaAPIVersion int    `json:"version"`
 }
 
 type GetUserDeviceIntegrationResponse struct {

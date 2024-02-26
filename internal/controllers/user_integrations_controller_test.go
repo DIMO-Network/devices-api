@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -900,7 +901,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 }
 
 // Tesla Fleet API Tests
-func (s *UserIntegrationsControllerTestSuite) TestPostTesla_FromAuthorizationInRedis() {
+func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
@@ -974,9 +975,10 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_FromAuthorizationInR
 	s.redisClient.EXPECT().Get(gomock.Any(), cacheKey).Return(redis.NewStringResult(encTeslaAuth, nil))
 
 	in := `{
-		"externalId": "1145"
+		"externalId": "1145",
+		"version": 2
 	}`
-	request := test.BuildRequest("POST", fmt.Sprintf("/user/devices/%s/integrations/%s?version=%d", ud.ID, integration.Id, 2), in)
+	request := test.BuildRequest("POST", fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), in)
 	_, err = s.app.Test(request, 60*1000)
 	s.Assert().NoError(err)
 
@@ -998,4 +1000,77 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_FromAuthorizationInR
 	s.Assert().Equal(encAccessToken, intd.AccessToken.String)
 	s.Assert().Equal(encRefreshToken, intd.RefreshToken.String)
 	s.Assert().Equal(2, meta.TeslaAPIVersion)
+}
+
+func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_PartialCredentials() {
+	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2020, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Return(dd[0], nil).AnyTimes()
+
+	userEthAddr := common.HexToAddress("1").String()
+	s.userClient.EXPECT().GetUser(gomock.Any(), &pbuser.GetUserRequest{Id: testUserID}).Return(&pbuser.User{EthereumAddress: &userEthAddr}, nil).AnyTimes()
+
+	teslaResp := services.TeslaAuthCodeResponse{
+		AccessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+		IDToken:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.ouLgsgz-xUWN7lLuo8qE2nueNgJIrBz49QLr_GLHRno",
+	}
+
+	tokenStr, err := json.Marshal(teslaResp)
+	s.Assert().NoError(err)
+
+	encTeslaAuth, err := s.cipher.Encrypt(string(tokenStr))
+	s.Assert().NoError(err)
+
+	cacheKey := fmt.Sprintf(TeslaFleetAuthCacheKey, userEthAddr)
+	s.redisClient.EXPECT().Get(gomock.Any(), cacheKey).Return(redis.NewStringResult(encTeslaAuth, nil))
+
+	in := `{
+		"externalId": "1145",
+		"version": 2
+	}`
+	request := test.BuildRequest("POST", fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), in)
+	res, err := s.app.Test(request, 60*1000)
+
+	s.Assert().True(res.StatusCode == fiber.StatusBadRequest)
+	body, _ := io.ReadAll(res.Body)
+
+	defer res.Body.Close()
+
+	_, err = models.UserDeviceAPIIntegrations(models.UserDeviceAPIIntegrationWhere.ExternalID.EQ(null.StringFrom("1145"))).One(s.ctx, s.pdb.DBS().Reader)
+	s.Assert().Equal(err.Error(), sql.ErrNoRows.Error())
+
+	s.Assert().Equal("Couldn't retrieve stored credentials: missing tesla auth credentials", gjson.GetBytes(body, "message").String())
+}
+
+func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_MissingCredentials() {
+	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2020, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Return(dd[0], nil).AnyTimes()
+
+	userEthAddr := common.HexToAddress("1").String()
+	s.userClient.EXPECT().GetUser(gomock.Any(), &pbuser.GetUserRequest{Id: testUserID}).Return(&pbuser.User{EthereumAddress: &userEthAddr}, nil).AnyTimes()
+
+	cacheKey := fmt.Sprintf(TeslaFleetAuthCacheKey, userEthAddr)
+	s.redisClient.EXPECT().Get(gomock.Any(), cacheKey).Return(redis.NewStringResult("", nil))
+
+	in := `{
+		"externalId": "1145",
+		"version": 2
+	}`
+	request := test.BuildRequest("POST", fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), in)
+	res, err := s.app.Test(request, 60*1000)
+
+	s.Assert().True(res.StatusCode == fiber.StatusBadRequest)
+	body, _ := io.ReadAll(res.Body)
+
+	defer res.Body.Close()
+
+	_, err = models.UserDeviceAPIIntegrations(models.UserDeviceAPIIntegrationWhere.ExternalID.EQ(null.StringFrom("1145"))).One(s.ctx, s.pdb.DBS().Reader)
+	s.Assert().Equal(err.Error(), sql.ErrNoRows.Error())
+
+	s.Assert().Equal("Couldn't retrieve stored credentials: no credential found", gjson.GetBytes(body, "message").String())
 }
