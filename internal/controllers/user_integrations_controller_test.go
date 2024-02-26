@@ -970,7 +970,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_FromAuthorizationInR
 	encTeslaAuth, err := s.cipher.Encrypt(string(tokenStr))
 	s.Assert().NoError(err)
 
-	cacheKey := fmt.Sprintf(TESLA_FLEET_AUTH_CACHE_KEY, userEthAddr)
+	cacheKey := fmt.Sprintf(TeslaFleetAuthCacheKey, userEthAddr)
 	s.redisClient.EXPECT().Get(gomock.Any(), cacheKey).Return(redis.NewStringResult(encTeslaAuth, nil))
 
 	in := `{

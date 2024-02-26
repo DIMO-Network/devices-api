@@ -1960,7 +1960,7 @@ func (udc *UserDevicesController) getTeslaAuthFromCache(ctx context.Context, use
 		return nil, fmt.Errorf("missing wallet address for user")
 	}
 
-	cacheKey := fmt.Sprintf(TESLA_FLEET_AUTH_CACHE_KEY, *user.EthereumAddress)
+	cacheKey := fmt.Sprintf(TeslaFleetAuthCacheKey, *user.EthereumAddress)
 	encTeslaAuth, err := udc.redisCache.Get(ctx, cacheKey).Result()
 	if err != nil {
 		udc.log.Err(err).Str("Cache Key", cacheKey).Msg("Error occurred retrieving tesla auth from cache using the key")
@@ -1976,7 +1976,7 @@ func (udc *UserDevicesController) getTeslaAuthFromCache(ctx context.Context, use
 	}
 
 	teslaAuth := &services.TeslaAuthCodeResponse{}
-	err = json.Unmarshal([]byte(decrypted), teslaAuth)
+	err = json.Unmarshal([]byte(decrypted), &teslaAuth)
 	if err != nil {
 		udc.log.Err(err).Msgf("failed to unmarshal tesla token found in redis using cacheKey: %s", cacheKey)
 		return nil, errors.Wrap(err, "failed to parse tesla authorization token")
