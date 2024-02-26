@@ -1991,7 +1991,7 @@ func (udc *UserDevicesController) getTeslaAuthFromCache(ctx context.Context, use
 
 	return &RegisterDeviceIntegrationRequest{
 		AccessToken:  teslaAuth.AccessToken,
-		ExpiresIn:    int(time.Until(teslaAuth.Expiry)),
+		ExpiresIn:    int(time.Until(teslaAuth.Expiry).Seconds()),
 		RefreshToken: teslaAuth.RefreshToken,
 	}, nil
 }
