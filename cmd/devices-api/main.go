@@ -241,18 +241,3 @@ func startMonitoringServer(logger zerolog.Logger, config *config.Settings) {
 
 	logger.Info().Str("port", config.MonitoringServerPort).Msg("Started monitoring web server.")
 }
-
-func permute(a []string, l, r int, result *[][]string) {
-	if l == r {
-		// Make a copy of the current permutation and add it to the result.
-		permutation := make([]string, len(a))
-		copy(permutation, a)
-		*result = append(*result, permutation)
-	} else {
-		for i := l; i <= r; i++ {
-			a[l], a[i] = a[i], a[l] // swap
-			permute(a, l+1, r, result)
-			a[l], a[i] = a[i], a[l] // backtrack: swap back
-		}
-	}
-}
