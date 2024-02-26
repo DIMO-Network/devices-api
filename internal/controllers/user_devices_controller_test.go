@@ -124,6 +124,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	app.Get("/user/devices/:userDeviceID/valuations", test.AuthInjectorTestHandler(s.testUserID), c.GetValuations)
 	app.Get("/user/devices/:userDeviceID/range", test.AuthInjectorTestHandler(s.testUserID), c.GetRange)
 	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID), c.RefreshUserDeviceStatus)
+	app.Get("/user/devices/:userDeviceID/commands/burn", test.AuthInjectorTestHandler(s.testUserID), c.GetBurnDevice)
 
 	s.controller = &c
 	s.app = app
@@ -1045,4 +1046,32 @@ func TestEIP712Hash(t *testing.T) {
 		realHash := common.HexToHash("0x8258cd28afb13c201c07bf80c717d55ce13e226b725dd8a115ae5ab064e537da")
 		assert.Equal(t, realHash, hash)
 	}
+}
+
+func (s *UserDevicesControllerTestSuite) TestGetBurn() {
+	_, addr, err := test.GenerateWallet()
+	s.Require().NoError(err)
+
+	email := "some@email.com"
+	eth := addr.Hex()
+
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		UserID:             testUserID,
+		DeviceDefinitionID: ksuid.New().String(),
+		CountryCode:        null.StringFrom("USA"),
+		Name:               null.StringFrom("Chungus"),
+		VinConfirmed:       true,
+		VinIdentifier:      null.StringFrom("4Y1SL65848Z411439"),
+	}
+	err = ud.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
+	assert.NoError(s.T(), err)
+	test.SetupCreateVehicleNFT(s.T(), ud.ID, ud.VinIdentifier.String, big.NewInt(1), null.BytesFrom(addr.Bytes()), s.pdb)
+	user := test.BuildGetUserGRPC(ud.UserID, &email, &eth, &pb.UserReferrer{})
+	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: ud.UserID}).Return(user, nil)
+
+	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/commands/burn", ud.ID), "")
+	response, err := s.app.Test(request)
+	s.Require().NoError(err)
+	s.Equal(fiber.StatusOK, response.StatusCode)
 }

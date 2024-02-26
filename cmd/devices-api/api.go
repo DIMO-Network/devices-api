@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
 	"math/big"
 	"net"
 	"os"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
 
 	"github.com/DIMO-Network/devices-api/internal/middleware"
 
@@ -283,6 +284,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Delete("/", userDeviceController.DeleteUserDevice)
 	udOwner.Get("/commands/mint", userDeviceController.GetMintDevice)
 	udOwner.Post("/commands/mint", userDeviceController.PostMintDevice)
+	udOwner.Get("/commands/burn", userDeviceController.GetBurnDevice)
+	// udOwner.Post("/commands/burn", userDeviceController.PostBurnDevice)
 
 	udOwner.Patch("/vin", userDeviceController.UpdateVIN)
 	udOwner.Patch("/name", userDeviceController.UpdateName)

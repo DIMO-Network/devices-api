@@ -1856,6 +1856,61 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}, sigBytes)
 }
 
+// GetBurnDevice godoc
+// @Description Returns the data the user must sign in order to burn the device.
+// @Tags        user-devices
+// @Param       userDeviceID path     string true "user device ID"
+// @Success     200          {object} signer.TypedData
+// @Security    BearerAuth
+// @Router      /user/devices/{userDeviceID}/commands/burn [get]
+func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
+	userID := helpers.GetUserID(c)
+	userDeviceID := c.Params("userDeviceID")
+
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(models.UserDeviceRels.VehicleNFT)).One(c.Context(), udc.DBS().Writer)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
+	}
+
+	if userDevice.R.VehicleNFT == nil || userDevice.R.VehicleNFT.TokenID.IsZero() {
+		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
+	}
+
+	tknID, ok := userDevice.R.VehicleNFT.TokenID.Int64()
+	if !ok {
+		return fiber.NewError(fiber.StatusConflict, "Unable to parse vehicle token id")
+	}
+
+	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		udc.log.Err(err).Msg("Couldn't retrieve user record.")
+		return opaqueInternalError
+	}
+
+	if user.EthereumAddress == nil {
+		return fiber.NewError(fiber.StatusBadRequest, "User does not have an Ethereum address on file.")
+	}
+
+	client := registry.Client{
+		Producer:     udc.producer,
+		RequestTopic: "topic.transaction.request.send",
+		Contract: registry.Contract{
+			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
+			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
+			Name:    "DIMO",
+			Version: "1",
+		},
+	}
+
+	bvs := registry.BurnVehicleSign{
+		TokenID: big.NewInt(tknID),
+	}
+
+	return c.JSON(client.GetPayload(&bvs))
+}
+
 type MintEventData struct {
 	RequestID    string   `json:"requestId"`
 	UserDeviceID string   `json:"userDeviceId"`
