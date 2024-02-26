@@ -131,7 +131,7 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 	encToken, err := s.cipher.Encrypt(string(tokenStr))
 	s.Assert().NoError(err)
 
-	cacheKey := "integration_credentials_" + mockUserEthAddr
+	cacheKey := fmt.Sprintf(TESLA_FLEET_AUTH_CACHE_KEY, mockUserEthAddr)
 	s.redisClient.EXPECT().Set(gomock.Any(), cacheKey, encToken, 5*time.Minute).Return(&redis.StatusCmd{})
 
 	resp := []services.TeslaVehicle{
@@ -257,7 +257,7 @@ func (s *UserIntegrationAuthControllerTestSuite) TestPersistOauthCredentials() {
 	encToken, err := s.cipher.Encrypt(string(tokenStr))
 	s.Assert().NoError(err)
 
-	cacheKey := "integration_credentials_" + mockUserEthAddr
+	cacheKey := fmt.Sprintf(TESLA_FLEET_AUTH_CACHE_KEY, mockUserEthAddr)
 	s.redisClient.EXPECT().Set(gomock.Any(), cacheKey, encToken, 5*time.Minute).Return(&redis.StatusCmd{})
 
 	intCtrl := NewUserIntegrationAuthController(&config.Settings{

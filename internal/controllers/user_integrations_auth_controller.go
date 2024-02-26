@@ -18,6 +18,8 @@ import (
 	"time"
 )
 
+const TESLA_FLEET_AUTH_CACHE_KEY = "integration_credentials_%s"
+
 type UserIntegrationAuthController struct {
 	Settings         *config.Settings
 	DBS              func() *db.ReaderWriter
@@ -193,7 +195,7 @@ func (u *UserIntegrationAuthController) persistOauthCredentials(ctx context.Cont
 		return fmt.Errorf("an error occurred encrypting auth credentials: %w", err)
 	}
 
-	cacheKey := "integration_credentials_" + userEthAddr
+	cacheKey := fmt.Sprintf(TESLA_FLEET_AUTH_CACHE_KEY, userEthAddr)
 	status := u.cache.Set(ctx, cacheKey, encToken, 5*time.Minute)
 	if status.Err() != nil {
 		return fmt.Errorf("an error occurred saving auth credentials to cache: %w", status.Err())

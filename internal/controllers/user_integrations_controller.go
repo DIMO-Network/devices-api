@@ -1797,6 +1797,8 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 }
 
 func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zerolog.Logger, tx *sql.Tx, userDeviceID string, integ *ddgrpc.Integration, ud *models.UserDevice) error {
+	// Flag for which api version should be used
+	apiVersion := c.QueryInt("version", 1)
 	if existingIntegrations, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
 	).Count(c.Context(), tx); err != nil {
@@ -1808,6 +1810,20 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	reqBody := new(RegisterDeviceIntegrationRequest)
 	if err := c.BodyParser(reqBody); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
+	}
+
+	if reqBody.ExternalID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Missing externalID parameter")
+	}
+
+	if apiVersion == 2 { // If version is 2, we are using fleet api which, which has token stored in cache
+		deviceIntReq, err := udc.getTeslaAuthFromCache(c.Context(), ud.UserID)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
+		}
+		reqBody.RefreshToken = deviceIntReq.RefreshToken
+		reqBody.AccessToken = deviceIntReq.AccessToken
+		reqBody.ExpiresIn = deviceIntReq.ExpiresIn
 	}
 
 	// We'll use this to kick off the job
@@ -1862,6 +1878,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		Commands: &services.UserDeviceAPIIntegrationsMetadataCommands{
 			Enabled: []string{"doors/unlock", "doors/lock", "trunk/open", "frunk/open", "charge/limit"},
 		},
+		TeslaAPIVersion: apiVersion,
 	}
 
 	b, err := json.Marshal(meta)
@@ -1931,6 +1948,49 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	logger.Info().Msg("Finished Tesla device registration")
 
 	return c.SendStatus(fiber.StatusNoContent)
+}
+
+func (udc *UserDevicesController) getTeslaAuthFromCache(ctx context.Context, userID string) (*RegisterDeviceIntegrationRequest, error) {
+	user, err := udc.usersClient.GetUser(ctx, &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		return nil, errors.Wrap(err, "could not fetch user information")
+	}
+
+	if user.EthereumAddress == nil {
+		return nil, fmt.Errorf("missing wallet address for user")
+	}
+
+	cacheKey := fmt.Sprintf(TESLA_FLEET_AUTH_CACHE_KEY, *user.EthereumAddress)
+	encTeslaAuth, err := udc.redisCache.Get(ctx, cacheKey).Result()
+	if err != nil {
+		udc.log.Err(err).Str("Cache Key", cacheKey).Msg("Error occurred retrieving tesla auth from cache using the key")
+		return nil, errors.Wrap(err, "an error occurred completing tesla device registration")
+	}
+	if len(encTeslaAuth) == 0 {
+		return nil, fmt.Errorf("an error occurred completing tesla device registration")
+	}
+	decrypted, err := udc.cipher.Decrypt(encTeslaAuth)
+	if err != nil {
+		udc.log.Err(err).Str("cacheKey", cacheKey).Msg("failed to decrypt tesla auth from cache using key")
+		return nil, errors.Wrap(err, "failed to decrypt tesla token")
+	}
+
+	teslaAuth := &services.TeslaAuthCodeResponse{}
+	err = json.Unmarshal([]byte(decrypted), teslaAuth)
+	if err != nil {
+		udc.log.Err(err).Msgf("failed to unmarshal tesla token found in redis using cacheKey: %s", cacheKey)
+		return nil, errors.Wrap(err, "failed to parse tesla authorization token")
+	}
+
+	if teslaAuth == nil {
+		return nil, fmt.Errorf("could not find any tesla authorization for user")
+	}
+
+	return &RegisterDeviceIntegrationRequest{
+		AccessToken:  teslaAuth.AccessToken,
+		ExpiresIn:    int(teslaAuth.Expiry.Unix()),
+		RefreshToken: teslaAuth.RefreshToken,
+	}, nil
 }
 
 // fixTeslaDeviceDefinition tries to use the VIN provided by Tesla to correct the device definition
