@@ -1899,25 +1899,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	}
 
 	if udc.Settings.IsProduction() {
-		message := services.ValuationDecodeCommand{
-			VIN:          v.VIN,
-			UserDeviceID: userDeviceID,
-		}
-
-		messageBytes, err := json.Marshal(message)
-
-		if err != nil {
-			udc.log.Err(err).Msg("Failed to marshal valuation decode command.")
-		} else {
-			pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, messageBytes)
-
-			if err != nil {
-				udc.log.Err(err).Msg("Failed to publish valuation decode command for Tesla Device.")
-			} else {
-				udc.log.Info().Str("vin", v.VIN).Msgf("Published valuation decode command with sequence %d.", pubAck.Sequence)
-			}
-		}
-
+		udc.requestValuation(v.VIN, userDeviceID)
 	}
 
 	if err := udc.teslaTaskService.StartPoll(v, &integration); err != nil {

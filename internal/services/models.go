@@ -186,3 +186,7 @@ type ValuationDecodeCommand struct {
 	VIN          string `json:"vin"`
 	UserDeviceID string `json:"userDeviceId"`
 }
+
+type OfferRequest struct {
+	UserDeviceID string `json:"user_device_id"`
+}
