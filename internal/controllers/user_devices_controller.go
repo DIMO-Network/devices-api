@@ -616,7 +616,10 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 
 	// request valuation
 	if udc.Settings.IsProduction() {
-		tokenID := udFull.NFT.TokenID.Int64()
+		tokenID := int64(0)
+		if udFull.NFT != nil {
+			tokenID = udFull.NFT.TokenID.Int64()
+		}
 		udc.requestValuation(vin, udFull.ID, tokenID)
 		udc.requestInstantOffer(udFull.ID, tokenID)
 	}
@@ -816,7 +819,10 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	}
 
 	if udc.Settings.IsProduction() {
-		tokenID := udFull.NFT.TokenID.Int64()
+		tokenID := int64(0)
+		if udFull.NFT != nil {
+			tokenID = udFull.NFT.TokenID.Int64()
+		}
 		udc.requestValuation(vin, udFull.ID, tokenID)
 		udc.requestInstantOffer(udFull.ID, tokenID)
 	}
