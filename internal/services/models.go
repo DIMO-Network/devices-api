@@ -185,8 +185,10 @@ type AutoPiCommandJob struct {
 type ValuationDecodeCommand struct {
 	VIN          string `json:"vin"`
 	UserDeviceID string `json:"userDeviceId"`
+	TokenID      int64  `json:"tokenId"`
 }
 
 type OfferRequest struct {
 	UserDeviceID string `json:"user_device_id"`
+	TokenID      int64  `json:"token_id"`
 }

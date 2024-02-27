@@ -616,8 +616,9 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 
 	// request valuation
 	if udc.Settings.IsProduction() {
-		udc.requestValuation(vin, udFull.ID)
-		udc.requestInstantOffer(udFull.ID)
+		tokenID := udFull.NFT.TokenID.Int64()
+		udc.requestValuation(vin, udFull.ID, tokenID)
+		udc.requestInstantOffer(udFull.ID, tokenID)
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
@@ -625,10 +626,11 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	})
 }
 
-func (udc *UserDevicesController) requestValuation(vin string, userDeviceID string) {
+func (udc *UserDevicesController) requestValuation(vin string, userDeviceID string, tokenID int64) {
 	message := services.ValuationDecodeCommand{
 		VIN:          vin,
 		UserDeviceID: userDeviceID,
+		TokenID:      tokenID,
 	}
 	messageBytes, err := json.Marshal(message)
 
@@ -646,9 +648,10 @@ func (udc *UserDevicesController) requestValuation(vin string, userDeviceID stri
 	udc.log.Info().Str("user_device_id", userDeviceID).Msgf("published valuation request to NATS with Ack: %+v", pubAck)
 }
 
-func (udc *UserDevicesController) requestInstantOffer(userDeviceID string) {
+func (udc *UserDevicesController) requestInstantOffer(userDeviceID string, tokenID int64) {
 	message := services.OfferRequest{
 		UserDeviceID: userDeviceID,
+		TokenID:      tokenID,
 	}
 	messageBytes, err := json.Marshal(message)
 
@@ -813,7 +816,9 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	}
 
 	if udc.Settings.IsProduction() {
-		udc.requestValuation(vin, udFull.ID)
+		tokenID := udFull.NFT.TokenID.Int64()
+		udc.requestValuation(vin, udFull.ID, tokenID)
+		udc.requestInstantOffer(udFull.ID, tokenID)
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{

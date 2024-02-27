@@ -1899,7 +1899,12 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	}
 
 	if udc.Settings.IsProduction() {
-		udc.requestValuation(v.VIN, userDeviceID)
+		tokenID := int64(0)
+		if ud.R != nil && ud.R.VehicleNFT != nil {
+			tokenID, _ = ud.R.VehicleNFT.TokenID.Int64()
+		}
+		udc.requestValuation(v.VIN, userDeviceID, tokenID)
+		udc.requestInstantOffer(userDeviceID, tokenID)
 	}
 
 	if err := udc.teslaTaskService.StartPoll(v, &integration); err != nil {
