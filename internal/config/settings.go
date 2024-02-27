@@ -71,6 +71,7 @@ type Settings struct {
 	NATSURL                           string `yaml:"NATS_URL"`
 	NATSStreamName                    string `yaml:"NATS_STREAM_NAME"`
 	NATSValuationSubject              string `yaml:"NATS_VALUATION_SUBJECT"`
+	NATSOfferSubject                  string `yaml:"NATS_OFFER_SUBJECT"`
 	NATSAckTimeout                    string `yaml:"NATS_ACK_TIMEOUT"`
 	NATSDurableConsumer               string `yaml:"NATS_DURABLE_CONSUMER"`
 	ValuationsAPIGRPCAddr             string `yaml:"VALUATIONS_GRPC_ADDR"`

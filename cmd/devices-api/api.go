@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
 	"math/big"
 	"net"
 	"os"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
 
 	"github.com/DIMO-Network/devices-api/internal/middleware"
 

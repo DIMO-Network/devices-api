@@ -616,27 +616,60 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 
 	// request valuation
 	if udc.Settings.IsProduction() {
-		message := services.ValuationDecodeCommand{
-			VIN:          vin,
-			UserDeviceID: udFull.ID,
+		tokenID := int64(0)
+		if udFull.NFT != nil {
+			tokenID = udFull.NFT.TokenID.Int64()
 		}
-		messageBytes, err := json.Marshal(message)
-
-		if err != nil {
-			localLog.Err(err).Msg("Failed to marshal message.")
-		} else {
-			pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, messageBytes)
-			if err != nil {
-				localLog.Err(err).Msg("failed to publish to NATS")
-			} else {
-				localLog.Info().Str("user_device_id", udFull.ID).Msgf("published valuation request to NATS with Ack: %+v", pubAck)
-			}
-		}
+		udc.requestValuation(vin, udFull.ID, tokenID)
+		udc.requestInstantOffer(udFull.ID, tokenID)
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,
 	})
+}
+
+func (udc *UserDevicesController) requestValuation(vin string, userDeviceID string, tokenID int64) {
+	message := services.ValuationDecodeCommand{
+		VIN:          vin,
+		UserDeviceID: userDeviceID,
+		TokenID:      tokenID,
+	}
+	messageBytes, err := json.Marshal(message)
+
+	if err != nil {
+		udc.log.Err(err).Msg("Failed to marshal message.")
+		return
+	}
+
+	pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.ValuationSubject, messageBytes)
+	if err != nil {
+		udc.log.Err(err).Msg("failed to publish to NATS")
+		return
+	}
+
+	udc.log.Info().Str("user_device_id", userDeviceID).Msgf("published valuation request to NATS with Ack: %+v", pubAck)
+}
+
+func (udc *UserDevicesController) requestInstantOffer(userDeviceID string, tokenID int64) {
+	message := services.OfferRequest{
+		UserDeviceID: userDeviceID,
+		TokenID:      tokenID,
+	}
+	messageBytes, err := json.Marshal(message)
+
+	if err != nil {
+		udc.log.Err(err).Msg("Failed to marshal message.")
+		return
+	}
+
+	pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.OfferSubject, messageBytes)
+	if err != nil {
+		udc.log.Err(err).Msg("failed to publish to NATS")
+		return
+	}
+
+	udc.log.Info().Str("user_device_id", userDeviceID).Msgf("published instant offer request to NATS with Ack: %+v", pubAck)
 }
 
 // RegisterDeviceForUserFromSmartcar godoc
@@ -786,26 +819,12 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	}
 
 	if udc.Settings.IsProduction() {
-
-		message := services.ValuationDecodeCommand{
-			VIN:          vin,
-			UserDeviceID: udFull.ID,
+		tokenID := int64(0)
+		if udFull.NFT != nil {
+			tokenID = udFull.NFT.TokenID.Int64()
 		}
-
-		messageBytes, err := json.Marshal(message)
-
-		if err != nil {
-			localLog.Err(err).Msg("Failed to marshal message.")
-		} else {
-			pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, messageBytes)
-
-			if err != nil {
-				localLog.Err(err).Msg("Failed to publish to NATS.")
-			} else {
-				localLog.Info().Str("vin", vin).Str("user_id", userID).Str("user_device_id", udFull.ID).Msgf("Published valuation request to NATS with Ack: %+v", pubAck)
-			}
-		}
-
+		udc.requestValuation(vin, udFull.ID, tokenID)
+		udc.requestInstantOffer(udFull.ID, tokenID)
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{

@@ -12,7 +12,8 @@ type NATSService struct {
 	log              *zerolog.Logger
 	JetStream        nats.JetStreamContext
 	JetStreamName    string
-	JetStreamSubject string
+	ValuationSubject string
+	OfferSubject     string
 	AckTimeout       time.Duration
 	DurableConsumer  string
 }
@@ -37,7 +38,8 @@ func NewNATSService(settings *config.Settings, log *zerolog.Logger) (*NATSServic
 		log:              log,
 		JetStream:        js,
 		JetStreamName:    settings.NATSStreamName,
-		JetStreamSubject: settings.NATSValuationSubject,
+		ValuationSubject: settings.NATSValuationSubject,
+		OfferSubject:     settings.NATSOfferSubject,
 		AckTimeout:       to,
 		DurableConsumer:  settings.NATSDurableConsumer}
 
