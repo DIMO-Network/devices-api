@@ -285,7 +285,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Get("/commands/mint", userDeviceController.GetMintDevice)
 	udOwner.Post("/commands/mint", userDeviceController.PostMintDevice)
 	udOwner.Get("/commands/burn", userDeviceController.GetBurnDevice)
-	// udOwner.Post("/commands/burn", userDeviceController.PostBurnDevice)
+	udOwner.Post("/commands/burn", userDeviceController.PostBurnDevice)
 
 	udOwner.Patch("/vin", userDeviceController.UpdateVIN)
 	udOwner.Patch("/name", userDeviceController.UpdateName)
