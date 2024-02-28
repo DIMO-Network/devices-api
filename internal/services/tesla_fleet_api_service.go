@@ -17,6 +17,8 @@ import (
 type TeslaFleetAPIService interface {
 	CompleteTeslaAuthCodeExchange(ctx context.Context, authCode, redirectURI, region string) (*TeslaAuthCodeResponse, error)
 	GetVehicles(ctx context.Context, token, region string) ([]TeslaVehicle, error)
+	GetVehicle(ctx context.Context, token, region string, vehicleID int) (*TeslaVehicle, error)
+	WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error
 }
 
 var teslaScopes = []string{"openid", "offline_access", "user_data", "vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds", "energy_device_data", "energy_device_data", "energy_cmds"}
@@ -37,6 +39,7 @@ type TeslaAuthCodeResponse struct {
 	IDToken      string    `json:"id_token"`
 	Expiry       time.Time `json:"expiry"`
 	TokenType    string    `json:"token_type"`
+	Region       string    `json:"region"`
 }
 
 type teslaFleetAPIService struct {
@@ -53,12 +56,8 @@ func NewTeslaFleetAPIService(settings *config.Settings, logger *zerolog.Logger) 
 	}
 }
 
-// CompleteTeslaAuthCodeExchange godoc
+// CompleteTeslaAuthCodeExchange
 // @Description Call Tesla Fleet API and exchange auth code for a new auth and refresh token
-// @Param       authCode - authorization code to exchange
-// @Param       redirectURI - redirect uri to pass on as part of the request to for oauth exchange
-// @Param       region - API region which is used to determine which fleet api to call
-// @Returns     {object} services.TeslaAuthCodeResponse
 func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context, authCode, redirectURI, region string) (*TeslaAuthCodeResponse, error) {
 	conf := oauth2.Config{
 		ClientID:     t.Settings.Tesla.ClientID,
@@ -91,41 +90,17 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 	}, nil
 }
 
-// GetVehicles godoc
+// GetVehicles
 // @Description Call Tesla Fleet API to get a list of vehicles using authorization token
-// @Param       token - authorization token to be used as bearer token
-// @Param       region - API region which is used to determine which fleet api to call
-// @Returns     {array} []services.TeslaVehicle
 func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region string) ([]TeslaVehicle, error) {
 	baseURL := fmt.Sprintf(t.Settings.Tesla.FleetAPI, region)
 	url := baseURL + "/api/1/vehicles"
 
-	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctxTimeout, "GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("could not fetch vehicles for user: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := t.HTTPClient.Do(req)
+	resp, err := teslaHttpClientHelper(ctx, t.log, t.HTTPClient, url, token)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch vehicles for user: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		errBody := new(TeslaFleetAPIError)
-		if err := json.NewDecoder(resp.Body).Decode(errBody); err != nil {
-			t.log.
-				Err(err).
-				Str("url", fmt.Sprintf(t.Settings.Tesla.FleetAPI, region)).
-				Msg("An error occurred when attempting to decode the error message from the api.")
-			return nil, fmt.Errorf("invalid response encountered while fetching user vehicles: %s", errBody.ErrorDescription)
-		}
-		return nil, fmt.Errorf("error occurred fetching user vehicles: %s", errBody.ErrorDescription)
-	}
 
 	vehicles := new(GetVehiclesResponse)
 	if err := json.NewDecoder(resp.Body).Decode(vehicles); err != nil {
@@ -137,4 +112,76 @@ func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region st
 	}
 
 	return vehicles.Response, nil
+}
+
+// GetVehicle
+// @Description Call Tesla Fleet API to get a single vehicle by ID
+func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region string, vehicleID int) (*TeslaVehicle, error) {
+	baseURL := fmt.Sprintf(t.Settings.Tesla.FleetAPI, region)
+	url := fmt.Sprintf("%s/api/1/vehicles/%d", baseURL, vehicleID)
+
+	resp, err := teslaHttpClientHelper(ctx, t.log, t.HTTPClient, url, token)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch vehicles for user: %w", err)
+	}
+	defer resp.Body.Close()
+
+	vehicle := new(struct {
+		Response TeslaVehicle `json:"response"`
+	})
+	if err := json.NewDecoder(resp.Body).Decode(vehicle); err != nil {
+		return nil, fmt.Errorf("invalid response encountered while fetching user vehicles: %w", err)
+	}
+
+	return &vehicle.Response, nil
+}
+
+// WakeUpVehicle
+// @Description Call Tesla Fleet API to wake a vehicle from sleep
+func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error {
+	baseURL := fmt.Sprintf(t.Settings.Tesla.FleetAPI, region)
+	url := fmt.Sprintf("%s/api/1/vehicles/%d/wake_up", baseURL, vehicleID)
+
+	resp, err := teslaHttpClientHelper(ctx, t.log, t.HTTPClient, url, token)
+	if err != nil {
+		return fmt.Errorf("could not fetch vehicles for user: %w", err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("got status code %d waking up vehicle %d", resp.StatusCode, vehicleID)
+	}
+
+	return nil
+}
+
+func teslaHttpClientHelper(ctx context.Context, logger *zerolog.Logger, httpClient *http.Client, url, token string) (*http.Response, error) {
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctxTimeout, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		errBody := new(TeslaFleetAPIError)
+		if err := json.NewDecoder(resp.Body).Decode(errBody); err != nil {
+			logger.
+				Err(err).
+				Str("url", url).
+				Msg("An error occurred when attempting to decode the error message from the api.")
+			return nil, fmt.Errorf("invalid response encountered while fetching user vehicles: %s", errBody.ErrorDescription)
+		}
+		return nil, fmt.Errorf("error occurred fetching user vehicles: %s", errBody.ErrorDescription)
+	}
+
+	return resp, nil
 }

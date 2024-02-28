@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-const TeslaFleetAuthCacheKey = "integration_credentials_%s"
+const teslaFleetAuthCacheKey = "integration_credentials_%s"
 
 type UserIntegrationAuthController struct {
 	Settings         *config.Settings
@@ -138,7 +138,7 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to get tesla authCode:"+err.Error())
 	}
-
+	teslaAuth.Region = reqBody.Region
 	// Save tesla oauth credentials in cache
 	err = u.persistOauthCredentials(c.Context(), *teslaAuth, *user.EthereumAddress)
 	if err != nil {
@@ -195,7 +195,7 @@ func (u *UserIntegrationAuthController) persistOauthCredentials(ctx context.Cont
 		return fmt.Errorf("an error occurred encrypting auth credentials: %w", err)
 	}
 
-	cacheKey := fmt.Sprintf(TeslaFleetAuthCacheKey, userEthAddr)
+	cacheKey := fmt.Sprintf(teslaFleetAuthCacheKey, userEthAddr)
 	status := u.cache.Set(ctx, cacheKey, encToken, 5*time.Minute)
 	if status.Err() != nil {
 		return fmt.Errorf("an error occurred saving auth credentials to cache: %w", status.Err())
