@@ -51,7 +51,7 @@ type TeslaCredentialsV2 struct {
 	AccessToken   string    `json:"accessToken"`
 	Expiry        time.Time `json:"expiry"`
 	RefreshToken  string    `json:"refreshToken"`
-	APIVersion    int       `json:"version"`
+	APIVersion    int       `json:"apiVersion"`
 }
 
 type TeslaTask struct {

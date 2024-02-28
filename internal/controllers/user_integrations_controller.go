@@ -1798,7 +1798,6 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 }
 
 func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zerolog.Logger, tx *sql.Tx, userDeviceID string, integ *ddgrpc.Integration, ud *models.UserDevice) error {
-	// Flag for which api version should be used
 	if existingIntegrations, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
 	).Count(c.Context(), tx); err != nil {
@@ -1812,6 +1811,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
 	}
 
+	// Flag for which api version should be used
 	apiVersion := 1
 	if reqBody.TeslaAPIVersion != 0 {
 		apiVersion = reqBody.TeslaAPIVersion
@@ -1829,7 +1829,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	}
 
 	region := ""
-	if apiVersion == constants.TeslaAPIV2 { // If version is 2, we are using fleet api which, which has token stored in cache
+	if apiVersion == constants.TeslaAPIV2 { // If version is 2, we are using fleet api which has token stored in cache
 		deviceIntReq, err := udc.getTeslaAuthFromCache(c.Context(), ud.UserID)
 		if err != nil {
 			udc.log.Err(err).Msg("Error occurred retrieving tesla auth from cache")
@@ -1839,7 +1839,6 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		reqBody.AccessToken = deviceIntReq.AccessToken
 		reqBody.ExpiresIn = int(time.Until(deviceIntReq.Expiry).Seconds())
 		region = deviceIntReq.Region
-
 	}
 
 	v, err = udc.getTeslaVehicle(c.Context(), reqBody.AccessToken, region, teslaID, apiVersion)

@@ -96,7 +96,7 @@ func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region st
 	baseURL := fmt.Sprintf(t.Settings.Tesla.FleetAPI, region)
 	url := baseURL + "/api/1/vehicles"
 
-	resp, err := teslaHTTPClientHelper(ctx, t.log, t.HTTPClient, url, token)
+	resp, err := t.performTeslaGetRequest(ctx, url, token)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch vehicles for user: %w", err)
 	}
@@ -120,7 +120,7 @@ func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region str
 	baseURL := fmt.Sprintf(t.Settings.Tesla.FleetAPI, region)
 	url := fmt.Sprintf("%s/api/1/vehicles/%d", baseURL, vehicleID)
 
-	resp, err := teslaHTTPClientHelper(ctx, t.log, t.HTTPClient, url, token)
+	resp, err := t.performTeslaGetRequest(ctx, url, token)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch vehicles for user: %w", err)
 	}
@@ -142,7 +142,7 @@ func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region 
 	baseURL := fmt.Sprintf(t.Settings.Tesla.FleetAPI, region)
 	url := fmt.Sprintf("%s/api/1/vehicles/%d/wake_up", baseURL, vehicleID)
 
-	resp, err := teslaHTTPClientHelper(ctx, t.log, t.HTTPClient, url, token)
+	resp, err := t.performTeslaGetRequest(ctx, url, token)
 	if err != nil {
 		return fmt.Errorf("could not fetch vehicles for user: %w", err)
 	}
@@ -156,7 +156,9 @@ func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region 
 	return nil
 }
 
-func teslaHTTPClientHelper(ctx context.Context, logger *zerolog.Logger, httpClient *http.Client, url, token string) (*http.Response, error) {
+// performTeslaGetRequest
+// @Description This is a helper function for making http requests, it adds a timeout and parses error response
+func (t *teslaFleetAPIService) performTeslaGetRequest(ctx context.Context, url, token string) (*http.Response, error) {
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
@@ -166,7 +168,7 @@ func teslaHTTPClientHelper(ctx context.Context, logger *zerolog.Logger, httpClie
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	resp, err := httpClient.Do(req)
+	resp, err := t.HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +176,7 @@ func teslaHTTPClientHelper(ctx context.Context, logger *zerolog.Logger, httpClie
 	if resp.StatusCode != http.StatusOK {
 		errBody := new(TeslaFleetAPIError)
 		if err := json.NewDecoder(resp.Body).Decode(errBody); err != nil {
-			logger.
+			t.log.
 				Err(err).
 				Str("url", url).
 				Msg("An error occurred when attempting to decode the error message from the api.")
