@@ -83,6 +83,7 @@ type UserDevicesController struct {
 	wallet                    services.SyntheticWalletInstanceService
 	userDeviceSvc             services.UserDeviceService
 	valuationsAPISrv          services.ValuationsAPIService
+	teslaFleetAPISvc          services.TeslaFleetAPIService
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -140,6 +141,7 @@ func NewUserDevicesController(settings *config.Settings,
 	wallet services.SyntheticWalletInstanceService,
 	userDeviceSvc services.UserDeviceService,
 	valuationsAPISrv services.ValuationsAPIService,
+	teslaFleetAPISvc services.TeslaFleetAPIService,
 ) UserDevicesController {
 	return UserDevicesController{
 		Settings:                  settings,
@@ -169,6 +171,7 @@ func NewUserDevicesController(settings *config.Settings,
 		wallet:                    wallet,
 		valuationsAPISrv:          valuationsAPISrv,
 		userDeviceSvc:             userDeviceSvc,
+		teslaFleetAPISvc:          teslaFleetAPISvc,
 	}
 }
 
