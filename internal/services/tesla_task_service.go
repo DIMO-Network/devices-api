@@ -51,7 +51,7 @@ type TeslaCredentialsV2 struct {
 	AccessToken   string    `json:"accessToken"`
 	Expiry        time.Time `json:"expiry"`
 	RefreshToken  string    `json:"refreshToken"`
-	APIVersion    int       `json:"apiVersion"`
+	Version       int       `json:"version"`
 }
 
 type TeslaTask struct {
@@ -82,7 +82,7 @@ type TeslaCredentialsCloudEventV2 struct {
 	Data TeslaCredentialsV2 `json:"data"`
 }
 
-func (t *teslaTaskService) StartPoll(vehicle *TeslaVehicle, udai *models.UserDeviceAPIIntegration, apiVersion int) error {
+func (t *teslaTaskService) StartPoll(vehicle *TeslaVehicle, udai *models.UserDeviceAPIIntegration, version int) error {
 	tt := TeslaTaskCloudEvent{
 		CloudEventHeaders: CloudEventHeaders{
 			ID:          ksuid.New().String(),
@@ -120,7 +120,7 @@ func (t *teslaTaskService) StartPoll(vehicle *TeslaVehicle, udai *models.UserDev
 			AccessToken:   udai.AccessToken.String,
 			Expiry:        udai.AccessExpiresAt.Time,
 			RefreshToken:  udai.RefreshToken.String,
-			APIVersion:    apiVersion,
+			Version:       version,
 		},
 	}
 

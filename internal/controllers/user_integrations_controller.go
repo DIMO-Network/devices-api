@@ -1813,8 +1813,8 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 
 	// Flag for which api version should be used
 	apiVersion := constants.TeslaAPIV1
-	if reqBody.TeslaAPIVersion != 0 {
-		apiVersion = reqBody.TeslaAPIVersion
+	if reqBody.Version != 0 {
+		apiVersion = reqBody.Version
 	}
 
 	if reqBody.ExternalID == "" {
@@ -2069,11 +2069,11 @@ type RegisterDeviceIntegrationRequest struct {
 	// RedirectURI is the OAuth redirect URI used by the frontend. Not used in all integrations.
 	RedirectURI string `json:"redirectURI"`
 	// ExternalID is the only field needed for AutoPi registrations. It is the UnitID.
-	ExternalID      string `json:"externalId"`
-	AccessToken     string `json:"accessToken"`
-	ExpiresIn       int    `json:"expiresIn"`
-	RefreshToken    string `json:"refreshToken"`
-	TeslaAPIVersion int    `json:"version"`
+	ExternalID   string `json:"externalId"`
+	AccessToken  string `json:"accessToken"`
+	ExpiresIn    int    `json:"expiresIn"`
+	RefreshToken string `json:"refreshToken"`
+	Version      int    `json:"version"`
 }
 
 type GetUserDeviceIntegrationResponse struct {
