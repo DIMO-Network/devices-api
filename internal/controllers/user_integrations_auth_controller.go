@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
@@ -14,8 +17,6 @@ import (
 	"github.com/DIMO-Network/shared/redis"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
-	"strconv"
-	"time"
 )
 
 const teslaFleetAuthCacheKey = "integration_credentials_%s"

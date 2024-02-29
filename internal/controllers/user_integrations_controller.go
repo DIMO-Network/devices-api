@@ -1813,8 +1813,8 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 
 	// Flag for which api version should be used
 	apiVersion := constants.TeslaAPIV1
-	if reqBody.TeslaAPIVersion != 0 {
-		apiVersion = reqBody.TeslaAPIVersion
+	if reqBody.Version != 0 {
+		apiVersion = reqBody.Version
 	}
 
 	if reqBody.ExternalID == "" {
@@ -1933,25 +1933,12 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	}
 
 	if udc.Settings.IsProduction() {
-		message := services.ValuationDecodeCommand{
-			VIN:          v.VIN,
-			UserDeviceID: userDeviceID,
+		tokenID := int64(0)
+		if ud.R != nil && ud.R.VehicleNFT != nil {
+			tokenID, _ = ud.R.VehicleNFT.TokenID.Int64()
 		}
-
-		messageBytes, err := json.Marshal(message)
-
-		if err != nil {
-			udc.log.Err(err).Msg("Failed to marshal valuation decode command.")
-		} else {
-			pubAck, err := udc.NATSSvc.JetStream.Publish(udc.NATSSvc.JetStreamSubject, messageBytes)
-
-			if err != nil {
-				udc.log.Err(err).Msg("Failed to publish valuation decode command for Tesla Device.")
-			} else {
-				udc.log.Info().Str("vin", v.VIN).Msgf("Published valuation decode command with sequence %d.", pubAck.Sequence)
-			}
-		}
-
+		udc.requestValuation(v.VIN, userDeviceID, tokenID)
+		udc.requestInstantOffer(userDeviceID, tokenID)
 	}
 
 	if err := udc.teslaTaskService.StartPoll(v, &integration, apiVersion); err != nil {
@@ -2076,11 +2063,11 @@ type RegisterDeviceIntegrationRequest struct {
 	// RedirectURI is the OAuth redirect URI used by the frontend. Not used in all integrations.
 	RedirectURI string `json:"redirectURI"`
 	// ExternalID is the only field needed for AutoPi registrations. It is the UnitID.
-	ExternalID      string `json:"externalId"`
-	AccessToken     string `json:"accessToken"`
-	ExpiresIn       int    `json:"expiresIn"`
-	RefreshToken    string `json:"refreshToken"`
-	TeslaAPIVersion int    `json:"version"`
+	ExternalID   string `json:"externalId"`
+	AccessToken  string `json:"accessToken"`
+	ExpiresIn    int    `json:"expiresIn"`
+	RefreshToken string `json:"refreshToken"`
+	Version      int    `json:"version"`
 }
 
 type GetUserDeviceIntegrationResponse struct {
