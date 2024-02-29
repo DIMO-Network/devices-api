@@ -960,7 +960,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 
 	userEthAddr := common.HexToAddress("1").String()
 	s.userClient.EXPECT().GetUser(gomock.Any(), &pbuser.GetUserRequest{Id: testUserID}).Return(&pbuser.User{EthereumAddress: &userEthAddr}, nil).AnyTimes()
-
 	expectedExpiry := time.Now().Add(10 * time.Minute)
 	teslaResp := services.TeslaAuthCodeResponse{
 		AccessToken:  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
@@ -977,6 +976,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 
 	cacheKey := fmt.Sprintf(teslaFleetAuthCacheKey, userEthAddr)
 	s.redisClient.EXPECT().Get(gomock.Any(), cacheKey).Return(redis.NewStringResult(encTeslaAuth, nil))
+	s.redisClient.EXPECT().Del(gomock.Any(), cacheKey).Return(redis.NewIntResult(1, nil))
 
 	in := `{
 		"externalId": "1145",
