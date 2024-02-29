@@ -27,6 +27,10 @@ type GetVehiclesResponse struct {
 	Response []TeslaVehicle `json:"response"`
 }
 
+type GetSingleVehicleItemResponse struct {
+	Response TeslaVehicle `json:"response"`
+}
+
 type TeslaFleetAPIError struct {
 	Error            string `json:"error"`
 	ErrorDescription string `json:"error_description"`
@@ -56,8 +60,7 @@ func NewTeslaFleetAPIService(settings *config.Settings, logger *zerolog.Logger) 
 	}
 }
 
-// CompleteTeslaAuthCodeExchange
-// @Description Call Tesla Fleet API and exchange auth code for a new auth and refresh token
+// CompleteTeslaAuthCodeExchange calls Tesla Fleet API and exchange auth code for a new auth and refresh token
 func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context, authCode, redirectURI, region string) (*TeslaAuthCodeResponse, error) {
 	conf := oauth2.Config{
 		ClientID:     t.Settings.Tesla.ClientID,
@@ -90,8 +93,7 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 	}, nil
 }
 
-// GetVehicles
-// @Description Call Tesla Fleet API to get a list of vehicles using authorization token
+// GetVehicles calls Tesla Fleet API to get a list of vehicles using authorization token
 func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region string) ([]TeslaVehicle, error) {
 	baseURL := fmt.Sprintf(t.Settings.Tesla.FleetAPI, region)
 	url := baseURL + "/api/1/vehicles"
@@ -114,8 +116,7 @@ func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region st
 	return vehicles.Response, nil
 }
 
-// GetVehicle
-// @Description Call Tesla Fleet API to get a single vehicle by ID
+// GetVehicle calls Tesla Fleet API to get a single vehicle by ID
 func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region string, vehicleID int) (*TeslaVehicle, error) {
 	baseURL := fmt.Sprintf(t.Settings.Tesla.FleetAPI, region)
 	url := fmt.Sprintf("%s/api/1/vehicles/%d", baseURL, vehicleID)
@@ -126,9 +127,7 @@ func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region str
 	}
 	defer resp.Body.Close()
 
-	vehicle := new(struct {
-		Response TeslaVehicle `json:"response"`
-	})
+	vehicle := new(GetSingleVehicleItemResponse)
 	if err := json.NewDecoder(resp.Body).Decode(vehicle); err != nil {
 		return nil, fmt.Errorf("invalid response encountered while fetching user vehicles: %w", err)
 	}
@@ -136,8 +135,7 @@ func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region str
 	return &vehicle.Response, nil
 }
 
-// WakeUpVehicle
-// @Description Call Tesla Fleet API to wake a vehicle from sleep
+// WakeUpVehicle Calls Tesla Fleet API to wake a vehicle from sleep
 func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error {
 	baseURL := fmt.Sprintf(t.Settings.Tesla.FleetAPI, region)
 	url := fmt.Sprintf("%s/api/1/vehicles/%d/wake_up", baseURL, vehicleID)
@@ -156,8 +154,7 @@ func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region 
 	return nil
 }
 
-// performTeslaGetRequest
-// @Description This is a helper function for making http requests, it adds a timeout and parses error response
+// performTeslaGetRequest a helper function for making http requests, it adds a timeout context and parses error response
 func (t *teslaFleetAPIService) performTeslaGetRequest(ctx context.Context, url, token string) (*http.Response, error) {
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
@@ -170,7 +167,7 @@ func (t *teslaFleetAPIService) performTeslaGetRequest(ctx context.Context, url, 
 
 	resp, err := t.HTTPClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error occurred calling tesla fleet api: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {

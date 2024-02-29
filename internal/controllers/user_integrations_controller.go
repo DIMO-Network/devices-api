@@ -1812,7 +1812,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	}
 
 	// Flag for which api version should be used
-	apiVersion := 1
+	apiVersion := constants.TeslaAPIV1
 	if reqBody.TeslaAPIVersion != 0 {
 		apiVersion = reqBody.TeslaAPIVersion
 	}
