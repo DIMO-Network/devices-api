@@ -977,6 +977,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 
 	cacheKey := fmt.Sprintf(teslaFleetAuthCacheKey, userEthAddr)
 	s.redisClient.EXPECT().Get(gomock.Any(), cacheKey).Return(redis.NewStringResult(encTeslaAuth, nil))
+	s.redisClient.EXPECT().Del(gomock.Any(), cacheKey).Return(redis.NewIntResult(1, nil))
 
 	in := `{
 		"externalId": "1145",

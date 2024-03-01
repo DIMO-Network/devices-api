@@ -1829,8 +1829,18 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	}
 
 	region := ""
+	teslaV2CacheKey := ""
 	if apiVersion == constants.TeslaAPIV2 { // If version is 2, we are using fleet api which has token stored in cache
-		deviceIntReq, err := udc.getTeslaAuthFromCache(c.Context(), ud.UserID)
+		user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: ud.UserID})
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "could not fetch user information: %w", err.Error())
+		}
+		if user.EthereumAddress == nil {
+			return fiber.NewError(fiber.StatusBadRequest, "missing wallet details for user")
+		}
+		teslaV2CacheKey = fmt.Sprintf(teslaFleetAuthCacheKey, *user.EthereumAddress)
+
+		deviceIntReq, err := udc.getTeslaAuthFromCache(c.Context(), teslaV2CacheKey)
 		if err != nil {
 			udc.log.Err(err).Msg("Error occurred retrieving tesla auth from cache")
 			return fiber.NewError(fiber.StatusBadRequest, "Couldn't retrieve stored credentials: "+err.Error())
@@ -1941,6 +1951,13 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 
 	logger.Info().Msg("Finished Tesla device registration")
 
+	if apiVersion == constants.TeslaAPIV2 && teslaV2CacheKey != "" {
+		err = udc.redisCache.Del(c.Context(), teslaV2CacheKey).Err()
+		if err != nil {
+			udc.log.Err(err).Str("cacheKey", teslaV2CacheKey).Msg("error occurred deleting record from cache")
+		}
+	}
+
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
@@ -1966,17 +1983,7 @@ func (udc *UserDevicesController) getTeslaVehicle(ctx context.Context, token, re
 	return vehicle, err
 }
 
-func (udc *UserDevicesController) getTeslaAuthFromCache(ctx context.Context, userID string) (*services.TeslaAuthCodeResponse, error) {
-	user, err := udc.usersClient.GetUser(ctx, &pb.GetUserRequest{Id: userID})
-	if err != nil {
-		return nil, fmt.Errorf("could not fetch user information: %w", err)
-	}
-
-	if user.EthereumAddress == nil {
-		return nil, fmt.Errorf("missing wallet address for user")
-	}
-
-	cacheKey := fmt.Sprintf(teslaFleetAuthCacheKey, *user.EthereumAddress)
+func (udc *UserDevicesController) getTeslaAuthFromCache(ctx context.Context, cacheKey string) (*services.TeslaAuthCodeResponse, error) {
 	encTeslaAuth, err := udc.redisCache.Get(ctx, cacheKey).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
