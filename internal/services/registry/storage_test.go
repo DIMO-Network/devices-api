@@ -100,13 +100,10 @@ func (s *StorageTestSuite) Test_SyntheticMintSetsID() {
 	}
 	s.MustInsert(&mtr)
 
-	vnft := models.VehicleNFT{
-		MintRequestID: mtr.ID,
-		UserDeviceID:  null.StringFrom(ud.ID),
-		TokenID:       types.NewNullDecimal(decimal.New(vehicleID, 0)),
-		OwnerAddress:  null.BytesFrom(ownerAddr.Bytes()),
-	}
-	s.MustInsert(&vnft)
+	ud.MintRequestID = null.StringFrom(mtr.ID)
+	ud.TokenID = types.NewNullDecimal(decimal.New(vehicleID, 0))
+	ud.OwnerAddress = null.BytesFrom(ownerAddr.Bytes())
+	_, err := ud.Update(context.TODO(), s.dbs.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.MintRequestID, models.UserDeviceColumns.TokenID, models.UserDeviceColumns.OwnerAddress))
 
 	syntMtr := models.MetaTransactionRequest{
 		ID:     ksuid.New().String(),
@@ -199,11 +196,8 @@ func (s *StorageTestSuite) TestMintVehicle() {
 		emEv = event
 	})
 
-	vnft := models.VehicleNFT{
-		MintRequestID: mtr.ID,
-		UserDeviceID:  null.StringFrom(ud.ID),
-	}
-	s.MustInsert(&vnft)
+	ud.MintRequestID = null.StringFrom(mtr.ID)
+	_, err = ud.Update(ctx, s.dbs.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.MintRequestID))
 
 	s.Require().NoError(proc.Handle(context.TODO(), &ceData{
 		RequestID: mtr.ID,
@@ -226,10 +220,10 @@ func (s *StorageTestSuite) TestMintVehicle() {
 		},
 	}))
 
-	s.Require().NoError(vnft.Reload(ctx, s.dbs.DBS().Writer))
+	s.Require().NoError(ud.Reload(ctx, s.dbs.DBS().Writer))
 
-	s.Zero(vnft.TokenID.Int(nil).Cmp(big.NewInt(14443)))
-	s.Equal(common.HexToAddress("7e74d0f663d58d12817b8bef762bcde3af1f63d6"), common.BytesToAddress(vnft.OwnerAddress.Bytes))
+	s.Zero(ud.TokenID.Int(nil).Cmp(big.NewInt(14443)))
+	s.Equal(common.HexToAddress("7e74d0f663d58d12817b8bef762bcde3af1f63d6"), common.BytesToAddress(ud.OwnerAddress.Bytes))
 
 	s.Equal(ud.ID, emEv.Subject)
 }

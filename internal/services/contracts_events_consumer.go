@@ -28,7 +28,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
@@ -231,48 +230,45 @@ func (c *ContractsEventsConsumer) handleVehicleTransfer(e *ContractEventData) er
 
 	c.log.Info().Str("tokenId", tkID.String()).Msgf("Cleared %d privileges upon vehicle transfer.", rowsAff)
 
-	nft, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(tkID),
-		qm.Load(models.VehicleNFTRels.UserDevice),
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(tkID),
 	).One(ctx, tx)
 	if err != nil {
 		return err
 	}
 
 	if IsZeroAddress(args.To) {
-		_, err = nft.Delete(ctx, tx)
+		ud.TokenID = types.NullDecimal{}
+		ud.MintRequestID = null.String{}
+		ud.ClaimID = null.String{}
+		ud.OwnerAddress = null.Bytes{}
+
+		_, err = ud.Update(ctx, tx, boil.Whitelist(models.UserDeviceColumns.TokenID, models.UserDeviceColumns.MintRequestID, models.UserDeviceColumns.ClaimID, models.UserDeviceColumns.OwnerAddress))
 		if err != nil {
 			return err
 		}
 
-		if nft.R.UserDevice != nil {
-			_, err = nft.R.UserDevice.Delete(ctx, tx)
-			if err != nil {
-				return err
-			}
-		}
 	} else {
 
-		nft.OwnerAddress = null.BytesFrom(args.To.Bytes())
-		if _, err := nft.Update(ctx, tx, boil.Whitelist(models.VehicleNFTColumns.OwnerAddress)); err != nil {
+		ud.OwnerAddress = null.BytesFrom(args.To.Bytes())
+		if _, err := ud.Update(ctx, tx, boil.Whitelist(models.UserDeviceColumns.OwnerAddress)); err != nil {
 			return err
 		}
 
-		if ud := nft.R.UserDevice; ud != nil {
-			s := dex.IDTokenSubject{
-				UserId: args.To.Hex(),
-				ConnId: "web3",
-			}
-			b, err := proto.Marshal(&s)
-			if err != nil {
-				return err
-			}
-
-			ud.UserID = base64.RawURLEncoding.EncodeToString(b)
-			if _, err := ud.Update(ctx, tx, boil.Whitelist(models.UserDeviceColumns.UserID)); err != nil {
-				return err
-			}
+		s := dex.IDTokenSubject{
+			UserId: args.To.Hex(),
+			ConnId: "web3",
 		}
+		b, err := proto.Marshal(&s)
+		if err != nil {
+			return err
+		}
+
+		ud.UserID = base64.RawURLEncoding.EncodeToString(b)
+		if _, err := ud.Update(ctx, tx, boil.Whitelist(models.UserDeviceColumns.UserID)); err != nil {
+			return err
+		}
+
 	}
 
 	return tx.Commit()

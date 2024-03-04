@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/contracts"
+	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
@@ -496,6 +497,7 @@ func TestVehicleTransfer(t *testing.T) {
 	ctx := context.Background()
 	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
 	defer container.Terminate(ctx) //nolint
+	testUserID := ksuid.New().String()
 
 	logger := zerolog.Nop()
 	settings := &config.Settings{DIMORegistryChainID: 1, VehicleNFTAddress: "0x881d40237659c251811cec9c364ef91dc08d300c"}
@@ -503,8 +505,8 @@ func TestVehicleTransfer(t *testing.T) {
 	mtr := models.MetaTransactionRequest{ID: "xdd"}
 	_ = mtr.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
-	nft := models.VehicleNFT{MintRequestID: "xdd", OwnerAddress: null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")), TokenID: types.NewNullDecimal(decimal.New(5, 0))}
-	_ = nft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	ud := test.SetupCreateUserDevice(t, testUserID, ksuid.New().String(), nil, "", pdb)
+	_ = test.SetupCreateVehicleNFT(t, ud, "vin", big.NewInt(5), null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")), pdb)
 
 	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil)
 	event, err := marshalMockPayload(`
@@ -529,13 +531,13 @@ func TestVehicleTransfer(t *testing.T) {
 		t.Errorf("failed to process event: %v", err)
 	}
 
-	_ = nft.Reload(ctx, pdb.DBS().Reader)
-	if !nft.OwnerAddress.Valid {
+	_ = ud.Reload(ctx, pdb.DBS().Reader)
+	if !ud.OwnerAddress.Valid {
 		t.Fatal("token owner became null")
 	}
 
-	if common.BytesToAddress(nft.OwnerAddress.Bytes) != common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263") {
-		t.Errorf("expected owner to become %s, but was %s", common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263"), common.BytesToAddress(nft.OwnerAddress.Bytes))
+	if common.BytesToAddress(ud.OwnerAddress.Bytes) != common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263") {
+		t.Errorf("expected owner to become %s, but was %s", common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263"), common.BytesToAddress(ud.OwnerAddress.Bytes))
 	}
 }
 
@@ -562,8 +564,8 @@ func Test_NFTPrivileges_Cleared_On_Vehicle_Transfer(t *testing.T) {
 	}
 	_ = nftPriv.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
-	nft := models.VehicleNFT{MintRequestID: "xdd", OwnerAddress: ownerAddress, TokenID: tkID}
-	_ = nft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	ud := test.SetupCreateUserDevice(t, ksuid.New().String(), ksuid.New().String(), nil, "", pdb)
+	_ = test.SetupCreateVehicleNFT(t, ud, "vin", big.NewInt(5), null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")), pdb)
 
 	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil)
 	event, err := marshalMockPayload(`
@@ -588,13 +590,13 @@ func Test_NFTPrivileges_Cleared_On_Vehicle_Transfer(t *testing.T) {
 		t.Errorf("failed to process event: %v", err)
 	}
 
-	_ = nft.Reload(ctx, pdb.DBS().Reader)
-	if !nft.OwnerAddress.Valid {
+	_ = ud.Reload(ctx, pdb.DBS().Reader)
+	if !ud.OwnerAddress.Valid {
 		t.Fatal("token owner became null")
 	}
 
-	if common.BytesToAddress(nft.OwnerAddress.Bytes) != common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263") {
-		t.Errorf("expected owner to become %s, but was %s", common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263"), common.BytesToAddress(nft.OwnerAddress.Bytes))
+	if common.BytesToAddress(ud.OwnerAddress.Bytes) != common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263") {
+		t.Errorf("expected owner to become %s, but was %s", common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263"), common.BytesToAddress(ud.OwnerAddress.Bytes))
 	}
 
 	nftPrivileges, err := models.NFTPrivileges().All(ctx, pdb.DBS().Reader)
