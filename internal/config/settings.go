@@ -71,6 +71,7 @@ type Settings struct {
 	NATSURL                           string `yaml:"NATS_URL"`
 	NATSStreamName                    string `yaml:"NATS_STREAM_NAME"`
 	NATSValuationSubject              string `yaml:"NATS_VALUATION_SUBJECT"`
+	NATSOfferSubject                  string `yaml:"NATS_OFFER_SUBJECT"`
 	NATSAckTimeout                    string `yaml:"NATS_ACK_TIMEOUT"`
 	NATSDurableConsumer               string `yaml:"NATS_DURABLE_CONSUMER"`
 	ValuationsAPIGRPCAddr             string `yaml:"VALUATIONS_GRPC_ADDR"`
@@ -98,6 +99,6 @@ func (s *Settings) IsProduction() bool {
 type Tesla struct {
 	ClientID     string `yaml:"CLIENT_ID"`
 	ClientSecret string `yaml:"CLIENT_SECRET"`
-	TokenURL     string `yaml:"TOKEN_URL"`
+	TokenURL     string `yaml:"TOKEN_AUTH_URL"`
 	FleetAPI     string `yaml:"FLEET_API"`
 }

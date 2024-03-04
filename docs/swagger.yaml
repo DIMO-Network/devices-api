@@ -414,6 +414,31 @@ definitions:
       requestId:
         type: string
     type: object
+  internal_controllers.CompleteOAuthExchangeRequest:
+    properties:
+      authorizationCode:
+        type: string
+      redirectUri:
+        type: string
+      region:
+        type: string
+    type: object
+  internal_controllers.CompleteOAuthExchangeResponse:
+    properties:
+      definition:
+        $ref: '#/definitions/internal_controllers.DeviceDefinition'
+      externalId:
+        type: string
+      vin:
+        type: string
+    type: object
+  internal_controllers.CompleteOAuthExchangeResponseWrapper:
+    properties:
+      vehicles:
+        items:
+          $ref: '#/definitions/internal_controllers.CompleteOAuthExchangeResponse'
+        type: array
+    type: object
   internal_controllers.CreateGeofence:
     properties:
       h3Indexes:
@@ -434,6 +459,17 @@ definitions:
         items:
           type: string
         type: array
+    type: object
+  internal_controllers.DeviceDefinition:
+    properties:
+      id:
+        type: string
+      make:
+        type: string
+      model:
+        type: string
+      year:
+        type: integer
     type: object
   internal_controllers.DeviceOffer:
     properties:
@@ -812,6 +848,8 @@ definitions:
         type: string
       refreshToken:
         type: string
+      version:
+        type: integer
     type: object
   internal_controllers.RegisterUserDevice:
     properties:
@@ -1426,6 +1464,35 @@ paths:
             type: array
       tags:
       - integrations
+  /integration/:tokenID/credentials:
+    post:
+      consumes:
+      - application/json
+      description: Complete Tesla auth and get devices for authenticated user
+      parameters:
+      - description: token id for integration
+        in: path
+        name: tokenID
+        required: true
+        type: string
+      - description: all fields are required
+        in: body
+        name: user_device
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.CompleteOAuthExchangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.CompleteOAuthExchangeResponseWrapper'
+      security:
+      - ApiKeyAuth: []
+      - BearerAuth: []
+      tags:
+      - user-devices
   /integrations:
     get:
       description: gets list of integrations we have defined

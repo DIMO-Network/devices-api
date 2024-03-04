@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
 	"math/big"
 	"net"
 	"os"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
 
 	"github.com/DIMO-Network/devices-api/internal/middleware"
 
@@ -140,7 +141,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService,
 		smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest,
 		deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient,
-		ddaSvc, natsSvc, wallet, userDeviceSvc, valuationsSvc)
+		ddaSvc, natsSvc, wallet, userDeviceSvc, valuationsSvc, teslaFleetAPISvc)
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)

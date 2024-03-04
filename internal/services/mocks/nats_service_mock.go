@@ -76,7 +76,7 @@ func NewMockNATSService(streamName string) (*services.NATSService, *server.Serve
 	natsSvc := &services.NATSService{
 		JetStream:        js,
 		JetStreamName:    streamName,
-		JetStreamSubject: "test-subject",
+		ValuationSubject: "test-subject",
 		AckTimeout:       to,
 		DurableConsumer:  "test-durable-consumer",
 	}
