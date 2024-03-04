@@ -192,7 +192,11 @@ func (s *UserIntegrationsControllerTestSuite) TestDeleteIntegration_BlockedBySyn
 	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	vnft := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, big.NewInt(5), null.BytesFrom(common.HexToAddress("0xA1").Bytes()), s.pdb)
+	vnft := test.SetupCreateVehicleNFT(s.T(), ud, vin, big.NewInt(5), null.BytesFrom(common.HexToAddress("0xA1").Bytes()), s.pdb)
+
+	ud.TokenID = types.NewNullDecimal(decimal.New(5, 0))
+	ud.OwnerAddress = null.BytesFrom(common.HexToAddress("0xA1").Bytes())
+	ud.MintRequestID = null.StringFrom(ksuid.New().String())
 
 	mtr := models.MetaTransactionRequest{
 		ID:     ksuid.New().String(),
@@ -812,14 +816,11 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 	mint := models.MetaTransactionRequest{ID: ksuid.New().String(), Status: models.MetaTransactionRequestStatusConfirmed}
 	s.Require().NoError(mint.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer()))
 
-	vnft := models.VehicleNFT{
-		UserDeviceID:  null.StringFrom(ud.ID),
-		Vin:           ud.VinIdentifier.String,
-		TokenID:       types.NewNullDecimal(decimal.New(4, 0)),
-		OwnerAddress:  null.BytesFrom(userAddr.Bytes()),
-		MintRequestID: mint.ID,
-	}
-	s.Require().NoError(vnft.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer()))
+	ud.TokenID = types.NewNullDecimal(decimal.New(4, 0))
+	ud.OwnerAddress = null.BytesFrom(userAddr.Bytes())
+	ud.MintRequestID = null.StringFrom(mint.ID)
+	_, err = ud.Update(s.ctx, s.pdb.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.TokenID, models.UserDeviceColumns.OwnerAddress, models.UserDeviceColumns.MintRequestID))
+	s.Require().NoError(err)
 
 	aftermarketDevice := test.SetupCreateAftermarketDevice(s.T(), testUserID, common.BigToAddress(big.NewInt(2)).Bytes(), unitID, &deviceID, s.pdb)
 	aftermarketDevice.TokenID = types.NewDecimal(decimal.New(5, 0))

@@ -241,8 +241,8 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 		var credential *VINCredentialData
 		pu := []PrivilegeUser{}
 
-		if vnft := d.R.VehicleNFT; vnft != nil {
-			nftStatus := vnft.R.MintRequest
+		if !d.TokenID.IsZero() {
+			nftStatus := d.R.MintRequest
 			nft = &NFTData{
 				Status: nftStatus.Status,
 			}
@@ -250,18 +250,18 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 				hash := hexutil.Encode(nftStatus.Hash.Bytes)
 				nft.TxHash = &hash
 			}
-			if !vnft.TokenID.IsZero() {
-				nft.TokenID = vnft.TokenID.Int(nil)
-				nft.TokenURI = fmt.Sprintf("%s/v1/vehicle/%s", udc.Settings.DeploymentBaseURL, nft.TokenID)
-			}
-			if vnft.OwnerAddress.Valid {
-				addr := common.BytesToAddress(vnft.OwnerAddress.Bytes)
+
+			nft.TokenID = d.TokenID.Int(nil)
+			nft.TokenURI = fmt.Sprintf("%s/v1/vehicle/%s", udc.Settings.DeploymentBaseURL, nft.TokenID)
+
+			if d.OwnerAddress.Valid {
+				addr := common.BytesToAddress(d.OwnerAddress.Bytes)
 				nft.OwnerAddress = &addr
 			}
 
 			// NFT Privileges
 			udp, err := models.NFTPrivileges(
-				models.NFTPrivilegeWhere.TokenID.EQ(types.Decimal(d.R.VehicleNFT.TokenID)),
+				models.NFTPrivilegeWhere.TokenID.EQ(types.Decimal(d.TokenID)),
 				models.NFTPrivilegeWhere.Expiry.GT(time.Now()),
 				models.NFTPrivilegeWhere.ContractAddress.EQ(common.FromHex(udc.Settings.VehicleNFTAddress)),
 			).All(ctx, udc.DBS().Reader)
@@ -286,7 +286,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 				})
 			}
 
-			if sd := vnft.R.VehicleTokenSyntheticDevice; sd != nil {
+			if sd := d.R.VehicleTokenSyntheticDevice; sd != nil {
 				ii, _ := sd.IntegrationTokenID.Uint64()
 				mtr := sd.R.MintRequest
 				sdStat = &SyntheticDeviceStatus{
@@ -304,9 +304,9 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 				}
 			}
 
-			if cred := vnft.R.Claim; cred != nil {
+			if cred := d.R.Claim; cred != nil {
 				credential = &VINCredentialData{
-					VIN:       vnft.Vin,
+					VIN:       d.VinIdentifier.String,
 					ExpiresAt: cred.ExpirationDate,
 					IssuedAt:  cred.IssuanceDate,
 					Valid:     time.Now().Before(cred.ExpirationDate),
@@ -358,17 +358,16 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 		}
 	} else {
 		query = []qm.QueryMod{
-			qm.LeftOuterJoin("devices_api." + models.TableNames.VehicleNFTS + " ON " + models.VehicleNFTTableColumns.UserDeviceID + " = " + models.UserDeviceTableColumns.ID),
 			models.UserDeviceWhere.UserID.EQ(userID),
-			qm.Or2(models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.HexToAddress(*user.EthereumAddress).Bytes()))),
+			qm.Or2(models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(common.HexToAddress(*user.EthereumAddress).Bytes()))),
 		}
 	}
 
 	query = append(query,
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.Claim)),
+		qm.Load(qm.Rels(models.UserDeviceRels.MintRequest)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
+		qm.Load(qm.Rels(models.UserDeviceRels.Claim)),
 		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" DESC"))
 
 	devices, err := models.UserDevices(query...).All(c.Context(), udc.DBS().Reader)
@@ -429,8 +428,8 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 
 			toks = append(toks, priv.TokenID)
 
-			nft, err := models.VehicleNFTS(
-				models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(priv.TokenID.Big)),
+			nft, err := models.UserDevices(
+				models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(priv.TokenID.Big)),
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
 				if err == sql.ErrNoRows {
@@ -439,17 +438,13 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 				return err
 			}
 
-			if !nft.UserDeviceID.Valid {
-				continue
-			}
-
 			ud, err := models.UserDevices(
-				models.UserDeviceWhere.ID.EQ(nft.UserDeviceID.String),
+				models.UserDeviceWhere.ID.EQ(nft.ID),
 				qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 				// Would we get this backreference for free?
-				qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
-				qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
-				qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.Claim)),
+				qm.Load(qm.Rels(models.UserDeviceRels.MintRequest)),
+				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
+				qm.Load(qm.Rels(models.UserDeviceRels.Claim)),
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
 				return err
@@ -1535,13 +1530,12 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(models.UserDeviceRels.VehicleNFT),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
 	}
 
-	if userDevice.R.VehicleNFT == nil || userDevice.R.VehicleNFT.TokenID.IsZero() {
+	if userDevice.TokenID.IsZero() {
 		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
 	}
 
@@ -1564,7 +1558,7 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 
 	_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
 		Bucket: &udc.Settings.NFTS3Bucket,
-		Key:    aws.String(userDevice.R.VehicleNFT.MintRequestID + ".png"),
+		Key:    aws.String(userDevice.MintRequestID.String + ".png"),
 		Body:   bytes.NewReader(image),
 	})
 	if err != nil {
@@ -1584,7 +1578,7 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 	if len(imageTransp) != 0 {
 		_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
 			Bucket: &udc.Settings.NFTS3Bucket,
-			Key:    aws.String(userDevice.R.VehicleNFT.MintRequestID + "_transparent.png"),
+			Key:    aws.String(userDevice.MintRequestID.String + "_transparent.png"),
 			Body:   bytes.NewReader(imageTransp),
 		})
 		if err != nil {
@@ -1612,7 +1606,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
+		qm.Load(qm.Rels(models.UserDeviceRels.MintRequest)),
 		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations)),
 	).One(c.Context(), udc.DBS().Reader.DB)
 	if err != nil {
@@ -1622,8 +1616,8 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	if vnft := userDevice.R.VehicleNFT; vnft != nil {
-		switch vnft.R.MintRequest.Status {
+	if !userDevice.TokenID.IsZero() {
+		switch userDevice.R.MintRequest.Status {
 		case "Confirmed":
 			return fiber.NewError(fiber.StatusConflict, "Vehicle already minted.")
 		default:
@@ -1760,13 +1754,9 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	nft := models.VehicleNFT{
-		MintRequestID: requestID,
-		UserDeviceID:  null.StringFrom(userDevice.ID),
-		Vin:           userDevice.VinIdentifier.String,
-	}
+	userDevice.MintRequestID = null.StringFrom(requestID)
 
-	err = nft.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
+	_, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.MintRequestID))
 	if err != nil {
 		return err
 	}

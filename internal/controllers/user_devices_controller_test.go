@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ericlagergren/decimal"
 	"github.com/nats-io/nats-server/v2/server"
 
 	"github.com/google/uuid"
@@ -42,6 +43,7 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/types"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -347,8 +349,8 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 		}, dd[0], nil)
 
 	request := test.BuildRequest("POST", "/user/devices/fromvin", string(j))
-	response, responseError := s.app.Test(request, 10000)
-	require.NoError(s.T(), responseError)
+	response, err := s.app.Test(request, 10000)
+	require.NoError(s.T(), err)
 	body, _ := io.ReadAll(response.Body)
 	// assert
 	if assert.Equal(s.T(), fiber.StatusCreated, response.StatusCode) == false {
@@ -373,8 +375,8 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	assert.Equal(s.T(), "6", *regUserResp.Metadata.CANProtocol)
 	assert.EqualValues(s.T(), "ICE", *regUserResp.Metadata.PowertrainType)
 
-	msg, responseError := s.natsService.JetStream.GetLastMsg(natsStreamName, s.natsService.JetStreamSubject)
-	assert.NoError(s.T(), responseError, "expected no error from nats")
+	msg, err := s.natsService.JetStream.GetMsg(natsStreamName, 1)
+	assert.NoError(s.T(), err)
 	vinResult := gjson.GetBytes(msg.Data, "vin")
 	assert.Equal(s.T(), vinny, vinResult.Str)
 }
@@ -447,7 +449,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_SameUser_Dupl
 	assert.Equal(s.T(), integration.Type, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Type)
 	assert.Equal(s.T(), integration.Id, regUserResp.DeviceDefinition.CompatibleIntegrations[0].ID)
 
-	msg, responseError := s.natsService.JetStream.GetLastMsg(natsStreamName, s.natsService.JetStreamSubject)
+	msg, responseError := s.natsService.JetStream.GetMsg(natsStreamName, 1)
 	assert.NoError(s.T(), responseError, "expected no error from nats")
 	vinResult := gjson.GetBytes(msg.Data, "vin")
 	assert.Equal(s.T(), vinny, vinResult.Str)
@@ -556,32 +558,26 @@ func (s *UserDevicesControllerTestSuite) TestPostInvalidDefinitionID() {
 }
 
 func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
-	// arrange db, insert some user_devices
-	const (
-		// Device 1
-		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-		deviceID = "device1"
-
-		// Device 2
-		userID2   = "user2"
-		deviceID2 = "device2"
-	)
+	unitID := "431d2e89-46f1-6884-6226-5d1ad20c84d9"
+	deviceID := "device1"
+	addr := "67B94473D81D0cd00849D563C94d0432Ac988B49"
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud2 := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+
 	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, nil, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
+	_ = test.SetupCreateVehicleNFT(s.T(), ud, "vin", big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
 
-	addr := "67B94473D81D0cd00849D563C94d0432Ac988B49"
-	_ = test.SetupCreateUserDeviceWithDeviceID(s.T(), userID2, deviceID2, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	_ = test.SetupCreateVehicleNFT(s.T(), deviceID2, "vin", big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
+	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID+"2", ud2.ID, integration.Id, s.pdb)
+	_ = test.SetupCreateVehicleNFT(s.T(), ud2, "vin2", big.NewInt(2), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId, dd[0].DeviceDefinitionId}).Times(1).Return(dd, nil)
 
-	s.controller.Settings.Environment = "dev"
 	request := test.BuildRequest("GET", "/user/devices/me", "")
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
@@ -594,32 +590,45 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 		assert.True(s.T(), id.Exists(), "expected to find the ID")
 	}
 
-	assert.Equal(s.T(), integration.Id, gjson.GetBytes(body, "userDevices.1.integrations.0.integrationId").String())
-	assert.Equal(s.T(), deviceID, gjson.GetBytes(body, "userDevices.1.integrations.0.externalId").String())
-	assert.Equal(s.T(), integration.Vendor, gjson.GetBytes(body, "userDevices.1.integrations.0.integrationVendor").String())
+	assert.Equal(s.T(), integration.Id, gjson.GetBytes(body, "userDevices.0.integrations.0.integrationId").String())
+	assert.Equal(s.T(), integration.Vendor, gjson.GetBytes(body, "userDevices.0.integrations.0.integrationVendor").String())
 	assert.Equal(s.T(), ud.ID, gjson.GetBytes(body, "userDevices.1.id").String())
-	assert.Equal(s.T(), "device2                    ", gjson.GetBytes(body, "userDevices.0.id").String())
+	assert.Equal(s.T(), ud2.ID, gjson.GetBytes(body, "userDevices.0.id").String())
 }
 
 func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
-	// arrange db, insert some user_devices
-	const (
-		// User
-		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-		deviceID = "device1                    "
-		userID   = "userID"
-	)
+
+	unitID := "431d2e89-46f1-6884-6226-5d1ad20c84d9"
+	deviceID := "device1                    "
+	userID := "userID"
+	addr := "67B94473D81D0cd00849D563C94d0432Ac988B49"
 	s.controller.Settings.Environment = "dev"
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
-	ud := test.SetupCreateUserDeviceWithDeviceID(s.T(), userID, deviceID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	_ = test.SetupCreateAftermarketDevice(s.T(), userID, nil, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
+
+	mint := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusConfirmed,
+	}
+	err := mint.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
+	assert.NoError(s.T(), err)
+
+	ud := models.UserDevice{
+		ID:                 deviceID,
+		UserID:             testUserID,
+		DeviceDefinitionID: dd[0].DeviceDefinitionId,
+		CountryCode:        null.StringFrom("USA"),
+		Name:               null.StringFrom("Chungus"),
+		TokenID:            types.NewNullDecimal(decimal.New(5, 0)),
+		OwnerAddress:       null.BytesFrom(common.HexToAddress("0xA1").Bytes()),
+		MintRequestID:      null.StringFrom(mint.ID),
+	}
+	err = ud.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
+	assert.NoError(s.T(), err)
+
 	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
-
-	addr := "67B94473D81D0cd00849D563C94d0432Ac988B49"
-
-	_ = test.SetupCreateVehicleNFT(s.T(), deviceID, "vin", big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
@@ -815,7 +824,6 @@ func (s *UserDevicesControllerTestSuite) TestGetDeviceValuations_Format1() {
 
 	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/valuations", ud.ID), "")
 	response, _ := s.app.Test(request)
-
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
 }
 
