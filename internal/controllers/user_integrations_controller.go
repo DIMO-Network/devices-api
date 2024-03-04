@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-redis/redis/v8"
+	"log"
 	"math/big"
 	"strconv"
 	"strings"
@@ -1940,7 +1941,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		udc.requestValuation(v.VIN, userDeviceID, tokenID)
 		udc.requestInstantOffer(userDeviceID, tokenID)
 	}
-
+	log.Println(region, "calling startpoll")
 	if err := udc.teslaTaskService.StartPoll(v, &integration, apiVersion, region); err != nil {
 		return err
 	}
