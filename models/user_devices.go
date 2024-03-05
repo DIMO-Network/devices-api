@@ -1430,7 +1430,7 @@ func (o *UserDevice) SetVehicleNFT(ctx context.Context, exec boil.ContextExecuto
 			strmangle.SetParamNames("\"", "\"", 1, []string{"user_device_id"}),
 			strmangle.WhereClause("\"", "\"", 2, vehicleNFTPrimaryKeyColumns),
 		)
-		values := []interface{}{o.ID, related.TransactionRequestID}
+		values := []interface{}{o.ID, related.MintRequestID}
 
 		if boil.IsDebug(ctx) {
 			writer := boil.DebugWriterFrom(ctx)

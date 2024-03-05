@@ -530,7 +530,7 @@ func (o *VerifiableCredential) SetClaimVehicleNFT(ctx context.Context, exec boil
 			strmangle.SetParamNames("\"", "\"", 1, []string{"claim_id"}),
 			strmangle.WhereClause("\"", "\"", 2, vehicleNFTPrimaryKeyColumns),
 		)
-		values := []interface{}{o.ClaimID, related.TransactionRequestID}
+		values := []interface{}{o.ClaimID, related.MintRequestID}
 
 		if boil.IsDebug(ctx) {
 			writer := boil.DebugWriterFrom(ctx)

@@ -25,77 +25,86 @@ import (
 
 // VehicleNFT is an object representing the database table.
 type VehicleNFT struct {
-	TransactionRequestID string            `boil:"transaction_request_id" json:"transaction_request_id" toml:"transaction_request_id" yaml:"transaction_request_id"`
-	UserDeviceID         null.String       `boil:"user_device_id" json:"user_device_id,omitempty" toml:"user_device_id" yaml:"user_device_id,omitempty"`
-	Vin                  string            `boil:"vin" json:"vin" toml:"vin" yaml:"vin"`
-	TokenID              types.NullDecimal `boil:"token_id" json:"token_id,omitempty" toml:"token_id" yaml:"token_id,omitempty"`
-	OwnerAddress         null.Bytes        `boil:"owner_address" json:"owner_address,omitempty" toml:"owner_address" yaml:"owner_address,omitempty"`
-	ClaimID              null.String       `boil:"claim_id" json:"claim_id,omitempty" toml:"claim_id" yaml:"claim_id,omitempty"`
+	MintRequestID string            `boil:"mint_request_id" json:"mint_request_id" toml:"mint_request_id" yaml:"mint_request_id"`
+	UserDeviceID  null.String       `boil:"user_device_id" json:"user_device_id,omitempty" toml:"user_device_id" yaml:"user_device_id,omitempty"`
+	Vin           string            `boil:"vin" json:"vin" toml:"vin" yaml:"vin"`
+	TokenID       types.NullDecimal `boil:"token_id" json:"token_id,omitempty" toml:"token_id" yaml:"token_id,omitempty"`
+	OwnerAddress  null.Bytes        `boil:"owner_address" json:"owner_address,omitempty" toml:"owner_address" yaml:"owner_address,omitempty"`
+	ClaimID       null.String       `boil:"claim_id" json:"claim_id,omitempty" toml:"claim_id" yaml:"claim_id,omitempty"`
+	BurnRequestID null.String       `boil:"burn_request_id" json:"burn_request_id,omitempty" toml:"burn_request_id" yaml:"burn_request_id,omitempty"`
 
 	R *vehicleNFTR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L vehicleNFTL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var VehicleNFTColumns = struct {
-	TransactionRequestID string
-	UserDeviceID         string
-	Vin                  string
-	TokenID              string
-	OwnerAddress         string
-	ClaimID              string
+	MintRequestID string
+	UserDeviceID  string
+	Vin           string
+	TokenID       string
+	OwnerAddress  string
+	ClaimID       string
+	BurnRequestID string
 }{
-	TransactionRequestID: "transaction_request_id",
-	UserDeviceID:         "user_device_id",
-	Vin:                  "vin",
-	TokenID:              "token_id",
-	OwnerAddress:         "owner_address",
-	ClaimID:              "claim_id",
+	MintRequestID: "mint_request_id",
+	UserDeviceID:  "user_device_id",
+	Vin:           "vin",
+	TokenID:       "token_id",
+	OwnerAddress:  "owner_address",
+	ClaimID:       "claim_id",
+	BurnRequestID: "burn_request_id",
 }
 
 var VehicleNFTTableColumns = struct {
-	TransactionRequestID string
-	UserDeviceID         string
-	Vin                  string
-	TokenID              string
-	OwnerAddress         string
-	ClaimID              string
+	MintRequestID string
+	UserDeviceID  string
+	Vin           string
+	TokenID       string
+	OwnerAddress  string
+	ClaimID       string
+	BurnRequestID string
 }{
-	TransactionRequestID: "vehicle_nfts.transaction_request_id",
-	UserDeviceID:         "vehicle_nfts.user_device_id",
-	Vin:                  "vehicle_nfts.vin",
-	TokenID:              "vehicle_nfts.token_id",
-	OwnerAddress:         "vehicle_nfts.owner_address",
-	ClaimID:              "vehicle_nfts.claim_id",
+	MintRequestID: "vehicle_nfts.mint_request_id",
+	UserDeviceID:  "vehicle_nfts.user_device_id",
+	Vin:           "vehicle_nfts.vin",
+	TokenID:       "vehicle_nfts.token_id",
+	OwnerAddress:  "vehicle_nfts.owner_address",
+	ClaimID:       "vehicle_nfts.claim_id",
+	BurnRequestID: "vehicle_nfts.burn_request_id",
 }
 
 // Generated where
 
 var VehicleNFTWhere = struct {
-	TransactionRequestID whereHelperstring
-	UserDeviceID         whereHelpernull_String
-	Vin                  whereHelperstring
-	TokenID              whereHelpertypes_NullDecimal
-	OwnerAddress         whereHelpernull_Bytes
-	ClaimID              whereHelpernull_String
+	MintRequestID whereHelperstring
+	UserDeviceID  whereHelpernull_String
+	Vin           whereHelperstring
+	TokenID       whereHelpertypes_NullDecimal
+	OwnerAddress  whereHelpernull_Bytes
+	ClaimID       whereHelpernull_String
+	BurnRequestID whereHelpernull_String
 }{
-	TransactionRequestID: whereHelperstring{field: "\"devices_api\".\"vehicle_nfts\".\"transaction_request_id\""},
-	UserDeviceID:         whereHelpernull_String{field: "\"devices_api\".\"vehicle_nfts\".\"user_device_id\""},
-	Vin:                  whereHelperstring{field: "\"devices_api\".\"vehicle_nfts\".\"vin\""},
-	TokenID:              whereHelpertypes_NullDecimal{field: "\"devices_api\".\"vehicle_nfts\".\"token_id\""},
-	OwnerAddress:         whereHelpernull_Bytes{field: "\"devices_api\".\"vehicle_nfts\".\"owner_address\""},
-	ClaimID:              whereHelpernull_String{field: "\"devices_api\".\"vehicle_nfts\".\"claim_id\""},
+	MintRequestID: whereHelperstring{field: "\"devices_api\".\"vehicle_nfts\".\"mint_request_id\""},
+	UserDeviceID:  whereHelpernull_String{field: "\"devices_api\".\"vehicle_nfts\".\"user_device_id\""},
+	Vin:           whereHelperstring{field: "\"devices_api\".\"vehicle_nfts\".\"vin\""},
+	TokenID:       whereHelpertypes_NullDecimal{field: "\"devices_api\".\"vehicle_nfts\".\"token_id\""},
+	OwnerAddress:  whereHelpernull_Bytes{field: "\"devices_api\".\"vehicle_nfts\".\"owner_address\""},
+	ClaimID:       whereHelpernull_String{field: "\"devices_api\".\"vehicle_nfts\".\"claim_id\""},
+	BurnRequestID: whereHelpernull_String{field: "\"devices_api\".\"vehicle_nfts\".\"burn_request_id\""},
 }
 
 // VehicleNFTRels is where relationship names are stored.
 var VehicleNFTRels = struct {
+	BurnRequest                   string
 	Claim                         string
-	TransactionRequest            string
+	MintRequest                   string
 	UserDevice                    string
 	VehicleTokenAftermarketDevice string
 	VehicleTokenSyntheticDevice   string
 }{
+	BurnRequest:                   "BurnRequest",
 	Claim:                         "Claim",
-	TransactionRequest:            "TransactionRequest",
+	MintRequest:                   "MintRequest",
 	UserDevice:                    "UserDevice",
 	VehicleTokenAftermarketDevice: "VehicleTokenAftermarketDevice",
 	VehicleTokenSyntheticDevice:   "VehicleTokenSyntheticDevice",
@@ -103,8 +112,9 @@ var VehicleNFTRels = struct {
 
 // vehicleNFTR is where relationships are stored.
 type vehicleNFTR struct {
+	BurnRequest                   *MetaTransactionRequest `boil:"BurnRequest" json:"BurnRequest" toml:"BurnRequest" yaml:"BurnRequest"`
 	Claim                         *VerifiableCredential   `boil:"Claim" json:"Claim" toml:"Claim" yaml:"Claim"`
-	TransactionRequest            *MetaTransactionRequest `boil:"TransactionRequest" json:"TransactionRequest" toml:"TransactionRequest" yaml:"TransactionRequest"`
+	MintRequest                   *MetaTransactionRequest `boil:"MintRequest" json:"MintRequest" toml:"MintRequest" yaml:"MintRequest"`
 	UserDevice                    *UserDevice             `boil:"UserDevice" json:"UserDevice" toml:"UserDevice" yaml:"UserDevice"`
 	VehicleTokenAftermarketDevice *AftermarketDevice      `boil:"VehicleTokenAftermarketDevice" json:"VehicleTokenAftermarketDevice" toml:"VehicleTokenAftermarketDevice" yaml:"VehicleTokenAftermarketDevice"`
 	VehicleTokenSyntheticDevice   *SyntheticDevice        `boil:"VehicleTokenSyntheticDevice" json:"VehicleTokenSyntheticDevice" toml:"VehicleTokenSyntheticDevice" yaml:"VehicleTokenSyntheticDevice"`
@@ -115,6 +125,13 @@ func (*vehicleNFTR) NewStruct() *vehicleNFTR {
 	return &vehicleNFTR{}
 }
 
+func (r *vehicleNFTR) GetBurnRequest() *MetaTransactionRequest {
+	if r == nil {
+		return nil
+	}
+	return r.BurnRequest
+}
+
 func (r *vehicleNFTR) GetClaim() *VerifiableCredential {
 	if r == nil {
 		return nil
@@ -122,11 +139,11 @@ func (r *vehicleNFTR) GetClaim() *VerifiableCredential {
 	return r.Claim
 }
 
-func (r *vehicleNFTR) GetTransactionRequest() *MetaTransactionRequest {
+func (r *vehicleNFTR) GetMintRequest() *MetaTransactionRequest {
 	if r == nil {
 		return nil
 	}
-	return r.TransactionRequest
+	return r.MintRequest
 }
 
 func (r *vehicleNFTR) GetUserDevice() *UserDevice {
@@ -154,10 +171,10 @@ func (r *vehicleNFTR) GetVehicleTokenSyntheticDevice() *SyntheticDevice {
 type vehicleNFTL struct{}
 
 var (
-	vehicleNFTAllColumns            = []string{"transaction_request_id", "user_device_id", "vin", "token_id", "owner_address", "claim_id"}
-	vehicleNFTColumnsWithoutDefault = []string{"transaction_request_id", "vin"}
-	vehicleNFTColumnsWithDefault    = []string{"user_device_id", "token_id", "owner_address", "claim_id"}
-	vehicleNFTPrimaryKeyColumns     = []string{"transaction_request_id"}
+	vehicleNFTAllColumns            = []string{"mint_request_id", "user_device_id", "vin", "token_id", "owner_address", "claim_id", "burn_request_id"}
+	vehicleNFTColumnsWithoutDefault = []string{"mint_request_id", "vin"}
+	vehicleNFTColumnsWithDefault    = []string{"user_device_id", "token_id", "owner_address", "claim_id", "burn_request_id"}
+	vehicleNFTPrimaryKeyColumns     = []string{"mint_request_id"}
 	vehicleNFTGeneratedColumns      = []string{}
 )
 
@@ -439,6 +456,17 @@ func (q vehicleNFTQuery) Exists(ctx context.Context, exec boil.ContextExecutor) 
 	return count > 0, nil
 }
 
+// BurnRequest pointed to by the foreign key.
+func (o *VehicleNFT) BurnRequest(mods ...qm.QueryMod) metaTransactionRequestQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.BurnRequestID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	return MetaTransactionRequests(queryMods...)
+}
+
 // Claim pointed to by the foreign key.
 func (o *VehicleNFT) Claim(mods ...qm.QueryMod) verifiableCredentialQuery {
 	queryMods := []qm.QueryMod{
@@ -450,10 +478,10 @@ func (o *VehicleNFT) Claim(mods ...qm.QueryMod) verifiableCredentialQuery {
 	return VerifiableCredentials(queryMods...)
 }
 
-// TransactionRequest pointed to by the foreign key.
-func (o *VehicleNFT) TransactionRequest(mods ...qm.QueryMod) metaTransactionRequestQuery {
+// MintRequest pointed to by the foreign key.
+func (o *VehicleNFT) MintRequest(mods ...qm.QueryMod) metaTransactionRequestQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.TransactionRequestID),
+		qm.Where("\"id\" = ?", o.MintRequestID),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -492,6 +520,130 @@ func (o *VehicleNFT) VehicleTokenSyntheticDevice(mods ...qm.QueryMod) syntheticD
 	queryMods = append(queryMods, mods...)
 
 	return SyntheticDevices(queryMods...)
+}
+
+// LoadBurnRequest allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (vehicleNFTL) LoadBurnRequest(ctx context.Context, e boil.ContextExecutor, singular bool, maybeVehicleNFT interface{}, mods queries.Applicator) error {
+	var slice []*VehicleNFT
+	var object *VehicleNFT
+
+	if singular {
+		var ok bool
+		object, ok = maybeVehicleNFT.(*VehicleNFT)
+		if !ok {
+			object = new(VehicleNFT)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeVehicleNFT)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeVehicleNFT))
+			}
+		}
+	} else {
+		s, ok := maybeVehicleNFT.(*[]*VehicleNFT)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeVehicleNFT)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeVehicleNFT))
+			}
+		}
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &vehicleNFTR{}
+		}
+		if !queries.IsNil(object.BurnRequestID) {
+			args = append(args, object.BurnRequestID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &vehicleNFTR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.BurnRequestID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.BurnRequestID) {
+				args = append(args, obj.BurnRequestID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`devices_api.meta_transaction_requests`),
+		qm.WhereIn(`devices_api.meta_transaction_requests.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load MetaTransactionRequest")
+	}
+
+	var resultSlice []*MetaTransactionRequest
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice MetaTransactionRequest")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for meta_transaction_requests")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for meta_transaction_requests")
+	}
+
+	if len(metaTransactionRequestAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.BurnRequest = foreign
+		if foreign.R == nil {
+			foreign.R = &metaTransactionRequestR{}
+		}
+		foreign.R.BurnRequestVehicleNFT = object
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.BurnRequestID, foreign.ID) {
+				local.R.BurnRequest = foreign
+				if foreign.R == nil {
+					foreign.R = &metaTransactionRequestR{}
+				}
+				foreign.R.BurnRequestVehicleNFT = local
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadClaim allows an eager lookup of values, cached into the
@@ -618,9 +770,9 @@ func (vehicleNFTL) LoadClaim(ctx context.Context, e boil.ContextExecutor, singul
 	return nil
 }
 
-// LoadTransactionRequest allows an eager lookup of values, cached into the
+// LoadMintRequest allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (vehicleNFTL) LoadTransactionRequest(ctx context.Context, e boil.ContextExecutor, singular bool, maybeVehicleNFT interface{}, mods queries.Applicator) error {
+func (vehicleNFTL) LoadMintRequest(ctx context.Context, e boil.ContextExecutor, singular bool, maybeVehicleNFT interface{}, mods queries.Applicator) error {
 	var slice []*VehicleNFT
 	var object *VehicleNFT
 
@@ -651,7 +803,7 @@ func (vehicleNFTL) LoadTransactionRequest(ctx context.Context, e boil.ContextExe
 		if object.R == nil {
 			object.R = &vehicleNFTR{}
 		}
-		args = append(args, object.TransactionRequestID)
+		args = append(args, object.MintRequestID)
 
 	} else {
 	Outer:
@@ -661,12 +813,12 @@ func (vehicleNFTL) LoadTransactionRequest(ctx context.Context, e boil.ContextExe
 			}
 
 			for _, a := range args {
-				if a == obj.TransactionRequestID {
+				if a == obj.MintRequestID {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.TransactionRequestID)
+			args = append(args, obj.MintRequestID)
 
 		}
 	}
@@ -714,22 +866,22 @@ func (vehicleNFTL) LoadTransactionRequest(ctx context.Context, e boil.ContextExe
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.TransactionRequest = foreign
+		object.R.MintRequest = foreign
 		if foreign.R == nil {
 			foreign.R = &metaTransactionRequestR{}
 		}
-		foreign.R.TransactionRequestVehicleNFT = object
+		foreign.R.MintRequestVehicleNFT = object
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.TransactionRequestID == foreign.ID {
-				local.R.TransactionRequest = foreign
+			if local.MintRequestID == foreign.ID {
+				local.R.MintRequest = foreign
 				if foreign.R == nil {
 					foreign.R = &metaTransactionRequestR{}
 				}
-				foreign.R.TransactionRequestVehicleNFT = local
+				foreign.R.MintRequestVehicleNFT = local
 				break
 			}
 		}
@@ -1096,6 +1248,75 @@ func (vehicleNFTL) LoadVehicleTokenSyntheticDevice(ctx context.Context, e boil.C
 	return nil
 }
 
+// SetBurnRequest of the vehicleNFT to the related item.
+// Sets o.R.BurnRequest to related.
+// Adds o to related.R.BurnRequestVehicleNFT.
+func (o *VehicleNFT) SetBurnRequest(ctx context.Context, exec boil.ContextExecutor, insert bool, related *MetaTransactionRequest) error {
+	var err error
+	if insert {
+		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"devices_api\".\"vehicle_nfts\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"burn_request_id"}),
+		strmangle.WhereClause("\"", "\"", 2, vehicleNFTPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.MintRequestID}
+
+	if boil.IsDebug(ctx) {
+		writer := boil.DebugWriterFrom(ctx)
+		fmt.Fprintln(writer, updateQuery)
+		fmt.Fprintln(writer, values)
+	}
+	if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.BurnRequestID, related.ID)
+	if o.R == nil {
+		o.R = &vehicleNFTR{
+			BurnRequest: related,
+		}
+	} else {
+		o.R.BurnRequest = related
+	}
+
+	if related.R == nil {
+		related.R = &metaTransactionRequestR{
+			BurnRequestVehicleNFT: o,
+		}
+	} else {
+		related.R.BurnRequestVehicleNFT = o
+	}
+
+	return nil
+}
+
+// RemoveBurnRequest relationship.
+// Sets o.R.BurnRequest to nil.
+// Removes o from all passed in related items' relationships struct.
+func (o *VehicleNFT) RemoveBurnRequest(ctx context.Context, exec boil.ContextExecutor, related *MetaTransactionRequest) error {
+	var err error
+
+	queries.SetScanner(&o.BurnRequestID, nil)
+	if _, err = o.Update(ctx, exec, boil.Whitelist("burn_request_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.BurnRequest = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	related.R.BurnRequestVehicleNFT = nil
+	return nil
+}
+
 // SetClaim of the vehicleNFT to the related item.
 // Sets o.R.Claim to related.
 // Adds o to related.R.ClaimVehicleNFT.
@@ -1112,7 +1333,7 @@ func (o *VehicleNFT) SetClaim(ctx context.Context, exec boil.ContextExecutor, in
 		strmangle.SetParamNames("\"", "\"", 1, []string{"claim_id"}),
 		strmangle.WhereClause("\"", "\"", 2, vehicleNFTPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ClaimID, o.TransactionRequestID}
+	values := []interface{}{related.ClaimID, o.MintRequestID}
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -1165,10 +1386,10 @@ func (o *VehicleNFT) RemoveClaim(ctx context.Context, exec boil.ContextExecutor,
 	return nil
 }
 
-// SetTransactionRequest of the vehicleNFT to the related item.
-// Sets o.R.TransactionRequest to related.
-// Adds o to related.R.TransactionRequestVehicleNFT.
-func (o *VehicleNFT) SetTransactionRequest(ctx context.Context, exec boil.ContextExecutor, insert bool, related *MetaTransactionRequest) error {
+// SetMintRequest of the vehicleNFT to the related item.
+// Sets o.R.MintRequest to related.
+// Adds o to related.R.MintRequestVehicleNFT.
+func (o *VehicleNFT) SetMintRequest(ctx context.Context, exec boil.ContextExecutor, insert bool, related *MetaTransactionRequest) error {
 	var err error
 	if insert {
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
@@ -1178,10 +1399,10 @@ func (o *VehicleNFT) SetTransactionRequest(ctx context.Context, exec boil.Contex
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"devices_api\".\"vehicle_nfts\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"transaction_request_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"mint_request_id"}),
 		strmangle.WhereClause("\"", "\"", 2, vehicleNFTPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.TransactionRequestID}
+	values := []interface{}{related.ID, o.MintRequestID}
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -1192,21 +1413,21 @@ func (o *VehicleNFT) SetTransactionRequest(ctx context.Context, exec boil.Contex
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.TransactionRequestID = related.ID
+	o.MintRequestID = related.ID
 	if o.R == nil {
 		o.R = &vehicleNFTR{
-			TransactionRequest: related,
+			MintRequest: related,
 		}
 	} else {
-		o.R.TransactionRequest = related
+		o.R.MintRequest = related
 	}
 
 	if related.R == nil {
 		related.R = &metaTransactionRequestR{
-			TransactionRequestVehicleNFT: o,
+			MintRequestVehicleNFT: o,
 		}
 	} else {
-		related.R.TransactionRequestVehicleNFT = o
+		related.R.MintRequestVehicleNFT = o
 	}
 
 	return nil
@@ -1228,7 +1449,7 @@ func (o *VehicleNFT) SetUserDevice(ctx context.Context, exec boil.ContextExecuto
 		strmangle.SetParamNames("\"", "\"", 1, []string{"user_device_id"}),
 		strmangle.WhereClause("\"", "\"", 2, vehicleNFTPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.TransactionRequestID}
+	values := []interface{}{related.ID, o.MintRequestID}
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -1442,7 +1663,7 @@ func VehicleNFTS(mods ...qm.QueryMod) vehicleNFTQuery {
 
 // FindVehicleNFT retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindVehicleNFT(ctx context.Context, exec boil.ContextExecutor, transactionRequestID string, selectCols ...string) (*VehicleNFT, error) {
+func FindVehicleNFT(ctx context.Context, exec boil.ContextExecutor, mintRequestID string, selectCols ...string) (*VehicleNFT, error) {
 	vehicleNFTObj := &VehicleNFT{}
 
 	sel := "*"
@@ -1450,10 +1671,10 @@ func FindVehicleNFT(ctx context.Context, exec boil.ContextExecutor, transactionR
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"devices_api\".\"vehicle_nfts\" where \"transaction_request_id\"=$1", sel,
+		"select %s from \"devices_api\".\"vehicle_nfts\" where \"mint_request_id\"=$1", sel,
 	)
 
-	q := queries.Raw(query, transactionRequestID)
+	q := queries.Raw(query, mintRequestID)
 
 	err := q.Bind(ctx, exec, vehicleNFTObj)
 	if err != nil {
@@ -1805,7 +2026,7 @@ func (o *VehicleNFT) Delete(ctx context.Context, exec boil.ContextExecutor) (int
 	}
 
 	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), vehicleNFTPrimaryKeyMapping)
-	sql := "DELETE FROM \"devices_api\".\"vehicle_nfts\" WHERE \"transaction_request_id\"=$1"
+	sql := "DELETE FROM \"devices_api\".\"vehicle_nfts\" WHERE \"mint_request_id\"=$1"
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -1902,7 +2123,7 @@ func (o VehicleNFTSlice) DeleteAll(ctx context.Context, exec boil.ContextExecuto
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *VehicleNFT) Reload(ctx context.Context, exec boil.ContextExecutor) error {
-	ret, err := FindVehicleNFT(ctx, exec, o.TransactionRequestID)
+	ret, err := FindVehicleNFT(ctx, exec, o.MintRequestID)
 	if err != nil {
 		return err
 	}
@@ -1941,16 +2162,16 @@ func (o *VehicleNFTSlice) ReloadAll(ctx context.Context, exec boil.ContextExecut
 }
 
 // VehicleNFTExists checks if the VehicleNFT row exists.
-func VehicleNFTExists(ctx context.Context, exec boil.ContextExecutor, transactionRequestID string) (bool, error) {
+func VehicleNFTExists(ctx context.Context, exec boil.ContextExecutor, mintRequestID string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"devices_api\".\"vehicle_nfts\" where \"transaction_request_id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"devices_api\".\"vehicle_nfts\" where \"mint_request_id\"=$1 limit 1)"
 
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
 		fmt.Fprintln(writer, sql)
-		fmt.Fprintln(writer, transactionRequestID)
+		fmt.Fprintln(writer, mintRequestID)
 	}
-	row := exec.QueryRowContext(ctx, sql, transactionRequestID)
+	row := exec.QueryRowContext(ctx, sql, mintRequestID)
 
 	err := row.Scan(&exists)
 	if err != nil {
@@ -1962,5 +2183,5 @@ func VehicleNFTExists(ctx context.Context, exec boil.ContextExecutor, transactio
 
 // Exists checks if the VehicleNFT row exists.
 func (o *VehicleNFT) Exists(ctx context.Context, exec boil.ContextExecutor) (bool, error) {
-	return VehicleNFTExists(ctx, exec, o.TransactionRequestID)
+	return VehicleNFTExists(ctx, exec, o.MintRequestID)
 }
