@@ -813,11 +813,11 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 	s.Require().NoError(mint.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer()))
 
 	vnft := models.VehicleNFT{
-		UserDeviceID:         null.StringFrom(ud.ID),
-		Vin:                  ud.VinIdentifier.String,
-		TokenID:              types.NewNullDecimal(decimal.New(4, 0)),
-		OwnerAddress:         null.BytesFrom(userAddr.Bytes()),
-		TransactionRequestID: mint.ID,
+		UserDeviceID:  null.StringFrom(ud.ID),
+		Vin:           ud.VinIdentifier.String,
+		TokenID:       types.NewNullDecimal(decimal.New(4, 0)),
+		OwnerAddress:  null.BytesFrom(userAddr.Bytes()),
+		MintRequestID: mint.ID,
 	}
 	s.Require().NoError(vnft.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer()))
 

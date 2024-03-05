@@ -47,12 +47,12 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 	}
 
 	vnft := models.VehicleNFT{
-		UserDeviceID:         null.StringFrom(ud.ID),
-		Vin:                  ud.VinIdentifier.String,
-		TokenID:              types.NewNullDecimal(decimal.New(4, 0)),
-		OwnerAddress:         null.BytesFrom(common.BigToAddress(big.NewInt(7)).Bytes()),
-		TransactionRequestID: ksuid.New().String(),
-		ClaimID:              null.StringFrom(claimID),
+		UserDeviceID:  null.StringFrom(ud.ID),
+		Vin:           ud.VinIdentifier.String,
+		TokenID:       types.NewNullDecimal(decimal.New(4, 0)),
+		OwnerAddress:  null.BytesFrom(common.BigToAddress(big.NewInt(7)).Bytes()),
+		MintRequestID: ksuid.New().String(),
+		ClaimID:       null.StringFrom(claimID),
 	}
 
 	ad := models.AftermarketDevice{
@@ -70,7 +70,7 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 	sd := models.SyntheticDevice{
 		VehicleTokenID:     vnft.TokenID,
 		IntegrationTokenID: types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(19), 0)),
-		MintRequestID:      vnft.TransactionRequestID,
+		MintRequestID:      vnft.MintRequestID,
 		WalletChildNumber:  100,
 		TokenID:            types.NewNullDecimal(decimal.New(6, 0)),
 		WalletAddress:      childWallet.Bytes(),
@@ -82,7 +82,7 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 	}
 
 	metaTx := models.MetaTransactionRequest{
-		ID:     vnft.TransactionRequestID,
+		ID:     vnft.MintRequestID,
 		Status: models.MetaTransactionRequestStatusConfirmed,
 	}
 

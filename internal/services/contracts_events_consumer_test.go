@@ -503,7 +503,7 @@ func TestVehicleTransfer(t *testing.T) {
 	mtr := models.MetaTransactionRequest{ID: "xdd"}
 	_ = mtr.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
-	nft := models.VehicleNFT{TransactionRequestID: "xdd", OwnerAddress: null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")), TokenID: types.NewNullDecimal(decimal.New(5, 0))}
+	nft := models.VehicleNFT{MintRequestID: "xdd", OwnerAddress: null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")), TokenID: types.NewNullDecimal(decimal.New(5, 0))}
 	_ = nft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
 	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil)
@@ -562,7 +562,7 @@ func Test_NFTPrivileges_Cleared_On_Vehicle_Transfer(t *testing.T) {
 	}
 	_ = nftPriv.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
-	nft := models.VehicleNFT{TransactionRequestID: "xdd", OwnerAddress: ownerAddress, TokenID: tkID}
+	nft := models.VehicleNFT{MintRequestID: "xdd", OwnerAddress: ownerAddress, TokenID: tkID}
 	_ = nft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
 	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil)
