@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/go-redis/redis/v8"
 	"math/big"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/go-redis/redis/v8"
 
 	smartcar "github.com/smartcar/go-sdk"
 
@@ -1930,8 +1931,8 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 
 	if udc.Settings.IsProduction() {
 		tokenID := int64(0)
-		if ud.R != nil && ud.R.VehicleNFT != nil {
-			tokenID, _ = ud.R.VehicleNFT.TokenID.Int64()
+		if !ud.TokenID.IsZero() {
+			tokenID, _ = ud.TokenID.Int64()
 		}
 		udc.requestValuation(v.VIN, userDeviceID, tokenID)
 		udc.requestInstantOffer(userDeviceID, tokenID)

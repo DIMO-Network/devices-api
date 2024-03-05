@@ -38,10 +38,10 @@ type UserDevice struct {
 	Metadata           null.JSON         `boil:"metadata" json:"metadata,omitempty" toml:"metadata" yaml:"metadata,omitempty"`
 	DeviceStyleID      null.String       `boil:"device_style_id" json:"device_style_id,omitempty" toml:"device_style_id" yaml:"device_style_id,omitempty"`
 	OptedInAt          null.Time         `boil:"opted_in_at" json:"opted_in_at,omitempty" toml:"opted_in_at" yaml:"opted_in_at,omitempty"`
+	MintRequestID      null.String       `boil:"mint_request_id" json:"mint_request_id,omitempty" toml:"mint_request_id" yaml:"mint_request_id,omitempty"`
 	TokenID            types.NullDecimal `boil:"token_id" json:"token_id,omitempty" toml:"token_id" yaml:"token_id,omitempty"`
 	ClaimID            null.String       `boil:"claim_id" json:"claim_id,omitempty" toml:"claim_id" yaml:"claim_id,omitempty"`
 	OwnerAddress       null.Bytes        `boil:"owner_address" json:"owner_address,omitempty" toml:"owner_address" yaml:"owner_address,omitempty"`
-	MintRequestID      null.String       `boil:"mint_request_id" json:"mint_request_id,omitempty" toml:"mint_request_id" yaml:"mint_request_id,omitempty"`
 
 	R *userDeviceR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userDeviceL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -61,10 +61,10 @@ var UserDeviceColumns = struct {
 	Metadata           string
 	DeviceStyleID      string
 	OptedInAt          string
+	MintRequestID      string
 	TokenID            string
 	ClaimID            string
 	OwnerAddress       string
-	MintRequestID      string
 }{
 	ID:                 "id",
 	UserID:             "user_id",
@@ -79,10 +79,10 @@ var UserDeviceColumns = struct {
 	Metadata:           "metadata",
 	DeviceStyleID:      "device_style_id",
 	OptedInAt:          "opted_in_at",
+	MintRequestID:      "mint_request_id",
 	TokenID:            "token_id",
 	ClaimID:            "claim_id",
 	OwnerAddress:       "owner_address",
-	MintRequestID:      "mint_request_id",
 }
 
 var UserDeviceTableColumns = struct {
@@ -99,10 +99,10 @@ var UserDeviceTableColumns = struct {
 	Metadata           string
 	DeviceStyleID      string
 	OptedInAt          string
+	MintRequestID      string
 	TokenID            string
 	ClaimID            string
 	OwnerAddress       string
-	MintRequestID      string
 }{
 	ID:                 "user_devices.id",
 	UserID:             "user_devices.user_id",
@@ -117,10 +117,10 @@ var UserDeviceTableColumns = struct {
 	Metadata:           "user_devices.metadata",
 	DeviceStyleID:      "user_devices.device_style_id",
 	OptedInAt:          "user_devices.opted_in_at",
+	MintRequestID:      "user_devices.mint_request_id",
 	TokenID:            "user_devices.token_id",
 	ClaimID:            "user_devices.claim_id",
 	OwnerAddress:       "user_devices.owner_address",
-	MintRequestID:      "user_devices.mint_request_id",
 }
 
 // Generated where
@@ -148,10 +148,10 @@ var UserDeviceWhere = struct {
 	Metadata           whereHelpernull_JSON
 	DeviceStyleID      whereHelpernull_String
 	OptedInAt          whereHelpernull_Time
+	MintRequestID      whereHelpernull_String
 	TokenID            whereHelpertypes_NullDecimal
 	ClaimID            whereHelpernull_String
 	OwnerAddress       whereHelpernull_Bytes
-	MintRequestID      whereHelpernull_String
 }{
 	ID:                 whereHelperstring{field: "\"devices_api\".\"user_devices\".\"id\""},
 	UserID:             whereHelperstring{field: "\"devices_api\".\"user_devices\".\"user_id\""},
@@ -166,10 +166,10 @@ var UserDeviceWhere = struct {
 	Metadata:           whereHelpernull_JSON{field: "\"devices_api\".\"user_devices\".\"metadata\""},
 	DeviceStyleID:      whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"device_style_id\""},
 	OptedInAt:          whereHelpernull_Time{field: "\"devices_api\".\"user_devices\".\"opted_in_at\""},
+	MintRequestID:      whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"mint_request_id\""},
 	TokenID:            whereHelpertypes_NullDecimal{field: "\"devices_api\".\"user_devices\".\"token_id\""},
 	ClaimID:            whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"claim_id\""},
 	OwnerAddress:       whereHelpernull_Bytes{field: "\"devices_api\".\"user_devices\".\"owner_address\""},
-	MintRequestID:      whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"mint_request_id\""},
 }
 
 // UserDeviceRels is where relationship names are stored.
@@ -290,9 +290,9 @@ func (r *userDeviceR) GetUserDeviceToGeofences() UserDeviceToGeofenceSlice {
 type userDeviceL struct{}
 
 var (
-	userDeviceAllColumns            = []string{"id", "user_id", "device_definition_id", "vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at", "token_id", "claim_id", "owner_address", "mint_request_id"}
+	userDeviceAllColumns            = []string{"id", "user_id", "device_definition_id", "vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at", "mint_request_id", "token_id", "claim_id", "owner_address"}
 	userDeviceColumnsWithoutDefault = []string{"id", "user_id", "device_definition_id"}
-	userDeviceColumnsWithDefault    = []string{"vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at", "token_id", "claim_id", "owner_address", "mint_request_id"}
+	userDeviceColumnsWithDefault    = []string{"vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at", "mint_request_id", "token_id", "claim_id", "owner_address"}
 	userDevicePrimaryKeyColumns     = []string{"id"}
 	userDeviceGeneratedColumns      = []string{}
 )
