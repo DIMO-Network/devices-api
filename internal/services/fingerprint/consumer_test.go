@@ -139,12 +139,12 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 	}
 
 	nft := models.VehicleNFT{
-		MintRequestID: mtxReq,
-		UserDeviceID:  null.StringFrom(deviceID),
-		Vin:           vin,
-		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
-		OwnerAddress:  ownerAddress,
-		ClaimID:       null.StringFrom(claimID),
+		TransactionRequestID: mtxReq,
+		UserDeviceID:         null.StringFrom(deviceID),
+		Vin:                  vin,
+		TokenID:              types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+		OwnerAddress:         ownerAddress,
+		ClaimID:              null.StringFrom(claimID),
 	}
 
 	msg :=
@@ -280,12 +280,12 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 	}
 
 	nft := models.VehicleNFT{
-		MintRequestID: mtxReq,
-		UserDeviceID:  null.StringFrom(userDeviceID),
-		Vin:           vin,
-		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
-		OwnerAddress:  ownerAddr,
-		ClaimID:       null.StringFrom(claimID),
+		TransactionRequestID: mtxReq,
+		UserDeviceID:         null.StringFrom(userDeviceID),
+		Vin:                  vin,
+		TokenID:              types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+		OwnerAddress:         ownerAddr,
+		ClaimID:              null.StringFrom(claimID),
 	}
 
 	synthDevice := models.SyntheticDevice{

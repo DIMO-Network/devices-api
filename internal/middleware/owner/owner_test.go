@@ -113,9 +113,9 @@ func TestUserDeviceOwnerMiddleware(t *testing.T) {
 				require.NoError(t, mtr.Insert(ctx, pdb.DBS().Writer, boil.Infer()))
 
 				vnft := models.VehicleNFT{
-					MintRequestID: mtr.ID,
-					UserDeviceID:  null.StringFrom(userDeviceID),
-					OwnerAddress:  null.BytesFrom(common.FromHex(c.NFTOwnerAddr)),
+					TransactionRequestID: mtr.ID,
+					UserDeviceID:         null.StringFrom(userDeviceID),
+					OwnerAddress:         null.BytesFrom(common.FromHex(c.NFTOwnerAddr)),
 				}
 
 				require.NoError(t, vnft.Insert(ctx, pdb.DBS().Writer, boil.Infer()))
@@ -227,9 +227,9 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 			require.NoError(t, err)
 
 			vnft := models.VehicleNFT{
-				MintRequestID: mtxReqID,
-				Vin:           vin,
-				TokenID:       c.AutoPiVehicleToken,
+				TransactionRequestID: mtxReqID,
+				Vin:                  vin,
+				TokenID:              c.AutoPiVehicleToken,
 			}
 
 			if c.vNFTAddr != "" {

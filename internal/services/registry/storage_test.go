@@ -101,10 +101,10 @@ func (s *StorageTestSuite) Test_SyntheticMintSetsID() {
 	s.MustInsert(&mtr)
 
 	vnft := models.VehicleNFT{
-		MintRequestID: mtr.ID,
-		UserDeviceID:  null.StringFrom(ud.ID),
-		TokenID:       types.NewNullDecimal(decimal.New(vehicleID, 0)),
-		OwnerAddress:  null.BytesFrom(ownerAddr.Bytes()),
+		TransactionRequestID: mtr.ID,
+		UserDeviceID:         null.StringFrom(ud.ID),
+		TokenID:              types.NewNullDecimal(decimal.New(vehicleID, 0)),
+		OwnerAddress:         null.BytesFrom(ownerAddr.Bytes()),
 	}
 	s.MustInsert(&vnft)
 
@@ -200,8 +200,8 @@ func (s *StorageTestSuite) TestMintVehicle() {
 	})
 
 	vnft := models.VehicleNFT{
-		MintRequestID: mtr.ID,
-		UserDeviceID:  null.StringFrom(ud.ID),
+		TransactionRequestID: mtr.ID,
+		UserDeviceID:         null.StringFrom(ud.ID),
 	}
 	s.MustInsert(&vnft)
 

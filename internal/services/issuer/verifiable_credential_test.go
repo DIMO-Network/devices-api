@@ -104,11 +104,11 @@ func (s *CredentialTestSuite) TestVerifiableCredential() {
 	require.NoError(s.T(), err)
 
 	nft := models.VehicleNFT{
-		MintRequestID: mtxReq,
-		UserDeviceID:  null.StringFrom(deviceID),
-		Vin:           vin,
-		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
-		OwnerAddress:  null.BytesFrom(common.Hex2Bytes("ab8438a18d83d41847dffbdc6101d37c69c9a2fc")),
+		TransactionRequestID: mtxReq,
+		UserDeviceID:         null.StringFrom(deviceID),
+		Vin:                  vin,
+		TokenID:              types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+		OwnerAddress:         null.BytesFrom(common.Hex2Bytes("ab8438a18d83d41847dffbdc6101d37c69c9a2fc")),
 	}
 
 	err = nft.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())

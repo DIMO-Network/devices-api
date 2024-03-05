@@ -300,11 +300,11 @@ func SetupCreateVehicleNFT(t *testing.T, userDeviceID, vin string, tokenID *big.
 	assert.NoError(t, err)
 
 	vehicle := models.VehicleNFT{
-		Vin:           vin,
-		MintRequestID: mint.ID,
-		UserDeviceID:  null.StringFrom(userDeviceID),
-		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
-		OwnerAddress:  ownerAddr,
+		Vin:                  vin,
+		TransactionRequestID: mint.ID,
+		UserDeviceID:         null.StringFrom(userDeviceID),
+		TokenID:              types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+		OwnerAddress:         ownerAddr,
 	}
 	err = vehicle.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
 	assert.NoError(t, err)
@@ -333,11 +333,11 @@ func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userI
 	assert.NoError(t, err)
 
 	vehicle := models.VehicleNFT{
-		Vin:           "00000000000000001",
-		MintRequestID: mint.ID,
-		UserDeviceID:  null.StringFrom(userDeviceID),
-		TokenID:       types.NewNullDecimal(decimal.New(tokenID, 0)),
-		OwnerAddress:  null.BytesFrom(common.FromHex(addr.String())),
+		Vin:                  "00000000000000001",
+		TransactionRequestID: mint.ID,
+		UserDeviceID:         null.StringFrom(userDeviceID),
+		TokenID:              types.NewNullDecimal(decimal.New(tokenID, 0)),
+		OwnerAddress:         null.BytesFrom(common.FromHex(addr.String())),
 	}
 	err = vehicle.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
 	assert.NoError(t, err)

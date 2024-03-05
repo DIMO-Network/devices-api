@@ -332,7 +332,7 @@ func (nc *NFTController) GetNFTImage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "NFT not found.")
 	}
 
-	imageName = nft.MintRequestID
+	imageName = nft.TransactionRequestID
 	suffix := ".png"
 
 	if transparent {
