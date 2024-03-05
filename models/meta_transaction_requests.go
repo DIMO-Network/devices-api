@@ -85,14 +85,14 @@ var MetaTransactionRequestRels = struct {
 	UnpairRequestAftermarketDevice               string
 	MintRequestSyntheticDevice                   string
 	BurnRequestSyntheticDevice                   string
-	MintRequestVehicleNFT                        string
+	TransactionRequestVehicleNFT                 string
 }{
 	ClaimMetaTransactionRequestAftermarketDevice: "ClaimMetaTransactionRequestAftermarketDevice",
 	PairRequestAftermarketDevice:                 "PairRequestAftermarketDevice",
 	UnpairRequestAftermarketDevice:               "UnpairRequestAftermarketDevice",
 	MintRequestSyntheticDevice:                   "MintRequestSyntheticDevice",
 	BurnRequestSyntheticDevice:                   "BurnRequestSyntheticDevice",
-	MintRequestVehicleNFT:                        "MintRequestVehicleNFT",
+	TransactionRequestVehicleNFT:                 "TransactionRequestVehicleNFT",
 }
 
 // metaTransactionRequestR is where relationships are stored.
@@ -102,7 +102,7 @@ type metaTransactionRequestR struct {
 	UnpairRequestAftermarketDevice               *AftermarketDevice `boil:"UnpairRequestAftermarketDevice" json:"UnpairRequestAftermarketDevice" toml:"UnpairRequestAftermarketDevice" yaml:"UnpairRequestAftermarketDevice"`
 	MintRequestSyntheticDevice                   *SyntheticDevice   `boil:"MintRequestSyntheticDevice" json:"MintRequestSyntheticDevice" toml:"MintRequestSyntheticDevice" yaml:"MintRequestSyntheticDevice"`
 	BurnRequestSyntheticDevice                   *SyntheticDevice   `boil:"BurnRequestSyntheticDevice" json:"BurnRequestSyntheticDevice" toml:"BurnRequestSyntheticDevice" yaml:"BurnRequestSyntheticDevice"`
-	MintRequestVehicleNFT                        *VehicleNFT        `boil:"MintRequestVehicleNFT" json:"MintRequestVehicleNFT" toml:"MintRequestVehicleNFT" yaml:"MintRequestVehicleNFT"`
+	TransactionRequestVehicleNFT                 *VehicleNFT        `boil:"TransactionRequestVehicleNFT" json:"TransactionRequestVehicleNFT" toml:"TransactionRequestVehicleNFT" yaml:"TransactionRequestVehicleNFT"`
 }
 
 // NewStruct creates a new relationship struct
@@ -145,11 +145,11 @@ func (r *metaTransactionRequestR) GetBurnRequestSyntheticDevice() *SyntheticDevi
 	return r.BurnRequestSyntheticDevice
 }
 
-func (r *metaTransactionRequestR) GetMintRequestVehicleNFT() *VehicleNFT {
+func (r *metaTransactionRequestR) GetTransactionRequestVehicleNFT() *VehicleNFT {
 	if r == nil {
 		return nil
 	}
-	return r.MintRequestVehicleNFT
+	return r.TransactionRequestVehicleNFT
 }
 
 // metaTransactionRequestL is where Load methods for each relationship are stored.
@@ -496,10 +496,10 @@ func (o *MetaTransactionRequest) BurnRequestSyntheticDevice(mods ...qm.QueryMod)
 	return SyntheticDevices(queryMods...)
 }
 
-// MintRequestVehicleNFT pointed to by the foreign key.
-func (o *MetaTransactionRequest) MintRequestVehicleNFT(mods ...qm.QueryMod) vehicleNFTQuery {
+// TransactionRequestVehicleNFT pointed to by the foreign key.
+func (o *MetaTransactionRequest) TransactionRequestVehicleNFT(mods ...qm.QueryMod) vehicleNFTQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"mint_request_id\" = ?", o.ID),
+		qm.Where("\"transaction_request_id\" = ?", o.ID),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -1092,9 +1092,9 @@ func (metaTransactionRequestL) LoadBurnRequestSyntheticDevice(ctx context.Contex
 	return nil
 }
 
-// LoadMintRequestVehicleNFT allows an eager lookup of values, cached into the
+// LoadTransactionRequestVehicleNFT allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-1 relationship.
-func (metaTransactionRequestL) LoadMintRequestVehicleNFT(ctx context.Context, e boil.ContextExecutor, singular bool, maybeMetaTransactionRequest interface{}, mods queries.Applicator) error {
+func (metaTransactionRequestL) LoadTransactionRequestVehicleNFT(ctx context.Context, e boil.ContextExecutor, singular bool, maybeMetaTransactionRequest interface{}, mods queries.Applicator) error {
 	var slice []*MetaTransactionRequest
 	var object *MetaTransactionRequest
 
@@ -1149,7 +1149,7 @@ func (metaTransactionRequestL) LoadMintRequestVehicleNFT(ctx context.Context, e 
 
 	query := NewQuery(
 		qm.From(`devices_api.vehicle_nfts`),
-		qm.WhereIn(`devices_api.vehicle_nfts.mint_request_id in ?`, args...),
+		qm.WhereIn(`devices_api.vehicle_nfts.transaction_request_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1186,21 +1186,21 @@ func (metaTransactionRequestL) LoadMintRequestVehicleNFT(ctx context.Context, e 
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.MintRequestVehicleNFT = foreign
+		object.R.TransactionRequestVehicleNFT = foreign
 		if foreign.R == nil {
 			foreign.R = &vehicleNFTR{}
 		}
-		foreign.R.MintRequest = object
+		foreign.R.TransactionRequest = object
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.ID == foreign.MintRequestID {
-				local.R.MintRequestVehicleNFT = foreign
+			if local.ID == foreign.TransactionRequestID {
+				local.R.TransactionRequestVehicleNFT = foreign
 				if foreign.R == nil {
 					foreign.R = &vehicleNFTR{}
 				}
-				foreign.R.MintRequest = local
+				foreign.R.TransactionRequest = local
 				break
 			}
 		}
@@ -1555,14 +1555,14 @@ func (o *MetaTransactionRequest) RemoveBurnRequestSyntheticDevice(ctx context.Co
 	return nil
 }
 
-// SetMintRequestVehicleNFT of the metaTransactionRequest to the related item.
-// Sets o.R.MintRequestVehicleNFT to related.
-// Adds o to related.R.MintRequest.
-func (o *MetaTransactionRequest) SetMintRequestVehicleNFT(ctx context.Context, exec boil.ContextExecutor, insert bool, related *VehicleNFT) error {
+// SetTransactionRequestVehicleNFT of the metaTransactionRequest to the related item.
+// Sets o.R.TransactionRequestVehicleNFT to related.
+// Adds o to related.R.TransactionRequest.
+func (o *MetaTransactionRequest) SetTransactionRequestVehicleNFT(ctx context.Context, exec boil.ContextExecutor, insert bool, related *VehicleNFT) error {
 	var err error
 
 	if insert {
-		related.MintRequestID = o.ID
+		related.TransactionRequestID = o.ID
 
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
 			return errors.Wrap(err, "failed to insert into foreign table")
@@ -1570,10 +1570,10 @@ func (o *MetaTransactionRequest) SetMintRequestVehicleNFT(ctx context.Context, e
 	} else {
 		updateQuery := fmt.Sprintf(
 			"UPDATE \"devices_api\".\"vehicle_nfts\" SET %s WHERE %s",
-			strmangle.SetParamNames("\"", "\"", 1, []string{"mint_request_id"}),
+			strmangle.SetParamNames("\"", "\"", 1, []string{"transaction_request_id"}),
 			strmangle.WhereClause("\"", "\"", 2, vehicleNFTPrimaryKeyColumns),
 		)
-		values := []interface{}{o.ID, related.MintRequestID}
+		values := []interface{}{o.ID, related.TransactionRequestID}
 
 		if boil.IsDebug(ctx) {
 			writer := boil.DebugWriterFrom(ctx)
@@ -1584,23 +1584,23 @@ func (o *MetaTransactionRequest) SetMintRequestVehicleNFT(ctx context.Context, e
 			return errors.Wrap(err, "failed to update foreign table")
 		}
 
-		related.MintRequestID = o.ID
+		related.TransactionRequestID = o.ID
 	}
 
 	if o.R == nil {
 		o.R = &metaTransactionRequestR{
-			MintRequestVehicleNFT: related,
+			TransactionRequestVehicleNFT: related,
 		}
 	} else {
-		o.R.MintRequestVehicleNFT = related
+		o.R.TransactionRequestVehicleNFT = related
 	}
 
 	if related.R == nil {
 		related.R = &vehicleNFTR{
-			MintRequest: o,
+			TransactionRequest: o,
 		}
 	} else {
-		related.R.MintRequest = o
+		related.R.TransactionRequest = o
 	}
 	return nil
 }
