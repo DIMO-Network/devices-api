@@ -2013,6 +2013,12 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 		return err
 	}
 
+	userDevice.R.VehicleNFT.BurnRequestID = null.StringFrom(requestID)
+
+	if _, err := userDevice.R.VehicleNFT.Update(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "failed to associate burn request with vehicle")
+	}
+
 	logger.Info().Msgf("submitted metatransaction request %s", requestID)
 	return client.BurnVehicleSign(requestID, bvs.TokenID, sigBytes)
 }

@@ -1154,4 +1154,11 @@ func (s *UserDevicesControllerTestSuite) TestPostBurn() {
 	response, err := s.app.Test(request)
 	s.Require().NoError(err)
 	s.Equal(fiber.StatusOK, response.StatusCode)
+
+	if err := vnft.Reload(context.Background(), s.pdb.DBS().Reader); err != nil {
+		s.T().Fatal(err)
+	}
+
+	s.Require().NotEmpty(vnft.BurnRequestID)
+
 }

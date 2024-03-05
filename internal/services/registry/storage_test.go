@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"math/big"
 	"testing"
@@ -101,10 +102,10 @@ func (s *StorageTestSuite) Test_SyntheticMintSetsID() {
 	s.MustInsert(&mtr)
 
 	vnft := models.VehicleNFT{
-		TransactionRequestID: mtr.ID,
-		UserDeviceID:         null.StringFrom(ud.ID),
-		TokenID:              types.NewNullDecimal(decimal.New(vehicleID, 0)),
-		OwnerAddress:         null.BytesFrom(ownerAddr.Bytes()),
+		MintRequestID: mtr.ID,
+		UserDeviceID:  null.StringFrom(ud.ID),
+		TokenID:       types.NewNullDecimal(decimal.New(vehicleID, 0)),
+		OwnerAddress:  null.BytesFrom(ownerAddr.Bytes()),
 	}
 	s.MustInsert(&vnft)
 
@@ -200,8 +201,8 @@ func (s *StorageTestSuite) TestMintVehicle() {
 	})
 
 	vnft := models.VehicleNFT{
-		TransactionRequestID: mtr.ID,
-		UserDeviceID:         null.StringFrom(ud.ID),
+		MintRequestID: mtr.ID,
+		UserDeviceID:  null.StringFrom(ud.ID),
 	}
 	s.MustInsert(&vnft)
 
@@ -231,6 +232,79 @@ func (s *StorageTestSuite) TestMintVehicle() {
 	s.Zero(vnft.TokenID.Int(nil).Cmp(big.NewInt(14443)))
 	s.Equal(common.HexToAddress("7e74d0f663d58d12817b8bef762bcde3af1f63d6"), common.BytesToAddress(vnft.OwnerAddress.Bytes))
 
+	s.Equal(ud.ID, emEv.Subject)
+}
+
+func (s *StorageTestSuite) TestBurnVehicle() {
+	logger := zerolog.Nop()
+	ctx := context.Background()
+	s.mockCtrl = gomock.NewController(s.T())
+
+	proc, err := NewProcessor(s.dbs.DBS, &logger, nil, &config.Settings{Environment: "prod"}, s.eventSvc)
+	s.Require().NoError(err)
+
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		UserID:             ksuid.New().String(),
+		DeviceDefinitionID: ksuid.New().String(),
+	}
+	s.MustInsert(&ud)
+
+	mintReq := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusMined,
+	}
+	s.MustInsert(&mintReq)
+
+	burnReq := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusMined,
+	}
+	s.MustInsert(&burnReq)
+
+	var emEv *shared.CloudEvent[any]
+	s.eventSvc.EXPECT().Emit(gomock.Any()).Do(func(event *shared.CloudEvent[any]) {
+		emEv = event
+	})
+
+	vnft := models.VehicleNFT{
+		MintRequestID: mintReq.ID,
+		BurnRequestID: null.StringFrom(burnReq.ID),
+		UserDeviceID:  null.StringFrom(ud.ID),
+		TokenID:       types.NewNullDecimal(decimal.New(13, 0)),
+		Vin:           "vin",
+	}
+	s.MustInsert(&vnft)
+
+	abi, err := contracts.RegistryMetaData.GetAbi()
+	if err != nil {
+		s.T().Fatal(err)
+	}
+
+	if err := proc.Handle(ctx, &ceData{
+		RequestID: burnReq.ID,
+		Type:      "Confirmed",
+		Transaction: ceTx{
+			Hash: "0x7b36384f0fcf18da09247269a4716eecbcbc475a5b2bc7aa371fc1164789508d",
+			Logs: []ceLog{
+				{
+					Topics: []common.Hash{
+						abi.Events["VehicleNodeBurned"].ID,
+						common.BigToHash(big.NewInt(13)), // token id to be burned
+						common.BigToHash(big.NewInt(1)),  // owner address
+					},
+					Data: common.FromHex(
+						"000000000000000000000000000000000000000000000000000000000000386b" +
+							"000000000000000000000000000000000000000000000000000000000000386b",
+					),
+				},
+			},
+		},
+	}); err != nil {
+		s.T().Fatal(err)
+	}
+
+	s.Require().ErrorIs(vnft.Reload(ctx, s.dbs.DBS().Writer), sql.ErrNoRows)
 	s.Equal(ud.ID, emEv.Subject)
 }
 

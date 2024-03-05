@@ -95,15 +95,15 @@ type UserDeviceIntegrationEvent struct {
 	Integration UserDeviceEventIntegration `json:"integration"`
 }
 
-type UserDeviceEventNFT struct {
-	TokenID *big.Int       `json:"tokenId"`
-	Owner   common.Address `json:"address"`
-	TxHash  common.Hash    `json:"txHash"`
-}
-
-type UserDeviceMintEvent struct {
+type UserDeviceNFTEvent struct {
 	Timestamp time.Time             `json:"timestamp"`
 	UserID    string                `json:"userId"`
 	Device    UserDeviceEventDevice `json:"device"`
-	NFT       UserDeviceEventNFT    `json:"nft"`
+	NFT       NFTEvent              `json:"nft"`
+}
+
+type NFTEvent struct {
+	TokenID *big.Int       `json:"tokenId"`
+	Owner   common.Address `json:"address"`
+	TxHash  common.Hash    `json:"txHash"`
 }
