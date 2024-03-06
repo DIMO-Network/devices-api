@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 4cb7c46
+  tag: 69e946d
 imagePullSecrets: []
 nameOverride: ''
 fullnameOverride: ''
@@ -36,7 +36,6 @@ env:
   SERVICE_NAME: devices-api
   JWT_KEY_SET_URL: https://auth.dev.dimo.zone/keys
   DEPLOYMENT_BASE_URL: https://devices-api.dev.dimo.zone
-  TOR_PROXY_URL: socks5://tor.p2p:9050
   REDIS_USER: default
   REDIS_PORT: '6379'
   REDIS_TLS: true
@@ -83,6 +82,7 @@ env:
   NATS_URL: nats-dev:4222
   NATS_STREAM_NAME: DD_VALUATION_TASKS
   NATS_VALUATION_SUBJECT: dd_valuation_tasks
+  NATS_OFFER_SUBJECT: dd_offer_tasks
   NATS_DURABLE_CONSUMER: dd-valuation-task-consumer
   NATS_ACK_TIMEOUT: 2m
   SYNTHETIC_DEVICES_ENABLED: true

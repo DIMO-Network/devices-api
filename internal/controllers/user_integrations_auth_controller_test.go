@@ -100,6 +100,7 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 		RefreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw",
 		IDToken:      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.ouLgsgz-xUWN7lLuo8qE2nueNgJIrBz49QLr_GLHRno",
 		Expiry:       time.Now().Add(time.Hour * 1),
+		Region:       mockRegion,
 	}
 	mockUserEthAddr := common.HexToAddress("1").String()
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &users.GetUserRequest{Id: s.testUserID}).Return(&users.User{EthereumAddress: &mockUserEthAddr}, nil)
@@ -132,7 +133,7 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 	encToken, err := s.cipher.Encrypt(string(tokenStr))
 	s.Assert().NoError(err)
 
-	cacheKey := "integration_credentials_" + mockUserEthAddr
+	cacheKey := fmt.Sprintf(teslaFleetAuthCacheKey, mockUserEthAddr)
 	s.redisClient.EXPECT().Set(gomock.Any(), cacheKey, encToken, 5*time.Minute).Return(&redis.StatusCmd{})
 
 	resp := []services.TeslaVehicle{
@@ -258,7 +259,7 @@ func (s *UserIntegrationAuthControllerTestSuite) TestPersistOauthCredentials() {
 	encToken, err := s.cipher.Encrypt(string(tokenStr))
 	s.Assert().NoError(err)
 
-	cacheKey := "integration_credentials_" + mockUserEthAddr
+	cacheKey := fmt.Sprintf(teslaFleetAuthCacheKey, mockUserEthAddr)
 	s.redisClient.EXPECT().Set(gomock.Any(), cacheKey, encToken, 5*time.Minute).Return(&redis.StatusCmd{})
 
 	intCtrl := NewUserIntegrationAuthController(&config.Settings{

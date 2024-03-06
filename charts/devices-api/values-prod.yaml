@@ -2,7 +2,7 @@ replicaCount: 3
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 1.24.7
+  tag: 1.25.3
 cronJob:
   enabled: false
   schedule: 0 0 1 * *
@@ -17,7 +17,6 @@ env:
   SERVICE_NAME: devices-api
   JWT_KEY_SET_URL: https://auth.dimo.zone/keys
   DEPLOYMENT_BASE_URL: https://devices-api.dimo.zone
-  TOR_PROXY_URL: socks5://tor.p2p:9050
   REDIS_USER: default
   REDIS_CLUSTER_MODE: true
   REDIS_TLS: true
@@ -42,6 +41,11 @@ env:
   AFTERMARKET_DEVICE_CONTRACT_ADDRESS: '0x9c94c395cbcbde662235e0a9d3bb87ad708561ba'
   DIMO_CONTRACT_APIURL: https://contracts-api.dimo.zone/
   NATS_URL: nats-prod:4222
+  NATS_STREAM_NAME: DD_VALUATION_TASKS
+  NATS_VALUATION_SUBJECT: dd_valuation_tasks
+  NATS_OFFER_SUBJECT: dd_offer_tasks
+  NATS_DURABLE_CONSUMER: dd-valuation-task-consumer
+  NATS_ACK_TIMEOUT: 2m
   SYNTHETIC_DEVICES_ENABLED: true
   SYNTHETIC_WALLET_GRPC_ADDR: synthetic-wallet-instance-prod:8086
   DEVICE_DATA_GRPC_ADDR: device-data-api-prod:8086

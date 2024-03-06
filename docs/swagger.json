@@ -580,6 +580,54 @@
                 }
             }
         },
+        "/integration/:tokenID/credentials": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Complete Tesla auth and get devices for authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user-devices"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "token id for integration",
+                        "name": "tokenID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "all fields are required",
+                        "name": "user_device",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.CompleteOAuthExchangeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.CompleteOAuthExchangeResponseWrapper"
+                        }
+                    }
+                }
+            }
+        },
         "/integrations": {
             "get": {
                 "security": [
@@ -2985,6 +3033,45 @@
                 }
             }
         },
+        "internal_controllers.CompleteOAuthExchangeRequest": {
+            "type": "object",
+            "properties": {
+                "authorizationCode": {
+                    "type": "string"
+                },
+                "redirectUri": {
+                    "type": "string"
+                },
+                "region": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_controllers.CompleteOAuthExchangeResponse": {
+            "type": "object",
+            "properties": {
+                "definition": {
+                    "$ref": "#/definitions/internal_controllers.DeviceDefinition"
+                },
+                "externalId": {
+                    "type": "string"
+                },
+                "vin": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_controllers.CompleteOAuthExchangeResponseWrapper": {
+            "type": "object",
+            "properties": {
+                "vehicles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_controllers.CompleteOAuthExchangeResponse"
+                    }
+                }
+            }
+        },
         "internal_controllers.CreateGeofence": {
             "type": "object",
             "properties": {
@@ -3009,6 +3096,23 @@
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "internal_controllers.DeviceDefinition": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "make": {
+                    "type": "string"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "year": {
+                    "type": "integer"
                 }
             }
         },
@@ -3538,6 +3642,9 @@
                 },
                 "refreshToken": {
                     "type": "string"
+                },
+                "version": {
+                    "type": "integer"
                 }
             }
         },

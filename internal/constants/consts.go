@@ -27,6 +27,11 @@ const (
 	IntegrationTypeAPI      string = "API"
 )
 
+const (
+	TeslaAPIV1 int = 1
+	TeslaAPIV2 int = 2
+)
+
 // AutoPiSubStatusEnum integration sub-status
 type AutoPiSubStatusEnum string
 

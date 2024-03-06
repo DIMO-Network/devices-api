@@ -55,6 +55,21 @@ func (mr *MockTeslaFleetAPIServiceMockRecorder) CompleteTeslaAuthCodeExchange(ct
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompleteTeslaAuthCodeExchange", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).CompleteTeslaAuthCodeExchange), ctx, authCode, redirectURI, region)
 }
 
+// GetVehicle mocks base method.
+func (m *MockTeslaFleetAPIService) GetVehicle(ctx context.Context, token, region string, vehicleID int) (*services.TeslaVehicle, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetVehicle", ctx, token, region, vehicleID)
+	ret0, _ := ret[0].(*services.TeslaVehicle)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetVehicle indicates an expected call of GetVehicle.
+func (mr *MockTeslaFleetAPIServiceMockRecorder) GetVehicle(ctx, token, region, vehicleID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVehicle", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).GetVehicle), ctx, token, region, vehicleID)
+}
+
 // GetVehicles mocks base method.
 func (m *MockTeslaFleetAPIService) GetVehicles(ctx context.Context, token, region string) ([]services.TeslaVehicle, error) {
 	m.ctrl.T.Helper()
@@ -68,4 +83,18 @@ func (m *MockTeslaFleetAPIService) GetVehicles(ctx context.Context, token, regio
 func (mr *MockTeslaFleetAPIServiceMockRecorder) GetVehicles(ctx, token, region any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVehicles", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).GetVehicles), ctx, token, region)
+}
+
+// WakeUpVehicle mocks base method.
+func (m *MockTeslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WakeUpVehicle", ctx, token, region, vehicleID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// WakeUpVehicle indicates an expected call of WakeUpVehicle.
+func (mr *MockTeslaFleetAPIServiceMockRecorder) WakeUpVehicle(ctx, token, region, vehicleID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WakeUpVehicle", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).WakeUpVehicle), ctx, token, region, vehicleID)
 }
