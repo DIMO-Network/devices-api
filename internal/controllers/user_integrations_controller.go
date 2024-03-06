@@ -1940,7 +1940,6 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		udc.requestValuation(v.VIN, userDeviceID, tokenID)
 		udc.requestInstantOffer(userDeviceID, tokenID)
 	}
-
 	if err := udc.teslaTaskService.StartPoll(v, &integration, apiVersion, region); err != nil {
 		return err
 	}
