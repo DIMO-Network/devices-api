@@ -307,8 +307,17 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 	if IsZeroAddress(args.To) {
 		// Burn.
 		c.log.Info().Msgf("Burning aftermarket device %d.", tkID)
-		_, err := apUnit.Delete(ctx, c.db.DBS().Writer)
-		return err
+		_, err := models.AutopiJobs(models.AutopiJobWhere.AutopiUnitID.EQ(null.StringFrom(apUnit.Serial))).DeleteAll(ctx, c.db.DBS().Writer)
+		if err != nil {
+			return fmt.Errorf("error deleting jobs associated with aftermarket device: %w", err)
+		}
+
+		_, err = apUnit.Delete(ctx, c.db.DBS().Writer)
+		if err != nil {
+			return fmt.Errorf("error deleting aftermarket device: %w", err)
+		}
+
+		return nil
 	}
 
 	if !apUnit.OwnerAddress.Valid {
