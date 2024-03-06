@@ -3,8 +3,9 @@ package services
 import (
 	"context"
 	"fmt"
-	pb "github.com/DIMO-Network/shared/api/users"
 	"time"
+
+	pb "github.com/DIMO-Network/shared/api/users"
 
 	"github.com/DIMO-Network/shared"
 
