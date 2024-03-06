@@ -83,9 +83,11 @@ func (a *autoPiAPIService) GetUserDeviceIntegrationByUnitID(ctx context.Context,
 func (a *autoPiAPIService) GetDeviceByUnitID(unitID string) (*AutoPiDongleDevice, error) {
 	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/dongle/devices/by_unit_id/%s/", unitID), "GET", nil)
 	if err != nil {
-		var htppResponseError shared.HTTPResponseError
-		if !errors.As(err, &htppResponseError) {
-			return nil, errors.Wrapf(err, "http resp error calling autopi api to get unit with ID %s", unitID)
+		var responseError shared.HTTPResponseError
+		if errors.As(err, &responseError) {
+			if responseError.StatusCode == 404 {
+				return nil, ErrNotFound
+			}
 		}
 		return nil, errors.Wrapf(err, "error calling autopi api to get unit with ID %s", unitID)
 	}
