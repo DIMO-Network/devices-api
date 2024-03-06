@@ -72,7 +72,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	}
 
 	vehicleMintedEvent := p.ABI.Events["VehicleNodeMinted"]
-	vehicleBurnedEvent := p.ABI.Events["VehicleNodeBurned"]
 	syntheticDeviceMintedEvent := p.ABI.Events["SyntheticDeviceNodeMinted"]
 	sdBurnEvent := p.ABI.Events["SyntheticDeviceNodeBurned"]
 
@@ -141,41 +140,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 			}
 		}
 	case mtr.R.BurnRequestVehicleNFT != nil:
-		for _, l1 := range data.Transaction.Logs {
-			if l1.Topics[0] == vehicleBurnedEvent.ID {
-				out := new(contracts.RegistryVehicleNodeBurned)
-				err := p.parseLog(out, vehicleBurnedEvent, l1)
-				if err != nil {
-					return err
-				}
-
-				vnft := mtr.R.BurnRequestVehicleNFT
-				if _, err := vnft.Delete(ctx, p.DB().Writer); err != nil {
-					return err
-				}
-
-				if ud := vnft.R.UserDevice; ud != nil {
-					p.Eventer.Emit(&shared.CloudEvent[any]{ //nolint
-						Type:    "com.dimo.zone.device.burn",
-						Subject: ud.ID,
-						Source:  "devices-api",
-						Data: services.UserDeviceNFTEvent{
-							Timestamp: time.Now(),
-							UserID:    ud.UserID,
-							Device: services.UserDeviceEventDevice{
-								ID:  ud.ID,
-								VIN: vnft.Vin,
-							},
-							NFT: services.NFTEvent{
-								TokenID: out.VehicleNode,
-								TxHash:  common.HexToHash(data.Transaction.Hash),
-							},
-						},
-					})
-				}
-				logger.Info().Str("userDeviceId", mtr.R.BurnRequestVehicleNFT.UserDeviceID.String).Msg("Vehicle burned.")
-			}
-		}
+		// Handled in contract event consumer.
 	case mtr.R.ClaimMetaTransactionRequestAftermarketDevice != nil:
 		// Handled in the contract event consumer.
 	case mtr.R.PairRequestAftermarketDevice != nil:
