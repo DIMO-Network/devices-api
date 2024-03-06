@@ -99,14 +99,14 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 						Type:    "com.dimo.zone.device.mint",
 						Subject: ud.ID,
 						Source:  "devices-api",
-						Data: services.UserDeviceNFTEvent{
+						Data: services.UserDeviceMintEvent{
 							Timestamp: time.Now(),
 							UserID:    ud.UserID,
 							Device: services.UserDeviceEventDevice{
 								ID:  ud.ID,
 								VIN: vnft.Vin,
 							},
-							NFT: services.NFTEvent{
+							NFT: services.UserDeviceEventNFT{
 								TokenID: out.TokenId,
 								Owner:   out.Owner,
 								TxHash:  common.HexToHash(data.Transaction.Hash),
