@@ -332,7 +332,7 @@ func (c *Client) MintVehicleAndSDign(requestID string, data contracts.MintVehicl
 	return c.sendRequest(requestID, callData)
 }
 
-// bintVehicleSign(uint256 manufacturerNode, address owner,	string[] calldata attributes, string[] calldata infos, bytes calldata signature)
+// BurnVehicleSign(uint256 manufacturerNode, address owner,	string[] calldata attributes, string[] calldata infos, bytes calldata signature)
 func (c *Client) BurnVehicleSign(requestID string, tokenID *big.Int, signature []byte) error {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {

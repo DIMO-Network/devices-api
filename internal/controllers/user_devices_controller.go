@@ -1930,11 +1930,17 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 	logger := helpers.GetLogger(c, udc.log)
 
+	tx, err := udc.DBS().Reader.BeginTx(c.Context(), nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint
+
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
 		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations)),
-	).One(c.Context(), udc.DBS().Reader.DB)
+	).One(c.Context(), tx)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
@@ -2008,15 +2014,18 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 		ID:     requestID,
 		Status: "Unsubmitted",
 	}
-	err = mtr.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
+	err = mtr.Insert(c.Context(), tx, boil.Infer())
 	if err != nil {
 		return err
 	}
 
 	userDevice.R.VehicleNFT.BurnRequestID = null.StringFrom(requestID)
-
-	if _, err := userDevice.R.VehicleNFT.Update(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
+	if _, err := userDevice.R.VehicleNFT.Update(c.Context(), tx, boil.Infer()); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "failed to associate burn request with vehicle")
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
 	}
 
 	logger.Info().Msgf("submitted metatransaction request %s", requestID)
