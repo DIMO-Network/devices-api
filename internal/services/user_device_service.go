@@ -44,6 +44,8 @@ func NewUserDeviceService(deviceDefSvc DeviceDefinitionService, log zerolog.Logg
 	}
 }
 
+var ErrEmailUnverified = fmt.Errorf("email not verified")
+
 // CreateUserDevice creates the user_device record with all the logic we manage, including setting the countryCode, setting the powertrain based on the def or style, and setting the protocol
 func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID, styleID, countryCode, userID string, vin, canProtocol *string, vinConfirmed bool) (*models.UserDevice, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
 	// check that userId email is verified
@@ -51,7 +53,10 @@ func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID,
 	if err != nil {
 		return nil, nil, err
 	}
-	// todo we need the latest user proto
+	if user.EmailAddress == nil {
+		// email will be nil if not verified
+		return nil, nil, ErrEmailUnverified
+	}
 
 	// attach device def to user
 	dd, err2 := uds.deviceDefSvc.GetDeviceDefinitionByID(ctx, deviceDefID)
