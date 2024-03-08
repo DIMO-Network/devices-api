@@ -36,6 +36,7 @@ type DeviceDefinitionService interface {
 	DecodeVIN(ctx context.Context, vin string, model string, year int, countryCode string) (*ddgrpc.DecodeVinResponse, error)
 	GetIntegrationByTokenID(ctx context.Context, tokenID uint64) (*ddgrpc.Integration, error)
 	GetDeviceStyleByID(ctx context.Context, id string) (*ddgrpc.DeviceStyle, error)
+	GetDeviceDefinitionByMMY(ctx context.Context, year int32, make string, model string) (*ddgrpc.GetDeviceDefinitionItemResponse, error)
 }
 
 type deviceDefinitionService struct {
@@ -439,6 +440,25 @@ func (d *deviceDefinitionService) getVINDecodeGrpcClient() (ddgrpc.VinDecoderSer
 	}
 	client := ddgrpc.NewVinDecoderServiceClient(conn)
 	return client, conn, nil
+}
+
+func (d *deviceDefinitionService) GetDeviceDefinitionByMMY(ctx context.Context, year int32, make string, model string) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
+	definitionsClient, conn, err := d.getDeviceDefsGrpcClient()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	response, err := definitionsClient.GetDeviceDefinitionByMMY(ctx, &ddgrpc.GetDeviceDefinitionByMMYRequest{
+		Year:  year,
+		Make:  make,
+		Model: model,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
 }
 
 func ConvertPowerTrainStringToPowertrain(value string) PowertrainType {

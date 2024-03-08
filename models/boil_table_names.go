@@ -13,6 +13,7 @@ var TableNames = struct {
 	MetaTransactionRequests   string
 	NFTPrivileges             string
 	PartialAftermarketDevices string
+	PartialVehicleNFTS        string
 	SyntheticDevices          string
 	UserDeviceAPIIntegrations string
 	UserDeviceData            string
@@ -30,6 +31,7 @@ var TableNames = struct {
 	MetaTransactionRequests:   "meta_transaction_requests",
 	NFTPrivileges:             "nft_privileges",
 	PartialAftermarketDevices: "partial_aftermarket_devices",
+	PartialVehicleNFTS:        "partial_vehicle_nfts",
 	SyntheticDevices:          "synthetic_devices",
 	UserDeviceAPIIntegrations: "user_device_api_integrations",
 	UserDeviceData:            "user_device_data",

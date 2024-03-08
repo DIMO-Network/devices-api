@@ -7,10 +7,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/DIMO-Network/shared/kafka"
+	"github.com/segmentio/ksuid"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -63,6 +65,8 @@ const (
 	AftermarketDeviceUnpaired     EventName = "AftermarketDeviceUnpaired"
 	AftermarketDeviceAttributeSet EventName = "AftermarketDeviceAttributeSet"
 	AftermarketDeviceAddressReset EventName = "AftermarketDeviceAddressReset"
+	VehicleNodeMinted             EventName = "VehicleNodeMinted"
+	VehicleAttributeSet           EventName = "VehicleAttributeSet"
 )
 
 func (r EventName) String() string {
@@ -170,6 +174,10 @@ func (c *ContractsEventsConsumer) processEvent(_ context.Context, event *shared.
 		return c.aftermarketDeviceAttributeSet(&data)
 	case AftermarketDeviceAddressReset.String():
 		return c.aftermarketDeviceAddressReset(&data)
+	case VehicleNodeMinted.String():
+		return c.vehicleNodeMinted(&data)
+	case VehicleAttributeSet.String():
+		return c.vehicleAttributeSet(&data)
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -722,10 +730,138 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAddressReset(e *ContractEvent
 	return err
 }
 
+// vehicleNodeMinted handles the event of the same name from the registry contract.
+func (c *ContractsEventsConsumer) vehicleNodeMinted(e *ContractEventData) error {
+	fmt.Println("vehicle node minted func")
+	ctx := context.Background()
+	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
+		return fmt.Errorf("vehicle mint event from unexpected source %d/%s", e.ChainID, e.Contract)
+	}
+
+	var args contracts.RegistryVehicleNodeMinted
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return err
+	}
+
+	pvnft, err := models.PartialVehicleNFTS(
+		models.PartialVehicleNFTWhere.TokenID.EQ(types.NewDecimal(decimal.New(int64(args.TokenId.Int64()), 0))),
+	).One(ctx, c.db.DBS().Reader)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		pvnft = &models.PartialVehicleNFT{
+			TokenID: types.NewDecimal(decimal.New(int64(args.TokenId.Int64()), 0)),
+		}
+	}
+
+	pvnft.OwnerAddress = null.BytesFrom(args.Owner.Bytes())
+	if err := c.vnftToUserDeviceHelper(ctx, pvnft); err != nil {
+		return pvnft.Upsert(ctx, c.db.DBS().Writer, true,
+			[]string{},
+			boil.Whitelist(models.PartialVehicleNFTColumns.OwnerAddress),
+			boil.Whitelist(models.PartialVehicleNFTColumns.OwnerAddress,
+				models.PartialVehicleNFTColumns.TokenID),
+		)
+	}
+
+	_, err = pvnft.Delete(ctx, c.db.DBS().Writer)
+	return err
+
+}
+
+// vehicleAttributeSet handles the event of the same name from the registry contract.
+func (c *ContractsEventsConsumer) vehicleAttributeSet(e *ContractEventData) error {
+	ctx := context.Background()
+	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
+		return fmt.Errorf("vehicle mint event from unexpected source %d/%s", e.ChainID, e.Contract)
+	}
+
+	var args contracts.RegistryVehicleAttributeSet
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return err
+	}
+
+	pvnft, err := models.PartialVehicleNFTS(
+		models.PartialVehicleNFTWhere.TokenID.EQ(types.NewDecimal(decimal.New(int64(args.TokenId.Int64()), 0))),
+	).One(ctx, c.db.DBS().Reader)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		pvnft = &models.PartialVehicleNFT{
+			TokenID: types.NewDecimal(decimal.New(int64(args.TokenId.Int64()), 0)),
+		}
+	}
+
+	switch args.Attribute {
+	case "Make":
+		pvnft.Make = null.StringFrom(args.Info)
+	case "Model":
+		pvnft.Model = null.StringFrom(args.Info)
+	case "Year":
+		yr, err := strconv.Atoi(args.Info)
+		if err != nil {
+			return err
+		}
+		pvnft.Year = types.NewNullDecimal(decimal.New(int64(yr), 0))
+	}
+
+	if err := c.vnftToUserDeviceHelper(ctx, pvnft); err != nil {
+		return pvnft.Upsert(ctx, c.db.DBS().Writer, true,
+			[]string{},
+			boil.Infer(),
+			boil.Infer(),
+		)
+	}
+
+	_, err = pvnft.Delete(ctx, c.db.DBS().Writer)
+	return err
+}
+
 // DCNNameChangedContract represents a NameChanged event raised by the FullAbi contract.
 // Could not use abigen struct because it did not consider the underscore in the name property for serialization
 type DCNNameChangedContract struct {
 	Node [32]byte
 	Name string `json:"name_"`
 	//Raw  types.Log // Blockchain specific contextual infos
+}
+
+func (c *ContractsEventsConsumer) vnftToUserDeviceHelper(ctx context.Context, pvnft *models.PartialVehicleNFT) error {
+	if !pvnft.Make.Valid || !pvnft.Model.Valid || !pvnft.OwnerAddress.Valid || pvnft.Year.IsZero() {
+		return errors.New("not enough information to promote vehicle nft from partial table")
+	}
+
+	yr, ok := pvnft.Year.Int64()
+	if !ok {
+		return errors.New("failed to parse year from partial vehicle nft table")
+	}
+
+	dd, err := c.ddSvc.GetDeviceDefinitionByMMY(ctx, int32(yr), pvnft.Make.String, pvnft.Model.String)
+	if err != nil {
+		return err
+	}
+
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		DeviceDefinitionID: dd.DeviceDefinitionId,
+		VinConfirmed:       false,
+	}
+
+	vnft := models.VehicleNFT{
+		MintRequestID: ksuid.New().String() + "-directCall", // do we want to distinguish these in some way? maybe for trouble shooting?
+		TokenID:       types.NullDecimal(pvnft.TokenID),
+		UserDeviceID:  null.StringFrom(ud.ID),
+		OwnerAddress:  pvnft.OwnerAddress,
+	}
+
+	if err := ud.Insert(ctx, c.db.DBS().Writer, boil.Infer()); err != nil {
+		return err
+	}
+
+	if err := vnft.Insert(ctx, c.db.DBS().Writer, boil.Infer()); err != nil {
+		return err
+	}
+
+	return nil
 }

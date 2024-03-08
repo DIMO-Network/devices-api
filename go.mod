@@ -6,7 +6,7 @@ toolchain go1.21.5
 
 require (
 	github.com/DIMO-Network/device-data-api v0.4.23-0.20230718210255-60a2c7be0aa7
-	github.com/DIMO-Network/device-definitions-api v1.0.32
+	github.com/DIMO-Network/device-definitions-api v1.0.39
 	github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c
 	github.com/DIMO-Network/shared v0.10.6
 	github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3
@@ -146,7 +146,7 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc5 // indirect
-	github.com/opencontainers/runc v1.1.10 // indirect
+	github.com/opencontainers/runc v1.1.12 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
