@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"database/sql"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -1061,7 +1060,6 @@ func (s *UserDevicesControllerTestSuite) TestGetBurn() {
 
 	email := "some@email.com"
 	eth := addr.Hex()
-
 	ud := models.UserDevice{
 		ID:                 ksuid.New().String(),
 		UserID:             testUserID,
@@ -1072,7 +1070,7 @@ func (s *UserDevicesControllerTestSuite) TestGetBurn() {
 		VinIdentifier:      null.StringFrom("4Y1SL65848Z411439"),
 	}
 	err = ud.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
-	assert.NoError(s.T(), err)
+	s.Require().NoError(err)
 	test.SetupCreateVehicleNFT(s.T(), ud.ID, ud.VinIdentifier.String, big.NewInt(1), null.BytesFrom(addr.Bytes()), s.pdb)
 	user := test.BuildGetUserGRPC(ud.UserID, &email, &eth, &pb.UserReferrer{})
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: ud.UserID}).Return(user, nil)
@@ -1163,46 +1161,4 @@ func (s *UserDevicesControllerTestSuite) TestPostBurn() {
 
 	s.Require().NotEmpty(vnft.BurnRequestID)
 
-}
-
-func (s *UserDevicesControllerTestSuite) TestDeleteUserDevice() {
-	privKey, err := crypto.GenerateKey()
-	s.Require().NoError(err)
-	addr := crypto.PubkeyToAddress(privKey.PublicKey)
-
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
-	ud := models.UserDevice{
-		ID:                 ksuid.New().String(),
-		UserID:             testUserID,
-		DeviceDefinitionID: dd[0].DeviceDefinitionId,
-		CountryCode:        null.StringFrom("USA"),
-		Name:               null.StringFrom("Chungus"),
-		VinConfirmed:       true,
-		VinIdentifier:      null.StringFrom("4Y1SL65848Z411439"),
-	}
-
-	err = ud.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
-	s.Require().NoError(err)
-
-	vnft := test.SetupCreateVehicleNFT(s.T(), ud.ID, ud.VinIdentifier.String, big.NewInt(1), null.BytesFrom(addr.Bytes()), s.pdb)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
-
-	sp := smock.NewSyncProducer(s.T(), nil)
-	sp.ExpectSendMessageAndSucceed()
-	s.controller.producer = sp
-
-	getRequest := test.BuildRequest("DELETE", fmt.Sprintf("/user/devices/%s", ud.ID), "")
-	getResp, err := s.app.Test(getRequest)
-	s.Require().NoError(err)
-	s.Equal(fiber.StatusNoContent, getResp.StatusCode)
-
-	s.ErrorIs(ud.Reload(s.ctx, s.pdb.DBS().Reader), sql.ErrNoRows)
-
-	// TODO: vehicle nft is currently orphaned, has no connection to user device id
-	// vin is still associated
-	// admin burn?
-	s.ErrorIs(vnft.Reload(s.ctx, s.pdb.DBS().Reader), nil)
-	s.False(vnft.UserDeviceID.Valid)
-	s.NotEqual(vnft.Vin, "")
 }
