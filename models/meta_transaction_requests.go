@@ -85,6 +85,7 @@ var MetaTransactionRequestRels = struct {
 	UnpairRequestAftermarketDevice               string
 	MintRequestSyntheticDevice                   string
 	BurnRequestSyntheticDevice                   string
+	BurnRequestUserDevice                        string
 	MintRequestUserDevice                        string
 }{
 	ClaimMetaTransactionRequestAftermarketDevice: "ClaimMetaTransactionRequestAftermarketDevice",
@@ -92,6 +93,7 @@ var MetaTransactionRequestRels = struct {
 	UnpairRequestAftermarketDevice:               "UnpairRequestAftermarketDevice",
 	MintRequestSyntheticDevice:                   "MintRequestSyntheticDevice",
 	BurnRequestSyntheticDevice:                   "BurnRequestSyntheticDevice",
+	BurnRequestUserDevice:                        "BurnRequestUserDevice",
 	MintRequestUserDevice:                        "MintRequestUserDevice",
 }
 
@@ -102,6 +104,7 @@ type metaTransactionRequestR struct {
 	UnpairRequestAftermarketDevice               *AftermarketDevice `boil:"UnpairRequestAftermarketDevice" json:"UnpairRequestAftermarketDevice" toml:"UnpairRequestAftermarketDevice" yaml:"UnpairRequestAftermarketDevice"`
 	MintRequestSyntheticDevice                   *SyntheticDevice   `boil:"MintRequestSyntheticDevice" json:"MintRequestSyntheticDevice" toml:"MintRequestSyntheticDevice" yaml:"MintRequestSyntheticDevice"`
 	BurnRequestSyntheticDevice                   *SyntheticDevice   `boil:"BurnRequestSyntheticDevice" json:"BurnRequestSyntheticDevice" toml:"BurnRequestSyntheticDevice" yaml:"BurnRequestSyntheticDevice"`
+	BurnRequestUserDevice                        *UserDevice        `boil:"BurnRequestUserDevice" json:"BurnRequestUserDevice" toml:"BurnRequestUserDevice" yaml:"BurnRequestUserDevice"`
 	MintRequestUserDevice                        *UserDevice        `boil:"MintRequestUserDevice" json:"MintRequestUserDevice" toml:"MintRequestUserDevice" yaml:"MintRequestUserDevice"`
 }
 
@@ -143,6 +146,13 @@ func (r *metaTransactionRequestR) GetBurnRequestSyntheticDevice() *SyntheticDevi
 		return nil
 	}
 	return r.BurnRequestSyntheticDevice
+}
+
+func (r *metaTransactionRequestR) GetBurnRequestUserDevice() *UserDevice {
+	if r == nil {
+		return nil
+	}
+	return r.BurnRequestUserDevice
 }
 
 func (r *metaTransactionRequestR) GetMintRequestUserDevice() *UserDevice {
@@ -494,6 +504,17 @@ func (o *MetaTransactionRequest) BurnRequestSyntheticDevice(mods ...qm.QueryMod)
 	queryMods = append(queryMods, mods...)
 
 	return SyntheticDevices(queryMods...)
+}
+
+// BurnRequestUserDevice pointed to by the foreign key.
+func (o *MetaTransactionRequest) BurnRequestUserDevice(mods ...qm.QueryMod) userDeviceQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"burn_request_id\" = ?", o.ID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	return UserDevices(queryMods...)
 }
 
 // MintRequestUserDevice pointed to by the foreign key.
@@ -1092,6 +1113,123 @@ func (metaTransactionRequestL) LoadBurnRequestSyntheticDevice(ctx context.Contex
 	return nil
 }
 
+// LoadBurnRequestUserDevice allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (metaTransactionRequestL) LoadBurnRequestUserDevice(ctx context.Context, e boil.ContextExecutor, singular bool, maybeMetaTransactionRequest interface{}, mods queries.Applicator) error {
+	var slice []*MetaTransactionRequest
+	var object *MetaTransactionRequest
+
+	if singular {
+		var ok bool
+		object, ok = maybeMetaTransactionRequest.(*MetaTransactionRequest)
+		if !ok {
+			object = new(MetaTransactionRequest)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeMetaTransactionRequest)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeMetaTransactionRequest))
+			}
+		}
+	} else {
+		s, ok := maybeMetaTransactionRequest.(*[]*MetaTransactionRequest)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeMetaTransactionRequest)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeMetaTransactionRequest))
+			}
+		}
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &metaTransactionRequestR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &metaTransactionRequestR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`devices_api.user_devices`),
+		qm.WhereIn(`devices_api.user_devices.burn_request_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load UserDevice")
+	}
+
+	var resultSlice []*UserDevice
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice UserDevice")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for user_devices")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for user_devices")
+	}
+
+	if len(userDeviceAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.BurnRequestUserDevice = foreign
+		if foreign.R == nil {
+			foreign.R = &userDeviceR{}
+		}
+		foreign.R.BurnRequest = object
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.ID, foreign.BurnRequestID) {
+				local.R.BurnRequestUserDevice = foreign
+				if foreign.R == nil {
+					foreign.R = &userDeviceR{}
+				}
+				foreign.R.BurnRequest = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadMintRequestUserDevice allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-1 relationship.
 func (metaTransactionRequestL) LoadMintRequestUserDevice(ctx context.Context, e boil.ContextExecutor, singular bool, maybeMetaTransactionRequest interface{}, mods queries.Applicator) error {
@@ -1544,6 +1682,80 @@ func (o *MetaTransactionRequest) RemoveBurnRequestSyntheticDevice(ctx context.Co
 
 	if o.R != nil {
 		o.R.BurnRequestSyntheticDevice = nil
+	}
+
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	related.R.BurnRequest = nil
+
+	return nil
+}
+
+// SetBurnRequestUserDevice of the metaTransactionRequest to the related item.
+// Sets o.R.BurnRequestUserDevice to related.
+// Adds o to related.R.BurnRequest.
+func (o *MetaTransactionRequest) SetBurnRequestUserDevice(ctx context.Context, exec boil.ContextExecutor, insert bool, related *UserDevice) error {
+	var err error
+
+	if insert {
+		queries.Assign(&related.BurnRequestID, o.ID)
+
+		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	} else {
+		updateQuery := fmt.Sprintf(
+			"UPDATE \"devices_api\".\"user_devices\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 1, []string{"burn_request_id"}),
+			strmangle.WhereClause("\"", "\"", 2, userDevicePrimaryKeyColumns),
+		)
+		values := []interface{}{o.ID, related.ID}
+
+		if boil.IsDebug(ctx) {
+			writer := boil.DebugWriterFrom(ctx)
+			fmt.Fprintln(writer, updateQuery)
+			fmt.Fprintln(writer, values)
+		}
+		if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+			return errors.Wrap(err, "failed to update foreign table")
+		}
+
+		queries.Assign(&related.BurnRequestID, o.ID)
+	}
+
+	if o.R == nil {
+		o.R = &metaTransactionRequestR{
+			BurnRequestUserDevice: related,
+		}
+	} else {
+		o.R.BurnRequestUserDevice = related
+	}
+
+	if related.R == nil {
+		related.R = &userDeviceR{
+			BurnRequest: o,
+		}
+	} else {
+		related.R.BurnRequest = o
+	}
+	return nil
+}
+
+// RemoveBurnRequestUserDevice relationship.
+// Sets o.R.BurnRequestUserDevice to nil.
+// Removes o from all passed in related items' relationships struct.
+func (o *MetaTransactionRequest) RemoveBurnRequestUserDevice(ctx context.Context, exec boil.ContextExecutor, related *UserDevice) error {
+	var err error
+
+	queries.SetScanner(&related.BurnRequestID, nil)
+	if _, err = related.Update(ctx, exec, boil.Whitelist("burn_request_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.BurnRequestUserDevice = nil
 	}
 
 	if related == nil || related.R == nil {

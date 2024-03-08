@@ -1868,6 +1868,182 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}, sigBytes)
 }
 
+// GetBurnDevice godoc
+// @Description Returns the data the user must sign in order to burn the device.
+// @Tags        user-devices
+// @Param       userDeviceID path     string true "user device ID"
+// @Success     200          {object} signer.TypedData
+// @Security    BearerAuth
+// @Router      /user/devices/{userDeviceID}/commands/burn [get]
+func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
+	userID := helpers.GetUserID(c)
+	userDeviceID := c.Params("userDeviceID")
+
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenAftermarketDevice)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice)),
+	).One(c.Context(), udc.DBS().Writer)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
+	}
+
+	if userDevice.TokenID.IsZero() {
+		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
+	}
+
+	if userDevice.R.VehicleTokenAftermarketDevice != nil || userDevice.R.VehicleTokenSyntheticDevice != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Vehicle must be unpaired to burn.")
+	}
+
+	tknID, ok := userDevice.TokenID.Int64()
+	if !ok {
+		return fiber.NewError(fiber.StatusConflict, "Unable to parse vehicle token id")
+	}
+
+	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		udc.log.Err(err).Msg("Couldn't retrieve user record.")
+		return opaqueInternalError
+	}
+
+	if user.EthereumAddress == nil {
+		return fiber.NewError(fiber.StatusBadRequest, "User does not have an Ethereum address on file.")
+	}
+
+	client := registry.Client{
+		Producer:     udc.producer,
+		RequestTopic: "topic.transaction.request.send",
+		Contract: registry.Contract{
+			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
+			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
+			Name:    "DIMO",
+			Version: "1",
+		},
+	}
+
+	bvs := registry.BurnVehicleSign{
+		TokenID: big.NewInt(tknID),
+	}
+
+	return c.JSON(client.GetPayload(&bvs))
+}
+
+// PostBurnDevice godoc
+// @Description Sends a burn device request to the blockchain
+// @Tags        user-devices
+// @Param       userDeviceID path string                  true "user device ID"
+// @Param       burnRequest  body controllers.MintRequest true "Signature and Token ID"
+// @Success     200
+// @Security    BearerAuth
+// @Router      /user/devices/{userDeviceID}/commands/burn [post]
+func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
+	userDeviceID := c.Params("userDeviceID")
+	userID := helpers.GetUserID(c)
+	logger := helpers.GetLogger(c, udc.log)
+
+	tx, err := udc.DBS().Reader.BeginTx(c.Context(), nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint
+
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(qm.Rels(models.UserDeviceRels.MintRequest)),
+		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations)),
+	).One(c.Context(), tx)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
+		}
+		return err
+	}
+
+	if userDevice.TokenID.IsZero() {
+		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
+	}
+
+	tknID, ok := userDevice.TokenID.Int64()
+	if !ok {
+		return fiber.NewError(fiber.StatusConflict, "Unable to parse vehicle token id")
+	}
+
+	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		return err
+	}
+
+	if user.EthereumAddress == nil {
+		return fiber.NewError(fiber.StatusBadRequest, "User does not have an Ethereum address on file.")
+	}
+
+	client := registry.Client{
+		Producer:     udc.producer,
+		RequestTopic: "topic.transaction.request.send",
+		Contract: registry.Contract{
+			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
+			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
+			Name:    "DIMO",
+			Version: "1",
+		},
+	}
+
+	bvs := registry.BurnVehicleSign{
+		TokenID: big.NewInt(tknID),
+	}
+
+	br := new(BurnRequest)
+	if err := c.BodyParser(br); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
+	}
+
+	logger.Info().
+		Interface("httpRequestBody", br).
+		Interface("client", client).
+		Interface("burnVehicleSign", bvs).
+		Interface("typedData", client.GetPayload(&bvs)).
+		Msg("Got request.")
+
+	hash, err := client.Hash(&bvs)
+	if err != nil {
+		return opaqueInternalError
+	}
+
+	sigBytes := common.FromHex(br.Signature)
+	recAddr, err := helpers.Ecrecover(hash, sigBytes)
+	if err != nil {
+		return err
+	}
+
+	realAddr := common.HexToAddress(*user.EthereumAddress)
+	if recAddr != realAddr {
+		return fiber.NewError(fiber.StatusBadRequest, "signature incorrect")
+	}
+
+	requestID := ksuid.New().String()
+	mtr := models.MetaTransactionRequest{
+		ID:     requestID,
+		Status: "Unsubmitted",
+	}
+	err = mtr.Insert(c.Context(), tx, boil.Infer())
+	if err != nil {
+		return err
+	}
+
+	userDevice.BurnRequestID = null.StringFrom(requestID)
+	if _, err := userDevice.Update(c.Context(), tx, boil.Infer()); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "failed to associate burn request with vehicle")
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	logger.Info().Msgf("submitted metatransaction request %s", requestID)
+	return client.BurnVehicleSign(requestID, bvs.TokenID, sigBytes)
+}
+
 type MintEventData struct {
 	RequestID    string   `json:"requestId"`
 	UserDeviceID string   `json:"userDeviceId"`
@@ -1883,6 +2059,14 @@ type MintEventData struct {
 // NFT image.
 type MintRequest struct {
 	NFTImageData
+	// Signature is the hex encoding of the EIP-712 signature result.
+	Signature string `json:"signature" validate:"required"`
+}
+
+// BurnRequest contains the user's signature for the mint request as well as the
+// NFT image.
+type BurnRequest struct {
+	TokenID *big.Int `json:"tokenId"`
 	// Signature is the hex encoding of the EIP-712 signature result.
 	Signature string `json:"signature" validate:"required"`
 }

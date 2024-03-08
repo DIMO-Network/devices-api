@@ -28,6 +28,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
@@ -62,6 +63,7 @@ const (
 	AftermarketDeviceUnpaired     EventName = "AftermarketDeviceUnpaired"
 	AftermarketDeviceAttributeSet EventName = "AftermarketDeviceAttributeSet"
 	AftermarketDeviceAddressReset EventName = "AftermarketDeviceAddressReset"
+	VehicleNodeBurned             EventName = "VehicleNodeBurned"
 )
 
 func (r EventName) String() string {
@@ -125,7 +127,6 @@ func (c *ContractsEventsConsumer) processEvent(_ context.Context, event *shared.
 	}
 
 	var data ContractEventData
-
 	if err := json.Unmarshal(event.Data, &data); err != nil {
 		return err
 	}
@@ -169,6 +170,8 @@ func (c *ContractsEventsConsumer) processEvent(_ context.Context, event *shared.
 		return c.aftermarketDeviceAttributeSet(&data)
 	case AftermarketDeviceAddressReset.String():
 		return c.aftermarketDeviceAddressReset(&data)
+	case VehicleNodeBurned.String():
+		return c.vehicleNodeBurned(&data)
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -303,8 +306,17 @@ func (c *ContractsEventsConsumer) handleAfterMarketTransferEvent(e *ContractEven
 	if IsZeroAddress(args.To) {
 		// Burn.
 		c.log.Info().Msgf("Burning aftermarket device %d.", tkID)
-		_, err := apUnit.Delete(ctx, c.db.DBS().Writer)
-		return err
+		_, err := models.AutopiJobs(models.AutopiJobWhere.AutopiUnitID.EQ(null.StringFrom(apUnit.Serial))).DeleteAll(ctx, c.db.DBS().Writer)
+		if err != nil {
+			return fmt.Errorf("error deleting jobs associated with aftermarket device: %w", err)
+		}
+
+		_, err = apUnit.Delete(ctx, c.db.DBS().Writer)
+		if err != nil {
+			return fmt.Errorf("error deleting aftermarket device: %w", err)
+		}
+
+		return nil
 	}
 
 	if !apUnit.OwnerAddress.Valid {
@@ -707,6 +719,49 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAddressReset(e *ContractEvent
 		strings.TrimPrefix(args.AftermarketDeviceAddress.String(), "0x"),
 		args.TokenId.Int64())
 	return err
+}
+
+// vehicleNodeBurned handles the event of the same name from the registry contract.
+func (c *ContractsEventsConsumer) vehicleNodeBurned(e *ContractEventData) error {
+	ctx := context.Background()
+	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
+		return fmt.Errorf("vehicle burn from unexpected source %d/%s", e.ChainID, e.Contract)
+	}
+
+	var args contracts.RegistryVehicleNodeBurned
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return err
+	}
+
+	tx, err := c.db.DBS().Reader.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint
+
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(
+			types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.VehicleNode, 0))),
+		qm.Load(models.UserDeviceRels.BurnRequest),
+	).One(ctx, tx)
+	if err != nil {
+		return err
+	}
+
+	if _, err := ud.Delete(ctx, tx); err != nil {
+		return err
+	}
+
+	if mtr := ud.R.BurnRequest; mtr != nil {
+		mtr.Hash = null.BytesFrom(e.TransactionHash.Bytes())
+		mtr.Status = models.MetaTransactionRequestStatusConfirmed
+		if _, err := mtr.Update(ctx, tx, boil.Infer()); err != nil {
+			return err
+		}
+	}
+
+	c.log.Info().Int64("tokenID", args.VehicleNode.Int64()).Msg("burning vehicle node")
+	return tx.Commit()
 }
 
 // DCNNameChangedContract represents a NameChanged event raised by the FullAbi contract.

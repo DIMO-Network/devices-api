@@ -6,7 +6,10 @@ SET search_path = devices_api, public;
 CREATE TABLE vehicle_nfts_backup AS SELECT * FROM vehicle_nfts;
 
 ALTER TABLE user_devices
-    ADD COLUMN mint_request_id char(27) CONSTRAINT user_devices_request_id_fkey UNIQUE REFERENCES meta_transaction_requests(id);
+    ADD COLUMN mint_request_id char(27) CONSTRAINT user_devices_mint_request_id_fkey UNIQUE REFERENCES meta_transaction_requests(id);
+
+ALTER TABLE user_devices
+    ADD COLUMN burn_request_id char(27) CONSTRAINT user_devices_burn_request_id_fkey UNIQUE REFERENCES meta_transaction_requests(id);
 
 ALTER TABLE user_devices
     ADD COLUMN token_id numeric(78, 0) CONSTRAINT user_devices_token_id_key UNIQUE;
@@ -18,7 +21,9 @@ ALTER TABLE user_devices
     ADD COLUMN owner_address BYTEA CONSTRAINT user_devices_owner_address_check CHECK (length(owner_address) = 20);
 
 UPDATE user_devices 
-    SET mint_request_id = vnft.mint_request_id,
+    SET 
+        burn_request_id = vnft.burn_request_id,
+        mint_request_id = vnft.mint_request_id,
         token_id = vnft.token_id,
         claim_id = vnft.claim_id,
         owner_address = vnft.owner_address
@@ -46,6 +51,9 @@ CREATE TABLE vehicle_nfts(
     mint_request_id char(27)
         CONSTRAINT vehicle_nfts_mint_request_id_pkey PRIMARY KEY
         CONSTRAINT vehicle_nfts_mint_request_id_fkey REFERENCES meta_transaction_requests(id),
+    burn_request_id char(27)
+        CONSTRAINT vehicle_nfts_burn_request_id_pkey UNIQUE
+        CONSTRAINT vehicle_nfts_burn_request_id_fkey REFERENCES meta_transaction_requests(id),
     user_device_id char(27)
         CONSTRAINT vehicle_nfts_user_device_id_fkey REFERENCES user_devices(id) ON DELETE SET NULL
         CONSTRAINT vehicle_nfts_user_device_id_key UNIQUE,
@@ -87,5 +95,9 @@ ALTER TABLE user_devices
 
 ALTER TABLE user_devices
     DROP COLUMN owner_address;
+
+SET search_path = devices_api, public;
+ALTER TABLE user_devices
+    DROP COLUMN burn_request_id;
 
 -- +goose StatementEnd

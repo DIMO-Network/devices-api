@@ -39,6 +39,7 @@ type UserDevice struct {
 	DeviceStyleID      null.String       `boil:"device_style_id" json:"device_style_id,omitempty" toml:"device_style_id" yaml:"device_style_id,omitempty"`
 	OptedInAt          null.Time         `boil:"opted_in_at" json:"opted_in_at,omitempty" toml:"opted_in_at" yaml:"opted_in_at,omitempty"`
 	MintRequestID      null.String       `boil:"mint_request_id" json:"mint_request_id,omitempty" toml:"mint_request_id" yaml:"mint_request_id,omitempty"`
+	BurnRequestID      null.String       `boil:"burn_request_id" json:"burn_request_id,omitempty" toml:"burn_request_id" yaml:"burn_request_id,omitempty"`
 	TokenID            types.NullDecimal `boil:"token_id" json:"token_id,omitempty" toml:"token_id" yaml:"token_id,omitempty"`
 	ClaimID            null.String       `boil:"claim_id" json:"claim_id,omitempty" toml:"claim_id" yaml:"claim_id,omitempty"`
 	OwnerAddress       null.Bytes        `boil:"owner_address" json:"owner_address,omitempty" toml:"owner_address" yaml:"owner_address,omitempty"`
@@ -62,6 +63,7 @@ var UserDeviceColumns = struct {
 	DeviceStyleID      string
 	OptedInAt          string
 	MintRequestID      string
+	BurnRequestID      string
 	TokenID            string
 	ClaimID            string
 	OwnerAddress       string
@@ -80,6 +82,7 @@ var UserDeviceColumns = struct {
 	DeviceStyleID:      "device_style_id",
 	OptedInAt:          "opted_in_at",
 	MintRequestID:      "mint_request_id",
+	BurnRequestID:      "burn_request_id",
 	TokenID:            "token_id",
 	ClaimID:            "claim_id",
 	OwnerAddress:       "owner_address",
@@ -100,6 +103,7 @@ var UserDeviceTableColumns = struct {
 	DeviceStyleID      string
 	OptedInAt          string
 	MintRequestID      string
+	BurnRequestID      string
 	TokenID            string
 	ClaimID            string
 	OwnerAddress       string
@@ -118,6 +122,7 @@ var UserDeviceTableColumns = struct {
 	DeviceStyleID:      "user_devices.device_style_id",
 	OptedInAt:          "user_devices.opted_in_at",
 	MintRequestID:      "user_devices.mint_request_id",
+	BurnRequestID:      "user_devices.burn_request_id",
 	TokenID:            "user_devices.token_id",
 	ClaimID:            "user_devices.claim_id",
 	OwnerAddress:       "user_devices.owner_address",
@@ -149,6 +154,7 @@ var UserDeviceWhere = struct {
 	DeviceStyleID      whereHelpernull_String
 	OptedInAt          whereHelpernull_Time
 	MintRequestID      whereHelpernull_String
+	BurnRequestID      whereHelpernull_String
 	TokenID            whereHelpertypes_NullDecimal
 	ClaimID            whereHelpernull_String
 	OwnerAddress       whereHelpernull_Bytes
@@ -167,6 +173,7 @@ var UserDeviceWhere = struct {
 	DeviceStyleID:      whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"device_style_id\""},
 	OptedInAt:          whereHelpernull_Time{field: "\"devices_api\".\"user_devices\".\"opted_in_at\""},
 	MintRequestID:      whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"mint_request_id\""},
+	BurnRequestID:      whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"burn_request_id\""},
 	TokenID:            whereHelpertypes_NullDecimal{field: "\"devices_api\".\"user_devices\".\"token_id\""},
 	ClaimID:            whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"claim_id\""},
 	OwnerAddress:       whereHelpernull_Bytes{field: "\"devices_api\".\"user_devices\".\"owner_address\""},
@@ -174,6 +181,7 @@ var UserDeviceWhere = struct {
 
 // UserDeviceRels is where relationship names are stored.
 var UserDeviceRels = struct {
+	BurnRequest                   string
 	Claim                         string
 	MintRequest                   string
 	VehicleTokenAftermarketDevice string
@@ -185,6 +193,7 @@ var UserDeviceRels = struct {
 	UserDeviceData                string
 	UserDeviceToGeofences         string
 }{
+	BurnRequest:                   "BurnRequest",
 	Claim:                         "Claim",
 	MintRequest:                   "MintRequest",
 	VehicleTokenAftermarketDevice: "VehicleTokenAftermarketDevice",
@@ -199,6 +208,7 @@ var UserDeviceRels = struct {
 
 // userDeviceR is where relationships are stored.
 type userDeviceR struct {
+	BurnRequest                   *MetaTransactionRequest       `boil:"BurnRequest" json:"BurnRequest" toml:"BurnRequest" yaml:"BurnRequest"`
 	Claim                         *VerifiableCredential         `boil:"Claim" json:"Claim" toml:"Claim" yaml:"Claim"`
 	MintRequest                   *MetaTransactionRequest       `boil:"MintRequest" json:"MintRequest" toml:"MintRequest" yaml:"MintRequest"`
 	VehicleTokenAftermarketDevice *AftermarketDevice            `boil:"VehicleTokenAftermarketDevice" json:"VehicleTokenAftermarketDevice" toml:"VehicleTokenAftermarketDevice" yaml:"VehicleTokenAftermarketDevice"`
@@ -214,6 +224,13 @@ type userDeviceR struct {
 // NewStruct creates a new relationship struct
 func (*userDeviceR) NewStruct() *userDeviceR {
 	return &userDeviceR{}
+}
+
+func (r *userDeviceR) GetBurnRequest() *MetaTransactionRequest {
+	if r == nil {
+		return nil
+	}
+	return r.BurnRequest
 }
 
 func (r *userDeviceR) GetClaim() *VerifiableCredential {
@@ -290,9 +307,9 @@ func (r *userDeviceR) GetUserDeviceToGeofences() UserDeviceToGeofenceSlice {
 type userDeviceL struct{}
 
 var (
-	userDeviceAllColumns            = []string{"id", "user_id", "device_definition_id", "vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at", "mint_request_id", "token_id", "claim_id", "owner_address"}
+	userDeviceAllColumns            = []string{"id", "user_id", "device_definition_id", "vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at", "mint_request_id", "burn_request_id", "token_id", "claim_id", "owner_address"}
 	userDeviceColumnsWithoutDefault = []string{"id", "user_id", "device_definition_id"}
-	userDeviceColumnsWithDefault    = []string{"vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at", "mint_request_id", "token_id", "claim_id", "owner_address"}
+	userDeviceColumnsWithDefault    = []string{"vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at", "mint_request_id", "burn_request_id", "token_id", "claim_id", "owner_address"}
 	userDevicePrimaryKeyColumns     = []string{"id"}
 	userDeviceGeneratedColumns      = []string{}
 )
@@ -575,6 +592,17 @@ func (q userDeviceQuery) Exists(ctx context.Context, exec boil.ContextExecutor) 
 	return count > 0, nil
 }
 
+// BurnRequest pointed to by the foreign key.
+func (o *UserDevice) BurnRequest(mods ...qm.QueryMod) metaTransactionRequestQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.BurnRequestID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	return MetaTransactionRequests(queryMods...)
+}
+
 // Claim pointed to by the foreign key.
 func (o *UserDevice) Claim(mods ...qm.QueryMod) verifiableCredentialQuery {
 	queryMods := []qm.QueryMod{
@@ -701,6 +729,130 @@ func (o *UserDevice) UserDeviceToGeofences(mods ...qm.QueryMod) userDeviceToGeof
 	)
 
 	return UserDeviceToGeofences(queryMods...)
+}
+
+// LoadBurnRequest allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (userDeviceL) LoadBurnRequest(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUserDevice interface{}, mods queries.Applicator) error {
+	var slice []*UserDevice
+	var object *UserDevice
+
+	if singular {
+		var ok bool
+		object, ok = maybeUserDevice.(*UserDevice)
+		if !ok {
+			object = new(UserDevice)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeUserDevice)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeUserDevice))
+			}
+		}
+	} else {
+		s, ok := maybeUserDevice.(*[]*UserDevice)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeUserDevice)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeUserDevice))
+			}
+		}
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userDeviceR{}
+		}
+		if !queries.IsNil(object.BurnRequestID) {
+			args = append(args, object.BurnRequestID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userDeviceR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.BurnRequestID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.BurnRequestID) {
+				args = append(args, obj.BurnRequestID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`devices_api.meta_transaction_requests`),
+		qm.WhereIn(`devices_api.meta_transaction_requests.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load MetaTransactionRequest")
+	}
+
+	var resultSlice []*MetaTransactionRequest
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice MetaTransactionRequest")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for meta_transaction_requests")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for meta_transaction_requests")
+	}
+
+	if len(metaTransactionRequestAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.BurnRequest = foreign
+		if foreign.R == nil {
+			foreign.R = &metaTransactionRequestR{}
+		}
+		foreign.R.BurnRequestUserDevice = object
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.BurnRequestID, foreign.ID) {
+				local.R.BurnRequest = foreign
+				if foreign.R == nil {
+					foreign.R = &metaTransactionRequestR{}
+				}
+				foreign.R.BurnRequestUserDevice = local
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadClaim allows an eager lookup of values, cached into the
@@ -1866,6 +2018,75 @@ func (userDeviceL) LoadUserDeviceToGeofences(ctx context.Context, e boil.Context
 		}
 	}
 
+	return nil
+}
+
+// SetBurnRequest of the userDevice to the related item.
+// Sets o.R.BurnRequest to related.
+// Adds o to related.R.BurnRequestUserDevice.
+func (o *UserDevice) SetBurnRequest(ctx context.Context, exec boil.ContextExecutor, insert bool, related *MetaTransactionRequest) error {
+	var err error
+	if insert {
+		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"devices_api\".\"user_devices\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"burn_request_id"}),
+		strmangle.WhereClause("\"", "\"", 2, userDevicePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.IsDebug(ctx) {
+		writer := boil.DebugWriterFrom(ctx)
+		fmt.Fprintln(writer, updateQuery)
+		fmt.Fprintln(writer, values)
+	}
+	if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.BurnRequestID, related.ID)
+	if o.R == nil {
+		o.R = &userDeviceR{
+			BurnRequest: related,
+		}
+	} else {
+		o.R.BurnRequest = related
+	}
+
+	if related.R == nil {
+		related.R = &metaTransactionRequestR{
+			BurnRequestUserDevice: o,
+		}
+	} else {
+		related.R.BurnRequestUserDevice = o
+	}
+
+	return nil
+}
+
+// RemoveBurnRequest relationship.
+// Sets o.R.BurnRequest to nil.
+// Removes o from all passed in related items' relationships struct.
+func (o *UserDevice) RemoveBurnRequest(ctx context.Context, exec boil.ContextExecutor, related *MetaTransactionRequest) error {
+	var err error
+
+	queries.SetScanner(&o.BurnRequestID, nil)
+	if _, err = o.Update(ctx, exec, boil.Whitelist("burn_request_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.BurnRequest = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	related.R.BurnRequestUserDevice = nil
 	return nil
 }
 
