@@ -629,6 +629,20 @@
     "intermediate_region_code": "",
     "lora_region": "EU868"
   },
+  {
+    "name": "Israel",
+    "alpha_2": "IL",
+    "alpha_3": "ISR",
+    "id": 785,
+    "iso_3166_2": "ISO 3166-2:IL",
+    "region": "West Asia",
+    "sub_region": "Middle East",
+    "intermediate_region": "",
+    "region_code": 0,
+    "sub_region_code": 0,
+    "intermediate_region_code": "",
+    "lora_region": "EU868"
+  },
 
   {
     "name": "Malaysia",
