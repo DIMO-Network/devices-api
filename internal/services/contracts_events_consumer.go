@@ -30,6 +30,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
@@ -67,6 +68,7 @@ const (
 	AftermarketDeviceAddressReset EventName = "AftermarketDeviceAddressReset"
 	VehicleNodeMinted             EventName = "VehicleNodeMinted"
 	VehicleAttributeSet           EventName = "VehicleAttributeSet"
+	SyntheticDeviceNodeMinted     EventName = "SyntheticDeviceNodeMinted"
 )
 
 func (r EventName) String() string {
@@ -178,6 +180,8 @@ func (c *ContractsEventsConsumer) processEvent(_ context.Context, event *shared.
 		return c.vehicleNodeMinted(&data)
 	case VehicleAttributeSet.String():
 		return c.vehicleAttributeSet(&data)
+	case SyntheticDeviceNodeMinted.String():
+		return c.syntheticDeviceNodeMinted(&data)
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -732,7 +736,6 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAddressReset(e *ContractEvent
 
 // vehicleNodeMinted handles the event of the same name from the registry contract.
 func (c *ContractsEventsConsumer) vehicleNodeMinted(e *ContractEventData) error {
-	fmt.Println("vehicle node minted func")
 	ctx := context.Background()
 	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
 		return fmt.Errorf("vehicle mint event from unexpected source %d/%s", e.ChainID, e.Contract)
@@ -819,6 +822,45 @@ func (c *ContractsEventsConsumer) vehicleAttributeSet(e *ContractEventData) erro
 	return err
 }
 
+// syntheticDeviceNodeMinted handles the event of the same name from the registry contract.
+func (c *ContractsEventsConsumer) syntheticDeviceNodeMinted(e *ContractEventData) error {
+	ctx := context.Background()
+	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
+		return fmt.Errorf("vehicle mint event from unexpected source %d/%s", e.ChainID, e.Contract)
+	}
+
+	var args contracts.RegistrySyntheticDeviceNodeMinted
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return err
+	}
+
+	var seq struct {
+		NextVal int `boil:"nextval"`
+	}
+
+	qry := fmt.Sprintf("SELECT nextval('%s.synthetic_devices_serial_sequence');", c.settings.DB.Name)
+	err := queries.Raw(qry).Bind(ctx, c.db.DBS().Writer, &seq)
+	if err != nil {
+		return err
+	}
+
+	childNum := seq.NextVal
+
+	sd := models.SyntheticDevice{
+		VehicleTokenID:     types.NewNullDecimal(decimal.New(int64(args.VehicleNode.Int64()), 0)),
+		TokenID:            types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.SyntheticDeviceNode, 0)),
+		IntegrationTokenID: types.NewDecimal(decimal.New(int64(args.IntegrationNode.Int64()), 0)),
+		WalletAddress:      args.Owner.Bytes(),
+		WalletChildNumber:  childNum,
+	}
+
+	if err := sd.Insert(ctx, c.db.DBS().Writer, boil.Infer()); err != nil {
+		return err
+	}
+
+	return err
+}
+
 // DCNNameChangedContract represents a NameChanged event raised by the FullAbi contract.
 // Could not use abigen struct because it did not consider the underscore in the name property for serialization
 type DCNNameChangedContract struct {
@@ -848,11 +890,31 @@ func (c *ContractsEventsConsumer) vnftToUserDeviceHelper(ctx context.Context, pv
 		VinConfirmed:       false,
 	}
 
+	mtx := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusConfirmed, // add enum to distinguish these mints in some way?
+	}
+
 	vnft := models.VehicleNFT{
-		MintRequestID: ksuid.New().String() + "-directCall", // do we want to distinguish these in some way? maybe for trouble shooting?
+		MintRequestID: mtx.ID,
 		TokenID:       types.NullDecimal(pvnft.TokenID),
 		UserDeviceID:  null.StringFrom(ud.ID),
 		OwnerAddress:  pvnft.OwnerAddress,
+	}
+
+	check, err := models.VehicleNFTS(
+		models.VehicleNFTWhere.TokenID.EQ(types.NullDecimal(pvnft.TokenID)),
+	).Exists(ctx, c.db.DBS().Reader)
+	if err != nil {
+		return err
+	}
+
+	if check {
+		return nil
+	}
+
+	if err := mtx.Insert(ctx, c.db.DBS().Writer, boil.Infer()); err != nil {
+		return err
 	}
 
 	if err := ud.Insert(ctx, c.db.DBS().Writer, boil.Infer()); err != nil {
