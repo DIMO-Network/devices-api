@@ -92,9 +92,6 @@ func (a *autoPiAPIService) GetDeviceByUnitID(unitID string) (*AutoPiDongleDevice
 		return nil, errors.Wrapf(err, "error calling autopi api to get unit with ID %s", unitID)
 	}
 	defer res.Body.Close() // nolint
-	if res.StatusCode == 404 {
-		return nil, ErrNotFound
-	}
 
 	u := new(AutoPiDongleDevice)
 	err = json.NewDecoder(res.Body).Decode(u)

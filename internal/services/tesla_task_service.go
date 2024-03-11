@@ -16,7 +16,7 @@ import (
 //go:generate mockgen -source tesla_task_service.go -destination mocks/tesla_task_service_mock.go
 
 type TeslaTaskService interface {
-	StartPoll(vehicle *TeslaVehicle, udai *models.UserDeviceAPIIntegration, apiVersion int) error
+	StartPoll(vehicle *TeslaVehicle, udai *models.UserDeviceAPIIntegration, apiVersion int, region string) error
 	StopPoll(udai *models.UserDeviceAPIIntegration) error
 	UnlockDoors(udai *models.UserDeviceAPIIntegration) (string, error)
 	LockDoors(udai *models.UserDeviceAPIIntegration) (string, error)
@@ -52,6 +52,7 @@ type TeslaCredentialsV2 struct {
 	Expiry        time.Time `json:"expiry"`
 	RefreshToken  string    `json:"refreshToken"`
 	Version       int       `json:"version"`
+	Region        string    `json:"region"`
 }
 
 type TeslaTask struct {
@@ -82,7 +83,7 @@ type TeslaCredentialsCloudEventV2 struct {
 	Data TeslaCredentialsV2 `json:"data"`
 }
 
-func (t *teslaTaskService) StartPoll(vehicle *TeslaVehicle, udai *models.UserDeviceAPIIntegration, version int) error {
+func (t *teslaTaskService) StartPoll(vehicle *TeslaVehicle, udai *models.UserDeviceAPIIntegration, version int, region string) error {
 	tt := TeslaTaskCloudEvent{
 		CloudEventHeaders: CloudEventHeaders{
 			ID:          ksuid.New().String(),
@@ -121,6 +122,7 @@ func (t *teslaTaskService) StartPoll(vehicle *TeslaVehicle, udai *models.UserDev
 			Expiry:        udai.AccessExpiresAt.Time,
 			RefreshToken:  udai.RefreshToken.String,
 			Version:       version,
+			Region:        region,
 		},
 	}
 

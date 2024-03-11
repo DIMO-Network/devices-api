@@ -491,8 +491,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
 		Region:             "Americas",
 	}).Return(nil)
 
-	s.teslaTaskService.EXPECT().StartPoll(gomock.AssignableToTypeOf(oV), gomock.AssignableToTypeOf(oUdai), 1).DoAndReturn(
-		func(v *services.TeslaVehicle, udai *models.UserDeviceAPIIntegration, _ int) error {
+	s.teslaTaskService.EXPECT().StartPoll(gomock.AssignableToTypeOf(oV), gomock.AssignableToTypeOf(oUdai), 1, "").DoAndReturn(
+		func(v *services.TeslaVehicle, udai *models.UserDeviceAPIIntegration, _ int, _ string) error {
 			oV = v
 			oUdai = udai
 			return nil
@@ -941,8 +941,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 		Region:             "Americas",
 	}).Return(nil)
 
-	s.teslaTaskService.EXPECT().StartPoll(gomock.AssignableToTypeOf(oV), gomock.AssignableToTypeOf(oUdai), 2).DoAndReturn(
-		func(v *services.TeslaVehicle, udai *models.UserDeviceAPIIntegration, _ int) error {
+	s.teslaTaskService.EXPECT().StartPoll(gomock.AssignableToTypeOf(oV), gomock.AssignableToTypeOf(oUdai), 2, "na").DoAndReturn(
+		func(v *services.TeslaVehicle, udai *models.UserDeviceAPIIntegration, _ int, _ string) error {
 			oV = v
 			oUdai = udai
 			return nil
