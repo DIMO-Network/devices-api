@@ -34,6 +34,7 @@ const (
 	UserDeviceService_GetAllUserDevice_FullMethodName              = "/devices.UserDeviceService/GetAllUserDevice"
 	UserDeviceService_IssueVinCredential_FullMethodName            = "/devices.UserDeviceService/IssueVinCredential"
 	UserDeviceService_UpdateUserDeviceMetadata_FullMethodName      = "/devices.UserDeviceService/UpdateUserDeviceMetadata"
+	UserDeviceService_ClearMetaTransactionRequests_FullMethodName  = "/devices.UserDeviceService/ClearMetaTransactionRequests"
 )
 
 // UserDeviceServiceClient is the client API for UserDeviceService service.
@@ -55,6 +56,7 @@ type UserDeviceServiceClient interface {
 	IssueVinCredential(ctx context.Context, in *IssueVinCredentialRequest, opts ...grpc.CallOption) (*IssueVinCredentialResponse, error)
 	// used to update metadata properties, currently only ones needed by valuations-api
 	UpdateUserDeviceMetadata(ctx context.Context, in *UpdateUserDeviceMetadataRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ClearMetaTransactionRequests(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ClearMetaTransactionRequestsResponse, error)
 }
 
 type userDeviceServiceClient struct {
@@ -214,6 +216,15 @@ func (c *userDeviceServiceClient) UpdateUserDeviceMetadata(ctx context.Context, 
 	return out, nil
 }
 
+func (c *userDeviceServiceClient) ClearMetaTransactionRequests(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ClearMetaTransactionRequestsResponse, error) {
+	out := new(ClearMetaTransactionRequestsResponse)
+	err := c.cc.Invoke(ctx, UserDeviceService_ClearMetaTransactionRequests_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserDeviceServiceServer is the server API for UserDeviceService service.
 // All implementations must embed UnimplementedUserDeviceServiceServer
 // for forward compatibility
@@ -233,6 +244,7 @@ type UserDeviceServiceServer interface {
 	IssueVinCredential(context.Context, *IssueVinCredentialRequest) (*IssueVinCredentialResponse, error)
 	// used to update metadata properties, currently only ones needed by valuations-api
 	UpdateUserDeviceMetadata(context.Context, *UpdateUserDeviceMetadataRequest) (*emptypb.Empty, error)
+	ClearMetaTransactionRequests(context.Context, *emptypb.Empty) (*ClearMetaTransactionRequestsResponse, error)
 	mustEmbedUnimplementedUserDeviceServiceServer()
 }
 
@@ -281,6 +293,9 @@ func (UnimplementedUserDeviceServiceServer) IssueVinCredential(context.Context, 
 }
 func (UnimplementedUserDeviceServiceServer) UpdateUserDeviceMetadata(context.Context, *UpdateUserDeviceMetadataRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateUserDeviceMetadata not implemented")
+}
+func (UnimplementedUserDeviceServiceServer) ClearMetaTransactionRequests(context.Context, *emptypb.Empty) (*ClearMetaTransactionRequestsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ClearMetaTransactionRequests not implemented")
 }
 func (UnimplementedUserDeviceServiceServer) mustEmbedUnimplementedUserDeviceServiceServer() {}
 
@@ -550,6 +565,24 @@ func _UserDeviceService_UpdateUserDeviceMetadata_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserDeviceService_ClearMetaTransactionRequests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserDeviceServiceServer).ClearMetaTransactionRequests(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserDeviceService_ClearMetaTransactionRequests_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserDeviceServiceServer).ClearMetaTransactionRequests(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserDeviceService_ServiceDesc is the grpc.ServiceDesc for UserDeviceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -608,6 +641,10 @@ var UserDeviceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateUserDeviceMetadata",
 			Handler:    _UserDeviceService_UpdateUserDeviceMetadata_Handler,
+		},
+		{
+			MethodName: "ClearMetaTransactionRequests",
+			Handler:    _UserDeviceService_ClearMetaTransactionRequests_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
