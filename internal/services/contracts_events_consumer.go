@@ -760,6 +760,7 @@ func (c *ContractsEventsConsumer) vehicleNodeMinted(e *ContractEventData) error 
 
 	pvnft.OwnerAddress = null.BytesFrom(args.Owner.Bytes())
 	if err := c.vnftToUserDeviceHelper(ctx, pvnft); err != nil {
+		// TODO: are there some errors we wouldn't want to upsert on?
 		return pvnft.Upsert(ctx, c.db.DBS().Writer, true,
 			[]string{},
 			boil.Whitelist(models.PartialVehicleNFTColumns.OwnerAddress),
@@ -867,10 +868,7 @@ func (c *ContractsEventsConsumer) syntheticDeviceNodeMinted(e *ContractEventData
 		WalletChildNumber:  childNum,
 	}
 
-	if err := sd.Insert(ctx, c.db.DBS().Writer, boil.Infer()); err != nil {
-		return err
-	}
-	return nil
+	return sd.Insert(ctx, c.db.DBS().Writer, boil.Infer())
 }
 
 // DCNNameChangedContract represents a NameChanged event raised by the FullAbi contract.
@@ -933,9 +931,5 @@ func (c *ContractsEventsConsumer) vnftToUserDeviceHelper(ctx context.Context, pv
 		return err
 	}
 
-	if err := vnft.Insert(ctx, c.db.DBS().Writer, boil.Infer()); err != nil {
-		return err
-	}
-
-	return nil
+	return vnft.Insert(ctx, c.db.DBS().Writer, boil.Infer())
 }
