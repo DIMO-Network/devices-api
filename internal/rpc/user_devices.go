@@ -653,5 +653,10 @@ func (s *userDeviceRPCServer) ClearMetaTransactionRequests(ctx context.Context, 
 		return nil, err
 	}
 
+	_, err = m.Delete(ctx, s.dbs().Writer)
+	if err != nil {
+		return nil, err
+	}
+
 	return &pb.ClearMetaTransactionRequestsResponse{Id: m.ID}, nil
 }

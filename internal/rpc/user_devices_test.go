@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"database/sql"
 	"math/big"
 	"testing"
 	"time"
@@ -284,6 +285,9 @@ func TestClearMetaTransactionRequests(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Equal(mtID, resp.Id)
+
+	_, err = models.MetaTransactionRequests(models.MetaTransactionRequestWhere.ID.EQ(mtID)).One(ctx, pdb.DBS().Reader)
+	assert.ErrorIs(err, sql.ErrNoRows)
 }
 
 func TestClearMetaTransactionRequests_Unconfirmed(t *testing.T) {
@@ -316,6 +320,11 @@ func TestClearMetaTransactionRequests_Unconfirmed(t *testing.T) {
 	assert.Nil(resp)
 
 	assert.EqualError(err, "no overdue meta transaction")
+
+	mt, err := models.MetaTransactionRequests(models.MetaTransactionRequestWhere.ID.EQ(mtID)).One(ctx, pdb.DBS().Reader)
+	assert.NoError(err)
+
+	assert.Equal(mt.ID, mtID)
 }
 
 func TestClearMetaTransactionRequests_NotExpired(t *testing.T) {
@@ -348,4 +357,9 @@ func TestClearMetaTransactionRequests_NotExpired(t *testing.T) {
 	assert.Nil(resp)
 
 	assert.EqualError(err, "no overdue meta transaction")
+
+	mt, err := models.MetaTransactionRequests(models.MetaTransactionRequestWhere.ID.EQ(mtID)).One(ctx, pdb.DBS().Reader)
+	assert.NoError(err)
+
+	assert.Equal(mt.ID, mtID)
 }
