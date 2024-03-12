@@ -290,7 +290,7 @@ func TestClearMetaTransactionRequests(t *testing.T) {
 	assert.ErrorIs(err, sql.ErrNoRows)
 }
 
-func TestClearMetaTransactionRequests_Unconfirmed(t *testing.T) {
+func TestClearMetaTransactionRequests_MultipleRecords(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
@@ -300,31 +300,82 @@ func TestClearMetaTransactionRequests_Unconfirmed(t *testing.T) {
 		}
 	}()
 
-	mtID := ksuid.New().String()
+	mtID := []string{ksuid.New().String(), ksuid.New().String()}
+
 	currTime := time.Now()
 	fifteenminsAgo := currTime.Add(-time.Minute * 15)
-	metaTx := models.MetaTransactionRequest{
-		ID:        mtID,
-		Status:    models.MetaTransactionRequestStatusUnsubmitted,
-		CreatedAt: fifteenminsAgo,
+	sixteenMins := currTime.Add(-time.Minute * 16)
+	metaTx := []models.MetaTransactionRequest{
+		{
+			ID:        mtID[0],
+			Status:    models.MetaTransactionRequestStatusConfirmed,
+			CreatedAt: fifteenminsAgo,
+		},
+		{
+			ID:        mtID[1],
+			Status:    models.MetaTransactionRequestStatusConfirmed,
+			CreatedAt: sixteenMins,
+		},
 	}
 
-	err := metaTx.Insert(ctx, pdb.DBS().Writer, boil.Infer())
-	assert.NoError(err)
+	for _, m := range metaTx {
+		err := m.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+		assert.NoError(err)
+	}
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
 	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
 
 	resp, err := udService.ClearMetaTransactionRequests(ctx, nil)
-	assert.Nil(resp)
-
-	assert.EqualError(err, "no overdue meta transaction")
-
-	mt, err := models.MetaTransactionRequests(models.MetaTransactionRequestWhere.ID.EQ(mtID)).One(ctx, pdb.DBS().Reader)
 	assert.NoError(err)
+	assert.Equal(mtID[1], resp.Id)
 
-	assert.Equal(mt.ID, mtID)
+	_, err = models.MetaTransactionRequests(models.MetaTransactionRequestWhere.ID.EQ(mtID[1])).One(ctx, pdb.DBS().Reader)
+	assert.ErrorIs(err, sql.ErrNoRows)
+}
+
+func TestClearMetaTransactionRequests_MultipleRecords_Dates(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	mtID := []string{ksuid.New().String(), ksuid.New().String()}
+
+	currTime := time.Now()
+	fifteenminsAgo := currTime.Add(-time.Minute * 15)
+	metaTx := []models.MetaTransactionRequest{
+		{
+			ID:        mtID[0],
+			Status:    models.MetaTransactionRequestStatusConfirmed,
+			CreatedAt: fifteenminsAgo,
+		},
+		{
+			ID:     mtID[1],
+			Status: models.MetaTransactionRequestStatusConfirmed,
+		},
+	}
+
+	for _, m := range metaTx {
+		err := m.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+		assert.NoError(err)
+	}
+
+	logger := zerolog.Logger{}
+	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+
+	resp, err := udService.ClearMetaTransactionRequests(ctx, nil)
+	assert.NoError(err)
+	assert.Equal(mtID[0], resp.Id)
+
+	_, err = models.MetaTransactionRequests(models.MetaTransactionRequestWhere.ID.EQ(resp.Id)).One(ctx, pdb.DBS().Reader)
+	assert.ErrorIs(err, sql.ErrNoRows)
 }
 
 func TestClearMetaTransactionRequests_NotExpired(t *testing.T) {
@@ -356,7 +407,7 @@ func TestClearMetaTransactionRequests_NotExpired(t *testing.T) {
 	resp, err := udService.ClearMetaTransactionRequests(ctx, nil)
 	assert.Nil(resp)
 
-	assert.EqualError(err, "no overdue meta transaction")
+	assert.Error(err)
 
 	mt, err := models.MetaTransactionRequests(models.MetaTransactionRequestWhere.ID.EQ(mtID)).One(ctx, pdb.DBS().Reader)
 	assert.NoError(err)

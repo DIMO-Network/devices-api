@@ -644,18 +644,18 @@ func (s *userDeviceRPCServer) ClearMetaTransactionRequests(ctx context.Context, 
 
 	m, err := models.MetaTransactionRequests(
 		models.MetaTransactionRequestWhere.CreatedAt.LT(fifteenminsAgo),
-		models.MetaTransactionRequestWhere.Status.EQ(models.MetaTransactionRequestStatusConfirmed),
+		qm.OrderBy(models.MetaTransactionRequestColumns.CreatedAt+" ASC"),
 	).One(ctx, s.dbs().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("no overdue meta transaction")
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to select transaction to clear: %w", err)
 	}
 
 	_, err = m.Delete(ctx, s.dbs().Writer)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to Delete transaction %s: %w", m.ID, err)
 	}
 
 	return &pb.ClearMetaTransactionRequestsResponse{Id: m.ID}, nil
