@@ -846,19 +846,31 @@ func (c *ContractsEventsConsumer) syntheticDeviceNodeMinted(e *ContractEventData
 
 	childNum := seq.NextVal
 
+	vnft, err := models.VehicleNFTS(
+		models.VehicleNFTWhere.TokenID.EQ(
+			types.NewNullDecimal(decimal.New(args.VehicleNode.Int64(), 0)),
+		),
+	).One(ctx, c.db.DBS().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.log.Err(err).Int64("vehicleNode", args.VehicleNode.Int64()).Msg("failed to create synthetic device, no associate vehicle nft found")
+		}
+		return err
+	}
+
 	sd := models.SyntheticDevice{
-		VehicleTokenID:     types.NewNullDecimal(decimal.New(int64(args.VehicleNode.Int64()), 0)),
-		TokenID:            types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.SyntheticDeviceNode, 0)),
-		IntegrationTokenID: types.NewDecimal(decimal.New(int64(args.IntegrationNode.Int64()), 0)),
-		WalletAddress:      args.Owner.Bytes(),
+		MintRequestID:      vnft.MintRequestID,
+		VehicleTokenID:     vnft.TokenID,
+		TokenID:            types.NewNullDecimal(decimal.New(args.SyntheticDeviceNode.Int64(), 0)),
+		IntegrationTokenID: types.NewDecimal(decimal.New(args.IntegrationNode.Int64(), 0)),
+		WalletAddress:      args.SyntheticDeviceAddress.Bytes(),
 		WalletChildNumber:  childNum,
 	}
 
 	if err := sd.Insert(ctx, c.db.DBS().Writer, boil.Infer()); err != nil {
 		return err
 	}
-
-	return err
+	return nil
 }
 
 // DCNNameChangedContract represents a NameChanged event raised by the FullAbi contract.

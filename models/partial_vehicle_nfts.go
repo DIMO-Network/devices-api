@@ -25,58 +25,140 @@ import (
 
 // PartialVehicleNFT is an object representing the database table.
 type PartialVehicleNFT struct {
-	TokenID      types.Decimal     `boil:"token_id" json:"token_id" toml:"token_id" yaml:"token_id"`
-	OwnerAddress null.Bytes        `boil:"owner_address" json:"owner_address,omitempty" toml:"owner_address" yaml:"owner_address,omitempty"`
-	Make         null.String       `boil:"make" json:"make,omitempty" toml:"make" yaml:"make,omitempty"`
-	Model        null.String       `boil:"model" json:"model,omitempty" toml:"model" yaml:"model,omitempty"`
-	Year         types.NullDecimal `boil:"year" json:"year,omitempty" toml:"year" yaml:"year,omitempty"`
+	TokenID            types.Decimal     `boil:"token_id" json:"token_id" toml:"token_id" yaml:"token_id"`
+	OwnerAddress       null.Bytes        `boil:"owner_address" json:"owner_address,omitempty" toml:"owner_address" yaml:"owner_address,omitempty"`
+	Make               null.String       `boil:"make" json:"make,omitempty" toml:"make" yaml:"make,omitempty"`
+	Model              null.String       `boil:"model" json:"model,omitempty" toml:"model" yaml:"model,omitempty"`
+	Year               types.NullDecimal `boil:"year" json:"year,omitempty" toml:"year" yaml:"year,omitempty"`
+	SyntheticDevice    bool              `boil:"synthetic_device" json:"synthetic_device" toml:"synthetic_device" yaml:"synthetic_device"`
+	IntegrationTokenID types.NullDecimal `boil:"integration_token_id" json:"integration_token_id,omitempty" toml:"integration_token_id" yaml:"integration_token_id,omitempty"`
+	SyntheticTokenID   types.NullDecimal `boil:"synthetic_token_id" json:"synthetic_token_id,omitempty" toml:"synthetic_token_id" yaml:"synthetic_token_id,omitempty"`
+	WalletChildNumber  null.Int          `boil:"wallet_child_number" json:"wallet_child_number,omitempty" toml:"wallet_child_number" yaml:"wallet_child_number,omitempty"`
+	WalletAddress      null.Bytes        `boil:"wallet_address" json:"wallet_address,omitempty" toml:"wallet_address" yaml:"wallet_address,omitempty"`
 
 	R *partialVehicleNFTR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L partialVehicleNFTL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var PartialVehicleNFTColumns = struct {
-	TokenID      string
-	OwnerAddress string
-	Make         string
-	Model        string
-	Year         string
+	TokenID            string
+	OwnerAddress       string
+	Make               string
+	Model              string
+	Year               string
+	SyntheticDevice    string
+	IntegrationTokenID string
+	SyntheticTokenID   string
+	WalletChildNumber  string
+	WalletAddress      string
 }{
-	TokenID:      "token_id",
-	OwnerAddress: "owner_address",
-	Make:         "make",
-	Model:        "model",
-	Year:         "year",
+	TokenID:            "token_id",
+	OwnerAddress:       "owner_address",
+	Make:               "make",
+	Model:              "model",
+	Year:               "year",
+	SyntheticDevice:    "synthetic_device",
+	IntegrationTokenID: "integration_token_id",
+	SyntheticTokenID:   "synthetic_token_id",
+	WalletChildNumber:  "wallet_child_number",
+	WalletAddress:      "wallet_address",
 }
 
 var PartialVehicleNFTTableColumns = struct {
-	TokenID      string
-	OwnerAddress string
-	Make         string
-	Model        string
-	Year         string
+	TokenID            string
+	OwnerAddress       string
+	Make               string
+	Model              string
+	Year               string
+	SyntheticDevice    string
+	IntegrationTokenID string
+	SyntheticTokenID   string
+	WalletChildNumber  string
+	WalletAddress      string
 }{
-	TokenID:      "partial_vehicle_nfts.token_id",
-	OwnerAddress: "partial_vehicle_nfts.owner_address",
-	Make:         "partial_vehicle_nfts.make",
-	Model:        "partial_vehicle_nfts.model",
-	Year:         "partial_vehicle_nfts.year",
+	TokenID:            "partial_vehicle_nfts.token_id",
+	OwnerAddress:       "partial_vehicle_nfts.owner_address",
+	Make:               "partial_vehicle_nfts.make",
+	Model:              "partial_vehicle_nfts.model",
+	Year:               "partial_vehicle_nfts.year",
+	SyntheticDevice:    "partial_vehicle_nfts.synthetic_device",
+	IntegrationTokenID: "partial_vehicle_nfts.integration_token_id",
+	SyntheticTokenID:   "partial_vehicle_nfts.synthetic_token_id",
+	WalletChildNumber:  "partial_vehicle_nfts.wallet_child_number",
+	WalletAddress:      "partial_vehicle_nfts.wallet_address",
 }
 
 // Generated where
 
+type whereHelperbool struct{ field string }
+
+func (w whereHelperbool) EQ(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
+func (w whereHelperbool) NEQ(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
+func (w whereHelperbool) LT(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
+func (w whereHelperbool) LTE(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
+func (w whereHelperbool) GT(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
+func (w whereHelperbool) GTE(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
+
+type whereHelpernull_Int struct{ field string }
+
+func (w whereHelpernull_Int) EQ(x null.Int) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_Int) NEQ(x null.Int) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_Int) LT(x null.Int) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_Int) LTE(x null.Int) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_Int) GT(x null.Int) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_Int) GTE(x null.Int) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+func (w whereHelpernull_Int) IN(slice []int) qm.QueryMod {
+	values := make([]interface{}, 0, len(slice))
+	for _, value := range slice {
+		values = append(values, value)
+	}
+	return qm.WhereIn(fmt.Sprintf("%s IN ?", w.field), values...)
+}
+func (w whereHelpernull_Int) NIN(slice []int) qm.QueryMod {
+	values := make([]interface{}, 0, len(slice))
+	for _, value := range slice {
+		values = append(values, value)
+	}
+	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
+}
+
+func (w whereHelpernull_Int) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_Int) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
+
 var PartialVehicleNFTWhere = struct {
-	TokenID      whereHelpertypes_Decimal
-	OwnerAddress whereHelpernull_Bytes
-	Make         whereHelpernull_String
-	Model        whereHelpernull_String
-	Year         whereHelpertypes_NullDecimal
+	TokenID            whereHelpertypes_Decimal
+	OwnerAddress       whereHelpernull_Bytes
+	Make               whereHelpernull_String
+	Model              whereHelpernull_String
+	Year               whereHelpertypes_NullDecimal
+	SyntheticDevice    whereHelperbool
+	IntegrationTokenID whereHelpertypes_NullDecimal
+	SyntheticTokenID   whereHelpertypes_NullDecimal
+	WalletChildNumber  whereHelpernull_Int
+	WalletAddress      whereHelpernull_Bytes
 }{
-	TokenID:      whereHelpertypes_Decimal{field: "\"devices_api\".\"partial_vehicle_nfts\".\"token_id\""},
-	OwnerAddress: whereHelpernull_Bytes{field: "\"devices_api\".\"partial_vehicle_nfts\".\"owner_address\""},
-	Make:         whereHelpernull_String{field: "\"devices_api\".\"partial_vehicle_nfts\".\"make\""},
-	Model:        whereHelpernull_String{field: "\"devices_api\".\"partial_vehicle_nfts\".\"model\""},
-	Year:         whereHelpertypes_NullDecimal{field: "\"devices_api\".\"partial_vehicle_nfts\".\"year\""},
+	TokenID:            whereHelpertypes_Decimal{field: "\"devices_api\".\"partial_vehicle_nfts\".\"token_id\""},
+	OwnerAddress:       whereHelpernull_Bytes{field: "\"devices_api\".\"partial_vehicle_nfts\".\"owner_address\""},
+	Make:               whereHelpernull_String{field: "\"devices_api\".\"partial_vehicle_nfts\".\"make\""},
+	Model:              whereHelpernull_String{field: "\"devices_api\".\"partial_vehicle_nfts\".\"model\""},
+	Year:               whereHelpertypes_NullDecimal{field: "\"devices_api\".\"partial_vehicle_nfts\".\"year\""},
+	SyntheticDevice:    whereHelperbool{field: "\"devices_api\".\"partial_vehicle_nfts\".\"synthetic_device\""},
+	IntegrationTokenID: whereHelpertypes_NullDecimal{field: "\"devices_api\".\"partial_vehicle_nfts\".\"integration_token_id\""},
+	SyntheticTokenID:   whereHelpertypes_NullDecimal{field: "\"devices_api\".\"partial_vehicle_nfts\".\"synthetic_token_id\""},
+	WalletChildNumber:  whereHelpernull_Int{field: "\"devices_api\".\"partial_vehicle_nfts\".\"wallet_child_number\""},
+	WalletAddress:      whereHelpernull_Bytes{field: "\"devices_api\".\"partial_vehicle_nfts\".\"wallet_address\""},
 }
 
 // PartialVehicleNFTRels is where relationship names are stored.
@@ -96,9 +178,9 @@ func (*partialVehicleNFTR) NewStruct() *partialVehicleNFTR {
 type partialVehicleNFTL struct{}
 
 var (
-	partialVehicleNFTAllColumns            = []string{"token_id", "owner_address", "make", "model", "year"}
+	partialVehicleNFTAllColumns            = []string{"token_id", "owner_address", "make", "model", "year", "synthetic_device", "integration_token_id", "synthetic_token_id", "wallet_child_number", "wallet_address"}
 	partialVehicleNFTColumnsWithoutDefault = []string{"token_id"}
-	partialVehicleNFTColumnsWithDefault    = []string{"owner_address", "make", "model", "year"}
+	partialVehicleNFTColumnsWithDefault    = []string{"owner_address", "make", "model", "year", "synthetic_device", "integration_token_id", "synthetic_token_id", "wallet_child_number", "wallet_address"}
 	partialVehicleNFTPrimaryKeyColumns     = []string{"token_id"}
 	partialVehicleNFTGeneratedColumns      = []string{}
 )
