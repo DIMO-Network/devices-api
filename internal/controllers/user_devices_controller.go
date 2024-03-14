@@ -1402,6 +1402,13 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
 	userID := helpers.GetUserID(c)
 
+	// if vehicle minted, user must delete by burning
+	if vnft, err := models.VehicleNFTS(
+		models.VehicleNFTWhere.UserDeviceID.EQ(null.StringFrom(udi)),
+	).One(c.Context(), udc.DBS().Reader); err == nil {
+		return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("vehicle token: %d; must burn minted vehicle to delete", vnft.TokenID))
+	}
+
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
 		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationRels.SerialAftermarketDevice)),
