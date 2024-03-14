@@ -39,6 +39,31 @@ ALTER TABLE synthetic_devices ADD CONSTRAINT fkey_vehicle_token_id FOREIGN KEY (
 DROP TABLE vehicle_nfts;
 DROP TABLE vehicle_nfts_backup;
 
+CREATE MATERIALIZED VIEW vehicle_nfts
+AS
+    SELECT 
+            ud.id as user_device_id,
+            ud.mint_request_id,
+            ud.token_id,
+            ud.claim_id,
+            ud.owner_address,
+            ud.vin_identifier as vin
+    FROM user_devices ud
+WITH DATA;
+
+create or replace function refresh_vehicle_nfts_mat_view()
+returns trigger language plpgsql
+as $$
+begin
+    refresh materialized view devices_api.vehicle_nfts;
+    return null;
+end $$;
+
+create trigger trigger_vehicle_nfts_refresh
+after insert or update or delete or truncate
+on devices_api.user_devices for each statement 
+execute procedure refresh_vehicle_nfts_mat_view();
+
 -- +goose StatementEnd
 
 -- +goose Down
