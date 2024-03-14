@@ -912,15 +912,19 @@ func (c *ContractsEventsConsumer) vnftToUserDeviceHelper(ctx context.Context, pv
 		OwnerAddress:  pvnft.OwnerAddress,
 	}
 
-	check, err := models.VehicleNFTS(
+	if check, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.TokenID.EQ(types.NullDecimal(pvnft.TokenID)),
-	).Exists(ctx, c.db.DBS().Reader)
-	if err != nil {
+		qm.Load(models.VehicleNFTRels.UserDevice),
+	).One(ctx, c.db.DBS().Reader); !errors.Is(err, sql.ErrNoRows) {
+		if err == nil {
+			if check.R.MintRequest != nil {
+				c.log.Info().Str("tokenID", pvnft.TokenID.String()).Str("metaTxID", check.R.MintRequest.ID).Msg("vehicle already minted")
+				return errors.Errorf("vehicle already minted; initiated by DIMO: %s", check.R.MintRequest.ID)
+			}
+			c.log.Info().Str("tokenID", pvnft.TokenID.String()).Msg("vehicle minted but does not have associated mint request id; this should not happen")
+			return errors.Errorf("vehicle already minted but does not have mint request id: %s", pvnft.TokenID.String())
+		}
 		return err
-	}
-
-	if check {
-		return nil
 	}
 
 	if err := mtx.Insert(ctx, c.db.DBS().Writer, boil.Infer()); err != nil {
