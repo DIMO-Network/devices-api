@@ -143,7 +143,7 @@ func (s *AutoPiAPIServiceTestSuite) TestGetDeviceByUnitID_Should_Be_NotFound() {
 	_, err := autoPiSvc.GetDeviceByUnitID(unitID)
 
 	// assert
-	require.NotNil(s.T(), err)
+	require.Error(s.T(), err)
 }
 
 func TestBuildCallName(t *testing.T) {
