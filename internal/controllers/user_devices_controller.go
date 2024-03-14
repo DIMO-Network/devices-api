@@ -1954,7 +1954,7 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 
 	tx, err := udc.DBS().Reader.BeginTx(c.Context(), nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not create transaction: %w", err)
 	}
 	defer tx.Rollback() //nolint
 
