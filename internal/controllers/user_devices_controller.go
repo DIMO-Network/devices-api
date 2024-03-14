@@ -1913,8 +1913,7 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
-		udc.log.Err(err).Msg("Couldn't retrieve user record.")
-		return opaqueInternalError
+    return fmt.Errorf("couldn't retrieve user records: %w", err)
 	}
 
 	if user.EthereumAddress == nil {
