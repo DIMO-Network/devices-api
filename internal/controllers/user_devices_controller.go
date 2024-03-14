@@ -2017,7 +2017,7 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 
 	hash, err := client.Hash(&bvs)
 	if err != nil {
-		return opaqueInternalError
+		return fmt.Errorf("could not hash bvs: %w", err)
 	}
 
 	sigBytes := common.FromHex(br.Signature)
