@@ -28,66 +28,53 @@ const migrationsDirRelPath = "../../migrations"
 func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
-	vin := "W1N2539531F907299"
-	deviceStyleID := "24GE7Mlc4c9o4j5P4mcD1Fzinx1"
 	userID := ksuid.New().String()
-	ownerAddress := null.BytesFrom(common.Hex2Bytes("448cF8Fd88AD914e3585401241BC434FbEA94bbb"))
-	claimID := ksuid.New().String()
 	_, childWallet, _ := test.GenerateWallet()
 
 	ud := models.UserDevice{
 		ID:                 ksuid.New().String(),
 		UserID:             userID,
 		DeviceDefinitionID: dd[0].DeviceDefinitionId,
-		VinIdentifier:      null.StringFrom(vin),
+		VinIdentifier:      null.StringFrom("W1N2539531F907299"),
 		CountryCode:        null.StringFrom("USA"),
 		VinConfirmed:       true,
 		Metadata:           null.JSONFrom([]byte(`{ "powertrainType": "ICE", "canProtocol": "6" }`)),
-		DeviceStyleID:      null.StringFrom(deviceStyleID),
-	}
-
-	vnft := models.VehicleNFT{
-		UserDeviceID:  null.StringFrom(ud.ID),
-		Vin:           ud.VinIdentifier.String,
-		TokenID:       types.NewNullDecimal(decimal.New(4, 0)),
-		OwnerAddress:  null.BytesFrom(common.BigToAddress(big.NewInt(7)).Bytes()),
-		MintRequestID: ksuid.New().String(),
-		ClaimID:       null.StringFrom(claimID),
+		DeviceStyleID:      null.StringFrom("24GE7Mlc4c9o4j5P4mcD1Fzinx1"),
+		TokenID:            types.NewNullDecimal(decimal.New(4, 0)),
+		OwnerAddress:       null.BytesFrom(common.Hex2Bytes("448cF8Fd88AD914e3585401241BC434FbEA94bbb")),
+		MintRequestID:      null.StringFrom(ksuid.New().String()),
+		ClaimID:            null.StringFrom(ksuid.New().String()),
 	}
 
 	ad := models.AftermarketDevice{
 		UserID:                    null.StringFrom(ud.ID),
-		OwnerAddress:              ownerAddress,
+		OwnerAddress:              ud.OwnerAddress,
 		CreatedAt:                 time.Now(),
 		UpdatedAt:                 time.Now(),
 		TokenID:                   types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
-		VehicleTokenID:            vnft.TokenID,
+		VehicleTokenID:            ud.TokenID,
 		Beneficiary:               null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
-		EthereumAddress:           ownerAddress.Bytes,
+		EthereumAddress:           childWallet.Bytes(),
 		DeviceManufacturerTokenID: types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(42), 0)),
 	}
 
 	sd := models.SyntheticDevice{
-		VehicleTokenID:     vnft.TokenID,
+		VehicleTokenID:     ud.TokenID,
 		IntegrationTokenID: types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(19), 0)),
-		MintRequestID:      vnft.MintRequestID,
+		MintRequestID:      ud.MintRequestID.String,
 		WalletChildNumber:  100,
 		TokenID:            types.NewNullDecimal(decimal.New(6, 0)),
 		WalletAddress:      childWallet.Bytes(),
 	}
 
 	credential := models.VerifiableCredential{
-		ClaimID:        claimID,
+		ClaimID:        ud.ClaimID.String,
 		ExpirationDate: time.Now().AddDate(0, 0, 7),
 	}
 
 	metaTx := models.MetaTransactionRequest{
-		ID:     vnft.MintRequestID,
+		ID:     ud.MintRequestID.String,
 		Status: models.MetaTransactionRequestStatusConfirmed,
-	}
-
-	if err := ud.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
-		return "", err
 	}
 
 	if err := metaTx.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
@@ -98,7 +85,7 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 		return "", err
 	}
 
-	if err := vnft.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
+	if err := ud.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
 		return "", err
 	}
 

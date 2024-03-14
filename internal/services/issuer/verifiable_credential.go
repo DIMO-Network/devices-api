@@ -217,13 +217,13 @@ func (i *Issuer) VIN(vin string, tokenID *big.Int, expirationDate time.Time) (id
 		return "", err
 	}
 
-	nft, err := models.VehicleNFTS(models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)))).One(context.Background(), tx)
+	ud, err := models.UserDevices(models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)))).One(context.Background(), tx)
 	if err != nil {
 		return "", err
 	}
 
-	nft.ClaimID = null.StringFrom(id)
-	if _, err := nft.Update(context.Background(), tx, boil.Whitelist(models.VehicleNFTColumns.ClaimID)); err != nil {
+	ud.ClaimID = null.StringFrom(id)
+	if _, err := ud.Update(context.Background(), tx, boil.Whitelist(models.UserDeviceColumns.ClaimID)); err != nil {
 		return "", err
 	}
 

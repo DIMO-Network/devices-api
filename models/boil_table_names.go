@@ -18,7 +18,6 @@ var TableNames = struct {
 	UserDeviceData            string
 	UserDeviceToGeofence      string
 	UserDevices               string
-	VehicleNFTS               string
 	VerifiableCredentials     string
 }{
 	AftermarketDevices:        "aftermarket_devices",
@@ -35,6 +34,5 @@ var TableNames = struct {
 	UserDeviceData:            "user_device_data",
 	UserDeviceToGeofence:      "user_device_to_geofence",
 	UserDevices:               "user_devices",
-	VehicleNFTS:               "vehicle_nfts",
 	VerifiableCredentials:     "verifiable_credentials",
 }

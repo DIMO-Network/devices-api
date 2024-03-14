@@ -67,10 +67,6 @@ func remakeAftermarketTopic(ctx context.Context, pdb db.Store, producer sarama.S
 	}
 
 	for _, amd := range aps {
-		if !amd.R.VehicleToken.UserDeviceID.Valid {
-			continue
-		}
-
 		if err := reg.Register2(&services.AftermarketDeviceVehicleMapping{
 			AftermarketDevice: services.AftermarketDeviceVehicleMappingAftermarketDevice{
 				Address:       common.BytesToAddress(amd.EthereumAddress),
@@ -80,7 +76,7 @@ func remakeAftermarketTopic(ctx context.Context, pdb db.Store, producer sarama.S
 			},
 			Vehicle: services.AftermarketDeviceVehicleMappingVehicle{
 				Token:        amd.VehicleTokenID.Int(nil),
-				UserDeviceID: amd.R.VehicleToken.UserDeviceID.String,
+				UserDeviceID: amd.R.VehicleToken.ID,
 			},
 		}); err != nil {
 			return err

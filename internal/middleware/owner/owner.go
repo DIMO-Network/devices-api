@@ -62,9 +62,9 @@ func UserDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.
 			return errNotFound
 		}
 
-		if userAddrOwns, err := models.VehicleNFTS(
-			models.VehicleNFTWhere.UserDeviceID.EQ(null.StringFrom(udi)),
-			models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(*user.EthereumAddress))),
+		if userAddrOwns, err := models.UserDevices(
+			models.UserDeviceWhere.ID.EQ(udi),
+			models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(*user.EthereumAddress))),
 		).Exists(c.Context(), dbs.DBS().Reader); err != nil {
 			return err
 		} else if userAddrOwns {
@@ -125,9 +125,9 @@ func AftermarketDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *z
 			return c.Next()
 		}
 
-		ownsVehicle, err := models.VehicleNFTS(
-			models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(aftermarketDevice.VehicleTokenID.Big)),
-			models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(userAddr.Bytes())),
+		ownsVehicle, err := models.UserDevices(
+			models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(aftermarketDevice.VehicleTokenID.Big)),
+			models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(userAddr.Bytes())),
 		).Exists(c.Context(), dbs.DBS().Reader)
 		if err != nil {
 			return err

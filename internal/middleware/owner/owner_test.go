@@ -103,22 +103,19 @@ func TestUserDeviceOwnerMiddleware(t *testing.T) {
 			if c.UserDeviceUserID != "" {
 				ud := models.UserDevice{ID: userDeviceID, UserID: c.UserDeviceUserID}
 				require.NoError(t, ud.Insert(ctx, pdb.DBS().Writer, boil.Infer()))
-			}
 
-			if c.NFTOwnerAddr != "" {
-				mtr := models.MetaTransactionRequest{
-					ID: ksuid.New().String(),
+				if c.NFTOwnerAddr != "" {
+					mtr := models.MetaTransactionRequest{
+						ID: ksuid.New().String(),
+					}
+
+					require.NoError(t, mtr.Insert(ctx, pdb.DBS().Writer, boil.Infer()))
+
+					ud.MintRequestID = null.StringFrom(mtr.ID)
+					ud.OwnerAddress = null.BytesFrom(common.FromHex(c.NFTOwnerAddr))
+
+					_, err = ud.Update(ctx, pdb.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.MintRequestID, models.UserDeviceColumns.OwnerAddress))
 				}
-
-				require.NoError(t, mtr.Insert(ctx, pdb.DBS().Writer, boil.Infer()))
-
-				vnft := models.VehicleNFT{
-					MintRequestID: mtr.ID,
-					UserDeviceID:  null.StringFrom(userDeviceID),
-					OwnerAddress:  null.BytesFrom(common.FromHex(c.NFTOwnerAddr)),
-				}
-
-				require.NoError(t, vnft.Insert(ctx, pdb.DBS().Writer, boil.Infer()))
 			}
 
 			usersClient.Store = map[string]*pb.User{}
@@ -144,8 +141,6 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 	userID := "louxUser"
 	userAddr := "0x9eaD03F7136Fc6b4bDb0780B00a1c14aE5A8B6d0"
 	unitID := "4a12c37b-b662-4fad-68e6-7e74f9ce658c"
-	mtxReqID := "meta-tx-id"
-	vin := "vin"
 
 	ctx := context.Background()
 	pdb, container := test.StartContainerDatabase(ctx, t, "../../../migrations")
@@ -214,35 +209,46 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 		t.Run(c.Name, func(t *testing.T) {
 			_, err := models.AftermarketDevices().DeleteAll(ctx, pdb.DBS().Writer)
 			require.NoError(t, err)
-			_, err = models.VehicleNFTS().DeleteAll(ctx, pdb.DBS().Writer)
+			_, err = models.UserDevices().DeleteAll(ctx, pdb.DBS().Writer)
 			require.NoError(t, err)
 			_, err = models.MetaTransactionRequests().DeleteAll(ctx, pdb.DBS().Writer)
 			require.NoError(t, err)
 
 			mtx := models.MetaTransactionRequest{
-				ID:     mtxReqID,
-				Status: "Confirmed",
+				ID:     ksuid.New().String(),
+				Status: models.MetaTransactionRequestStatusConfirmed,
 			}
 			err = mtx.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 			require.NoError(t, err)
 
-			vnft := models.VehicleNFT{
-				MintRequestID: mtxReqID,
-				Vin:           vin,
-				TokenID:       c.AutoPiVehicleToken,
+			ud := models.UserDevice{
+				ID:                 ksuid.New().String(),
+				MintRequestID:      null.StringFrom(mtx.ID),
+				TokenID:            c.AutoPiVehicleToken,
+				UserID:             userID,
+				DeviceDefinitionID: ksuid.New().String(),
 			}
 
 			if c.vNFTAddr != "" {
-				vnft.OwnerAddress = null.BytesFrom(common.FromHex(c.vNFTAddr))
+				ud.OwnerAddress = null.BytesFrom(common.FromHex(c.vNFTAddr))
 			}
 
-			err = vnft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+			err = ud.Insert(ctx,
+				pdb.DBS().Writer,
+				boil.Whitelist(
+					models.UserDeviceColumns.ID,
+					models.UserDeviceColumns.UserID,
+					models.UserDeviceColumns.DeviceDefinitionID,
+					models.UserDeviceColumns.MintRequestID,
+					models.UserDeviceColumns.TokenID,
+					models.UserDeviceColumns.OwnerAddress))
 			require.NoError(t, err)
 
 			ap := models.AftermarketDevice{
-				Serial:         c.AutoPiUnitID,
-				VehicleTokenID: c.AutoPiVehicleToken,
-				UserID:         c.AutoPiUserID,
+				Serial:                        c.AutoPiUnitID,
+				VehicleTokenID:                c.AutoPiVehicleToken,
+				UserID:                        c.AutoPiUserID,
+				ClaimMetaTransactionRequestID: null.StringFrom(mtx.ID),
 			}
 			err = ap.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 			require.NoError(t, err)

@@ -4,4 +4,7 @@
 package models
 
 var ViewNames = struct {
-}{}
+	VehicleNFTS string
+}{
+	VehicleNFTS: "vehicle_nfts",
+}
