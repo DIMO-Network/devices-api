@@ -743,7 +743,7 @@ func (c *ContractsEventsConsumer) vehicleNodeMinted(e *ContractEventData) error 
 
 	var args contracts.RegistryVehicleNodeMinted
 	if err := json.Unmarshal(e.Arguments, &args); err != nil {
-		return err
+		return errors.Wrap(err, "failed to unmarshal vehicle mint event")
 	}
 
 	pvnft, err := models.PartialVehicleNFTS(
@@ -751,7 +751,7 @@ func (c *ContractsEventsConsumer) vehicleNodeMinted(e *ContractEventData) error 
 	).One(ctx, c.db.DBS().Reader)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
-			return err
+			return errors.Wrap(err, "failed to query database for partial vehicle nft")
 		}
 		pvnft = &models.PartialVehicleNFT{
 			TokenID: types.NewDecimal(decimal.New(int64(args.TokenId.Int64()), 0)),
@@ -761,16 +761,22 @@ func (c *ContractsEventsConsumer) vehicleNodeMinted(e *ContractEventData) error 
 	pvnft.OwnerAddress = null.BytesFrom(args.Owner.Bytes())
 	if err := c.vnftToUserDeviceHelper(ctx, pvnft); err != nil {
 		// TODO: are there some errors we wouldn't want to upsert on?
-		return pvnft.Upsert(ctx, c.db.DBS().Writer, true,
+		if err := pvnft.Upsert(ctx, c.db.DBS().Writer, true,
 			[]string{},
 			boil.Whitelist(models.PartialVehicleNFTColumns.OwnerAddress),
 			boil.Whitelist(models.PartialVehicleNFTColumns.OwnerAddress,
 				models.PartialVehicleNFTColumns.TokenID),
-		)
+		); err != nil {
+			return errors.Wrapf(err, "failed to update partial vehicle nft: %d", args.TokenId.Int64())
+		}
+		return nil
 	}
 
-	_, err = pvnft.Delete(ctx, c.db.DBS().Writer)
-	return err
+	if _, err := pvnft.Delete(ctx, c.db.DBS().Writer); err != nil {
+		return errors.Wrapf(err, "failed to delete partial vehicle nft after promoting: %d", args.TokenId.Int64())
+	}
+
+	return nil
 
 }
 
@@ -783,7 +789,7 @@ func (c *ContractsEventsConsumer) vehicleAttributeSet(e *ContractEventData) erro
 
 	var args contracts.RegistryVehicleAttributeSet
 	if err := json.Unmarshal(e.Arguments, &args); err != nil {
-		return err
+		return errors.Wrap(err, "failed to unmarshal vehicle attribute set event")
 	}
 
 	pvnft, err := models.PartialVehicleNFTS(
@@ -791,7 +797,7 @@ func (c *ContractsEventsConsumer) vehicleAttributeSet(e *ContractEventData) erro
 	).One(ctx, c.db.DBS().Reader)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
-			return err
+			return errors.Wrap(err, "failed to query database for partial vehicle nft")
 		}
 		pvnft = &models.PartialVehicleNFT{
 			TokenID: types.NewDecimal(decimal.New(int64(args.TokenId.Int64()), 0)),
@@ -812,15 +818,23 @@ func (c *ContractsEventsConsumer) vehicleAttributeSet(e *ContractEventData) erro
 	}
 
 	if err := c.vnftToUserDeviceHelper(ctx, pvnft); err != nil {
-		return pvnft.Upsert(ctx, c.db.DBS().Writer, true,
+		// TODO: are there some errors we wouldn't want to upsert on?
+		if err := pvnft.Upsert(ctx, c.db.DBS().Writer, true,
 			[]string{},
-			boil.Infer(),
-			boil.Infer(),
-		)
+			boil.Whitelist(models.PartialVehicleNFTColumns.OwnerAddress),
+			boil.Whitelist(models.PartialVehicleNFTColumns.OwnerAddress,
+				models.PartialVehicleNFTColumns.TokenID),
+		); err != nil {
+			return errors.Wrapf(err, "failed to update partial vehicle nft: %d", args.TokenId.Int64())
+		}
+		return nil
 	}
 
-	_, err = pvnft.Delete(ctx, c.db.DBS().Writer)
-	return err
+	if _, err := pvnft.Delete(ctx, c.db.DBS().Writer); err != nil {
+		return errors.Wrapf(err, "failed to delete partial vehicle nft after promoting: %d", args.TokenId.Int64())
+	}
+
+	return nil
 }
 
 // syntheticDeviceNodeMinted handles the event of the same name from the registry contract.
@@ -832,7 +846,7 @@ func (c *ContractsEventsConsumer) syntheticDeviceNodeMinted(e *ContractEventData
 
 	var args contracts.RegistrySyntheticDeviceNodeMinted
 	if err := json.Unmarshal(e.Arguments, &args); err != nil {
-		return err
+		return errors.Wrap(err, "failed to unmarshal synthetic device node event")
 	}
 
 	var seq struct {
@@ -840,12 +854,9 @@ func (c *ContractsEventsConsumer) syntheticDeviceNodeMinted(e *ContractEventData
 	}
 
 	qry := fmt.Sprintf("SELECT nextval('%s.synthetic_devices_serial_sequence');", c.settings.DB.Name)
-	err := queries.Raw(qry).Bind(ctx, c.db.DBS().Writer, &seq)
-	if err != nil {
-		return err
+	if err := queries.Raw(qry).Bind(ctx, c.db.DBS().Writer, &seq); err != nil {
+		return errors.Wrap(err, "failed to query for synthetic device serial sequence")
 	}
-
-	childNum := seq.NextVal
 
 	vnft, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.TokenID.EQ(
@@ -854,9 +865,9 @@ func (c *ContractsEventsConsumer) syntheticDeviceNodeMinted(e *ContractEventData
 	).One(ctx, c.db.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			c.log.Err(err).Int64("vehicleNode", args.VehicleNode.Int64()).Msg("failed to create synthetic device, no associate vehicle nft found")
+			c.log.Err(err).Int64("vehicleNode", args.VehicleNode.Int64()).Int64("syntheticDeviceNode", args.SyntheticDeviceNode.Int64()).Msg("no vehicle nft found")
 		}
-		return err
+		return errors.Wrapf(err, "failed to create synthetic device")
 	}
 
 	sd := models.SyntheticDevice{
@@ -865,10 +876,13 @@ func (c *ContractsEventsConsumer) syntheticDeviceNodeMinted(e *ContractEventData
 		TokenID:            types.NewNullDecimal(decimal.New(args.SyntheticDeviceNode.Int64(), 0)),
 		IntegrationTokenID: types.NewDecimal(decimal.New(args.IntegrationNode.Int64(), 0)),
 		WalletAddress:      args.SyntheticDeviceAddress.Bytes(),
-		WalletChildNumber:  childNum,
+		WalletChildNumber:  seq.NextVal,
 	}
 
-	return sd.Insert(ctx, c.db.DBS().Writer, boil.Infer())
+	if err := sd.Insert(ctx, c.db.DBS().Writer, boil.Infer()); err != nil {
+		return errors.Wrapf(err, "failed to insert synthetic device; vehicleNode: %d, syntheticDeviceNode: %d", args.VehicleNode.Int64(), args.SyntheticDeviceNode.Int64())
+	}
+	return nil
 }
 
 // DCNNameChangedContract represents a NameChanged event raised by the FullAbi contract.
@@ -891,7 +905,7 @@ func (c *ContractsEventsConsumer) vnftToUserDeviceHelper(ctx context.Context, pv
 
 	dd, err := c.ddSvc.GetDeviceDefinitionByMMY(ctx, int32(yr), pvnft.Make.String, pvnft.Model.String)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to get device definition id for %s %s %d", pvnft.Make.String, pvnft.Model.String, yr)
 	}
 
 	ud := models.UserDevice{
@@ -924,15 +938,15 @@ func (c *ContractsEventsConsumer) vnftToUserDeviceHelper(ctx context.Context, pv
 			c.log.Info().Str("tokenID", pvnft.TokenID.String()).Msg("vehicle minted but does not have associated mint request id; this should not happen")
 			return errors.Errorf("vehicle already minted but does not have mint request id: %s", pvnft.TokenID.String())
 		}
-		return err
+		return errors.Wrapf(err, "check for existing vehicle nft failed: %s", pvnft.TokenID.String())
 	}
 
 	if err := mtx.Insert(ctx, c.db.DBS().Writer, boil.Infer()); err != nil {
-		return err
+		return errors.Wrapf(err, "failed to insert meta transaction request for vehicle nft: %s", pvnft.TokenID.String())
 	}
 
 	if err := ud.Insert(ctx, c.db.DBS().Writer, boil.Infer()); err != nil {
-		return err
+		return errors.Wrapf(err, "failed to insert user device for vehicle nft: %s", pvnft.TokenID.String())
 	}
 
 	return vnft.Insert(ctx, c.db.DBS().Writer, boil.Infer())
