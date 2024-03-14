@@ -32,6 +32,7 @@ service UserDeviceService {
   rpc IssueVinCredential(IssueVinCredentialRequest) returns (IssueVinCredentialResponse);
   // used to update metadata properties, currently only ones needed by valuations-api
   rpc UpdateUserDeviceMetadata(UpdateUserDeviceMetadataRequest) returns (google.protobuf.Empty);
+  rpc ClearMetaTransactionRequests(google.protobuf.Empty) returns (ClearMetaTransactionRequestsResponse);
 }
 
 message GetUserDeviceByAutoPIUnitIdRequest { string id = 1; }
@@ -159,4 +160,8 @@ message IssueVinCredentialResponse {
 
 message GetAllUserDeviceRequest {
   string wmi = 1;
+}
+
+message ClearMetaTransactionRequestsResponse {
+  string id = 1;
 }

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	pb "github.com/DIMO-Network/shared/api/users"
+
 	"github.com/DIMO-Network/shared"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
@@ -30,19 +32,33 @@ type userDeviceService struct {
 	log          zerolog.Logger
 	dbs          func() *db.ReaderWriter
 	eventService EventService
+	usersClient  pb.UserServiceClient
 }
 
-func NewUserDeviceService(deviceDefSvc DeviceDefinitionService, log zerolog.Logger, dbs func() *db.ReaderWriter, eventService EventService) UserDeviceService {
+func NewUserDeviceService(deviceDefSvc DeviceDefinitionService, log zerolog.Logger, dbs func() *db.ReaderWriter, eventService EventService, usersClient pb.UserServiceClient) UserDeviceService {
 	return &userDeviceService{
 		deviceDefSvc: deviceDefSvc,
 		log:          log,
 		dbs:          dbs,
 		eventService: eventService,
+		usersClient:  usersClient,
 	}
 }
 
+var ErrEmailUnverified = fmt.Errorf("email not verified")
+
 // CreateUserDevice creates the user_device record with all the logic we manage, including setting the countryCode, setting the powertrain based on the def or style, and setting the protocol
 func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID, styleID, countryCode, userID string, vin, canProtocol *string, vinConfirmed bool) (*models.UserDevice, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
+	// check that userId email is verified
+	user, err := uds.usersClient.GetUser(ctx, &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		return nil, nil, err
+	}
+	if user.EmailAddress == nil {
+		// email will be nil if not verified
+		return nil, nil, ErrEmailUnverified
+	}
+
 	// attach device def to user
 	dd, err2 := uds.deviceDefSvc.GetDeviceDefinitionByID(ctx, deviceDefID)
 	if err2 != nil {

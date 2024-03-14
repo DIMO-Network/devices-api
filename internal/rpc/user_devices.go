@@ -6,21 +6,18 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-
 	"strings"
+	"time"
 
-	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/DIMO-Network/devices-api/internal/services/autopi"
-	"github.com/DIMO-Network/devices-api/internal/services/issuer"
-	"github.com/DIMO-Network/devices-api/models"
-	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
+	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/services"
+
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
 	"github.com/rs/zerolog"
@@ -30,6 +27,11 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/DIMO-Network/devices-api/internal/services/autopi"
+	"github.com/DIMO-Network/devices-api/internal/services/issuer"
+	"github.com/DIMO-Network/devices-api/models"
+	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 )
 
 func NewUserDeviceRPCService(
@@ -178,7 +180,7 @@ func (s *userDeviceRPCServer) GetUserDeviceByEthAddr(ctx context.Context, req *p
 	return s.deviceModelToAPI(dbDevice), nil
 }
 
-func (s *userDeviceRPCServer) GetUserDeviceByTokenId(ctx context.Context, req *pb.GetUserDeviceByTokenIdRequest) (*pb.UserDevice, error) { //nolint
+func (s *userDeviceRPCServer) GetUserDeviceByTokenId(ctx context.Context, req *pb.GetUserDeviceByTokenIdRequest) (*pb.UserDevice, error) { // nolint
 
 	tknID := types.NewNullDecimal(decimal.New(req.TokenId, 0))
 
@@ -322,7 +324,7 @@ func (s *userDeviceRPCServer) RegisterUserDeviceFromVIN(ctx context.Context, req
 	}
 
 	tx, err := s.dbs().Writer.DB.BeginTx(ctx, nil)
-	defer tx.Rollback() //nolint
+	defer tx.Rollback() // nolint
 	if err != nil {
 		return nil, err
 	}
@@ -634,4 +636,27 @@ func (s *userDeviceRPCServer) UpdateUserDeviceMetadata(ctx context.Context, req 
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func (s *userDeviceRPCServer) ClearMetaTransactionRequests(ctx context.Context, _ *emptypb.Empty) (*pb.ClearMetaTransactionRequestsResponse, error) {
+	currTime := time.Now()
+	fifteenminsAgo := currTime.Add(-time.Minute * 15)
+
+	m, err := models.MetaTransactionRequests(
+		models.MetaTransactionRequestWhere.CreatedAt.LT(fifteenminsAgo),
+		qm.OrderBy(models.MetaTransactionRequestColumns.CreatedAt+" ASC"),
+	).One(ctx, s.dbs().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("no overdue meta transaction")
+		}
+		return nil, fmt.Errorf("failed to select transaction to clear: %w", err)
+	}
+
+	_, err = m.Delete(ctx, s.dbs().Writer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to Delete transaction %s: %w", m.ID, err)
+	}
+
+	return &pb.ClearMetaTransactionRequestsResponse{Id: m.ID}, nil
 }

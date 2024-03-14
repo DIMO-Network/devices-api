@@ -839,10 +839,13 @@ func buildSmartcarTokenKey(vin, userID string) string {
 	return fmt.Sprintf("sc-temp-tok-%s-%s", vin, userID)
 }
 
-// todo move this to be used directly
 func (udc *UserDevicesController) createUserDevice(ctx context.Context, deviceDefID, styleID, countryCode, userID string, vin, canProtocol *string) (*UserDeviceFull, error) {
 	ud, dd, err := udc.userDeviceSvc.CreateUserDevice(ctx, deviceDefID, styleID, countryCode, userID, vin, canProtocol, false)
 	if err != nil {
+		if errors.Is(err, services.ErrEmailUnverified) {
+			return nil, fiber.NewError(fiber.StatusBadRequest,
+				"Your email has not been verified. Please check your email for the DIMO verification email.")
+		}
 		return nil, err
 	}
 
