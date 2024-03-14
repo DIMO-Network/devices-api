@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -686,7 +687,23 @@ func (udc *UserDevicesController) GetAutoPiClaimMessage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal error.")
 	}
 
+	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		udc.log.Err(err).Msg("Couldn't retrieve user record.")
+		return opaqueInternalError
+	}
+	if user.EthereumAddress == nil {
+		udc.log.Error().Msg("No Ethereum address on file for user.")
+		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
+	}
+
 	if unit.OwnerAddress.Valid {
+		// device may already be claimed, but if it is claimed by the same user we should just return and continue
+		ethAddr := common.HexToAddress(*user.EthereumAddress)
+		if bytes.Equal(unit.OwnerAddress.Bytes, ethAddr.Bytes()) {
+			// todo is this the right thing to do? There would be no payload like before b/c there is nothing for the mobile app to send again
+			return c.SendStatus(fiber.StatusOK)
+		}
 		return fiber.NewError(fiber.StatusConflict, "Device already claimed.")
 	}
 
@@ -695,17 +712,6 @@ func (udc *UserDevicesController) GetAutoPiClaimMessage(c *fiber.Ctx) error {
 	}
 
 	apToken := unit.TokenID.Int(nil)
-
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-	if err != nil {
-		udc.log.Err(err).Msg("Couldn't retrieve user record.")
-		return opaqueInternalError
-	}
-
-	if user.EthereumAddress == nil {
-		udc.log.Error().Msg("No Ethereum address on file for user.")
-		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
-	}
 
 	client := registry.Client{
 		Producer:     udc.producer,
