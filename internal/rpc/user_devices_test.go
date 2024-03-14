@@ -2,25 +2,28 @@ package rpc
 
 import (
 	"context"
+	"database/sql"
 	"math/big"
 	"testing"
 	"time"
 
-	pb_devices "github.com/DIMO-Network/devices-api/pkg/grpc"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
 
-	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/devices-api/internal/test"
-	"github.com/DIMO-Network/devices-api/models"
+	pb_devices "github.com/DIMO-Network/devices-api/pkg/grpc"
+
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
+
+	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/internal/test"
+	"github.com/DIMO-Network/devices-api/models"
 )
 
 const migrationsDirRelPath = "../../migrations"
@@ -249,4 +252,165 @@ func TestGetUserDevice_NoSyntheticDeviceFields_WhenNoTokenID(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Nil(udResult.SyntheticDevice)
+}
+
+func TestClearMetaTransactionRequests(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	mtID := ksuid.New().String()
+
+	currTime := time.Now()
+	fifteenminsAgo := currTime.Add(-time.Minute * 15)
+	metaTx := models.MetaTransactionRequest{
+		ID:        mtID,
+		Status:    models.MetaTransactionRequestStatusConfirmed,
+		CreatedAt: fifteenminsAgo,
+	}
+
+	err := metaTx.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	assert.NoError(err)
+
+	logger := zerolog.Logger{}
+	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+
+	resp, err := udService.ClearMetaTransactionRequests(ctx, nil)
+	assert.NoError(err)
+
+	assert.Equal(mtID, resp.Id)
+
+	_, err = models.MetaTransactionRequests(models.MetaTransactionRequestWhere.ID.EQ(mtID)).One(ctx, pdb.DBS().Reader)
+	assert.ErrorIs(err, sql.ErrNoRows)
+}
+
+func TestClearMetaTransactionRequests_MultipleRecords(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	mtID := []string{ksuid.New().String(), ksuid.New().String()}
+
+	currTime := time.Now()
+	fifteenminsAgo := currTime.Add(-time.Minute * 15)
+	sixteenMins := currTime.Add(-time.Minute * 16)
+	metaTx := []models.MetaTransactionRequest{
+		{
+			ID:        mtID[0],
+			Status:    models.MetaTransactionRequestStatusConfirmed,
+			CreatedAt: fifteenminsAgo,
+		},
+		{
+			ID:        mtID[1],
+			Status:    models.MetaTransactionRequestStatusConfirmed,
+			CreatedAt: sixteenMins,
+		},
+	}
+
+	for _, m := range metaTx {
+		err := m.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+		assert.NoError(err)
+	}
+
+	logger := zerolog.Logger{}
+	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+
+	resp, err := udService.ClearMetaTransactionRequests(ctx, nil)
+	assert.NoError(err)
+	assert.Equal(mtID[1], resp.Id)
+
+	_, err = models.MetaTransactionRequests(models.MetaTransactionRequestWhere.ID.EQ(mtID[1])).One(ctx, pdb.DBS().Reader)
+	assert.ErrorIs(err, sql.ErrNoRows)
+}
+
+func TestClearMetaTransactionRequests_MultipleRecords_Dates(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	mtID := []string{ksuid.New().String(), ksuid.New().String()}
+
+	currTime := time.Now()
+	fifteenminsAgo := currTime.Add(-time.Minute * 15)
+	metaTx := []models.MetaTransactionRequest{
+		{
+			ID:        mtID[0],
+			Status:    models.MetaTransactionRequestStatusConfirmed,
+			CreatedAt: fifteenminsAgo,
+		},
+		{
+			ID:     mtID[1],
+			Status: models.MetaTransactionRequestStatusConfirmed,
+		},
+	}
+
+	for _, m := range metaTx {
+		err := m.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+		assert.NoError(err)
+	}
+
+	logger := zerolog.Logger{}
+	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+
+	resp, err := udService.ClearMetaTransactionRequests(ctx, nil)
+	assert.NoError(err)
+	assert.Equal(mtID[0], resp.Id)
+
+	_, err = models.MetaTransactionRequests(models.MetaTransactionRequestWhere.ID.EQ(resp.Id)).One(ctx, pdb.DBS().Reader)
+	assert.ErrorIs(err, sql.ErrNoRows)
+}
+
+func TestClearMetaTransactionRequests_NotExpired(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	mtID := ksuid.New().String()
+	currTime := time.Now()
+	expiryTime := currTime.Add(-time.Minute * 14)
+	metaTx := models.MetaTransactionRequest{
+		ID:        mtID,
+		Status:    models.MetaTransactionRequestStatusUnsubmitted,
+		CreatedAt: expiryTime,
+	}
+
+	err := metaTx.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	assert.NoError(err)
+
+	logger := zerolog.Logger{}
+	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+
+	resp, err := udService.ClearMetaTransactionRequests(ctx, nil)
+	assert.Nil(resp)
+
+	assert.Error(err)
+
+	mt, err := models.MetaTransactionRequests(models.MetaTransactionRequestWhere.ID.EQ(mtID)).One(ctx, pdb.DBS().Reader)
+	assert.NoError(err)
+
+	assert.Equal(mt.ID, mtID)
 }
