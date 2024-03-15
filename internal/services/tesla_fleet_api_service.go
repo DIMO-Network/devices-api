@@ -8,9 +8,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/rs/zerolog"
 	"golang.org/x/oauth2"
+
+	"github.com/DIMO-Network/devices-api/internal/config"
 )
 
 //go:generate mockgen -source tesla_fleet_api_service.go -destination mocks/tesla_fleet_api_service_mock.go
@@ -63,10 +64,10 @@ func NewTeslaFleetAPIService(settings *config.Settings, logger *zerolog.Logger) 
 // CompleteTeslaAuthCodeExchange calls Tesla Fleet API and exchange auth code for a new auth and refresh token
 func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context, authCode, redirectURI, region string) (*TeslaAuthCodeResponse, error) {
 	conf := oauth2.Config{
-		ClientID:     t.Settings.Tesla.ClientID,
-		ClientSecret: t.Settings.Tesla.ClientSecret,
+		ClientID:     t.Settings.TeslaClientID,
+		ClientSecret: t.Settings.TeslaClientSecret,
 		Endpoint: oauth2.Endpoint{
-			TokenURL: t.Settings.Tesla.TokenURL,
+			TokenURL: t.Settings.TeslaTokenURL,
 		},
 		RedirectURL: redirectURI,
 		Scopes:      teslaScopes,
@@ -75,7 +76,7 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	tok, err := conf.Exchange(ctxTimeout, authCode, oauth2.SetAuthURLParam("audience", fmt.Sprintf(t.Settings.Tesla.FleetAPI, region)))
+	tok, err := conf.Exchange(ctxTimeout, authCode, oauth2.SetAuthURLParam("audience", fmt.Sprintf(t.Settings.TeslaFleetURL, region)))
 	if err != nil {
 		var e *oauth2.RetrieveError
 		errString := err.Error()
@@ -95,7 +96,7 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 
 // GetVehicles calls Tesla Fleet API to get a list of vehicles using authorization token
 func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region string) ([]TeslaVehicle, error) {
-	baseURL := fmt.Sprintf(t.Settings.Tesla.FleetAPI, region)
+	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
 	url := baseURL + "/api/1/vehicles"
 
 	resp, err := t.performTeslaGetRequest(ctx, url, token)
@@ -118,7 +119,7 @@ func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region st
 
 // GetVehicle calls Tesla Fleet API to get a single vehicle by ID
 func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region string, vehicleID int) (*TeslaVehicle, error) {
-	baseURL := fmt.Sprintf(t.Settings.Tesla.FleetAPI, region)
+	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
 	url := fmt.Sprintf("%s/api/1/vehicles/%d", baseURL, vehicleID)
 
 	resp, err := t.performTeslaGetRequest(ctx, url, token)
@@ -137,7 +138,7 @@ func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region str
 
 // WakeUpVehicle Calls Tesla Fleet API to wake a vehicle from sleep
 func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error {
-	baseURL := fmt.Sprintf(t.Settings.Tesla.FleetAPI, region)
+	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
 	url := fmt.Sprintf("%s/api/1/vehicles/%d/wake_up", baseURL, vehicleID)
 
 	resp, err := t.performTeslaGetRequest(ctx, url, token)
