@@ -14,12 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ericlagergren/decimal"
-
-	smartcar "github.com/smartcar/go-sdk"
-
-	"github.com/DIMO-Network/shared/redis"
-
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -32,27 +26,28 @@ import (
 	"github.com/DIMO-Network/shared"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/redis"
 	"github.com/Shopify/sarama"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/ericlagergren/decimal"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
+	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
+	smartcar "github.com/smartcar/go-sdk"
 	"github.com/tidwall/gjson"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
-	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 )
 
 type UserDevicesController struct {
@@ -1892,37 +1887,6 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 	userDeviceID := c.Params("userDeviceID")
 
-	userDevice, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAftermarketDevice)),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
-	).One(c.Context(), udc.DBS().Writer)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
-	}
-
-	if userDevice.R.VehicleNFT == nil || userDevice.R.VehicleNFT.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
-	}
-
-	if userDevice.R.VehicleNFT.R.VehicleTokenAftermarketDevice != nil || userDevice.R.VehicleNFT.R.VehicleTokenSyntheticDevice != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Vehicle must be unpaired to burn.")
-	}
-
-	tknID, ok := userDevice.R.VehicleNFT.TokenID.Int64()
-	if !ok {
-		return fiber.NewError(fiber.StatusConflict, "Unable to parse vehicle token id")
-	}
-
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-	if err != nil {
-    return fmt.Errorf("couldn't retrieve user records: %w", err)
-	}
-
-	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusBadRequest, "User does not have an Ethereum address on file.")
-	}
-
 	client := registry.Client{
 		Producer:     udc.producer,
 		RequestTopic: "topic.transaction.request.send",
@@ -1934,8 +1898,26 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 		},
 	}
 
-	bvs := registry.BurnVehicleSign{
-		TokenID: big.NewInt(tknID),
+	tx, err := udc.DBS().Reader.BeginTx(c.Context(), nil)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+	defer tx.Rollback() //nolint
+
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAftermarketDevice)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+	).One(c.Context(), tx)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "failed to find user by device id: %s", userDeviceID)
+	}
+
+	bvs, _, err := udc.checkDeviceBurn(c.Context(), userDevice, userID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
 	return c.JSON(client.GetPayload(&bvs))
@@ -1950,45 +1932,9 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/commands/burn [post]
 func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
-	userDeviceID := c.Params("userDeviceID")
 	userID := helpers.GetUserID(c)
+	userDeviceID := c.Params("userDeviceID")
 	logger := helpers.GetLogger(c, udc.log)
-
-	tx, err := udc.DBS().Reader.BeginTx(c.Context(), nil)
-	if err != nil {
-		return fmt.Errorf("could not create transaction: %w", err)
-	}
-	defer tx.Rollback() //nolint
-
-	userDevice, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
-		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations)),
-	).One(c.Context(), tx)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
-		}
-		return err
-	}
-
-	if userDevice.R.VehicleNFT == nil || userDevice.R.VehicleNFT.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
-	}
-
-	tknID, ok := userDevice.R.VehicleNFT.TokenID.Int64()
-	if !ok {
-		return fiber.NewError(fiber.StatusConflict, "Unable to parse vehicle token id")
-	}
-
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-	if err != nil {
-		return err
-	}
-
-	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusBadRequest, "User does not have an Ethereum address on file.")
-	}
 
 	client := registry.Client{
 		Producer:     udc.producer,
@@ -2001,8 +1947,26 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 		},
 	}
 
-	bvs := registry.BurnVehicleSign{
-		TokenID: big.NewInt(tknID),
+	tx, err := udc.DBS().Reader.BeginTx(c.Context(), nil)
+	if err != nil {
+		return fmt.Errorf("could not create transaction: %w", err)
+	}
+	defer tx.Rollback() //nolint
+
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAftermarketDevice)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+	).One(c.Context(), tx)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, validation.ErrorTag)
+	}
+
+	bvs, user, err := udc.checkDeviceBurn(c.Context(), userDevice, userID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
 	br := new(BurnRequest)
@@ -2038,8 +2002,8 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 		ID:     requestID,
 		Status: "Unsubmitted",
 	}
-	err = mtr.Insert(c.Context(), tx, boil.Infer())
-	if err != nil {
+
+	if err := mtr.Insert(c.Context(), tx, boil.Infer()); err != nil {
 		return err
 	}
 
@@ -2054,6 +2018,36 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 
 	logger.Info().Msgf("submitted metatransaction request %s", requestID)
 	return client.BurnVehicleSign(requestID, bvs.TokenID, sigBytes)
+}
+
+func (udc *UserDevicesController) checkDeviceBurn(ctx context.Context, userDevice *models.UserDevice, userID string) (registry.BurnVehicleSign, *pb.User, error) {
+	var bvs registry.BurnVehicleSign
+	if userDevice.R.VehicleNFT == nil || userDevice.R.VehicleNFT.TokenID.IsZero() {
+		return bvs, nil, errors.New("vehicle not minted: %w")
+	}
+
+	if userDevice.R.VehicleNFT.R.VehicleTokenAftermarketDevice != nil || userDevice.R.VehicleNFT.R.VehicleTokenSyntheticDevice != nil {
+		return bvs, nil, errors.New("vehicle must be unpaired to burn")
+	}
+
+	tknID, ok := userDevice.R.VehicleNFT.TokenID.Int64()
+	if !ok {
+		return bvs, nil, errors.New("failed to parse vehicle token id")
+	}
+
+	user, err := udc.usersClient.GetUser(ctx, &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		return bvs, nil, fmt.Errorf("failed to get user by id: %w", err)
+	}
+
+	if user.EthereumAddress == nil {
+		return bvs, nil, fmt.Errorf("user does not have an Ethereum address on file: %w", err)
+	}
+
+	bvs = registry.BurnVehicleSign{
+		TokenID: big.NewInt(tknID),
+	}
+	return bvs, user, nil
 }
 
 type MintEventData struct {
