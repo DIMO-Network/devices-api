@@ -75,8 +75,8 @@ DEVICE_FINGERPRINT_CONSUMER_GROUP: device-fingerprint-vc-issuer
 
 SYNTHETIC_FINGERPRINT_TOPIC: topic.synthetic.fingerprint
 SYNTHETIC_FINGERPRINT_CONSUMER_GROUP: consumer.synthetic.fingerprint
-TESLA:
-  CLIENT_ID:
-  CLIENT_SECRET:
-  TOKEN_AUTH_URL:
-  FLEET_API: https://fleet-api.prd.%s.vn.cloud.tesla.com
+
+TESLA_CLIENT_ID:
+TESLA_CLIENT_SECRET:
+TESLA_TOKEN_URL:
+TESLA_FLEET_URL:
