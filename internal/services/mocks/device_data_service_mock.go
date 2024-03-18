@@ -53,3 +53,18 @@ func (mr *MockDeviceDataServiceMockRecorder) GetDeviceData(ctx, userDeviceID, de
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeviceData", reflect.TypeOf((*MockDeviceDataService)(nil).GetDeviceData), ctx, userDeviceID, deviceDefinitionID, deviceStyleID, privilegeIDs)
 }
+
+// GetRawDeviceData mocks base method.
+func (m *MockDeviceDataService) GetRawDeviceData(ctx context.Context, userDeviceID, integrationID string) (*grpc.RawDeviceDataResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRawDeviceData", ctx, userDeviceID, integrationID)
+	ret0, _ := ret[0].(*grpc.RawDeviceDataResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRawDeviceData indicates an expected call of GetRawDeviceData.
+func (mr *MockDeviceDataServiceMockRecorder) GetRawDeviceData(ctx, userDeviceID, integrationID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRawDeviceData", reflect.TypeOf((*MockDeviceDataService)(nil).GetRawDeviceData), ctx, userDeviceID, integrationID)
+}

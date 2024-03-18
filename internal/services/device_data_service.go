@@ -17,6 +17,7 @@ type deviceDataService struct {
 
 type DeviceDataService interface {
 	GetDeviceData(ctx context.Context, userDeviceID, deviceDefinitionID, deviceStyleID string, privilegeIDs []int64) (*dagrpc.UserDeviceDataResponse, error)
+	GetRawDeviceData(ctx context.Context, userDeviceID, integrationID string) (*dagrpc.RawDeviceDataResponse, error)
 }
 
 func NewDeviceDataService(deviceDataGrpcAddr string, logger *zerolog.Logger) DeviceDataService {
@@ -35,6 +36,14 @@ func (ddd *deviceDataService) GetDeviceData(ctx context.Context, userDeviceID, d
 		DeviceDefinitionId: deviceDefinitionID,
 		DeviceStyleId:      deviceStyleID,
 		PrivilegeIds:       privilegeIDs,
+	})
+	return data, err
+}
+
+func (ddd *deviceDataService) GetRawDeviceData(ctx context.Context, userDeviceID, integrationID string) (*dagrpc.RawDeviceDataResponse, error) {
+	data, err := ddd.client.GetRawDeviceData(ctx, &dagrpc.RawDeviceDataRequest{
+		UserDeviceId:  userDeviceID,
+		IntegrationId: &integrationID,
 	})
 	return data, err
 }
