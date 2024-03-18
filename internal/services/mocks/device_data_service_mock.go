@@ -13,6 +13,7 @@ import (
 	reflect "reflect"
 
 	grpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
+	privileges "github.com/DIMO-Network/shared/privileges"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -40,7 +41,7 @@ func (m *MockDeviceDataService) EXPECT() *MockDeviceDataServiceMockRecorder {
 }
 
 // GetDeviceData mocks base method.
-func (m *MockDeviceDataService) GetDeviceData(ctx context.Context, userDeviceID, deviceDefinitionID, deviceStyleID string, privilegeIDs []int64) (*grpc.UserDeviceDataResponse, error) {
+func (m *MockDeviceDataService) GetDeviceData(ctx context.Context, userDeviceID, deviceDefinitionID, deviceStyleID string, privilegeIDs []privileges.Privilege) (*grpc.UserDeviceDataResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDeviceData", ctx, userDeviceID, deviceDefinitionID, deviceStyleID, privilegeIDs)
 	ret0, _ := ret[0].(*grpc.UserDeviceDataResponse)

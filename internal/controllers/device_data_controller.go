@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/DIMO-Network/shared/privileges"
+
 	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -99,7 +101,7 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 		userDeviceID,
 		userDevice.DeviceDefinitionID,
 		userDevice.DeviceStyleID.String,
-		[]int64{NonLocationData, CurrentLocation, AllTimeLocation}, // assume all privileges when called from here
+		[]privileges.Privilege{privileges.VehicleNonLocationData, privileges.VehicleCurrentLocation, privileges.VehicleAllTimeLocation}, // assume all privileges when called from here
 	)
 	if err != nil {
 		err := shared.GrpcErrorToFiber(err, "failed to get user device data grpc")
