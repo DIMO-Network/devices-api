@@ -151,8 +151,8 @@ func (s *StorageTestSuite) Test_SyntheticMintSetsID() {
 					Topics: []common.Hash{
 						a.Events["SyntheticDeviceNodeMinted"].ID,
 						common.BigToHash(big.NewInt(vehicleID)),
-						syntheticDeviceAddr.Hash(),
-						ownerAddr.Hash(),
+						common.BytesToHash(syntheticDeviceAddr.Bytes()),
+						common.BytesToHash(ownerAddr.Bytes()),
 					},
 					Data: common.FromHex(
 						"0000000000000000000000000000000000000000000000000000000000000001" +

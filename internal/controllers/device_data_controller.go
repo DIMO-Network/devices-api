@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/DIMO-Network/shared/privileges"
+
 	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -99,7 +101,7 @@ func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
 		userDeviceID,
 		userDevice.DeviceDefinitionID,
 		userDevice.DeviceStyleID.String,
-		[]int64{NonLocationData, CurrentLocation, AllTimeLocation}, // assume all privileges when called from here
+		[]privileges.Privilege{privileges.VehicleNonLocationData, privileges.VehicleCurrentLocation, privileges.VehicleAllTimeLocation}, // assume all privileges when called from here
 	)
 	if err != nil {
 		err := shared.GrpcErrorToFiber(err, "failed to get user device data grpc")
@@ -165,11 +167,9 @@ func convertTirePressure(tp *dagrpc.TirePressureResponse) *smartcar.TirePressure
 // @Router      /user/devices/{userDeviceID}/commands/refresh [post]
 func (udc *UserDevicesController) RefreshUserDeviceStatus(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
-	// We could probably do a smarter join here, but it's unclear to me how to handle that
-	// in SQLBoiler.
+
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
-		qm.Load(models.UserDeviceRels.UserDeviceData),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -177,19 +177,25 @@ func (udc *UserDevicesController) RefreshUserDeviceStatus(c *fiber.Ctx) error {
 		}
 		return err
 	}
+
 	smartCarInteg, err := udc.DeviceDefSvc.GetIntegrationByVendor(c.Context(), constants.SmartCarVendor)
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "failed to get smartcar integration")
 	}
 
-	for _, deviceDatum := range ud.R.UserDeviceData {
-		if deviceDatum.IntegrationID == smartCarInteg.Id {
-			nextAvailableTime := deviceDatum.UpdatedAt.Add(time.Second * time.Duration(smartCarInteg.RefreshLimitSecs))
+	deviceData, err := udc.deviceDataSvc.GetRawDeviceData(c.Context(), ud.ID, smartCarInteg.Id)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get device data to do smartcar refresh")
+	}
+
+	for _, deviceDatum := range deviceData.Items {
+		if deviceDatum.IntegrationId == smartCarInteg.Id {
+			nextAvailableTime := deviceDatum.RecordUpdatedAt.AsTime().Add(time.Second * time.Duration(smartCarInteg.RefreshLimitSecs))
 			if time.Now().Before(nextAvailableTime) {
 				return fiber.NewError(fiber.StatusTooManyRequests, "rate limit for integration refresh hit")
 			}
 
-			udai, err := models.FindUserDeviceAPIIntegration(c.Context(), udc.DBS().Reader, deviceDatum.UserDeviceID, deviceDatum.IntegrationID)
+			udai, err := models.FindUserDeviceAPIIntegration(c.Context(), udc.DBS().Reader, ud.ID, smartCarInteg.Id)
 			if err != nil {
 				return err
 			}

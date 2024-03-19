@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/DIMO-Network/shared/privileges"
 	"io"
 	"os"
 	"testing"
@@ -159,7 +160,7 @@ func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
 		odo := 3000.50
 		volt := 13.3
 		mockDeps.deviceDataSvc.EXPECT().GetDeviceData(gomock.Any(), ud.ID, ud.DeviceDefinitionID,
-			ud.DeviceStyleID.String, []int64{1, 3, 4}).Times(1).
+			ud.DeviceStyleID.String, []privileges.Privilege{1, 3, 4}).Times(1).
 			Return(&dagrpc.UserDeviceDataResponse{
 				FuelPercentRemaining: &fuel,
 				Odometer:             &odo,
