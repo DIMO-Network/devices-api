@@ -567,7 +567,8 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		return err
 	}
 	localLog := udc.log.With().Str("userId", userID).Str("integrationId", integration.Id).
-		Str("countryCode", country.Alpha3).Str("vin", vin).Logger()
+		Str("countryCode", country.Alpha3).Str("vin", vin).Str("handler", "RegisterDeviceForUserFromVIN").
+		Logger()
 
 	deviceDefinitionID := ""
 
@@ -590,7 +591,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		}
 		udFull, err = builUserDeviceFull(existingUD, dd, reg.CountryCode)
 		if err != nil {
-			return err
+			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
 	} else {
 		// decode VIN with grpc call
@@ -607,7 +608,8 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 
 		udFull, err = udc.createUserDevice(c.Context(), deviceDefinitionID, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, &reg.CANProtocol)
 		if err != nil {
-			return err
+			localLog.Err(err).Send()
+			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
 	}
 
@@ -694,7 +696,8 @@ func (udc *UserDevicesController) requestInstantOffer(userDeviceID string, token
 func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx) error {
 	const smartCarIntegrationID = "22N2xaPOq2WW2gAHBHd0Ikn4Zob"
 	userID := helpers.GetUserID(c)
-	localLog := udc.log.With().Str("userId", userID).Str("integrationId", smartCarIntegrationID).Logger()
+	localLog := udc.log.With().Str("userId", userID).Str("integrationId", smartCarIntegrationID).
+		Str("handler", "RegisterDeviceForUserFromSmartcar").Logger()
 
 	reg := &RegisterUserDeviceSmartcar{}
 	if err := c.BodyParser(reg); err != nil {
@@ -727,16 +730,16 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	externalID, err := udc.smartcarClient.GetExternalID(c.Context(), token.Access)
 	if err != nil {
 		localLog.Err(err).Msg("Failed to retrieve vehicle ID from Smartcar.")
-		return smartcarCallErr
+		return fiber.NewError(fiber.StatusInternalServerError, smartcarCallErr.Error())
 	}
 	vin, err := udc.smartcarClient.GetVIN(c.Context(), token.Access, externalID)
 	if err != nil {
 		localLog.Err(err).Msg("Failed to retrieve VIN from Smartcar.")
-		return smartcarCallErr
+		return fiber.NewError(fiber.StatusInternalServerError, smartcarCallErr.Error())
 	}
 	if len(vin) != 17 {
 		localLog.Error().Msgf("invalid VIN returned from smartcar: %s", vin)
-		return smartcarCallErr
+		return fiber.NewError(fiber.StatusInternalServerError, smartcarCallErr.Error())
 	}
 	localLog = localLog.With().Str("vin", vin).Logger()
 
@@ -750,7 +753,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		).One(c.Context(), udc.DBS().Reader)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			localLog.Err(err).Msg("Failed to search for VIN conflicts.")
-			return err
+			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
 
 		if existingUd != nil {
@@ -780,7 +783,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		}
 		udFull, err := builUserDeviceFull(existingUd, dd, reg.CountryCode)
 		if err != nil {
-			return err
+			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
 			"userDevice": udFull,
@@ -812,13 +815,13 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	if err != nil {
 		localLog.Err(err).
 			Msgf("unable to CreateDeviceDefinitionIntegration for dd_id: %s", decodeVIN.DeviceDefinitionId)
-		return errors.Wrap(err, "unable to attach smartcar integration to device definition id")
+		return fiber.NewError(fiber.StatusConflict, errors.Wrap(err, "unable to attach smartcar integration to device definition id").Error())
 	}
 
 	// attach device def to user
 	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, nil)
 	if err != nil {
-		return err
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
 	if udc.Settings.IsProduction() {
