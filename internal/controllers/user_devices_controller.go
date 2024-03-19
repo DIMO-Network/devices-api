@@ -696,7 +696,8 @@ func (udc *UserDevicesController) requestInstantOffer(userDeviceID string, token
 func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx) error {
 	const smartCarIntegrationID = "22N2xaPOq2WW2gAHBHd0Ikn4Zob"
 	userID := helpers.GetUserID(c)
-	localLog := udc.log.With().Str("userId", userID).Str("integrationId", smartCarIntegrationID).Logger()
+	localLog := udc.log.With().Str("userId", userID).Str("integrationId", smartCarIntegrationID).
+		Str("handler", "RegisterDeviceForUserFromSmartcar").Logger()
 
 	reg := &RegisterUserDeviceSmartcar{}
 	if err := c.BodyParser(reg); err != nil {
