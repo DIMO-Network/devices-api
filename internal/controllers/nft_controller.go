@@ -844,10 +844,10 @@ func (nc *NFTController) GetVinCredential(c *fiber.Ctx) error {
 // GetBurnDevice godoc
 // @Description Returns the data the user must sign in order to burn the device.
 // @Tags        user-devices
-// @Param       tokenId path int true "token id"
-// @Success     200          {object} signer.TypedData
+// @Param       tokenID path int true "token id"
+// @Success     200          {object} apitypes.TypedData
 // @Security    BearerAuth
-// @Router      /vehicle/{tokenID}/commands/burn [get]
+// @Router      /vehicle/:tokenID/commands/burn [get]
 func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 	tis := c.Params("tokenID")
 	ti, ok := new(big.Int).SetString(tis, 10)
@@ -902,10 +902,10 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 // @Description Sends a burn device request to the blockchain
 // @Tags        user-devices
 // @Param       tokenID path int true "token id"
-// @Param       burnRequest  body controllers.MintRequest true "Signature and Token ID"
+// @Param       burnRequest  body controllers.BurnRequest true "Signature and Token ID"
 // @Success     200
 // @Security    BearerAuth
-// @Router      /vehicle/{tokenID}/commands/burn [post]
+// @Router      /vehicle/:tokenID/commands/burn [post]
 func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	tis := c.Params("tokenID")
 	ti, ok := new(big.Int).SetString(tis, 10)
