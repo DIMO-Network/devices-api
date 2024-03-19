@@ -13,6 +13,7 @@ import (
 	reflect "reflect"
 
 	grpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
+	privileges "github.com/DIMO-Network/shared/privileges"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -40,7 +41,7 @@ func (m *MockDeviceDataService) EXPECT() *MockDeviceDataServiceMockRecorder {
 }
 
 // GetDeviceData mocks base method.
-func (m *MockDeviceDataService) GetDeviceData(ctx context.Context, userDeviceID, deviceDefinitionID, deviceStyleID string, privilegeIDs []int64) (*grpc.UserDeviceDataResponse, error) {
+func (m *MockDeviceDataService) GetDeviceData(ctx context.Context, userDeviceID, deviceDefinitionID, deviceStyleID string, privilegeIDs []privileges.Privilege) (*grpc.UserDeviceDataResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDeviceData", ctx, userDeviceID, deviceDefinitionID, deviceStyleID, privilegeIDs)
 	ret0, _ := ret[0].(*grpc.UserDeviceDataResponse)
@@ -52,4 +53,19 @@ func (m *MockDeviceDataService) GetDeviceData(ctx context.Context, userDeviceID,
 func (mr *MockDeviceDataServiceMockRecorder) GetDeviceData(ctx, userDeviceID, deviceDefinitionID, deviceStyleID, privilegeIDs any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeviceData", reflect.TypeOf((*MockDeviceDataService)(nil).GetDeviceData), ctx, userDeviceID, deviceDefinitionID, deviceStyleID, privilegeIDs)
+}
+
+// GetRawDeviceData mocks base method.
+func (m *MockDeviceDataService) GetRawDeviceData(ctx context.Context, userDeviceID, integrationID string) (*grpc.RawDeviceDataResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRawDeviceData", ctx, userDeviceID, integrationID)
+	ret0, _ := ret[0].(*grpc.RawDeviceDataResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRawDeviceData indicates an expected call of GetRawDeviceData.
+func (mr *MockDeviceDataServiceMockRecorder) GetRawDeviceData(ctx, userDeviceID, integrationID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRawDeviceData", reflect.TypeOf((*MockDeviceDataService)(nil).GetRawDeviceData), ctx, userDeviceID, integrationID)
 }

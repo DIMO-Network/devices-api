@@ -2,7 +2,7 @@ replicaCount: 3
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 1.25.7
+  tag: 1.25.9
 cronJob:
   enabled: false
   schedule: 0 0 1 * *
@@ -49,6 +49,8 @@ env:
   SYNTHETIC_DEVICES_ENABLED: true
   SYNTHETIC_WALLET_GRPC_ADDR: synthetic-wallet-instance-prod:8086
   DEVICE_DATA_GRPC_ADDR: device-data-api-prod:8086
+  TESLA_TOKEN_URL: https://auth.tesla.com/oauth2/v3/token
+  TESLA_FLEET_URL: https://fleet-api.prd.%s.vn.cloud.tesla.com
 ingress:
   enabled: true
   className: nginx

@@ -5,6 +5,8 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"io"
 	"math/big"
 	"testing"
@@ -71,6 +73,7 @@ type UserDevicesControllerTestSuite struct {
 	natsServer      *server.Server
 	userDeviceSvc   *mock_services.MockUserDeviceService
 	valuationsSrvc  *mock_services.MockValuationsAPIService
+	deviceDataSvc   *mock_services.MockDeviceDataService
 }
 
 const natsStreamName = "test-stream"
@@ -100,6 +103,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.natsService, s.natsServer, err = mock_services.NewMockNATSService(natsStreamName)
 	s.userDeviceSvc = mock_services.NewMockUserDeviceService(mockCtrl)
 	s.valuationsSrvc = mock_services.NewMockValuationsAPIService(mockCtrl)
+	s.deviceDataSvc = mock_services.NewMockDeviceDataService(mockCtrl)
 	if err != nil {
 		s.T().Fatal(err)
 	}
@@ -107,7 +111,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
-		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, nil, s.redisClient, nil, s.usersClient, nil, s.natsService, nil, s.userDeviceSvc, s.valuationsSrvc, nil)
+		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, nil, s.redisClient, nil, s.usersClient, s.deviceDataSvc, s.natsService, nil, s.userDeviceSvc, s.valuationsSrvc, nil)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUser)
 	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUserFromVIN)
@@ -930,7 +934,14 @@ func (s *UserDevicesControllerTestSuite) TestPostRefreshSmartCar() {
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Escape", 2020, smartCarInt)
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	s.deviceDefSvc.EXPECT().GetIntegrationByVendor(gomock.Any(), constants.SmartCarVendor).Return(smartCarInt, nil)
-	// arrange some additional data for this to work
+	s.deviceDataSvc.EXPECT().GetRawDeviceData(gomock.Any(), ud.ID, smartCarInt.Id).Return(&dagrpc.RawDeviceDataResponse{Items: []*dagrpc.RawDeviceDataResponseItem{
+		{
+			IntegrationId:   smartCarInt.Id,
+			SignalsJsonData: []byte(`{"odometer": { "value": 123.223, "timestamp": "2022-06-18T04:06:40.200Z" } }`),
+			RecordUpdatedAt: timestamppb.New(time.Now().UTC().Add(time.Hour * -4)),
+			UserDeviceId:    ud.ID,
+		},
+	}}, nil)
 
 	udiai := models.UserDeviceAPIIntegration{
 		UserDeviceID:    ud.ID,
@@ -943,15 +954,6 @@ func (s *UserDevicesControllerTestSuite) TestPostRefreshSmartCar() {
 		TaskID:          null.StringFrom(ksuid.New().String()),
 	}
 	err := udiai.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
-	require.NoError(s.T(), err)
-	udd := models.UserDeviceDatum{
-		UserDeviceID:  ud.ID,
-		Signals:       null.JSONFrom([]byte(`{"odometer": { "value": 123.223, "timestamp": "2022-06-18T04:06:40.200Z" } }`)),
-		IntegrationID: smartCarInt.Id,
-		CreatedAt:     time.Now().UTC().Add(time.Hour * -4),
-		UpdatedAt:     time.Now().UTC().Add(time.Hour * -4),
-	}
-	err = udd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	require.NoError(s.T(), err)
 
 	var oUdai *models.UserDeviceAPIIntegration
@@ -982,6 +984,14 @@ func (s *UserDevicesControllerTestSuite) TestPostRefreshSmartCarRateLimited() {
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Mache", 2022, integration)
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	s.deviceDefSvc.EXPECT().GetIntegrationByVendor(gomock.Any(), constants.SmartCarVendor).Return(integration, nil)
+	// arrange data to cause condition
+	s.deviceDataSvc.EXPECT().GetRawDeviceData(gomock.Any(), ud.ID, integration.Id).Return(&dagrpc.RawDeviceDataResponse{Items: []*dagrpc.RawDeviceDataResponseItem{
+		{
+			IntegrationId:   integration.Id,
+			RecordUpdatedAt: timestamppb.New(time.Now().UTC()),
+			UserDeviceId:    ud.ID,
+		},
+	}}, nil)
 
 	udiai := models.UserDeviceAPIIntegration{
 		UserDeviceID:    ud.ID,
@@ -994,14 +1004,7 @@ func (s *UserDevicesControllerTestSuite) TestPostRefreshSmartCarRateLimited() {
 	}
 	err := udiai.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	require.NoError(s.T(), err)
-	// arrange data to cause condition
-	udd := models.UserDeviceDatum{
-		UserDeviceID:  ud.ID,
-		Signals:       null.JSON{},
-		IntegrationID: integration.Id,
-	}
-	err = udd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
-	require.NoError(s.T(), err)
+
 	payload := `{}`
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/commands/refresh", payload)
 	response, _ := s.app.Test(request)

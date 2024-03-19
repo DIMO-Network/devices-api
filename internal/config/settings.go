@@ -23,7 +23,7 @@ type Settings struct {
 	IngestSmartcarURL    string      `yaml:"INGEST_SMARTCAR_URL"`
 	IngestSmartcarTopic  string      `yaml:"INGEST_SMARTCAR_TOPIC"`
 	KafkaBrokers         string      `yaml:"KAFKA_BROKERS"`
-	//DeviceStatusTopic                 string      `yaml:"DEVICE_STATUS_TOPIC"`
+	// DeviceStatusTopic                 string      `yaml:"DEVICE_STATUS_TOPIC"`
 	PrivacyFenceTopic                 string `yaml:"PRIVACY_FENCE_TOPIC"`
 	TaskRunNowTopic                   string `yaml:"TASK_RUN_NOW_TOPIC"`
 	TaskStopTopic                     string `yaml:"TASK_STOP_TOPIC"`
@@ -89,16 +89,12 @@ type Settings struct {
 
 	SyntheticFingerprintTopic         string `yaml:"SYNTHETIC_FINGERPRINT_TOPIC"`
 	SyntheticFingerprintConsumerGroup string `yaml:"SYNTHETIC_FINGERPRINT_CONSUMER_GROUP"`
-	Tesla                             Tesla  `yaml:"TESLA"`
+	TeslaClientID                     string `yaml:"TESLA_CLIENT_ID"`
+	TeslaClientSecret                 string `yaml:"TESLA_CLIENT_SECRET"`
+	TeslaTokenURL                     string `yaml:"TESLA_TOKEN_URL"`
+	TeslaFleetURL                     string `yaml:"TESLA_FLEET_URL"`
 }
 
 func (s *Settings) IsProduction() bool {
 	return s.Environment == "prod" // this string is set in the helm chart values-prod.yaml
-}
-
-type Tesla struct {
-	ClientID     string `yaml:"CLIENT_ID"`
-	ClientSecret string `yaml:"CLIENT_SECRET"`
-	TokenURL     string `yaml:"TOKEN_AUTH_URL"`
-	FleetAPI     string `yaml:"FLEET_API"`
 }
