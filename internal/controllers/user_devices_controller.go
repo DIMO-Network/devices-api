@@ -1414,7 +1414,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 
 	// if vehicle minted, user must delete by burning
 	if userDevice.R.VehicleNFT != nil {
-		return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("vehicle token: %d; must burn minted vehicle to delete", userDevice.R.VehicleNFT.TokenID))
+		return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("vehicle token: %d; must burn minted vehicle to delete", userDevice.R.VehicleNFT.TokenID))
 	}
 
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
@@ -1435,12 +1435,11 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 		}
 	}
 
-	_, err = userDevice.Delete(c.Context(), udc.DBS().Writer)
-	if err != nil {
+	if _, err := userDevice.Delete(c.Context(), udc.DBS().Writer); err != nil {
 		return err
 	}
 
-	err = udc.eventService.Emit(&shared.CloudEvent[any]{
+	if err = udc.eventService.Emit(&shared.CloudEvent[any]{
 		Type:    "com.dimo.zone.device.delete",
 		Subject: userID,
 		Source:  "devices-api",
@@ -1454,8 +1453,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 				Year:  int(dd.Type.Year),
 			},
 		},
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 

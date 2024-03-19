@@ -5,12 +5,13 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"io"
 	"math/big"
 	"testing"
 	"time"
+
+	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -1076,7 +1077,7 @@ func (s *UserDevicesControllerTestSuite) TestDeleteUserDevice_ErrNFTNotBurned() 
 	err = json.Unmarshal(body, &resp)
 	s.Require().NoError(err)
 
-	s.Equal(fiber.StatusConflict, response.StatusCode)
+	s.Equal(fiber.StatusFailedDependency, response.StatusCode)
 	s.Equal(resp["message"].(string), fmt.Sprintf("vehicle token: %d; must burn minted vehicle to delete", big.NewInt(1)))
 
 }
