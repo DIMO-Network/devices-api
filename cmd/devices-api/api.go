@@ -209,6 +209,10 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 
+	// vehicle token actions
+	vPriv.Get("/commands/burn", userDeviceController.GetBurnDevice)
+	vPriv.Post("/commands/burn", userDeviceController.PostBurnDevice)
+
 	// vehicle command privileges
 	vPriv.Get("/status", privTokenWare.OneOf(vehicleAddr, []int64{controllers.NonLocationData, controllers.CurrentLocation, controllers.AllTimeLocation}), nftController.GetVehicleStatus)
 	if !settings.IsProduction() {
@@ -284,8 +288,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Delete("/", userDeviceController.DeleteUserDevice)
 	udOwner.Get("/commands/mint", userDeviceController.GetMintDevice)
 	udOwner.Post("/commands/mint", userDeviceController.PostMintDevice)
-	udOwner.Get("/commands/burn", userDeviceController.GetBurnDevice)
-	udOwner.Post("/commands/burn", userDeviceController.PostBurnDevice)
 
 	udOwner.Patch("/vin", userDeviceController.UpdateVIN)
 	udOwner.Patch("/name", userDeviceController.UpdateName)

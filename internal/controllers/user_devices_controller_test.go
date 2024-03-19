@@ -15,7 +15,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
-	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
@@ -23,11 +22,8 @@ import (
 	"github.com/DIMO-Network/shared/db"
 	"github.com/DIMO-Network/shared/redis/mocks"
 	vrpc "github.com/DIMO-Network/valuations-api/pkg/grpc"
-	smock "github.com/Shopify/sarama/mocks"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/crypto"
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -124,8 +120,8 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	app.Get("/user/devices/:userDeviceID/valuations", test.AuthInjectorTestHandler(s.testUserID), c.GetValuations)
 	app.Get("/user/devices/:userDeviceID/range", test.AuthInjectorTestHandler(s.testUserID), c.GetRange)
 	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID), c.RefreshUserDeviceStatus)
-	app.Get("/user/devices/:userDeviceID/commands/burn", test.AuthInjectorTestHandler(s.testUserID), c.GetBurnDevice)
-	app.Post("/user/devices/:userDeviceID/commands/burn", test.AuthInjectorTestHandler(s.testUserID), c.PostBurnDevice)
+	app.Get("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID), c.GetBurnDevice)
+	app.Post("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID), c.PostBurnDevice)
 	app.Delete("/user/devices/:userDeviceID", test.AuthInjectorTestHandler(s.testUserID), c.DeleteUserDevice)
 
 	s.controller = &c
@@ -1050,12 +1046,10 @@ func TestEIP712Hash(t *testing.T) {
 	}
 }
 
-func (s *UserDevicesControllerTestSuite) TestGetBurn() {
+func (s *UserDevicesControllerTestSuite) TestDeleteUserDevice_ErrNFTNotBurned() {
 	_, addr, err := test.GenerateWallet()
 	s.Require().NoError(err)
 
-	email := "some@email.com"
-	eth := addr.Hex()
 	ud := models.UserDevice{
 		ID:                 ksuid.New().String(),
 		UserID:             testUserID,
@@ -1065,96 +1059,21 @@ func (s *UserDevicesControllerTestSuite) TestGetBurn() {
 		VinConfirmed:       true,
 		VinIdentifier:      null.StringFrom("4Y1SL65848Z411439"),
 	}
+
 	err = ud.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
 	s.Require().NoError(err)
 	test.SetupCreateVehicleNFT(s.T(), ud.ID, ud.VinIdentifier.String, big.NewInt(1), null.BytesFrom(addr.Bytes()), s.pdb)
-	user := test.BuildGetUserGRPC(ud.UserID, &email, &eth, &pb.UserReferrer{})
-	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: ud.UserID}).Return(user, nil)
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/commands/burn", ud.ID), "")
+	request := test.BuildRequest("DELETE", "/user/devices/"+ud.ID, "")
 	response, err := s.app.Test(request)
 	s.Require().NoError(err)
-	s.Equal(fiber.StatusOK, response.StatusCode)
-}
+	body, _ := io.ReadAll(response.Body)
 
-func (s *UserDevicesControllerTestSuite) TestPostBurn() {
-	privKey, err := crypto.GenerateKey()
-	s.Require().NoError(err)
-	addr := crypto.PubkeyToAddress(privKey.PublicKey)
-	email := "some@email.com"
-	eth := addr.Hex()
-	ud := models.UserDevice{
-		ID:                 ksuid.New().String(),
-		UserID:             testUserID,
-		DeviceDefinitionID: ksuid.New().String(),
-		CountryCode:        null.StringFrom("USA"),
-		Name:               null.StringFrom("Chungus"),
-		VinConfirmed:       true,
-		VinIdentifier:      null.StringFrom("4Y1SL65848Z411439"),
-	}
-
-	err = ud.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
+	var resp map[string]interface{}
+	err = json.Unmarshal(body, &resp)
 	s.Require().NoError(err)
 
-	vnft := test.SetupCreateVehicleNFT(s.T(), ud.ID, ud.VinIdentifier.String, big.NewInt(1), null.BytesFrom(addr.Bytes()), s.pdb)
-	user := test.BuildGetUserGRPC(ud.UserID, &email, &eth, &pb.UserReferrer{})
-	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: ud.UserID}).Return(user, nil)
-	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: ud.UserID}).Return(user, nil)
-
-	sp := smock.NewSyncProducer(s.T(), nil)
-	sp.ExpectSendMessageAndSucceed()
-	s.controller.producer = sp
-
-	getRequest := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/commands/burn", ud.ID), "")
-	getResp, err := s.app.Test(getRequest)
-	s.Require().NoError(err)
-	s.Equal(fiber.StatusOK, getResp.StatusCode)
-
-	var td signer.TypedData
-	s.Require().NoError(json.NewDecoder(getResp.Body).Decode(&td))
-
-	tkn, ok := vnft.TokenID.Int64()
-	s.Require().True(ok)
-
-	bvs := registry.BurnVehicleSign{
-		TokenID: big.NewInt(int64(tkn)),
-	}
-
-	client := registry.Client{
-		Producer:     s.controller.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(s.controller.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(s.controller.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
-	hash, err := client.Hash(&bvs)
-	s.Require().NoError(err)
-
-	userSig, err := crypto.Sign(hash, privKey)
-	s.Require().NoError(err)
-
-	userSig[64] += 27
-
-	br := new(BurnRequest)
-	br.TokenID = bvs.TokenID
-	br.Signature = hexutil.Encode(userSig)
-
-	inp, err := json.Marshal(br)
-	s.Require().NoError(err)
-
-	request := test.BuildRequest("POST", fmt.Sprintf("/user/devices/%s/commands/burn", ud.ID), string(inp))
-	response, err := s.app.Test(request)
-	s.Require().NoError(err)
-	s.Equal(fiber.StatusOK, response.StatusCode)
-
-	if err := vnft.Reload(context.Background(), s.pdb.DBS().Reader); err != nil {
-		s.T().Fatal(err)
-	}
-
-	s.Require().NotEmpty(vnft.BurnRequestID)
+	s.Equal(fiber.StatusConflict, response.StatusCode)
+	s.Equal(resp["message"].(string), fmt.Sprintf("vehicle token: %d; must burn minted vehicle to delete", big.NewInt(1)))
 
 }
