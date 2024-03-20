@@ -852,9 +852,11 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 	tis := c.Params("tokenID")
 	ti, ok := new(big.Int).SetString(tis, 10)
 	if !ok {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
+		udc.log.Info().Msgf("request failed, unable to parse token id: %s", tis)
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("failed to parse token id %s", tis))
 	}
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
+	logger := udc.log.With().Str("tokenID", tis).Logger()
 
 	client := registry.Client{
 		Producer:     udc.producer,
@@ -869,7 +871,8 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 
 	tx, err := udc.DBS().Reader.BeginTx(c.Context(), nil)
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+		logger.Err(err).Msg("failed to create burn transaction for token id")
+		return fiber.NewError(fiber.StatusBadRequest, "failed to create burn transaction for token id")
 	}
 	defer tx.Rollback() //nolint
 
@@ -882,17 +885,23 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 		qm.Load(qm.Rels(models.VehicleNFTRels.UserDevice, models.UserDeviceRels.UserDeviceAPIIntegrations)),
 	).One(c.Context(), tx)
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "failed to find device by token id: %s", tis)
+		if errors.Is(err, sql.ErrNoRows) {
+			logger.Err(err).Msg("failed to find associated vehicle NFT")
+			return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("failed to find associated vehicle NFT"))
+		}
+		logger.Err(err).Msg("database error retrieving nft")
+		return fiber.NewError(fiber.StatusInternalServerError, "database error retrieving nft")
 	}
 
 	if vehicleNFT.R.UserDevice == nil {
-		udc.log.Warn().Msgf("no user device associated with NFT %s", tis) // this should never happen
+		logger.Warn().Msg("no user device associated with NFT") // this should never happen
 		return fiber.NewError(fiber.StatusBadRequest, "no user device associated with NFT")
 	}
 
 	bvs, _, err := udc.checkDeviceBurn(c.Context(), vehicleNFT, vehicleNFT.R.UserDevice.UserID)
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+		logger.Err(err).Msg("ineligible to be burned")
+		return fiber.NewError(fiber.StatusBadRequest, "token ineligible to be burned")
 	}
 
 	return c.JSON(client.GetPayload(&bvs))
@@ -910,9 +919,11 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	tis := c.Params("tokenID")
 	ti, ok := new(big.Int).SetString(tis, 10)
 	if !ok {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
+		udc.log.Info().Msgf("request failed, unable to parse token id: %s", tis)
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("failed to parse token id %s", tis))
 	}
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
+	logger := udc.log.With().Str("tokenID", tis).Logger()
 
 	client := registry.Client{
 		Producer:     udc.producer,
@@ -927,7 +938,8 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 
 	tx, err := udc.DBS().Reader.BeginTx(c.Context(), nil)
 	if err != nil {
-		return fmt.Errorf("could not create transaction: %w", err)
+		logger.Err(err).Msg("failed to create burn transaction for token id")
+		return fiber.NewError(fiber.StatusBadRequest, "failed to create burn transaction for token id")
 	}
 	defer tx.Rollback() //nolint
 
@@ -940,25 +952,32 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 		qm.Load(qm.Rels(models.VehicleNFTRels.UserDevice, models.UserDeviceRels.UserDeviceAPIIntegrations)),
 	).One(c.Context(), tx)
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "failed to find device by token id: %s", tis)
+		if errors.Is(err, sql.ErrNoRows) {
+			logger.Err(err).Msg("failed to find associated vehicle NFT")
+			return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("failed to find associated vehicle NFT"))
+		}
+		logger.Err(err).Msg("database error retrieving nft")
+		return fiber.NewError(fiber.StatusInternalServerError, "database error retrieving nft")
 	}
 
 	if vehicleNFT.R.UserDevice == nil {
-		udc.log.Warn().Msgf("no user device associated with NFT %s", tis) // this should never happen
+		logger.Warn().Msg("no user device associated with NFT") // this should never happen
 		return fiber.NewError(fiber.StatusBadRequest, "no user device associated with NFT")
 	}
 
 	bvs, user, err := udc.checkDeviceBurn(c.Context(), vehicleNFT, vehicleNFT.R.UserDevice.UserID)
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+		logger.Err(err).Msg("ineligible to be burned")
+		return fiber.NewError(fiber.StatusBadRequest, "token ineligible to be burned")
 	}
 
 	br := new(BurnRequest)
 	if err := c.BodyParser(br); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
+		logger.Err(err).Msg("failed to parse request body")
+		return fiber.NewError(fiber.StatusBadRequest, "failed to parse request body.")
 	}
 
-	udc.log.Info().
+	logger.Info().
 		Interface("httpRequestBody", br).
 		Interface("client", client).
 		Interface("burnVehicleSign", bvs).
@@ -967,17 +986,20 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 
 	hash, err := client.Hash(&bvs)
 	if err != nil {
-		return fmt.Errorf("could not hash bvs: %w", err)
+		logger.Err(err).Msg("could not hash bvs")
+		return fiber.NewError(fiber.StatusBadRequest, "could not hash bvs")
 	}
 
 	sigBytes := common.FromHex(br.Signature)
 	recAddr, err := helpers.Ecrecover(hash, sigBytes)
 	if err != nil {
-		return err
+		logger.Err(err).Msg("failed to recover address from signature")
+		return fiber.NewError(fiber.StatusBadRequest, "failed to recover address from signature")
 	}
 
 	realAddr := common.HexToAddress(*user.EthereumAddress)
 	if recAddr != realAddr {
+		logger.Warn().Msg("signature incorrect")
 		return fiber.NewError(fiber.StatusBadRequest, "signature incorrect")
 	}
 
@@ -988,19 +1010,22 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	}
 
 	if err := mtr.Insert(c.Context(), tx, boil.Infer()); err != nil {
-		return err
+		logger.Err(err).Msg("failed to insert metatransaction request")
+		return fiber.NewError(fiber.StatusBadRequest, "failed to insert metatransaction request")
 	}
 
 	vehicleNFT.BurnRequestID = null.StringFrom(requestID)
 	if _, err := vehicleNFT.Update(c.Context(), tx, boil.Infer()); err != nil {
+		logger.Err(err).Msg("failed to associate burn request with vehicle")
 		return fiber.NewError(fiber.StatusBadRequest, "failed to associate burn request with vehicle")
 	}
 
 	if err := tx.Commit(); err != nil {
-		return err
+		logger.Err(err).Msg("failed to commit transaction")
+		return fiber.NewError(fiber.StatusBadRequest, "failed to commit transaction")
 	}
 
-	udc.log.Info().Msgf("submitted metatransaction request %s", requestID)
+	udc.log.Debug().Msgf("submitted metatransaction request %s", requestID)
 	return client.BurnVehicleSign(requestID, bvs.TokenID, sigBytes)
 }
 
