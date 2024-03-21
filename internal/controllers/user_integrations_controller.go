@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-
 	smartcar "github.com/smartcar/go-sdk"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"

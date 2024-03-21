@@ -14,12 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ericlagergren/decimal"
-
-	smartcar "github.com/smartcar/go-sdk"
-
-	"github.com/DIMO-Network/shared/redis"
-
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -32,27 +26,28 @@ import (
 	"github.com/DIMO-Network/shared"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/redis"
 	"github.com/Shopify/sarama"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/ericlagergren/decimal"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
+	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
+	smartcar "github.com/smartcar/go-sdk"
 	"github.com/tidwall/gjson"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
-	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 )
 
 type UserDevicesController struct {
@@ -1410,6 +1405,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
+		qm.Load(models.UserDeviceRels.VehicleNFT),
 		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationRels.SerialAftermarketDevice)),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
@@ -1417,6 +1413,11 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusNotFound, "Device not found.")
 		}
 		return err
+	}
+
+	// if vehicle minted, user must delete by burning
+	if userDevice.R.VehicleNFT != nil {
+		return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("vehicle token: %d; must burn minted vehicle to delete", userDevice.R.VehicleNFT.TokenID))
 	}
 
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
@@ -1437,12 +1438,11 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 		}
 	}
 
-	_, err = userDevice.Delete(c.Context(), udc.DBS().Writer)
-	if err != nil {
+	if _, err := userDevice.Delete(c.Context(), udc.DBS().Writer); err != nil {
 		return err
 	}
 
-	err = udc.eventService.Emit(&shared.CloudEvent[any]{
+	if err = udc.eventService.Emit(&shared.CloudEvent[any]{
 		Type:    "com.dimo.zone.device.delete",
 		Subject: userID,
 		Source:  "devices-api",
@@ -1456,8 +1456,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 				Year:  int(dd.Type.Year),
 			},
 		},
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 

@@ -5,23 +5,13 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"io"
 	"math/big"
 	"testing"
 	"time"
 
-	"github.com/nats-io/nats-server/v2/server"
-
-	"github.com/google/uuid"
-
-	"github.com/DIMO-Network/shared"
-	pb "github.com/DIMO-Network/shared/api/users"
-	"github.com/DIMO-Network/shared/redis/mocks"
-
-	"github.com/DIMO-Network/shared/db"
-	vrpc "github.com/DIMO-Network/valuations-api/pkg/grpc"
+	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -30,11 +20,18 @@ import (
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/shared"
+	pb "github.com/DIMO-Network/shared/api/users"
+	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/redis/mocks"
+	vrpc "github.com/DIMO-Network/valuations-api/pkg/grpc"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
+	"github.com/nats-io/nats-server/v2/server"
 	"github.com/segmentio/ksuid"
 	smartcar "github.com/smartcar/go-sdk"
 	"github.com/stretchr/testify/assert"
@@ -128,6 +125,9 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	app.Get("/user/devices/:userDeviceID/valuations", test.AuthInjectorTestHandler(s.testUserID), c.GetValuations)
 	app.Get("/user/devices/:userDeviceID/range", test.AuthInjectorTestHandler(s.testUserID), c.GetRange)
 	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID), c.RefreshUserDeviceStatus)
+	app.Get("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID), c.GetBurnDevice)
+	app.Post("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID), c.PostBurnDevice)
+	app.Delete("/user/devices/:userDeviceID", test.AuthInjectorTestHandler(s.testUserID), c.DeleteUserDevice)
 
 	s.controller = &c
 	s.app = app
@@ -377,7 +377,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	assert.Equal(s.T(), "6", *regUserResp.Metadata.CANProtocol)
 	assert.EqualValues(s.T(), "ICE", *regUserResp.Metadata.PowertrainType)
 
-	msg, responseError := s.natsService.JetStream.GetLastMsg(natsStreamName, s.natsService.ValuationSubject)
+	msg, responseError := s.natsService.JetStream.GetMsg(natsStreamName, 1)
 	assert.NoError(s.T(), responseError, "expected no error from nats")
 	vinResult := gjson.GetBytes(msg.Data, "vin")
 	assert.Equal(s.T(), vinny, vinResult.Str)
@@ -451,7 +451,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_SameUser_Dupl
 	assert.Equal(s.T(), integration.Type, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Type)
 	assert.Equal(s.T(), integration.Id, regUserResp.DeviceDefinition.CompatibleIntegrations[0].ID)
 
-	msg, responseError := s.natsService.JetStream.GetLastMsg(natsStreamName, s.natsService.ValuationSubject)
+	msg, responseError := s.natsService.JetStream.GetMsg(natsStreamName, 1)
 	assert.NoError(s.T(), responseError, "expected no error from nats")
 	vinResult := gjson.GetBytes(msg.Data, "vin")
 	assert.Equal(s.T(), vinny, vinResult.Str)
@@ -1048,4 +1048,36 @@ func TestEIP712Hash(t *testing.T) {
 		realHash := common.HexToHash("0x8258cd28afb13c201c07bf80c717d55ce13e226b725dd8a115ae5ab064e537da")
 		assert.Equal(t, realHash, hash)
 	}
+}
+
+func (s *UserDevicesControllerTestSuite) TestDeleteUserDevice_ErrNFTNotBurned() {
+	_, addr, err := test.GenerateWallet()
+	s.Require().NoError(err)
+
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		UserID:             testUserID,
+		DeviceDefinitionID: ksuid.New().String(),
+		CountryCode:        null.StringFrom("USA"),
+		Name:               null.StringFrom("Chungus"),
+		VinConfirmed:       true,
+		VinIdentifier:      null.StringFrom("4Y1SL65848Z411439"),
+	}
+
+	err = ud.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+	test.SetupCreateVehicleNFT(s.T(), ud.ID, ud.VinIdentifier.String, big.NewInt(1), null.BytesFrom(addr.Bytes()), s.pdb)
+
+	request := test.BuildRequest("DELETE", "/user/devices/"+ud.ID, "")
+	response, err := s.app.Test(request)
+	s.Require().NoError(err)
+	body, _ := io.ReadAll(response.Body)
+
+	var resp map[string]interface{}
+	err = json.Unmarshal(body, &resp)
+	s.Require().NoError(err)
+
+	s.Equal(fiber.StatusFailedDependency, response.StatusCode)
+	s.Equal(resp["message"].(string), fmt.Sprintf("vehicle token: %d; must burn minted vehicle to delete", big.NewInt(1)))
+
 }

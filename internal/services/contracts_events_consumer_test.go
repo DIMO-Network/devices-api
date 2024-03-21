@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/contracts"
+	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
@@ -755,6 +757,135 @@ func privilegeEventsPayloadFactory(from, to int, eventName string, exp int64, dI
 		})
 	}
 	return res
+}
+
+func Test_VehicleNodeBurn_MetaTxID(t *testing.T) {
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer container.Terminate(ctx) //nolint
+
+	logger := zerolog.Nop()
+	settings := &config.Settings{DIMORegistryChainID: 1, DIMORegistryAddr: "0x881d40237659c251811cec9c364ef91dc08d300c"}
+
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		UserID:             ksuid.New().String(),
+		DeviceDefinitionID: ksuid.New().String(),
+	}
+	assert.NoError(t, ud.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
+
+	mintReq := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusConfirmed,
+	}
+	assert.NoError(t, mintReq.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
+
+	burnReq := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusMined,
+	}
+	assert.NoError(t, burnReq.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
+
+	vnft := models.VehicleNFT{
+		MintRequestID: mintReq.ID,
+		BurnRequestID: null.StringFrom(burnReq.ID),
+		UserDeviceID:  null.StringFrom(ud.ID),
+		TokenID:       types.NewNullDecimal(decimal.New(13, 0)),
+		Vin:           "vin",
+	}
+	assert.NoError(t, vnft.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
+
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil)
+
+	event, err := marshalMockPayload(fmt.Sprintf(`{
+		"type": "zone.dimo.contract.event",
+		"source": "chain/%d",
+		"data": {
+			"contract": "%s",
+			"eventName": "%s",
+			"chainId": %d,
+			"arguments": {
+			"vehicleNode": 13,
+			"owner": "%s"
+			}
+		}
+	}`,
+		settings.DIMORegistryChainID,
+		settings.DIMORegistryAddr,
+		VehicleNodeBurned.String(),
+		settings.DIMORegistryChainID, common.BigToAddress(big.NewInt(1))))
+	assert.NoError(t, err)
+
+	err = consumer.processEvent(ctx, event)
+	if err != nil {
+		t.Errorf("failed to process event: %v", err)
+	}
+
+	assert.NoError(t, burnReq.Reload(ctx, pdb.DBS().Reader))
+	assert.Equal(t, models.MetaTransactionRequestStatusConfirmed, burnReq.Status)
+	assert.NotNil(t, burnReq.Hash)
+
+	assert.ErrorIs(t, vnft.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
+	assert.ErrorIs(t, ud.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
+}
+
+func Test_VehicleNodeBurn_NoMetaTxID(t *testing.T) {
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer container.Terminate(ctx) //nolint
+
+	logger := zerolog.Nop()
+	settings := &config.Settings{DIMORegistryChainID: 1, DIMORegistryAddr: "0x881d40237659c251811cec9c364ef91dc08d300c"}
+
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		UserID:             ksuid.New().String(),
+		DeviceDefinitionID: ksuid.New().String(),
+	}
+	assert.NoError(t, ud.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
+
+	mintReq := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusConfirmed,
+	}
+	assert.NoError(t, mintReq.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
+
+	vnft := models.VehicleNFT{
+		MintRequestID: mintReq.ID,
+		UserDeviceID:  null.StringFrom(ud.ID),
+		TokenID:       types.NewNullDecimal(decimal.New(13, 0)),
+		Vin:           "vin",
+	}
+	assert.NoError(t, vnft.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
+
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil)
+
+	event, err := marshalMockPayload(fmt.Sprintf(`{
+		"type": "zone.dimo.contract.event",
+		"source": "chain/%d",
+		"data": {
+			"contract": "%s",
+			"eventName": "%s",
+			"chainId": %d,
+			"arguments": {
+			"vehicleNode": 13,
+			"owner": "%s"
+			}
+		}
+	}`,
+		settings.DIMORegistryChainID,
+		settings.DIMORegistryAddr,
+		VehicleNodeBurned.String(),
+		settings.DIMORegistryChainID, common.BigToAddress(big.NewInt(1))))
+	assert.NoError(t, err)
+
+	err = consumer.processEvent(ctx, event)
+	if err != nil {
+		t.Errorf("failed to process event: %v", err)
+	}
+
+	assert.ErrorIs(t, vnft.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
+	assert.ErrorIs(t, ud.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
 }
 
 func initCEventsTestHelper(t *testing.T) cEventsTestHelper {

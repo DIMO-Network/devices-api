@@ -75,6 +75,27 @@ func (m *MintVehicleSign) Message() signer.TypedDataMessage {
 	}
 }
 
+// BurnVehicleSign(uint256 tokenID)
+type BurnVehicleSign struct {
+	TokenID *big.Int
+}
+
+func (b *BurnVehicleSign) Name() string {
+	return "BurnVehicleSign"
+}
+
+func (b *BurnVehicleSign) Type() []signer.Type {
+	return []signer.Type{
+		{Name: "tokenId", Type: "uint256"},
+	}
+}
+
+func (b *BurnVehicleSign) Message() signer.TypedDataMessage {
+	return signer.TypedDataMessage{
+		"tokenId": b.TokenID,
+	}
+}
+
 // ClaimAftermarketDeviceSign(uint256 aftermarketDeviceNode,address owner)
 type ClaimAftermarketDeviceSign struct {
 	AftermarketDeviceNode *big.Int
@@ -309,6 +330,21 @@ func (c *Client) MintVehicleAndSDign(requestID string, data contracts.MintVehicl
 	}
 
 	return c.sendRequest(requestID, callData)
+}
+
+// BurnVehicleSign(uint256 tokenID, bytes signature)
+func (c *Client) BurnVehicleSign(requestID string, tokenID *big.Int, signature []byte) error {
+	abi, err := contracts.RegistryMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
+
+	data, err := abi.Pack("burnVehicleSign", tokenID, signature)
+	if err != nil {
+		return err
+	}
+
+	return c.sendRequest(requestID, data)
 }
 
 func (c *Client) sendRequest(requestID string, data []byte) error {
