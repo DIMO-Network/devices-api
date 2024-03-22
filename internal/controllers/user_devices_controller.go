@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"math/big"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -42,7 +41,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
 	smartcar "github.com/smartcar/go-sdk"
-	"github.com/tidwall/gjson"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -1795,21 +1793,6 @@ func (u *UpdateNameReq) validate() error {
 		// cannot end with space
 		validation.Field(&u.Name, validation.Required, validation.Match(regexp.MustCompile(`.+[^\s]$|[^\s]$`))),
 	)
-}
-
-// sortByJSONFieldMostRecent Sort user device data so the latest that has the specified field is first
-// only pass in field name, as this will append "timestamp" to look compare signals.field.timestamp
-func sortByJSONFieldMostRecent(udd models.UserDeviceDatumSlice, field string) {
-	sort.Slice(udd, func(i, j int) bool {
-		fpri := gjson.GetBytes(udd[i].Signals.JSON, field+".timestamp")
-		fprj := gjson.GetBytes(udd[j].Signals.JSON, field+".timestamp")
-		if fpri.Exists() && !fprj.Exists() {
-			return true
-		} else if !fpri.Exists() && fprj.Exists() {
-			return false
-		}
-		return fpri.Time().After(fprj.Time())
-	})
 }
 
 // PrivilegeUser represents set of privileges I've granted to a user

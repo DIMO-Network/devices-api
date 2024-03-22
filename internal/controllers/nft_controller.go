@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"database/sql"
-	_ "embed"
 	"fmt"
 	"io"
 	"math/big"
@@ -57,7 +56,6 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 	smartcarTaskSvc services.SmartcarTaskService,
 	teslaTaskService services.TeslaTaskService,
 	integSvc services.DeviceDefinitionIntegrationService,
-	dcnSVc registry.DCNService,
 	deviceDataSvc services.DeviceDataService,
 ) NFTController {
 

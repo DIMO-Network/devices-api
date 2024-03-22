@@ -64,7 +64,6 @@ type UserDevicesControllerTestSuite struct {
 	deviceDefIntSvc *mock_services.MockDeviceDefinitionIntegrationService
 	testUserID      string
 	scTaskSvc       *mock_services.MockSmartcarTaskService
-	nhtsaService    *mock_services.MockINHTSAService
 	scClient        *mock_services.MockSmartcarClient
 	redisClient     *mocks.MockCacheService
 	autoPiSvc       *mock_services.MockAutoPiAPIService
@@ -72,7 +71,6 @@ type UserDevicesControllerTestSuite struct {
 	natsService     *services.NATSService
 	natsServer      *server.Server
 	userDeviceSvc   *mock_services.MockUserDeviceService
-	valuationsSrvc  *mock_services.MockValuationsAPIService
 	deviceDataSvc   *mock_services.MockDeviceDataService
 }
 
@@ -93,7 +91,6 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.scTaskSvc = mock_services.NewMockSmartcarTaskService(mockCtrl)
 	teslaSvc := mock_services.NewMockTeslaService(mockCtrl)
 	teslaTaskService := mock_services.NewMockTeslaTaskService(mockCtrl)
-	s.nhtsaService = mock_services.NewMockINHTSAService(mockCtrl)
 	autoPiIngest := mock_services.NewMockIngestRegistrar(mockCtrl)
 	deviceDefinitionIngest := mock_services.NewMockDeviceDefinitionRegistrar(mockCtrl)
 	autoPiTaskSvc := mock_services.NewMockAutoPiTaskService(mockCtrl)
@@ -102,7 +99,6 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.usersClient = mock_services.NewMockUserServiceClient(mockCtrl)
 	s.natsService, s.natsServer, err = mock_services.NewMockNATSService(natsStreamName)
 	s.userDeviceSvc = mock_services.NewMockUserDeviceService(mockCtrl)
-	s.valuationsSrvc = mock_services.NewMockValuationsAPIService(mockCtrl)
 	s.deviceDataSvc = mock_services.NewMockDeviceDataService(mockCtrl)
 	if err != nil {
 		s.T().Fatal(err)
@@ -111,7 +107,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
-		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, nil, s.redisClient, nil, s.usersClient, s.deviceDataSvc, s.natsService, nil, s.userDeviceSvc, s.valuationsSrvc, nil)
+		autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, nil, s.redisClient, nil, s.usersClient, s.deviceDataSvc, s.natsService, nil, s.userDeviceSvc, nil)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUser)
 	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUserFromVIN)
