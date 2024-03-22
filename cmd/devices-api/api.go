@@ -211,6 +211,10 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 
+	// vehicle token actions
+	vPriv.Get("/commands/burn", userDeviceController.GetBurnDevice)
+	vPriv.Post("/commands/burn", userDeviceController.PostBurnDevice)
+
 	// vehicle command privileges
 	vPriv.Get("/status", privTokenWare.OneOf(vehicleAddr,
 		[]privileges.Privilege{privileges.VehicleNonLocationData, privileges.VehicleCurrentLocation, privileges.VehicleAllTimeLocation}), nftController.GetVehicleStatus)
