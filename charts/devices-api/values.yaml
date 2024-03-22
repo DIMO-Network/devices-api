@@ -62,11 +62,9 @@ env:
   DEFINITIONS_GRPC_ADDR: device-definitions-api-dev:8086
   DEVICE_DEFINITION_TOPIC: table.device.definition
   DEVICE_DEFINITION_METADATA_TOPIC: table.device.definition.metadata
-  BLACKBOOK_API_URL: https://service.blackbookcloud.com/UsedCarWS/UsedCarWS
   ELASTIC_DEVICE_STATUS_INDEX: device-status-dev-*
   DIMO_REGISTRY_ADDR: '0x4De1bCf2B7E851E31216fC07989caA902A604784'
   MONITORING_SERVER_PORT: 8888
-  ENABLE_PRIVILEGES: true
   TOKEN_EXCHANGE_JWK_KEY_SET_URL: http://dex-roles-rights.dev.svc.cluster.local:5556/keys
   CONTRACT_EVENT_TOPIC: topic.contract.event
   VEHICLE_NFT_ADDRESS: '0x90c4d6113ec88dd4bdf12f26db2b3998fd13a144'

@@ -53,15 +53,11 @@ type Settings struct {
 	DIMORegistryChainID               int64  `yaml:"DIMO_REGISTRY_CHAIN_ID"`
 	MonitoringServerPort              string `yaml:"MONITORING_SERVER_PORT"`
 	TokenExchangeJWTKeySetURL         string `yaml:"TOKEN_EXCHANGE_JWK_KEY_SET_URL"`
-	EnablePrivileges                  bool   `yaml:"ENABLE_PRIVILEGES"`
 	GoogleMapsAPIKey                  string `yaml:"GOOGLE_MAPS_API_KEY"`
 	VehicleNFTAddress                 string `yaml:"VEHICLE_NFT_ADDRESS"`
 	ContractsEventTopic               string `yaml:"CONTRACT_EVENT_TOPIC"`
 	AutoPiNFTImage                    string `yaml:"AUTOPI_NFT_IMAGE"`
 	MacaronNFTImage                   string `yaml:"MACARON_NFT_IMAGE"`
-	VincarioAPIURL                    string `yaml:"VINCARIO_API_URL"`
-	VincarioAPISecret                 string `yaml:"VINCARIO_API_SECRET"`
-	VincarioAPIKey                    string `yaml:"VINCARIO_API_KEY"`
 	OpenAISecretKey                   string `yaml:"OPENAI_SECRET_KEY"`
 	ChatGPTURL                        string `yaml:"CHATGPT_URL"`
 	AftermarketDeviceContractAddress  string `yaml:"AFTERMARKET_DEVICE_CONTRACT_ADDRESS"`
