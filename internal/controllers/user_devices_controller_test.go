@@ -661,15 +661,6 @@ func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: nil}, nil)
 	// validates that if country=USA we update the powertrain based on what the NHTSA vin decoder says
-	evID := "4"
-	s.nhtsaService.EXPECT().DecodeVIN("5YJYGDEE5MF085533").Return(&services.NHTSADecodeVINResponse{
-		Results: []services.NHTSAResult{
-			{
-				VariableID: 126,
-				ValueID:    &evID,
-			},
-		},
-	}, nil)
 
 	payload := `{ "vin": "5YJYGDEE5MF085533" }`
 	request := test.BuildRequest("PATCH", "/user/devices/"+ud.ID+"/vin", payload)

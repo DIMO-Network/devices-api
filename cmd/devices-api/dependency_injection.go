@@ -24,7 +24,6 @@ type dependencyContainer struct {
 	logger             *zerolog.Logger
 	s3ServiceClient    *s3.Client
 	s3NFTServiceClient *s3.Client
-	nhtsaSvc           services.INHTSAService
 	ddSvc              services.DeviceDefinitionService
 	dbs                func() *db.ReaderWriter
 	elasticSearch      elasticsearch.ElasticSearch
