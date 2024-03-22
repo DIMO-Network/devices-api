@@ -797,9 +797,6 @@ func (s *UserDevicesControllerTestSuite) TestPatchName() {
 	assert.Equal(s.T(), testName, ud.Name.String)
 }
 
-//go:embed test_user_device_data.json
-var testUserDeviceData []byte
-
 func (s *UserDevicesControllerTestSuite) TestPostRefreshSmartCar() {
 	smartCarInt := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Escape", 2020, smartCarInt)
