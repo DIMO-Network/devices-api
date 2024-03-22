@@ -96,9 +96,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	usersClient := pbuser.NewUserServiceClient(gcon)
 
 	// services
-	nhtsaSvc := services.NewNHTSAService()
 	ddIntSvc := services.NewDeviceDefinitionIntegrationService(pdb.DBS, settings)
-	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, nhtsaSvc, settings)
+	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, settings)
 	ddaSvc := services.NewDeviceDataService(settings.DeviceDataGRPCAddr, &logger)
 
 	scTaskSvc := services.NewSmartcarTaskService(settings, producer)
@@ -107,7 +106,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	teslaSvc := services.NewTeslaService(settings)
 	teslaFleetAPISvc := services.NewTeslaFleetAPIService(settings, &logger)
 	autoPiSvc := services.NewAutoPiAPIService(settings, pdb.DBS)
-	valuationsSvc := services.NewValuationsAPIService(settings, &logger)
 	autoPiIngest := services.NewIngestRegistrar(producer)
 	deviceDefinitionRegistrar := services.NewDeviceDefinitionRegistrar(producer, settings)
 	autoPiTaskService := services.NewAutoPiTaskService(settings, autoPiSvc, pdb.DBS, logger)
@@ -141,9 +139,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// controllers
 	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService,
-		smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest,
+		smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, autoPiIngest,
 		deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient,
-		ddaSvc, natsSvc, wallet, userDeviceSvc, valuationsSvc, teslaFleetAPISvc)
+		ddaSvc, natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc)
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
@@ -295,9 +293,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Patch("/vin", userDeviceController.UpdateVIN)
 	udOwner.Patch("/name", userDeviceController.UpdateName)
 	udOwner.Patch("/country-code", userDeviceController.UpdateCountryCode)
-	udOwner.Get("/valuations", userDeviceController.GetValuations)
-	udOwner.Get("/offers", userDeviceController.GetOffers)
-	udOwner.Get("/range", userDeviceController.GetRange)
 
 	udOwner.Post("/error-codes", userDeviceController.QueryDeviceErrorCodes)
 	udOwner.Get("/error-codes", userDeviceController.GetUserDeviceErrorCodeQueries)

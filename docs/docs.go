@@ -1843,63 +1843,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/devices/{userDeviceID}/offers": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "gets offers for a particular user device",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-devices"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DeviceOffer"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/devices/{userDeviceID}/range": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "gets the estimated range for a particular user device",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "user device id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DeviceRange"
-                        }
-                    }
-                }
-            }
-        },
         "/user/devices/{userDeviceID}/status": {
             "get": {
                 "security": [
@@ -1928,39 +1871,6 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/internal_controllers.DeviceSnapshot"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/devices/{userDeviceID}/valuations": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "gets valuations for a particular user device. Includes only price valuations, not offers. only gets the latest valuation.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "user device id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DeviceValuation"
                         }
                     }
                 }
@@ -2876,30 +2786,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github.com_DIMO-Network_devices-api_internal_controllers.DeviceOffer": {
-            "type": "object",
-            "properties": {
-                "offerSets": {
-                    "description": "Contains a list of offer sets, one for each source",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.OfferSet"
-                    }
-                }
-            }
-        },
-        "github.com_DIMO-Network_devices-api_internal_controllers.DeviceRange": {
-            "type": "object",
-            "properties": {
-                "rangeSets": {
-                    "description": "Contains a list of range sets, one for each range basis (may be empty)",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RangeSet"
-                    }
-                }
-            }
-        },
         "github.com_DIMO-Network_devices-api_internal_controllers.DeviceSnapshot": {
             "type": "object",
             "properties": {
@@ -2947,18 +2833,6 @@ const docTemplate = `{
                 },
                 "tirePressure": {
                     "$ref": "#/definitions/smartcar.TirePressure"
-                }
-            }
-        },
-        "github.com_DIMO-Network_devices-api_internal_controllers.DeviceValuation": {
-            "type": "object",
-            "properties": {
-                "valuationSets": {
-                    "description": "Contains a list of valuation sets, one for each vendor",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.ValuationSet"
-                    }
                 }
             }
         },
@@ -3248,34 +3122,6 @@ const docTemplate = `{
                 },
                 "vendor": {
                     "description": "The vendor of the offer (eg. \"carmax\", \"carvana\", etc.)",
-                    "type": "string"
-                }
-            }
-        },
-        "github.com_DIMO-Network_devices-api_internal_controllers.OfferSet": {
-            "type": "object",
-            "properties": {
-                "mileage": {
-                    "description": "The mileage used for the offers",
-                    "type": "integer"
-                },
-                "offers": {
-                    "description": "Contains a list of offers from the source",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.Offer"
-                    }
-                },
-                "source": {
-                    "description": "The source of the offers (eg. \"drivly\")",
-                    "type": "string"
-                },
-                "updated": {
-                    "description": "The time the offers were pulled",
-                    "type": "string"
-                },
-                "zipCode": {
-                    "description": "This will be the zip code used (if any) for the offers request regardless if the source uses it",
                     "type": "string"
                 }
             }
@@ -3601,77 +3447,6 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "vin": {
-                    "type": "string"
-                }
-            }
-        },
-        "github.com_DIMO-Network_devices-api_internal_controllers.ValuationSet": {
-            "type": "object",
-            "properties": {
-                "currency": {
-                    "description": "eg. USD or EUR",
-                    "type": "string"
-                },
-                "mileage": {
-                    "description": "The mileage used for the valuation",
-                    "type": "integer"
-                },
-                "odometer": {
-                    "type": "integer"
-                },
-                "odometerUnit": {
-                    "type": "string"
-                },
-                "retail": {
-                    "description": "retail is equal to retailAverage when available",
-                    "type": "integer"
-                },
-                "retailAverage": {
-                    "type": "integer"
-                },
-                "retailClean": {
-                    "description": "retailClean, retailAverage, and retailRough my not always be available",
-                    "type": "integer"
-                },
-                "retailRough": {
-                    "type": "integer"
-                },
-                "retailSource": {
-                    "description": "Useful when Drivly returns multiple vendors and we've selected one (eg. \"drivly:blackbook\")",
-                    "type": "string"
-                },
-                "tradeIn": {
-                    "description": "tradeIn is equal to tradeInAverage when available",
-                    "type": "integer"
-                },
-                "tradeInAverage": {
-                    "type": "integer"
-                },
-                "tradeInClean": {
-                    "description": "tradeInClean, tradeInAverage, and tradeInRough my not always be available",
-                    "type": "integer"
-                },
-                "tradeInRough": {
-                    "type": "integer"
-                },
-                "tradeInSource": {
-                    "description": "Useful when Drivly returns multiple vendors and we've selected one (eg. \"drivly:blackbook\")",
-                    "type": "string"
-                },
-                "updated": {
-                    "description": "The time the valuation was pulled or in the case of blackbook, this may be the event time of the device odometer which was used for the valuation",
-                    "type": "string"
-                },
-                "userDisplayPrice": {
-                    "description": "UserDisplayPrice the top level value to show to users in mobile app",
-                    "type": "integer"
-                },
-                "vendor": {
-                    "description": "The source of the valuation (eg. \"drivly\" or \"blackbook\")",
-                    "type": "string"
-                },
-                "zipCode": {
-                    "description": "This will be the zip code used (if any) for the valuation request regardless if the vendor uses it",
                     "type": "string"
                 }
             }
@@ -4028,30 +3803,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers.DeviceOffer": {
-            "type": "object",
-            "properties": {
-                "offerSets": {
-                    "description": "Contains a list of offer sets, one for each source",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_controllers.OfferSet"
-                    }
-                }
-            }
-        },
-        "internal_controllers.DeviceRange": {
-            "type": "object",
-            "properties": {
-                "rangeSets": {
-                    "description": "Contains a list of range sets, one for each range basis (may be empty)",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_controllers.RangeSet"
-                    }
-                }
-            }
-        },
         "internal_controllers.DeviceSnapshot": {
             "type": "object",
             "properties": {
@@ -4099,18 +3850,6 @@ const docTemplate = `{
                 },
                 "tirePressure": {
                     "$ref": "#/definitions/smartcar.TirePressure"
-                }
-            }
-        },
-        "internal_controllers.DeviceValuation": {
-            "type": "object",
-            "properties": {
-                "valuationSets": {
-                    "description": "Contains a list of valuation sets, one for each vendor",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_controllers.ValuationSet"
-                    }
                 }
             }
         },
@@ -4400,34 +4139,6 @@ const docTemplate = `{
                 },
                 "vendor": {
                     "description": "The vendor of the offer (eg. \"carmax\", \"carvana\", etc.)",
-                    "type": "string"
-                }
-            }
-        },
-        "internal_controllers.OfferSet": {
-            "type": "object",
-            "properties": {
-                "mileage": {
-                    "description": "The mileage used for the offers",
-                    "type": "integer"
-                },
-                "offers": {
-                    "description": "Contains a list of offers from the source",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_controllers.Offer"
-                    }
-                },
-                "source": {
-                    "description": "The source of the offers (eg. \"drivly\")",
-                    "type": "string"
-                },
-                "updated": {
-                    "description": "The time the offers were pulled",
-                    "type": "string"
-                },
-                "zipCode": {
-                    "description": "This will be the zip code used (if any) for the offers request regardless if the source uses it",
                     "type": "string"
                 }
             }
@@ -4753,77 +4464,6 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "vin": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_controllers.ValuationSet": {
-            "type": "object",
-            "properties": {
-                "currency": {
-                    "description": "eg. USD or EUR",
-                    "type": "string"
-                },
-                "mileage": {
-                    "description": "The mileage used for the valuation",
-                    "type": "integer"
-                },
-                "odometer": {
-                    "type": "integer"
-                },
-                "odometerUnit": {
-                    "type": "string"
-                },
-                "retail": {
-                    "description": "retail is equal to retailAverage when available",
-                    "type": "integer"
-                },
-                "retailAverage": {
-                    "type": "integer"
-                },
-                "retailClean": {
-                    "description": "retailClean, retailAverage, and retailRough my not always be available",
-                    "type": "integer"
-                },
-                "retailRough": {
-                    "type": "integer"
-                },
-                "retailSource": {
-                    "description": "Useful when Drivly returns multiple vendors and we've selected one (eg. \"drivly:blackbook\")",
-                    "type": "string"
-                },
-                "tradeIn": {
-                    "description": "tradeIn is equal to tradeInAverage when available",
-                    "type": "integer"
-                },
-                "tradeInAverage": {
-                    "type": "integer"
-                },
-                "tradeInClean": {
-                    "description": "tradeInClean, tradeInAverage, and tradeInRough my not always be available",
-                    "type": "integer"
-                },
-                "tradeInRough": {
-                    "type": "integer"
-                },
-                "tradeInSource": {
-                    "description": "Useful when Drivly returns multiple vendors and we've selected one (eg. \"drivly:blackbook\")",
-                    "type": "string"
-                },
-                "updated": {
-                    "description": "The time the valuation was pulled or in the case of blackbook, this may be the event time of the device odometer which was used for the valuation",
-                    "type": "string"
-                },
-                "userDisplayPrice": {
-                    "description": "UserDisplayPrice the top level value to show to users in mobile app",
-                    "type": "integer"
-                },
-                "vendor": {
-                    "description": "The source of the valuation (eg. \"drivly\" or \"blackbook\")",
-                    "type": "string"
-                },
-                "zipCode": {
-                    "description": "This will be the zip code used (if any) for the valuation request regardless if the vendor uses it",
                     "type": "string"
                 }
             }

@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/DIMO-Network/shared/privileges"
 	"io"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/DIMO-Network/shared/privileges"
 
 	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
 	"github.com/tidwall/gjson"
@@ -77,7 +78,6 @@ type deps struct {
 	scTaskSvc              *mock_services.MockSmartcarTaskService
 	teslaSvc               *mock_services.MockTeslaService
 	teslaTaskService       *mock_services.MockTeslaTaskService
-	nhtsaService           *mock_services.MockINHTSAService
 	autoPiIngest           *mock_services.MockIngestRegistrar
 	deviceDefinitionIngest *mock_services.MockDeviceDefinitionRegistrar
 	autoPiTaskSvc          *mock_services.MockAutoPiTaskService
@@ -100,7 +100,6 @@ func createMockDependencies(t *testing.T) deps {
 	scTaskSvc := mock_services.NewMockSmartcarTaskService(mockCtrl)
 	teslaSvc := mock_services.NewMockTeslaService(mockCtrl)
 	teslaTaskService := mock_services.NewMockTeslaTaskService(mockCtrl)
-	nhtsaService := mock_services.NewMockINHTSAService(mockCtrl)
 	autoPiIngest := mock_services.NewMockIngestRegistrar(mockCtrl)
 	deviceDefinitionIngest := mock_services.NewMockDeviceDefinitionRegistrar(mockCtrl)
 	autoPiTaskSvc := mock_services.NewMockAutoPiTaskService(mockCtrl)
@@ -120,7 +119,6 @@ func createMockDependencies(t *testing.T) deps {
 		scTaskSvc:              scTaskSvc,
 		teslaSvc:               teslaSvc,
 		teslaTaskService:       teslaTaskService,
-		nhtsaService:           nhtsaService,
 		autoPiIngest:           autoPiIngest,
 		deviceDefinitionIngest: deviceDefinitionIngest,
 		autoPiTaskSvc:          autoPiTaskSvc,

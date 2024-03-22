@@ -111,13 +111,8 @@ func (dc *dependencyContainer) getS3NFTServiceClient(ctx context.Context) *s3.Cl
 	return dc.s3NFTServiceClient
 }
 
-func (dc *dependencyContainer) getNHTSAService() services.INHTSAService {
-	dc.nhtsaSvc = services.NewNHTSAService()
-	return dc.nhtsaSvc
-}
-
 func (dc *dependencyContainer) getDeviceDefinitionService() services.DeviceDefinitionService {
-	dc.ddSvc = services.NewDeviceDefinitionService(dc.dbs, dc.logger, dc.getNHTSAService(), dc.settings)
+	dc.ddSvc = services.NewDeviceDefinitionService(dc.dbs, dc.logger, dc.settings)
 	return dc.ddSvc
 }
 

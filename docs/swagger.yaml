@@ -262,23 +262,6 @@ definitions:
       year:
         type: integer
     type: object
-  github.com_DIMO-Network_devices-api_internal_controllers.DeviceOffer:
-    properties:
-      offerSets:
-        description: Contains a list of offer sets, one for each source
-        items:
-          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.OfferSet'
-        type: array
-    type: object
-  github.com_DIMO-Network_devices-api_internal_controllers.DeviceRange:
-    properties:
-      rangeSets:
-        description: Contains a list of range sets, one for each range basis (may
-          be empty)
-        items:
-          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RangeSet'
-        type: array
-    type: object
   github.com_DIMO-Network_devices-api_internal_controllers.DeviceSnapshot:
     properties:
       ambientTemp:
@@ -311,14 +294,6 @@ definitions:
         type: number
       tirePressure:
         $ref: '#/definitions/smartcar.TirePressure'
-    type: object
-  github.com_DIMO-Network_devices-api_internal_controllers.DeviceValuation:
-    properties:
-      valuationSets:
-        description: Contains a list of valuation sets, one for each vendor
-        items:
-          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.ValuationSet'
-        type: array
     type: object
   github.com_DIMO-Network_devices-api_internal_controllers.DocumentResponse:
     properties:
@@ -527,27 +502,6 @@ definitions:
         type: string
       vendor:
         description: The vendor of the offer (eg. "carmax", "carvana", etc.)
-        type: string
-    type: object
-  github.com_DIMO-Network_devices-api_internal_controllers.OfferSet:
-    properties:
-      mileage:
-        description: The mileage used for the offers
-        type: integer
-      offers:
-        description: Contains a list of offers from the source
-        items:
-          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.Offer'
-        type: array
-      source:
-        description: The source of the offers (eg. "drivly")
-        type: string
-      updated:
-        description: The time the offers were pulled
-        type: string
-      zipCode:
-        description: This will be the zip code used (if any) for the offers request
-          regardless if the source uses it
         type: string
     type: object
   github.com_DIMO-Network_devices-api_internal_controllers.Privilege:
@@ -774,65 +728,6 @@ definitions:
       valid:
         type: boolean
       vin:
-        type: string
-    type: object
-  github.com_DIMO-Network_devices-api_internal_controllers.ValuationSet:
-    properties:
-      currency:
-        description: eg. USD or EUR
-        type: string
-      mileage:
-        description: The mileage used for the valuation
-        type: integer
-      odometer:
-        type: integer
-      odometerUnit:
-        type: string
-      retail:
-        description: retail is equal to retailAverage when available
-        type: integer
-      retailAverage:
-        type: integer
-      retailClean:
-        description: retailClean, retailAverage, and retailRough my not always be
-          available
-        type: integer
-      retailRough:
-        type: integer
-      retailSource:
-        description: Useful when Drivly returns multiple vendors and we've selected
-          one (eg. "drivly:blackbook")
-        type: string
-      tradeIn:
-        description: tradeIn is equal to tradeInAverage when available
-        type: integer
-      tradeInAverage:
-        type: integer
-      tradeInClean:
-        description: tradeInClean, tradeInAverage, and tradeInRough my not always
-          be available
-        type: integer
-      tradeInRough:
-        type: integer
-      tradeInSource:
-        description: Useful when Drivly returns multiple vendors and we've selected
-          one (eg. "drivly:blackbook")
-        type: string
-      updated:
-        description: The time the valuation was pulled or in the case of blackbook,
-          this may be the event time of the device odometer which was used for the
-          valuation
-        type: string
-      userDisplayPrice:
-        description: UserDisplayPrice the top level value to show to users in mobile
-          app
-        type: integer
-      vendor:
-        description: The source of the valuation (eg. "drivly" or "blackbook")
-        type: string
-      zipCode:
-        description: This will be the zip code used (if any) for the valuation request
-          regardless if the vendor uses it
         type: string
     type: object
   grpc.Integration:
@@ -1089,23 +984,6 @@ definitions:
       year:
         type: integer
     type: object
-  internal_controllers.DeviceOffer:
-    properties:
-      offerSets:
-        description: Contains a list of offer sets, one for each source
-        items:
-          $ref: '#/definitions/internal_controllers.OfferSet'
-        type: array
-    type: object
-  internal_controllers.DeviceRange:
-    properties:
-      rangeSets:
-        description: Contains a list of range sets, one for each range basis (may
-          be empty)
-        items:
-          $ref: '#/definitions/internal_controllers.RangeSet'
-        type: array
-    type: object
   internal_controllers.DeviceSnapshot:
     properties:
       ambientTemp:
@@ -1138,14 +1016,6 @@ definitions:
         type: number
       tirePressure:
         $ref: '#/definitions/smartcar.TirePressure'
-    type: object
-  internal_controllers.DeviceValuation:
-    properties:
-      valuationSets:
-        description: Contains a list of valuation sets, one for each vendor
-        items:
-          $ref: '#/definitions/internal_controllers.ValuationSet'
-        type: array
     type: object
   internal_controllers.DocumentResponse:
     properties:
@@ -1354,27 +1224,6 @@ definitions:
         type: string
       vendor:
         description: The vendor of the offer (eg. "carmax", "carvana", etc.)
-        type: string
-    type: object
-  internal_controllers.OfferSet:
-    properties:
-      mileage:
-        description: The mileage used for the offers
-        type: integer
-      offers:
-        description: Contains a list of offers from the source
-        items:
-          $ref: '#/definitions/internal_controllers.Offer'
-        type: array
-      source:
-        description: The source of the offers (eg. "drivly")
-        type: string
-      updated:
-        description: The time the offers were pulled
-        type: string
-      zipCode:
-        description: This will be the zip code used (if any) for the offers request
-          regardless if the source uses it
         type: string
     type: object
   internal_controllers.Privilege:
@@ -1601,65 +1450,6 @@ definitions:
       valid:
         type: boolean
       vin:
-        type: string
-    type: object
-  internal_controllers.ValuationSet:
-    properties:
-      currency:
-        description: eg. USD or EUR
-        type: string
-      mileage:
-        description: The mileage used for the valuation
-        type: integer
-      odometer:
-        type: integer
-      odometerUnit:
-        type: string
-      retail:
-        description: retail is equal to retailAverage when available
-        type: integer
-      retailAverage:
-        type: integer
-      retailClean:
-        description: retailClean, retailAverage, and retailRough my not always be
-          available
-        type: integer
-      retailRough:
-        type: integer
-      retailSource:
-        description: Useful when Drivly returns multiple vendors and we've selected
-          one (eg. "drivly:blackbook")
-        type: string
-      tradeIn:
-        description: tradeIn is equal to tradeInAverage when available
-        type: integer
-      tradeInAverage:
-        type: integer
-      tradeInClean:
-        description: tradeInClean, tradeInAverage, and tradeInRough my not always
-          be available
-        type: integer
-      tradeInRough:
-        type: integer
-      tradeInSource:
-        description: Useful when Drivly returns multiple vendors and we've selected
-          one (eg. "drivly:blackbook")
-        type: string
-      updated:
-        description: The time the valuation was pulled or in the case of blackbook,
-          this may be the event time of the device odometer which was used for the
-          valuation
-        type: string
-      userDisplayPrice:
-        description: UserDisplayPrice the top level value to show to users in mobile
-          app
-        type: integer
-      vendor:
-        description: The source of the valuation (eg. "drivly" or "blackbook")
-        type: string
-      zipCode:
-        description: This will be the zip code used (if any) for the valuation request
-          regardless if the vendor uses it
         type: string
     type: object
   math.HexOrDecimal256:
@@ -2918,20 +2708,6 @@ paths:
       - BearerAuth: []
       tags:
       - user-devices
-  /user/devices/{userDeviceID}/offers:
-    get:
-      description: gets offers for a particular user device
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DeviceOffer'
-      security:
-      - BearerAuth: []
-      tags:
-      - user-devices
   /user/devices/{userDeviceID}/range:
     get:
       description: gets the estimated range for a particular user device
@@ -2970,27 +2746,6 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/internal_controllers.DeviceSnapshot'
-      security:
-      - BearerAuth: []
-      tags:
-      - user-devices
-  /user/devices/{userDeviceID}/valuations:
-    get:
-      description: gets valuations for a particular user device. Includes only price
-        valuations, not offers. only gets the latest valuation.
-      parameters:
-      - description: user device id
-        in: path
-        name: userDeviceID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DeviceValuation'
       security:
       - BearerAuth: []
       tags:

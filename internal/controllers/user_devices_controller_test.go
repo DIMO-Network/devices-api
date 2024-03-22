@@ -24,7 +24,6 @@ import (
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/DIMO-Network/shared/redis/mocks"
-	vrpc "github.com/DIMO-Network/valuations-api/pkg/grpc"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
@@ -121,9 +120,6 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	app.Get("/user/devices/me", test.AuthInjectorTestHandler(s.testUserID), c.GetUserDevices)
 	app.Patch("/user/devices/:userDeviceID/vin", test.AuthInjectorTestHandler(s.testUserID), c.UpdateVIN)
 	app.Patch("/user/devices/:userDeviceID/name", test.AuthInjectorTestHandler(s.testUserID), c.UpdateName)
-	app.Get("/user/devices/:userDeviceID/offers", test.AuthInjectorTestHandler(s.testUserID), c.GetOffers)
-	app.Get("/user/devices/:userDeviceID/valuations", test.AuthInjectorTestHandler(s.testUserID), c.GetValuations)
-	app.Get("/user/devices/:userDeviceID/range", test.AuthInjectorTestHandler(s.testUserID), c.GetRange)
 	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID), c.RefreshUserDeviceStatus)
 	app.Get("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID), c.GetBurnDevice)
 	app.Post("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID), c.PostBurnDevice)
@@ -810,125 +806,8 @@ func (s *UserDevicesControllerTestSuite) TestPatchName() {
 	assert.Equal(s.T(), testName, ud.Name.String)
 }
 
-func (s *UserDevicesControllerTestSuite) TestGetDeviceValuations_Format1() {
-	// arrange db, insert some user_devices
-	ddID := ksuid.New().String()
-	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, ddID, nil, "", s.pdb)
-
-	s.valuationsSrvc.EXPECT().GetUserDeviceValuations(gomock.Any(), gomock.Any()).Times(1).Return(&vrpc.DeviceValuation{}, nil)
-
-	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/valuations", ud.ID), "")
-	response, _ := s.app.Test(request)
-
-	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-}
-
-func (s *UserDevicesControllerTestSuite) TestGetDeviceValuations_Format2() {
-	// this is the other format we're seeing coming from drivly for pricing
-	// arrange db, insert some user_devices
-	ddID := ksuid.New().String()
-	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, ddID, nil, "", s.pdb)
-
-	s.valuationsSrvc.EXPECT().GetUserDeviceValuations(gomock.Any(), gomock.Any()).Times(1).Return(&vrpc.DeviceValuation{}, nil)
-
-	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/valuations", ud.ID), "")
-	response, _ := s.app.Test(request)
-
-	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-}
-
-func (s *UserDevicesControllerTestSuite) TestGetDeviceValuations_Vincario() {
-	// this is the other format we're seeing coming from drivly for pricing
-	// arrange db, insert some user_devices
-	ddID := ksuid.New().String()
-	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, ddID, nil, "", s.pdb)
-
-	s.valuationsSrvc.EXPECT().GetUserDeviceValuations(gomock.Any(), gomock.Any()).Times(1).Return(&vrpc.DeviceValuation{}, nil)
-
-	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/valuations", ud.ID), "")
-	response, _ := s.app.Test(request, 2000)
-
-	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-
-}
-
-func (s *UserDevicesControllerTestSuite) TestGetDeviceOffers() {
-	// arrange db, insert some user_devices
-	ddID := ksuid.New().String()
-	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, ddID, nil, "", s.pdb)
-
-	s.valuationsSrvc.EXPECT().GetUserDeviceOffers(gomock.Any(), gomock.Any()).Times(1).Return(&vrpc.DeviceOffer{}, nil)
-
-	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/offers", ud.ID), "")
-	response, _ := s.app.Test(request)
-
-	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-}
-
 //go:embed test_user_device_data.json
 var testUserDeviceData []byte
-
-func (s *UserDevicesControllerTestSuite) TestGetRange() {
-	// arrange db, insert some user_devices
-	autoPiUnitID := "1234"
-	autoPiDeviceID := "4321"
-	ddID := ksuid.New().String()
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
-	smartCarIntegration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
-	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, nil, autoPiUnitID, &autoPiDeviceID, s.pdb)
-
-	gddir := []*ddgrpc.GetDeviceDefinitionItemResponse{
-		{
-			DeviceAttributes: []*ddgrpc.DeviceTypeAttribute{
-				{Name: "mpg", Value: "38.0"},
-				{Name: "mpg_highway", Value: "40.0"},
-				{Name: "fuel_tank_capacity_gal", Value: "14.5"},
-			},
-			Make: &ddgrpc.DeviceMake{
-				Name: "Ford",
-			},
-			Name:               "F-150",
-			DeviceDefinitionId: ddID,
-		},
-	}
-	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, ddID, nil, "", s.pdb)
-	test.SetupCreateUserDeviceAPIIntegration(s.T(), autoPiUnitID, autoPiDeviceID, ud.ID, integration.Id, s.pdb)
-	udd := models.UserDeviceDatum{
-		UserDeviceID:  ud.ID,
-		Signals:       null.JSONFrom(testUserDeviceData),
-		IntegrationID: integration.Id,
-	}
-	err := udd.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
-	require.NoError(s.T(), err)
-	udd2 := models.UserDeviceDatum{
-		UserDeviceID:  ud.ID,
-		Signals:       null.JSONFrom([]byte(`{"range": {"value": 380.14,"timestamp":"2022-06-18T04:02:11.544Z" } }`)),
-		IntegrationID: smartCarIntegration.Id,
-	}
-	err = udd2.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
-	require.NoError(s.T(), err)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{ddID}).Return(gddir, nil)
-	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/range", ud.ID), "")
-	response, err := s.app.Test(request)
-	require.NoError(s.T(), err)
-	body, _ := io.ReadAll(response.Body)
-
-	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-
-	assert.Equal(s.T(), 3, int(gjson.GetBytes(body, "rangeSets.#").Int()))
-	assert.Equal(s.T(), "2022-06-18T04:06:40Z", gjson.GetBytes(body, "rangeSets.0.updated").String())
-	assert.Equal(s.T(), "2022-06-18T04:06:40Z", gjson.GetBytes(body, "rangeSets.1.updated").String())
-	assert.Equal(s.T(), "2022-06-18T04:02:11Z", gjson.GetBytes(body, "rangeSets.2.updated").String())
-	assert.Equal(s.T(), "MPG", gjson.GetBytes(body, "rangeSets.0.rangeBasis").String())
-	assert.Equal(s.T(), "MPG Highway", gjson.GetBytes(body, "rangeSets.1.rangeBasis").String())
-	assert.Equal(s.T(), "Vehicle Reported", gjson.GetBytes(body, "rangeSets.2.rangeBasis").String())
-	assert.Equal(s.T(), 391, int(gjson.GetBytes(body, "rangeSets.0.rangeDistance").Int()))
-	assert.Equal(s.T(), 411, int(gjson.GetBytes(body, "rangeSets.1.rangeDistance").Int()))
-	assert.Equal(s.T(), 236, int(gjson.GetBytes(body, "rangeSets.2.rangeDistance").Int()))
-	assert.Equal(s.T(), "miles", gjson.GetBytes(body, "rangeSets.0.rangeUnit").String())
-	assert.Equal(s.T(), "miles", gjson.GetBytes(body, "rangeSets.1.rangeUnit").String())
-	assert.Equal(s.T(), "miles", gjson.GetBytes(body, "rangeSets.2.rangeUnit").String())
-}
 
 func (s *UserDevicesControllerTestSuite) TestPostRefreshSmartCar() {
 	smartCarInt := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)

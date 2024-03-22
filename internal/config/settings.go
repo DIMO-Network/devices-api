@@ -41,9 +41,6 @@ type Settings struct {
 	DocumentsAWSEndpoint              string `yaml:"DOCUMENTS_AWS_ENDPOINT"`
 	NFTAWSAccessKeyID                 string `yaml:"NFT_AWS_ACCESS_KEY_ID"`
 	NFTAWSSecretsAccessKey            string `yaml:"NFT_AWS_SECRET_ACCESS_KEY"`
-	DrivlyAPIKey                      string `yaml:"DRIVLY_API_KEY"`
-	DrivlyVINAPIURL                   string `yaml:"DRIVLY_VIN_API_URL"`
-	DrivlyOfferAPIURL                 string `yaml:"DRIVLY_OFFER_API_URL"`
 	DefinitionsGRPCAddr               string `yaml:"DEFINITIONS_GRPC_ADDR"`
 	DeviceDataGRPCAddr                string `yaml:"DEVICE_DATA_GRPC_ADDR"`
 	DeviceDefinitionTopic             string `yaml:"DEVICE_DEFINITION_TOPIC"`

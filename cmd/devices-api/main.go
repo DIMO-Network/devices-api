@@ -99,7 +99,7 @@ func main() {
 
 		subcommands.Register(&populateESDDDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: deps.getElasticSearchService(), ddSvc: deps.getDeviceDefinitionService()}, "populate data")
 		subcommands.Register(&populateESRegionDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: deps.getElasticSearchService(), ddSvc: deps.getDeviceDefinitionService()}, "populate data")
-		subcommands.Register(&populateUSAPowertrainCmd{logger: logger, settings: settings, pdb: pdb, nhtsaService: deps.getNHTSAService(), deviceDefSvc: deps.getDeviceDefinitionService()}, "populate data")
+		subcommands.Register(&populateUSAPowertrainCmd{logger: logger, settings: settings, pdb: pdb, deviceDefSvc: deps.getDeviceDefinitionService()}, "populate data")
 
 		subcommands.Register(&stopTaskByKeyCmd{logger: logger, settings: settings, container: deps}, "tasks")
 
@@ -193,8 +193,7 @@ func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, p
 		logger.Fatal().Err(err).Msg("Could not start credential update consumer")
 	}
 
-	nhtsaSvc := services.NewNHTSAService()
-	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, nhtsaSvc, settings)
+	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, settings)
 
 	taskStatusService := services.NewTaskStatusListener(pdb.DBS, &logger, ddSvc)
 	consumer.Start(context.Background(), taskStatusService.ProcessTaskUpdates)
