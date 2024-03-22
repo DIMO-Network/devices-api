@@ -1,11 +1,13 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -20,6 +22,25 @@ type TeslaFleetAPIService interface {
 	GetVehicles(ctx context.Context, token, region string) ([]TeslaVehicle, error)
 	GetVehicle(ctx context.Context, token, region string, vehicleID int) (*TeslaVehicle, error)
 	WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error
+	RegisterToTelemetryServer(ctx context.Context, token, region, vin string) error
+}
+
+type Interval struct {
+	IntervalSeconds int `json:"interval_seconds"`
+}
+
+type TelemetryConfigRequest struct {
+	HostName            string              `json:"hostName"`
+	PublicCACertificate string              `json:"ca"`
+	Fields              map[string]Interval `json:"fields"`
+	AlertTypes          []string            `json:"alert_types,omitempty"`
+	Expiration          int64               `json:"exp"`
+	Port                int                 `json:"port"`
+}
+
+type RegisterVehicleToTelemetryServerRequest struct {
+	Vins   []string               `json:"vins"`
+	Config TelemetryConfigRequest `json:"config"`
 }
 
 var teslaScopes = []string{"openid", "offline_access", "user_data", "vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds", "energy_device_data", "energy_device_data", "energy_cmds"}
@@ -155,6 +176,65 @@ func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region 
 	return nil
 }
 
+func (t *teslaFleetAPIService) RegisterToTelemetryServer(ctx context.Context, token, region, vin string) error {
+	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
+	u, err := url.Parse(fmt.Sprintf("%s/api/1/vehicles/fleet_telemetry_config", baseURL))
+	if err != nil {
+		return err
+	}
+
+	exp := time.Now().AddDate(0, 0, 364).Unix()
+
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+
+	r := RegisterVehicleToTelemetryServerRequest{
+		Vins: []string{vin},
+		Config: TelemetryConfigRequest{
+			HostName:            t.Settings.TeslaTelemetryHostName,
+			PublicCACertificate: t.Settings.TeslaTelemetryCACertificate,
+			Expiration:          exp,
+			Port:                t.Settings.TeslaTelemetryPort,
+			Fields:              make(map[string]Interval),
+		},
+	}
+	for _, v := range fields {
+		r.Config.Fields[v] = Interval{
+			IntervalSeconds: 1800,
+		}
+	}
+
+	b, err := json.Marshal(r)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(ctxTimeout, http.MethodPost, u.String(), bytes.NewBuffer(b))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := t.HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		errBody := new(TeslaFleetAPIError)
+		if err := json.NewDecoder(resp.Body).Decode(errBody); err != nil {
+			t.log.
+				Err(err).
+				Str("url", u.String()).
+				Msg("error occurred registering vehicle to telemetry server.")
+			return fmt.Errorf("invalid response encountered while registring vehicle to telemetry server: %s", errBody.ErrorDescription)
+		}
+		return fmt.Errorf("error occurred registering vehicle to telemetry server.: %s", errBody.ErrorDescription)
+	}
+
+	return nil
+}
+
 // performTeslaGetRequest a helper function for making http requests, it adds a timeout context and parses error response
 func (t *teslaFleetAPIService) performTeslaGetRequest(ctx context.Context, url, token string) (*http.Response, error) {
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
@@ -184,4 +264,171 @@ func (t *teslaFleetAPIService) performTeslaGetRequest(ctx context.Context, url, 
 	}
 
 	return resp, nil
+}
+
+var fields = []string{
+	"Unknown",
+	"DriveRail",
+	"ChargeState",
+	"BmsFullchargecomplete",
+	"VehicleSpeed",
+	"Odometer",
+	"PackVoltage",
+	"PackCurrent",
+	"Soc",
+	"DCDCEnable",
+	"Gear",
+	"IsolationResistance",
+	"PedalPosition",
+	"BrakePedal",
+	"DiStateR",
+	"DiHeatsinkTR",
+	"DiAxleSpeedR",
+	"DiTorquemotor",
+	"DiStatorTempR",
+	"DiVBatR",
+	"DiMotorCurrentR",
+	"Location",
+	"GpsState",
+	"GpsHeading",
+	"NumBrickVoltageMax",
+	"BrickVoltageMax",
+	"NumBrickVoltageMin",
+	"BrickVoltageMin",
+	"NumModuleTempMax",
+	"ModuleTempMax",
+	"NumModuleTempMin",
+	"ModuleTempMin",
+	"RatedRange",
+	"Hvil",
+	"DCChargingEnergyIn",
+	"DCChargingPower",
+	"ACChargingEnergyIn",
+	"ACChargingPower",
+	"ChargeLimitSoc",
+	"FastChargerPresent",
+	"EstBatteryRange",
+	"IdealBatteryRange",
+	"BatteryLevel",
+	"TimeToFullCharge",
+	"ScheduledChargingStartTime",
+	"ScheduledChargingPending",
+	"ScheduledDepartureTime",
+	"PreconditioningEnabled",
+	"ScheduledChargingMode",
+	"ChargeAmps",
+	"ChargeEnableRequest",
+	"ChargerPhases",
+	"ChargePortColdWeatherMode",
+	"ChargeCurrentRequest",
+	"ChargeCurrentRequestMax",
+	"BatteryHeaterOn",
+	"NotEnoughPowerToHeat",
+	"SuperchargerSessionTripPlanner",
+	"DoorState",
+	"Locked",
+	"FdWindow",
+	"FpWindow",
+	"RdWindow",
+	"RpWindow",
+	"VehicleName",
+	"SentryMode",
+	"SpeedLimitMode",
+	"CurrentLimitMph",
+	"Version",
+	"TpmsPressureFl",
+	"TpmsPressureFr",
+	"TpmsPressureRl",
+	"TpmsPressureRr",
+	"SemitruckTpmsPressureRe1L0",
+	"SemitruckTpmsPressureRe1L1",
+	"SemitruckTpmsPressureRe1R0",
+	"SemitruckTpmsPressureRe1R1",
+	"SemitruckTpmsPressureRe2L0",
+	"SemitruckTpmsPressureRe2L1",
+	"SemitruckTpmsPressureRe2R0",
+	"SemitruckTpmsPressureRe2R1",
+	"TpmsLastSeenPressureTimeFl",
+	"TpmsLastSeenPressureTimeFr",
+	"TpmsLastSeenPressureTimeRl",
+	"TpmsLastSeenPressureTimeRr",
+	"InsideTemp",
+	"OutsideTemp",
+	"SeatHeaterLeft",
+	"SeatHeaterRight",
+	"SeatHeaterRearLeft",
+	"SeatHeaterRearRight",
+	"SeatHeaterRearCenter",
+	"AutoSeatClimateLeft",
+	"AutoSeatClimateRight",
+	"DriverSeatBelt",
+	"PassengerSeatBelt",
+	"DriverSeatOccupied",
+	"SemitruckPassengerSeatFoldPosition",
+	"LateralAcceleration",
+	"LongitudinalAcceleration",
+	"CruiseState",
+	"CruiseSetSpeed",
+	"LifetimeEnergyUsed",
+	"LifetimeEnergyUsedDrive",
+	"SemitruckTractorParkBrakeStatus",
+	"SemitruckTrailerParkBrakeStatus",
+	"BrakePedalPos",
+	"RouteLastUpdated",
+	"RouteLine",
+	"MilesToArrival",
+	"MinutesToArrival",
+	"OriginLocation",
+	"DestinationLocation",
+	"CarType",
+	"Trim",
+	"ExteriorColor",
+	"RoofColor",
+	"ChargePort",
+	"ChargePortLatch",
+	"Experimental_1",
+	"Experimental_2",
+	"Experimental_3",
+	"Experimental_4",
+	"GuestModeEnabled",
+	"PinToDriveEnabled",
+	"PairedPhoneKeyAndKeyFobQty",
+	"CruiseFollowDistance",
+	"AutomaticBlindSpotCamera",
+	"BlindSpotCollisionWarningChime",
+	"SpeedLimitWarning",
+	"ForwardCollisionWarning",
+	"LaneDepartureAvoidance",
+	"EmergencyLaneDepartureAvoidance",
+	"AutomaticEmergencyBrakingOff",
+	"LifetimeEnergyGainedRegen",
+	"DiStateF",
+	"DiStateREL",
+	"DiStateRER",
+	"DiHeatsinkTF",
+	"DiHeatsinkTREL",
+	"DiHeatsinkTRER",
+	"DiAxleSpeedF",
+	"DiAxleSpeedREL",
+	"DiAxleSpeedRER",
+	"DiSlaveTorqueCmd",
+	"DiTorqueActualR",
+	"DiTorqueActualF",
+	"DiTorqueActualREL",
+	"DiTorqueActualRER",
+	"DiStatorTempF",
+	"DiStatorTempREL",
+	"DiStatorTempRER",
+	"DiVBatF",
+	"DiVBatREL",
+	"DiVBatRER",
+	"DiMotorCurrentF",
+	"DiMotorCurrentREL",
+	"DiMotorCurrentRER",
+	"EnergyRemaining",
+	"ServiceMode",
+	"BMSState",
+	"GuestModeMobileAccessState",
+	"Deprecated_1",
+	"DestinationName",
 }
