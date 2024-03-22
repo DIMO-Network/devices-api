@@ -92,7 +92,6 @@ func main() {
 		subcommands.Register(&remakeFenceTopicCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&remakeDeviceDefinitionTopicsCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
 		subcommands.Register(&startSmartcarFromRefreshCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
-		subcommands.Register(&autopiToolsCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&updateStateCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&web2PairCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&autoPiKTableDeleteCmd{logger: logger, container: deps}, "device integrations")
