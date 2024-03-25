@@ -318,13 +318,14 @@ func (nc *NFTController) GetNFTImage(c *fiber.Ctx) error {
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
 
 	var imageName string
-
+	// todo: NFT not found errors here were getting hit a lot in prod - should we have a prometheus metric or we don't care?
 	nft, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.TokenID.EQ(tid),
 		qm.Load(models.VehicleNFTRels.UserDevice),
 	).One(c.Context(), nc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			helpers.SkipErrorLog(c)
 			return fiber.NewError(fiber.StatusNotFound, "NFT not found.")
 		}
 		nc.log.Err(err).Msg("Database error retrieving NFT metadata.")
@@ -332,6 +333,7 @@ func (nc *NFTController) GetNFTImage(c *fiber.Ctx) error {
 	}
 
 	if nft.R.UserDevice == nil {
+		helpers.SkipErrorLog(c)
 		return fiber.NewError(fiber.StatusNotFound, "NFT not found.")
 	}
 
@@ -350,6 +352,8 @@ func (nc *NFTController) GetNFTImage(c *fiber.Ctx) error {
 		if transparent {
 			var nsk *s3types.NoSuchKey
 			if errors.As(err, &nsk) {
+				// todo: this error was getting hit a lot in production
+				helpers.SkipErrorLog(c)
 				return fiber.NewError(fiber.StatusNotFound, "Transparent version not set.")
 			}
 		}
@@ -367,7 +371,7 @@ func (nc *NFTController) GetNFTImage(c *fiber.Ctx) error {
 	return c.Send(b)
 }
 
-// GetAftermarketDeviceNFTByAddress godoc
+// GetAftermarketDeviceNFTMetadataByAddress godoc
 // @Description Retrieves NFT metadata for a given aftermarket device, using the device's
 // @Description Ethereum address.
 // @Tags        nfts
