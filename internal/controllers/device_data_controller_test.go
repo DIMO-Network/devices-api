@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/DIMO-Network/shared/privileges"
 	"io"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/DIMO-Network/shared/privileges"
 
 	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
 	"github.com/tidwall/gjson"
