@@ -643,20 +643,26 @@ func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 4)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Escape", 2020, integration)
 
-	//const powertrainType = "powertrain_type"
-	//powertrainValue := "BEV"
-	//for _, item := range dd[0].DeviceAttributes {
-	//	if item.Name == powertrainType {
-	//		powertrainValue = item.Value
-	//		break
-	//	}
-	//}
+	const powertrainType = "powertrain_type"
+	powertrainValue := "BEV"
+	for _, item := range dd[0].DeviceAttributes {
+		if item.Name == powertrainType {
+			item.Value = powertrainValue
+			break
+		}
+	}
 
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: nil}, nil)
 	// validates that if country=USA we update the powertrain based on what the NHTSA vin decoder says
+
+	// seperate request to validate info persisted to user_device table
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Times(1).
+		Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).
+		Return(dd[0], nil)
 
 	payload := `{ "vin": "5YJYGDEE5MF085533" }`
 	request := test.BuildRequest("PATCH", "/user/devices/"+ud.ID+"/vin", payload)
@@ -666,9 +672,7 @@ func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 		body, _ := io.ReadAll(response.Body)
 		fmt.Println("message: " + string(body))
 	}
-	// seperate request to validate info persisted to user_device table
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Times(1).
-		Return(dd, nil)
+
 	request = test.BuildRequest("GET", "/user/devices/me", "")
 	response, responseError = s.app.Test(request, 120*1000)
 	require.NoError(s.T(), responseError)
@@ -676,7 +680,7 @@ func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 	body, _ := io.ReadAll(response.Body)
 	fmt.Println(string(body))
 	pt := gjson.GetBytes(body, "userDevices.0.metadata.powertrainType").String()
-	assert.Equal(s.T(), "BEV", pt)
+	assert.Equal(s.T(), powertrainValue, pt)
 }
 
 func (s *UserDevicesControllerTestSuite) TestVINValidate() {
