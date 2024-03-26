@@ -2093,7 +2093,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_controllers.DocumentResponse'
+              $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DocumentResponse'
             type: array
       security:
       - BearerAuth: []
@@ -2130,7 +2130,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_controllers.DocumentResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DocumentResponse'
       security:
       - BearerAuth: []
       tags:
@@ -2171,7 +2171,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.DocumentResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DocumentResponse'
       security:
       - BearerAuth: []
       tags:
@@ -2565,7 +2565,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.GetUserDeviceErrorCodeQueriesResponse'
+            $ref: '#/definitions/internal_controllers.GetUserDeviceErrorCodeQueriesResponse'
         "404":
           description: Vehicle not found
           schema:
@@ -2587,12 +2587,12 @@ paths:
         name: queryDeviceErrorCodes
         required: true
         schema:
-          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.QueryDeviceErrorCodesReq'
+          $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesReq'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.QueryDeviceErrorCodesResponse'
+            $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesResponse'
         "404":
           description: Vehicle not found
           schema:
@@ -2609,7 +2609,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.QueryDeviceErrorCodesResponse'
+            $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesResponse'
         "404":
           description: Vehicle not found
           schema:
@@ -2969,7 +2969,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DeviceSnapshot'
+            $ref: '#/definitions/internal_controllers.DeviceSnapshot'
       security:
       - BearerAuth: []
       tags:
@@ -3224,7 +3224,7 @@ paths:
       - BearerAuth: []
       tags:
       - geofence
-  /user/vehicle/:tokenID/commands/burn:
+  /user/vehicle/{tokenID}/commands/burn:
     get:
       description: Returns the data the user must sign in order to burn the device.
       parameters:
