@@ -851,7 +851,7 @@ func (nc *NFTController) GetVinCredential(c *fiber.Ctx) error {
 // @Param       tokenID path int true "token id"
 // @Success     200          {object} apitypes.TypedData
 // @Security    BearerAuth
-// @Router     /user/devices/:tokenID/commands/burn [get]
+// @Router     /user/devices/{tokenID}/commands/burn [get]
 func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 	tis := c.Params("tokenID")
 	ti, ok := new(big.Int).SetString(tis, 10)
@@ -912,7 +912,7 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 // @Param       burnRequest  body controllers.BurnRequest true "Signature and Token ID"
 // @Success     200
 // @Security    BearerAuth
-// @Router      /user/devices/:tokenID/commands/burn [post]
+// @Router      /user/devices/{tokenID}/commands/burn [post]
 func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	tis := c.Params("tokenID")
 	ti, ok := new(big.Int).SetString(tis, 10)
