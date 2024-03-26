@@ -175,7 +175,7 @@ func VehicleToken(dbs db.Store, logger *zerolog.Logger) fiber.Handler {
 			return errNotFound
 		}
 
-		logger := logger.With().Str("userId", userID).Str("tokenID", tokenID).Logger()
+		logger := logger.With().Str("userId", userID).Int64("tokenID", ti.Int64()).Logger()
 		c.Locals("logger", &logger)
 
 		tknOwner, err := models.VehicleNFTS(
@@ -189,9 +189,14 @@ func VehicleToken(dbs db.Store, logger *zerolog.Logger) fiber.Handler {
 			return err
 		}
 
-		if tknOwner.R.UserDevice != nil && tknOwner.R.UserDevice.UserID == userID && !tknOwner.OwnerAddress.IsZero() {
-			return c.Next()
+		if tknOwner.R.UserDevice != nil {
+			if tknOwner.R.UserDevice.UserID == userID && !tknOwner.OwnerAddress.IsZero() {
+				return c.Next()
+			}
+			logger.Info().Str("owner", common.Bytes2Hex(tknOwner.OwnerAddress.Bytes)).Str("udID", tknOwner.R.UserDevice.UserID).Msg("invalid udID or owner address")
 		}
+
+		logger.Info().Str("owner", common.Bytes2Hex(tknOwner.OwnerAddress.Bytes)).Msg("no user device found")
 
 		return errNotFound
 	}
