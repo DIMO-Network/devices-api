@@ -190,8 +190,7 @@ func VehicleToken(dbs db.Store, logger *zerolog.Logger) fiber.Handler {
 		}
 
 		if tknOwner.R.UserDevice != nil && tknOwner.R.UserDevice.UserID == userID && !tknOwner.OwnerAddress.IsZero() {
-				return c.Next()
-			}
+			return c.Next()
 		}
 
 		return errNotFound
