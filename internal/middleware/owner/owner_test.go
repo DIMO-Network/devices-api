@@ -269,133 +269,86 @@ func TestVehicleTokenOwnerMiddleware(t *testing.T) {
 	pdb, container := test.StartContainerDatabase(ctx, t, "../../../migrations")
 	logger := test.Logger()
 
-	middleware := VehicleToken(pdb, logger)
+	usersClient := &test.UsersClient{}
+	middleware := VehicleToken(pdb, usersClient, logger)
 	app := test.SetupAppFiber(*logger)
 
+	userID := ksuid.New().String()
+	app.Get("/user/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(userID), middleware, func(c *fiber.Ctx) error {
+		logger := c.Locals("logger").(*zerolog.Logger)
+		logger.Info().Msg("Omega croggers.")
+		return nil
+	})
+
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		UserID:             userID,
+		DeviceDefinitionID: ksuid.New().String(),
+	}
+
+	err := ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	require.NoError(t, err)
+
+	mtx := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusConfirmed,
+	}
+	err = mtx.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	require.NoError(t, err)
+
+	vnft := models.VehicleNFT{
+		TokenID:       types.NewNullDecimal(decimal.New(7, 0)),
+		Vin:           "abc",
+		MintRequestID: mtx.ID,
+		OwnerAddress:  null.BytesFrom(common.BigToAddress(big.NewInt(1)).Bytes()),
+		UserDeviceID:  null.StringFrom(ud.ID),
+	}
+
 	cases := []struct {
-		Name          string
-		UserID        string
-		UserIDIsAddr  bool
-		TokenID       int64
-		InvalidAddr   bool
-		WrongNFTOwner bool
-		ExpectedCode  int
+		Name         string
+		InvalidAddr  bool
+		UserExists   bool
+		ExpectedCode int
 	}{
 		{
-			Name:         "no-device-found",
+			Name:         "user-not-found",
+			UserExists:   false,
 			ExpectedCode: errNotFound.Code,
 		},
 		{
-			Name:         "user-id-is-addr",
-			UserID:       "0x9eaD03F7136Fc6b4bDb0780B00a1c14aE5A8B6d0",
-			UserIDIsAddr: true,
-			TokenID:      3,
-			ExpectedCode: 200,
-		},
-		{
-			Name:          "user-id-is-addr/wrong-nft-owner",
-			UserID:        "0x9eaD03F7136Fc6b4bDb0780B00a1c14aE5A8B6d0",
-			UserIDIsAddr:  true,
-			TokenID:       5,
-			WrongNFTOwner: true,
-			ExpectedCode:  errNotFound.Code,
-		},
-		{
-			Name:         "user-id-is-str",
-			UserID:       ksuid.New().String(),
-			UserIDIsAddr: false,
-			TokenID:      7,
-			ExpectedCode: 200,
-		},
-		{
-			Name:         "user-id-is-str/invalid-addr",
-			UserID:       ksuid.New().String(),
-			UserIDIsAddr: false,
-			TokenID:      13,
+			Name:         "no-eth-addr",
+			UserExists:   true,
 			InvalidAddr:  true,
 			ExpectedCode: errNotFound.Code,
+		},
+		{
+			Name:         "valid-user-id/valid-addr",
+			ExpectedCode: 200,
+			UserExists:   true,
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
-			app.Get(fmt.Sprintf("/%s/:tokenID", c.Name), test.AuthInjectorTestHandler(c.UserID), middleware, func(c *fiber.Ctx) error {
-				logger := c.Locals("logger").(*zerolog.Logger)
-				logger.Info().Msg("Omega croggers.")
-				return nil
-			})
-
-			_, err := models.UserDevices().DeleteAll(ctx, pdb.DBS().Writer)
-			require.NoError(t, err)
 
 			_, err = models.VehicleNFTS().DeleteAll(ctx, pdb.DBS().Writer)
 			require.NoError(t, err)
 
-			if c.UserIDIsAddr && c.TokenID > 0 {
-				ud := models.UserDevice{
-					ID:                 ksuid.New().String(),
-					UserID:             ksuid.New().String(),
-					DeviceDefinitionID: ksuid.New().String(),
+			usersClient.Store = map[string]*pb.User{}
+
+			if c.UserExists {
+				u := &pb.User{Id: userID}
+				if !c.InvalidAddr {
+					addr := common.Bytes2Hex(vnft.OwnerAddress.Bytes)
+					u.EthereumAddress = &addr
 				}
-
-				err = ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
-				require.NoError(t, err)
-
-				mtx := models.MetaTransactionRequest{
-					ID:     ksuid.New().String(),
-					Status: models.MetaTransactionRequestStatusConfirmed,
-				}
-				err = mtx.Insert(ctx, pdb.DBS().Writer, boil.Infer())
-				require.NoError(t, err)
-
-				vnft := models.VehicleNFT{
-					TokenID:       types.NewNullDecimal(decimal.New(c.TokenID, 0)),
-					Vin:           "abc",
-					MintRequestID: mtx.ID,
-					OwnerAddress:  null.BytesFrom(common.FromHex(c.UserID)),
-					UserDeviceID:  null.StringFrom(ud.ID),
-				}
-
-				if c.WrongNFTOwner {
-					vnft.OwnerAddress = null.BytesFrom(common.FromHex("0x4abC03F7136Fc6b4bDb0780B00a1c14aE5A8B6d0"))
-				}
-
-				err = vnft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
-				require.NoError(t, err)
-			} else if c.TokenID > 0 {
-				ud := models.UserDevice{
-					ID:                 ksuid.New().String(),
-					UserID:             c.UserID,
-					DeviceDefinitionID: ksuid.New().String(),
-				}
-
-				err = ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
-				require.NoError(t, err)
-
-				mtx := models.MetaTransactionRequest{
-					ID:     ksuid.New().String(),
-					Status: models.MetaTransactionRequestStatusConfirmed,
-				}
-				err = mtx.Insert(ctx, pdb.DBS().Writer, boil.Infer())
-				require.NoError(t, err)
-
-				vnft := models.VehicleNFT{
-					TokenID:       types.NewNullDecimal(decimal.New(c.TokenID, 0)),
-					Vin:           "abc",
-					MintRequestID: mtx.ID,
-					OwnerAddress:  null.BytesFrom(common.BigToAddress(big.NewInt(1)).Bytes()),
-					UserDeviceID:  null.StringFrom(ud.ID),
-				}
-
-				if c.InvalidAddr {
-					vnft.OwnerAddress = null.Bytes{}
-				}
-
-				err = vnft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
-				require.NoError(t, err)
+				usersClient.Store[userID] = u
 			}
 
-			request := test.BuildRequest("GET", fmt.Sprintf("/%s/%d", c.Name, c.TokenID), "")
+			err = vnft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+			require.NoError(t, err)
+
+			request := test.BuildRequest("GET", fmt.Sprintf("/user/vehicle/%s/commands/burn", vnft.TokenID.Big.String()), "")
 			res, err := app.Test(request)
 			require.Nil(t, err)
 			assert.Equal(t, c.ExpectedCode, res.StatusCode)
