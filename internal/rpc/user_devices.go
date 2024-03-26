@@ -642,10 +642,11 @@ func (s *userDeviceRPCServer) ClearMetaTransactionRequests(ctx context.Context, 
 	currTime := time.Now()
 	fifteenminsAgo := currTime.Add(-time.Minute * 15)
 
-	m, err := models.MetaTransactionRequests(
+	metaTransaction, err := models.MetaTransactionRequests(
 		models.MetaTransactionRequestWhere.CreatedAt.LT(fifteenminsAgo),
 		qm.OrderBy(models.MetaTransactionRequestColumns.CreatedAt+" ASC"),
 	).One(ctx, s.dbs().Reader)
+
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("no overdue meta transaction")
@@ -653,10 +654,26 @@ func (s *userDeviceRPCServer) ClearMetaTransactionRequests(ctx context.Context, 
 		return nil, fmt.Errorf("failed to select transaction to clear: %w", err)
 	}
 
-	_, err = m.Delete(ctx, s.dbs().Writer)
+	_, err = models.SyntheticDevices(
+		models.SyntheticDeviceWhere.MintRequestID.EQ(metaTransaction.ID),
+	).DeleteAll(ctx, s.dbs().Writer)
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to Delete transaction %s: %w", m.ID, err)
+		return nil, fmt.Errorf("failed to delete synthetic device: %w", err)
 	}
 
-	return &pb.ClearMetaTransactionRequestsResponse{Id: m.ID}, nil
+	_, err = models.VehicleNFTS(
+		models.VehicleNFTWhere.MintRequestID.EQ(metaTransaction.ID),
+	).DeleteAll(ctx, s.dbs().Writer)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to delete vehicle nft: %w", err)
+	}
+
+	_, err = metaTransaction.Delete(ctx, s.dbs().Writer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to Delete transaction %s: %w", metaTransaction.ID, err)
+	}
+
+	return &pb.ClearMetaTransactionRequestsResponse{Id: metaTransaction.ID}, nil
 }
