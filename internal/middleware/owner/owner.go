@@ -3,9 +3,12 @@ package owner
 import (
 	"database/sql"
 	"errors"
+	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/DIMO-Network/shared"
+	"github.com/ericlagergren/decimal"
 
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/models"
@@ -15,6 +18,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -137,5 +141,58 @@ func AftermarketDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *z
 		}
 
 		return c.Next()
+	}
+}
+
+// VehicleToken creates a new middleware handler that checks whether a user is authorized to access
+// a user device based on token id. For the middleware to allow the request to proceed:
+//
+//   - The request must have a valid JWT, identifying a user.
+//   - There must be a tokenID path parameter, which must be a vehicle NFT that exists.
+//   - The user must have an Ethereum address that owns the corresponding NFT.
+func VehicleToken(dbs db.Store, logger *zerolog.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		userID := helpers.GetUserID(c)
+		tokenID := c.Params("tokenID")
+		ti, ok := new(big.Int).SetString(tokenID, 10)
+		if !ok {
+			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("failed to parse token id %q", tokenID))
+		}
+		tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
+
+		if common.IsHexAddress(userID) {
+			logger := logger.With().Str("ethAddr", userID).Str("tokenID", tokenID).Logger()
+			c.Locals("logger", &logger)
+
+			if owned, err := models.VehicleNFTS(
+				models.VehicleNFTWhere.TokenID.EQ(tid),
+				models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(userID))),
+			).Exists(c.Context(), dbs.DBS().Reader); err != nil {
+				return err
+			} else if owned {
+				return c.Next()
+			}
+			return errNotFound
+		}
+
+		logger := logger.With().Str("userId", userID).Str("tokenID", tokenID).Logger()
+		c.Locals("logger", &logger)
+
+		tknOwner, err := models.VehicleNFTS(
+			models.VehicleNFTWhere.TokenID.EQ(tid),
+			qm.Load(models.VehicleNFTRels.UserDevice),
+		).One(c.Context(), dbs.DBS().Reader)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return errNotFound
+			}
+			return err
+		}
+
+		if tknOwner.R.UserDevice != nil && tknOwner.R.UserDevice.UserID == userID && !tknOwner.OwnerAddress.IsZero() {
+			return c.Next()
+		}
+
+		return errNotFound
 	}
 }

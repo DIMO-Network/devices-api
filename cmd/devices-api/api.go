@@ -211,10 +211,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 
-	// vehicle token actions
-	vPriv.Get("/commands/burn", userDeviceController.GetBurnDevice)
-	vPriv.Post("/commands/burn", userDeviceController.PostBurnDevice)
-
 	// vehicle command privileges
 	vPriv.Get("/status", privTokenWare.OneOf(vehicleAddr,
 		[]privileges.Privilege{privileges.VehicleNonLocationData, privileges.VehicleCurrentLocation, privileges.VehicleAllTimeLocation}), nftController.GetVehicleStatus)
@@ -311,6 +307,12 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Delete("/integrations/:integrationID", userDeviceController.DeleteUserDeviceIntegration)
 	udOwner.Post("/integrations/:integrationID", userDeviceController.RegisterDeviceIntegration)
 	udOwner.Post("/commands/refresh", userDeviceController.RefreshUserDeviceStatus)
+
+	// token owner actions
+	udOwnerByTokenMw := owner.VehicleToken(pdb, &logger)
+	udOwnerByToken := v1Auth.Group("/user/devices/:tokenID", udOwnerByTokenMw)
+	udOwnerByToken.Get("/commands/burn", userDeviceController.GetBurnDevice)
+	udOwnerByToken.Post("/commands/burn", userDeviceController.PostBurnDevice)
 
 	if settings.SyntheticDevicesEnabled {
 		syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, wallet, registryClient)

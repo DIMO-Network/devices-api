@@ -398,7 +398,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_controllers.DocumentResponse"
+                                "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DocumentResponse"
                             }
                         }
                     }
@@ -453,7 +453,7 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.DocumentResponse"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DocumentResponse"
                         }
                     }
                 }
@@ -489,7 +489,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.DocumentResponse"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DocumentResponse"
                         }
                     }
                 }
@@ -614,7 +614,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.CompleteOAuthExchangeRequest"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CompleteOAuthExchangeRequest"
                         }
                     }
                 ],
@@ -622,7 +622,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.CompleteOAuthExchangeResponseWrapper"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CompleteOAuthExchangeResponseWrapper"
                         }
                     }
                 }
@@ -744,7 +744,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RegisterUserDevice"
+                            "$ref": "#/definitions/internal_controllers.RegisterUserDevice"
                         }
                     }
                 ],
@@ -752,8 +752,72 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RegisterUserDeviceResponse"
+                            "$ref": "#/definitions/internal_controllers.RegisterUserDeviceResponse"
                         }
+                    }
+                }
+            }
+        },
+        "/user/devices/:tokenID/commands/burn": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the data the user must sign in order to burn the device.",
+                "tags": [
+                    "user-devices"
+                ],
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "token id",
+                        "name": "tokenID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apitypes.TypedData"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Sends a burn device request to the blockchain",
+                "tags": [
+                    "user-devices"
+                ],
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "token id",
+                        "name": "tokenID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Signature and Token ID",
+                        "name": "burnRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.BurnRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
                     }
                 }
             }
@@ -970,7 +1034,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RegisterUserDeviceSmartcar"
+                            "$ref": "#/definitions/internal_controllers.RegisterUserDeviceSmartcar"
                         }
                     }
                 ],
@@ -978,13 +1042,13 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UserDeviceFull"
+                            "$ref": "#/definitions/internal_controllers.UserDeviceFull"
                         }
                     },
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UserDeviceFull"
+                            "$ref": "#/definitions/internal_controllers.UserDeviceFull"
                         }
                     },
                     "400": {
@@ -1029,7 +1093,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RegisterUserDeviceVIN"
+                            "$ref": "#/definitions/internal_controllers.RegisterUserDeviceVIN"
                         }
                     }
                 ],
@@ -1037,7 +1101,7 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UserDeviceFull"
+                            "$ref": "#/definitions/internal_controllers.UserDeviceFull"
                         }
                     },
                     "400": {
@@ -1070,7 +1134,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.MyDevicesResp"
+                            "$ref": "#/definitions/internal_controllers.MyDevicesResp"
                         }
                     }
                 }
@@ -1094,7 +1158,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.MyDevicesResp"
+                            "$ref": "#/definitions/internal_controllers.MyDevicesResp"
                         }
                     }
                 }
@@ -1180,7 +1244,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.MintRequest"
+                            "$ref": "#/definitions/internal_controllers.MintRequest"
                         }
                     }
                 ],
@@ -1275,7 +1339,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UpdateCountryCodeReq"
+                            "$ref": "#/definitions/internal_controllers.UpdateCountryCodeReq"
                         }
                     }
                 ],
@@ -1495,7 +1559,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.BurnSyntheticDeviceRequest"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.BurnSyntheticDeviceRequest"
                         }
                     }
                 ],
@@ -1695,7 +1759,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.MintSyntheticDeviceRequest"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.MintSyntheticDeviceRequest"
                         }
                     }
                 ],
@@ -1815,7 +1879,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UpdateNameReq"
+                            "$ref": "#/definitions/internal_controllers.UpdateNameReq"
                         }
                     },
                     {
@@ -1851,7 +1915,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DeviceOffer"
+                            "$ref": "#/definitions/internal_controllers.DeviceOffer"
                         }
                     }
                 }
@@ -1884,7 +1948,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DeviceRange"
+                            "$ref": "#/definitions/internal_controllers.DeviceRange"
                         }
                     }
                 }
@@ -1950,7 +2014,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DeviceValuation"
+                            "$ref": "#/definitions/internal_controllers.DeviceValuation"
                         }
                     }
                 }
@@ -1980,7 +2044,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UpdateVINReq"
+                            "$ref": "#/definitions/internal_controllers.UpdateVINReq"
                         }
                     },
                     {
@@ -2023,7 +2087,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.NFTImageData"
+                            "$ref": "#/definitions/internal_controllers.NFTImageData"
                         }
                     }
                 ],
@@ -2172,70 +2236,6 @@
                 "responses": {
                     "204": {
                         "description": "No Content"
-                    }
-                }
-            }
-        },
-        "/vehicle/:tokenID/commands/burn": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns the data the user must sign in order to burn the device.",
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apitypes.TypedData"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Sends a burn device request to the blockchain",
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Signature and Token ID",
-                        "name": "burnRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.BurnRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
                     }
                 }
             }
