@@ -163,10 +163,9 @@ func VehicleToken(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolo
 		c.Locals("tokenID", tid.Big.String())
 		logger := logger.With().Str("userId", userID).Str("tokenID", tid.Big.String()).Logger()
 		c.Locals("logger", &logger)
-		logger.Info().Msg("vehicle token auth")
+
 		user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 		if err != nil {
-			logger.Info().Msg("failed to get user")
 			if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
 				return errNotFound
 			}
@@ -174,7 +173,6 @@ func VehicleToken(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolo
 		}
 
 		if user.EthereumAddress == nil {
-			logger.Info().Msg("no eth addr for user")
 			return errNotFound
 		}
 
@@ -182,12 +180,11 @@ func VehicleToken(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolo
 			models.VehicleNFTWhere.TokenID.EQ(tid),
 			models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(*user.EthereumAddress))),
 		).Exists(c.Context(), dbs.DBS().Reader); err != nil {
-			logger.Info().Msg("user does not own vehicle nft")
 			return err
 		} else if userAddrOwns {
 			return c.Next()
 		}
-		logger.Info().Msg("failed to authenticate user")
+
 		return errNotFound
 	}
 }
