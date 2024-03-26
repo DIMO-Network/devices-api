@@ -133,6 +133,10 @@ definitions:
       externalId:
         type: string
       signature:
+        description: |-
+          AftermarketDeviceSignature is the 65-byte, hex-encoded Ethereum signature of
+          the pairing payload by the device. Only needed if the vehicle owner and aftermarket
+          device owner are not the same.
         items:
           type: integer
         type: array
@@ -956,10 +960,6 @@ definitions:
       externalId:
         type: string
       signature:
-        description: |-
-          AftermarketDeviceSignature is the 65-byte, hex-encoded Ethereum signature of
-          the pairing payload by the device. Only needed if the vehicle owner and aftermarket
-          device owner are not the same.
         items:
           type: integer
         type: array
@@ -1918,7 +1918,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.AutoPiDeviceInfo'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.AutoPiDeviceInfo'
       security:
       - BearerAuth: []
       tags:
@@ -1956,7 +1956,7 @@ paths:
         name: claimRequest
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.AutoPiClaimRequest'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.AutoPiClaimRequest'
       produces:
       - application/json
       responses:
@@ -2226,14 +2226,14 @@ paths:
         name: user_device
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.CompleteOAuthExchangeRequest'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CompleteOAuthExchangeRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.CompleteOAuthExchangeResponseWrapper'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CompleteOAuthExchangeResponseWrapper'
       security:
       - ApiKeyAuth: []
       - BearerAuth: []
@@ -2377,7 +2377,7 @@ paths:
         name: userSignature
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.AutoPiPairRequest'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.AutoPiPairRequest'
       produces:
       - application/json
       responses: {}
@@ -2416,7 +2416,7 @@ paths:
         name: userSignature
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.AutoPiPairRequest'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.AutoPiPairRequest'
       produces:
       - application/json
       responses: {}
@@ -2433,7 +2433,7 @@ paths:
         name: userDeviceIntegrationRegistration
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.RegisterDeviceIntegrationRequest'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RegisterDeviceIntegrationRequest'
       responses:
         "204":
           description: No Content
@@ -2565,7 +2565,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.GetUserDeviceErrorCodeQueriesResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.GetUserDeviceErrorCodeQueriesResponse'
         "404":
           description: Vehicle not found
           schema:
@@ -2587,12 +2587,12 @@ paths:
         name: queryDeviceErrorCodes
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesReq'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.QueryDeviceErrorCodesReq'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.QueryDeviceErrorCodesResponse'
         "404":
           description: Vehicle not found
           schema:
@@ -2609,7 +2609,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.QueryDeviceErrorCodesResponse'
         "404":
           description: Vehicle not found
           schema:
@@ -2639,7 +2639,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.GetUserDeviceIntegrationResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.GetUserDeviceIntegrationResponse'
       security:
       - BearerAuth: []
       tags:
@@ -2670,7 +2670,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.CommandRequestStatusResp'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CommandRequestStatusResp'
       summary: Get the status of a submitted command.
       tags:
       - device
@@ -2750,7 +2750,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.CommandResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CommandResponse'
       summary: Lock the device's doors
       tags:
       - device
@@ -2777,7 +2777,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.CommandResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CommandResponse'
       summary: Unlock the device's doors
       tags:
       - device
@@ -2805,7 +2805,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.CommandResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CommandResponse'
       summary: Open the device's front trunk
       tags:
       - device
@@ -2886,7 +2886,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.CommandResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CommandResponse'
       summary: Open the device's rear trunk
       tags:
       - device
@@ -2969,7 +2969,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.DeviceSnapshot'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DeviceSnapshot'
       security:
       - BearerAuth: []
       tags:
@@ -3224,7 +3224,7 @@ paths:
       - BearerAuth: []
       tags:
       - geofence
-  /vehicle/:tokenID/commands/burn:
+  /user/vehicle/:tokenID/commands/burn:
     get:
       description: Returns the data the user must sign in order to burn the device.
       parameters:
@@ -3240,8 +3240,6 @@ paths:
             $ref: '#/definitions/apitypes.TypedData'
       security:
       - BearerAuth: []
-      tags:
-      - user-devices
     post:
       description: Sends a burn device request to the blockchain
       parameters:
@@ -3261,8 +3259,6 @@ paths:
           description: OK
       security:
       - BearerAuth: []
-      tags:
-      - user-devices
   /vehicle/{tokenID}/commands/doors/lock:
     post:
       description: Lock the device's doors.
