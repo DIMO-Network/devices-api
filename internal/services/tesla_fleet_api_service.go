@@ -23,6 +23,7 @@ type TeslaFleetAPIService interface {
 	GetVehicle(ctx context.Context, token, region string, vehicleID int) (*TeslaVehicle, error)
 	WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error
 	RegisterToTelemetryServer(ctx context.Context, token, region, vin string) error
+	SubscribeForPushNotifications(ctx context.Context, token, region string, r SubscribeForPushNotificationsRequest) error
 }
 
 type Interval struct {
@@ -66,6 +67,11 @@ type TeslaAuthCodeResponse struct {
 	Expiry       time.Time `json:"expiry"`
 	TokenType    string    `json:"token_type"`
 	Region       string    `json:"region"`
+}
+
+type SubscribeForPushNotificationsRequest struct {
+	DeviceToken string `json:"device_token"`
+	DeviceType  string `json:"device_type"`
 }
 
 type teslaFleetAPIService struct {
@@ -120,7 +126,7 @@ func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region st
 	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
 	url := baseURL + "/api/1/vehicles"
 
-	resp, err := t.performTeslaGetRequest(ctx, url, token)
+	resp, err := t.performTeslaRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch vehicles for user: %w", err)
 	}
@@ -143,7 +149,7 @@ func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region str
 	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
 	url := fmt.Sprintf("%s/api/1/vehicles/%d", baseURL, vehicleID)
 
-	resp, err := t.performTeslaGetRequest(ctx, url, token)
+	resp, err := t.performTeslaRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch vehicles for user: %w", err)
 	}
@@ -162,7 +168,7 @@ func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region 
 	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
 	url := fmt.Sprintf("%s/api/1/vehicles/%d/wake_up", baseURL, vehicleID)
 
-	resp, err := t.performTeslaGetRequest(ctx, url, token)
+	resp, err := t.performTeslaRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
 		return fmt.Errorf("could not fetch vehicles for user: %w", err)
 	}
@@ -235,12 +241,34 @@ func (t *teslaFleetAPIService) RegisterToTelemetryServer(ctx context.Context, to
 	return nil
 }
 
-// performTeslaGetRequest a helper function for making http requests, it adds a timeout context and parses error response
-func (t *teslaFleetAPIService) performTeslaGetRequest(ctx context.Context, url, token string) (*http.Response, error) {
+func (t *teslaFleetAPIService) SubscribeForPushNotifications(ctx context.Context, token, region string, r SubscribeForPushNotificationsRequest) error {
+	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
+	u, err := url.Parse(fmt.Sprintf("%s/api/1/subscriptions", baseURL))
+	if err != nil {
+		return err
+	}
+
+	b, err := json.Marshal(r)
+	if err != nil {
+		return err
+	}
+
+	resp, err := t.performTeslaRequest(ctx, u.String(), token, http.MethodPost, bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	return nil
+}
+
+// performTeslaRequest a helper function for making http requests, it adds a timeout context and parses error response
+func (t *teslaFleetAPIService) performTeslaRequest(ctx context.Context, url, token, method string, body *bytes.Reader) (*http.Response, error) {
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctxTimeout, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctxTimeout, method, url, body)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +288,7 @@ func (t *teslaFleetAPIService) performTeslaGetRequest(ctx context.Context, url, 
 				Msg("An error occurred when attempting to decode the error message from the api.")
 			return nil, fmt.Errorf("invalid response encountered while fetching user vehicles: %s", errBody.ErrorDescription)
 		}
-		return nil, fmt.Errorf("error occurred fetching user vehicles: %s", errBody.ErrorDescription)
+		return nil, fmt.Errorf("an error occurred: %s", errBody.ErrorDescription)
 	}
 
 	return resp, nil

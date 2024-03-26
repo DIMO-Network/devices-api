@@ -99,6 +99,20 @@ func (mr *MockTeslaFleetAPIServiceMockRecorder) RegisterToTelemetryServer(ctx, t
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterToTelemetryServer", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).RegisterToTelemetryServer), ctx, token, region, vin)
 }
 
+// SubscribeForPushNotifications mocks base method.
+func (m *MockTeslaFleetAPIService) SubscribeForPushNotifications(ctx context.Context, token, region string, r services.SubscribeForPushNotificationsRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubscribeForPushNotifications", ctx, token, region, r)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SubscribeForPushNotifications indicates an expected call of SubscribeForPushNotifications.
+func (mr *MockTeslaFleetAPIServiceMockRecorder) SubscribeForPushNotifications(ctx, token, region, r any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeForPushNotifications", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).SubscribeForPushNotifications), ctx, token, region, r)
+}
+
 // WakeUpVehicle mocks base method.
 func (m *MockTeslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error {
 	m.ctrl.T.Helper()
