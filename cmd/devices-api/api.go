@@ -312,6 +312,12 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Post("/integrations/:integrationID", userDeviceController.RegisterDeviceIntegration)
 	udOwner.Post("/commands/refresh", userDeviceController.RefreshUserDeviceStatus)
 
+	// Vehicle owner routes.
+	vehicleOwnerMw := owner.VehicleToken(pdb, usersClient, &logger)
+	vOwner := v1Auth.Group("/user/vehicle/:tokenID", vehicleOwnerMw)
+	vOwner.Get("/commands/burn", userDeviceController.GetBurnDevice)
+	vOwner.Post("/commands/burn", userDeviceController.PostBurnDevice)
+
 	if settings.SyntheticDevicesEnabled {
 		syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, wallet, registryClient)
 

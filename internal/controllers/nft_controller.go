@@ -843,11 +843,10 @@ func (nc *NFTController) GetVinCredential(c *fiber.Ctx) error {
 
 // GetBurnDevice godoc
 // @Description Returns the data the user must sign in order to burn the device.
-// @Tags        user-devices
 // @Param       tokenID path int true "token id"
 // @Success     200          {object} apitypes.TypedData
 // @Security    BearerAuth
-// @Router      /vehicle/:tokenID/commands/burn [get]
+// @Router     /user/vehicle/:tokenID/commands/burn [get]
 func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 	tis := c.Params("tokenID")
 	ti, ok := new(big.Int).SetString(tis, 10)
@@ -855,7 +854,7 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("failed to parse token id %q", tis))
 	}
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
-
+	udc.log.Info().Str("tokenID", tid.String()).Msg("GetBurnDevice request")
 	client := registry.Client{
 		Producer:     udc.producer,
 		RequestTopic: "topic.transaction.request.send",
@@ -903,12 +902,11 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 
 // PostBurnDevice godoc
 // @Description Sends a burn device request to the blockchain
-// @Tags        user-devices
 // @Param       tokenID path int true "token id"
 // @Param       burnRequest  body controllers.BurnRequest true "Signature and Token ID"
 // @Success     200
 // @Security    BearerAuth
-// @Router      /vehicle/:tokenID/commands/burn [post]
+// @Router      /user/vehicle/:tokenID/commands/burn [post]
 func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	tis := c.Params("tokenID")
 	ti, ok := new(big.Int).SetString(tis, 10)
@@ -916,7 +914,7 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("failed to parse token id %q", tis))
 	}
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
-
+	udc.log.Info().Str("tokenID", tid.String()).Msg("PostBurnDevice request")
 	client := registry.Client{
 		Producer:     udc.producer,
 		RequestTopic: "topic.transaction.request.send",
