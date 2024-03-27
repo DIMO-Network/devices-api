@@ -84,5 +84,43 @@ func (t *TeslaFleetAPIServiceTestSuite) TestRegisterToTelemetryServer() {
 	err := t.SUT.RegisterToTelemetryServer(t.ctx, token, region, vin)
 
 	t.Require().NoError(err)
+}
 
+func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForPushNotifications() {
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	token := "someToken"
+	region := "mockRegion"
+
+	baseURL := fmt.Sprintf(mockTeslaFleetBaeURL, region)
+	u := fmt.Sprintf("%s/api/1/subscriptions", baseURL)
+
+	mockDeviceTk := "SomeDevicetk"
+	mockDeviceType := "android"
+
+	httpmock.RegisterResponder(http.MethodPost, u, func(req *http.Request) (*http.Response, error) {
+		r := SubscribeForPushNotificationsRequest{}
+		if err := json.NewDecoder(req.Body).Decode(&r); err != nil {
+			return httpmock.NewStringResponse(400, ""), nil
+		}
+
+		t.Require().Equal(r, SubscribeForPushNotificationsRequest{
+			DeviceToken: mockDeviceTk,
+			DeviceType:  mockDeviceType,
+		})
+
+		resp, err := httpmock.NewJsonResponse(200, "")
+		if err != nil {
+			return httpmock.NewStringResponse(500, ""), nil
+		}
+		return resp, nil
+	})
+
+	err := t.SUT.SubscribeForPushNotifications(t.ctx, token, region, SubscribeForPushNotificationsRequest{
+		DeviceToken: mockDeviceTk,
+		DeviceType:  mockDeviceType,
+	})
+
+	t.Require().NoError(err)
 }
