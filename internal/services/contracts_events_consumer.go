@@ -367,51 +367,18 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 		return err
 	}
 
-	mfr, err := c.ddSvc.GetMakeByTokenID(context.TODO(), args.ManufacturerId)
-	if err != nil {
+	// Place this in a holding table until we receive AftermarketDeviceAttributeSet with the serial.
+	pad := models.PartialAftermarketDevice{
+		EthereumAddress:     args.AftermarketDeviceAddress.Bytes(),
+		TokenID:             utils.BigToDecimal(args.TokenId),
+		ManufacturerTokenID: utils.BigToDecimal(args.ManufacturerId),
+	}
+
+	if err := pad.Upsert(context.TODO(), c.db.DBS().Writer, false, []string{models.PartialAftermarketDeviceColumns.TokenID}, boil.Infer(), boil.Infer()); err != nil {
 		return err
 	}
 
-	switch mfr.Name {
-	case constants.AutoPiVendor:
-		device, err := c.autopiAPIService.GetDeviceByEthAddress(args.AftermarketDeviceAddress.Hex())
-		if err != nil {
-			return fmt.Errorf("couldn't fetch dongle with address %s: %w", args.AftermarketDeviceAddress, err)
-		}
-
-		c.log.Info().Str("serial", device.UnitID).Msgf("Aftermarket device minted with address %s, token id %d.", args.AftermarketDeviceAddress, args.TokenId)
-
-		amd := models.AftermarketDevice{
-			Serial:                    device.UnitID,
-			EthereumAddress:           args.AftermarketDeviceAddress.Bytes(),
-			TokenID:                   utils.BigToDecimal(args.TokenId),
-			DeviceManufacturerTokenID: utils.BigToDecimal(args.ManufacturerId),
-		}
-
-		amdMd := AftermarketDeviceMetadata{AutoPiDeviceID: device.ID}
-		_ = amd.Metadata.Marshal(amdMd)
-
-		cols := models.AftermarketDeviceColumns
-
-		err = amd.Upsert(context.Background(), c.db.DBS().Writer, true, []string{cols.Serial}, boil.Whitelist(cols.Metadata, cols.EthereumAddress, cols.TokenID, cols.UpdatedAt), boil.Infer())
-		if err != nil {
-			c.log.Error().Err(err).Msg("Failed to insert aftermarket device.")
-			return err
-		}
-	default:
-		// Place this in a holding table until we receive AftermarketDeviceAttributeSet with the serial.
-		pad := models.PartialAftermarketDevice{
-			EthereumAddress:     args.AftermarketDeviceAddress.Bytes(),
-			TokenID:             utils.BigToDecimal(args.TokenId),
-			ManufacturerTokenID: utils.BigToDecimal(args.ManufacturerId),
-		}
-
-		if err := pad.Upsert(context.TODO(), c.db.DBS().Writer, false, []string{models.PartialAftermarketDeviceColumns.TokenID}, boil.Infer(), boil.Infer()); err != nil {
-			return err
-		}
-
-		c.log.Info().Str("address", args.AftermarketDeviceAddress.Hex()).Msgf("Aftermarket device %d minted under manufacturer %d. Waiting for serial.", args.TokenId, args.ManufacturerId)
-	}
+	c.log.Info().Str("address", args.AftermarketDeviceAddress.Hex()).Msgf("Aftermarket device %d minted under manufacturer %d. Waiting for serial.", args.TokenId, args.ManufacturerId)
 
 	return nil
 }
