@@ -38,14 +38,13 @@ type Integration interface {
 }
 
 type ContractsEventsConsumer struct {
-	db               db.Store
-	log              *zerolog.Logger
-	settings         *config.Settings
-	registryAddr     common.Address
-	autopiAPIService AutoPiAPIService
-	apInt            Integration
-	mcInt            Integration
-	ddSvc            DeviceDefinitionService
+	db           db.Store
+	log          *zerolog.Logger
+	settings     *config.Settings
+	registryAddr common.Address
+	apInt        Integration
+	mcInt        Integration
+	ddSvc        DeviceDefinitionService
 }
 
 type EventName string
@@ -90,17 +89,14 @@ type Block struct {
 }
 
 func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration, mcInt Integration, ddSvc DeviceDefinitionService) *ContractsEventsConsumer {
-	autopiAPIService := NewAutoPiAPIService(settings, pdb.DBS)
-
 	return &ContractsEventsConsumer{
-		db:               pdb,
-		log:              log,
-		settings:         settings,
-		registryAddr:     common.HexToAddress(settings.DIMORegistryAddr),
-		autopiAPIService: autopiAPIService,
-		apInt:            apInt,
-		mcInt:            mcInt,
-		ddSvc:            ddSvc,
+		db:           pdb,
+		log:          log,
+		settings:     settings,
+		registryAddr: common.HexToAddress(settings.DIMORegistryAddr),
+		apInt:        apInt,
+		mcInt:        mcInt,
+		ddSvc:        ddSvc,
 	}
 }
 
@@ -367,51 +363,18 @@ func (c *ContractsEventsConsumer) setMintedAfterMarketDevice(e *ContractEventDat
 		return err
 	}
 
-	mfr, err := c.ddSvc.GetMakeByTokenID(context.TODO(), args.ManufacturerId)
-	if err != nil {
+	// Place this in a holding table until we receive AftermarketDeviceAttributeSet with the serial.
+	pad := models.PartialAftermarketDevice{
+		EthereumAddress:     args.AftermarketDeviceAddress.Bytes(),
+		TokenID:             utils.BigToDecimal(args.TokenId),
+		ManufacturerTokenID: utils.BigToDecimal(args.ManufacturerId),
+	}
+
+	if err := pad.Upsert(context.TODO(), c.db.DBS().Writer, false, []string{models.PartialAftermarketDeviceColumns.TokenID}, boil.Infer(), boil.Infer()); err != nil {
 		return err
 	}
 
-	switch mfr.Name {
-	case constants.AutoPiVendor:
-		device, err := c.autopiAPIService.GetDeviceByEthAddress(args.AftermarketDeviceAddress.Hex())
-		if err != nil {
-			return fmt.Errorf("couldn't fetch dongle with address %s: %w", args.AftermarketDeviceAddress, err)
-		}
-
-		c.log.Info().Str("serial", device.UnitID).Msgf("Aftermarket device minted with address %s, token id %d.", args.AftermarketDeviceAddress, args.TokenId)
-
-		amd := models.AftermarketDevice{
-			Serial:                    device.UnitID,
-			EthereumAddress:           args.AftermarketDeviceAddress.Bytes(),
-			TokenID:                   utils.BigToDecimal(args.TokenId),
-			DeviceManufacturerTokenID: utils.BigToDecimal(args.ManufacturerId),
-		}
-
-		amdMd := AftermarketDeviceMetadata{AutoPiDeviceID: device.ID}
-		_ = amd.Metadata.Marshal(amdMd)
-
-		cols := models.AftermarketDeviceColumns
-
-		err = amd.Upsert(context.Background(), c.db.DBS().Writer, true, []string{cols.Serial}, boil.Whitelist(cols.Metadata, cols.EthereumAddress, cols.TokenID, cols.UpdatedAt), boil.Infer())
-		if err != nil {
-			c.log.Error().Err(err).Msg("Failed to insert aftermarket device.")
-			return err
-		}
-	default:
-		// Place this in a holding table until we receive AftermarketDeviceAttributeSet with the serial.
-		pad := models.PartialAftermarketDevice{
-			EthereumAddress:     args.AftermarketDeviceAddress.Bytes(),
-			TokenID:             utils.BigToDecimal(args.TokenId),
-			ManufacturerTokenID: utils.BigToDecimal(args.ManufacturerId),
-		}
-
-		if err := pad.Upsert(context.TODO(), c.db.DBS().Writer, false, []string{models.PartialAftermarketDeviceColumns.TokenID}, boil.Infer(), boil.Infer()); err != nil {
-			return err
-		}
-
-		c.log.Info().Str("address", args.AftermarketDeviceAddress.Hex()).Msgf("Aftermarket device %d minted under manufacturer %d. Waiting for serial.", args.TokenId, args.ManufacturerId)
-	}
+	c.log.Info().Str("address", args.AftermarketDeviceAddress.Hex()).Msgf("Aftermarket device %d minted under manufacturer %d. Waiting for serial.", args.TokenId, args.ManufacturerId)
 
 	return nil
 }
@@ -485,7 +448,7 @@ func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) 
 }
 
 // aftermarketDeviceAttributeSet handles the event of the same name from the registry contract.
-// At present this is only used to grab the serial number for Macarons.
+// At present this is only used to grab the serial number for Macarons AND AutoPi's
 func (c *ContractsEventsConsumer) aftermarketDeviceAttributeSet(e *ContractEventData) error {
 	// TODO(elffjs): Stop repeating the next eight lines in every handler.
 	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
@@ -511,7 +474,7 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAttributeSet(e *ContractEvent
 		models.PartialAftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(args.TokenId)),
 	).One(context.TODO(), tx)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil
 		}
 		return err
