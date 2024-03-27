@@ -178,7 +178,8 @@ func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region 
 
 func (t *teslaFleetAPIService) RegisterToTelemetryServer(ctx context.Context, token, region, vin string) error {
 	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
-	u, err := url.Parse(fmt.Sprintf("%s/api/1/vehicles/fleet_telemetry_config", baseURL))
+
+	u, err := url.JoinPath(baseURL, "/api/1/vehicles/fleet_telemetry_config")
 	if err != nil {
 		return err
 	}
@@ -210,7 +211,7 @@ func (t *teslaFleetAPIService) RegisterToTelemetryServer(ctx context.Context, to
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(ctxTimeout, http.MethodPost, u.String(), bytes.NewBuffer(b))
+	req, err := http.NewRequestWithContext(ctxTimeout, http.MethodPost, u, bytes.NewBuffer(b))
 	if err != nil {
 		return err
 	}
@@ -226,7 +227,7 @@ func (t *teslaFleetAPIService) RegisterToTelemetryServer(ctx context.Context, to
 		if err := json.NewDecoder(resp.Body).Decode(errBody); err != nil {
 			t.log.
 				Err(err).
-				Str("url", u.String()).
+				Str("url", u).
 				Msg("error occurred registering vehicle to telemetry server.")
 			return fmt.Errorf("invalid response encountered while registring vehicle to telemetry server: %s", errBody.ErrorDescription)
 		}
