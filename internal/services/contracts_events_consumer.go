@@ -448,7 +448,7 @@ func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) 
 }
 
 // aftermarketDeviceAttributeSet handles the event of the same name from the registry contract.
-// At present this is only used to grab the serial number for Macarons.
+// At present this is only used to grab the serial number for Macarons AND AutoPi's
 func (c *ContractsEventsConsumer) aftermarketDeviceAttributeSet(e *ContractEventData) error {
 	// TODO(elffjs): Stop repeating the next eight lines in every handler.
 	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
@@ -474,7 +474,7 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAttributeSet(e *ContractEvent
 		models.PartialAftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(args.TokenId)),
 	).One(context.TODO(), tx)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil
 		}
 		return err
