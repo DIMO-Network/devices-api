@@ -38,14 +38,13 @@ type Integration interface {
 }
 
 type ContractsEventsConsumer struct {
-	db               db.Store
-	log              *zerolog.Logger
-	settings         *config.Settings
-	registryAddr     common.Address
-	autopiAPIService AutoPiAPIService
-	apInt            Integration
-	mcInt            Integration
-	ddSvc            DeviceDefinitionService
+	db           db.Store
+	log          *zerolog.Logger
+	settings     *config.Settings
+	registryAddr common.Address
+	apInt        Integration
+	mcInt        Integration
+	ddSvc        DeviceDefinitionService
 }
 
 type EventName string
@@ -90,17 +89,14 @@ type Block struct {
 }
 
 func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration, mcInt Integration, ddSvc DeviceDefinitionService) *ContractsEventsConsumer {
-	autopiAPIService := NewAutoPiAPIService(settings, pdb.DBS)
-
 	return &ContractsEventsConsumer{
-		db:               pdb,
-		log:              log,
-		settings:         settings,
-		registryAddr:     common.HexToAddress(settings.DIMORegistryAddr),
-		autopiAPIService: autopiAPIService,
-		apInt:            apInt,
-		mcInt:            mcInt,
-		ddSvc:            ddSvc,
+		db:           pdb,
+		log:          log,
+		settings:     settings,
+		registryAddr: common.HexToAddress(settings.DIMORegistryAddr),
+		apInt:        apInt,
+		mcInt:        mcInt,
+		ddSvc:        ddSvc,
 	}
 }
 
