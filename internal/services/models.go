@@ -3,7 +3,6 @@ package services
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/volatiletech/null/v8"
@@ -75,28 +74,6 @@ type DeviceAttribute struct {
 }
 
 // Converters
-
-// NewDeviceDefinitionFromNHTSA converts nhtsa response into our standard device definition struct
-func NewDeviceDefinitionFromNHTSA(decodedVin *NHTSADecodeVINResponse) DeviceDefinition {
-	dd := DeviceDefinition{}
-	yr, _ := strconv.Atoi(decodedVin.LookupValue("Model Year"))
-	msrp, _ := strconv.Atoi(decodedVin.LookupValue("Base Price ($)"))
-	dd.Type = DeviceType{
-		Type:  "Vehicle",
-		Make:  decodedVin.LookupValue("Make"),
-		Model: decodedVin.LookupValue("Model"),
-		Year:  yr,
-	}
-	dd.Name = fmt.Sprintf("%d %s %s", dd.Type.Year, dd.Type.Make, dd.Type.Model)
-	dd.VehicleInfo = DeviceVehicleInfo{
-		FuelType:      decodedVin.LookupValue("Fuel Type - Primary"),
-		NumberOfDoors: decodedVin.LookupValue("Doors"),
-		BaseMSRP:      msrp,
-		VehicleType:   decodedVin.LookupValue("Vehicle Type"),
-	}
-
-	return dd
-}
 
 type PowertrainType string
 

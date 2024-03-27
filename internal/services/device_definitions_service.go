@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"golang.org/x/exp/slices"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -23,7 +22,6 @@ import (
 
 type DeviceDefinitionService interface {
 	FindDeviceDefinitionByMMY(ctx context.Context, mk, model string, year int) (*ddgrpc.GetDeviceDefinitionItemResponse, error)
-	UpdateDeviceDefinitionFromNHTSA(ctx context.Context, deviceDefinitionID string, vin string) error
 	GetOrCreateMake(ctx context.Context, tx boil.ContextExecutor, makeName string) (*ddgrpc.DeviceMake, error)
 	GetMakeByTokenID(ctx context.Context, tokenID *big.Int) (*ddgrpc.DeviceMake, error)
 	GetDeviceDefinitionsByIDs(ctx context.Context, ids []string) ([]*ddgrpc.GetDeviceDefinitionItemResponse, error)
@@ -40,23 +38,17 @@ type DeviceDefinitionService interface {
 
 type deviceDefinitionService struct {
 	dbs                 func() *db.ReaderWriter
-	drivlySvc           DrivlyAPIService
-	vincarioSvc         VincarioAPIService
 	log                 *zerolog.Logger
-	nhtsaSvc            INHTSAService
 	definitionsGRPCAddr string
 	googleMapsAPIKey    string
 }
 
-func NewDeviceDefinitionService(DBS func() *db.ReaderWriter, log *zerolog.Logger, nhtsaService INHTSAService, settings *config.Settings) DeviceDefinitionService {
+func NewDeviceDefinitionService(DBS func() *db.ReaderWriter, log *zerolog.Logger, settings *config.Settings) DeviceDefinitionService {
 	return &deviceDefinitionService{
 		dbs:                 DBS,
 		log:                 log,
-		nhtsaSvc:            nhtsaService,
-		drivlySvc:           NewDrivlyAPIService(settings, DBS),
 		definitionsGRPCAddr: settings.DefinitionsGRPCAddr,
 		googleMapsAPIKey:    settings.GoogleMapsAPIKey,
-		vincarioSvc:         NewVincarioAPIService(settings, log),
 	}
 }
 
@@ -282,55 +274,6 @@ func (d *deviceDefinitionService) GetOrCreateMake(ctx context.Context, _ boil.Co
 	}
 
 	return &ddgrpc.DeviceMake{Id: dm.Id, Name: makeName}, nil
-}
-
-// UpdateDeviceDefinitionFromNHTSA (deprecated) pulls vin info from nhtsa, and updates the device definition metadata if the MMY from nhtsa matches ours, and the Source is not NHTSA verified
-func (d *deviceDefinitionService) UpdateDeviceDefinitionFromNHTSA(ctx context.Context, deviceDefinitionID string, vin string) error {
-
-	deviceDefinitionResponse, err := d.GetDeviceDefinitionsByIDs(ctx, []string{deviceDefinitionID})
-	if err != nil {
-		return err
-	}
-
-	if len(deviceDefinitionResponse) == 0 {
-		return errors.New("Device definition empty")
-	}
-
-	dbDeviceDef := deviceDefinitionResponse[0]
-
-	nhtsaDecode, err := d.nhtsaSvc.DecodeVIN(vin)
-	if err != nil {
-		return err
-	}
-	dd := NewDeviceDefinitionFromNHTSA(nhtsaDecode)
-	if dd.Type.Make == dbDeviceDef.Make.Name && dd.Type.Model == dbDeviceDef.Type.Model && int16(dd.Type.Year) == int16(dbDeviceDef.Type.Year) {
-		if idx := slices.IndexFunc(dbDeviceDef.ExternalIds, func(c *ddgrpc.ExternalID) bool { return c.Vendor == "NHTSA" }); !(dbDeviceDef.Verified && idx != -1) {
-			definitionsClient, conn, err := d.getDeviceDefsGrpcClient()
-			if err != nil {
-				return err
-			}
-			defer conn.Close()
-
-			_, err = definitionsClient.UpdateDeviceDefinition(ctx, &ddgrpc.UpdateDeviceDefinitionRequest{
-				DeviceDefinitionId: dbDeviceDef.DeviceDefinitionId,
-				Verified:           true,
-				Source:             "NHTSA",
-				Year:               dbDeviceDef.Type.Year,
-				Model:              dbDeviceDef.Type.Model,
-				ImageUrl:           dbDeviceDef.ImageUrl,
-			})
-
-			if err != nil {
-				return err
-			}
-
-		}
-	} else {
-		// just log for now if no MMY match.
-		d.log.Warn().Msgf("No MMY match between deviceDefinitionID: %s and NHTSA for VIN: %s, %s", deviceDefinitionID, vin, dd.Name)
-	}
-
-	return nil
 }
 
 const MilesToKmFactor = 1.609344 // there is 1.609 kilometers in a mile. const should probably be KmToMilesFactor

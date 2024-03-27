@@ -92,14 +92,12 @@ func main() {
 		subcommands.Register(&remakeFenceTopicCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&remakeDeviceDefinitionTopicsCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
 		subcommands.Register(&startSmartcarFromRefreshCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
-		subcommands.Register(&autopiToolsCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&updateStateCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&web2PairCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&autoPiKTableDeleteCmd{logger: logger, container: deps}, "device integrations")
 
 		subcommands.Register(&populateESDDDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: deps.getElasticSearchService(), ddSvc: deps.getDeviceDefinitionService()}, "populate data")
 		subcommands.Register(&populateESRegionDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: deps.getElasticSearchService(), ddSvc: deps.getDeviceDefinitionService()}, "populate data")
-		subcommands.Register(&populateUSAPowertrainCmd{logger: logger, settings: settings, pdb: pdb, nhtsaService: deps.getNHTSAService(), deviceDefSvc: deps.getDeviceDefinitionService()}, "populate data")
 
 		subcommands.Register(&stopTaskByKeyCmd{logger: logger, settings: settings, container: deps}, "tasks")
 
@@ -193,8 +191,7 @@ func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, p
 		logger.Fatal().Err(err).Msg("Could not start credential update consumer")
 	}
 
-	nhtsaSvc := services.NewNHTSAService()
-	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, nhtsaSvc, settings)
+	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, settings)
 
 	taskStatusService := services.NewTaskStatusListener(pdb.DBS, &logger, ddSvc)
 	consumer.Start(context.Background(), taskStatusService.ProcessTaskUpdates)

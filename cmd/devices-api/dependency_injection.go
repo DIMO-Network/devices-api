@@ -24,7 +24,6 @@ type dependencyContainer struct {
 	logger             *zerolog.Logger
 	s3ServiceClient    *s3.Client
 	s3NFTServiceClient *s3.Client
-	nhtsaSvc           services.INHTSAService
 	ddSvc              services.DeviceDefinitionService
 	dbs                func() *db.ReaderWriter
 	elasticSearch      elasticsearch.ElasticSearch
@@ -111,13 +110,8 @@ func (dc *dependencyContainer) getS3NFTServiceClient(ctx context.Context) *s3.Cl
 	return dc.s3NFTServiceClient
 }
 
-func (dc *dependencyContainer) getNHTSAService() services.INHTSAService {
-	dc.nhtsaSvc = services.NewNHTSAService()
-	return dc.nhtsaSvc
-}
-
 func (dc *dependencyContainer) getDeviceDefinitionService() services.DeviceDefinitionService {
-	dc.ddSvc = services.NewDeviceDefinitionService(dc.dbs, dc.logger, dc.getNHTSAService(), dc.settings)
+	dc.ddSvc = services.NewDeviceDefinitionService(dc.dbs, dc.logger, dc.settings)
 	return dc.ddSvc
 }
 
