@@ -1953,7 +1953,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		err = udc.registerTeslaForTelemetryServer(c.Context(), region, reqBody.AccessToken, v)
 		if err != nil {
 			// We should consider pushing this to a Queue for retry
-			logger.Err(err).Str("vin", v.VIN).Int("id", v.ID).Msg("Could not register Tesla for Telemetry")
+			logger.Err(err).Int("id", v.ID).Msg("Could not register Tesla for Telemetry")
 		}
 	}
 
