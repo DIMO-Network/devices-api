@@ -48,7 +48,6 @@ func (t *TeslaFleetAPIServiceTestSuite) TestRegisterToTelemetryServer() {
 	u := fmt.Sprintf("%s/api/1/vehicles/fleet_telemetry_config", baseURL)
 
 	exp := time.Now().AddDate(0, 0, 364).Unix()
-
 	expected := RegisterVehicleToTelemetryServerRequest{
 		Vins: []string{vin},
 		Config: TelemetryConfigRequest{
@@ -57,6 +56,7 @@ func (t *TeslaFleetAPIServiceTestSuite) TestRegisterToTelemetryServer() {
 			Expiration:          exp,
 			Port:                t.settings.TeslaTelemetryPort,
 			Fields:              make(map[string]Interval),
+			AlertTypes:          []string{"service"},
 		},
 	}
 

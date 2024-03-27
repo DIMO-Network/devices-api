@@ -196,6 +196,7 @@ func (t *teslaFleetAPIService) RegisterToTelemetryServer(ctx context.Context, to
 			Expiration:          exp,
 			Port:                t.Settings.TeslaTelemetryPort,
 			Fields:              make(map[string]Interval),
+			AlertTypes:          []string{"service"},
 		},
 	}
 	for _, v := range fields {
