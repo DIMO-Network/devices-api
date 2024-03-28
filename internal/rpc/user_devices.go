@@ -7,11 +7,12 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
-	"time"
 
+	mtpgrpc "github.com/DIMO-Network/meta-transaction-processor/pkg/grpc"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
+	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -25,6 +26,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -639,13 +641,35 @@ func (s *userDeviceRPCServer) UpdateUserDeviceMetadata(ctx context.Context, req 
 }
 
 func (s *userDeviceRPCServer) ClearMetaTransactionRequests(ctx context.Context, _ *emptypb.Empty) (*pb.ClearMetaTransactionRequestsResponse, error) {
-	currTime := time.Now()
-	fifteenminsAgo := currTime.Add(-time.Minute * 15)
 
-	m, err := models.MetaTransactionRequests(
-		models.MetaTransactionRequestWhere.CreatedAt.LT(fifteenminsAgo),
-		qm.OrderBy(models.MetaTransactionRequestColumns.CreatedAt+" ASC"),
+	conn, err := grpc.Dial(s.settings.MetaTransactionProcessorGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to meta transaction processor: %w", err)
+	}
+
+	client := mtpgrpc.NewMetaTransactionServiceClient(conn)
+	// call to meta transaction connector to clear the transaction and get id
+
+	response, err := client.CleanStuckMetaTransactions(ctx, &emptypb.Empty{})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to clear meta transaction: %w", err)
+	}
+
+	metaTransaction, err := models.MetaTransactionRequests(
+		models.MetaTransactionRequestWhere.ID.EQ(response.Id),
+		models.MetaTransactionRequestWhere.Status.NEQ("Confirmed"),
+		models.MetaTransactionRequestWhere.Hash.IsNull(),
+		qm.Load(models.MetaTransactionRequestRels.MintRequestVehicleNFT),
+		qm.Load(models.MetaTransactionRequestRels.BurnRequestVehicleNFT),
+		qm.Load(models.MetaTransactionRequestRels.MintRequestSyntheticDevice),
+		qm.Load(models.MetaTransactionRequestRels.BurnRequestSyntheticDevice),
+		qm.Load(models.MetaTransactionRequestRels.ClaimMetaTransactionRequestAftermarketDevice),
+		qm.Load(models.MetaTransactionRequestRels.PairRequestAftermarketDevice),
+		qm.Load(models.MetaTransactionRequestRels.UnpairRequestAftermarketDevice),
 	).One(ctx, s.dbs().Reader)
+
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("no overdue meta transaction")
@@ -653,10 +677,79 @@ func (s *userDeviceRPCServer) ClearMetaTransactionRequests(ctx context.Context, 
 		return nil, fmt.Errorf("failed to select transaction to clear: %w", err)
 	}
 
-	_, err = m.Delete(ctx, s.dbs().Writer)
-	if err != nil {
-		return nil, fmt.Errorf("failed to Delete transaction %s: %w", m.ID, err)
+	if metaTransaction.R != nil {
+
+		if metaTransaction.R.MintRequestVehicleNFT != nil {
+			vehicleNft := metaTransaction.R.MintRequestVehicleNFT
+
+			vehicleNft.MintRequestID = ""
+			_, err = vehicleNft.Update(ctx, s.dbs().Writer, boil.Infer())
+			if err != nil {
+				return nil, fmt.Errorf("failed to update vehicleNft %s: %w", vehicleNft.TokenID, err)
+			}
+		}
+
+		if metaTransaction.R.BurnRequestVehicleNFT != nil {
+			vehicleNft := metaTransaction.R.BurnRequestVehicleNFT
+
+			vehicleNft.BurnRequestID = null.StringFromPtr(nil)
+			_, err = vehicleNft.Update(ctx, s.dbs().Writer, boil.Infer())
+			if err != nil {
+				return nil, fmt.Errorf("failed to update vehicleNft %s: %w", vehicleNft.TokenID, err)
+			}
+		}
+
+		// ? TODO: what should we do with synthetic devices?
+		if metaTransaction.R.MintRequestSyntheticDevice != nil {
+			s.logger.Warn().Msg(fmt.Sprintf("Could not delete Meta transaction cause is related to synthetic device %s", metaTransaction.R.MintRequestSyntheticDevice.TokenID))
+			return &pb.ClearMetaTransactionRequestsResponse{Id: metaTransaction.ID}, nil
+		}
+
+		if metaTransaction.R.BurnRequestSyntheticDevice != nil {
+			syntheticDevice := metaTransaction.R.BurnRequestSyntheticDevice
+
+			syntheticDevice.BurnRequestID = null.StringFromPtr(nil)
+			_, err = syntheticDevice.Update(ctx, s.dbs().Writer, boil.Infer())
+			if err != nil {
+				return nil, fmt.Errorf("failed to update syntheticDevice %s: %w", syntheticDevice.TokenID, err)
+			}
+		}
+
+		if metaTransaction.R.ClaimMetaTransactionRequestAftermarketDevice != nil {
+			aftermarketDevice := metaTransaction.R.ClaimMetaTransactionRequestAftermarketDevice
+
+			aftermarketDevice.ClaimMetaTransactionRequestID = null.StringFromPtr(nil)
+			_, err = aftermarketDevice.Update(ctx, s.dbs().Writer, boil.Infer())
+			if err != nil {
+				return nil, fmt.Errorf("failed to update aftermarketDevice %s: %w", aftermarketDevice.TokenID, err)
+			}
+		}
+
+		if metaTransaction.R.PairRequestAftermarketDevice != nil {
+			aftermarketDevice := metaTransaction.R.PairRequestAftermarketDevice
+
+			aftermarketDevice.PairRequestID = null.StringFromPtr(nil)
+			_, err = aftermarketDevice.Update(ctx, s.dbs().Writer, boil.Infer())
+			if err != nil {
+				return nil, fmt.Errorf("failed to update aftermarketDevice %s: %w", aftermarketDevice.TokenID, err)
+			}
+		}
+
+		if metaTransaction.R.UnpairRequestAftermarketDevice != nil {
+			aftermarketDevice := metaTransaction.R.UnpairRequestAftermarketDevice
+
+			aftermarketDevice.UnpairRequestID = null.StringFromPtr(nil)
+			_, err = aftermarketDevice.Update(ctx, s.dbs().Writer, boil.Infer())
+			if err != nil {
+				return nil, fmt.Errorf("failed to update aftermarketDevice %s: %w", aftermarketDevice.TokenID, err)
+			}
+		}
 	}
 
-	return &pb.ClearMetaTransactionRequestsResponse{Id: m.ID}, nil
+	_, err = metaTransaction.Delete(ctx, s.dbs().Writer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to Delete transaction %s: %w", metaTransaction.ID, err)
+	}
+
+	return &pb.ClearMetaTransactionRequestsResponse{Id: metaTransaction.ID}, nil
 }
