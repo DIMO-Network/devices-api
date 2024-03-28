@@ -701,7 +701,8 @@ func (s *userDeviceRPCServer) ClearMetaTransactionRequests(ctx context.Context, 
 
 		// ? TODO: what should we do with synthetic devices?
 		if metaTransaction.R.MintRequestSyntheticDevice != nil {
-			s.logger.Warn().Msg("Synthetic device mint request is not handled yet")
+			s.logger.Warn().Msg(fmt.Sprintf("Could not delete Meta transaction cause is related to synthetic device %s", metaTransaction.R.MintRequestSyntheticDevice.TokenID))
+			return &pb.ClearMetaTransactionRequestsResponse{Id: metaTransaction.ID}, nil
 		}
 
 		if metaTransaction.R.BurnRequestSyntheticDevice != nil {
