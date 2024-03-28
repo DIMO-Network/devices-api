@@ -26,15 +26,6 @@ import (
 	"github.com/DIMO-Network/shared/db"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
-	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/contracts"
-	"github.com/DIMO-Network/devices-api/internal/middleware/owner"
-	"github.com/DIMO-Network/devices-api/internal/services"
-	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
-	"github.com/DIMO-Network/devices-api/internal/services/registry"
-	"github.com/DIMO-Network/devices-api/internal/test"
-	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	smock "github.com/Shopify/sarama/mocks"
 	"github.com/gofiber/fiber/v2"
@@ -50,6 +41,16 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"go.uber.org/mock/gomock"
+
+	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/contracts"
+	"github.com/DIMO-Network/devices-api/internal/middleware/owner"
+	"github.com/DIMO-Network/devices-api/internal/services"
+	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
+	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	"github.com/DIMO-Network/devices-api/internal/test"
+	"github.com/DIMO-Network/devices-api/models"
 )
 
 type UserIntegrationsControllerTestSuite struct {
@@ -668,7 +669,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	// assert
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
 	body, _ := io.ReadAll(response.Body)
-	//assert
+	// assert
 	assert.Equal(s.T(), false, gjson.GetBytes(body, "isUpdated").Bool())
 	assert.Equal(s.T(), unitID, gjson.GetBytes(body, "unitId").String())
 	assert.Equal(s.T(), "4321", gjson.GetBytes(body, "deviceId").String())
@@ -708,7 +709,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_UpToDate()
 	// assert
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
 	body, _ := io.ReadAll(response.Body)
-	//assert
+	// assert
 	assert.Equal(s.T(), true, gjson.GetBytes(body, "isUpdated").Bool())
 	assert.Equal(s.T(), "1.22.8", gjson.GetBytes(body, "releaseVersion").String())
 	assert.Equal(s.T(), false, gjson.GetBytes(body, "shouldUpdate").Bool()) // returned version is 1.21.9 which is our cutoff
@@ -745,7 +746,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_FutureUpda
 	// assert
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
 	body, _ := io.ReadAll(response.Body)
-	//assert
+	// assert
 	assert.Equal(s.T(), false, gjson.GetBytes(body, "isUpdated").Bool())
 	assert.Equal(s.T(), "1.23.1", gjson.GetBytes(body, "releaseVersion").String())
 	assert.Equal(s.T(), false, gjson.GetBytes(body, "shouldUpdate").Bool())
@@ -784,7 +785,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	// assert
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
 	body, _ := io.ReadAll(response.Body)
-	//assert
+	// assert
 	assert.Equal(s.T(), unitID, gjson.GetBytes(body, "unitId").String())
 	assert.Equal(s.T(), "v1.22.8", gjson.GetBytes(body, "releaseVersion").String())
 	assert.Equal(s.T(), false, gjson.GetBytes(body, "shouldUpdate").Bool()) // this because releaseVersion below 1.21.9
@@ -949,7 +950,10 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 		},
 	)
 
-	s.teslaFleetAPISvc.EXPECT().GetVehicle(gomock.Any(), "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", "na", 1145).Return(&services.TeslaVehicle{
+	version := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+	region := "na"
+	vin := "5YJYGDEF9NF010423"
+	s.teslaFleetAPISvc.EXPECT().GetVehicle(gomock.Any(), version, region, 1145).Return(&services.TeslaVehicle{
 		ID:        1145,
 		VehicleID: 223,
 		VIN:       "5YJYGDEF9NF010423",
@@ -957,7 +961,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 	s.teslaFleetAPISvc.EXPECT().WakeUpVehicle(gomock.Any(), "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", "na", 1145).Return(nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd[0], nil)
 	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dd[0], nil)
-
+	s.teslaFleetAPISvc.EXPECT().RegisterToTelemetryServer(gomock.Any(), version, region, vin).Return(nil)
 	userEthAddr := common.HexToAddress("1").String()
 	s.userClient.EXPECT().GetUser(gomock.Any(), &pbuser.GetUserRequest{Id: testUserID}).Return(&pbuser.User{EthereumAddress: &userEthAddr}, nil).AnyTimes()
 

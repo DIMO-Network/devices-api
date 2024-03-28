@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/shared"
 	"github.com/Shopify/sarama"
 	"github.com/ethereum/go-ethereum/common"
@@ -13,6 +12,8 @@ import (
 	"github.com/ethereum/go-ethereum/common/math"
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/segmentio/ksuid"
+
+	"github.com/DIMO-Network/devices-api/internal/contracts"
 )
 
 type Client struct {

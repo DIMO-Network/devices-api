@@ -14,11 +14,6 @@ import (
 	smartcar "github.com/smartcar/go-sdk"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
-	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
-	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/devices-api/internal/services/registry"
-	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/ethereum/go-ethereum/common"
@@ -33,6 +28,12 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
 	"golang.org/x/mod/semver"
+
+	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
+	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	"github.com/DIMO-Network/devices-api/models"
 )
 
 // GetUserDeviceIntegration godoc
@@ -72,7 +73,7 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() //nolint
+	defer tx.Rollback() // nolint
 
 	apiInt, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
@@ -168,7 +169,7 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 		return err
 	}
 
-	defer tx.Rollback() //nolint
+	defer tx.Rollback() // nolint
 
 	device, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
@@ -812,7 +813,7 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() //nolint
+	defer tx.Rollback() // nolint
 
 	vnft, ad, err := udc.checkPairable(c.Context(), tx, userDeviceID, pairReq.ExternalID)
 	if err != nil {
@@ -1095,7 +1096,7 @@ func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() //nolint
+	defer tx.Rollback() // nolint
 
 	vnft, apnft, err := udc.checkUnpairable(c.Context(), tx, userDeviceID)
 	if err != nil {
@@ -1316,7 +1317,7 @@ func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() //nolint
+	defer tx.Rollback() // nolint
 
 	udc.log.Info().Interface("payload", reqBody).Msg("Got claim request.")
 
@@ -1447,7 +1448,7 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("failed to create transaction: %s", err))
 	}
-	defer tx.Rollback() //nolint
+	defer tx.Rollback() // nolint
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 	).One(c.Context(), tx)
@@ -1948,6 +1949,14 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		return err
 	}
 
+	if apiVersion == constants.TeslaAPIV2 {
+		err = udc.registerTeslaForTelemetryServer(c.Context(), region, reqBody.AccessToken, v)
+		if err != nil {
+			// We should consider pushing this to a Queue for retry
+			logger.Err(err).Int("id", v.ID).Msg("Could not register Tesla for Telemetry")
+		}
+	}
+
 	logger.Info().Msg("Finished Tesla device registration")
 
 	if apiVersion == constants.TeslaAPIV2 && teslaV2CacheKey != "" {
@@ -2009,6 +2018,10 @@ func (udc *UserDevicesController) getTeslaAuthFromCache(ctx context.Context, cac
 	}
 
 	return teslaAuth, nil
+}
+
+func (udc *UserDevicesController) registerTeslaForTelemetryServer(ctx context.Context, region, token string, v *services.TeslaVehicle) error {
+	return udc.teslaFleetAPISvc.RegisterToTelemetryServer(ctx, token, region, v.VIN)
 }
 
 // fixTeslaDeviceDefinition tries to use the VIN provided by Tesla to correct the device definition
