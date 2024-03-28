@@ -692,27 +692,22 @@ func (s *userDeviceRPCServer) ClearMetaTransactionRequests(ctx context.Context, 
 		if metaTransaction.R.BurnRequestVehicleNFT != nil {
 			vehicleNft := metaTransaction.R.BurnRequestVehicleNFT
 
-			vehicleNft.BurnRequestID = null.StringFrom("")
+			vehicleNft.BurnRequestID = null.StringFromPtr(nil)
 			_, err = vehicleNft.Update(ctx, s.dbs().Writer, boil.Infer())
 			if err != nil {
 				return nil, fmt.Errorf("failed to update vehicleNft %s: %w", vehicleNft.TokenID, err)
 			}
 		}
 
+		// ? TODO: what should we do with synthetic devices?
 		if metaTransaction.R.MintRequestSyntheticDevice != nil {
-			syntheticDevice := metaTransaction.R.MintRequestSyntheticDevice
-
-			syntheticDevice.MintRequestID = ""
-			_, err = syntheticDevice.Update(ctx, s.dbs().Writer, boil.Infer())
-			if err != nil {
-				return nil, fmt.Errorf("failed to update syntheticDevice %s: %w", syntheticDevice.TokenID, err)
-			}
+			s.logger.Warn().Msg("Synthetic device mint request is not handled yet")
 		}
 
 		if metaTransaction.R.BurnRequestSyntheticDevice != nil {
 			syntheticDevice := metaTransaction.R.BurnRequestSyntheticDevice
 
-			syntheticDevice.BurnRequestID = null.StringFrom("")
+			syntheticDevice.BurnRequestID = null.StringFromPtr(nil)
 			_, err = syntheticDevice.Update(ctx, s.dbs().Writer, boil.Infer())
 			if err != nil {
 				return nil, fmt.Errorf("failed to update syntheticDevice %s: %w", syntheticDevice.TokenID, err)
@@ -722,7 +717,7 @@ func (s *userDeviceRPCServer) ClearMetaTransactionRequests(ctx context.Context, 
 		if metaTransaction.R.ClaimMetaTransactionRequestAftermarketDevice != nil {
 			aftermarketDevice := metaTransaction.R.ClaimMetaTransactionRequestAftermarketDevice
 
-			aftermarketDevice.ClaimMetaTransactionRequestID = null.StringFrom("")
+			aftermarketDevice.ClaimMetaTransactionRequestID = null.StringFromPtr(nil)
 			_, err = aftermarketDevice.Update(ctx, s.dbs().Writer, boil.Infer())
 			if err != nil {
 				return nil, fmt.Errorf("failed to update aftermarketDevice %s: %w", aftermarketDevice.TokenID, err)
@@ -732,7 +727,7 @@ func (s *userDeviceRPCServer) ClearMetaTransactionRequests(ctx context.Context, 
 		if metaTransaction.R.PairRequestAftermarketDevice != nil {
 			aftermarketDevice := metaTransaction.R.PairRequestAftermarketDevice
 
-			aftermarketDevice.PairRequestID = null.StringFrom("")
+			aftermarketDevice.PairRequestID = null.StringFromPtr(nil)
 			_, err = aftermarketDevice.Update(ctx, s.dbs().Writer, boil.Infer())
 			if err != nil {
 				return nil, fmt.Errorf("failed to update aftermarketDevice %s: %w", aftermarketDevice.TokenID, err)
@@ -742,7 +737,7 @@ func (s *userDeviceRPCServer) ClearMetaTransactionRequests(ctx context.Context, 
 		if metaTransaction.R.UnpairRequestAftermarketDevice != nil {
 			aftermarketDevice := metaTransaction.R.UnpairRequestAftermarketDevice
 
-			aftermarketDevice.UnpairRequestID = null.StringFrom("")
+			aftermarketDevice.UnpairRequestID = null.StringFromPtr(nil)
 			_, err = aftermarketDevice.Update(ctx, s.dbs().Writer, boil.Infer())
 			if err != nil {
 				return nil, fmt.Errorf("failed to update aftermarketDevice %s: %w", aftermarketDevice.TokenID, err)
