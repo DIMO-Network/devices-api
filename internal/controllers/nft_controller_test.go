@@ -114,7 +114,7 @@ func (s *UserDevicesControllerTestSuite) TestGetBurn() {
 	user := test.BuildGetUserGRPC(ud.UserID, &email, &eth, &pb.UserReferrer{})
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: ud.UserID}).Return(user, nil)
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/commands/burn", "1"), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/vehicle/%s/commands/burn", "1"), "")
 	response, err := s.app.Test(request)
 	s.Require().NoError(err)
 	s.Equal(fiber.StatusOK, response.StatusCode)
@@ -148,7 +148,7 @@ func (s *UserDevicesControllerTestSuite) TestPostBurn() {
 	sp.ExpectSendMessageAndSucceed()
 	s.controller.producer = sp
 
-	getRequest := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/commands/burn", "1"), "")
+	getRequest := test.BuildRequest("GET", fmt.Sprintf("/vehicle/%s/commands/burn", "1"), "")
 	getResp, err := s.app.Test(getRequest)
 	s.Require().NoError(err)
 	s.Equal(fiber.StatusOK, getResp.StatusCode)
@@ -189,7 +189,7 @@ func (s *UserDevicesControllerTestSuite) TestPostBurn() {
 	inp, err := json.Marshal(br)
 	s.Require().NoError(err)
 
-	request := test.BuildRequest("POST", fmt.Sprintf("/user/devices/%s/commands/burn", "1"), string(inp))
+	request := test.BuildRequest("POST", fmt.Sprintf("/vehicle/%s/commands/burn", "1"), string(inp))
 	response, err := s.app.Test(request)
 	s.Require().NoError(err)
 	s.Equal(fiber.StatusOK, response.StatusCode)

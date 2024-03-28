@@ -18,7 +18,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -150,7 +149,7 @@ func AftermarketDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *z
 //   - The request must have a valid JWT, identifying a user.
 //   - There must be a tokenID path parameter, which must be a vehicle NFT that exists.
 //   - The user must have an Ethereum address that owns the corresponding NFT.
-func VehicleToken(dbs db.Store, logger *zerolog.Logger) fiber.Handler {
+func VehicleToken(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		userID := helpers.GetUserID(c)
 		tokenID := c.Params("tokenID")
@@ -160,44 +159,35 @@ func VehicleToken(dbs db.Store, logger *zerolog.Logger) fiber.Handler {
 		}
 		tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
 
-		if common.IsHexAddress(userID) {
-			logger := logger.With().Str("ethAddr", userID).Str("tokenID", tokenID).Logger()
-			c.Locals("logger", &logger)
-
-			if owned, err := models.VehicleNFTS(
-				models.VehicleNFTWhere.TokenID.EQ(tid),
-				models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(userID))),
-			).Exists(c.Context(), dbs.DBS().Reader); err != nil {
-				return err
-			} else if owned {
-				return c.Next()
-			}
-			return errNotFound
-		}
-
-		logger := logger.With().Str("userId", userID).Int64("tokenID", ti.Int64()).Logger()
+		c.Locals("userID", userID)
+		c.Locals("tokenID", tid.Big.String())
+		logger := logger.With().Str("userId", userID).Str("tokenID", tid.Big.String()).Logger()
 		c.Locals("logger", &logger)
-
-		tknOwner, err := models.VehicleNFTS(
-			models.VehicleNFTWhere.TokenID.EQ(tid),
-			qm.Load(models.VehicleNFTRels.UserDevice),
-		).One(c.Context(), dbs.DBS().Reader)
+		logger.Info().Msg("vehicle token auth")
+		user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
+			logger.Info().Msg("failed to get user")
+			if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
 				return errNotFound
 			}
 			return err
 		}
 
-		if tknOwner.R.UserDevice != nil {
-			if tknOwner.R.UserDevice.UserID == userID && !tknOwner.OwnerAddress.IsZero() {
-				return c.Next()
-			}
-			logger.Info().Str("owner", common.Bytes2Hex(tknOwner.OwnerAddress.Bytes)).Str("udID", tknOwner.R.UserDevice.UserID).Msg("invalid udID or owner address")
+		if user.EthereumAddress == nil {
+			logger.Info().Msg("no eth addr for user")
+			return errNotFound
 		}
 
-		logger.Info().Str("owner", common.Bytes2Hex(tknOwner.OwnerAddress.Bytes)).Msg("no user device found")
-
+		if userAddrOwns, err := models.VehicleNFTS(
+			models.VehicleNFTWhere.TokenID.EQ(tid),
+			models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(*user.EthereumAddress))),
+		).Exists(c.Context(), dbs.DBS().Reader); err != nil {
+			logger.Info().Msg("user does not own vehicle nft")
+			return err
+		} else if userAddrOwns {
+			return c.Next()
+		}
+		logger.Info().Msg("failed to authenticate user")
 		return errNotFound
 	}
 }

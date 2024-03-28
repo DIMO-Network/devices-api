@@ -847,11 +847,10 @@ func (nc *NFTController) GetVinCredential(c *fiber.Ctx) error {
 
 // GetBurnDevice godoc
 // @Description Returns the data the user must sign in order to burn the device.
-// @Tags        user-devices
 // @Param       tokenID path int true "token id"
 // @Success     200          {object} apitypes.TypedData
 // @Security    BearerAuth
-// @Router     /user/devices/{tokenID}/commands/burn [get]
+// @Router     /user/vehicle/{tokenID}/commands/burn [get]
 func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 	tis := c.Params("tokenID")
 	ti, ok := new(big.Int).SetString(tis, 10)
@@ -907,12 +906,11 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 
 // PostBurnDevice godoc
 // @Description Sends a burn device request to the blockchain
-// @Tags        user-devices
 // @Param       tokenID path int true "token id"
 // @Param       burnRequest  body controllers.BurnRequest true "Signature and Token ID"
 // @Success     200
 // @Security    BearerAuth
-// @Router      /user/devices/{tokenID}/commands/burn [post]
+// @Router      /user/vehicle/{tokenID}/commands/burn [post]
 func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	tis := c.Params("tokenID")
 	ti, ok := new(big.Int).SetString(tis, 10)
@@ -965,7 +963,7 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 
 	br := new(BurnRequest)
 	if err := c.BodyParser(br); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "failed to parse request body")
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
 	udc.log.Info().
@@ -983,7 +981,7 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	sigBytes := common.FromHex(br.Signature)
 	recAddr, err := helpers.Ecrecover(hash, sigBytes)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not recover signature: %w", err)
 	}
 
 	realAddr := common.HexToAddress(*user.EthereumAddress)
@@ -992,25 +990,26 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	}
 
 	requestID := ksuid.New().String()
+
 	mtr := models.MetaTransactionRequest{
 		ID:     requestID,
 		Status: "Unsubmitted",
 	}
 
 	if err := mtr.Insert(c.Context(), tx, boil.Infer()); err != nil {
-		return err
+		return fmt.Errorf("failed to insert metatransaction request: %w", err)
 	}
 
 	vehicleNFT.BurnRequestID = null.StringFrom(requestID)
 	if _, err := vehicleNFT.Update(c.Context(), tx, boil.Infer()); err != nil {
-		return err
+		return fmt.Errorf("failed to update vehicle nft: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return err
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	udc.log.Debug().Msgf("submitted metatransaction request %s", requestID)
+	udc.log.Info().Msgf("submitted metatransaction request %s", requestID)
 	return client.BurnVehicleSign(requestID, bvs.TokenID, sigBytes)
 }
 

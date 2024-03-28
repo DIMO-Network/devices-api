@@ -133,6 +133,10 @@ definitions:
       externalId:
         type: string
       signature:
+        description: |-
+          AftermarketDeviceSignature is the 65-byte, hex-encoded Ethereum signature of
+          the pairing payload by the device. Only needed if the vehicle owner and aftermarket
+          device owner are not the same.
         items:
           type: integer
         type: array
@@ -956,10 +960,6 @@ definitions:
       externalId:
         type: string
       signature:
-        description: |-
-          AftermarketDeviceSignature is the 65-byte, hex-encoded Ethereum signature of
-          the pairing payload by the device. Only needed if the vehicle owner and aftermarket
-          device owner are not the same.
         items:
           type: integer
         type: array
@@ -1918,7 +1918,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.AutoPiDeviceInfo'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.AutoPiDeviceInfo'
       security:
       - BearerAuth: []
       tags:
@@ -1956,7 +1956,7 @@ paths:
         name: claimRequest
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.AutoPiClaimRequest'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.AutoPiClaimRequest'
       produces:
       - application/json
       responses:
@@ -2307,55 +2307,16 @@ paths:
         name: user_device
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.RegisterUserDevice'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RegisterUserDevice'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_controllers.RegisterUserDeviceResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RegisterUserDeviceResponse'
       security:
       - ApiKeyAuth: []
-      - BearerAuth: []
-      tags:
-      - user-devices
-  /user/devices/:tokenID/commands/burn:
-    get:
-      description: Returns the data the user must sign in order to burn the device.
-      parameters:
-      - description: token id
-        in: path
-        name: tokenID
-        required: true
-        type: integer
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/apitypes.TypedData'
-      security:
-      - BearerAuth: []
-      tags:
-      - user-devices
-    post:
-      description: Sends a burn device request to the blockchain
-      parameters:
-      - description: token id
-        in: path
-        name: tokenID
-        required: true
-        type: integer
-      - description: Signature and Token ID
-        in: body
-        name: burnRequest
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.BurnRequest'
-      responses:
-        "200":
-          description: OK
-      security:
       - BearerAuth: []
       tags:
       - user-devices
@@ -2416,7 +2377,7 @@ paths:
         name: userSignature
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.AutoPiPairRequest'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.AutoPiPairRequest'
       produces:
       - application/json
       responses: {}
@@ -2455,7 +2416,7 @@ paths:
         name: userSignature
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.AutoPiPairRequest'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.AutoPiPairRequest'
       produces:
       - application/json
       responses: {}
@@ -2472,7 +2433,7 @@ paths:
         name: userDeviceIntegrationRegistration
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.RegisterDeviceIntegrationRequest'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RegisterDeviceIntegrationRequest'
       responses:
         "204":
           description: No Content
@@ -2527,7 +2488,7 @@ paths:
         name: mintRequest
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.MintRequest'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.MintRequest'
       responses:
         "200":
           description: OK
@@ -2582,7 +2543,7 @@ paths:
         name: name
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.UpdateCountryCodeReq'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UpdateCountryCodeReq'
       produces:
       - application/json
       responses:
@@ -2678,7 +2639,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.GetUserDeviceIntegrationResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.GetUserDeviceIntegrationResponse'
       security:
       - BearerAuth: []
       tags:
@@ -2709,7 +2670,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.CommandRequestStatusResp'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CommandRequestStatusResp'
       summary: Get the status of a submitted command.
       tags:
       - device
@@ -2758,7 +2719,7 @@ paths:
         name: signed
         required: true
         schema:
-          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.BurnSyntheticDeviceRequest'
+          $ref: '#/definitions/internal_controllers.BurnSyntheticDeviceRequest'
       produces:
       - application/json
       responses:
@@ -2789,7 +2750,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.CommandResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CommandResponse'
       summary: Lock the device's doors
       tags:
       - device
@@ -2816,7 +2777,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.CommandResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CommandResponse'
       summary: Unlock the device's doors
       tags:
       - device
@@ -2844,7 +2805,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.CommandResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CommandResponse'
       summary: Open the device's front trunk
       tags:
       - device
@@ -2895,7 +2856,7 @@ paths:
         name: signed
         required: true
         schema:
-          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.MintSyntheticDeviceRequest'
+          $ref: '#/definitions/internal_controllers.MintSyntheticDeviceRequest'
       produces:
       - application/json
       responses:
@@ -2925,7 +2886,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.CommandResponse'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CommandResponse'
       summary: Open the device's rear trunk
       tags:
       - device
@@ -2942,7 +2903,7 @@ paths:
         name: name
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.UpdateNameReq'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UpdateNameReq'
       - description: user id
         in: path
         name: user_device_id
@@ -2966,7 +2927,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.DeviceOffer'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DeviceOffer'
       security:
       - BearerAuth: []
       tags:
@@ -2986,7 +2947,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.DeviceRange'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DeviceRange'
       security:
       - BearerAuth: []
       tags:
@@ -3029,7 +2990,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.DeviceValuation'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DeviceValuation'
       security:
       - BearerAuth: []
       tags:
@@ -3045,7 +3006,7 @@ paths:
         name: vin
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.UpdateVINReq'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UpdateVINReq'
       - description: user id
         in: path
         name: userDeviceID
@@ -3074,7 +3035,7 @@ paths:
         name: nftIamges
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.NFTImageData'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.NFTImageData'
       responses:
         "204":
           description: No Content
@@ -3095,18 +3056,18 @@ paths:
         name: user_device
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.RegisterUserDeviceSmartcar'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RegisterUserDeviceSmartcar'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.UserDeviceFull'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UserDeviceFull'
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_controllers.UserDeviceFull'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UserDeviceFull'
         "400":
           description: validation failure
         "409":
@@ -3132,14 +3093,14 @@ paths:
         name: user_device
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.RegisterUserDeviceVIN'
+          $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RegisterUserDeviceVIN'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_controllers.UserDeviceFull'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.UserDeviceFull'
         "400":
           description: validation failure
         "424":
@@ -3160,7 +3121,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.MyDevicesResp'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.MyDevicesResp'
       security:
       - BearerAuth: []
       tags:
@@ -3174,7 +3135,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers.MyDevicesResp'
+            $ref: '#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.MyDevicesResp'
       security:
       - BearerAuth: []
       tags:
@@ -3263,6 +3224,41 @@ paths:
       - BearerAuth: []
       tags:
       - geofence
+  /user/vehicle/{tokenID}/commands/burn:
+    get:
+      description: Returns the data the user must sign in order to burn the device.
+      parameters:
+      - description: token id
+        in: path
+        name: tokenID
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apitypes.TypedData'
+      security:
+      - BearerAuth: []
+    post:
+      description: Sends a burn device request to the blockchain
+      parameters:
+      - description: token id
+        in: path
+        name: tokenID
+        required: true
+        type: integer
+      - description: Signature and Token ID
+        in: body
+        name: burnRequest
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.BurnRequest'
+      responses:
+        "200":
+          description: OK
+      security:
+      - BearerAuth: []
   /vehicle/{tokenID}/commands/doors/lock:
     post:
       description: Lock the device's doors.
