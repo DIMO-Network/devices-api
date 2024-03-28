@@ -20,22 +20,22 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	UserDeviceService_GetUserDevice_FullMethodName                 = "/devices.UserDeviceService/GetUserDevice"
-	UserDeviceService_GetUserDeviceByTokenId_FullMethodName        = "/devices.UserDeviceService/GetUserDeviceByTokenId"
-	UserDeviceService_GetUserDeviceByVIN_FullMethodName            = "/devices.UserDeviceService/GetUserDeviceByVIN"
-	UserDeviceService_GetUserDeviceByEthAddr_FullMethodName        = "/devices.UserDeviceService/GetUserDeviceByEthAddr"
-	UserDeviceService_ListUserDevicesForUser_FullMethodName        = "/devices.UserDeviceService/ListUserDevicesForUser"
-	UserDeviceService_ApplyHardwareTemplate_FullMethodName         = "/devices.UserDeviceService/ApplyHardwareTemplate"
-	UserDeviceService_GetUserDeviceByAutoPIUnitId_FullMethodName   = "/devices.UserDeviceService/GetUserDeviceByAutoPIUnitId"
-	UserDeviceService_GetClaimedVehiclesGrowth_FullMethodName      = "/devices.UserDeviceService/GetClaimedVehiclesGrowth"
-	UserDeviceService_CreateTemplate_FullMethodName                = "/devices.UserDeviceService/CreateTemplate"
-	UserDeviceService_RegisterUserDeviceFromVIN_FullMethodName     = "/devices.UserDeviceService/RegisterUserDeviceFromVIN"
-	UserDeviceService_UpdateDeviceIntegrationStatus_FullMethodName = "/devices.UserDeviceService/UpdateDeviceIntegrationStatus"
-	UserDeviceService_GetAllUserDevice_FullMethodName              = "/devices.UserDeviceService/GetAllUserDevice"
-	UserDeviceService_IssueVinCredential_FullMethodName            = "/devices.UserDeviceService/IssueVinCredential"
-	UserDeviceService_UpdateUserDeviceMetadata_FullMethodName      = "/devices.UserDeviceService/UpdateUserDeviceMetadata"
-	UserDeviceService_ClearMetaTransactionRequests_FullMethodName  = "/devices.UserDeviceService/ClearMetaTransactionRequests"
-	UserDeviceService_DeleteUserDeviceIntegration_FullMethodName   = "/devices.UserDeviceService/DeleteUserDeviceIntegration"
+	UserDeviceService_GetUserDevice_FullMethodName                    = "/devices.UserDeviceService/GetUserDevice"
+	UserDeviceService_GetUserDeviceByTokenId_FullMethodName           = "/devices.UserDeviceService/GetUserDeviceByTokenId"
+	UserDeviceService_GetUserDeviceByVIN_FullMethodName               = "/devices.UserDeviceService/GetUserDeviceByVIN"
+	UserDeviceService_GetUserDeviceByEthAddr_FullMethodName           = "/devices.UserDeviceService/GetUserDeviceByEthAddr"
+	UserDeviceService_ListUserDevicesForUser_FullMethodName           = "/devices.UserDeviceService/ListUserDevicesForUser"
+	UserDeviceService_ApplyHardwareTemplate_FullMethodName            = "/devices.UserDeviceService/ApplyHardwareTemplate"
+	UserDeviceService_GetUserDeviceByAutoPIUnitId_FullMethodName      = "/devices.UserDeviceService/GetUserDeviceByAutoPIUnitId"
+	UserDeviceService_GetClaimedVehiclesGrowth_FullMethodName         = "/devices.UserDeviceService/GetClaimedVehiclesGrowth"
+	UserDeviceService_CreateTemplate_FullMethodName                   = "/devices.UserDeviceService/CreateTemplate"
+	UserDeviceService_RegisterUserDeviceFromVIN_FullMethodName        = "/devices.UserDeviceService/RegisterUserDeviceFromVIN"
+	UserDeviceService_UpdateDeviceIntegrationStatus_FullMethodName    = "/devices.UserDeviceService/UpdateDeviceIntegrationStatus"
+	UserDeviceService_GetAllUserDevice_FullMethodName                 = "/devices.UserDeviceService/GetAllUserDevice"
+	UserDeviceService_IssueVinCredential_FullMethodName               = "/devices.UserDeviceService/IssueVinCredential"
+	UserDeviceService_UpdateUserDeviceMetadata_FullMethodName         = "/devices.UserDeviceService/UpdateUserDeviceMetadata"
+	UserDeviceService_ClearMetaTransactionRequests_FullMethodName     = "/devices.UserDeviceService/ClearMetaTransactionRequests"
+	UserDeviceService_DeleteSyntheticDeviceIntegration_FullMethodName = "/devices.UserDeviceService/DeleteSyntheticDeviceIntegration"
 )
 
 // UserDeviceServiceClient is the client API for UserDeviceService service.
@@ -58,7 +58,7 @@ type UserDeviceServiceClient interface {
 	// used to update metadata properties, currently only ones needed by valuations-api
 	UpdateUserDeviceMetadata(ctx context.Context, in *UpdateUserDeviceMetadataRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ClearMetaTransactionRequests(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ClearMetaTransactionRequestsResponse, error)
-	DeleteUserDeviceIntegration(ctx context.Context, in *DeleteUserDeviceIntegrationsRequest, opts ...grpc.CallOption) (*DeleteUserDeviceIntegrationResponse, error)
+	DeleteSyntheticDeviceIntegration(ctx context.Context, in *DeleteSyntheticDeviceIntegrationsRequest, opts ...grpc.CallOption) (*DeleteSyntheticDeviceIntegrationResponse, error)
 }
 
 type userDeviceServiceClient struct {
@@ -227,9 +227,9 @@ func (c *userDeviceServiceClient) ClearMetaTransactionRequests(ctx context.Conte
 	return out, nil
 }
 
-func (c *userDeviceServiceClient) DeleteUserDeviceIntegration(ctx context.Context, in *DeleteUserDeviceIntegrationsRequest, opts ...grpc.CallOption) (*DeleteUserDeviceIntegrationResponse, error) {
-	out := new(DeleteUserDeviceIntegrationResponse)
-	err := c.cc.Invoke(ctx, UserDeviceService_DeleteUserDeviceIntegration_FullMethodName, in, out, opts...)
+func (c *userDeviceServiceClient) DeleteSyntheticDeviceIntegration(ctx context.Context, in *DeleteSyntheticDeviceIntegrationsRequest, opts ...grpc.CallOption) (*DeleteSyntheticDeviceIntegrationResponse, error) {
+	out := new(DeleteSyntheticDeviceIntegrationResponse)
+	err := c.cc.Invoke(ctx, UserDeviceService_DeleteSyntheticDeviceIntegration_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +256,7 @@ type UserDeviceServiceServer interface {
 	// used to update metadata properties, currently only ones needed by valuations-api
 	UpdateUserDeviceMetadata(context.Context, *UpdateUserDeviceMetadataRequest) (*emptypb.Empty, error)
 	ClearMetaTransactionRequests(context.Context, *emptypb.Empty) (*ClearMetaTransactionRequestsResponse, error)
-	DeleteUserDeviceIntegration(context.Context, *DeleteUserDeviceIntegrationsRequest) (*DeleteUserDeviceIntegrationResponse, error)
+	DeleteSyntheticDeviceIntegration(context.Context, *DeleteSyntheticDeviceIntegrationsRequest) (*DeleteSyntheticDeviceIntegrationResponse, error)
 	mustEmbedUnimplementedUserDeviceServiceServer()
 }
 
@@ -309,8 +309,8 @@ func (UnimplementedUserDeviceServiceServer) UpdateUserDeviceMetadata(context.Con
 func (UnimplementedUserDeviceServiceServer) ClearMetaTransactionRequests(context.Context, *emptypb.Empty) (*ClearMetaTransactionRequestsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClearMetaTransactionRequests not implemented")
 }
-func (UnimplementedUserDeviceServiceServer) DeleteUserDeviceIntegration(context.Context, *DeleteUserDeviceIntegrationsRequest) (*DeleteUserDeviceIntegrationResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteUserDeviceIntegration not implemented")
+func (UnimplementedUserDeviceServiceServer) DeleteSyntheticDeviceIntegration(context.Context, *DeleteSyntheticDeviceIntegrationsRequest) (*DeleteSyntheticDeviceIntegrationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteSyntheticDeviceIntegration not implemented")
 }
 func (UnimplementedUserDeviceServiceServer) mustEmbedUnimplementedUserDeviceServiceServer() {}
 
@@ -598,20 +598,20 @@ func _UserDeviceService_ClearMetaTransactionRequests_Handler(srv interface{}, ct
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UserDeviceService_DeleteUserDeviceIntegration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteUserDeviceIntegrationsRequest)
+func _UserDeviceService_DeleteSyntheticDeviceIntegration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteSyntheticDeviceIntegrationsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(UserDeviceServiceServer).DeleteUserDeviceIntegration(ctx, in)
+		return srv.(UserDeviceServiceServer).DeleteSyntheticDeviceIntegration(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: UserDeviceService_DeleteUserDeviceIntegration_FullMethodName,
+		FullMethod: UserDeviceService_DeleteSyntheticDeviceIntegration_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserDeviceServiceServer).DeleteUserDeviceIntegration(ctx, req.(*DeleteUserDeviceIntegrationsRequest))
+		return srv.(UserDeviceServiceServer).DeleteSyntheticDeviceIntegration(ctx, req.(*DeleteSyntheticDeviceIntegrationsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -680,8 +680,8 @@ var UserDeviceService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _UserDeviceService_ClearMetaTransactionRequests_Handler,
 		},
 		{
-			MethodName: "DeleteUserDeviceIntegration",
-			Handler:    _UserDeviceService_DeleteUserDeviceIntegration_Handler,
+			MethodName: "DeleteSyntheticDeviceIntegration",
+			Handler:    _UserDeviceService_DeleteSyntheticDeviceIntegration_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

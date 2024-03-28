@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/gofiber/fiber"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -45,6 +44,8 @@ func NewUserDeviceRPCService(
 	eventService services.EventService,
 	vcIss *issuer.Issuer,
 	userDeviceService services.UserDeviceService,
+	teslaTaskService services.TeslaTaskService,
+	smartcarTaskSvc services.SmartcarTaskService,
 ) pb.UserDeviceServiceServer {
 	return &userDeviceRPCServer{dbs: dbs,
 		logger:                  logger,
@@ -54,6 +55,8 @@ func NewUserDeviceRPCService(
 		eventService:            eventService,
 		vcIss:                   vcIss,
 		userDeviceSvc:           userDeviceService,
+		teslaTaskService:        teslaTaskService,
+		smartcarTaskSvc:         smartcarTaskSvc,
 	}
 }
 
@@ -68,6 +71,8 @@ type userDeviceRPCServer struct {
 	eventService            services.EventService
 	vcIss                   *issuer.Issuer
 	userDeviceSvc           services.UserDeviceService
+	teslaTaskService        services.TeslaTaskService
+	smartcarTaskSvc         services.SmartcarTaskService
 }
 
 func (s *userDeviceRPCServer) GetUserDevice(ctx context.Context, req *pb.GetUserDeviceRequest) (*pb.UserDevice, error) {
@@ -663,106 +668,70 @@ func (s *userDeviceRPCServer) ClearMetaTransactionRequests(ctx context.Context, 
 	return &pb.ClearMetaTransactionRequestsResponse{Id: m.ID}, nil
 }
 
-func (s *userDeviceRPCServer) DeleteSyntheticDeviceIntegration(ctx context.Context, req *pb.DeleteUserDeviceIntegrationsRequest) (*pb.DeleteUserDeviceIntegrationResponse, error) {
-	tx, err := s.dbs().Writer.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback() //nolint
+func (s *userDeviceRPCServer) DeleteSyntheticDeviceIntegration(ctx context.Context, req *pb.DeleteSyntheticDeviceIntegrationsRequest) (*pb.DeleteSyntheticDeviceIntegrationResponse, error) {
+	resp := &pb.DeleteSyntheticDeviceIntegrationResponse{}
 
 	for _, deleteRequest := range req.DeviceIntegrations {
-		device, err := models.UserDevices(
-			models.UserDeviceWhere.ID.EQ(deleteRequest.UserDeviceId),
-			qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(deleteRequest.IntegrationId)),
-			qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
-		).One(ctx, tx)
-		if err != nil {
-			return nil, err
-		}
 
-		if len(device.R.UserDeviceAPIIntegrations) == 0 {
-			return nil, fmt.Errorf("device %s does not have integration %s", deleteRequest.UserDeviceId, deleteRequest.IntegrationId)
-		}
-
-		if device.R.VehicleNFT != nil && device.R.VehicleNFT.R.VehicleTokenSyntheticDevice != nil {
-			sd := device.R.VehicleNFT.R.VehicleTokenSyntheticDevice
-			integr, err := s.deviceDefSvc.GetIntegrationByID(ctx, deleteRequest.IntegrationId)
-			if err != nil {
-				return nil, err
-			}
-
-			integrTokenID, _ := sd.IntegrationTokenID.Uint64()
-			if integr.TokenId == integrTokenID {
-				if sd.BurnRequestID.Valid {
-					return nil, fmt.Errorf("Synthetic device burn in progress.")
-				}
-				return nil, fmt.Errorf("Burn synthetic device before deleting integration.")
-			}
-		}
-
-		dd, err := s.deviceDefSvc.GetDeviceDefinitionByID(ctx, device.DeviceDefinitionID)
-		if err != nil {
-			return nil, fmt.Errorf("deviceDefSvc error getting integration id: %s", deleteRequest.IntegrationId)
-		}
+		s.logger.Info().
+			Str("userDeviceId", deleteRequest.UserDeviceId).
+			Str("integrationId", deleteRequest.IntegrationId).
+			Msg("deleting integration on behalf of user")
 
 		apiInt, err := models.UserDeviceAPIIntegrations(
 			models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(deleteRequest.UserDeviceId),
 			models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(deleteRequest.IntegrationId),
-		).One(ctx, tx)
+			qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
+		).One(ctx, s.dbs().Reader)
 		if err != nil {
 			return nil, err
 		}
 
-		integ, err := udc.DeviceDefSvc.GetIntegrationByID(ctx, integrationID)
+		if apiInt.R.UserDevice == nil {
+			return nil, fmt.Errorf("failed to find user device %s for integration %s", deleteRequest.UserDeviceId, deleteRequest.IntegrationId)
+		}
+
+		dd, err := s.deviceDefSvc.GetDeviceDefinitionByID(ctx, apiInt.R.UserDevice.DeviceDefinitionID)
 		if err != nil {
-			return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting integration id: "+integrationID)
+			return nil, fmt.Errorf("deviceDefSvc error getting device definition by id %s: %w", apiInt.R.UserDevice.DeviceDefinitionID, err)
+		}
+
+		integ, err := s.deviceDefSvc.GetIntegrationByID(ctx, deleteRequest.IntegrationId)
+		if err != nil {
+			return nil, fmt.Errorf("deviceDefSvc error getting integration by id %s: %w", deleteRequest.IntegrationId, err)
 		}
 
 		switch integ.Vendor {
 		case constants.SmartCarVendor:
 			if apiInt.TaskID.Valid {
-				err = udc.smartcarTaskSvc.StopPoll(apiInt)
+				err = s.smartcarTaskSvc.StopPoll(apiInt)
 				if err != nil {
-					return err
+					return nil, fmt.Errorf("failed to stop smartcar poll: %w", err)
 				}
 			}
 		case constants.TeslaVendor:
 			if apiInt.TaskID.Valid {
-				err = udc.teslaTaskService.StopPoll(apiInt)
+				err = s.teslaTaskService.StopPoll(apiInt)
 				if err != nil {
-					return err
+					return nil, fmt.Errorf("failed to stop tesla poll: %w", err)
 				}
 			}
-		case constants.AutoPiVendor:
-			if unit := apiInt.R.SerialAftermarketDevice; unit != nil && unit.PairRequestID.Valid {
-				return fiber.NewError(fiber.StatusConflict, "Must un-pair on-chain before deleting integration.")
-			}
-
-			err = udc.autoPiIngestRegistrar.Deregister(apiInt.ExternalID.String, apiInt.UserDeviceID, apiInt.IntegrationID)
-			if err != nil {
-				return err
-			}
 		}
 
-		_, err = apiInt.Delete(ctx, tx)
+		_, err = apiInt.Delete(ctx, s.dbs().Reader)
 		if err != nil {
-			return err
+			return nil, fmt.Errorf("failed to delete integration: %w", err)
 		}
 
-		err = tx.Commit()
-		if err != nil {
-			return err
-		}
-
-		err = udc.eventService.Emit(&shared.CloudEvent[any]{
+		if err := s.eventService.Emit(&shared.CloudEvent[any]{
 			Type:    "com.dimo.zone.device.integration.delete",
 			Source:  "devices-api",
-			Subject: userDeviceID,
+			Subject: apiInt.UserDeviceID,
 			Data: services.UserDeviceIntegrationEvent{
 				Timestamp: time.Now(),
-				UserID:    userID,
+				UserID:    apiInt.R.UserDevice.UserID,
 				Device: services.UserDeviceEventDevice{
-					ID:    userDeviceID,
+					ID:    apiInt.UserDeviceID,
 					Make:  dd.Make.Name,
 					Model: dd.Type.Model,
 					Year:  int(dd.Type.Year),
@@ -774,12 +743,11 @@ func (s *userDeviceRPCServer) DeleteSyntheticDeviceIntegration(ctx context.Conte
 					Vendor: integ.Vendor,
 				},
 			},
-		})
-		if err != nil {
-			udc.log.Err(err).Msg("Failed to emit integration deletion")
+		}); err != nil {
+			s.logger.Err(err).Msg("Failed to emit integration deletion")
 		}
-
+		resp.ImpactedUserDeviceIds = append(resp.ImpactedUserDeviceIds, deleteRequest.UserDeviceId)
 	}
 
-	return &pb.DeleteUserDeviceIntegrationResponse{}, nil
+	return resp, nil
 }

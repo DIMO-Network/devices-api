@@ -1551,16 +1551,16 @@ func (x *ClearMetaTransactionRequestsResponse) GetId() string {
 	return ""
 }
 
-type DeleteUserDeviceIntegrationsRequest struct {
+type DeleteSyntheticDeviceIntegrationsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	DeviceIntegrations []*DeleteUserDeviceIntegrationRequest `protobuf:"bytes,1,rep,name=device_integrations,json=deviceIntegrations,proto3" json:"device_integrations,omitempty"`
+	DeviceIntegrations []*DeleteSyntheticDeviceIntegrationRequest `protobuf:"bytes,1,rep,name=device_integrations,json=deviceIntegrations,proto3" json:"device_integrations,omitempty"`
 }
 
-func (x *DeleteUserDeviceIntegrationsRequest) Reset() {
-	*x = DeleteUserDeviceIntegrationsRequest{}
+func (x *DeleteSyntheticDeviceIntegrationsRequest) Reset() {
+	*x = DeleteSyntheticDeviceIntegrationsRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_pkg_grpc_user_devices_proto_msgTypes[25]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1568,13 +1568,13 @@ func (x *DeleteUserDeviceIntegrationsRequest) Reset() {
 	}
 }
 
-func (x *DeleteUserDeviceIntegrationsRequest) String() string {
+func (x *DeleteSyntheticDeviceIntegrationsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DeleteUserDeviceIntegrationsRequest) ProtoMessage() {}
+func (*DeleteSyntheticDeviceIntegrationsRequest) ProtoMessage() {}
 
-func (x *DeleteUserDeviceIntegrationsRequest) ProtoReflect() protoreflect.Message {
+func (x *DeleteSyntheticDeviceIntegrationsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pkg_grpc_user_devices_proto_msgTypes[25]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1586,19 +1586,19 @@ func (x *DeleteUserDeviceIntegrationsRequest) ProtoReflect() protoreflect.Messag
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteUserDeviceIntegrationsRequest.ProtoReflect.Descriptor instead.
-func (*DeleteUserDeviceIntegrationsRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use DeleteSyntheticDeviceIntegrationsRequest.ProtoReflect.Descriptor instead.
+func (*DeleteSyntheticDeviceIntegrationsRequest) Descriptor() ([]byte, []int) {
 	return file_pkg_grpc_user_devices_proto_rawDescGZIP(), []int{25}
 }
 
-func (x *DeleteUserDeviceIntegrationsRequest) GetDeviceIntegrations() []*DeleteUserDeviceIntegrationRequest {
+func (x *DeleteSyntheticDeviceIntegrationsRequest) GetDeviceIntegrations() []*DeleteSyntheticDeviceIntegrationRequest {
 	if x != nil {
 		return x.DeviceIntegrations
 	}
 	return nil
 }
 
-type DeleteUserDeviceIntegrationRequest struct {
+type DeleteSyntheticDeviceIntegrationRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -1607,8 +1607,8 @@ type DeleteUserDeviceIntegrationRequest struct {
 	IntegrationId string `protobuf:"bytes,2,opt,name=integration_id,json=integrationId,proto3" json:"integration_id,omitempty"`
 }
 
-func (x *DeleteUserDeviceIntegrationRequest) Reset() {
-	*x = DeleteUserDeviceIntegrationRequest{}
+func (x *DeleteSyntheticDeviceIntegrationRequest) Reset() {
+	*x = DeleteSyntheticDeviceIntegrationRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_pkg_grpc_user_devices_proto_msgTypes[26]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1616,13 +1616,13 @@ func (x *DeleteUserDeviceIntegrationRequest) Reset() {
 	}
 }
 
-func (x *DeleteUserDeviceIntegrationRequest) String() string {
+func (x *DeleteSyntheticDeviceIntegrationRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DeleteUserDeviceIntegrationRequest) ProtoMessage() {}
+func (*DeleteSyntheticDeviceIntegrationRequest) ProtoMessage() {}
 
-func (x *DeleteUserDeviceIntegrationRequest) ProtoReflect() protoreflect.Message {
+func (x *DeleteSyntheticDeviceIntegrationRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pkg_grpc_user_devices_proto_msgTypes[26]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1634,36 +1634,35 @@ func (x *DeleteUserDeviceIntegrationRequest) ProtoReflect() protoreflect.Message
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteUserDeviceIntegrationRequest.ProtoReflect.Descriptor instead.
-func (*DeleteUserDeviceIntegrationRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use DeleteSyntheticDeviceIntegrationRequest.ProtoReflect.Descriptor instead.
+func (*DeleteSyntheticDeviceIntegrationRequest) Descriptor() ([]byte, []int) {
 	return file_pkg_grpc_user_devices_proto_rawDescGZIP(), []int{26}
 }
 
-func (x *DeleteUserDeviceIntegrationRequest) GetUserDeviceId() string {
+func (x *DeleteSyntheticDeviceIntegrationRequest) GetUserDeviceId() string {
 	if x != nil {
 		return x.UserDeviceId
 	}
 	return ""
 }
 
-func (x *DeleteUserDeviceIntegrationRequest) GetIntegrationId() string {
+func (x *DeleteSyntheticDeviceIntegrationRequest) GetIntegrationId() string {
 	if x != nil {
 		return x.IntegrationId
 	}
 	return ""
 }
 
-type DeleteUserDeviceIntegrationResponse struct {
+type DeleteSyntheticDeviceIntegrationResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	UserDeviceId         string   `protobuf:"bytes,1,opt,name=user_device_id,json=userDeviceId,proto3" json:"user_device_id,omitempty"`
-	ActiveIntegrationIds []string `protobuf:"bytes,2,rep,name=active_integration_ids,json=activeIntegrationIds,proto3" json:"active_integration_ids,omitempty"`
+	ImpactedUserDeviceIds []string `protobuf:"bytes,1,rep,name=impacted_user_device_ids,json=impactedUserDeviceIds,proto3" json:"impacted_user_device_ids,omitempty"`
 }
 
-func (x *DeleteUserDeviceIntegrationResponse) Reset() {
-	*x = DeleteUserDeviceIntegrationResponse{}
+func (x *DeleteSyntheticDeviceIntegrationResponse) Reset() {
+	*x = DeleteSyntheticDeviceIntegrationResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_pkg_grpc_user_devices_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1671,13 +1670,13 @@ func (x *DeleteUserDeviceIntegrationResponse) Reset() {
 	}
 }
 
-func (x *DeleteUserDeviceIntegrationResponse) String() string {
+func (x *DeleteSyntheticDeviceIntegrationResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DeleteUserDeviceIntegrationResponse) ProtoMessage() {}
+func (*DeleteSyntheticDeviceIntegrationResponse) ProtoMessage() {}
 
-func (x *DeleteUserDeviceIntegrationResponse) ProtoReflect() protoreflect.Message {
+func (x *DeleteSyntheticDeviceIntegrationResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pkg_grpc_user_devices_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1689,21 +1688,14 @@ func (x *DeleteUserDeviceIntegrationResponse) ProtoReflect() protoreflect.Messag
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteUserDeviceIntegrationResponse.ProtoReflect.Descriptor instead.
-func (*DeleteUserDeviceIntegrationResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use DeleteSyntheticDeviceIntegrationResponse.ProtoReflect.Descriptor instead.
+func (*DeleteSyntheticDeviceIntegrationResponse) Descriptor() ([]byte, []int) {
 	return file_pkg_grpc_user_devices_proto_rawDescGZIP(), []int{27}
 }
 
-func (x *DeleteUserDeviceIntegrationResponse) GetUserDeviceId() string {
+func (x *DeleteSyntheticDeviceIntegrationResponse) GetImpactedUserDeviceIds() []string {
 	if x != nil {
-		return x.UserDeviceId
-	}
-	return ""
-}
-
-func (x *DeleteUserDeviceIntegrationResponse) GetActiveIntegrationIds() []string {
-	if x != nil {
-		return x.ActiveIntegrationIds
+		return x.ImpactedUserDeviceIds
 	}
 	return nil
 }
@@ -1947,31 +1939,30 @@ var file_pkg_grpc_user_devices_proto_rawDesc = []byte{
 	0x36, 0x0a, 0x24, 0x43, 0x6c, 0x65, 0x61, 0x72, 0x4d, 0x65, 0x74, 0x61, 0x54, 0x72, 0x61, 0x6e,
 	0x73, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x73, 0x52,
 	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x22, 0x83, 0x01, 0x0a, 0x23, 0x44, 0x65, 0x6c, 0x65,
-	0x74, 0x65, 0x55, 0x73, 0x65, 0x72, 0x44, 0x65, 0x76, 0x69, 0x63, 0x65, 0x49, 0x6e, 0x74, 0x65,
-	0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12,
-	0x5c, 0x0a, 0x13, 0x64, 0x65, 0x76, 0x69, 0x63, 0x65, 0x5f, 0x69, 0x6e, 0x74, 0x65, 0x67, 0x72,
-	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x2b, 0x2e, 0x64,
-	0x65, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x55, 0x73, 0x65,
-	0x72, 0x44, 0x65, 0x76, 0x69, 0x63, 0x65, 0x49, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74, 0x69,
-	0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x52, 0x12, 0x64, 0x65, 0x76, 0x69, 0x63,
-	0x65, 0x49, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x22, 0x71, 0x0a,
-	0x22, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x55, 0x73, 0x65, 0x72, 0x44, 0x65, 0x76, 0x69, 0x63,
+	0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x22, 0x8d, 0x01, 0x0a, 0x28, 0x44, 0x65, 0x6c, 0x65,
+	0x74, 0x65, 0x53, 0x79, 0x6e, 0x74, 0x68, 0x65, 0x74, 0x69, 0x63, 0x44, 0x65, 0x76, 0x69, 0x63,
+	0x65, 0x49, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x12, 0x61, 0x0a, 0x13, 0x64, 0x65, 0x76, 0x69, 0x63, 0x65, 0x5f, 0x69,
+	0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28,
+	0x0b, 0x32, 0x30, 0x2e, 0x64, 0x65, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x44, 0x65, 0x6c, 0x65,
+	0x74, 0x65, 0x53, 0x79, 0x6e, 0x74, 0x68, 0x65, 0x74, 0x69, 0x63, 0x44, 0x65, 0x76, 0x69, 0x63,
 	0x65, 0x49, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x12, 0x24, 0x0a, 0x0e, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x64, 0x65, 0x76, 0x69,
-	0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x75, 0x73, 0x65,
-	0x72, 0x44, 0x65, 0x76, 0x69, 0x63, 0x65, 0x49, 0x64, 0x12, 0x25, 0x0a, 0x0e, 0x69, 0x6e, 0x74,
-	0x65, 0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x0d, 0x69, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x64,
-	0x22, 0x81, 0x01, 0x0a, 0x23, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x55, 0x73, 0x65, 0x72, 0x44,
-	0x65, 0x76, 0x69, 0x63, 0x65, 0x49, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x24, 0x0a, 0x0e, 0x75, 0x73, 0x65, 0x72,
-	0x5f, 0x64, 0x65, 0x76, 0x69, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x0c, 0x75, 0x73, 0x65, 0x72, 0x44, 0x65, 0x76, 0x69, 0x63, 0x65, 0x49, 0x64, 0x12, 0x34,
-	0x0a, 0x16, 0x61, 0x63, 0x74, 0x69, 0x76, 0x65, 0x5f, 0x69, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61,
-	0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x14,
-	0x61, 0x63, 0x74, 0x69, 0x76, 0x65, 0x49, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0x49, 0x64, 0x73, 0x32, 0x87, 0x0c, 0x0a, 0x11, 0x55, 0x73, 0x65, 0x72, 0x44, 0x65, 0x76,
+	0x65, 0x73, 0x74, 0x52, 0x12, 0x64, 0x65, 0x76, 0x69, 0x63, 0x65, 0x49, 0x6e, 0x74, 0x65, 0x67,
+	0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x22, 0x76, 0x0a, 0x27, 0x44, 0x65, 0x6c, 0x65, 0x74,
+	0x65, 0x53, 0x79, 0x6e, 0x74, 0x68, 0x65, 0x74, 0x69, 0x63, 0x44, 0x65, 0x76, 0x69, 0x63, 0x65,
+	0x49, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x12, 0x24, 0x0a, 0x0e, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x64, 0x65, 0x76, 0x69, 0x63,
+	0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x75, 0x73, 0x65, 0x72,
+	0x44, 0x65, 0x76, 0x69, 0x63, 0x65, 0x49, 0x64, 0x12, 0x25, 0x0a, 0x0e, 0x69, 0x6e, 0x74, 0x65,
+	0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x0d, 0x69, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x22,
+	0x63, 0x0a, 0x28, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x79, 0x6e, 0x74, 0x68, 0x65, 0x74,
+	0x69, 0x63, 0x44, 0x65, 0x76, 0x69, 0x63, 0x65, 0x49, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74,
+	0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x37, 0x0a, 0x18, 0x69,
+	0x6d, 0x70, 0x61, 0x63, 0x74, 0x65, 0x64, 0x5f, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x64, 0x65, 0x76,
+	0x69, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x15, 0x69,
+	0x6d, 0x70, 0x61, 0x63, 0x74, 0x65, 0x64, 0x55, 0x73, 0x65, 0x72, 0x44, 0x65, 0x76, 0x69, 0x63,
+	0x65, 0x49, 0x64, 0x73, 0x32, 0x97, 0x0c, 0x0a, 0x11, 0x55, 0x73, 0x65, 0x72, 0x44, 0x65, 0x76,
 	0x69, 0x63, 0x65, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x43, 0x0a, 0x0d, 0x47, 0x65,
 	0x74, 0x55, 0x73, 0x65, 0x72, 0x44, 0x65, 0x76, 0x69, 0x63, 0x65, 0x12, 0x1d, 0x2e, 0x64, 0x65,
 	0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x47, 0x65, 0x74, 0x55, 0x73, 0x65, 0x72, 0x44, 0x65, 0x76,
@@ -2060,13 +2051,14 @@ var file_pkg_grpc_user_devices_proto_rawDesc = []byte{
 	0x6d, 0x70, 0x74, 0x79, 0x1a, 0x2d, 0x2e, 0x64, 0x65, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x43,
 	0x6c, 0x65, 0x61, 0x72, 0x4d, 0x65, 0x74, 0x61, 0x54, 0x72, 0x61, 0x6e, 0x73, 0x61, 0x63, 0x74,
 	0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x12, 0x79, 0x0a, 0x1b, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x55, 0x73, 0x65,
-	0x72, 0x44, 0x65, 0x76, 0x69, 0x63, 0x65, 0x49, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74, 0x69,
-	0x6f, 0x6e, 0x12, 0x2c, 0x2e, 0x64, 0x65, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x44, 0x65, 0x6c,
-	0x65, 0x74, 0x65, 0x55, 0x73, 0x65, 0x72, 0x44, 0x65, 0x76, 0x69, 0x63, 0x65, 0x49, 0x6e, 0x74,
-	0x65, 0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x1a, 0x2c, 0x2e, 0x64, 0x65, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74,
-	0x65, 0x55, 0x73, 0x65, 0x72, 0x44, 0x65, 0x76, 0x69, 0x63, 0x65, 0x49, 0x6e, 0x74, 0x65, 0x67,
+	0x6e, 0x73, 0x65, 0x12, 0x88, 0x01, 0x0a, 0x20, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x79,
+	0x6e, 0x74, 0x68, 0x65, 0x74, 0x69, 0x63, 0x44, 0x65, 0x76, 0x69, 0x63, 0x65, 0x49, 0x6e, 0x74,
+	0x65, 0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x31, 0x2e, 0x64, 0x65, 0x76, 0x69, 0x63,
+	0x65, 0x73, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x79, 0x6e, 0x74, 0x68, 0x65, 0x74,
+	0x69, 0x63, 0x44, 0x65, 0x76, 0x69, 0x63, 0x65, 0x49, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74,
+	0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x31, 0x2e, 0x64, 0x65,
+	0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x79, 0x6e, 0x74,
+	0x68, 0x65, 0x74, 0x69, 0x63, 0x44, 0x65, 0x76, 0x69, 0x63, 0x65, 0x49, 0x6e, 0x74, 0x65, 0x67,
 	0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x2e,
 	0x5a, 0x2c, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x44, 0x49, 0x4d,
 	0x4f, 0x2d, 0x4e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b, 0x2f, 0x64, 0x65, 0x76, 0x69, 0x63, 0x65,
@@ -2088,37 +2080,37 @@ func file_pkg_grpc_user_devices_proto_rawDescGZIP() []byte {
 
 var file_pkg_grpc_user_devices_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_pkg_grpc_user_devices_proto_goTypes = []interface{}{
-	(*GetUserDeviceByAutoPIUnitIdRequest)(nil),   // 0: devices.GetUserDeviceByAutoPIUnitIdRequest
-	(*GetUserDeviceRequest)(nil),                 // 1: devices.GetUserDeviceRequest
-	(*GetUserDeviceByVINRequest)(nil),            // 2: devices.GetUserDeviceByVINRequest
-	(*GetUserDeviceByEthAddrRequest)(nil),        // 3: devices.GetUserDeviceByEthAddrRequest
-	(*GetUserDeviceByTokenIdRequest)(nil),        // 4: devices.GetUserDeviceByTokenIdRequest
-	(*UpdateUserDeviceMetadataRequest)(nil),      // 5: devices.UpdateUserDeviceMetadataRequest
-	(*UserDevice)(nil),                           // 6: devices.UserDevice
-	(*SyntheticDevice)(nil),                      // 7: devices.SyntheticDevice
-	(*UserDeviceIntegration)(nil),                // 8: devices.UserDeviceIntegration
-	(*UserDeviceAutoPIUnitResponse)(nil),         // 9: devices.UserDeviceAutoPIUnitResponse
-	(*ListUserDevicesForUserRequest)(nil),        // 10: devices.ListUserDevicesForUserRequest
-	(*ListUserDevicesForUserResponse)(nil),       // 11: devices.ListUserDevicesForUserResponse
-	(*ApplyHardwareTemplateRequest)(nil),         // 12: devices.ApplyHardwareTemplateRequest
-	(*ApplyHardwareTemplateResponse)(nil),        // 13: devices.ApplyHardwareTemplateResponse
-	(*ClaimedVehiclesGrowth)(nil),                // 14: devices.ClaimedVehiclesGrowth
-	(*CreateTemplateRequest)(nil),                // 15: devices.CreateTemplateRequest
-	(*CreateTemplateResponse)(nil),               // 16: devices.CreateTemplateResponse
-	(*RegisterUserDeviceFromVINRequest)(nil),     // 17: devices.RegisterUserDeviceFromVINRequest
-	(*RegisterUserDeviceFromVINResponse)(nil),    // 18: devices.RegisterUserDeviceFromVINResponse
-	(*VinCredential)(nil),                        // 19: devices.VinCredential
-	(*UpdateDeviceIntegrationStatusRequest)(nil), // 20: devices.UpdateDeviceIntegrationStatusRequest
-	(*IssueVinCredentialRequest)(nil),            // 21: devices.IssueVinCredentialRequest
-	(*IssueVinCredentialResponse)(nil),           // 22: devices.IssueVinCredentialResponse
-	(*GetAllUserDeviceRequest)(nil),              // 23: devices.GetAllUserDeviceRequest
-	(*ClearMetaTransactionRequestsResponse)(nil), // 24: devices.ClearMetaTransactionRequestsResponse
-	(*DeleteUserDeviceIntegrationsRequest)(nil),  // 25: devices.DeleteUserDeviceIntegrationsRequest
-	(*DeleteUserDeviceIntegrationRequest)(nil),   // 26: devices.DeleteUserDeviceIntegrationRequest
-	(*DeleteUserDeviceIntegrationResponse)(nil),  // 27: devices.DeleteUserDeviceIntegrationResponse
-	(*timestamppb.Timestamp)(nil),                // 28: google.protobuf.Timestamp
-	(*AftermarketDevice)(nil),                    // 29: devices.AftermarketDevice
-	(*emptypb.Empty)(nil),                        // 30: google.protobuf.Empty
+	(*GetUserDeviceByAutoPIUnitIdRequest)(nil),       // 0: devices.GetUserDeviceByAutoPIUnitIdRequest
+	(*GetUserDeviceRequest)(nil),                     // 1: devices.GetUserDeviceRequest
+	(*GetUserDeviceByVINRequest)(nil),                // 2: devices.GetUserDeviceByVINRequest
+	(*GetUserDeviceByEthAddrRequest)(nil),            // 3: devices.GetUserDeviceByEthAddrRequest
+	(*GetUserDeviceByTokenIdRequest)(nil),            // 4: devices.GetUserDeviceByTokenIdRequest
+	(*UpdateUserDeviceMetadataRequest)(nil),          // 5: devices.UpdateUserDeviceMetadataRequest
+	(*UserDevice)(nil),                               // 6: devices.UserDevice
+	(*SyntheticDevice)(nil),                          // 7: devices.SyntheticDevice
+	(*UserDeviceIntegration)(nil),                    // 8: devices.UserDeviceIntegration
+	(*UserDeviceAutoPIUnitResponse)(nil),             // 9: devices.UserDeviceAutoPIUnitResponse
+	(*ListUserDevicesForUserRequest)(nil),            // 10: devices.ListUserDevicesForUserRequest
+	(*ListUserDevicesForUserResponse)(nil),           // 11: devices.ListUserDevicesForUserResponse
+	(*ApplyHardwareTemplateRequest)(nil),             // 12: devices.ApplyHardwareTemplateRequest
+	(*ApplyHardwareTemplateResponse)(nil),            // 13: devices.ApplyHardwareTemplateResponse
+	(*ClaimedVehiclesGrowth)(nil),                    // 14: devices.ClaimedVehiclesGrowth
+	(*CreateTemplateRequest)(nil),                    // 15: devices.CreateTemplateRequest
+	(*CreateTemplateResponse)(nil),                   // 16: devices.CreateTemplateResponse
+	(*RegisterUserDeviceFromVINRequest)(nil),         // 17: devices.RegisterUserDeviceFromVINRequest
+	(*RegisterUserDeviceFromVINResponse)(nil),        // 18: devices.RegisterUserDeviceFromVINResponse
+	(*VinCredential)(nil),                            // 19: devices.VinCredential
+	(*UpdateDeviceIntegrationStatusRequest)(nil),     // 20: devices.UpdateDeviceIntegrationStatusRequest
+	(*IssueVinCredentialRequest)(nil),                // 21: devices.IssueVinCredentialRequest
+	(*IssueVinCredentialResponse)(nil),               // 22: devices.IssueVinCredentialResponse
+	(*GetAllUserDeviceRequest)(nil),                  // 23: devices.GetAllUserDeviceRequest
+	(*ClearMetaTransactionRequestsResponse)(nil),     // 24: devices.ClearMetaTransactionRequestsResponse
+	(*DeleteSyntheticDeviceIntegrationsRequest)(nil), // 25: devices.DeleteSyntheticDeviceIntegrationsRequest
+	(*DeleteSyntheticDeviceIntegrationRequest)(nil),  // 26: devices.DeleteSyntheticDeviceIntegrationRequest
+	(*DeleteSyntheticDeviceIntegrationResponse)(nil), // 27: devices.DeleteSyntheticDeviceIntegrationResponse
+	(*timestamppb.Timestamp)(nil),                    // 28: google.protobuf.Timestamp
+	(*AftermarketDevice)(nil),                        // 29: devices.AftermarketDevice
+	(*emptypb.Empty)(nil),                            // 30: google.protobuf.Empty
 }
 var file_pkg_grpc_user_devices_proto_depIdxs = []int32{
 	28, // 0: devices.UserDevice.opted_in_at:type_name -> google.protobuf.Timestamp
@@ -2129,7 +2121,7 @@ var file_pkg_grpc_user_devices_proto_depIdxs = []int32{
 	6,  // 5: devices.ListUserDevicesForUserResponse.user_devices:type_name -> devices.UserDevice
 	28, // 6: devices.VinCredential.expiration:type_name -> google.protobuf.Timestamp
 	28, // 7: devices.IssueVinCredentialRequest.expires_at:type_name -> google.protobuf.Timestamp
-	26, // 8: devices.DeleteUserDeviceIntegrationsRequest.device_integrations:type_name -> devices.DeleteUserDeviceIntegrationRequest
+	26, // 8: devices.DeleteSyntheticDeviceIntegrationsRequest.device_integrations:type_name -> devices.DeleteSyntheticDeviceIntegrationRequest
 	1,  // 9: devices.UserDeviceService.GetUserDevice:input_type -> devices.GetUserDeviceRequest
 	4,  // 10: devices.UserDeviceService.GetUserDeviceByTokenId:input_type -> devices.GetUserDeviceByTokenIdRequest
 	2,  // 11: devices.UserDeviceService.GetUserDeviceByVIN:input_type -> devices.GetUserDeviceByVINRequest
@@ -2145,7 +2137,7 @@ var file_pkg_grpc_user_devices_proto_depIdxs = []int32{
 	21, // 21: devices.UserDeviceService.IssueVinCredential:input_type -> devices.IssueVinCredentialRequest
 	5,  // 22: devices.UserDeviceService.UpdateUserDeviceMetadata:input_type -> devices.UpdateUserDeviceMetadataRequest
 	30, // 23: devices.UserDeviceService.ClearMetaTransactionRequests:input_type -> google.protobuf.Empty
-	25, // 24: devices.UserDeviceService.DeleteUserDeviceIntegration:input_type -> devices.DeleteUserDeviceIntegrationsRequest
+	25, // 24: devices.UserDeviceService.DeleteSyntheticDeviceIntegration:input_type -> devices.DeleteSyntheticDeviceIntegrationsRequest
 	6,  // 25: devices.UserDeviceService.GetUserDevice:output_type -> devices.UserDevice
 	6,  // 26: devices.UserDeviceService.GetUserDeviceByTokenId:output_type -> devices.UserDevice
 	6,  // 27: devices.UserDeviceService.GetUserDeviceByVIN:output_type -> devices.UserDevice
@@ -2161,7 +2153,7 @@ var file_pkg_grpc_user_devices_proto_depIdxs = []int32{
 	22, // 37: devices.UserDeviceService.IssueVinCredential:output_type -> devices.IssueVinCredentialResponse
 	30, // 38: devices.UserDeviceService.UpdateUserDeviceMetadata:output_type -> google.protobuf.Empty
 	24, // 39: devices.UserDeviceService.ClearMetaTransactionRequests:output_type -> devices.ClearMetaTransactionRequestsResponse
-	27, // 40: devices.UserDeviceService.DeleteUserDeviceIntegration:output_type -> devices.DeleteUserDeviceIntegrationResponse
+	27, // 40: devices.UserDeviceService.DeleteSyntheticDeviceIntegration:output_type -> devices.DeleteSyntheticDeviceIntegrationResponse
 	25, // [25:41] is the sub-list for method output_type
 	9,  // [9:25] is the sub-list for method input_type
 	9,  // [9:9] is the sub-list for extension type_name
@@ -2477,7 +2469,7 @@ func file_pkg_grpc_user_devices_proto_init() {
 			}
 		}
 		file_pkg_grpc_user_devices_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteUserDeviceIntegrationsRequest); i {
+			switch v := v.(*DeleteSyntheticDeviceIntegrationsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2489,7 +2481,7 @@ func file_pkg_grpc_user_devices_proto_init() {
 			}
 		}
 		file_pkg_grpc_user_devices_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteUserDeviceIntegrationRequest); i {
+			switch v := v.(*DeleteSyntheticDeviceIntegrationRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2501,7 +2493,7 @@ func file_pkg_grpc_user_devices_proto_init() {
 			}
 		}
 		file_pkg_grpc_user_devices_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteUserDeviceIntegrationResponse); i {
+			switch v := v.(*DeleteSyntheticDeviceIntegrationResponse); i {
 			case 0:
 				return &v.state
 			case 1:

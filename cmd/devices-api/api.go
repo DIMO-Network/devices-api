@@ -385,7 +385,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		logger.Fatal().Err(err).Msg("Failed to create transaction listener")
 	}
 
-	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService, iss, userDeviceSvc)
+	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService, iss, userDeviceSvc, teslaTaskService, scTaskSvc)
 
 	// start task consumer for autopi
 	autoPiTaskService.StartConsumer(ctx)
@@ -424,6 +424,8 @@ func startGRPCServer(
 	eventService services.EventService,
 	vcIss *issuer.Issuer,
 	userDeviceSvc services.UserDeviceService,
+	teslaTaskSvc services.TeslaTaskService,
+	smartcarTaskSvc services.SmartcarTaskService,
 ) {
 	lis, err := net.Listen("tcp", ":"+settings.GRPCPort)
 	if err != nil {
@@ -443,7 +445,7 @@ func startGRPCServer(
 	)
 
 	pb.RegisterUserDeviceServiceServer(server, rpc.NewUserDeviceRPCService(dbs, settings, hardwareTemplateService, logger,
-		deviceDefSvc, eventService, vcIss, userDeviceSvc))
+		deviceDefSvc, eventService, vcIss, userDeviceSvc, teslaTaskSvc, smartcarTaskSvc))
 	pb.RegisterAftermarketDeviceServiceServer(server, rpc.NewAftermarketDeviceService(dbs, logger))
 
 	if err := server.Serve(lis); err != nil {

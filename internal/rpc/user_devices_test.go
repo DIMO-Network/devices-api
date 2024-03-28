@@ -3,14 +3,22 @@ package rpc
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
 
+	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
+	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/redis/mocks"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/go-redis/redis/v8"
 	"github.com/segmentio/ksuid"
+	smartcar "github.com/smartcar/go-sdk"
+	"go.uber.org/mock/gomock"
 
 	pb_devices "github.com/DIMO-Network/devices-api/pkg/grpc"
 
@@ -20,8 +28,11 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
 
+	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/controllers"
 	"github.com/DIMO-Network/devices-api/internal/services"
+	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
 )
@@ -132,7 +143,7 @@ func TestGetUserDevice_AftermarketDeviceObj_NotNil(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	udResult, err := udService.GetUserDevice(ctx, &pb_devices.GetUserDeviceRequest{Id: userDeviceID})
 	assert.NoError(err)
@@ -158,7 +169,7 @@ func TestGetUserDevice_AftermarketDeviceObj_Nil(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	_, err = models.AftermarketDevices(
 		models.AftermarketDeviceWhere.UserID.EQ(null.StringFrom(userDeviceID)),
@@ -185,7 +196,7 @@ func TestGetUserDevice_PopulateDeprecatedFields(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	udResult, err := udService.GetUserDevice(ctx, &pb_devices.GetUserDeviceRequest{Id: userDeviceID})
 	assert.NoError(err)
@@ -211,7 +222,7 @@ func TestGetUserDevice_PopulateSyntheticDeviceFields(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	udResult, err := udService.GetUserDevice(ctx, &pb_devices.GetUserDeviceRequest{Id: userDeviceID})
 	assert.NoError(err)
@@ -246,7 +257,7 @@ func TestGetUserDevice_NoSyntheticDeviceFields_WhenNoTokenID(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	udResult, err := udService.GetUserDevice(ctx, &pb_devices.GetUserDeviceRequest{Id: userDeviceID})
 	assert.NoError(err)
@@ -279,7 +290,7 @@ func TestClearMetaTransactionRequests(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	resp, err := udService.ClearMetaTransactionRequests(ctx, nil)
 	assert.NoError(err)
@@ -325,7 +336,7 @@ func TestClearMetaTransactionRequests_MultipleRecords(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	resp, err := udService.ClearMetaTransactionRequests(ctx, nil)
 	assert.NoError(err)
@@ -368,7 +379,7 @@ func TestClearMetaTransactionRequests_MultipleRecords_Dates(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	resp, err := udService.ClearMetaTransactionRequests(ctx, nil)
 	assert.NoError(err)
@@ -402,7 +413,7 @@ func TestClearMetaTransactionRequests_NotExpired(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	resp, err := udService.ClearMetaTransactionRequests(ctx, nil)
 	assert.Nil(resp)
@@ -413,4 +424,229 @@ func TestClearMetaTransactionRequests_NotExpired(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Equal(mt.ID, mtID)
+}
+
+func TestDeleteSyntheticDeviceIntegration(t *testing.T) {
+	assert := assert.New(t)
+	logger := zerolog.Logger{}
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	userDeviceID, err := populateDB(ctx, pdb)
+	assert.NoError(err)
+
+	ud, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(userDeviceID)).One(ctx, pdb.DBS().Reader)
+	assert.NoError(err)
+
+	integ := models.UserDeviceAPIIntegration{
+		UserDeviceID:  userDeviceID,
+		IntegrationID: "22N2xaPOq2WW2gAHBHd0Ikn4Zob",
+		Status:        models.UserDeviceAPIIntegrationStatusActive,
+	}
+
+	if err := integ.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	mockCtrl := gomock.NewController(t)
+	scTaskSvc := mock_services.NewMockSmartcarTaskService(mockCtrl)
+	teslaTaskService := mock_services.NewMockTeslaTaskService(mockCtrl)
+	deviceDefSvc := mock_services.NewMockDeviceDefinitionService(mockCtrl)
+	eventSvc := mock_services.NewMockEventService(mockCtrl)
+	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, &logger, deviceDefSvc, eventSvc, nil, userDeviceSvc, teslaTaskService, scTaskSvc)
+
+	deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integ.IntegrationID).Times(1).Return(&grpc.Integration{
+		Vendor: constants.SmartCarVendor,
+	}, nil)
+
+	deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(1).Return(&grpc.GetDeviceDefinitionItemResponse{
+		DeviceDefinitionId: ud.DeviceDefinitionID,
+		Verified:           true,
+		DeviceAttributes:   nil,
+		Make: &grpc.DeviceMake{
+			Name: "Ford",
+		},
+		Type: &grpc.DeviceType{
+			Model: "Bronco",
+			Year:  2020,
+		},
+	}, nil)
+
+	eventSvc.EXPECT().Emit(gomock.Any()).Times(1).Return(nil)
+
+	req := pb_devices.DeleteSyntheticDeviceIntegrationsRequest{}
+	req.DeviceIntegrations = append(req.DeviceIntegrations, &pb_devices.DeleteSyntheticDeviceIntegrationRequest{UserDeviceId: userDeviceID, IntegrationId: integ.IntegrationID})
+
+	resp, err := udService.DeleteSyntheticDeviceIntegration(ctx, &req)
+	assert.NoError(err)
+
+	assert.Equal(resp.ImpactedUserDeviceIds[0], userDeviceID)
+
+	_, err = models.FindUserDeviceAPIIntegration(ctx, pdb.DBS().Writer, ud.ID, integ.IntegrationID)
+	assert.Equal(sql.ErrNoRows, err)
+
+}
+
+func Test_AfterSynthDevDeletedForUser_UserCanReRegister(t *testing.T) {
+	assert := assert.New(t)
+	logger := zerolog.Logger{}
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	// create mocks
+	mockCtrl := gomock.NewController(t)
+	scTaskSvc := mock_services.NewMockSmartcarTaskService(mockCtrl)
+	teslaTaskService := mock_services.NewMockTeslaTaskService(mockCtrl)
+	deviceDefSvc := mock_services.NewMockDeviceDefinitionService(mockCtrl)
+	eventSvc := mock_services.NewMockEventService(mockCtrl)
+	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, &logger, deviceDefSvc, eventSvc, nil, userDeviceSvc, teslaTaskService, scTaskSvc)
+	scClient := mock_services.NewMockSmartcarClient(mockCtrl)
+	deviceDefinitionRegistrar := mock_services.NewMockDeviceDefinitionRegistrar(mockCtrl)
+	redisClient := mocks.NewMockCacheService(mockCtrl)
+	c := controllers.NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &logger, deviceDefSvc, nil, eventSvc, scClient, scTaskSvc, nil, teslaTaskService, new(shared.ROT13Cipher), nil, nil,
+		nil, deviceDefinitionRegistrar, nil, nil, nil, nil, redisClient, nil, nil, nil, nil, nil, userDeviceSvc, nil,
+		nil)
+
+	// set vars
+	expiry, _ := time.Parse(time.RFC3339, "2022-03-01T12:00:00Z")
+
+	token := &smartcar.Token{
+		Access:        "some-access-code",
+		AccessExpiry:  expiry,
+		Refresh:       "some-refresh-code",
+		RefreshExpiry: expiry,
+		ExpiresIn:     3000,
+	}
+
+	tokenJSON, err := json.Marshal(token)
+	assert.NoError(err)
+	cipher := new(shared.ROT13Cipher)
+	encrypted, err := cipher.Encrypt(string(tokenJSON))
+	assert.NoError(err)
+
+	// populate db
+	userDeviceID, err := populateDB(ctx, pdb)
+	assert.NoError(err)
+
+	ud, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(userDeviceID)).One(ctx, pdb.DBS().Reader)
+	assert.NoError(err)
+
+	integ := models.UserDeviceAPIIntegration{
+		UserDeviceID:  userDeviceID,
+		IntegrationID: "22N2xaPOq2WW2gAHBHd0Ikn4Zob",
+		Status:        models.UserDeviceAPIIntegrationStatusActive,
+	}
+
+	if err := integ.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "bRonco", 2020, integration)
+
+	// expect
+	deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integ.IntegrationID).Times(1).Return(&grpc.Integration{
+		Vendor: constants.SmartCarVendor,
+	}, nil)
+
+	deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(1).Return(&grpc.GetDeviceDefinitionItemResponse{
+		DeviceDefinitionId: ud.DeviceDefinitionID,
+		Verified:           true,
+		DeviceAttributes:   nil,
+		Make: &grpc.DeviceMake{
+			Name: "Ford",
+		},
+		Type: &grpc.DeviceType{
+			Model: "Bronco",
+			Year:  2020,
+		},
+	}, nil)
+	eventSvc.EXPECT().Emit(gomock.Any()).Times(1).Return(nil)
+
+	eventSvc.EXPECT().Emit(gomock.Any()).Return(nil).Do(
+		func(event *shared.CloudEvent[any]) error {
+			assert.Equal(ud.ID, event.Subject)
+			assert.Equal("com.dimo.zone.device.integration.create", event.Type)
+
+			data := event.Data.(services.UserDeviceIntegrationEvent)
+
+			assert.Equal(dd[0].DeviceDefinitionId, data.Device.DeviceDefinitionID)
+			assert.Equal(dd[0].Make.Name, data.Device.Make)
+			assert.Equal(dd[0].Type.Model, data.Device.Model)
+			assert.Equal(int(dd[0].Type.Year), data.Device.Year)
+			assert.Equal(ud.VinIdentifier.String, data.Device.VIN)
+			assert.Equal(ud.ID, data.Device.ID)
+			assert.Equal(constants.SmartCarVendor, data.Integration.Vendor)
+			assert.Equal(integration.Id, data.Integration.ID)
+			return nil
+		},
+	)
+
+	deviceDefinitionRegistrar.EXPECT().Register(services.DeviceDefinitionDTO{
+		IntegrationID:      integration.Id,
+		UserDeviceID:       ud.ID,
+		DeviceDefinitionID: ud.DeviceDefinitionID,
+		Make:               dd[0].Make.Name,
+		Model:              dd[0].Type.Model,
+		Year:               int(dd[0].Type.Year),
+		Region:             "Americas",
+	}).Return(nil)
+
+	deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd[0], nil)
+	scClient.EXPECT().GetUserID(gomock.Any(), token.Access).Return("sc-user-id", nil)
+	scClient.EXPECT().GetExternalID(gomock.Any(), token.Access).Return("smartcar-idx", nil)
+	scClient.EXPECT().GetEndpoints(gomock.Any(), token.Access, "smartcar-idx").Return([]string{"/", "/vin"}, nil)
+	scClient.EXPECT().HasDoorControl(gomock.Any(), token.Access, "smartcar-idx").Return(false, nil)
+	redisClient.EXPECT().Get(gomock.Any(), fmt.Sprintf("sc-temp-tok-%s-%s", ud.VinIdentifier.String, ud.UserID)).Return(redis.NewStringResult(encrypted, nil))
+	redisClient.EXPECT().Del(gomock.Any(), fmt.Sprintf("sc-temp-tok-%s-%s", ud.VinIdentifier.String, ud.UserID)).Return(redis.NewIntResult(1, nil))
+
+	oUdai := &models.UserDeviceAPIIntegration{}
+	scTaskSvc.EXPECT().StartPoll(gomock.AssignableToTypeOf(oUdai)).DoAndReturn(
+		func(udai *models.UserDeviceAPIIntegration) error {
+			oUdai = udai
+			return nil
+		},
+	)
+
+	req := pb_devices.DeleteSyntheticDeviceIntegrationsRequest{}
+	req.DeviceIntegrations = append(req.DeviceIntegrations, &pb_devices.DeleteSyntheticDeviceIntegrationRequest{UserDeviceId: userDeviceID, IntegrationId: integ.IntegrationID})
+
+	_, err = models.FindUserDeviceAPIIntegration(ctx, pdb.DBS().Writer, ud.ID, integ.IntegrationID)
+	assert.NotEqual(sql.ErrNoRows, err)
+
+	_, err = udService.DeleteSyntheticDeviceIntegration(ctx, &req)
+	assert.NoError(err)
+
+	_, err = models.FindUserDeviceAPIIntegration(ctx, pdb.DBS().Writer, ud.ID, integ.IntegrationID)
+	assert.Equal(sql.ErrNoRows, err)
+
+	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, `{
+		"code": "qxy",
+		"redirectURI": "http://dimo.zone/cb"
+	}`)
+	app := test.SetupAppFiber(logger)
+	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(ud.UserID), c.RegisterDeviceIntegration)
+	_, err = app.Test(request)
+	assert.NoError(err)
+
+	apiInt, _ := models.FindUserDeviceAPIIntegration(ctx, pdb.DBS().Writer, ud.ID, integration.Id)
+	updatedUD, _ := models.FindUserDevice(ctx, pdb.DBS().Reader, ud.ID)
+
+	assert.True(expiry.Equal(apiInt.AccessExpiresAt.Time))
+	assert.Equal("PendingFirstData", apiInt.Status)
+	assert.Equal(ud.VinIdentifier.String, updatedUD.VinIdentifier.String)
+	assert.Equal(true, updatedUD.VinConfirmed)
+
 }
