@@ -858,7 +858,7 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("failed to parse token id %q", tis))
 	}
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
-	udc.log.Info().Str("tokenID", tid.String()).Msg("GetBurnDevice request")
+
 	client := registry.Client{
 		Producer:     udc.producer,
 		RequestTopic: "topic.transaction.request.send",
@@ -918,7 +918,7 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("failed to parse token id %q", tis))
 	}
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
-	udc.log.Info().Str("tokenID", tid.String()).Msg("PostBurnDevice request")
+
 	client := registry.Client{
 		Producer:     udc.producer,
 		RequestTopic: "topic.transaction.request.send",
@@ -963,7 +963,7 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 
 	br := new(BurnRequest)
 	if err := c.BodyParser(br); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "failed to parse request body")
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
 	udc.log.Info().
@@ -981,34 +981,35 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	sigBytes := common.FromHex(br.Signature)
 	recAddr, err := helpers.Ecrecover(hash, sigBytes)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not recover signature: %w", err)
 	}
-
+	udc.log.Info().Msg("recovered address from signature")
 	realAddr := common.HexToAddress(*user.EthereumAddress)
 	if recAddr != realAddr {
 		return fiber.NewError(fiber.StatusBadRequest, "signature incorrect")
 	}
 
 	requestID := ksuid.New().String()
+	udc.log.Info().Msgf("generating request: %s", requestID)
 	mtr := models.MetaTransactionRequest{
 		ID:     requestID,
 		Status: "Unsubmitted",
 	}
 
 	if err := mtr.Insert(c.Context(), tx, boil.Infer()); err != nil {
-		return err
+		return fmt.Errorf("failed to insert metatransaction request: %w", err)
 	}
 
 	vehicleNFT.BurnRequestID = null.StringFrom(requestID)
 	if _, err := vehicleNFT.Update(c.Context(), tx, boil.Infer()); err != nil {
-		return err
+		return fmt.Errorf("failed to update vehicle nft: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return err
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	udc.log.Debug().Msgf("submitted metatransaction request %s", requestID)
+	udc.log.Info().Msgf("submitted metatransaction request %s", requestID)
 	return client.BurnVehicleSign(requestID, bvs.TokenID, sigBytes)
 }
 
