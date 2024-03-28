@@ -8,6 +8,7 @@ require (
 	github.com/DIMO-Network/device-data-api v0.9.4
 	github.com/DIMO-Network/device-definitions-api v1.0.39
 	github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c
+	github.com/DIMO-Network/meta-transaction-processor v0.3.2
 	github.com/DIMO-Network/shared v0.10.10
 	github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3
 	github.com/DIMO-Network/valuations-api v0.2.0
