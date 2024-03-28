@@ -983,7 +983,7 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	if err != nil {
 		return fmt.Errorf("could not recover signature: %w", err)
 	}
-	udc.log.Info().Msg("recovered address from signature")
+
 	realAddr := common.HexToAddress(*user.EthereumAddress)
 	if recAddr != realAddr {
 		return fiber.NewError(fiber.StatusBadRequest, "signature incorrect")
