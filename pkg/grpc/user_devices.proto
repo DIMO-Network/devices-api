@@ -33,6 +33,7 @@ service UserDeviceService {
   // used to update metadata properties, currently only ones needed by valuations-api
   rpc UpdateUserDeviceMetadata(UpdateUserDeviceMetadataRequest) returns (google.protobuf.Empty);
   rpc ClearMetaTransactionRequests(google.protobuf.Empty) returns (ClearMetaTransactionRequestsResponse);
+  rpc DeleteSyntheticDeviceIntegration(DeleteSyntheticDeviceIntegrationsRequest) returns (DeleteSyntheticDeviceIntegrationResponse);
 }
 
 message GetUserDeviceByAutoPIUnitIdRequest { string id = 1; }
@@ -164,4 +165,17 @@ message GetAllUserDeviceRequest {
 
 message ClearMetaTransactionRequestsResponse {
   string id = 1;
+}
+
+message DeleteSyntheticDeviceIntegrationsRequest {
+  repeated DeleteSyntheticDeviceIntegrationRequest device_integrations = 1;
+}
+
+message DeleteSyntheticDeviceIntegrationRequest {
+  string user_device_id = 1;
+  string integration_id = 2;
+}
+
+message DeleteSyntheticDeviceIntegrationResponse {
+  repeated string impacted_user_device_ids = 1;
 }
