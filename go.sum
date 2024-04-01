@@ -78,6 +78,8 @@ github.com/DIMO-Network/device-definitions-api v1.0.39 h1:8WzTURsna2yRXBy0LcC8kI
 github.com/DIMO-Network/device-definitions-api v1.0.39/go.mod h1:ev3RG07AKzunh7lH2qcvLUT6U/qhJ1MvpXZkvHB++bs=
 github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c h1:sKuB4i3m/5NpLjO6tKyc2gSqQHmRe02sMP+pQqJNTuQ=
 github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c/go.mod h1:K5a/Iqh9iZYdMSh3UE3J+tc4aV1PxHe4Fz0ZEhZMPbg=
+github.com/DIMO-Network/meta-transaction-processor v0.3.2 h1:eSf34mSmiRilMbQx+4Iyu6aNm/WWJjbopIGYNjz/Z6w=
+github.com/DIMO-Network/meta-transaction-processor v0.3.2/go.mod h1:qJW4pNqQ4kDeumuZJByjrfrCd8dlrCT3//5V4PVKRqA=
 github.com/DIMO-Network/shared v0.10.10 h1:h9b0oj0hSvR2CRp6PzqPhsSjf03XUyTGFsAlPv1g1XM=
 github.com/DIMO-Network/shared v0.10.10/go.mod h1:sfeTTaAf4Y5aU15yGTksdZejJP+X6M2n2M70Qm5+Rqk=
 github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3 h1:XMU6rRN57hoh7IYyuVytsIKzDymrbAnnKECFeVf88Hg=

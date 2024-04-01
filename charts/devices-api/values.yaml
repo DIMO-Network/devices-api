@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 905daee
+  tag: b67fcf6
 imagePullSecrets: []
 nameOverride: ''
 fullnameOverride: ''
@@ -94,6 +94,7 @@ env:
   SYNTHETIC_FINGERPRINT_CONSUMER_GROUP: consumer.synthetic.fingerprint
   TESLA_TOKEN_URL: https://auth.tesla.com/oauth2/v3/token
   TESLA_FLEET_URL: https://fleet-api.prd.%s.vn.cloud.tesla.com
+  META_TRANSACTION_PROCESSOR_GRPC_ADDR: meta-transaction-processor-dev:8086
 service:
   type: ClusterIP
   ports:
