@@ -47,8 +47,6 @@ func NewUserDeviceRPCService(
 	userDeviceService services.UserDeviceService,
 	teslaTaskService services.TeslaTaskService,
 	smartcarTaskSvc services.SmartcarTaskService,
-	teslaTaskService services.TeslaTaskService,
-	smartcarTaskSvc services.SmartcarTaskService,
 ) pb.UserDeviceServiceServer {
 	return &userDeviceRPCServer{dbs: dbs,
 		logger:                  logger,
@@ -58,8 +56,6 @@ func NewUserDeviceRPCService(
 		eventService:            eventService,
 		vcIss:                   vcIss,
 		userDeviceSvc:           userDeviceService,
-		teslaTaskService:        teslaTaskService,
-		smartcarTaskSvc:         smartcarTaskSvc,
 		teslaTaskService:        teslaTaskService,
 		smartcarTaskSvc:         smartcarTaskSvc,
 	}
@@ -76,8 +72,6 @@ type userDeviceRPCServer struct {
 	eventService            services.EventService
 	vcIss                   *issuer.Issuer
 	userDeviceSvc           services.UserDeviceService
-	teslaTaskService        services.TeslaTaskService
-	smartcarTaskSvc         services.SmartcarTaskService
 	teslaTaskService        services.TeslaTaskService
 	smartcarTaskSvc         services.SmartcarTaskService
 }
