@@ -2,6 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             v4.25.3
+// - protoc             v4.25.3
 // source: pkg/grpc/user_devices.proto
 
 package grpc
