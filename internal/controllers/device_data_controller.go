@@ -190,9 +190,10 @@ func (udc *UserDevicesController) RefreshUserDeviceStatus(c *fiber.Ctx) error {
 
 	for _, deviceDatum := range deviceData.Items {
 		if deviceDatum.IntegrationId == smartCarInteg.Id {
-			nextAvailableTime := deviceDatum.RecordUpdatedAt.AsTime().Add(time.Second * time.Duration(smartCarInteg.RefreshLimitSecs))
-			if time.Now().Before(nextAvailableTime) {
-				return fiber.NewError(fiber.StatusTooManyRequests, "rate limit for integration refresh hit")
+			nextAvailableTime := deviceDatum.RecordUpdatedAt.AsTime().UTC().Add(time.Second * time.Duration(smartCarInteg.RefreshLimitSecs))
+			if time.Now().UTC().Before(nextAvailableTime) {
+				return fiber.NewError(fiber.StatusTooManyRequests,
+					fmt.Sprintf("rate limit for integration refresh hit, next available: %s", nextAvailableTime.Format(time.RFC3339)))
 			}
 
 			udai, err := models.FindUserDeviceAPIIntegration(c.Context(), udc.DBS().Reader, ud.ID, smartCarInteg.Id)

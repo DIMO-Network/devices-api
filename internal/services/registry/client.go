@@ -87,13 +87,13 @@ func (b *BurnVehicleSign) Name() string {
 
 func (b *BurnVehicleSign) Type() []signer.Type {
 	return []signer.Type{
-		{Name: "tokenId", Type: "uint256"},
+		{Name: "vehicleNode", Type: "uint256"},
 	}
 }
 
 func (b *BurnVehicleSign) Message() signer.TypedDataMessage {
 	return signer.TypedDataMessage{
-		"tokenId": b.TokenID,
+		"vehicleNode": hexutil.EncodeBig(b.TokenID),
 	}
 }
 

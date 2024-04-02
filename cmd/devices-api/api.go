@@ -211,10 +211,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 
-	// vehicle token actions
-	vPriv.Get("/commands/burn", userDeviceController.GetBurnDevice)
-	vPriv.Post("/commands/burn", userDeviceController.PostBurnDevice)
-
 	// vehicle command privileges
 	vPriv.Get("/status", privTokenWare.OneOf(vehicleAddr,
 		[]privileges.Privilege{privileges.VehicleNonLocationData, privileges.VehicleCurrentLocation, privileges.VehicleAllTimeLocation}), nftController.GetVehicleStatus)
@@ -312,6 +308,12 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Post("/integrations/:integrationID", userDeviceController.RegisterDeviceIntegration)
 	udOwner.Post("/commands/refresh", userDeviceController.RefreshUserDeviceStatus)
 
+	// Vehicle owner routes.
+	vehicleOwnerMw := owner.VehicleToken(pdb, usersClient, &logger)
+	vOwner := v1Auth.Group("/user/vehicle/:tokenID", vehicleOwnerMw)
+	vOwner.Get("/commands/burn", userDeviceController.GetBurnDevice)
+	vOwner.Post("/commands/burn", userDeviceController.PostBurnDevice)
+
 	if settings.SyntheticDevicesEnabled {
 		syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, wallet, registryClient)
 
@@ -383,7 +385,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		logger.Fatal().Err(err).Msg("Failed to create transaction listener")
 	}
 
-	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService, iss, userDeviceSvc)
+	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService, iss, userDeviceSvc, teslaTaskService, scTaskSvc)
 
 	// start task consumer for autopi
 	autoPiTaskService.StartConsumer(ctx)
@@ -422,6 +424,8 @@ func startGRPCServer(
 	eventService services.EventService,
 	vcIss *issuer.Issuer,
 	userDeviceSvc services.UserDeviceService,
+	teslaTaskSvc services.TeslaTaskService,
+	smartcarTaskSvc services.SmartcarTaskService,
 ) {
 	lis, err := net.Listen("tcp", ":"+settings.GRPCPort)
 	if err != nil {
@@ -441,7 +445,7 @@ func startGRPCServer(
 	)
 
 	pb.RegisterUserDeviceServiceServer(server, rpc.NewUserDeviceRPCService(dbs, settings, hardwareTemplateService, logger,
-		deviceDefSvc, eventService, vcIss, userDeviceSvc))
+		deviceDefSvc, eventService, vcIss, userDeviceSvc, teslaTaskSvc, smartcarTaskSvc))
 	pb.RegisterAftermarketDeviceServiceServer(server, rpc.NewAftermarketDeviceService(dbs, logger))
 
 	if err := server.Serve(lis); err != nil {

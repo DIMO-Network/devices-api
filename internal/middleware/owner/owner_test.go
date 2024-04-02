@@ -2,6 +2,8 @@ package owner
 
 import (
 	"context"
+	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/DIMO-Network/devices-api/internal/test"
@@ -253,6 +255,100 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 			usersClient.Store[userID] = u
 
 			t.Log(c.Name)
+			res, err := app.Test(request)
+			require.Nil(t, err)
+			assert.Equal(t, c.ExpectedCode, res.StatusCode)
+		})
+	}
+
+	require.NoError(t, container.Terminate(ctx))
+}
+
+func TestVehicleTokenOwnerMiddleware(t *testing.T) {
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, "../../../migrations")
+	logger := test.Logger()
+
+	usersClient := &test.UsersClient{}
+	middleware := VehicleToken(pdb, usersClient, logger)
+	app := test.SetupAppFiber(*logger)
+
+	userID := ksuid.New().String()
+	app.Get("/user/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(userID), middleware, func(c *fiber.Ctx) error {
+		logger := c.Locals("logger").(*zerolog.Logger)
+		logger.Info().Msg("Omega croggers.")
+		return nil
+	})
+
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		UserID:             userID,
+		DeviceDefinitionID: ksuid.New().String(),
+	}
+
+	err := ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	require.NoError(t, err)
+
+	mtx := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusConfirmed,
+	}
+	err = mtx.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	require.NoError(t, err)
+
+	vnft := models.VehicleNFT{
+		TokenID:       types.NewNullDecimal(decimal.New(7, 0)),
+		Vin:           "abc",
+		MintRequestID: mtx.ID,
+		OwnerAddress:  null.BytesFrom(common.BigToAddress(big.NewInt(1)).Bytes()),
+		UserDeviceID:  null.StringFrom(ud.ID),
+	}
+
+	cases := []struct {
+		Name         string
+		InvalidAddr  bool
+		UserExists   bool
+		ExpectedCode int
+	}{
+		{
+			Name:         "user-not-found",
+			UserExists:   false,
+			ExpectedCode: errNotFound.Code,
+		},
+		{
+			Name:         "no-eth-addr",
+			UserExists:   true,
+			InvalidAddr:  true,
+			ExpectedCode: errNotFound.Code,
+		},
+		{
+			Name:         "valid-user-id/valid-addr",
+			ExpectedCode: 200,
+			UserExists:   true,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.Name, func(t *testing.T) {
+
+			_, err = models.VehicleNFTS().DeleteAll(ctx, pdb.DBS().Writer)
+			require.NoError(t, err)
+
+			usersClient.Store = map[string]*pb.User{}
+
+			if c.UserExists {
+				u := &pb.User{Id: userID}
+				if !c.InvalidAddr {
+					addr := common.Bytes2Hex(vnft.OwnerAddress.Bytes)
+					u.EthereumAddress = &addr
+				}
+				usersClient.Store[userID] = u
+			}
+
+			err = vnft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+			require.NoError(t, err)
+
+			request := test.BuildRequest("GET", fmt.Sprintf("/user/vehicle/%s/commands/burn", vnft.TokenID.Big.String()), "")
 			res, err := app.Test(request)
 			require.Nil(t, err)
 			assert.Equal(t, c.ExpectedCode, res.StatusCode)

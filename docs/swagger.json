@@ -65,7 +65,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.AutoPiDeviceInfo"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.AutoPiDeviceInfo"
                         }
                     }
                 }
@@ -124,7 +124,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.AutoPiClaimRequest"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.AutoPiClaimRequest"
                         }
                     }
                 ],
@@ -398,7 +398,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_controllers.DocumentResponse"
+                                "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DocumentResponse"
                             }
                         }
                     }
@@ -453,7 +453,7 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.DocumentResponse"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DocumentResponse"
                         }
                     }
                 }
@@ -489,7 +489,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.DocumentResponse"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.DocumentResponse"
                         }
                     }
                 }
@@ -614,7 +614,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.CompleteOAuthExchangeRequest"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CompleteOAuthExchangeRequest"
                         }
                     }
                 ],
@@ -622,7 +622,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.CompleteOAuthExchangeResponseWrapper"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CompleteOAuthExchangeResponseWrapper"
                         }
                     }
                 }
@@ -844,7 +844,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.AutoPiPairRequest"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.AutoPiPairRequest"
                         }
                     }
                 ],
@@ -904,7 +904,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.AutoPiPairRequest"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.AutoPiPairRequest"
                         }
                     }
                 ],
@@ -932,7 +932,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.RegisterDeviceIntegrationRequest"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.RegisterDeviceIntegrationRequest"
                         }
                     }
                 ],
@@ -1413,7 +1413,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.GetUserDeviceIntegrationResponse"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.GetUserDeviceIntegrationResponse"
                         }
                     }
                 }
@@ -1545,7 +1545,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.CommandResponse"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CommandResponse"
                         }
                     }
                 }
@@ -1584,7 +1584,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.CommandResponse"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CommandResponse"
                         }
                     }
                 }
@@ -1623,7 +1623,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.CommandResponse"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CommandResponse"
                         }
                     }
                 }
@@ -1739,7 +1739,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.CommandResponse"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CommandResponse"
                         }
                     }
                 }
@@ -1785,7 +1785,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.CommandRequestStatusResp"
+                            "$ref": "#/definitions/github.com_DIMO-Network_devices-api_internal_controllers.CommandRequestStatusResp"
                         }
                     }
                 }
@@ -2176,7 +2176,7 @@
                 }
             }
         },
-        "/vehicle/:tokenID/commands/burn": {
+        "/user/vehicle/{tokenID}/commands/burn": {
             "get": {
                 "security": [
                     {
@@ -2184,9 +2184,6 @@
                     }
                 ],
                 "description": "Returns the data the user must sign in order to burn the device.",
-                "tags": [
-                    "user-devices"
-                ],
                 "parameters": [
                     {
                         "type": "integer",
@@ -2212,9 +2209,6 @@
                     }
                 ],
                 "description": "Sends a burn device request to the blockchain",
-                "tags": [
-                    "user-devices"
-                ],
                 "parameters": [
                     {
                         "type": "integer",
@@ -2684,6 +2678,7 @@
                     "type": "string"
                 },
                 "signature": {
+                    "description": "AftermarketDeviceSignature is the 65-byte, hex-encoded Ethereum signature of\nthe pairing payload by the device. Only needed if the vehicle owner and aftermarket\ndevice owner are not the same.",
                     "type": "array",
                     "items": {
                         "type": "integer"
@@ -3835,7 +3830,6 @@
                     "type": "string"
                 },
                 "signature": {
-                    "description": "AftermarketDeviceSignature is the 65-byte, hex-encoded Ethereum signature of\nthe pairing payload by the device. Only needed if the vehicle owner and aftermarket\ndevice owner are not the same.",
                     "type": "array",
                     "items": {
                         "type": "integer"
