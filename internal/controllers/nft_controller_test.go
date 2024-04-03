@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
@@ -199,5 +200,105 @@ func (s *UserDevicesControllerTestSuite) TestPostBurn() {
 	}
 
 	s.Require().NotEmpty(vnft.BurnRequestID)
+
+}
+
+func (s *UserDevicesControllerTestSuite) TestGetPostMint() {
+	privKey, err := crypto.GenerateKey()
+	s.Require().NoError(err)
+	addr := crypto.PubkeyToAddress(privKey.PublicKey)
+	email := "some@email.com"
+	eth := addr.Hex()
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		UserID:             "123123",
+		DeviceDefinitionID: ksuid.New().String(),
+		CountryCode:        null.StringFrom("USA"),
+		Name:               null.StringFrom("Chungus"),
+		VinConfirmed:       true,
+		VinIdentifier:      null.StringFrom("4Y1SL65848Z411439"),
+	}
+
+	err = ud.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+
+	user := test.BuildGetUserGRPC(ud.UserID, &email, &eth, &pb.UserReferrer{})
+
+	attrs := []*grpc.DeviceTypeAttribute{
+		{
+			Name:  "fuel_tank_capacity_gal",
+			Value: "15",
+		},
+		{
+			Name:  "mpg",
+			Value: "20",
+		},
+	}
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(&grpc.GetDeviceDefinitionItemResponse{
+		DeviceDefinitionId: ud.DeviceDefinitionID,
+		Verified:           true,
+		DeviceAttributes:   attrs,
+		Make: &grpc.DeviceMake{
+			TokenId: 7,
+			Name:    "Toyota",
+		},
+		Type: &grpc.DeviceType{
+			Model: "Camry",
+			Year:  2023,
+		},
+	}, nil)
+
+	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: ud.UserID}).Times(2).Return(user, nil)
+	s.s3 = &mockS3Client{}
+	sp := smock.NewSyncProducer(s.T(), nil)
+	sp.ExpectSendMessageAndSucceed()
+	s.controller.producer = sp
+
+	getRequest := test.BuildRequest("GET", fmt.Sprintf("/user/devices/%s/commands/mint", ud.ID), "")
+	getResp, err := s.app.Test(getRequest)
+	s.Require().NoError(err)
+	s.Equal(fiber.StatusOK, getResp.StatusCode)
+
+	var td signer.TypedData
+	s.Require().NoError(json.NewDecoder(getResp.Body).Decode(&td))
+
+	bvs := registry.MintVehicleSign{
+		ManufacturerNode: big.NewInt(7),
+		Owner:            common.HexToAddress(*user.EthereumAddress),
+		Attributes:       []string{"Make", "Model", "Year"},
+		Infos:            []string{"Toyota", "Camry", "2023"},
+	}
+
+	c := registry.Client{
+		Producer:     s.controller.producer,
+		RequestTopic: "topic.transaction.request.send",
+		Contract: registry.Contract{
+			ChainID: big.NewInt(0),
+			Address: common.HexToAddress("0x0000000000000000000000000000000000000000"),
+			Name:    "DIMO",
+			Version: "1",
+		},
+	}
+
+	hash, err := c.Hash(&bvs)
+	s.Require().NoError(err)
+
+	userSig, err := crypto.Sign(hash, privKey)
+	s.Require().NoError(err)
+
+	userSig[64] += 27
+
+	br := new(MintRequest)
+	br.Signature = hexutil.Encode(userSig)
+	br.ImageData = "data:image/png;base64,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"
+	br.ImageDataTransparent = br.ImageData
+
+	inp, err := json.Marshal(br)
+	s.Require().NoError(err)
+
+	request := test.BuildRequest("POST", fmt.Sprintf("/user/devices/%s/commands/mint", ud.ID), string(inp))
+	response, err := s.app.Test(request)
+	s.Require().NoError(err)
+	s.Equal(fiber.StatusOK, response.StatusCode)
 
 }

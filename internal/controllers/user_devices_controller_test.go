@@ -11,6 +11,7 @@ import (
 	"time"
 
 	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
@@ -75,6 +76,14 @@ type UserDevicesControllerTestSuite struct {
 	userDeviceSvc   *mock_services.MockUserDeviceService
 	valuationsSrvc  *mock_services.MockValuationsAPIService
 	deviceDataSvc   *mock_services.MockDeviceDataService
+	s3              PutObjecter
+}
+
+type mockS3Client struct {
+}
+
+func (m *mockS3Client) PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+	return &s3.PutObjectOutput{}, nil
 }
 
 const natsStreamName = "test-stream"
@@ -109,10 +118,13 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 		s.T().Fatal(err)
 	}
 
+	s.s3 = &mockS3Client{}
+
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
 		s.nhtsaService, autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, nil, s.redisClient, nil, s.usersClient, s.deviceDataSvc, s.natsService, nil, s.userDeviceSvc, s.valuationsSrvc, nil)
+	c.s3 = s.s3
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUser)
 	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUserFromVIN)
@@ -127,6 +139,8 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID), c.RefreshUserDeviceStatus)
 	app.Get("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID), c.GetBurnDevice)
 	app.Post("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID), c.PostBurnDevice)
+	app.Get("/user/devices/:userDeviceID/commands/mint", test.AuthInjectorTestHandler(s.testUserID), c.GetMintDevice)
+	app.Post("/user/devices/:userDeviceID/commands/mint", test.AuthInjectorTestHandler(s.testUserID), c.PostMintDevice)
 	app.Delete("/user/devices/:userDeviceID", test.AuthInjectorTestHandler(s.testUserID), c.DeleteUserDevice)
 
 	s.controller = &c

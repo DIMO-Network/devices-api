@@ -50,6 +50,10 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
+type PutObjecter interface {
+	PutObject(context.Context, *s3.PutObjectInput, ...func(*s3.Options)) (*s3.PutObjectOutput, error)
+}
+
 type UserDevicesController struct {
 	Settings                  *config.Settings
 	DBS                       func() *db.ReaderWriter
@@ -66,7 +70,7 @@ type UserDevicesController struct {
 	nhtsaService              services.INHTSAService
 	autoPiIngestRegistrar     services.IngestRegistrar
 	autoPiTaskService         services.AutoPiTaskService
-	s3                        *s3.Client
+	s3                        PutObjecter
 	producer                  sarama.SyncProducer
 	deviceDefinitionRegistrar services.DeviceDefinitionRegistrar
 	autoPiIntegration         *autopi.Integration
