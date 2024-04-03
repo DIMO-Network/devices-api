@@ -810,6 +810,11 @@ func (s *userDeviceRPCServer) StopUserDeviceIntegration(ctx context.Context, req
 		return nil, fmt.Errorf("stop user integration poll not implemented for vendor %s", integ.Vendor)
 	}
 
+	if apiInt.Status == models.UserDeviceAPIIntegrationStatusAuthenticationFailure {
+		log.Info().Msgf("integration authentication status is already %s", models.UserDeviceAPIIntegrationStatusAuthenticationFailure)
+		return nil, fmt.Errorf("integration authentication status is already %s", models.UserDeviceAPIIntegrationStatusAuthenticationFailure)
+	}
+
 	apiInt.Status = models.UserDeviceAPIIntegrationStatusAuthenticationFailure
 	if _, err := apiInt.Update(ctx, s.dbs().Writer, boil.Infer()); err != nil {
 		log.Err(err).Msgf("failed to update integration table; task id: %s", apiInt.TaskID.String)
