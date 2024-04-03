@@ -764,8 +764,7 @@ func (s *userDeviceRPCServer) StopUserDeviceIntegration(ctx context.Context, req
 	log := s.logger.With().
 		Str("userDeviceId", req.UserDeviceId).
 		Str("integrationId", req.IntegrationId).Logger()
-
-	log.Info().Msg("stopping integration polling")
+	log.Info().Msg("stopping user device integration polling")
 
 	apiInt, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(req.UserDeviceId),
@@ -774,7 +773,7 @@ func (s *userDeviceRPCServer) StopUserDeviceIntegration(ctx context.Context, req
 	).One(ctx, s.dbs().Reader)
 	if err != nil {
 		log.Err(err).Msg("failed to retrieve integration")
-		return nil, err
+		return nil, fmt.Errorf("failed to retrieve integration %s for user device %s: %w", req.IntegrationId, req.UserDeviceId, err)
 	}
 
 	if apiInt.R.UserDevice == nil {
@@ -784,25 +783,27 @@ func (s *userDeviceRPCServer) StopUserDeviceIntegration(ctx context.Context, req
 
 	integ, err := s.deviceDefSvc.GetIntegrationByID(ctx, req.IntegrationId)
 	if err != nil {
-		return nil, fmt.Errorf("deviceDefSvc error getting integration by id %s: %w", req.IntegrationId, err)
+		log.Err(err).Msg("deviceDefSvc error getting integration by id")
+		return nil, fmt.Errorf("deviceDefSvc error getting integration by id: %w", err)
+	}
+
+	if !apiInt.TaskID.Valid {
+		log.Info().Msg("failed to stop device integration polling; invalid task id")
+		return nil, fmt.Errorf("failed to stop device integration polling; invalid task id")
 	}
 
 	switch integ.Vendor {
 	case constants.SmartCarVendor:
-		if apiInt.TaskID.Valid {
-			err = s.smartcarTaskSvc.StopPoll(apiInt)
-			if err != nil {
-				log.Err(err).Msg("failed to stop smartcar poll")
-				return nil, fmt.Errorf("failed to stop smartcar poll: %w", err)
-			}
+		err = s.smartcarTaskSvc.StopPoll(apiInt)
+		if err != nil {
+			log.Err(err).Msg("failed to stop smartcar poll")
+			return nil, fmt.Errorf("failed to stop smartcar poll: %w", err)
 		}
 	case constants.TeslaVendor:
-		if apiInt.TaskID.Valid {
-			err = s.teslaTaskService.StopPoll(apiInt)
-			if err != nil {
-				log.Err(err).Msg("failed to stop tesla poll")
-				return nil, fmt.Errorf("failed to stop tesla poll: %w", err)
-			}
+		err = s.teslaTaskService.StopPoll(apiInt)
+		if err != nil {
+			log.Err(err).Msg("failed to stop tesla poll")
+			return nil, fmt.Errorf("failed to stop tesla poll: %w", err)
 		}
 	default:
 		log.Info().Str("vendor", integ.Vendor).Msg("stop user integration poll not implemented for vendor")
@@ -810,13 +811,11 @@ func (s *userDeviceRPCServer) StopUserDeviceIntegration(ctx context.Context, req
 	}
 
 	apiInt.Status = models.UserDeviceAPIIntegrationStatusAuthenticationFailure
-	apiInt.TaskID = null.String{}
-
-	_, err = apiInt.Update(ctx, s.dbs().Writer, boil.Infer())
-	if err != nil {
-		log.Err(err).Msg("failed to update integration table")
-		return nil, fmt.Errorf("failed to update integration table: %w", err)
+	if _, err := apiInt.Update(ctx, s.dbs().Writer, boil.Infer()); err != nil {
+		log.Err(err).Msgf("failed to update integration table; task id: %s", apiInt.TaskID.String)
+		return nil, fmt.Errorf("failed to update integration table; task id: %s; %w", apiInt.TaskID.String, err)
 	}
 
+	log.Info().Msg("integration polling stopped")
 	return &emptypb.Empty{}, nil
 }
