@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
-	"time"
 
 	mtpgrpc "github.com/DIMO-Network/meta-transaction-processor/pkg/grpc"
 	"github.com/ethereum/go-ethereum/common"
@@ -19,7 +18,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/shared"
 
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
@@ -762,86 +760,67 @@ func (s *userDeviceRPCServer) ClearMetaTransactionRequests(ctx context.Context, 
 	return &pb.ClearMetaTransactionRequestsResponse{Id: metaTransaction.ID}, nil
 }
 
-func (s *userDeviceRPCServer) DeleteSyntheticDeviceIntegration(ctx context.Context, req *pb.DeleteSyntheticDeviceIntegrationsRequest) (*pb.DeleteSyntheticDeviceIntegrationResponse, error) {
-	resp := &pb.DeleteSyntheticDeviceIntegrationResponse{}
+func (s *userDeviceRPCServer) StopUserDeviceIntegration(ctx context.Context, req *pb.StopUserDeviceIntegrationRequest) (*emptypb.Empty, error) {
+	log := s.logger.With().
+		Str("userDeviceId", req.UserDeviceId).
+		Str("integrationId", req.IntegrationId).Logger()
+	log.Info().Msg("stopping user device integration polling")
 
-	for _, deleteRequest := range req.DeviceIntegrations {
-
-		s.logger.Info().
-			Str("userDeviceId", deleteRequest.UserDeviceId).
-			Str("integrationId", deleteRequest.IntegrationId).
-			Msg("deleting integration on behalf of user")
-
-		apiInt, err := models.UserDeviceAPIIntegrations(
-			models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(deleteRequest.UserDeviceId),
-			models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(deleteRequest.IntegrationId),
-			qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
-		).One(ctx, s.dbs().Reader)
-		if err != nil {
-			return nil, err
-		}
-
-		if apiInt.R.UserDevice == nil {
-			return nil, fmt.Errorf("failed to find user device %s for integration %s", deleteRequest.UserDeviceId, deleteRequest.IntegrationId)
-		}
-
-		dd, err := s.deviceDefSvc.GetDeviceDefinitionByID(ctx, apiInt.R.UserDevice.DeviceDefinitionID)
-		if err != nil {
-			return nil, fmt.Errorf("deviceDefSvc error getting device definition by id %s: %w", apiInt.R.UserDevice.DeviceDefinitionID, err)
-		}
-
-		integ, err := s.deviceDefSvc.GetIntegrationByID(ctx, deleteRequest.IntegrationId)
-		if err != nil {
-			return nil, fmt.Errorf("deviceDefSvc error getting integration by id %s: %w", deleteRequest.IntegrationId, err)
-		}
-
-		switch integ.Vendor {
-		case constants.SmartCarVendor:
-			if apiInt.TaskID.Valid {
-				err = s.smartcarTaskSvc.StopPoll(apiInt)
-				if err != nil {
-					return nil, fmt.Errorf("failed to stop smartcar poll: %w", err)
-				}
-			}
-		case constants.TeslaVendor:
-			if apiInt.TaskID.Valid {
-				err = s.teslaTaskService.StopPoll(apiInt)
-				if err != nil {
-					return nil, fmt.Errorf("failed to stop tesla poll: %w", err)
-				}
-			}
-		}
-
-		_, err = apiInt.Delete(ctx, s.dbs().Reader)
-		if err != nil {
-			return nil, fmt.Errorf("failed to delete integration: %w", err)
-		}
-
-		if err := s.eventService.Emit(&shared.CloudEvent[any]{
-			Type:    "com.dimo.zone.device.integration.delete",
-			Source:  "devices-api",
-			Subject: apiInt.UserDeviceID,
-			Data: services.UserDeviceIntegrationEvent{
-				Timestamp: time.Now(),
-				UserID:    apiInt.R.UserDevice.UserID,
-				Device: services.UserDeviceEventDevice{
-					ID:    apiInt.UserDeviceID,
-					Make:  dd.Make.Name,
-					Model: dd.Type.Model,
-					Year:  int(dd.Type.Year),
-				},
-				Integration: services.UserDeviceEventIntegration{
-					ID:     integ.Id,
-					Type:   integ.Type,
-					Style:  integ.Style,
-					Vendor: integ.Vendor,
-				},
-			},
-		}); err != nil {
-			s.logger.Err(err).Msg("Failed to emit integration deletion")
-		}
-		resp.ImpactedUserDeviceIds = append(resp.ImpactedUserDeviceIds, deleteRequest.UserDeviceId)
+	apiInt, err := models.UserDeviceAPIIntegrations(
+		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(req.UserDeviceId),
+		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(req.IntegrationId),
+		qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
+	).One(ctx, s.dbs().Reader)
+	if err != nil {
+		log.Err(err).Msg("failed to retrieve integration")
+		return nil, fmt.Errorf("failed to retrieve integration %s for user device %s: %w", req.IntegrationId, req.UserDeviceId, err)
 	}
 
-	return resp, nil
+	if apiInt.R.UserDevice == nil {
+		log.Info().Msg("failed to find user device")
+		return nil, fmt.Errorf("failed to find user device %s for integration %s", req.UserDeviceId, req.IntegrationId)
+	}
+
+	integ, err := s.deviceDefSvc.GetIntegrationByID(ctx, req.IntegrationId)
+	if err != nil {
+		log.Err(err).Msg("deviceDefSvc error getting integration by id")
+		return nil, fmt.Errorf("deviceDefSvc error getting integration by id: %w", err)
+	}
+
+	if !apiInt.TaskID.Valid {
+		log.Info().Msg("failed to stop device integration polling; invalid task id")
+		return nil, fmt.Errorf("failed to stop device integration polling; invalid task id")
+	}
+
+	switch integ.Vendor {
+	case constants.SmartCarVendor:
+		err = s.smartcarTaskSvc.StopPoll(apiInt)
+		if err != nil {
+			log.Err(err).Msg("failed to stop smartcar poll")
+			return nil, fmt.Errorf("failed to stop smartcar poll: %w", err)
+		}
+	case constants.TeslaVendor:
+		err = s.teslaTaskService.StopPoll(apiInt)
+		if err != nil {
+			log.Err(err).Msg("failed to stop tesla poll")
+			return nil, fmt.Errorf("failed to stop tesla poll: %w", err)
+		}
+	default:
+		log.Info().Str("vendor", integ.Vendor).Msg("stop user integration poll not implemented for vendor")
+		return nil, fmt.Errorf("stop user integration poll not implemented for vendor %s", integ.Vendor)
+	}
+
+	if apiInt.Status == models.UserDeviceAPIIntegrationStatusAuthenticationFailure {
+		log.Info().Msgf("integration authentication status is already %s", models.UserDeviceAPIIntegrationStatusAuthenticationFailure)
+		return nil, fmt.Errorf("integration authentication status is already %s", models.UserDeviceAPIIntegrationStatusAuthenticationFailure)
+	}
+
+	apiInt.Status = models.UserDeviceAPIIntegrationStatusAuthenticationFailure
+	if _, err := apiInt.Update(ctx, s.dbs().Writer, boil.Infer()); err != nil {
+		log.Err(err).Msgf("failed to update integration table; task id: %s", apiInt.TaskID.String)
+		return nil, fmt.Errorf("failed to update integration table; task id: %s; %w", apiInt.TaskID.String, err)
+	}
+
+	log.Info().Msg("integration polling stopped")
+	return &emptypb.Empty{}, nil
 }
