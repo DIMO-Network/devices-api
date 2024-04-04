@@ -34,12 +34,13 @@ type RequestData struct {
 	Data hexutil.Bytes  `json:"data"`
 }
 
-// MintVehicleSign(uint256 manufacturerNode,address owner,string[] attributes,string[] infos)
+// MintVehicleSign(uint256 manufacturerNode,address owner,string[] attributes,string[] infos,uint256 nonce)
 type MintVehicleSign struct {
 	ManufacturerNode *big.Int
 	Owner            common.Address
 	Attributes       []string
 	Infos            []string
+	Nonce            *big.Int
 }
 
 func anySlice[A any](v []A) []any {
@@ -63,6 +64,7 @@ func (m *MintVehicleSign) Type() []signer.Type {
 		{Name: "owner", Type: "address"},
 		{Name: "attributes", Type: "string[]"},
 		{Name: "infos", Type: "string[]"},
+		{Name: "nonce", Type: "uint256"},
 	}
 }
 
@@ -72,6 +74,7 @@ func (m *MintVehicleSign) Message() signer.TypedDataMessage {
 		"owner":            m.Owner.Hex(),
 		"attributes":       anySlice(m.Attributes),
 		"infos":            anySlice(m.Infos),
+		"nonce":            hexutil.EncodeBig(m.Nonce),
 	}
 }
 

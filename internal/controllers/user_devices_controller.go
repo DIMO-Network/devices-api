@@ -1535,6 +1535,7 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		Owner:            common.HexToAddress(*user.EthereumAddress),
 		Attributes:       []string{"Make", "Model", "Year"},
 		Infos:            []string{deviceMake, deviceModel, deviceYear},
+		Nonce:            big.NewInt(0), // TODO Get current nonce from DIMORegistry
 	}
 
 	return c.JSON(client.GetPayload(&mvs))
