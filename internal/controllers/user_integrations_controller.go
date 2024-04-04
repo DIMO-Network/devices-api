@@ -1474,6 +1474,11 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 		logger.Err(err).Msg("grpc error searching for device definition")
 		return shared.GrpcErrorToFiber(err, "failed to get device definition with id: "+ud.DeviceDefinitionID)
 	}
+	// block SC kia's
+	if dd.Make.NameSlug == "kia" && integrationID == "22N2xaPOq2WW2gAHBHd0Ikn4Zob" {
+		logger.Warn().Msg("kia blocked, smartcar connection")
+		return fiber.NewError(fiber.StatusConflict, "kia software connection blocked, only hardware connections are allowed for this car")
+	}
 	logger.Info().Msgf("get device definition id result during registration %+v", dd)
 
 	// filter out the desired integration from the compatible ones
