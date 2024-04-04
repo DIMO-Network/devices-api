@@ -201,13 +201,13 @@ type Message interface {
 }
 
 // mintVehicleSign(uint256 manufacturerNode, address owner,	string[] calldata attributes, string[] calldata infos, bytes calldata signature)
-func (c *Client) MintVehicleSign(requestID string, manufacturerNode *big.Int, owner common.Address, attrInfo []contracts.AttributeInfoPair, signature []byte) error {
+func (c *Client) MintVehicleSign(requestID string, mintVehicleInput contracts.MintVehicleInput) error {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
 	}
 
-	data, err := abi.Pack("mintVehicleSign", manufacturerNode, owner, attrInfo, signature)
+	data, err := abi.Pack("mintVehicleSign", mintVehicleInput)
 	if err != nil {
 		return err
 	}
