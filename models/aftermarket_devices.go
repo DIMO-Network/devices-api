@@ -350,7 +350,7 @@ type aftermarketDeviceR struct {
 	ClaimMetaTransactionRequest     *MetaTransactionRequest       `boil:"ClaimMetaTransactionRequest" json:"ClaimMetaTransactionRequest" toml:"ClaimMetaTransactionRequest" yaml:"ClaimMetaTransactionRequest"`
 	PairRequest                     *MetaTransactionRequest       `boil:"PairRequest" json:"PairRequest" toml:"PairRequest" yaml:"PairRequest"`
 	UnpairRequest                   *MetaTransactionRequest       `boil:"UnpairRequest" json:"UnpairRequest" toml:"UnpairRequest" yaml:"UnpairRequest"`
-	VehicleToken                    *VehicleNFT                   `boil:"VehicleToken" json:"VehicleToken" toml:"VehicleToken" yaml:"VehicleToken"`
+	VehicleToken                    *UserDevice                   `boil:"VehicleToken" json:"VehicleToken" toml:"VehicleToken" yaml:"VehicleToken"`
 	AutopiUnitAutopiJobs            AutopiJobSlice                `boil:"AutopiUnitAutopiJobs" json:"AutopiUnitAutopiJobs" toml:"AutopiUnitAutopiJobs" yaml:"AutopiUnitAutopiJobs"`
 	SerialUserDeviceAPIIntegrations UserDeviceAPIIntegrationSlice `boil:"SerialUserDeviceAPIIntegrations" json:"SerialUserDeviceAPIIntegrations" toml:"SerialUserDeviceAPIIntegrations" yaml:"SerialUserDeviceAPIIntegrations"`
 }
@@ -381,7 +381,7 @@ func (r *aftermarketDeviceR) GetUnpairRequest() *MetaTransactionRequest {
 	return r.UnpairRequest
 }
 
-func (r *aftermarketDeviceR) GetVehicleToken() *VehicleNFT {
+func (r *aftermarketDeviceR) GetVehicleToken() *UserDevice {
 	if r == nil {
 		return nil
 	}
@@ -725,14 +725,14 @@ func (o *AftermarketDevice) UnpairRequest(mods ...qm.QueryMod) metaTransactionRe
 }
 
 // VehicleToken pointed to by the foreign key.
-func (o *AftermarketDevice) VehicleToken(mods ...qm.QueryMod) vehicleNFTQuery {
+func (o *AftermarketDevice) VehicleToken(mods ...qm.QueryMod) userDeviceQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"token_id\" = ?", o.VehicleTokenID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	return VehicleNFTS(queryMods...)
+	return UserDevices(queryMods...)
 }
 
 // AutopiUnitAutopiJobs retrieves all the autopi_job's AutopiJobs with an executor via autopi_unit_id column.
@@ -1197,8 +1197,8 @@ func (aftermarketDeviceL) LoadVehicleToken(ctx context.Context, e boil.ContextEx
 	}
 
 	query := NewQuery(
-		qm.From(`devices_api.vehicle_nfts`),
-		qm.WhereIn(`devices_api.vehicle_nfts.token_id in ?`, args...),
+		qm.From(`devices_api.user_devices`),
+		qm.WhereIn(`devices_api.user_devices.token_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1206,22 +1206,22 @@ func (aftermarketDeviceL) LoadVehicleToken(ctx context.Context, e boil.ContextEx
 
 	results, err := query.QueryContext(ctx, e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load VehicleNFT")
+		return errors.Wrap(err, "failed to eager load UserDevice")
 	}
 
-	var resultSlice []*VehicleNFT
+	var resultSlice []*UserDevice
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice VehicleNFT")
+		return errors.Wrap(err, "failed to bind eager loaded slice UserDevice")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for vehicle_nfts")
+		return errors.Wrap(err, "failed to close results of eager load for user_devices")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for vehicle_nfts")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for user_devices")
 	}
 
-	if len(vehicleNFTAfterSelectHooks) != 0 {
+	if len(userDeviceAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
 				return err
@@ -1237,7 +1237,7 @@ func (aftermarketDeviceL) LoadVehicleToken(ctx context.Context, e boil.ContextEx
 		foreign := resultSlice[0]
 		object.R.VehicleToken = foreign
 		if foreign.R == nil {
-			foreign.R = &vehicleNFTR{}
+			foreign.R = &userDeviceR{}
 		}
 		foreign.R.VehicleTokenAftermarketDevice = object
 		return nil
@@ -1248,7 +1248,7 @@ func (aftermarketDeviceL) LoadVehicleToken(ctx context.Context, e boil.ContextEx
 			if queries.Equal(local.VehicleTokenID, foreign.TokenID) {
 				local.R.VehicleToken = foreign
 				if foreign.R == nil {
-					foreign.R = &vehicleNFTR{}
+					foreign.R = &userDeviceR{}
 				}
 				foreign.R.VehicleTokenAftermarketDevice = local
 				break
@@ -1697,7 +1697,7 @@ func (o *AftermarketDevice) RemoveUnpairRequest(ctx context.Context, exec boil.C
 // SetVehicleToken of the aftermarketDevice to the related item.
 // Sets o.R.VehicleToken to related.
 // Adds o to related.R.VehicleTokenAftermarketDevice.
-func (o *AftermarketDevice) SetVehicleToken(ctx context.Context, exec boil.ContextExecutor, insert bool, related *VehicleNFT) error {
+func (o *AftermarketDevice) SetVehicleToken(ctx context.Context, exec boil.ContextExecutor, insert bool, related *UserDevice) error {
 	var err error
 	if insert {
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
@@ -1731,7 +1731,7 @@ func (o *AftermarketDevice) SetVehicleToken(ctx context.Context, exec boil.Conte
 	}
 
 	if related.R == nil {
-		related.R = &vehicleNFTR{
+		related.R = &userDeviceR{
 			VehicleTokenAftermarketDevice: o,
 		}
 	} else {
@@ -1744,7 +1744,7 @@ func (o *AftermarketDevice) SetVehicleToken(ctx context.Context, exec boil.Conte
 // RemoveVehicleToken relationship.
 // Sets o.R.VehicleToken to nil.
 // Removes o from all passed in related items' relationships struct.
-func (o *AftermarketDevice) RemoveVehicleToken(ctx context.Context, exec boil.ContextExecutor, related *VehicleNFT) error {
+func (o *AftermarketDevice) RemoveVehicleToken(ctx context.Context, exec boil.ContextExecutor, related *UserDevice) error {
 	var err error
 
 	queries.SetScanner(&o.VehicleTokenID, nil)
