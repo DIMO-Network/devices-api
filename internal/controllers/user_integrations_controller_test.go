@@ -197,7 +197,7 @@ func (s *UserIntegrationsControllerTestSuite) TestDeleteIntegration_BlockedBySyn
 	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	vnft := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, big.NewInt(5), null.BytesFrom(common.HexToAddress("0xA1").Bytes()), s.pdb)
+	vnft := test.SetupCreateVehicleNFT(s.T(), ud, vin, big.NewInt(5), null.BytesFrom(common.HexToAddress("0xA1").Bytes()), s.pdb)
 
 	mtr := models.MetaTransactionRequest{
 		ID:     ksuid.New().String(),
@@ -818,18 +818,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
 	ud := test.SetupCreateUserDevice(s.T(), userID, dd[0].DeviceDefinitionId, nil, "4Y1SL65848Z411439", s.pdb)
-
-	mint := models.MetaTransactionRequest{ID: ksuid.New().String(), Status: models.MetaTransactionRequestStatusConfirmed}
-	s.Require().NoError(mint.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer()))
-
-	vnft := models.VehicleNFT{
-		UserDeviceID:  null.StringFrom(ud.ID),
-		Vin:           ud.VinIdentifier.String,
-		TokenID:       types.NewNullDecimal(decimal.New(4, 0)),
-		OwnerAddress:  null.BytesFrom(userAddr.Bytes()),
-		MintRequestID: mint.ID,
-	}
-	s.Require().NoError(vnft.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer()))
+	_ = *test.SetupCreateVehicleNFT(s.T(), ud, ud.VinIdentifier.String, big.NewInt(4), null.BytesFrom(userAddr.Bytes()), s.pdb)
 
 	aftermarketDevice := test.SetupCreateAftermarketDevice(s.T(), testUserID, common.BigToAddress(big.NewInt(2)).Bytes(), unitID, &deviceID, s.pdb)
 	aftermarketDevice.TokenID = types.NewDecimal(decimal.New(5, 0))

@@ -88,30 +88,23 @@ func (s *CredentialTestSuite) TestVerifiableCredential() {
 	mtxReq := ksuid.New().String()
 	deviceID := ksuid.New().String()
 
-	udd := models.UserDevice{
-		ID:                 deviceID,
-		UserID:             userDeviceID,
-		DeviceDefinitionID: "deviceDefID",
-	}
-	err := udd.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
-	require.NoError(s.T(), err)
-
 	tx := models.MetaTransactionRequest{
 		ID:     mtxReq,
 		Status: "Confirmed",
 	}
-	err = tx.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
+	err := tx.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
 	require.NoError(s.T(), err)
 
-	nft := models.VehicleNFT{
-		MintRequestID: mtxReq,
-		UserDeviceID:  null.StringFrom(deviceID),
-		Vin:           vin,
-		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
-		OwnerAddress:  null.BytesFrom(common.Hex2Bytes("ab8438a18d83d41847dffbdc6101d37c69c9a2fc")),
+	udd := models.UserDevice{
+		ID:                 deviceID,
+		UserID:             userDeviceID,
+		DeviceDefinitionID: "deviceDefID",
+		MintRequestID:      null.StringFrom(mtxReq),
+		VinIdentifier:      null.StringFrom(vin),
+		TokenID:            types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+		OwnerAddress:       null.BytesFrom(common.Hex2Bytes("ab8438a18d83d41847dffbdc6101d37c69c9a2fc")),
 	}
-
-	err = nft.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
+	err = udd.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
 	require.NoError(s.T(), err)
 
 	pk, err := base64.RawURLEncoding.DecodeString("2pN28-5VmEavX46XWszjasN0kx4ha3wQ6w6hGqD8o0k")

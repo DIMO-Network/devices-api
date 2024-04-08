@@ -89,24 +89,19 @@ func (s *StorageTestSuite) Test_SyntheticMintSetsID() {
 	ownerAddr := common.HexToAddress("1000")
 	integrationID := ksuid.New().String()
 
-	ud := models.UserDevice{
-		ID: ksuid.New().String(),
-	}
-	s.MustInsert(&ud)
-
 	mtr := models.MetaTransactionRequest{
 		ID:     ksuid.New().String(),
 		Status: models.MetaTransactionRequestStatusMined,
 	}
 	s.MustInsert(&mtr)
 
-	vnft := models.VehicleNFT{
-		MintRequestID: mtr.ID,
-		UserDeviceID:  null.StringFrom(ud.ID),
+	ud := models.UserDevice{
+		ID:            ksuid.New().String(),
+		MintRequestID: null.StringFrom(mtr.ID),
 		TokenID:       types.NewNullDecimal(decimal.New(vehicleID, 0)),
 		OwnerAddress:  null.BytesFrom(ownerAddr.Bytes()),
 	}
-	s.MustInsert(&vnft)
+	s.MustInsert(&ud)
 
 	syntMtr := models.MetaTransactionRequest{
 		ID:     ksuid.New().String(),
@@ -183,11 +178,6 @@ func (s *StorageTestSuite) TestMintVehicle() {
 	proc, err := NewProcessor(s.dbs.DBS, &logger, nil, &config.Settings{Environment: "prod"}, s.eventSvc)
 	s.Require().NoError(err)
 
-	ud := models.UserDevice{
-		ID: ksuid.New().String(),
-	}
-	s.MustInsert(&ud)
-
 	mtr := models.MetaTransactionRequest{
 		ID:     ksuid.New().String(),
 		Status: models.MetaTransactionRequestStatusMined,
@@ -199,11 +189,11 @@ func (s *StorageTestSuite) TestMintVehicle() {
 		emEv = event
 	})
 
-	vnft := models.VehicleNFT{
-		MintRequestID: mtr.ID,
-		UserDeviceID:  null.StringFrom(ud.ID),
+	ud := models.UserDevice{
+		ID:            ksuid.New().String(),
+		MintRequestID: null.StringFrom(mtr.ID),
 	}
-	s.MustInsert(&vnft)
+	s.MustInsert(&ud)
 
 	s.Require().NoError(proc.Handle(context.TODO(), &ceData{
 		RequestID: mtr.ID,
@@ -226,10 +216,10 @@ func (s *StorageTestSuite) TestMintVehicle() {
 		},
 	}))
 
-	s.Require().NoError(vnft.Reload(ctx, s.dbs.DBS().Writer))
+	s.Require().NoError(ud.Reload(ctx, s.dbs.DBS().Writer))
 
-	s.Zero(vnft.TokenID.Int(nil).Cmp(big.NewInt(14443)))
-	s.Equal(common.HexToAddress("7e74d0f663d58d12817b8bef762bcde3af1f63d6"), common.BytesToAddress(vnft.OwnerAddress.Bytes))
+	s.Zero(ud.TokenID.Int(nil).Cmp(big.NewInt(14443)))
+	s.Equal(common.HexToAddress("7e74d0f663d58d12817b8bef762bcde3af1f63d6"), common.BytesToAddress(ud.OwnerAddress.Bytes))
 
 	s.Equal(ud.ID, emEv.Subject)
 }

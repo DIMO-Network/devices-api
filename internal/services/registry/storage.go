@@ -47,8 +47,8 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	mtr, err := models.MetaTransactionRequests(
 		models.MetaTransactionRequestWhere.ID.EQ(data.RequestID),
 		// This is really ugly. We should probably link back to the type instead of doing this.
-		qm.Load(qm.Rels(models.MetaTransactionRequestRels.MintRequestVehicleNFT, models.VehicleNFTRels.UserDevice)),
-		qm.Load(qm.Rels(models.MetaTransactionRequestRels.BurnRequestVehicleNFT, models.VehicleNFTRels.UserDevice)),
+		qm.Load(qm.Rels(models.MetaTransactionRequestRels.MintRequestUserDevice)),
+		qm.Load(qm.Rels(models.MetaTransactionRequestRels.BurnRequestUserDevice)),
 		qm.Load(models.MetaTransactionRequestRels.ClaimMetaTransactionRequestAftermarketDevice),
 		qm.Load(models.MetaTransactionRequestRels.PairRequestAftermarketDevice),
 		qm.Load(models.MetaTransactionRequestRels.UnpairRequestAftermarketDevice),
@@ -76,7 +76,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	sdBurnEvent := p.ABI.Events["SyntheticDeviceNodeBurned"]
 
 	switch {
-	case mtr.R.MintRequestVehicleNFT != nil:
+	case mtr.R.MintRequestUserDevice != nil:
 		for _, l1 := range data.Transaction.Logs {
 			if l1.Topics[0] == vehicleMintedEvent.ID {
 				out := new(contracts.RegistryVehicleNodeMinted)
@@ -85,37 +85,35 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return err
 				}
 
-				vnft := mtr.R.MintRequestVehicleNFT
+				ud := mtr.R.MintRequestUserDevice
 
-				vnft.TokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.TokenId, 0))
-				vnft.OwnerAddress = null.BytesFrom(out.Owner.Bytes())
-				_, err = vnft.Update(ctx, p.DB().Writer, boil.Whitelist(models.VehicleNFTColumns.TokenID, models.VehicleNFTColumns.OwnerAddress))
+				ud.TokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.TokenId, 0))
+				ud.OwnerAddress = null.BytesFrom(out.Owner.Bytes())
+				_, err = ud.Update(ctx, p.DB().Writer, boil.Whitelist(models.UserDeviceColumns.TokenID, models.UserDeviceColumns.OwnerAddress))
 				if err != nil {
 					return err
 				}
 
-				if ud := vnft.R.UserDevice; ud != nil {
-					p.Eventer.Emit(&shared.CloudEvent[any]{ //nolint
-						Type:    "com.dimo.zone.device.mint",
-						Subject: ud.ID,
-						Source:  "devices-api",
-						Data: services.UserDeviceMintEvent{
-							Timestamp: time.Now(),
-							UserID:    ud.UserID,
-							Device: services.UserDeviceEventDevice{
-								ID:  ud.ID,
-								VIN: vnft.Vin,
-							},
-							NFT: services.UserDeviceEventNFT{
-								TokenID: out.TokenId,
-								Owner:   out.Owner,
-								TxHash:  common.HexToHash(data.Transaction.Hash),
-							},
+				p.Eventer.Emit(&shared.CloudEvent[any]{ //nolint
+					Type:    "com.dimo.zone.device.mint",
+					Subject: ud.ID,
+					Source:  "devices-api",
+					Data: services.UserDeviceMintEvent{
+						Timestamp: time.Now(),
+						UserID:    ud.UserID,
+						Device: services.UserDeviceEventDevice{
+							ID:  ud.ID,
+							VIN: ud.VinIdentifier.String,
 						},
-					})
-				}
+						NFT: services.UserDeviceEventNFT{
+							TokenID: out.TokenId,
+							Owner:   out.Owner,
+							TxHash:  common.HexToHash(data.Transaction.Hash),
+						},
+					},
+				})
 
-				logger.Info().Str("userDeviceId", mtr.R.MintRequestVehicleNFT.UserDeviceID.String).Msg("Vehicle minted.")
+				logger.Info().Str("userDeviceId", mtr.R.MintRequestUserDevice.ID).Msg("Vehicle minted.")
 			} else if l1.Topics[0] == syntheticDeviceMintedEvent.ID {
 				// We must be doing a combined vehicle and SD mint. This always comes second.
 				out := new(contracts.RegistrySyntheticDeviceNodeMinted)
@@ -131,7 +129,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return err
 				}
 
-				sd.VehicleTokenID = mtr.R.MintRequestVehicleNFT.TokenID
+				sd.VehicleTokenID = mtr.R.MintRequestUserDevice.TokenID
 				sd.TokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.SyntheticDeviceNode, 0))
 				_, err = sd.Update(ctx, p.DB().Writer, boil.Infer())
 				if err != nil {
@@ -139,7 +137,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				}
 			}
 		}
-	case mtr.R.BurnRequestVehicleNFT != nil:
+	case mtr.R.BurnRequestUserDevice != nil:
 		// Handled in contract event consumer.
 	case mtr.R.ClaimMetaTransactionRequestAftermarketDevice != nil:
 		// Handled in the contract event consumer.

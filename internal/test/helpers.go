@@ -291,27 +291,30 @@ func SetupCreateMintedAftermarketDevice(t *testing.T, userID, unitID string, tok
 	return &amd
 }
 
-func SetupCreateVehicleNFT(t *testing.T, userDeviceID, vin string, tokenID *big.Int, ownerAddr null.Bytes, pdb db.Store) *models.VehicleNFT {
+func SetupCreateVehicleNFT(t *testing.T, userDevice models.UserDevice, vin string, tokenID *big.Int, ownerAddr null.Bytes, pdb db.Store) *models.UserDevice {
 
+	mint := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusConfirmed,
+	}
+	err := mint.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
+	assert.NoError(t, err)
+
+	userDevice.TokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0))
+	userDevice.OwnerAddress = ownerAddr
+	userDevice.MintRequestID = null.StringFrom(mint.ID)
+
+	_, err = userDevice.Update(context.Background(), pdb.DBS().Writer, boil.Infer())
+	assert.NoError(t, err)
+	return &userDevice
+}
+
+func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userID, userDeviceID string, tokenID int64, pdb db.Store) *models.UserDevice {
 	mint := models.MetaTransactionRequest{
 		ID: ksuid.New().String(),
 	}
 	err := mint.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
 	assert.NoError(t, err)
-
-	vehicle := models.VehicleNFT{
-		Vin:           vin,
-		MintRequestID: mint.ID,
-		UserDeviceID:  null.StringFrom(userDeviceID),
-		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
-		OwnerAddress:  ownerAddr,
-	}
-	err = vehicle.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
-	assert.NoError(t, err)
-	return &vehicle
-}
-
-func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userID, userDeviceID string, tokenID int64, pdb db.Store) *models.VehicleNFT {
 
 	ud := models.UserDevice{
 		ID:                 userDeviceID,
@@ -320,28 +323,14 @@ func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userI
 		CountryCode:        null.StringFrom("USA"),
 		Name:               null.StringFrom("Chungus"),
 		VinIdentifier:      null.StringFrom("00000000000000001"),
+		MintRequestID:      null.StringFrom(mint.ID),
+		OwnerAddress:       null.BytesFrom(common.FromHex(addr.String())),
 		VinConfirmed:       true,
 	}
-
-	err := ud.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
+	err = ud.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
 	assert.NoError(t, err)
 
-	mint := models.MetaTransactionRequest{
-		ID: ksuid.New().String(),
-	}
-	err = mint.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
-	assert.NoError(t, err)
-
-	vehicle := models.VehicleNFT{
-		Vin:           "00000000000000001",
-		MintRequestID: mint.ID,
-		UserDeviceID:  null.StringFrom(userDeviceID),
-		TokenID:       types.NewNullDecimal(decimal.New(tokenID, 0)),
-		OwnerAddress:  null.BytesFrom(common.FromHex(addr.String())),
-	}
-	err = vehicle.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
-	assert.NoError(t, err)
-	return &vehicle
+	return &ud
 }
 
 // SetupCreateUserDeviceAPIIntegration status set to Active, autoPiUnitId is optional

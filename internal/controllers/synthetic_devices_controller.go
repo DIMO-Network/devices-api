@@ -125,7 +125,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 	integrationID := c.Params("integrationID")
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice)),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
 	).One(c.Context(), sdc.DBS().Reader)
 	if err != nil {
@@ -135,15 +135,15 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 		return err
 	}
 
-	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
+	if ud.TokenID.IsZero() {
 		return fiber.NewError(fiber.StatusConflict, "Vehicle not minted.")
 	}
 
-	if userAddr != common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes) {
+	if userAddr != common.BytesToAddress(ud.OwnerAddress.Bytes) {
 		return fiber.NewError(fiber.StatusUnauthorized, "User's address does not control this device.")
 	}
 
-	if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice != nil {
+	if ud.R.VehicleTokenSyntheticDevice != nil {
 		return fiber.NewError(fiber.StatusConflict, "Vehicle already paired with a synthetic device.")
 	}
 
@@ -164,9 +164,9 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 		return fiber.NewError(fiber.StatusConflict, "Connection type not yet minted.")
 	}
 
-	vid, ok := ud.R.VehicleNFT.TokenID.Int64()
+	vid, ok := ud.TokenID.Int64()
 	if !ok {
-		return fmt.Errorf("vehicle token id invalid, this should never happen %d", ud.R.VehicleNFT.TokenID)
+		return fmt.Errorf("vehicle token id invalid, this should never happen %d", ud.TokenID)
 	}
 
 	response := sdc.getEIP712Mint(int64(in.TokenId), vid)
@@ -189,18 +189,18 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice)),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
 	).One(c.Context(), sdc.DBS().Reader)
 	if err != nil {
 		return err
 	}
 
-	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
+	if ud.TokenID.IsZero() {
 		return fiber.NewError(fiber.StatusConflict, "Vehicle not minted.")
 	}
 
-	if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice != nil {
+	if ud.R.VehicleTokenSyntheticDevice != nil {
 		return fiber.NewError(fiber.StatusConflict, "Vehicle already paired with a synthetic device.")
 	}
 
@@ -221,9 +221,9 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "Connection type not yet minted.")
 	}
 
-	vid, ok := ud.R.VehicleNFT.TokenID.Int64()
+	vid, ok := ud.TokenID.Int64()
 	if !ok {
-		return fmt.Errorf("vehicle token id invalid, this should never happen %d", ud.R.VehicleNFT.TokenID)
+		return fmt.Errorf("vehicle token id invalid, this should never happen %d", ud.TokenID)
 	}
 
 	userID := helpers.GetUserID(c)
@@ -324,7 +324,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceBurnPayload(c *fiber.Ct
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice)),
 	).One(c.Context(), sdc.DBS().Reader)
 	if err != nil {
 		return err
@@ -335,7 +335,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceBurnPayload(c *fiber.Ct
 		return shared.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
-	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
+	if ud.TokenID.IsZero() {
 		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
 	}
 
@@ -349,19 +349,17 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceBurnPayload(c *fiber.Ct
 		return fiber.NewError(fiber.StatusForbidden, "No Ethereum address on file for user.")
 	}
 
-	vOwn := common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes)
-
+	vOwn := common.BytesToAddress(ud.OwnerAddress.Bytes)
 	addr := common.HexToAddress(*user.EthereumAddress)
-
 	if vOwn != addr {
 		return fiber.NewError(fiber.StatusForbidden, fmt.Sprintf("Vehicle is owned by %s, your address is %s.", vOwn, addr))
 	}
 
-	if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice == nil {
+	if ud.R.VehicleTokenSyntheticDevice == nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Integration not minted.")
 	}
 
-	sd := ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice
+	sd := ud.R.VehicleTokenSyntheticDevice
 
 	intNode, _ := sd.IntegrationTokenID.Uint64()
 	if intNode != in.TokenId {
@@ -376,7 +374,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceBurnPayload(c *fiber.Ct
 		return fiber.NewError(fiber.StatusConflict, "Burning in progress.")
 	}
 
-	vehicleNode, _ := ud.R.VehicleNFT.TokenID.Int64()
+	vehicleNode, _ := ud.TokenID.Int64()
 	syntheticDeviceNode, _ := sd.TokenID.Int64()
 
 	return c.JSON(sdc.getEIP712Burn(vehicleNode, syntheticDeviceNode))
@@ -407,7 +405,7 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice)),
 	).One(c.Context(), tx)
 	if err != nil {
 		return err
@@ -418,7 +416,7 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 		return shared.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
-	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
+	if ud.TokenID.IsZero() {
 		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
 	}
 
@@ -432,7 +430,7 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusForbidden, "No Ethereum address on file for user.")
 	}
 
-	vOwn := common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes)
+	vOwn := common.BytesToAddress(ud.OwnerAddress.Bytes)
 
 	addr := common.HexToAddress(*user.EthereumAddress)
 
@@ -440,11 +438,11 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusForbidden, fmt.Sprintf("Vehicle is owned by %s, your address is %s.", vOwn, addr))
 	}
 
-	if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice == nil {
+	if ud.R.VehicleTokenSyntheticDevice == nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Integration not minted.")
 	}
 
-	sd := ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice
+	sd := ud.R.VehicleTokenSyntheticDevice
 
 	intNode, _ := sd.IntegrationTokenID.Uint64()
 	if intNode != in.TokenId {
@@ -459,7 +457,7 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "Burning in progress.")
 	}
 
-	vehicleNode, _ := ud.R.VehicleNFT.TokenID.Int64()
+	vehicleNode, _ := ud.TokenID.Int64()
 	syntheticDeviceNode, _ := sd.TokenID.Int64()
 
 	td := sdc.getEIP712Burn(vehicleNode, syntheticDeviceNode)

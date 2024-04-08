@@ -110,7 +110,7 @@ func (s *UserDevicesControllerTestSuite) TestGetBurn() {
 
 	err = ud.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
 	s.Require().NoError(err)
-	test.SetupCreateVehicleNFT(s.T(), ud.ID, ud.VinIdentifier.String, big.NewInt(1), null.BytesFrom(addr.Bytes()), s.pdb)
+	test.SetupCreateVehicleNFT(s.T(), ud, ud.VinIdentifier.String, big.NewInt(1), null.BytesFrom(addr.Bytes()), s.pdb)
 	user := test.BuildGetUserGRPC(ud.UserID, &email, &eth, &pb.UserReferrer{})
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: ud.UserID}).Return(user, nil)
 
@@ -139,7 +139,7 @@ func (s *UserDevicesControllerTestSuite) TestPostBurn() {
 	err = ud.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
 	s.Require().NoError(err)
 
-	vnft := test.SetupCreateVehicleNFT(s.T(), ud.ID, ud.VinIdentifier.String, big.NewInt(1), null.BytesFrom(addr.Bytes()), s.pdb)
+	vnft := test.SetupCreateVehicleNFT(s.T(), ud, ud.VinIdentifier.String, big.NewInt(1), null.BytesFrom(addr.Bytes()), s.pdb)
 	user := test.BuildGetUserGRPC(ud.UserID, &email, &eth, &pb.UserReferrer{})
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: ud.UserID}).Return(user, nil)
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: ud.UserID}).Return(user, nil)
@@ -194,10 +194,10 @@ func (s *UserDevicesControllerTestSuite) TestPostBurn() {
 	s.Require().NoError(err)
 	s.Equal(fiber.StatusOK, response.StatusCode)
 
-	if err := vnft.Reload(context.Background(), s.pdb.DBS().Reader); err != nil {
+	if err := ud.Reload(context.Background(), s.pdb.DBS().Reader); err != nil {
 		s.T().Fatal(err)
 	}
 
-	s.Require().NotEmpty(vnft.BurnRequestID)
+	s.Require().NotEmpty(ud.BurnRequestID)
 
 }

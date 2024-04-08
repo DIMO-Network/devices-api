@@ -46,15 +46,10 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 		VinConfirmed:       true,
 		Metadata:           null.JSONFrom([]byte(`{ "powertrainType": "ICE", "canProtocol": "6" }`)),
 		DeviceStyleID:      null.StringFrom(deviceStyleID),
-	}
-
-	vnft := models.VehicleNFT{
-		UserDeviceID:  null.StringFrom(ud.ID),
-		Vin:           ud.VinIdentifier.String,
-		TokenID:       types.NewNullDecimal(decimal.New(4, 0)),
-		OwnerAddress:  null.BytesFrom(common.BigToAddress(big.NewInt(7)).Bytes()),
-		MintRequestID: ksuid.New().String(),
-		ClaimID:       null.StringFrom(claimID),
+		TokenID:            types.NewNullDecimal(decimal.New(4, 0)),
+		OwnerAddress:       null.BytesFrom(common.BigToAddress(big.NewInt(7)).Bytes()),
+		MintRequestID:      null.StringFrom(ksuid.New().String()),
+		ClaimID:            null.StringFrom(claimID),
 	}
 
 	ad := models.AftermarketDevice{
@@ -63,16 +58,16 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 		CreatedAt:                 time.Now(),
 		UpdatedAt:                 time.Now(),
 		TokenID:                   types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
-		VehicleTokenID:            vnft.TokenID,
+		VehicleTokenID:            ud.TokenID,
 		Beneficiary:               null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
 		EthereumAddress:           ownerAddress.Bytes,
 		DeviceManufacturerTokenID: types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(42), 0)),
 	}
 
 	sd := models.SyntheticDevice{
-		VehicleTokenID:     vnft.TokenID,
+		VehicleTokenID:     ud.TokenID,
 		IntegrationTokenID: types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(19), 0)),
-		MintRequestID:      vnft.MintRequestID,
+		MintRequestID:      ksuid.New().String(),
 		WalletChildNumber:  100,
 		TokenID:            types.NewNullDecimal(decimal.New(6, 0)),
 		WalletAddress:      childWallet.Bytes(),
@@ -83,16 +78,21 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 		ExpirationDate: time.Now().AddDate(0, 0, 7),
 	}
 
-	metaTx := models.MetaTransactionRequest{
-		ID:     vnft.MintRequestID,
+	metaTxUd := models.MetaTransactionRequest{
+		ID:     ud.MintRequestID.String,
 		Status: models.MetaTransactionRequestStatusConfirmed,
 	}
 
-	if err := ud.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
+	metaTxSd := models.MetaTransactionRequest{
+		ID:     sd.MintRequestID,
+		Status: models.MetaTransactionRequestStatusConfirmed,
+	}
+
+	if err := metaTxUd.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
 		return "", err
 	}
 
-	if err := metaTx.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
+	if err := metaTxSd.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
 		return "", err
 	}
 
@@ -100,7 +100,7 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 		return "", err
 	}
 
-	if err := vnft.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
+	if err := ud.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
 		return "", err
 	}
 
