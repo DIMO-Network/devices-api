@@ -100,7 +100,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_HardwareTemplate_Success() {
 	_, apAddr, _ := test.GenerateWallet()
 
 	autoPIUnit := test.SetupCreateMintedAftermarketDevice(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
-	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud, vin, vehicleTokenID, null.Bytes{}, s.pdb)
+	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(deviceDefinitionID, "Ford", "F150", 2020, integration)
@@ -178,7 +178,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_Make_HardwareTemplate_Success() {
 	_, apAddr, _ := test.GenerateWallet()
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
 	autoPIUnit := test.SetupCreateMintedAftermarketDevice(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
-	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud, vin, vehicleTokenID, null.Bytes{}, s.pdb)
+	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(deviceDefinitionID, "Ford", "F150", 2020, integration)
@@ -254,7 +254,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_DeviceStyle_HardwareTemplate_Su
 
 	_, apAddr, _ := test.GenerateWallet()
 	autoPIUnit := test.SetupCreateMintedAftermarketDevice(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
-	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud, vin, vehicleTokenID, null.Bytes{}, s.pdb)
+	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(deviceDefinitionID, "Ford", "F150", 2020, integration)
@@ -337,7 +337,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_UserDeviceStyle_HardwareTemplate_S
 	_, apAddr, _ := test.GenerateWallet()
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
 	autoPIUnit := test.SetupCreateMintedAftermarketDevice(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
-	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud, vin, vehicleTokenID, null.Bytes{}, s.pdb)
+	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(deviceDefinitionID, "Ford", "F150", 2020, integration)

@@ -291,7 +291,7 @@ func SetupCreateMintedAftermarketDevice(t *testing.T, userID, unitID string, tok
 	return &amd
 }
 
-func SetupCreateVehicleNFT(t *testing.T, userDevice models.UserDevice, vin string, tokenID *big.Int, ownerAddr null.Bytes, pdb db.Store) *models.UserDevice {
+func SetupCreateVehicleNFT(t *testing.T, userDevice models.UserDevice, tokenID *big.Int, ownerAddr null.Bytes, pdb db.Store) *models.UserDevice {
 
 	mint := models.MetaTransactionRequest{
 		ID:     ksuid.New().String(),
@@ -309,7 +309,7 @@ func SetupCreateVehicleNFT(t *testing.T, userDevice models.UserDevice, vin strin
 	return &userDevice
 }
 
-func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userID, userDeviceID string, tokenID int64, pdb db.Store) *models.UserDevice {
+func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userID, userDeviceID string, pdb db.Store) *models.UserDevice {
 	mint := models.MetaTransactionRequest{
 		ID: ksuid.New().String(),
 	}

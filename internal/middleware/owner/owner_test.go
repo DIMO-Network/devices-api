@@ -312,7 +312,7 @@ func TestVehicleTokenOwnerMiddleware(t *testing.T) {
 			u := &pb.User{Id: userID}
 
 			if c.OwnerAddress != common.HexToAddress("") {
-				_ = test.SetupCreateVehicleNFT(t, ud, "vin", big.NewInt(5), null.BytesFrom(c.OwnerAddress.Bytes()), pdb)
+				_ = test.SetupCreateVehicleNFT(t, ud, big.NewInt(5), null.BytesFrom(c.OwnerAddress.Bytes()), pdb)
 
 				addr := c.OwnerAddress.Hex()
 				u.EthereumAddress = &addr

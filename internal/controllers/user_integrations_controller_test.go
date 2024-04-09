@@ -193,11 +193,10 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCarFailure() {
 
 func (s *UserIntegrationsControllerTestSuite) TestDeleteIntegration_BlockedBySyntheticDevice() {
 	model := "Mach E"
-	const vin = "CARVIN"
 	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	vnft := test.SetupCreateVehicleNFT(s.T(), ud, vin, big.NewInt(5), null.BytesFrom(common.HexToAddress("0xA1").Bytes()), s.pdb)
+	vnft := test.SetupCreateVehicleNFT(s.T(), ud, big.NewInt(5), null.BytesFrom(common.HexToAddress("0xA1").Bytes()), s.pdb)
 
 	mtr := models.MetaTransactionRequest{
 		ID:     ksuid.New().String(),
@@ -818,7 +817,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
 	ud := test.SetupCreateUserDevice(s.T(), userID, dd[0].DeviceDefinitionId, nil, "4Y1SL65848Z411439", s.pdb)
-	_ = *test.SetupCreateVehicleNFT(s.T(), ud, ud.VinIdentifier.String, big.NewInt(4), null.BytesFrom(userAddr.Bytes()), s.pdb)
+	_ = *test.SetupCreateVehicleNFT(s.T(), ud, big.NewInt(4), null.BytesFrom(userAddr.Bytes()), s.pdb)
 
 	aftermarketDevice := test.SetupCreateAftermarketDevice(s.T(), testUserID, common.BigToAddress(big.NewInt(2)).Bytes(), unitID, &deviceID, s.pdb)
 	aftermarketDevice.TokenID = types.NewDecimal(decimal.New(5, 0))
