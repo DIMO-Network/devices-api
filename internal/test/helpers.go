@@ -309,7 +309,7 @@ func SetupCreateVehicleNFT(t *testing.T, userDevice models.UserDevice, tokenID *
 	return &userDevice
 }
 
-func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userID, userDeviceID string, pdb db.Store) *models.UserDevice {
+func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userID, userDeviceID string, tokenID int64, pdb db.Store) *models.UserDevice {
 	mint := models.MetaTransactionRequest{
 		ID: ksuid.New().String(),
 	}
@@ -326,6 +326,7 @@ func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userI
 		MintRequestID:      null.StringFrom(mint.ID),
 		OwnerAddress:       null.BytesFrom(common.FromHex(addr.String())),
 		VinConfirmed:       true,
+		TokenID:            types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0)),
 	}
 	err = ud.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
 	assert.NoError(t, err)
