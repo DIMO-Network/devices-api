@@ -36,20 +36,6 @@ ALTER TABLE aftermarket_devices ADD CONSTRAINT autopi_units_vehicle_token_id_fke
 ALTER TABLE synthetic_devices DROP CONSTRAINT fkey_vehicle_token_id;
 ALTER TABLE synthetic_devices ADD CONSTRAINT fkey_vehicle_token_id FOREIGN KEY (vehicle_token_id) REFERENCES user_devices(token_id);
 
-UPDATE user_devices 
-    SET 
-        user_id = condensed.user_ids[1]
-FROM 
-    (
-        SELECT
-            ud.owner_address,
-            ARRAY_AGG(distinct ud.user_id) user_ids
-        FROM
-            user_devices ud
-        GROUP BY ud.owner_address
-    ) condensed 
-WHERE condensed.owner_address = user_devices.owner_address;
-
 DROP TABLE vehicle_nfts;
 DROP TABLE vehicle_nfts_backup;
 
