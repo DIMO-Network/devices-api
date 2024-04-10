@@ -62,6 +62,7 @@ func (udc *UserDevicesControllerV2) GetRange(c *fiber.Ctx) error {
 		if errors.Is(err, sql.ErrNoRows) {
 			return fiber.NewError(fiber.StatusNotFound, "No device with that token ID found.")
 		}
+		udc.log.Err(err).Str("TokenID", tkID.String()).Msg("could not get device")
 		return fiber.NewError(fiber.StatusInternalServerError, "error occurred getting device with token id")
 	}
 

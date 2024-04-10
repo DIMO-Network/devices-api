@@ -11,42 +11,26 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/DIMO-Network/shared/privileges"
-
-	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
-
-	"github.com/DIMO-Network/devices-api/internal/middleware"
-
-	"github.com/DIMO-Network/devices-api/internal/rpc"
-
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-
-	"github.com/DIMO-Network/devices-api/internal/middleware/metrics"
-
-	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
-
-	"github.com/DIMO-Network/shared/redis"
-
-	"github.com/DIMO-Network/shared/db"
-	"github.com/ethereum/go-ethereum/common"
-
-	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
-	"github.com/DIMO-Network/devices-api/internal/middleware/owner"
-
 	"github.com/DIMO-Network/shared"
 	pbuser "github.com/DIMO-Network/shared/api/users"
+	"github.com/DIMO-Network/shared/db"
 	"github.com/DIMO-Network/shared/middleware/privilegetoken"
+	"github.com/DIMO-Network/shared/privileges"
+	"github.com/DIMO-Network/shared/redis"
 	"github.com/DIMO-Network/zflogger"
 	"github.com/Shopify/sarama"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/ethereum/go-ethereum/common"
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cache"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	fiberrecover "github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/swagger"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -54,8 +38,14 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers"
+	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
+	"github.com/DIMO-Network/devices-api/internal/middleware"
+	"github.com/DIMO-Network/devices-api/internal/middleware/metrics"
+	"github.com/DIMO-Network/devices-api/internal/middleware/owner"
+	"github.com/DIMO-Network/devices-api/internal/rpc"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
+	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
 	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/internal/services/macaron"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
