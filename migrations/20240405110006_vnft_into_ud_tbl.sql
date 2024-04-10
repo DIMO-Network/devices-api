@@ -3,7 +3,7 @@
 SELECT 'up SQL query';
 
 SET search_path = devices_api, public;
-CREATE TABLE vehicle_nfts_backup AS SELECT * FROM vehicle_nfts;
+CREATE TABLE vehicle_nfts_backup AS SELECT *  FROM vehicle_nfts;
 
 ALTER TABLE user_devices
     ADD COLUMN mint_request_id char(27) CONSTRAINT user_devices_mint_request_id_fkey UNIQUE REFERENCES meta_transaction_requests(id);
@@ -35,6 +35,20 @@ ALTER TABLE aftermarket_devices ADD CONSTRAINT autopi_units_vehicle_token_id_fke
 
 ALTER TABLE synthetic_devices DROP CONSTRAINT fkey_vehicle_token_id;
 ALTER TABLE synthetic_devices ADD CONSTRAINT fkey_vehicle_token_id FOREIGN KEY (vehicle_token_id) REFERENCES user_devices(token_id);
+
+UPDATE user_devices 
+    SET 
+        user_id = condensed.user_ids[1]
+FROM 
+    (
+        SELECT
+            ud.owner_address,
+            ARRAY_AGG(distinct ud.user_id) user_ids
+        FROM
+            user_devices ud
+        GROUP BY ud.owner_address
+    ) condensed 
+WHERE condensed.owner_address = user_devices.owner_address;
 
 DROP TABLE vehicle_nfts;
 DROP TABLE vehicle_nfts_backup;
@@ -71,7 +85,7 @@ execute procedure refresh_vehicle_nfts_mat_view();
 SELECT 'down SQL query';
 
 SET search_path = devices_api, public;
-
+DROP MATERIALIZED VIEW vehicle_nfts;
 CREATE TABLE vehicle_nfts(
     mint_request_id char(27)
         CONSTRAINT vehicle_nfts_mint_request_id_pkey PRIMARY KEY
