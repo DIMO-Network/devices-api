@@ -15,14 +15,6 @@ import (
 	"time"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
-	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/contracts"
-	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
-	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/devices-api/internal/services/autopi"
-	"github.com/DIMO-Network/devices-api/internal/services/registry"
-	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
@@ -48,6 +40,15 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
+
+	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/contracts"
+	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
+	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/internal/services/autopi"
+	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	"github.com/DIMO-Network/devices-api/models"
 )
 
 type UserDevicesController struct {
@@ -994,7 +995,7 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 	if err != nil {
 		return opaqueInternalError
 	}
-	defer tx.Rollback() //nolint
+	defer tx.Rollback() // nolint
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
@@ -1332,8 +1333,8 @@ type RangeSet struct {
 }
 
 // GetRange godoc
-// @Description gets the estimated range for a particular user device
-// @Tags        user-devices
+// @Description [🔴__Warning - API Shutdown by June 30, 2024, Use `/v2/vehicles/:tokenId/analytics/range` instead__🔴]  gets the estimated range for a particular user device
+// @Tags        user-devices [End Of Life Warning]
 // @Produce     json
 // @Success     200 {object} controllers.DeviceRange
 // @Security    BearerAuth

@@ -151,6 +151,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
 	countriesController := controllers.NewCountriesController()
 	userIntegrationAuthController := controllers.NewUserIntegrationAuthController(settings, pdb.DBS, &logger, ddSvc, teslaFleetAPISvc, redisCache, cipher, usersClient)
+	userDeviceControllerV2 := controllers.NewUserDevicesControllerV2(settings, pdb.DBS, &logger, ddSvc)
 
 	// commenting this out b/c the library includes the path in the metrics which saturates prometheus queries - need to fork / make our own
 	// prometheus := fiberprometheus.New("devices-api")
@@ -208,6 +209,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	})
 
 	vPriv := app.Group("/v1/vehicle/:tokenID", privilegeAuth)
+	vehiclePrivilegeV2Routes := app.Group("/v2/vehicles/:tokenID", privilegeAuth)
 
 	privTokenWare := privilegetoken.New(privilegetoken.Config{Log: &logger})
 
@@ -231,7 +233,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	})
 
 	v1Auth := app.Group("/v1", jwtAuth)
-	v2Auth := app.Group("/v2", jwtAuth)
 
 	// List user's devices.
 	v1Auth.Get("/user/devices/me", userDeviceController.GetUserDevices)
@@ -350,8 +351,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Post("/autopi/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
 	udOwner.Post("/aftermarket/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
 
-	vehicleRoutesV2 := v2Auth.Group("/vehicles/:tokenId", udOwnerMw)
-	vehicleRoutesV2.Get("analytics/range")
+	vehiclePrivilegeV2Routes.Get("/analytics/range", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleNonLocationData}), userDeviceControllerV2.GetRange)
 
 	logger.Info().Msg("Server started on port " + settings.Port)
 	// Start Server from a different go routine
