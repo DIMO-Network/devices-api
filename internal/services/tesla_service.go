@@ -13,6 +13,7 @@ import (
 type TeslaService interface {
 	GetVehicle(ownerAccessToken string, id int) (*TeslaVehicle, error)
 	WakeUpVehicle(ownerAccessToken string, id int) error
+	GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands
 }
 
 type teslaService struct {
@@ -75,6 +76,12 @@ func (t *teslaService) WakeUpVehicle(ownerAccessToken string, id int) error {
 	}
 
 	return nil
+}
+
+func (s *teslaService) GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands {
+	return &UserDeviceAPIIntegrationsMetadataCommands{
+		Enabled: []string{"doors/unlock", "doors/lock", "trunk/open", "frunk/open", "charge/limit"},
+	}
 }
 
 type TeslaVehicle struct {
