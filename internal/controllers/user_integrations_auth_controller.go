@@ -7,16 +7,17 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
-	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/shared"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/DIMO-Network/shared/redis"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
+
+	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
+	"github.com/DIMO-Network/devices-api/internal/services"
 )
 
 const teslaFleetAuthCacheKey = "integration_credentials_%s"
@@ -71,6 +72,11 @@ type CompleteOAuthExchangeResponse struct {
 	ExternalID string           `json:"externalId"`
 	VIN        string           `json:"vin"`
 	Definition DeviceDefinition `json:"definition"`
+}
+
+type GetCommandsByIntegrationResponse struct {
+	Enabled  []string `json:"enabled,omitempty"`
+	Disabled []string `json:"disabled,omitempty"`
 }
 
 // DeviceDefinition inner definition object containing meta data for each tesla vehicle
@@ -203,4 +209,62 @@ func (u *UserIntegrationAuthController) persistOauthCredentials(ctx context.Cont
 	}
 
 	return nil
+}
+
+// GetCommandsByIntegration godoc
+// @Description Get a list of available commands by integration
+// @Tags        user-devices
+// @Produce     json
+// @Accept      json
+// @Param       tokenID path string                   true "token id for integration"
+// @Security    ApiKeyAuth
+// @Success     200 {object} controllers.GetCommandsByIntegrationResponse
+// @Security    BearerAuth
+// @Router      /integration/:tokenID/commands [get]
+func (u *UserIntegrationAuthController) GetCommandsByIntegration(c *fiber.Ctx) error {
+	tokenID := c.Params("tokenID")
+	tkID, err := strconv.ParseUint(tokenID, 10, 64)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "could not process the provided tokenId!")
+	}
+
+	intd, err := u.DeviceDefSvc.GetIntegrationByTokenID(c.Context(), tkID)
+	if err != nil {
+		u.log.Err(err).Str("Calling Function", "GetIntegrationByTokenID").Uint64("tokenID", tkID).Msg("Error occurred trying to get integration using tokenID")
+		return fiber.NewError(fiber.StatusBadRequest, "could not find integration with token Id")
+	}
+
+	var commands *services.UserDeviceAPIIntegrationsMetadataCommands
+	switch intd.Vendor {
+	case constants.TeslaVendor:
+		vrsn := c.Query("version")
+		version, err := strconv.Atoi(vrsn)
+		if err != nil {
+			version = constants.TeslaAPIV1
+		}
+		commands = u.getTeslaCommands(version)
+	case constants.SmartCarVendor:
+		commands = u.getSmartCarCommands()
+	default:
+		return fiber.NewError(fiber.StatusBadRequest, "unsupported or invalid integration")
+	}
+	return c.JSON(commands)
+}
+
+func (u *UserIntegrationAuthController) getTeslaCommands(version int) *services.UserDeviceAPIIntegrationsMetadataCommands {
+	if version == 0 {
+		version = constants.TeslaAPIV1
+	}
+
+	if version == constants.TeslaAPIV2 {
+		return u.teslaFleetAPISvc.GetAvailableCommands()
+	} else {
+		svc := services.NewTeslaService(u.Settings)
+		return svc.GetAvailableCommands()
+	}
+}
+
+func (u *UserIntegrationAuthController) getSmartCarCommands() *services.UserDeviceAPIIntegrationsMetadataCommands {
+	svc := services.NewSmartcarClient(u.Settings)
+	return svc.GetAvailableCommands()
 }

@@ -19,10 +19,11 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/rpc"
 
-	"github.com/DIMO-Network/devices-api/internal/middleware/metrics"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+
+	"github.com/DIMO-Network/devices-api/internal/middleware/metrics"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 
@@ -34,15 +35,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/middleware/owner"
 
-	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/controllers"
-	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/devices-api/internal/services/autopi"
-	"github.com/DIMO-Network/devices-api/internal/services/issuer"
-	"github.com/DIMO-Network/devices-api/internal/services/macaron"
-	"github.com/DIMO-Network/devices-api/internal/services/registry"
-	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 	"github.com/DIMO-Network/shared"
 	pbuser "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/middleware/privilegetoken"
@@ -58,6 +50,16 @@ import (
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/controllers"
+	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/internal/services/autopi"
+	"github.com/DIMO-Network/devices-api/internal/services/issuer"
+	"github.com/DIMO-Network/devices-api/internal/services/macaron"
+	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 )
 
 func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store, eventService services.EventService, producer sarama.SyncProducer, s3ServiceClient *s3.Client, s3NFTServiceClient *s3.Client) {
@@ -151,8 +153,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	userIntegrationAuthController := controllers.NewUserIntegrationAuthController(settings, pdb.DBS, &logger, ddSvc, teslaFleetAPISvc, redisCache, cipher, usersClient)
 
 	// commenting this out b/c the library includes the path in the metrics which saturates prometheus queries - need to fork / make our own
-	//prometheus := fiberprometheus.New("devices-api")
-	//app.Use(prometheus.Middleware)
+	// prometheus := fiberprometheus.New("devices-api")
+	// app.Use(prometheus.Middleware)
 	app.Use(metrics.HTTPMetricsMiddleware)
 
 	app.Use(fiberrecover.New(fiberrecover.Config{
@@ -160,11 +162,11 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		EnableStackTrace:  true,
 		StackTraceHandler: nil,
 	}))
-	//cors
+	// cors
 	app.Use(cors.New())
 	// request logging
 	app.Use(zflogger.New(logger, nil))
-	//cache
+	// cache
 	cacheHandler := cache.New(cache.Config{
 		Next: func(c *fiber.Ctx) bool {
 			return c.Query("refresh") == "true"
@@ -239,6 +241,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices/fromsmartcar", userDeviceController.RegisterDeviceForUserFromSmartcar)
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
 	v1Auth.Post("/integration/:tokenID/credentials", userIntegrationAuthController.CompleteOAuthExchange)
+	v1Auth.Post("/integration/:tokenID/commands", userIntegrationAuthController.GetCommandsByIntegration)
 
 	v1Auth.Get("/integrations", userDeviceController.GetIntegrations)
 
