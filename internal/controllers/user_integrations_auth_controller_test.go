@@ -301,8 +301,14 @@ func (s *UserIntegrationAuthControllerTestSuite) TestGetTeslaV2Commands() {
 		Vendor: constants.TeslaVendor,
 	}, nil)
 
+	logger := test.Logger()
+	teslaFleetSvc := services.NewTeslaFleetAPIService(nil, logger)
+	c := NewUserIntegrationAuthController(&config.Settings{}, nil, logger, s.deviceDefSvc, teslaFleetSvc, nil, nil, nil)
+	app := test.SetupAppFiber(*logger)
+	app.Get("/integration/:tokenID/commands", test.AuthInjectorTestHandler(s.testUserID), c.GetCommandsByIntegration)
+
 	request := test.BuildRequest("GET", "/integration/2/commands?version=2", "")
-	response, _ := s.app.Test(request)
+	response, _ := app.Test(request)
 
 	s.Assert().Equal(fiber.StatusOK, response.StatusCode)
 	body, _ := io.ReadAll(response.Body)

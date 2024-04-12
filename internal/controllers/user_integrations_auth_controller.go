@@ -252,16 +252,12 @@ func (u *UserIntegrationAuthController) GetCommandsByIntegration(c *fiber.Ctx) e
 }
 
 func (u *UserIntegrationAuthController) getTeslaCommands(version int) *services.UserDeviceAPIIntegrationsMetadataCommands {
-	if version == 0 {
-		version = constants.TeslaAPIV1
-	}
-
 	if version == constants.TeslaAPIV2 {
 		return u.teslaFleetAPISvc.GetAvailableCommands()
-	} else {
-		svc := services.NewTeslaService(u.Settings)
-		return svc.GetAvailableCommands()
 	}
+
+	svc := services.NewTeslaService(u.Settings)
+	return svc.GetAvailableCommands()
 }
 
 func (u *UserIntegrationAuthController) getSmartCarCommands() *services.UserDeviceAPIIntegrationsMetadataCommands {
