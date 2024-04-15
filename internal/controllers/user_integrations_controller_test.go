@@ -123,7 +123,6 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 	app.Delete("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.DeleteUserDeviceIntegration)
 
 	app.Post("/user2/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUser2), c.RegisterDeviceIntegration)
-	app.Get("/integrations", c.GetIntegrations)
 	s.app = app
 }
 
@@ -148,24 +147,7 @@ func TestUserIntegrationsControllerTestSuite(t *testing.T) {
 }
 
 /* Actual Tests */
-func (s *UserIntegrationsControllerTestSuite) TestGetIntegrations() {
-	integrations := make([]*ddgrpc.Integration, 2)
-	integrations[0] = test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
-	integrations[1] = test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
-	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return(integrations, nil)
 
-	request := test.BuildRequest("GET", "/integrations", "")
-	response, err := s.app.Test(request)
-	require.NoError(s.T(), err)
-	body, _ := io.ReadAll(response.Body)
-
-	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-
-	jsonIntegrations := gjson.GetBytes(body, "integrations")
-	assert.True(s.T(), jsonIntegrations.IsArray())
-	assert.Equal(s.T(), gjson.GetBytes(body, "integrations.0.id").Str, integrations[0].Id)
-	assert.Equal(s.T(), gjson.GetBytes(body, "integrations.1.id").Str, integrations[1].Id)
-}
 func (s *UserIntegrationsControllerTestSuite) TestPostSmartCarFailure() {
 	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Mach E", 2020, integration)
