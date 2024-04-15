@@ -96,9 +96,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	usersClient := pbuser.NewUserServiceClient(gcon)
 
 	// services
-	nhtsaSvc := services.NewNHTSAService()
 	ddIntSvc := services.NewDeviceDefinitionIntegrationService(pdb.DBS, settings)
-	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, nhtsaSvc, settings)
+	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, settings)
 	ddaSvc := services.NewDeviceDataService(settings.DeviceDataGRPCAddr, &logger)
 
 	scTaskSvc := services.NewSmartcarTaskService(settings, producer)
@@ -107,7 +106,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	teslaSvc := services.NewTeslaService(settings)
 	teslaFleetAPISvc := services.NewTeslaFleetAPIService(settings, &logger)
 	autoPiSvc := services.NewAutoPiAPIService(settings, pdb.DBS)
-	valuationsSvc := services.NewValuationsAPIService(settings, &logger)
 	autoPiIngest := services.NewIngestRegistrar(producer)
 	deviceDefinitionRegistrar := services.NewDeviceDefinitionRegistrar(producer, settings)
 	autoPiTaskService := services.NewAutoPiTaskService(settings, autoPiSvc, pdb.DBS, logger)
@@ -117,7 +115,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	userDeviceSvc := services.NewUserDeviceService(ddSvc, logger, pdb.DBS, eventService, usersClient)
 
 	openAI := services.NewOpenAI(&logger, *settings)
-	dcnSvc := registry.NewDcnService(settings)
 
 	natsSvc, err := services.NewNATSService(settings, &logger)
 	if err != nil {
@@ -141,9 +138,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// controllers
 	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService,
-		smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, services.NewNHTSAService(), autoPiIngest,
+		smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, autoPiIngest,
 		deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient,
-		ddaSvc, natsSvc, wallet, userDeviceSvc, valuationsSvc, teslaFleetAPISvc)
+		ddaSvc, natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc)
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
@@ -180,19 +177,14 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	v1.Get("/swagger/*", swagger.HandlerDefault)
 	// Device Definitions
-	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc, dcnSvc, ddaSvc)
+	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc, ddaSvc)
 	v1.Get("/vehicle/:tokenID", nftController.GetNFTMetadata)
 	v1.Get("/vehicle/:tokenID/image", nftController.GetNFTImage)
 
 	v1.Get("/aftermarket/device/by-address/:address", nftController.GetAftermarketDeviceNFTMetadataByAddress)
 	v1.Get("/aftermarket/device/:tokenID", cacheHandler, nftController.GetAftermarketDeviceNFTMetadata)
 	v1.Get("/aftermarket/device/:tokenID/image", nftController.GetAftermarketDeviceNFTImage)
-	v1.Get("/manufacturer/:tokenID", nftController.GetManufacturerNFTMetadata)
 
-	v1.Get("/synthetic/device/:tokenID", cacheHandler, nftController.GetSyntheticDeviceNFTMetadata)
-
-	v1.Get("/dcn/:tokenID", nftController.GetDcnNFTMetadata)
-	v1.Get("/dcn/:tokenID/image", nftController.GetDCNNFTImage)
 	v1.Get("/integration/:tokenID", nftController.GetIntegrationNFTMetadata)
 
 	v1.Get("/countries", countriesController.GetSupportedCountries)
@@ -240,8 +232,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
 	v1Auth.Post("/integration/:tokenID/credentials", userIntegrationAuthController.CompleteOAuthExchange)
 
-	v1Auth.Get("/integrations", userDeviceController.GetIntegrations)
-
 	// Autopi specific routes.
 	amdOwnerMw := owner.AftermarketDevice(pdb, usersClient, &logger)
 	apOwner := v1Auth.Group("/autopi/unit/:serial", amdOwnerMw)
@@ -283,7 +273,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwnerMw := owner.UserDevice(pdb, usersClient, &logger)
 	udOwner := v1Auth.Group("/user/devices/:userDeviceID", udOwnerMw)
 
+	// todo: should be able to remove this too, but someone not mobile app queries this for DIMO test vehicles (yev,bender)
 	udOwner.Get("/status", userDeviceController.GetUserDeviceStatus)
+
 	udOwner.Delete("/", userDeviceController.DeleteUserDevice)
 	udOwner.Get("/commands/mint", userDeviceController.GetMintDevice)
 	udOwner.Post("/commands/mint", userDeviceController.PostMintDevice)
@@ -291,9 +283,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Patch("/vin", userDeviceController.UpdateVIN)
 	udOwner.Patch("/name", userDeviceController.UpdateName)
 	udOwner.Patch("/country-code", userDeviceController.UpdateCountryCode)
-	udOwner.Get("/valuations", userDeviceController.GetValuations)
-	udOwner.Get("/offers", userDeviceController.GetOffers)
-	udOwner.Get("/range", userDeviceController.GetRange)
 
 	udOwner.Post("/error-codes", userDeviceController.QueryDeviceErrorCodes)
 	udOwner.Get("/error-codes", userDeviceController.GetUserDeviceErrorCodeQueries)
@@ -334,17 +323,11 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Post("/commands/opt-in", userDeviceController.DeviceOptIn)
 
 	// AftermarketDevice pairing and unpairing.
-	// Routes are transitioning from /autopi to /aftermarket
-	udOwner.Get("/autopi/commands/pair", userDeviceController.GetAutoPiPairMessage)
+	// Routes were transitioned from /autopi to /aftermarket
 	udOwner.Get("/aftermarket/commands/pair", userDeviceController.GetAutoPiPairMessage)
-	udOwner.Post("/autopi/commands/pair", userDeviceController.PostPairAutoPi)
 	udOwner.Post("/aftermarket/commands/pair", userDeviceController.PostPairAutoPi)
-	udOwner.Get("/autopi/commands/unpair", userDeviceController.GetAutoPiUnpairMessage)
 	udOwner.Get("/aftermarket/commands/unpair", userDeviceController.GetAutoPiUnpairMessage)
-	udOwner.Post("/autopi/commands/unpair", userDeviceController.UnpairAutoPi)
 	udOwner.Post("/aftermarket/commands/unpair", userDeviceController.UnpairAutoPi)
-
-	udOwner.Post("/autopi/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
 	udOwner.Post("/aftermarket/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
 
 	logger.Info().Msg("Server started on port " + settings.Port)

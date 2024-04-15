@@ -217,24 +217,6 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-// GetIntegrations godoc
-// @Description gets list of integrations we have defined
-// @Tags        integrations
-// @Produce     json
-// @Success     200 {array} ddgrpc.Integration
-// @Security    BearerAuth
-// @Router      /integrations [get]
-func (udc *UserDevicesController) GetIntegrations(c *fiber.Ctx) error {
-	all, err := udc.DeviceDefSvc.GetIntegrations(c.Context())
-	if err != nil {
-		return shared.GrpcErrorToFiber(err, "failed to get integrations")
-	}
-
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"integrations": all,
-	})
-}
-
 // GetCommandRequestStatus godoc
 // @Summary     Get the status of a submitted command.
 // @Description Get the status of a submitted command by request id.
