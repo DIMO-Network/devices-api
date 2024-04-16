@@ -1167,7 +1167,7 @@ func (udc *UserDevicesController) GetAutoPiUnpairMessage(c *fiber.Ctx) error {
 
 	userDeviceID := c.Params("userDeviceID")
 	logger := helpers.GetLogger(c, udc.log)
-	logger.Info().Msg("Got Aftermarket pair request.")
+	logger.Info().Msg("Got Aftermarket unpair request.")
 
 	vnft, autoPiUnit, err := udc.checkUnpairable(c.Context(), udc.DBS().Writer, userDeviceID)
 	if err != nil {
