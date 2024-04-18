@@ -421,21 +421,18 @@ func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) 
 		models.AftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(args.AftermarketDeviceNode)),
 	).One(context.TODO(), c.db.DBS().Reader)
 	if err != nil {
-		log.Err(err).Msg("failed to retrieve aftermarket device")
-		return err
+		return fmt.Errorf("failed to retrieve aftermarket device: %w", err)
 	}
 
 	dm, err := c.ddSvc.GetMakeByTokenID(context.TODO(), am.DeviceManufacturerTokenID.Int(nil))
 	if err != nil {
-		log.Err(err).Msg("failed to retrieve manufacturer")
 		return fmt.Errorf("error retrieving manufacturer %d: %w", am.DeviceManufacturerTokenID, err)
 	}
 
 	am.VehicleTokenID = types.NewNullDecimal(utils.BigToDecimal(args.VehicleNode).Big)
 	_, err = am.Update(context.TODO(), c.db.DBS().Writer, boil.Whitelist(models.AftermarketDeviceColumns.VehicleTokenID))
 	if err != nil {
-		log.Err(err).Msg("failed to update aftermarket device")
-		return err
+		return fmt.Errorf("failed to update aftermarket device: %w", err)
 	}
 
 	switch dm.Name {
