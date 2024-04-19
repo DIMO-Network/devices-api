@@ -784,21 +784,12 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	if info == nil {
 		info = &smartcar.Info{}
 	}
-	// block kia
-	if strings.ToLower(info.Make) == "kia" {
-		localLog.Warn().Msgf("kia blocked, smartcar make")
-		return fiber.NewError(fiber.StatusFailedDependency, "Kia vehicles are only supported via Hardware connections for now.")
-	}
+
 	// decode VIN with grpc call, including any possible smartcar known info
 	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, info.Model, info.Year, reg.CountryCode)
 	if err != nil {
 		localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle")
 		return shared.GrpcErrorToFiber(err, "unable to decode vin: "+vin)
-	}
-	// jic kia block by make id
-	if decodeVIN.DeviceMakeId == "2681cSm2zmTmGHzqK3ldzoTLZIw" {
-		localLog.Warn().Msgf("kia blocked, by smartcar vin decode to kia meke id")
-		return fiber.NewError(fiber.StatusFailedDependency, "Kia vehicles are only supported via Hardware connections for now.")
 	}
 
 	// in case err is nil but we don't get a valid decode
@@ -1277,6 +1268,12 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "Device make not yet minted.")
 	}
 	makeTokenID := big.NewInt(int64(dd.Make.TokenId))
+
+	// block new kias from minting
+	if strings.ToLower(dd.Make.NameSlug) == "kia" || dd.Make.Id == "2681cSm2zmTmGHzqK3ldzoTLZIw" {
+		udc.log.Warn().Msgf("new kias blocked from minting")
+		return fiber.NewError(fiber.StatusFailedDependency, "Kia vehicles cannot be manually minted for now.")
+	}
 
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
