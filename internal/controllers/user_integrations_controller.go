@@ -14,11 +14,6 @@ import (
 	smartcar "github.com/smartcar/go-sdk"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
-	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
-	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/devices-api/internal/services/registry"
-	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/ethereum/go-ethereum/common"
@@ -33,6 +28,12 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
 	"golang.org/x/mod/semver"
+
+	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
+	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	"github.com/DIMO-Network/devices-api/models"
 )
 
 // GetUserDeviceIntegration godoc
@@ -72,7 +73,7 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() //nolint
+	defer tx.Rollback() // nolint
 
 	apiInt, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
@@ -168,7 +169,7 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 		return err
 	}
 
-	defer tx.Rollback() //nolint
+	defer tx.Rollback() // nolint
 
 	device, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
@@ -314,14 +315,14 @@ func (udc *UserDevicesController) handleEnqueueCommand(c *fiber.Ctx, commandPath
 	// TODO(elffjs): This map is ugly. Surely we interface our way out of this?
 	commandMap := map[string]map[string]func(udai *models.UserDeviceAPIIntegration) (string, error){
 		constants.SmartCarVendor: {
-			"doors/unlock": udc.smartcarTaskSvc.UnlockDoors,
-			"doors/lock":   udc.smartcarTaskSvc.LockDoors,
+			constants.DoorsUnlock: udc.smartcarTaskSvc.UnlockDoors,
+			constants.DoorsLock:   udc.smartcarTaskSvc.LockDoors,
 		},
 		constants.TeslaVendor: {
-			"doors/unlock": udc.teslaTaskService.UnlockDoors,
-			"doors/lock":   udc.teslaTaskService.LockDoors,
-			"trunk/open":   udc.teslaTaskService.OpenTrunk,
-			"frunk/open":   udc.teslaTaskService.OpenFrunk,
+			constants.DoorsUnlock: udc.teslaTaskService.UnlockDoors,
+			constants.DoorsLock:   udc.teslaTaskService.LockDoors,
+			constants.TrunkOpen:   udc.teslaTaskService.OpenTrunk,
+			constants.FrunkOpen:   udc.teslaTaskService.OpenFrunk,
 		},
 	}
 
@@ -387,7 +388,7 @@ type CommandResponse struct {
 // @Param       integrationID path string true "Integration ID"
 // @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/doors/unlock [post]
 func (udc *UserDevicesController) UnlockDoors(c *fiber.Ctx) error {
-	return udc.handleEnqueueCommand(c, "doors/unlock")
+	return udc.handleEnqueueCommand(c, constants.DoorsUnlock)
 }
 
 // LockDoors godoc
@@ -401,7 +402,7 @@ func (udc *UserDevicesController) UnlockDoors(c *fiber.Ctx) error {
 // @Param       integrationID path string true "Integration ID"
 // @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/doors/lock [post]
 func (udc *UserDevicesController) LockDoors(c *fiber.Ctx) error {
-	return udc.handleEnqueueCommand(c, "doors/lock")
+	return udc.handleEnqueueCommand(c, constants.DoorsLock)
 }
 
 // OpenTrunk godoc
@@ -415,7 +416,7 @@ func (udc *UserDevicesController) LockDoors(c *fiber.Ctx) error {
 // @Param       integrationID path string true "Integration ID"
 // @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/trunk/open [post]
 func (udc *UserDevicesController) OpenTrunk(c *fiber.Ctx) error {
-	return udc.handleEnqueueCommand(c, "trunk/open")
+	return udc.handleEnqueueCommand(c, constants.TrunkOpen)
 }
 
 // OpenFrunk godoc
@@ -429,7 +430,7 @@ func (udc *UserDevicesController) OpenTrunk(c *fiber.Ctx) error {
 // @Param       integrationID path string true "Integration ID"
 // @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/frunk/open [post]
 func (udc *UserDevicesController) OpenFrunk(c *fiber.Ctx) error {
-	return udc.handleEnqueueCommand(c, "frunk/open")
+	return udc.handleEnqueueCommand(c, constants.FrunkOpen)
 }
 
 // GetAutoPiUnitInfo godoc
@@ -794,7 +795,7 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() //nolint
+	defer tx.Rollback() // nolint
 
 	vnft, ad, err := udc.checkPairable(c.Context(), tx, userDeviceID, pairReq.ExternalID)
 	if err != nil {
@@ -1077,7 +1078,7 @@ func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() //nolint
+	defer tx.Rollback() // nolint
 
 	vnft, apnft, err := udc.checkUnpairable(c.Context(), tx, userDeviceID)
 	if err != nil {
@@ -1298,7 +1299,7 @@ func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() //nolint
+	defer tx.Rollback() // nolint
 
 	udc.log.Info().Interface("payload", reqBody).Msg("Got claim request.")
 
@@ -1429,7 +1430,7 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("failed to create transaction: %s", err))
 	}
-	defer tx.Rollback() //nolint
+	defer tx.Rollback() // nolint
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 	).One(c.Context(), tx)
@@ -1715,9 +1716,7 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 	}
 
 	if doorControl {
-		commands = &services.UserDeviceAPIIntegrationsMetadataCommands{
-			Enabled: []string{"doors/unlock", "doors/lock"},
-		}
+		commands = udc.smartcarClient.GetAvailableCommands()
 	}
 
 	meta := services.UserDeviceAPIIntegrationsMetadata{
@@ -1877,11 +1876,16 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		return err
 	}
 
+	var commands *services.UserDeviceAPIIntegrationsMetadataCommands
+	if apiVersion == constants.TeslaAPIV2 {
+		commands = udc.teslaFleetAPISvc.GetAvailableCommands()
+	} else {
+		commands = udc.teslaService.GetAvailableCommands()
+	}
+
 	// TODO(elffjs): Stupid to marshal this again and again.
 	meta := services.UserDeviceAPIIntegrationsMetadata{
-		Commands: &services.UserDeviceAPIIntegrationsMetadataCommands{
-			Enabled: []string{"doors/unlock", "doors/lock", "trunk/open", "frunk/open", "charge/limit"},
-		},
+		Commands:        commands,
 		TeslaAPIVersion: apiVersion,
 	}
 

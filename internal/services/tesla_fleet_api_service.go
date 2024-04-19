@@ -12,6 +12,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 )
 
 //go:generate mockgen -source tesla_fleet_api_service.go -destination mocks/tesla_fleet_api_service_mock.go
@@ -20,6 +21,7 @@ type TeslaFleetAPIService interface {
 	GetVehicles(ctx context.Context, token, region string) ([]TeslaVehicle, error)
 	GetVehicle(ctx context.Context, token, region string, vehicleID int) (*TeslaVehicle, error)
 	WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error
+	GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands
 }
 
 var teslaScopes = []string{"openid", "offline_access", "user_data", "vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds", "energy_device_data", "energy_device_data", "energy_cmds"}
@@ -153,6 +155,13 @@ func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region 
 	}
 
 	return nil
+}
+
+func (t *teslaFleetAPIService) GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands {
+	return &UserDeviceAPIIntegrationsMetadataCommands{
+		Enabled: []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
+		Capable: []string{constants.TelemetrySubscribe, constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
+	}
 }
 
 // performTeslaGetRequest a helper function for making http requests, it adds a timeout context and parses error response
