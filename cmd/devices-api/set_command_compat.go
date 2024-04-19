@@ -13,14 +13,15 @@ import (
 
 	"github.com/DIMO-Network/shared/db"
 
-	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/devices-api/models"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+
+	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/models"
 )
 
 type setCommandCompatibilityCmd struct {
@@ -57,7 +58,7 @@ func (p *setCommandCompatibilityCmd) Execute(ctx context.Context, _ *flag.FlagSe
 	return subcommands.ExitSuccess
 }
 
-var teslaEnabledCommands = []string{"doors/lock", "doors/unlock", "trunk/open", "frunk/open", "charge/limit"}
+var teslaEnabledCommands = []string{constants.DoorsLock, constants.DoorsUnlock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit}
 
 func setCommandCompatibility(ctx context.Context, settings *config.Settings, pdb db.Store, ddSvc services.DeviceDefinitionService) error {
 
@@ -146,7 +147,7 @@ func setCommandCompatSmartcar(ctx context.Context, settings *config.Settings, pd
 			continue
 		}
 
-		md.Commands.Capable = []string{"doors/lock", "doors/unlock"}
+		md.Commands.Capable = []string{constants.DoorsLock, constants.DoorsUnlock}
 
 		if err := su.Metadata.Marshal(md); err != nil {
 			return err

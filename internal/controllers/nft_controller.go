@@ -12,16 +12,12 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/DIMO-Network/devices-api/internal/services/registry"
-	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/shared"
 	"github.com/segmentio/ksuid"
 
-	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
-	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	"github.com/DIMO-Network/devices-api/internal/utils"
+
 	"github.com/DIMO-Network/go-mnemonic"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
@@ -39,6 +35,12 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"golang.org/x/exp/slices"
+
+	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
+	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/models"
 )
 
 type NFTController struct {
@@ -650,7 +652,7 @@ func (nc *NFTController) GetVehicleStatus(c *fiber.Ctx) error {
 // @Param       tokenID  path string true "Token ID"
 // @Router      /vehicle/{tokenID}/commands/doors/unlock [post]
 func (nc *NFTController) UnlockDoors(c *fiber.Ctx) error {
-	return nc.handleEnqueueCommand(c, "doors/unlock")
+	return nc.handleEnqueueCommand(c, constants.DoorsUnlock)
 }
 
 // LockDoors godoc
@@ -662,7 +664,7 @@ func (nc *NFTController) UnlockDoors(c *fiber.Ctx) error {
 // @Param       tokenID  path string true "Token ID"
 // @Router      /vehicle/{tokenID}/commands/doors/lock [post]
 func (nc *NFTController) LockDoors(c *fiber.Ctx) error {
-	return nc.handleEnqueueCommand(c, "doors/lock")
+	return nc.handleEnqueueCommand(c, constants.DoorsLock)
 }
 
 // OpenTrunk godoc
@@ -674,7 +676,7 @@ func (nc *NFTController) LockDoors(c *fiber.Ctx) error {
 // @Param       tokenID  path string true "Token ID"
 // @Router      /vehicle/{tokenID}/commands/trunk/open [post]
 func (nc *NFTController) OpenTrunk(c *fiber.Ctx) error {
-	return nc.handleEnqueueCommand(c, "trunk/open")
+	return nc.handleEnqueueCommand(c, constants.TrunkOpen)
 }
 
 // OpenFrunk godoc
@@ -686,7 +688,7 @@ func (nc *NFTController) OpenTrunk(c *fiber.Ctx) error {
 // @Param       tokenID  path string true "Token ID"
 // @Router      /vehicle/{tokenID}/commands/frunk/open [post]
 func (nc *NFTController) OpenFrunk(c *fiber.Ctx) error {
-	return nc.handleEnqueueCommand(c, "frunk/open")
+	return nc.handleEnqueueCommand(c, constants.FrunkOpen)
 }
 
 // handleEnqueueCommand enqueues the command specified by commandPath with the
@@ -874,7 +876,7 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() //nolint
+	defer tx.Rollback() // nolint
 
 	vehicleNFT, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.TokenID.EQ(tid),
@@ -934,7 +936,7 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() //nolint
+	defer tx.Rollback() // nolint
 
 	vehicleNFT, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.TokenID.EQ(tid),

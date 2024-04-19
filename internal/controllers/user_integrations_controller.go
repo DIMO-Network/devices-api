@@ -333,14 +333,14 @@ func (udc *UserDevicesController) handleEnqueueCommand(c *fiber.Ctx, commandPath
 	// TODO(elffjs): This map is ugly. Surely we interface our way out of this?
 	commandMap := map[string]map[string]func(udai *models.UserDeviceAPIIntegration) (string, error){
 		constants.SmartCarVendor: {
-			"doors/unlock": udc.smartcarTaskSvc.UnlockDoors,
-			"doors/lock":   udc.smartcarTaskSvc.LockDoors,
+			constants.DoorsUnlock: udc.smartcarTaskSvc.UnlockDoors,
+			constants.DoorsLock:   udc.smartcarTaskSvc.LockDoors,
 		},
 		constants.TeslaVendor: {
-			"doors/unlock": udc.teslaTaskService.UnlockDoors,
-			"doors/lock":   udc.teslaTaskService.LockDoors,
-			"trunk/open":   udc.teslaTaskService.OpenTrunk,
-			"frunk/open":   udc.teslaTaskService.OpenFrunk,
+			constants.DoorsUnlock: udc.teslaTaskService.UnlockDoors,
+			constants.DoorsLock:   udc.teslaTaskService.LockDoors,
+			constants.TrunkOpen:   udc.teslaTaskService.OpenTrunk,
+			constants.FrunkOpen:   udc.teslaTaskService.OpenFrunk,
 		},
 	}
 
@@ -406,7 +406,7 @@ type CommandResponse struct {
 // @Param       integrationID path string true "Integration ID"
 // @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/doors/unlock [post]
 func (udc *UserDevicesController) UnlockDoors(c *fiber.Ctx) error {
-	return udc.handleEnqueueCommand(c, "doors/unlock")
+	return udc.handleEnqueueCommand(c, constants.DoorsUnlock)
 }
 
 // LockDoors godoc
@@ -420,7 +420,7 @@ func (udc *UserDevicesController) UnlockDoors(c *fiber.Ctx) error {
 // @Param       integrationID path string true "Integration ID"
 // @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/doors/lock [post]
 func (udc *UserDevicesController) LockDoors(c *fiber.Ctx) error {
-	return udc.handleEnqueueCommand(c, "doors/lock")
+	return udc.handleEnqueueCommand(c, constants.DoorsLock)
 }
 
 // OpenTrunk godoc
@@ -434,7 +434,7 @@ func (udc *UserDevicesController) LockDoors(c *fiber.Ctx) error {
 // @Param       integrationID path string true "Integration ID"
 // @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/trunk/open [post]
 func (udc *UserDevicesController) OpenTrunk(c *fiber.Ctx) error {
-	return udc.handleEnqueueCommand(c, "trunk/open")
+	return udc.handleEnqueueCommand(c, constants.TrunkOpen)
 }
 
 // OpenFrunk godoc
@@ -448,7 +448,7 @@ func (udc *UserDevicesController) OpenTrunk(c *fiber.Ctx) error {
 // @Param       integrationID path string true "Integration ID"
 // @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/frunk/open [post]
 func (udc *UserDevicesController) OpenFrunk(c *fiber.Ctx) error {
-	return udc.handleEnqueueCommand(c, "frunk/open")
+	return udc.handleEnqueueCommand(c, constants.FrunkOpen)
 }
 
 // GetAutoPiUnitInfo godoc
