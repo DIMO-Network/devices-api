@@ -245,5 +245,6 @@ func (s *smartcarClient) GetInfo(ctx context.Context, accessToken string, id str
 func (s *smartcarClient) GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands {
 	return &UserDeviceAPIIntegrationsMetadataCommands{
 		Enabled: []string{constants.DoorsUnlock, constants.DoorsLock},
+		Capable: []string{constants.DoorsUnlock, constants.DoorsLock},
 	}
 }
