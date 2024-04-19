@@ -1195,12 +1195,12 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration_Refre
 		CreatedAt: apIntd.CreatedAt,
 	}, actual)
 
-	newApiInt, err := models.UserDeviceAPIIntegrations(
+	newAPIInt, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(ud.ID),
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integration.Id),
 	).One(s.ctx, s.pdb.DBS().Reader)
 	s.Require().NoError(err)
 
-	s.Assert().Equal(refreshTk, newApiInt.RefreshToken.String)
-	s.Assert().Equal(accessTk, newApiInt.AccessToken.String)
+	s.Assert().Equal(refreshTk, newAPIInt.RefreshToken.String)
+	s.Assert().Equal(accessTk, newAPIInt.AccessToken.String)
 }
