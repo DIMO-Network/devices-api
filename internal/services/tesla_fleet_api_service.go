@@ -12,6 +12,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 )
 
 //go:generate mockgen -source tesla_fleet_api_service.go -destination mocks/tesla_fleet_api_service_mock.go
@@ -158,8 +159,8 @@ func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region 
 
 func (t *teslaFleetAPIService) GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands {
 	return &UserDeviceAPIIntegrationsMetadataCommands{
-		Enabled:  []string{"doors/unlock", "doors/lock", "trunk/open", "frunk/open", "charge/limit"},
-		Disabled: []string{"telemetry/subscribe"},
+		Enabled: []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
+		Capable: []string{constants.TelemetrySubscribe, constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
 	}
 }
 

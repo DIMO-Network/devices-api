@@ -1,27 +1,20 @@
 package controllers
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
-	_ "embed"
 	"fmt"
 	"io"
 	"math/big"
 	"strconv"
 	"strings"
-	"text/template"
 
-	"github.com/DIMO-Network/devices-api/internal/services/registry"
-	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/shared"
 	"github.com/segmentio/ksuid"
 
-	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
-	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	"github.com/DIMO-Network/devices-api/internal/utils"
+
 	"github.com/DIMO-Network/go-mnemonic"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
@@ -39,6 +32,12 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"golang.org/x/exp/slices"
+
+	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
+	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/models"
 )
 
 type NFTController struct {
@@ -50,13 +49,8 @@ type NFTController struct {
 	integSvc         services.DeviceDefinitionIntegrationService
 	smartcarTaskSvc  services.SmartcarTaskService
 	teslaTaskService services.TeslaTaskService
-	dcnService       registry.DCNService
-	dcnTmpl          *template.Template
 	deviceDataSvc    services.DeviceDataService
 }
-
-//go:embed dcn.svg
-var dcnImageTemplate string
 
 // NewNFTController constructor
 func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, s3 *s3.Client,
@@ -64,10 +58,8 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 	smartcarTaskSvc services.SmartcarTaskService,
 	teslaTaskService services.TeslaTaskService,
 	integSvc services.DeviceDefinitionIntegrationService,
-	dcnSVc registry.DCNService,
 	deviceDataSvc services.DeviceDataService,
 ) NFTController {
-	dcn, _ := template.New("dcn_image").Parse(dcnImageTemplate)
 
 	return NFTController{
 		Settings:         settings,
@@ -78,8 +70,6 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 		smartcarTaskSvc:  smartcarTaskSvc,
 		teslaTaskService: teslaTaskService,
 		integSvc:         integSvc,
-		dcnService:       dcnSVc,
-		dcnTmpl:          dcn,
 		deviceDataSvc:    deviceDataSvc,
 	}
 }
@@ -158,102 +148,6 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 			{TraitType: "Year", Value: strconv.Itoa(int(def.Type.Year))},
 		},
 	})
-}
-
-// GetDcnNFTMetadata godoc
-// @Description retrieves the DCN NFT metadata for a given token ID address
-// @Tags        dcn
-// @Param       tokenID path string true "DCN node id decimal representation"
-// @Produce     json
-// @Success     200 {object} controllers.NFTMetadataResp
-// @Failure     404
-// @Failure     400
-// @Router      /dcn/{tokenID} [get]
-func (nc *NFTController) GetDcnNFTMetadata(c *fiber.Ctx) error {
-	ndStr := c.Params("tokenID")
-	ndid, ok := new(big.Int).SetString(ndStr, 10)
-	if !ok {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", ndStr))
-	}
-
-	dcn, err := models.DCNS(models.DCNWhere.NFTNodeID.EQ(ndid.Bytes())).One(c.Context(), nc.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "DCN not found with node address "+ndid.String())
-		}
-		return err
-	}
-	attrs := make([]NFTAttribute, 0)
-	if dcn.NFTNodeBlockCreateTime.Valid {
-		attrs = append(attrs, NFTAttribute{
-			TraitType: "Creation Date", Value: strconv.FormatInt(dcn.NFTNodeBlockCreateTime.Time.Unix(), 10),
-		})
-	}
-	if dcn.NFTNodeBlockCreateTime.Valid {
-		attrs = append(attrs, NFTAttribute{
-			TraitType: "Registration Date", Value: strconv.FormatInt(dcn.NFTNodeBlockCreateTime.Time.Unix(), 10),
-		})
-	}
-	if dcn.Expiration.Valid {
-		attrs = append(attrs, NFTAttribute{
-			TraitType: "Expiration Date", Value: strconv.FormatInt(dcn.Expiration.Time.Unix(), 10),
-		})
-	}
-	nameArray := strings.Split(dcn.Name.String, ".")
-	nameLength := len(nameArray[0])
-
-	attrs = append(attrs, NFTAttribute{
-		TraitType: "Character Set", Value: "alphanumeric",
-	})
-
-	attrs = append(attrs, NFTAttribute{
-		TraitType: "Length", Value: strconv.Itoa(nameLength),
-	})
-
-	attrs = append(attrs, NFTAttribute{
-		TraitType: "Nodehash", Value: "0x" + common.Bytes2Hex(ndid.Bytes()),
-	})
-
-	return c.JSON(NFTMetadataResp{
-		Name:        dcn.Name.String,
-		Description: dcn.Name.String + ", a DCN name.",
-		Image:       fmt.Sprintf("%s/v1/dcn/%s/image", nc.Settings.DeploymentBaseURL, ndStr),
-		Attributes:  attrs,
-	})
-}
-
-// GetDCNNFTImage godoc
-// @Description retrieves the DCN NFT metadata for a given token address
-// @Tags        dcn
-// @Param       tokenID path string true "DCN node id decimal representation"
-// @Produce     image/svg+xml
-// @Success     200 {object} controllers.NFTMetadataResp
-// @Failure     404
-// @Failure     400
-// @Router      /dcn/{tokenID}/image [get]
-func (nc *NFTController) GetDCNNFTImage(c *fiber.Ctx) error {
-	ndStr := c.Params("tokenID")
-	ndid, ok := new(big.Int).SetString(ndStr, 10)
-	if !ok {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", ndStr))
-	}
-
-	dcn, err := models.DCNS(models.DCNWhere.NFTNodeID.EQ(ndid.Bytes())).One(c.Context(), nc.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "DCN not found with node address "+ndid.String())
-		}
-		return err
-	}
-
-	c.Set("Content-Type", "image/svg+xml")
-
-	var b bytes.Buffer
-	if err = nc.dcnTmpl.Execute(&b, struct{ Name string }{dcn.Name.String}); err != nil {
-		return err
-	}
-
-	return c.Send(b.Bytes())
 }
 
 // GetIntegrationNFTMetadata godoc
@@ -415,48 +309,6 @@ func (nc *NFTController) GetAftermarketDeviceNFTMetadataByAddress(c *fiber.Ctx) 
 	})
 }
 
-// GetSyntheticDeviceNFTMetadata godoc
-// @Description Retrieves NFT metadata for a given synthetic device.
-// @Tags        nfts
-// @Param       tokenId path int true "token id"
-// @Produce     json
-// @Success     200 {object} controllers.NFTMetadataResp
-// @Failure     404
-// @Router      /synthetic/device/{tokenId} [get]
-func (nc *NFTController) GetSyntheticDeviceNFTMetadata(c *fiber.Ctx) error {
-	tidStr := c.Params("tokenID")
-
-	tid, ok := new(big.Int).SetString(tidStr, 10)
-	if !ok {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse token id.")
-	}
-
-	sd, err := models.SyntheticDevices(
-		models.SyntheticDeviceWhere.TokenID.EQ(types.NullDecimal(utils.BigToDecimal(tid))),
-	).One(c.Context(), nc.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// Indexers start looking immediately.
-			helpers.SkipErrorLog(c)
-			return fiber.NewError(fiber.StatusNotFound, "No synthetic device with that id.")
-		}
-		return err
-	}
-
-	var name string
-	if three, err := mnemonic.EntropyToMnemonicThreeWords(sd.WalletAddress); err == nil {
-		name = strings.Join(three, " ")
-	}
-
-	return c.JSON(NFTMetadataResp{
-		Name:        name,
-		Description: name + ", a DIMO synthetic device.",
-		Attributes: []NFTAttribute{
-			{TraitType: "Ethereum Address", Value: common.BytesToAddress(sd.WalletAddress).String()},
-		},
-	})
-}
-
 // GetAftermarketDeviceNFTMetadata godoc
 // @Description Retrieves NFT metadata for a given aftermarket device.
 // @Tags        nfts
@@ -558,33 +410,6 @@ func (nc *NFTController) GetAftermarketDeviceNFTImage(c *fiber.Ctx) error {
 	return c.Send(b)
 }
 
-// GetManufacturerNFTMetadata godoc
-// @Description Retrieves NFT metadata for a given manufacturer.
-// @Tags        nfts
-// @Param       tokenId path int true "token id"
-// @Produce     json
-// @Success     200 {object} controllers.NFTMetadataResp
-// @Failure     404
-// @Router      /manufacturer/{tokenId} [get]
-func (nc *NFTController) GetManufacturerNFTMetadata(c *fiber.Ctx) error {
-	tidStr := c.Params("tokenID")
-
-	tid, ok := new(big.Int).SetString(tidStr, 10)
-	if !ok {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse token id.")
-	}
-
-	dm, err := nc.deviceDefSvc.GetMakeByTokenID(c.Context(), tid)
-	if err != nil {
-		return shared.GrpcErrorToFiber(err, "Couldn't retrieve manufacturer")
-	}
-
-	return c.JSON(NFTMetadataResp{
-		Name:       dm.Name,
-		Attributes: []NFTAttribute{},
-	})
-}
-
 // GetVehicleStatus godoc
 // @Description Returns the latest status update for the vehicle with a given token id.
 // @Tags        permission
@@ -650,7 +475,7 @@ func (nc *NFTController) GetVehicleStatus(c *fiber.Ctx) error {
 // @Param       tokenID  path string true "Token ID"
 // @Router      /vehicle/{tokenID}/commands/doors/unlock [post]
 func (nc *NFTController) UnlockDoors(c *fiber.Ctx) error {
-	return nc.handleEnqueueCommand(c, "doors/unlock")
+	return nc.handleEnqueueCommand(c, constants.DoorsUnlock)
 }
 
 // LockDoors godoc
@@ -662,7 +487,7 @@ func (nc *NFTController) UnlockDoors(c *fiber.Ctx) error {
 // @Param       tokenID  path string true "Token ID"
 // @Router      /vehicle/{tokenID}/commands/doors/lock [post]
 func (nc *NFTController) LockDoors(c *fiber.Ctx) error {
-	return nc.handleEnqueueCommand(c, "doors/lock")
+	return nc.handleEnqueueCommand(c, constants.DoorsLock)
 }
 
 // OpenTrunk godoc
@@ -674,7 +499,7 @@ func (nc *NFTController) LockDoors(c *fiber.Ctx) error {
 // @Param       tokenID  path string true "Token ID"
 // @Router      /vehicle/{tokenID}/commands/trunk/open [post]
 func (nc *NFTController) OpenTrunk(c *fiber.Ctx) error {
-	return nc.handleEnqueueCommand(c, "trunk/open")
+	return nc.handleEnqueueCommand(c, constants.TrunkOpen)
 }
 
 // OpenFrunk godoc
@@ -686,7 +511,7 @@ func (nc *NFTController) OpenTrunk(c *fiber.Ctx) error {
 // @Param       tokenID  path string true "Token ID"
 // @Router      /vehicle/{tokenID}/commands/frunk/open [post]
 func (nc *NFTController) OpenFrunk(c *fiber.Ctx) error {
-	return nc.handleEnqueueCommand(c, "frunk/open")
+	return nc.handleEnqueueCommand(c, constants.FrunkOpen)
 }
 
 // handleEnqueueCommand enqueues the command specified by commandPath with the
@@ -874,7 +699,7 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() //nolint
+	defer tx.Rollback() // nolint
 
 	vehicleNFT, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.TokenID.EQ(tid),
@@ -934,7 +759,7 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() //nolint
+	defer tx.Rollback() // nolint
 
 	vehicleNFT, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.TokenID.EQ(tid),
