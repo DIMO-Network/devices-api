@@ -149,6 +149,7 @@ type UserDeviceAPIIntegrationsMetadata struct {
 	CANProtocol     *string `json:"canProtocol,omitempty"`
 	TeslaVehicleID  int     `json:"teslaVehicleId,omitempty"`
 	TeslaAPIVersion int     `json:"teslaApiVersion,omitempty"`
+	TeslaRegion     string  `json:"teslaRegion,omitempty"`
 }
 
 type UserDeviceAPIIntegrationsMetadataCommands struct {

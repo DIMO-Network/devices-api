@@ -1,14 +1,17 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
 	"github.com/rs/zerolog"
+	"golang.org/x/exp/slices"
 	"golang.org/x/oauth2"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -21,6 +24,8 @@ type TeslaFleetAPIService interface {
 	GetVehicle(ctx context.Context, token, region string, vehicleID int) (*TeslaVehicle, error)
 	WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error
 	GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands
+	VirtualTokenConnectionStatus(ctx context.Context, token, region, vin string) (bool, error)
+	RefreshToken(ctx context.Context, refreshToken string) (*TeslaAuthCodeResponse, error)
 }
 
 var teslaScopes = []string{"openid", "offline_access", "user_data", "vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds", "energy_device_data", "energy_device_data", "energy_cmds"}
@@ -46,6 +51,15 @@ type TeslaAuthCodeResponse struct {
 	Expiry       time.Time `json:"expiry"`
 	TokenType    string    `json:"token_type"`
 	Region       string    `json:"region"`
+}
+
+type VirtualTokenConnectionStatusResponse struct {
+	Response VirtualTokenConnectionStatus `json:"response"`
+}
+
+type VirtualTokenConnectionStatus struct {
+	UnpairedVins  []string `json:"unpaired_vins"`
+	KeyPairedVins []string `json:"key_paired_vins"`
 }
 
 type teslaFleetAPIService struct {
@@ -100,7 +114,7 @@ func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region st
 	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
 	url := baseURL + "/api/1/vehicles"
 
-	resp, err := t.performTeslaGetRequest(ctx, url, token)
+	resp, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch vehicles for user: %w", err)
 	}
@@ -123,7 +137,7 @@ func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region str
 	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
 	url := fmt.Sprintf("%s/api/1/vehicles/%d", baseURL, vehicleID)
 
-	resp, err := t.performTeslaGetRequest(ctx, url, token)
+	resp, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch vehicles for user: %w", err)
 	}
@@ -142,7 +156,7 @@ func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region 
 	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
 	url := fmt.Sprintf("%s/api/1/vehicles/%d/wake_up", baseURL, vehicleID)
 
-	resp, err := t.performTeslaGetRequest(ctx, url, token)
+	resp, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
 		return fmt.Errorf("could not fetch vehicles for user: %w", err)
 	}
@@ -163,12 +177,81 @@ func (t *teslaFleetAPIService) GetAvailableCommands() *UserDeviceAPIIntegrations
 	}
 }
 
-// performTeslaGetRequest a helper function for making http requests, it adds a timeout context and parses error response
-func (t *teslaFleetAPIService) performTeslaGetRequest(ctx context.Context, url, token string) (*http.Response, error) {
+// VirtualTokenConnectionStatus Checks whether vehicles can accept Tesla commands protocol for the partner's public key
+func (t *teslaFleetAPIService) VirtualTokenConnectionStatus(ctx context.Context, token, region, vin string) (bool, error) {
+	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
+	url := fmt.Sprintf("%s/api/1/vehicles/fleet_status", baseURL)
+
+	jsonBody := []byte(fmt.Sprintf(`{"vins": ["%s"]}`, vin))
+	body := bytes.NewReader(jsonBody)
+
+	resp, err := t.performRequest(ctx, url, token, http.MethodPost, body)
+	if err != nil {
+		return false, fmt.Errorf("could not fetch vehicles for user: %w", err)
+	}
+
+	defer resp.Body.Close()
+
+	var v VirtualTokenConnectionStatusResponse
+	bd, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false, fmt.Errorf("could not verify connection status %w", err)
+	}
+
+	err = json.Unmarshal(bd, &v)
+	if err != nil {
+		return false, fmt.Errorf("error occurred decoding connection status %w", err)
+	}
+
+	isConnected := slices.Contains(v.Response.KeyPairedVins, vin)
+
+	return isConnected, nil
+}
+
+func (t *teslaFleetAPIService) RefreshToken(ctx context.Context, refreshToken string) (*TeslaAuthCodeResponse, error) {
+	reqs := struct {
+		GrantType    string `json:"grant_type"`
+		ClientID     string `json:"client_id"`
+		RefreshToken string `json:"refresh_token"`
+	}{
+		GrantType:    "refresh_token",
+		ClientID:     t.Settings.TeslaClientID,
+		RefreshToken: refreshToken,
+	}
+
+	reqb, err := json.Marshal(reqs)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://auth.tesla.com/oauth2/v3/token", bytes.NewBuffer(reqb))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := t.HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if code := resp.StatusCode; code != http.StatusOK {
+		return nil, fmt.Errorf("status code %d", code)
+	}
+
+	tokResp := new(TeslaAuthCodeResponse)
+	if err := json.NewDecoder(resp.Body).Decode(tokResp); err != nil {
+		return nil, err
+	}
+
+	return tokResp, nil
+}
+
+// performRequest a helper function for making http requests, it adds a timeout context and parses error response
+func (t *teslaFleetAPIService) performRequest(ctx context.Context, url, token, method string, body *bytes.Reader) (*http.Response, error) {
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctxTimeout, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctxTimeout, method, url, body)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +271,7 @@ func (t *teslaFleetAPIService) performTeslaGetRequest(ctx context.Context, url, 
 				Msg("An error occurred when attempting to decode the error message from the api.")
 			return nil, fmt.Errorf("invalid response encountered while fetching user vehicles: %s", errBody.ErrorDescription)
 		}
-		return nil, fmt.Errorf("error occurred fetching user vehicles: %s", errBody.ErrorDescription)
+		return nil, fmt.Errorf("error occurred calling tesla api: %s", errBody.ErrorDescription)
 	}
 
 	return resp, nil

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"net/http"
 	"testing"
 	"time"
 
@@ -127,6 +128,8 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 
 	app.Post("/user2/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUser2), c.RegisterDeviceIntegration)
 	app.Get("/integrations", c.GetIntegrations)
+	app.Get("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.GetUserDeviceIntegration)
+
 	s.app = app
 }
 
@@ -169,6 +172,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetIntegrations() {
 	assert.Equal(s.T(), gjson.GetBytes(body, "integrations.0.id").Str, integrations[0].Id)
 	assert.Equal(s.T(), gjson.GetBytes(body, "integrations.1.id").Str, integrations[1].Id)
 }
+
 func (s *UserIntegrationsControllerTestSuite) TestPostSmartCarFailure() {
 	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Mach E", 2020, integration)
@@ -1085,4 +1089,118 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_MissingCredential
 	s.Assert().Equal(err.Error(), sql.ErrNoRows.Error())
 
 	s.Assert().Equal("Couldn't retrieve stored credentials: no credential found", gjson.GetBytes(body, "message").String())
+}
+
+func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
+	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
+
+	accessTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+	refreshTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw"
+	extID := "SomeID"
+	expectedExpiry := time.Now().Add(10 * time.Minute)
+	region := "na"
+
+	apIntd := models.UserDeviceAPIIntegration{
+		UserDeviceID:    ud.ID,
+		IntegrationID:   integration.Id,
+		Status:          models.UserDeviceAPIIntegrationStatusActive,
+		AccessToken:     null.StringFrom(accessTk),
+		AccessExpiresAt: null.TimeFrom(expectedExpiry),
+		RefreshToken:    null.StringFrom(refreshTk),
+		ExternalID:      null.StringFrom(extID),
+		Metadata:        null.JSONFrom([]byte(fmt.Sprintf(`{"teslaRegion":"%s"}`, region))),
+	}
+	err := apIntd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
+	s.teslaFleetAPISvc.EXPECT().VirtualTokenConnectionStatus(gomock.Any(), accessTk, region, ud.VinIdentifier.String).Return(true, nil)
+
+	request := test.BuildRequest(http.MethodGet, fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), "")
+	res, err := s.app.Test(request, 60*1000)
+	s.Assert().NoError(err)
+
+	s.Assert().True(res.StatusCode == fiber.StatusOK)
+	body, _ := io.ReadAll(res.Body)
+
+	defer res.Body.Close()
+
+	actual := GetUserDeviceIntegrationResponse{}
+	s.Assert().NoError(json.Unmarshal(body, &actual))
+
+	s.Assert().Equal(GetUserDeviceIntegrationResponse{
+		Status:     models.UserDeviceAPIIntegrationStatusActive,
+		ExternalID: null.StringFrom(extID),
+		Tesla: TeslaConnectionStatus{
+			IsVirtualTokenConnected: true,
+		},
+		CreatedAt: apIntd.CreatedAt,
+	}, actual)
+}
+
+func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration_RefreshToken() {
+	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
+
+	accessTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+	refreshTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw"
+	expiredRefreshTk := "SomeExpRefTk"
+	extID := "SomeID"
+	expectedExpiry := time.Now().Add(-10 * time.Minute)
+	region := "na"
+
+	apIntd := models.UserDeviceAPIIntegration{
+		UserDeviceID:    ud.ID,
+		IntegrationID:   integration.Id,
+		Status:          models.UserDeviceAPIIntegrationStatusActive,
+		AccessToken:     null.StringFrom(""),
+		AccessExpiresAt: null.TimeFrom(expectedExpiry),
+		RefreshToken:    null.StringFrom(expiredRefreshTk),
+		ExternalID:      null.StringFrom(extID),
+		Metadata:        null.JSONFrom([]byte(fmt.Sprintf(`{"teslaRegion":"%s"}`, region))),
+	}
+	err := apIntd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
+	s.teslaFleetAPISvc.EXPECT().VirtualTokenConnectionStatus(gomock.Any(), accessTk, region, ud.VinIdentifier.String).Return(true, nil)
+	s.teslaFleetAPISvc.EXPECT().RefreshToken(gomock.Any(), expiredRefreshTk).Return(&services.TeslaAuthCodeResponse{
+		AccessToken:  accessTk,
+		RefreshToken: refreshTk,
+		Expiry:       time.Now().Add(10 * time.Hour),
+		Region:       region,
+	}, nil)
+
+	request := test.BuildRequest(http.MethodGet, fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), "")
+	res, err := s.app.Test(request, 60*1000)
+	s.Assert().NoError(err)
+
+	s.Assert().True(res.StatusCode == fiber.StatusOK)
+	body, _ := io.ReadAll(res.Body)
+
+	defer res.Body.Close()
+
+	actual := GetUserDeviceIntegrationResponse{}
+	s.Assert().NoError(json.Unmarshal(body, &actual))
+
+	s.Assert().Equal(GetUserDeviceIntegrationResponse{
+		Status:     models.UserDeviceAPIIntegrationStatusActive,
+		ExternalID: null.StringFrom(extID),
+		Tesla: TeslaConnectionStatus{
+			IsVirtualTokenConnected: true,
+		},
+		CreatedAt: apIntd.CreatedAt,
+	}, actual)
+
+	newApiInt, err := models.UserDeviceAPIIntegrations(
+		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(ud.ID),
+		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integration.Id),
+	).One(s.ctx, s.pdb.DBS().Reader)
+	s.Require().NoError(err)
+
+	s.Assert().Equal(refreshTk, newApiInt.RefreshToken.String)
+	s.Assert().Equal(accessTk, newApiInt.AccessToken.String)
 }
