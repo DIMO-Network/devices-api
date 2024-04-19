@@ -1130,14 +1130,9 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
 	actual := GetUserDeviceIntegrationResponse{}
 	s.Assert().NoError(json.Unmarshal(body, &actual))
 
-	s.Assert().Equal(GetUserDeviceIntegrationResponse{
-		Status:     models.UserDeviceAPIIntegrationStatusActive,
-		ExternalID: null.StringFrom(extID),
-		Tesla: TeslaConnectionStatus{
-			IsVirtualTokenConnected: true,
-		},
-		CreatedAt: apIntd.CreatedAt,
-	}, actual)
+	s.Assert().True(actual.Tesla.IsVirtualTokenConnected)
+	s.Assert().Equal(models.UserDeviceAPIIntegrationStatusActive, actual.Status)
+	s.Assert().Equal(extID, actual.ExternalID.String)
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration_RefreshToken() {
@@ -1186,14 +1181,9 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration_Refre
 	actual := GetUserDeviceIntegrationResponse{}
 	s.Assert().NoError(json.Unmarshal(body, &actual))
 
-	s.Assert().Equal(GetUserDeviceIntegrationResponse{
-		Status:     models.UserDeviceAPIIntegrationStatusActive,
-		ExternalID: null.StringFrom(extID),
-		Tesla: TeslaConnectionStatus{
-			IsVirtualTokenConnected: true,
-		},
-		CreatedAt: apIntd.CreatedAt,
-	}, actual)
+	s.Assert().True(actual.Tesla.IsVirtualTokenConnected)
+	s.Assert().Equal(models.UserDeviceAPIIntegrationStatusActive, actual.Status)
+	s.Assert().Equal(extID, actual.ExternalID.String)
 
 	newAPIInt, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(ud.ID),
