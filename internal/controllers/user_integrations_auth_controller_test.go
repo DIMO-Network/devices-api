@@ -286,7 +286,9 @@ func (s *UserIntegrationAuthControllerTestSuite) TestGetTeslaV1Commands() {
 	body, _ := io.ReadAll(response.Body)
 
 	expected := services.UserDeviceAPIIntegrationsMetadataCommands{
-		Enabled: []string{"doors/unlock", "doors/lock", "trunk/open", "frunk/open", "charge/limit"},
+		Enabled:  []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
+		Capable:  []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
+		Disabled: nil,
 	}
 
 	var actual services.UserDeviceAPIIntegrationsMetadataCommands
@@ -314,8 +316,9 @@ func (s *UserIntegrationAuthControllerTestSuite) TestGetTeslaV2Commands() {
 	body, _ := io.ReadAll(response.Body)
 
 	expected := services.UserDeviceAPIIntegrationsMetadataCommands{
-		Enabled:  []string{"doors/unlock", "doors/lock", "trunk/open", "frunk/open", "charge/limit"},
-		Disabled: []string{"telemetry/subscribe"},
+		Enabled:  []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
+		Capable:  []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit, constants.TelemetrySubscribe},
+		Disabled: []string{constants.TelemetrySubscribe},
 	}
 
 	var actual services.UserDeviceAPIIntegrationsMetadataCommands
@@ -337,7 +340,9 @@ func (s *UserIntegrationAuthControllerTestSuite) TestGetSmartCarCommands() {
 	body, _ := io.ReadAll(response.Body)
 
 	expected := services.UserDeviceAPIIntegrationsMetadataCommands{
-		Enabled: []string{"doors/unlock", "doors/lock"},
+		Enabled:  []string{constants.DoorsUnlock, constants.DoorsLock},
+		Capable:  []string{constants.DoorsUnlock, constants.DoorsLock},
+		Disabled: nil,
 	}
 
 	var actual services.UserDeviceAPIIntegrationsMetadataCommands

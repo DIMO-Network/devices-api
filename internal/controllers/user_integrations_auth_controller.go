@@ -18,6 +18,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/internal/utils"
 )
 
 const teslaFleetAuthCacheKey = "integration_credentials_%s"
@@ -252,15 +253,28 @@ func (u *UserIntegrationAuthController) GetCommandsByIntegration(c *fiber.Ctx) e
 }
 
 func (u *UserIntegrationAuthController) getTeslaCommands(version int) *services.UserDeviceAPIIntegrationsMetadataCommands {
+	var cmds *services.UserDeviceAPIIntegrationsMetadataCommands
 	if version == constants.TeslaAPIV2 {
-		return u.teslaFleetAPISvc.GetAvailableCommands()
+		cmds = u.teslaFleetAPISvc.GetAvailableCommands()
+	} else {
+		svc := services.NewTeslaService(u.Settings)
+		cmds = svc.GetAvailableCommands()
 	}
 
-	svc := services.NewTeslaService(u.Settings)
-	return svc.GetAvailableCommands()
+	return u.prepareCommandsResponse(cmds)
 }
 
 func (u *UserIntegrationAuthController) getSmartCarCommands() *services.UserDeviceAPIIntegrationsMetadataCommands {
 	svc := services.NewSmartcarClient(u.Settings)
-	return svc.GetAvailableCommands()
+	cmds := svc.GetAvailableCommands()
+	return u.prepareCommandsResponse(cmds)
+}
+
+func (u *UserIntegrationAuthController) prepareCommandsResponse(cmds *services.UserDeviceAPIIntegrationsMetadataCommands) *services.UserDeviceAPIIntegrationsMetadataCommands {
+	disabled := utils.GetSliceDiff(cmds.Enabled, cmds.Capable)
+	return &services.UserDeviceAPIIntegrationsMetadataCommands{
+		Enabled:  cmds.Enabled,
+		Capable:  cmds.Capable,
+		Disabled: disabled,
+	}
 }

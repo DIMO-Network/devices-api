@@ -82,6 +82,7 @@ func (t *teslaService) WakeUpVehicle(ownerAccessToken string, id int) error {
 func (t *teslaService) GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands {
 	return &UserDeviceAPIIntegrationsMetadataCommands{
 		Enabled: []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
+		Capable: []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
 	}
 }
 
