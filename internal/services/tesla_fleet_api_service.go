@@ -159,6 +159,7 @@ func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region 
 func (t *teslaFleetAPIService) GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands {
 	return &UserDeviceAPIIntegrationsMetadataCommands{
 		Enabled: []string{"doors/unlock", "doors/lock", "trunk/open", "frunk/open", "charge/limit"},
+		Capable: []string{"telemetry/subscribe", "doors/unlock", "doors/lock", "trunk/open", "frunk/open", "charge/limit"},
 	}
 }
 
