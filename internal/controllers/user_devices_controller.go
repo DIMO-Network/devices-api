@@ -1269,12 +1269,6 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 	}
 	makeTokenID := big.NewInt(int64(dd.Make.TokenId))
 
-	// block new kias from minting
-	if strings.ToLower(dd.Make.NameSlug) == "kia" || dd.Make.Id == "2681cSm2zmTmGHzqK3ldzoTLZIw" {
-		udc.log.Warn().Msgf("new kias blocked from minting")
-		return fiber.NewError(fiber.StatusFailedDependency, "Kia vehicles cannot be manually minted for now.")
-	}
-
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		udc.log.Err(err).Msg("Couldn't retrieve user record.")
@@ -1584,6 +1578,12 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			in, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), udai.IntegrationID)
 			if err != nil {
 				return err
+			}
+
+			// block new kias from minting
+			if (strings.ToLower(dd.Make.NameSlug) == "kia" || dd.Make.Id == "2681cSm2zmTmGHzqK3ldzoTLZIw") && in.Vendor == constants.SmartCarVendor {
+				udc.log.Warn().Msgf("new kias blocked from minting with smartcar connections")
+				return fiber.NewError(fiber.StatusFailedDependency, "Kia vehicles connected via smartcar cannot be manually minted for now.")
 			}
 
 			if in.Vendor == constants.TeslaVendor {
