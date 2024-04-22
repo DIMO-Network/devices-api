@@ -168,14 +168,6 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(nil, errors.New("User not found"))
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), "ddID                       ").Return(&grpc.GetDeviceDefinitionItemResponse{
-		DeviceDefinitionId: "ddID",
-		Make: &grpc.DeviceMake{
-			Name: "Ford",
-			Id:   ksuid.New().String(),
-		},
-		Verified: true,
-	}, nil)
 
 	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
 
