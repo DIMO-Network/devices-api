@@ -199,7 +199,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	})
 
 	vPriv := app.Group("/v1/vehicle/:tokenID", privilegeAuth)
-	vehiclePrivilegeV2Routes := app.Group("/v2/vehicles/:tokenID", privilegeAuth)
+	vPriv2 := app.Group("/v2/vehicles/:tokenID", privilegeAuth)
 
 	privTokenWare := privilegetoken.New(privilegetoken.Config{Log: &logger})
 
@@ -341,7 +341,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Post("/autopi/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
 	udOwner.Post("/aftermarket/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
 
-	vehiclePrivilegeV2Routes.Get("/analytics/range", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleNonLocationData}), userDeviceControllerV2.GetRange)
+	vPriv2.Get("/analytics/range", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleNonLocationData}), userDeviceControllerV2.GetRange)
 
 	logger.Info().Msg("Server started on port " + settings.Port)
 	// Start Server from a different go routine
