@@ -214,7 +214,7 @@ func (u *UserIntegrationAuthController) persistOauthCredentials(ctx context.Cont
 
 // GetCommandsByIntegration godoc
 // @Description Get a list of available commands by integration
-// @Tags        user-devices
+// @Tags        integrations
 // @Produce     json
 // @Accept      json
 // @Param       tokenID path string                   true "token id for integration"

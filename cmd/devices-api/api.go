@@ -233,7 +233,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices/fromsmartcar", userDeviceController.RegisterDeviceForUserFromSmartcar)
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
 	v1Auth.Post("/integration/:tokenID/credentials", userIntegrationAuthController.CompleteOAuthExchange)
-	v1Auth.Post("/integration/:tokenID/commands", userIntegrationAuthController.GetCommandsByIntegration)
+	v1Auth.Get("/integration/:tokenID/commands", userIntegrationAuthController.GetCommandsByIntegration)
 
 	// Autopi specific routes.
 	amdOwnerMw := owner.AftermarketDevice(pdb, usersClient, &logger)

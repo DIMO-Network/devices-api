@@ -19,7 +19,7 @@ type void struct{}
 func GetSliceDiff(subset, superset []string) []string {
 	ma := make(map[string]void, len(subset))
 
-	var diffs []string
+	diffs := make([]string, 0)
 	for _, ka := range subset {
 		ma[ka] = void{}
 	}

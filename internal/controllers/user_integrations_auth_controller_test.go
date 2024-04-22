@@ -288,7 +288,7 @@ func (s *UserIntegrationAuthControllerTestSuite) TestGetTeslaV1Commands() {
 	expected := services.UserDeviceAPIIntegrationsMetadataCommands{
 		Enabled:  []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
 		Capable:  []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
-		Disabled: nil,
+		Disabled: []string{},
 	}
 
 	var actual services.UserDeviceAPIIntegrationsMetadataCommands
@@ -342,7 +342,7 @@ func (s *UserIntegrationAuthControllerTestSuite) TestGetSmartCarCommands() {
 	expected := services.UserDeviceAPIIntegrationsMetadataCommands{
 		Enabled:  []string{constants.DoorsUnlock, constants.DoorsLock},
 		Capable:  []string{constants.DoorsUnlock, constants.DoorsLock},
-		Disabled: nil,
+		Disabled: []string{},
 	}
 
 	var actual services.UserDeviceAPIIntegrationsMetadataCommands
