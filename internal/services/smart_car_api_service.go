@@ -28,7 +28,7 @@ func NewSmartCarService(dbs func() *db.ReaderWriter, logger zerolog.Logger, sett
 		baseURL:      "https://api.smartcar.com/v2.0/",
 		DBS:          dbs,
 		log:          logger,
-		deviceDefSvc: NewDeviceDefinitionService(dbs, &logger, nil, settings), // not using nhtsa service or settings
+		deviceDefSvc: NewDeviceDefinitionService(dbs, &logger, settings), // not using nhtsa service or settings
 	}
 }
 

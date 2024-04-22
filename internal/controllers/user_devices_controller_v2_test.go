@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"io"
 	"net/http"
@@ -90,6 +91,9 @@ func (s *UserDevicesControllerV2Suite) TearDownSuite() {
 func TestUserDevicesControllerTestSuiteV2(t *testing.T) {
 	suite.Run(t, new(UserDevicesControllerV2Suite))
 }
+
+//go:embed test_user_device_data.json
+var testUserDeviceData []byte
 
 func (s *UserDevicesControllerV2Suite) TestGetRange() {
 	autoPiUnitID := "1234"

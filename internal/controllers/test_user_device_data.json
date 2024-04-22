@@ -1,53 +1,52 @@
 {
-    "oil": { "value": 0.11299999803304672, "timestamp": "2022-06-18T04:06:40.200Z"},
-    "vin": { "value": "1G6KN5R63KU145157", "timestamp": "2022-06-18T04:06:40.200Z"},
-    "tires": { "value": {
-        "backLeft": 236,
-        "backRight": 268,
-        "frontLeft": 220,
-        "frontRight": 244
-    }, "timestamp": "2022-06-18T04:06:40.200Z"},
-    "errors": { "value": [
-        {
-            "type": "battery",
-            "errorCode": 403,
-            "errorType": "PERMISSION",
-            "resolution": {
-                "type": "REAUTHENTICATE"
-            },
-            "description": "Your application has insufficient permissions to access the requested resource. Please prompt the user to re-authenticate using Smartcar Connect."
-        },
-        {
-            "type": "battery/capacity",
-            "errorCode": 403,
-            "errorType": "PERMISSION",
-            "resolution": {
-                "type": "REAUTHENTICATE"
-            },
-            "description": "Your application has insufficient permissions to access the requested resource. Please prompt the user to re-authenticate using Smartcar Connect."
-        },
-        {
-            "type": "charge",
-            "errorCode": 403,
-            "errorType": "PERMISSION",
-            "resolution": {
-                "type": "REAUTHENTICATE"
-            },
-            "description": "Your application has insufficient permissions to access the requested resource. Please prompt the user to re-authenticate using Smartcar Connect."
-        },
-        {
-            "type": "location",
-            "errorCode": 502,
-            "errorType": "UPSTREAM",
-            "resolution": {
-                "type": "RETRY_LATER"
-            },
-            "description": "Smartcar received an error from an upstream source. Please retry your request at a later time."
-        }
-    ], "timestamp": "2022-06-18T04:06:40.200Z"},
-    "odometer": { "value": 55759.33984375, "timestamp": "2022-06-18T04:06:40.200Z"},
-    "timestamp": { "value": "2022-06-18T04:06:40.200Z", "timestamp":  "2022-06-18T04:06:40.200Z"},
-    "vehicleId": "c99099f3-a8c4-4534-8bc3-56a1a24b98c8",
-    "fuelPercentRemaining": { "value": 0.71, "timestamp": "2022-06-18T04:06:40.200Z"}
+  "oil": { "value": 0.11299999803304672, "timestamp": "2022-06-18T04:06:40.200Z"},
+  "vin": { "value": "1G6KN5R63KU145157", "timestamp": "2022-06-18T04:06:40.200Z"},
+  "tires": { "value": {
+    "backLeft": 236,
+    "backRight": 268,
+    "frontLeft": 220,
+    "frontRight": 244
+  }, "timestamp": "2022-06-18T04:06:40.200Z"},
+  "errors": { "value": [
+    {
+      "type": "battery",
+      "errorCode": 403,
+      "errorType": "PERMISSION",
+      "resolution": {
+        "type": "REAUTHENTICATE"
+      },
+      "description": "Your application has insufficient permissions to access the requested resource. Please prompt the user to re-authenticate using Smartcar Connect."
+    },
+    {
+      "type": "battery/capacity",
+      "errorCode": 403,
+      "errorType": "PERMISSION",
+      "resolution": {
+        "type": "REAUTHENTICATE"
+      },
+      "description": "Your application has insufficient permissions to access the requested resource. Please prompt the user to re-authenticate using Smartcar Connect."
+    },
+    {
+      "type": "charge",
+      "errorCode": 403,
+      "errorType": "PERMISSION",
+      "resolution": {
+        "type": "REAUTHENTICATE"
+      },
+      "description": "Your application has insufficient permissions to access the requested resource. Please prompt the user to re-authenticate using Smartcar Connect."
+    },
+    {
+      "type": "location",
+      "errorCode": 502,
+      "errorType": "UPSTREAM",
+      "resolution": {
+        "type": "RETRY_LATER"
+      },
+      "description": "Smartcar received an error from an upstream source. Please retry your request at a later time."
+    }
+  ], "timestamp": "2022-06-18T04:06:40.200Z"},
+  "odometer": { "value": 55759.33984375, "timestamp": "2022-06-18T04:06:40.200Z"},
+  "timestamp": { "value": "2022-06-18T04:06:40.200Z", "timestamp":  "2022-06-18T04:06:40.200Z"},
+  "vehicleId": "c99099f3-a8c4-4534-8bc3-56a1a24b98c8",
+  "fuelPercentRemaining": { "value": 0.71, "timestamp": "2022-06-18T04:06:40.200Z"}
 }
-

@@ -217,24 +217,6 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-// GetIntegrations godoc
-// @Description gets list of integrations we have defined
-// @Tags        integrations
-// @Produce     json
-// @Success     200 {array} ddgrpc.Integration
-// @Security    BearerAuth
-// @Router      /integrations [get]
-func (udc *UserDevicesController) GetIntegrations(c *fiber.Ctx) error {
-	all, err := udc.DeviceDefSvc.GetIntegrations(c.Context())
-	if err != nil {
-		return shared.GrpcErrorToFiber(err, "failed to get integrations")
-	}
-
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"integrations": all,
-	})
-}
-
 // GetCommandRequestStatus godoc
 // @Summary     Get the status of a submitted command.
 // @Description Get the status of a submitted command by request id.
@@ -1185,7 +1167,7 @@ func (udc *UserDevicesController) GetAutoPiUnpairMessage(c *fiber.Ctx) error {
 
 	userDeviceID := c.Params("userDeviceID")
 	logger := helpers.GetLogger(c, udc.log)
-	logger.Info().Msg("Got Aftermarket pair request.")
+	logger.Info().Msg("Got Aftermarket unpair request.")
 
 	vnft, autoPiUnit, err := udc.checkUnpairable(c.Context(), udc.DBS().Writer, userDeviceID)
 	if err != nil {
@@ -1474,11 +1456,7 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 		logger.Err(err).Msg("grpc error searching for device definition")
 		return shared.GrpcErrorToFiber(err, "failed to get device definition with id: "+ud.DeviceDefinitionID)
 	}
-	// block SC kia's
-	if dd.Make.NameSlug == "kia" && integrationID == "22N2xaPOq2WW2gAHBHd0Ikn4Zob" {
-		logger.Warn().Msg("kia blocked, smartcar connection")
-		return fiber.NewError(fiber.StatusConflict, "kia software connection blocked, only hardware connections are allowed for this car")
-	}
+
 	logger.Info().Msgf("get device definition id result during registration %+v", dd)
 
 	// filter out the desired integration from the compatible ones

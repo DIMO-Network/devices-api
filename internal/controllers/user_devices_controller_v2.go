@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math/big"
+	"sort"
 	"time"
 
 	"github.com/DIMO-Network/shared"
@@ -36,6 +37,22 @@ func NewUserDevicesControllerV2(settings *config.Settings, dbs func() *db.Reader
 		log:          logger,
 		DeviceDefSvc: deviceDefSvc,
 	}
+}
+
+type DeviceRange struct {
+	// Contains a list of range sets, one for each range basis (may be empty)
+	RangeSets []RangeSet `json:"rangeSets"`
+}
+
+type RangeSet struct {
+	// The time the data was collected
+	Updated string `json:"updated"`
+	// The basis for the range calculation (eg. "MPG" or "MPG Highway")
+	RangeBasis string `json:"rangeBasis"`
+	// The estimated range distance
+	RangeDistance int `json:"rangeDistance"`
+	// The unit used for the rangeDistance (eg. "miles" or "kilometers")
+	RangeUnit string `json:"rangeUnit"`
 }
 
 // GetRange godoc
@@ -125,4 +142,19 @@ func (udc *UserDevicesControllerV2) GetRange(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(deviceRange)
+}
+
+// sortByJSONFieldMostRecent Sort user device data so the latest that has the specified field is first
+// only pass in field name, as this will append "timestamp" to look compare signals.field.timestamp
+func sortByJSONFieldMostRecent(udd models.UserDeviceDatumSlice, field string) {
+	sort.Slice(udd, func(i, j int) bool {
+		fpri := gjson.GetBytes(udd[i].Signals.JSON, field+".timestamp")
+		fprj := gjson.GetBytes(udd[j].Signals.JSON, field+".timestamp")
+		if fpri.Exists() && !fprj.Exists() {
+			return true
+		} else if !fpri.Exists() && fprj.Exists() {
+			return false
+		}
+		return fpri.Time().After(fprj.Time())
+	})
 }

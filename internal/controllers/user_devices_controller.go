@@ -9,12 +9,19 @@ import (
 	"fmt"
 	"math/big"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
+	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/contracts"
+	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
+	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/internal/services/autopi"
+	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
@@ -34,21 +41,11 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
 	smartcar "github.com/smartcar/go-sdk"
-	"github.com/tidwall/gjson"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
-
-	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/contracts"
-	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
-	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/devices-api/internal/services/autopi"
-	"github.com/DIMO-Network/devices-api/internal/services/registry"
-	"github.com/DIMO-Network/devices-api/models"
 )
 
 type UserDevicesController struct {
@@ -64,7 +61,6 @@ type UserDevicesController struct {
 	teslaTaskService          services.TeslaTaskService
 	cipher                    shared.Cipher
 	autoPiSvc                 services.AutoPiAPIService
-	nhtsaService              services.INHTSAService
 	autoPiIngestRegistrar     services.IngestRegistrar
 	autoPiTaskService         services.AutoPiTaskService
 	s3                        *s3.Client
@@ -78,7 +74,6 @@ type UserDevicesController struct {
 	NATSSvc                   *services.NATSService
 	wallet                    services.SyntheticWalletInstanceService
 	userDeviceSvc             services.UserDeviceService
-	valuationsAPISrv          services.ValuationsAPIService
 	teslaFleetAPISvc          services.TeslaFleetAPIService
 }
 
@@ -122,7 +117,6 @@ func NewUserDevicesController(settings *config.Settings,
 	teslaTaskService services.TeslaTaskService,
 	cipher shared.Cipher,
 	autoPiSvc services.AutoPiAPIService,
-	nhtsaService services.INHTSAService,
 	autoPiIngestRegistrar services.IngestRegistrar,
 	deviceDefinitionRegistrar services.DeviceDefinitionRegistrar,
 	autoPiTaskService services.AutoPiTaskService,
@@ -136,7 +130,6 @@ func NewUserDevicesController(settings *config.Settings,
 	natsSvc *services.NATSService,
 	wallet services.SyntheticWalletInstanceService,
 	userDeviceSvc services.UserDeviceService,
-	valuationsAPISrv services.ValuationsAPIService,
 	teslaFleetAPISvc services.TeslaFleetAPIService,
 ) UserDevicesController {
 	return UserDevicesController{
@@ -152,7 +145,6 @@ func NewUserDevicesController(settings *config.Settings,
 		teslaTaskService:          teslaTaskService,
 		cipher:                    cipher,
 		autoPiSvc:                 autoPiSvc,
-		nhtsaService:              nhtsaService,
 		autoPiIngestRegistrar:     autoPiIngestRegistrar,
 		autoPiTaskService:         autoPiTaskService,
 		s3:                        s3NFTClient,
@@ -165,7 +157,6 @@ func NewUserDevicesController(settings *config.Settings,
 		deviceDataSvc:             deviceDataSvc,
 		NATSSvc:                   natsSvc,
 		wallet:                    wallet,
-		valuationsAPISrv:          valuationsAPISrv,
 		userDeviceSvc:             userDeviceSvc,
 		teslaFleetAPISvc:          teslaFleetAPISvc,
 	}
@@ -793,21 +784,12 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	if info == nil {
 		info = &smartcar.Info{}
 	}
-	// block kia
-	if strings.ToLower(info.Make) == "kia" {
-		localLog.Warn().Msgf("kia blocked, smartcar make")
-		return fiber.NewError(fiber.StatusFailedDependency, "Kia vehicles are only supported via Hardware connections for now.")
-	}
+
 	// decode VIN with grpc call, including any possible smartcar known info
 	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, info.Model, info.Year, reg.CountryCode)
 	if err != nil {
 		localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle")
 		return shared.GrpcErrorToFiber(err, "unable to decode vin: "+vin)
-	}
-	// jic kia block by make id
-	if decodeVIN.DeviceMakeId == "2681cSm2zmTmGHzqK3ldzoTLZIw" {
-		localLog.Warn().Msgf("kia blocked, by smartcar vin decode to kia meke id")
-		return fiber.NewError(fiber.StatusFailedDependency, "Kia vehicles are only supported via Hardware connections for now.")
 	}
 
 	// in case err is nil but we don't get a valid decode
@@ -995,7 +977,7 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 	if err != nil {
 		return opaqueInternalError
 	}
-	defer tx.Rollback() // nolint
+	defer tx.Rollback() //nolint
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
@@ -1043,10 +1025,9 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 		return err
 	}
 
-	// this is kinda funky, ideally we set it based on device styleId we have for the VIN. But not sure if nhtsa is more precise for Hybrid variants?
-	if userDevice.CountryCode.Valid && userDevice.CountryCode.String == "USA" {
-		if err := udc.updateUSAPowertrain(c.Context(), userDevice, true); err != nil {
-			logger.Err(err).Msg("Failed to update American powertrain type.")
+	if userDevice.CountryCode.Valid {
+		if err := udc.updatePowerTrain(c.Context(), userDevice); err != nil {
+			logger.Err(err).Msg("Failed to update powertrain type.")
 		}
 	}
 
@@ -1058,43 +1039,23 @@ const (
 )
 
 // todo revisit this depending on what observe with below log message
-func (udc *UserDevicesController) updateUSAPowertrain(ctx context.Context, userDevice *models.UserDevice, useNHTSA bool) error {
+func (udc *UserDevicesController) updatePowerTrain(ctx context.Context, userDevice *models.UserDevice) error {
 	md := new(services.UserDeviceMetadata)
 	if err := userDevice.Metadata.Unmarshal(md); err != nil {
 		return err
 	}
-
-	if useNHTSA {
-		resp, err := udc.nhtsaService.DecodeVIN(userDevice.VinIdentifier.String)
-		if err != nil {
-			return err
-		}
-
-		dt, err := resp.DriveType()
-		if err != nil {
-			return err
-		}
-		if md.PowertrainType != nil && !strings.EqualFold(md.PowertrainType.String(), dt.String()) {
-			udc.log.Info().Str("user_device_id", userDevice.ID).
-				Msgf("NHTSA decoder returned different powertrain_type. original: %s, new: %s", md.PowertrainType.String(), dt.String())
-		}
-		md.PowertrainType = &dt
+	resp, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, userDevice.DeviceDefinitionID)
+	if err != nil {
+		return err
 	}
 
-	if !useNHTSA {
-		resp, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, userDevice.DeviceDefinitionID)
-		if err != nil {
-			return err
-		}
-
-		if len(resp.DeviceAttributes) > 0 {
-			// Find device attribute (powertrain_type)
-			for _, item := range resp.DeviceAttributes {
-				if item.Name == PowerTrainTypeKey {
-					powertrainType := services.ConvertPowerTrainStringToPowertrain(item.Value)
-					md.PowertrainType = &powertrainType
-					break
-				}
+	if len(resp.DeviceAttributes) > 0 {
+		// Find device attribute (powertrain_type)
+		for _, item := range resp.DeviceAttributes {
+			if item.Name == PowerTrainTypeKey {
+				powertrainType := services.ConvertPowerTrainStringToPowertrain(item.Value)
+				md.PowertrainType = &powertrainType
+				break
 			}
 		}
 	}
@@ -1203,204 +1164,6 @@ func (udc *UserDevicesController) UpdateCountryCode(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-type DeviceValuation struct {
-	// Contains a list of valuation sets, one for each vendor
-	ValuationSets []ValuationSet `json:"valuationSets"`
-}
-type ValuationSet struct {
-	// The source of the valuation (eg. "drivly" or "blackbook")
-	Vendor string `json:"vendor"`
-	// The time the valuation was pulled or in the case of blackbook, this may be the event time of the device odometer which was used for the valuation
-	Updated string `json:"updated,omitempty"`
-	// The mileage used for the valuation
-	Mileage int `json:"mileage,omitempty"`
-	// This will be the zip code used (if any) for the valuation request regardless if the vendor uses it
-	ZipCode string `json:"zipCode,omitempty"`
-	// Useful when Drivly returns multiple vendors and we've selected one (eg. "drivly:blackbook")
-	TradeInSource string `json:"tradeInSource,omitempty"`
-	// tradeIn is equal to tradeInAverage when available
-	TradeIn int `json:"tradeIn,omitempty"`
-	// tradeInClean, tradeInAverage, and tradeInRough my not always be available
-	TradeInClean   int `json:"tradeInClean,omitempty"`
-	TradeInAverage int `json:"tradeInAverage,omitempty"`
-	TradeInRough   int `json:"tradeInRough,omitempty"`
-	// Useful when Drivly returns multiple vendors and we've selected one (eg. "drivly:blackbook")
-	RetailSource string `json:"retailSource,omitempty"`
-	// retail is equal to retailAverage when available
-	Retail int `json:"retail,omitempty"`
-	// retailClean, retailAverage, and retailRough my not always be available
-	RetailClean   int    `json:"retailClean,omitempty"`
-	RetailAverage int    `json:"retailAverage,omitempty"`
-	RetailRough   int    `json:"retailRough,omitempty"`
-	OdometerUnit  string `json:"odometerUnit"`
-	Odometer      int    `json:"odometer"`
-	// UserDisplayPrice the top level value to show to users in mobile app
-	UserDisplayPrice int `json:"userDisplayPrice"`
-	// eg. USD or EUR
-	Currency string `json:"currency"`
-}
-
-// GetValuations godoc
-// @Description gets valuations for a particular user device. Includes only price valuations, not offers. only gets the latest valuation.
-// @Tags        user-devices
-// @Produce     json
-// @Param       userDeviceID path string true "user device id"
-// @Success     200 {object} controllers.DeviceValuation
-// @Security    BearerAuth
-// @Router      /user/devices/{userDeviceID}/valuations [get]
-func (udc *UserDevicesController) GetValuations(c *fiber.Ctx) error {
-	udi := c.Params("userDeviceID")
-
-	logger := helpers.GetLogger(c, udc.log).With().Str("route", c.Route().Path).Logger()
-
-	dVal, err := udc.valuationsAPISrv.GetUserDeviceValuations(c.Context(), udi)
-
-	if err != nil {
-		logger.Err(err).Msg("Failed to retrieve valuations from valuations-api.")
-		return err
-	}
-
-	return c.JSON(dVal)
-}
-
-type DeviceOffer struct {
-	// Contains a list of offer sets, one for each source
-	OfferSets []OfferSet `json:"offerSets"`
-}
-type OfferSet struct {
-	// The source of the offers (eg. "drivly")
-	Source string `json:"source"`
-	// The time the offers were pulled
-	Updated string `json:"updated,omitempty"`
-	// The mileage used for the offers
-	Mileage int `json:"mileage,omitempty"`
-	// This will be the zip code used (if any) for the offers request regardless if the source uses it
-	ZipCode string `json:"zipCode,omitempty"`
-	// Contains a list of offers from the source
-	Offers []Offer `json:"offers"`
-}
-type Offer struct {
-	// The vendor of the offer (eg. "carmax", "carvana", etc.)
-	Vendor string `json:"vendor"`
-	// The offer price from the vendor
-	Price int `json:"price,omitempty"`
-	// The offer URL from the vendor
-	URL string `json:"url,omitempty"`
-	// An error from the vendor (eg. when the VIN is invalid)
-	Error string `json:"error,omitempty"`
-	// The grade of the offer from the vendor (eg. "RETAIL")
-	Grade string `json:"grade,omitempty"`
-	// The reason the offer was declined from the vendor
-	DeclineReason string `json:"declineReason,omitempty"`
-}
-
-// GetOffers godoc
-// @Description gets offers for a particular user device
-// @Tags        user-devices
-// @Produce     json
-// @Success     200 {object} controllers.DeviceOffer
-// @Security    BearerAuth
-// @Router      /user/devices/{userDeviceID}/offers [get]
-func (udc *UserDevicesController) GetOffers(c *fiber.Ctx) error {
-	udi := c.Params("userDeviceID")
-
-	logger := helpers.GetLogger(c, udc.log).With().Str("route", c.Route().Path).Logger()
-
-	dOffer, err := udc.valuationsAPISrv.GetUserDeviceOffers(c.Context(), udi)
-
-	if err != nil {
-		logger.Err(err).Msg("Failed to retrieve offers from valuations-api.")
-		return err
-	}
-
-	return c.JSON(dOffer)
-}
-
-type DeviceRange struct {
-	// Contains a list of range sets, one for each range basis (may be empty)
-	RangeSets []RangeSet `json:"rangeSets"`
-}
-
-type RangeSet struct {
-	// The time the data was collected
-	Updated string `json:"updated"`
-	// The basis for the range calculation (eg. "MPG" or "MPG Highway")
-	RangeBasis string `json:"rangeBasis"`
-	// The estimated range distance
-	RangeDistance int `json:"rangeDistance"`
-	// The unit used for the rangeDistance (eg. "miles" or "kilometers")
-	RangeUnit string `json:"rangeUnit"`
-}
-
-// GetRange godoc
-// @Description [🔴__Warning - API Shutdown by June 30, 2024, Use `/v2/vehicles/:tokenId/analytics/range` instead__🔴]  gets the estimated range for a particular user device
-// @Tags        user-devices [End Of Life Warning]
-// @Produce     json
-// @Success     200 {object} controllers.DeviceRange
-// @Security    BearerAuth
-// @Param       userDeviceID path string true "user device id"
-// @Router      /user/devices/{userDeviceID}/range [get]
-func (udc *UserDevicesController) GetRange(c *fiber.Ctx) error {
-	udi := c.Params("userDeviceID")
-
-	userDevice, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(udi),
-		qm.Load(models.UserDeviceRels.UserDeviceData),
-	).One(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		return err
-	}
-
-	dds, err := udc.DeviceDefSvc.GetDeviceDefinitionsByIDs(c.Context(), []string{userDevice.DeviceDefinitionID})
-	if err != nil {
-		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DeviceDefinitionID)
-	}
-
-	deviceRange := DeviceRange{
-		RangeSets: []RangeSet{},
-	}
-	udd := userDevice.R.UserDeviceData
-	if len(dds) > 0 && dds[0] != nil && len(udd) > 0 {
-
-		rangeData := helpers.GetActualDeviceDefinitionMetadataValues(dds[0], userDevice.DeviceStyleID)
-
-		sortByJSONFieldMostRecent(udd, "fuelPercentRemaining")
-		fuelPercentRemaining := gjson.GetBytes(udd[0].Signals.JSON, "fuelPercentRemaining.value")
-		dataUpdatedOn := gjson.GetBytes(udd[0].Signals.JSON, "fuelPercentRemaining.timestamp").Time()
-		if fuelPercentRemaining.Exists() && rangeData.FuelTankCapGal > 0 && rangeData.Mpg > 0 {
-			fuelTankAtGal := rangeData.FuelTankCapGal * fuelPercentRemaining.Float()
-			rangeSet := RangeSet{
-				Updated:       dataUpdatedOn.Format(time.RFC3339),
-				RangeBasis:    "MPG",
-				RangeDistance: int(rangeData.Mpg * fuelTankAtGal),
-				RangeUnit:     "miles",
-			}
-			deviceRange.RangeSets = append(deviceRange.RangeSets, rangeSet)
-			if rangeData.MpgHwy > 0 {
-				rangeSet.RangeBasis = "MPG Highway"
-				rangeSet.RangeDistance = int(rangeData.MpgHwy * fuelTankAtGal)
-				deviceRange.RangeSets = append(deviceRange.RangeSets, rangeSet)
-			}
-		}
-		sortByJSONFieldMostRecent(udd, "range")
-		reportedRange := gjson.GetBytes(udd[0].Signals.JSON, "range.value")
-		dataUpdatedOn = gjson.GetBytes(udd[0].Signals.JSON, "range.timestamp").Time()
-		if reportedRange.Exists() {
-			reportedRangeMiles := int(reportedRange.Float() / services.MilesToKmFactor)
-			rangeSet := RangeSet{
-				Updated:       dataUpdatedOn.Format(time.RFC3339),
-				RangeBasis:    "Vehicle Reported",
-				RangeDistance: reportedRangeMiles,
-				RangeUnit:     "miles",
-			}
-			deviceRange.RangeSets = append(deviceRange.RangeSets, rangeSet)
-		}
-	}
-
-	return c.JSON(deviceRange)
-
-}
-
 // DeleteUserDevice godoc
 // @Description delete the user device record (hard delete)
 // @Tags        user-devices
@@ -1505,6 +1268,12 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "Device make not yet minted.")
 	}
 	makeTokenID := big.NewInt(int64(dd.Make.TokenId))
+
+	// block new kias from minting
+	if strings.ToLower(dd.Make.NameSlug) == "kia" || dd.Make.Id == "2681cSm2zmTmGHzqK3ldzoTLZIw" {
+		udc.log.Warn().Msgf("new kias blocked from minting")
+		return fiber.NewError(fiber.StatusFailedDependency, "Kia vehicles cannot be manually minted for now.")
+	}
 
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
@@ -2031,21 +1800,6 @@ func (u *UpdateNameReq) validate() error {
 		// cannot end with space
 		validation.Field(&u.Name, validation.Required, validation.Match(regexp.MustCompile(`.+[^\s]$|[^\s]$`))),
 	)
-}
-
-// sortByJSONFieldMostRecent Sort user device data so the latest that has the specified field is first
-// only pass in field name, as this will append "timestamp" to look compare signals.field.timestamp
-func sortByJSONFieldMostRecent(udd models.UserDeviceDatumSlice, field string) {
-	sort.Slice(udd, func(i, j int) bool {
-		fpri := gjson.GetBytes(udd[i].Signals.JSON, field+".timestamp")
-		fprj := gjson.GetBytes(udd[j].Signals.JSON, field+".timestamp")
-		if fpri.Exists() && !fprj.Exists() {
-			return true
-		} else if !fpri.Exists() && fprj.Exists() {
-			return false
-		}
-		return fpri.Time().After(fprj.Time())
-	})
 }
 
 // PrivilegeUser represents set of privileges I've granted to a user
