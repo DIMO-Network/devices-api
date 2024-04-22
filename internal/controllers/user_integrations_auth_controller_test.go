@@ -9,11 +9,6 @@ import (
 	"time"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
-	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/services"
-	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
-	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
@@ -21,9 +16,16 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"go.uber.org/mock/gomock"
+
+	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/services"
+	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
+	"github.com/DIMO-Network/devices-api/internal/test"
 )
 
 type UserIntegrationAuthControllerTestSuite struct {
@@ -62,6 +64,7 @@ func (s *UserIntegrationAuthControllerTestSuite) SetupSuite() {
 	}, s.pdb.DBS, logger, s.deviceDefSvc, s.teslaFleetAPISvc, s.redisClient, s.cipher, s.usersClient)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/integration/:tokenID/credentials", test.AuthInjectorTestHandler(s.testUserID), c.CompleteOAuthExchange)
+	app.Get("/integration/:tokenID/commands", test.AuthInjectorTestHandler(s.testUserID), c.GetCommandsByIntegration)
 
 	s.controller = &c
 	s.app = app
@@ -269,4 +272,91 @@ func (s *UserIntegrationAuthControllerTestSuite) TestPersistOauthCredentials() {
 
 	err = intCtrl.persistOauthCredentials(s.ctx, *mockAuthCodeResp, mockUserEthAddr)
 	s.Assert().NoError(err)
+}
+
+func (s *UserIntegrationAuthControllerTestSuite) TestGetTeslaV1Commands() {
+	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&ddgrpc.Integration{
+		Vendor: constants.TeslaVendor,
+	}, nil)
+
+	request := test.BuildRequest("GET", "/integration/2/commands", "")
+	response, _ := s.app.Test(request)
+
+	s.Assert().Equal(fiber.StatusOK, response.StatusCode)
+	body, _ := io.ReadAll(response.Body)
+
+	expected := services.UserDeviceAPIIntegrationsMetadataCommands{
+		Enabled:  []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
+		Capable:  []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
+		Disabled: []string{},
+	}
+
+	var actual services.UserDeviceAPIIntegrationsMetadataCommands
+	err := json.Unmarshal(body, &actual)
+	s.Require().NoError(err)
+
+	s.Assert().Equal(expected, actual)
+}
+
+func (s *UserIntegrationAuthControllerTestSuite) TestGetTeslaV2Commands() {
+	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&ddgrpc.Integration{
+		Vendor: constants.TeslaVendor,
+	}, nil)
+
+	logger := test.Logger()
+	teslaFleetSvc := services.NewTeslaFleetAPIService(nil, logger)
+	c := NewUserIntegrationAuthController(&config.Settings{}, nil, logger, s.deviceDefSvc, teslaFleetSvc, nil, nil, nil)
+	app := test.SetupAppFiber(*logger)
+	app.Get("/integration/:tokenID/commands", test.AuthInjectorTestHandler(s.testUserID), c.GetCommandsByIntegration)
+
+	request := test.BuildRequest("GET", "/integration/2/commands?version=2", "")
+	response, _ := app.Test(request)
+
+	s.Assert().Equal(fiber.StatusOK, response.StatusCode)
+	body, _ := io.ReadAll(response.Body)
+
+	expected := services.UserDeviceAPIIntegrationsMetadataCommands{
+		Enabled:  []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
+		Capable:  []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit, constants.TelemetrySubscribe},
+		Disabled: []string{constants.TelemetrySubscribe},
+	}
+
+	var actual services.UserDeviceAPIIntegrationsMetadataCommands
+	err := json.Unmarshal(body, &actual)
+	s.Require().NoError(err)
+
+	s.Assert().Equal(expected, actual)
+}
+
+func (s *UserIntegrationAuthControllerTestSuite) TestGetSmartCarCommands() {
+	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(1)).Return(&ddgrpc.Integration{
+		Vendor: constants.SmartCarVendor,
+	}, nil)
+
+	request := test.BuildRequest("GET", "/integration/1/commands", "")
+	response, _ := s.app.Test(request)
+
+	s.Assert().Equal(fiber.StatusOK, response.StatusCode)
+	body, _ := io.ReadAll(response.Body)
+
+	expected := services.UserDeviceAPIIntegrationsMetadataCommands{
+		Enabled:  []string{constants.DoorsUnlock, constants.DoorsLock},
+		Capable:  []string{constants.DoorsUnlock, constants.DoorsLock},
+		Disabled: []string{},
+	}
+
+	var actual services.UserDeviceAPIIntegrationsMetadataCommands
+	err := json.Unmarshal(body, &actual)
+	s.Require().NoError(err)
+
+	s.Assert().Equal(expected, actual)
+}
+
+func (s *UserIntegrationAuthControllerTestSuite) TestGetInvalidIntegrationCommands() {
+	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(1)).Return(nil, errors.New("no device Id"))
+
+	request := test.BuildRequest("GET", "/integration/1/commands", "")
+	response, _ := s.app.Test(request)
+
+	s.Assert().Equal(fiber.StatusBadRequest, response.StatusCode)
 }
