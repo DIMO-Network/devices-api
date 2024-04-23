@@ -15,6 +15,7 @@ import (
 	smartcar "github.com/smartcar/go-sdk"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 )
 
 //go:generate mockgen -source smartcar_client.go -destination mocks/smartcar_client_mock.go
@@ -243,6 +244,7 @@ func (s *smartcarClient) GetInfo(ctx context.Context, accessToken string, id str
 
 func (s *smartcarClient) GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands {
 	return &UserDeviceAPIIntegrationsMetadataCommands{
-		Enabled: []string{"doors/unlock", "doors/lock"},
+		Enabled: []string{constants.DoorsUnlock, constants.DoorsLock},
+		Capable: []string{constants.DoorsUnlock, constants.DoorsLock},
 	}
 }
