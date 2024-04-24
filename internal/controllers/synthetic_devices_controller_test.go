@@ -14,6 +14,7 @@ import (
 	smock "github.com/Shopify/sarama/mocks"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/segmentio/ksuid"
@@ -397,7 +398,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayl
 	err = json.Unmarshal(body, &msg)
 	s.NoError(err)
 	assert.Equal(s.T(), fiber.StatusInternalServerError, response.StatusCode)
-	// assert.Equal(s.T(), secp256k1.ErrRecoverFailed.Error(), msg.Message)
+	assert.Equal(s.T(), secp256k1.ErrRecoverFailed.Error(), msg.Message)
 
 	// //
 
