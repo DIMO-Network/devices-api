@@ -2,6 +2,7 @@ package utils
 
 import (
 	"math/big"
+	"slices"
 
 	"github.com/ericlagergren/decimal"
 	"github.com/volatiletech/sqlboiler/v4/types"
@@ -30,4 +31,10 @@ func GetSliceDiff(subset, superset []string) []string {
 		}
 	}
 	return diffs
+}
+
+func ExistsInSlice(needle string, haystack []string) bool {
+	return slices.IndexFunc(haystack, func(cmd string) bool {
+		return cmd == needle
+	}) != -1
 }

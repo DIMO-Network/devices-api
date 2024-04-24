@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -27,6 +28,7 @@ type TeslaFleetAPIService interface {
 	GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands
 	VirtualTokenConnectionStatus(ctx context.Context, token, region, vin string) (bool, error)
 	RefreshToken(ctx context.Context, refreshToken string) (*TeslaAuthCodeResponse, error)
+	SubscribeForTelemetryData(ctx context.Context, token, region, vin string) error
 }
 
 var teslaScopes = []string{"openid", "offline_access", "user_data", "vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds", "energy_device_data", "energy_device_data", "energy_cmds"}
@@ -61,6 +63,26 @@ type VirtualTokenConnectionStatusResponse struct {
 type VirtualTokenConnectionStatus struct {
 	UnpairedVins  []string `json:"unpaired_vins"`
 	KeyPairedVins []string `json:"key_paired_vins"`
+}
+
+type SubscribeForTelemetryDataRequest struct {
+	Vins   []string               `json:"vins"`
+	Config TelemetryConfigRequest `json:"config"`
+}
+
+type Interval struct {
+	IntervalSeconds int `json:"interval_seconds"`
+}
+
+type TelemetryFields map[string]Interval
+
+type TelemetryConfigRequest struct {
+	HostName            string          `json:"hostName"`
+	PublicCACertificate string          `json:"ca"`
+	Fields              TelemetryFields `json:"fields"`
+	AlertTypes          []string        `json:"alert_types,omitempty"`
+	Expiration          int64           `json:"exp"`
+	Port                int             `json:"port"`
 }
 
 type teslaFleetAPIService struct {
@@ -245,6 +267,56 @@ func (t *teslaFleetAPIService) RefreshToken(ctx context.Context, refreshToken st
 	}
 
 	return tokResp, nil
+}
+
+var fields = TelemetryFields{
+	"ChargeState":         {IntervalSeconds: 300},
+	"Location":            {IntervalSeconds: 10},
+	"OriginLocation":      {IntervalSeconds: 300},
+	"DestinationLocation": {IntervalSeconds: 300},
+	"DestinationName":     {IntervalSeconds: 300},
+	"EnergyRemaining":     {IntervalSeconds: 300},
+	"VehicleSpeed":        {IntervalSeconds: 60},
+	"Odometer":            {IntervalSeconds: 300},
+	"EstBatteryRange":     {IntervalSeconds: 300},
+	"Soc":                 {IntervalSeconds: 300},
+	"BatteryLevel":        {IntervalSeconds: 60},
+}
+
+func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, token, region, vin string) error {
+	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
+	u, err := url.JoinPath(baseURL, "/api/1/vehicles/fleet_telemetry_config")
+	if err != nil {
+		return err
+	}
+
+	exp := time.Now().AddDate(0, 0, 364).Unix()
+
+	r := SubscribeForTelemetryDataRequest{
+		Vins: []string{vin},
+		Config: TelemetryConfigRequest{
+			HostName:            t.Settings.TeslaTelemetryHostName,
+			PublicCACertificate: t.Settings.TeslaTelemetryCACertificate,
+			Expiration:          exp,
+			Port:                t.Settings.TeslaTelemetryPort,
+			Fields:              fields,
+			AlertTypes:          []string{"service"},
+		},
+	}
+
+	b, err := json.Marshal(r)
+	if err != nil {
+		return err
+	}
+
+	resp, err := t.performRequest(ctx, u, token, http.MethodPost, bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	return nil
 }
 
 // performRequest a helper function for making http requests, it adds a timeout context and parses error response

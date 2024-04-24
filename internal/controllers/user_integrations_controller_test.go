@@ -11,9 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nats-io/nats-server/v2/server"
-	"github.com/rs/zerolog"
-
 	"github.com/DIMO-Network/shared/redis/mocks"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
@@ -22,6 +19,8 @@ import (
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/nats-io/nats-server/v2/server"
+	"github.com/rs/zerolog"
 
 	pbuser "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
@@ -126,6 +125,10 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 
 	app.Post("/user2/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUser2), c.RegisterDeviceIntegration)
 	app.Get("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.GetUserDeviceIntegration)
+	app.Post("/user/devices/:userDeviceID/integrations/:integrationID/commands/telemetry/subscribe",
+		test.AuthInjectorTestHandler(testUserID),
+		c.TelemetrySubscribe,
+	)
 
 	s.app = app
 }
@@ -941,7 +944,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 	}, nil)
 	s.teslaFleetAPISvc.EXPECT().WakeUpVehicle(gomock.Any(), "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", "na", 1145).Return(nil)
 	s.teslaFleetAPISvc.EXPECT().GetAvailableCommands().Return(&services.UserDeviceAPIIntegrationsMetadataCommands{
-		Enabled: []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
+		Enabled:  []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
 		Disabled: []string{constants.TelemetrySubscribe},
 	})
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd[0], nil)
@@ -1172,4 +1175,161 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration_Refre
 
 	s.Assert().Equal(refreshTk, newAPIInt.RefreshToken.String)
 	s.Assert().Equal(accessTk, newAPIInt.AccessToken.String)
+}
+
+func (s *UserIntegrationsControllerTestSuite) TestTelemetrySubscribe() {
+	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
+
+	accessTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+	refreshTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw"
+	extID := "SomeID"
+	expectedExpiry := time.Now().Add(10 * time.Minute)
+	region := "na"
+
+	mtd, err := json.Marshal(services.UserDeviceAPIIntegrationsMetadata{
+		TeslaRegion: region,
+		Commands: &services.UserDeviceAPIIntegrationsMetadataCommands{
+			Enabled: []string{},
+			Capable: []string{constants.TelemetrySubscribe},
+		},
+	})
+	s.Require().NoError(err)
+
+	apIntd := models.UserDeviceAPIIntegration{
+		UserDeviceID:    ud.ID,
+		IntegrationID:   integration.Id,
+		Status:          models.UserDeviceAPIIntegrationStatusActive,
+		AccessToken:     null.StringFrom(accessTk),
+		AccessExpiresAt: null.TimeFrom(expectedExpiry),
+		RefreshToken:    null.StringFrom(refreshTk),
+		ExternalID:      null.StringFrom(extID),
+		Metadata:        null.JSONFrom(mtd),
+	}
+	err = apIntd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
+	s.teslaFleetAPISvc.EXPECT().SubscribeForTelemetryData(gomock.Any(), accessTk, region, ud.VinIdentifier.String).Return(nil)
+
+	request := test.BuildRequest(http.MethodPost, fmt.Sprintf("/user/devices/%s/integrations/%s/commands/telemetry/subscribe", ud.ID, integration.Id), "")
+	res, err := s.app.Test(request, 60*1000)
+	s.Assert().NoError(err)
+
+	s.Assert().True(res.StatusCode == fiber.StatusOK)
+
+	udai, err := models.UserDeviceAPIIntegrations(
+		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integration.Id),
+		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(ud.ID),
+	).One(s.ctx, s.pdb.DBS().Reader)
+	s.Require().NoError(err)
+
+	md := new(services.UserDeviceAPIIntegrationsMetadata)
+	err = udai.Metadata.Unmarshal(md)
+	s.Require().NoError(err)
+
+	s.Assert().Equal(md.Commands.Enabled, []string{constants.TelemetrySubscribe})
+}
+
+func (s *UserIntegrationsControllerTestSuite) Test_NoUserDevice_TelemetrySubscribe() {
+	request := test.BuildRequest(http.MethodPost, fmt.Sprintf("/user/devices/%s/integrations/%s/commands/telemetry/subscribe", "mockUserDeviceID", "mockIntID"), "")
+	res, err := s.app.Test(request, 60*1000)
+	s.Assert().NoError(err)
+
+	s.Assert().True(res.StatusCode == fiber.StatusNotFound)
+}
+
+func (s *UserIntegrationsControllerTestSuite) Test_InactiveIntegration_TelemetrySubscribe() {
+	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
+
+	apIntd := models.UserDeviceAPIIntegration{
+		UserDeviceID:  ud.ID,
+		IntegrationID: integration.Id,
+		Status:        models.DeviceCommandRequestStatusPending,
+	}
+	err := apIntd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+
+	request := test.BuildRequest(http.MethodPost, fmt.Sprintf("/user/devices/%s/integrations/%s/commands/telemetry/subscribe", ud.ID, integration.Id), "")
+	res, err := s.app.Test(request, 60*1000)
+	s.Assert().NoError(err)
+
+	s.Assert().True(res.StatusCode == fiber.StatusConflict)
+}
+
+func (s *UserIntegrationsControllerTestSuite) Test_MissingRegionAndCapable_TelemetrySubscribe() {
+	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
+
+	apIntd := models.UserDeviceAPIIntegration{
+		UserDeviceID:  ud.ID,
+		IntegrationID: integration.Id,
+		Status:        models.UserDeviceAPIIntegrationStatusActive,
+	}
+	err := apIntd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+
+	request := test.BuildRequest(http.MethodPost, fmt.Sprintf("/user/devices/%s/integrations/%s/commands/telemetry/subscribe", ud.ID, integration.Id), "")
+	res, err := s.app.Test(request, 60*1000)
+	s.Assert().NoError(err)
+
+	s.Assert().True(res.StatusCode == fiber.StatusBadRequest)
+}
+
+func (s *UserIntegrationsControllerTestSuite) Test_TelemetrySubscribe_AlreadyEnabled() {
+	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
+
+	mtd, err := json.Marshal(services.UserDeviceAPIIntegrationsMetadata{
+		TeslaRegion: "na",
+		Commands: &services.UserDeviceAPIIntegrationsMetadataCommands{
+			Enabled: []string{constants.TelemetrySubscribe},
+			Capable: []string{constants.TelemetrySubscribe},
+		},
+	})
+	s.Require().NoError(err)
+	apIntd := models.UserDeviceAPIIntegration{
+		UserDeviceID:  ud.ID,
+		IntegrationID: integration.Id,
+		Status:        models.UserDeviceAPIIntegrationStatusActive,
+		Metadata:      null.JSONFrom(mtd),
+	}
+	err = apIntd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+
+	request := test.BuildRequest(http.MethodPost, fmt.Sprintf("/user/devices/%s/integrations/%s/commands/telemetry/subscribe", ud.ID, integration.Id), "")
+	res, err := s.app.Test(request, 60*1000)
+	s.Assert().NoError(err)
+
+	s.Assert().True(res.StatusCode == fiber.StatusOK)
+}
+
+func (s *UserIntegrationsControllerTestSuite) Test_TelemetrySubscribe_NotCapable() {
+	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
+
+	mtd, err := json.Marshal(services.UserDeviceAPIIntegrationsMetadata{
+		TeslaRegion: "na",
+	})
+	s.Require().NoError(err)
+	apIntd := models.UserDeviceAPIIntegration{
+		UserDeviceID:  ud.ID,
+		IntegrationID: integration.Id,
+		Status:        models.UserDeviceAPIIntegrationStatusActive,
+		Metadata:      null.JSONFrom(mtd),
+	}
+	err = apIntd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+
+	request := test.BuildRequest(http.MethodPost, fmt.Sprintf("/user/devices/%s/integrations/%s/commands/telemetry/subscribe", ud.ID, integration.Id), "")
+	res, err := s.app.Test(request, 60*1000)
+	s.Assert().NoError(err)
+
+	s.Assert().True(res.StatusCode == fiber.StatusBadRequest)
 }
