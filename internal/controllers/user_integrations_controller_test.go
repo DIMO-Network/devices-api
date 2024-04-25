@@ -1100,7 +1100,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
 	s.Require().NoError(err)
 
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
-	s.teslaFleetAPISvc.EXPECT().VirtualTokenConnectionStatus(gomock.Any(), accessTk, region, ud.VinIdentifier.String).Return(true, nil)
+	s.teslaFleetAPISvc.EXPECT().VirtualKeyConnectionStatus(gomock.Any(), accessTk, region, ud.VinIdentifier.String).Return(true, nil)
 
 	request := test.BuildRequest(http.MethodGet, fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), "")
 	res, err := s.app.Test(request, 60*1000)
@@ -1114,7 +1114,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
 	actual := GetUserDeviceIntegrationResponse{}
 	s.Require().NoError(json.Unmarshal(body, &actual))
 
-	s.Assert().True(actual.Tesla.IsVirtualTokenConnected)
+	s.Assert().True(actual.Tesla.IsVirtualKeyConnected)
 	s.Assert().Equal(models.UserDeviceAPIIntegrationStatusActive, actual.Status)
 	s.Assert().Equal(extID, actual.ExternalID.String)
 }
@@ -1190,7 +1190,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration_Refre
 	s.Require().NoError(err)
 
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
-	s.teslaFleetAPISvc.EXPECT().VirtualTokenConnectionStatus(gomock.Any(), accessTk, region, ud.VinIdentifier.String).Return(true, nil)
+	s.teslaFleetAPISvc.EXPECT().VirtualKeyConnectionStatus(gomock.Any(), accessTk, region, ud.VinIdentifier.String).Return(true, nil)
 
 	s.teslaTaskService.EXPECT().UpdateCredentials(&deviceIntegrationCredentialsMatcher{
 		accessToken:  encAccessTk,
@@ -1211,7 +1211,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration_Refre
 	actual := GetUserDeviceIntegrationResponse{}
 	s.Assert().NoError(json.Unmarshal(body, &actual))
 
-	s.Assert().True(actual.Tesla.IsVirtualTokenConnected)
+	s.Assert().True(actual.Tesla.IsVirtualKeyConnected)
 	s.Assert().Equal(models.UserDeviceAPIIntegrationStatusActive, actual.Status)
 	s.Assert().Equal(extID, actual.ExternalID.String)
 

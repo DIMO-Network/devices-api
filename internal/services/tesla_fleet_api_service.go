@@ -26,7 +26,7 @@ type TeslaFleetAPIService interface {
 	GetVehicle(ctx context.Context, token, region string, vehicleID int) (*TeslaVehicle, error)
 	WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error
 	GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands
-	VirtualTokenConnectionStatus(ctx context.Context, token, region, vin string) (bool, error)
+	VirtualKeyConnectionStatus(ctx context.Context, token, region, vin string) (bool, error)
 	RefreshToken(ctx context.Context, refreshToken string) (*TeslaAuthCodeResponse, error)
 }
 
@@ -55,11 +55,11 @@ type TeslaAuthCodeResponse struct {
 	Region       string    `json:"region"`
 }
 
-type VirtualTokenConnectionStatusResponse struct {
-	Response VirtualTokenConnectionStatus `json:"response"`
+type VirtualKeyConnectionStatusResponse struct {
+	Response VirtualKeyConnectionStatus `json:"response"`
 }
 
-type VirtualTokenConnectionStatus struct {
+type VirtualKeyConnectionStatus struct {
 	UnpairedVins  []string `json:"unpaired_vins"`
 	KeyPairedVins []string `json:"key_paired_vins"`
 }
@@ -179,8 +179,8 @@ func (t *teslaFleetAPIService) GetAvailableCommands() *UserDeviceAPIIntegrations
 	}
 }
 
-// VirtualTokenConnectionStatus Checks whether vehicles can accept Tesla commands protocol for the partner's public key
-func (t *teslaFleetAPIService) VirtualTokenConnectionStatus(ctx context.Context, token, region, vin string) (bool, error) {
+// VirtualKeyConnectionStatus Checks whether vehicles can accept Tesla commands protocol for the partner's public key
+func (t *teslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, token, region, vin string) (bool, error) {
 	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
 	url := fmt.Sprintf("%s/api/1/vehicles/fleet_status", baseURL)
 
@@ -199,7 +199,7 @@ func (t *teslaFleetAPIService) VirtualTokenConnectionStatus(ctx context.Context,
 		return false, fmt.Errorf("could not verify connection status %w", err)
 	}
 
-	var v VirtualTokenConnectionStatusResponse
+	var v VirtualKeyConnectionStatusResponse
 	err = json.Unmarshal(bd, &v)
 	if err != nil {
 		return false, fmt.Errorf("error occurred decoding connection status %w", err)
