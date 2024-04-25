@@ -33,7 +33,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
-	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/devices-api/models"
 )
 
@@ -597,13 +596,13 @@ func (udc *UserDevicesController) TelemetrySubscribe(c *fiber.Ctx) error {
 	if md.TeslaRegion == "" || md.Commands == nil {
 		return fiber.NewError(fiber.StatusBadRequest, "No commands config for integration and device")
 	}
-	
+
 	if len(md.Commands.Capable) != 0 && !slices.Contains(md.Commands.Capable, constants.TelemetrySubscribe) {
 		return fiber.NewError(fiber.StatusBadRequest, "Telemetry command not available for device and integration combination")
 	}
 
 	// Is telemetry already enabled, return early
-	if ok := utils.ExistsInSlice(constants.TelemetrySubscribe, md.Commands.Enabled); ok {
+	if ok := slices.Contains(md.Commands.Enabled, constants.TelemetrySubscribe); ok {
 		return c.SendStatus(fiber.StatusOK)
 	}
 
