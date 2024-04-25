@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -183,8 +184,9 @@ func (t *teslaFleetAPIService) VirtualTokenConnectionStatus(ctx context.Context,
 	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
 	url := fmt.Sprintf("%s/api/1/vehicles/fleet_status", baseURL)
 
-	jsonBody := []byte(fmt.Sprintf(`{"vins": ["%s"]}`, vin))
-	body := bytes.NewReader(jsonBody)
+	jsonBody := fmt.Sprintf(`{"vins": [%q]}`, vin)
+	body := strings.NewReader(jsonBody)
+	// bytes.NewReader(jsonBody)
 
 	resp, err := t.performRequest(ctx, url, token, http.MethodPost, body)
 	if err != nil {
@@ -225,11 +227,14 @@ func (t *teslaFleetAPIService) RefreshToken(ctx context.Context, refreshToken st
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://auth.tesla.com/oauth2/v3/token", bytes.NewBuffer(reqb))
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctxTimeout, "POST", t.Settings.TeslaTokenURL, bytes.NewBuffer(reqb))
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := t.HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -248,7 +253,7 @@ func (t *teslaFleetAPIService) RefreshToken(ctx context.Context, refreshToken st
 }
 
 // performRequest a helper function for making http requests, it adds a timeout context and parses error response
-func (t *teslaFleetAPIService) performRequest(ctx context.Context, url, token, method string, body *bytes.Reader) (*http.Response, error) {
+func (t *teslaFleetAPIService) performRequest(ctx context.Context, url, token, method string, body *strings.Reader) (*http.Response, error) {
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
