@@ -1106,13 +1106,13 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
 	res, err := s.app.Test(request, 60*1000)
 	s.Assert().NoError(err)
 
-	s.Require().True(res.StatusCode == fiber.StatusOK)
+	s.Require().Equal(res.StatusCode, fiber.StatusOK)
 	body, _ := io.ReadAll(res.Body)
 
 	defer res.Body.Close()
 
 	actual := GetUserDeviceIntegrationResponse{}
-	s.Assert().NoError(json.Unmarshal(body, &actual))
+	s.Require().NoError(json.Unmarshal(body, &actual))
 
 	s.Assert().True(actual.Tesla.IsVirtualTokenConnected)
 	s.Assert().Equal(models.UserDeviceAPIIntegrationStatusActive, actual.Status)

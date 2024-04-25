@@ -186,7 +186,6 @@ func (t *teslaFleetAPIService) VirtualTokenConnectionStatus(ctx context.Context,
 
 	jsonBody := fmt.Sprintf(`{"vins": [%q]}`, vin)
 	body := strings.NewReader(jsonBody)
-	// bytes.NewReader(jsonBody)
 
 	resp, err := t.performRequest(ctx, url, token, http.MethodPost, body)
 	if err != nil {
