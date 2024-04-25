@@ -90,9 +90,10 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusFailedDependency, "missing tesla region")
 		}
 
-		if !apiIntegration.ExternalID.Valid && apiIntegration.AccessToken.Valid && !apiIntegration.R.UserDevice.VinConfirmed && !apiIntegration.R.UserDevice.VinIdentifier.Valid {
+		if !apiIntegration.ExternalID.Valid || !apiIntegration.AccessToken.Valid || !apiIntegration.R.UserDevice.VinConfirmed || !apiIntegration.R.UserDevice.VinIdentifier.Valid {
 			return fiber.NewError(fiber.StatusFailedDependency, "missing device or integration details")
 		}
+		
 		isConnected, err := udc.getDeviceVirtualTokenStatus(c.Context(), meta.TeslaRegion, apiIntegration)
 		if err != nil {
 			return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla connection status %s", err.Error()))
@@ -142,7 +143,7 @@ func (udc *UserDevicesController) getDeviceVirtualTokenStatus(ctx context.Contex
 		if err != nil {
 			return false, err
 		}
-		
+
 		err = udc.teslaTaskService.UpdateCredentials(integration, constants.TeslaAPIV2, region)
 		if err != nil {
 			return false, err

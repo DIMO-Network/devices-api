@@ -1,13 +1,13 @@
 package services
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -195,12 +195,12 @@ func (t *teslaFleetAPIService) VirtualTokenConnectionStatus(ctx context.Context,
 
 	defer resp.Body.Close()
 
-	var v VirtualTokenConnectionStatusResponse
 	bd, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return false, fmt.Errorf("could not verify connection status %w", err)
 	}
 
+	var v VirtualTokenConnectionStatusResponse
 	err = json.Unmarshal(bd, &v)
 	if err != nil {
 		return false, fmt.Errorf("error occurred decoding connection status %w", err)
@@ -212,25 +212,15 @@ func (t *teslaFleetAPIService) VirtualTokenConnectionStatus(ctx context.Context,
 }
 
 func (t *teslaFleetAPIService) RefreshToken(ctx context.Context, refreshToken string) (*TeslaAuthCodeResponse, error) {
-	reqs := struct {
-		GrantType    string `json:"grant_type"`
-		ClientID     string `json:"client_id"`
-		RefreshToken string `json:"refresh_token"`
-	}{
-		GrantType:    "refresh_token",
-		ClientID:     t.Settings.TeslaClientID,
-		RefreshToken: refreshToken,
-	}
-
-	reqb, err := json.Marshal(reqs)
-	if err != nil {
-		return nil, err
-	}
+	data := url.Values{}
+	data.Set("grant_type", "refresh_token")
+	data.Set("client_id", t.Settings.TeslaClientID)
+	data.Set("refresh_token", refreshToken)
 
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctxTimeout, "POST", t.Settings.TeslaTokenURL, bytes.NewBuffer(reqb))
+	req, err := http.NewRequestWithContext(ctxTimeout, "POST", t.Settings.TeslaTokenURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, err
 	}

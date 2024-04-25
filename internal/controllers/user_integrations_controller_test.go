@@ -1106,7 +1106,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
 	res, err := s.app.Test(request, 60*1000)
 	s.Assert().NoError(err)
 
-	s.Assert().True(res.StatusCode == fiber.StatusOK)
+	s.Require().True(res.StatusCode == fiber.StatusOK)
 	body, _ := io.ReadAll(res.Body)
 
 	defer res.Body.Close()
