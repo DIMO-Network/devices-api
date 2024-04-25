@@ -68,26 +68,39 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		return err
 	}
 
+	var meta services.UserDeviceAPIIntegrationsMetadata
+	err = apiIntegration.Metadata.Unmarshal(&meta)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "error occurred decoding integration metadata")
+	}
+
 	resp := GetUserDeviceIntegrationResponse{
 		Status:     apiIntegration.Status,
 		ExternalID: apiIntegration.ExternalID,
 		CreatedAt:  apiIntegration.CreatedAt,
 	}
+
 	// Handle fetching virtual token status
 	intd, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid integration id")
+		return shared.GrpcErrorToFiber(err, "invalid integration id")
 	}
-	if intd.Vendor == constants.TeslaVendor {
-		if !apiIntegration.ExternalID.Valid && apiIntegration.AccessToken.Valid && !(apiIntegration.R.UserDevice.VinConfirmed && apiIntegration.R.UserDevice.VinIdentifier.Valid) {
-			return fiber.NewError(fiber.StatusBadRequest, "missing device or integration details")
-		}
-		isConnected, err := udc.getDeviceVirtualTokenStatus(c.Context(), apiIntegration)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("error checking verifying tesla connection status %s", err.Error()))
+
+	if intd.Vendor == constants.TeslaVendor && meta.TeslaAPIVersion == constants.TeslaAPIV2 {
+		if meta.TeslaRegion == "" {
+			return fiber.NewError(fiber.StatusFailedDependency, "missing tesla region")
 		}
 
-		resp.Tesla = TeslaConnectionStatus{
+		if !apiIntegration.ExternalID.Valid || !apiIntegration.AccessToken.Valid || !apiIntegration.R.UserDevice.VinConfirmed || !apiIntegration.R.UserDevice.VinIdentifier.Valid {
+			return fiber.NewError(fiber.StatusFailedDependency, "missing device or integration details")
+		}
+		
+		isConnected, err := udc.getDeviceVirtualTokenStatus(c.Context(), meta.TeslaRegion, apiIntegration)
+		if err != nil {
+			return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla connection status %s", err.Error()))
+		}
+
+		resp.Tesla = &TeslaConnectionStatus{
 			IsVirtualTokenConnected: isConnected,
 		}
 	}
@@ -95,27 +108,35 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-func (udc *UserDevicesController) getDeviceVirtualTokenStatus(ctx context.Context, integration *models.UserDeviceAPIIntegration) (bool, error) {
-	accessTk := integration.AccessToken.String
-
-	meta := services.UserDeviceAPIIntegrationsMetadata{}
-	err := integration.Metadata.Unmarshal(&meta)
+func (udc *UserDevicesController) getDeviceVirtualTokenStatus(ctx context.Context, region string, integration *models.UserDeviceAPIIntegration) (bool, error) {
+	accessTk, err := udc.cipher.Decrypt(integration.AccessToken.String)
 	if err != nil {
-		return false, errors.New("error occurred fetching virtual token status")
+		return false, fmt.Errorf("couldn't decrypt access token: %w", err)
 	}
 
-	if meta.TeslaRegion == "" {
-		return false, errors.New("missing tesla region")
+	refreshTk, err := udc.cipher.Decrypt(integration.RefreshToken.String)
+	if err != nil {
+		return false, fmt.Errorf("couldn't decrypt refresh token: %w", err)
 	}
 
-	isNewToken, auth, err := udc.ensureTeslaTokenValidty(ctx, integration.RefreshToken.String, integration.AccessExpiresAt.Time)
+	isNewToken, auth, err := udc.ensureTeslaTokenValidty(ctx, refreshTk, integration.AccessExpiresAt.Time)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to get tesla credentials")
 	}
 
 	if isNewToken {
-		integration.RefreshToken = null.StringFrom(auth.RefreshToken)
-		integration.AccessToken = null.StringFrom(auth.AccessToken)
+		encAccessTk, err := udc.cipher.Encrypt(auth.AccessToken)
+		if err != nil {
+			return false, fmt.Errorf("couldn't encrypt refresh token: %w", err)
+		}
+
+		encRefreshTk, err := udc.cipher.Encrypt(auth.RefreshToken)
+		if err != nil {
+			return false, fmt.Errorf("couldn't encrypt access token: %w", err)
+		}
+
+		integration.RefreshToken = null.StringFrom(encRefreshTk)
+		integration.AccessToken = null.StringFrom(encAccessTk)
 		integration.AccessExpiresAt = null.TimeFrom(auth.Expiry)
 
 		cols := models.UserDeviceAPIIntegrationColumns
@@ -123,10 +144,15 @@ func (udc *UserDevicesController) getDeviceVirtualTokenStatus(ctx context.Contex
 		if err != nil {
 			return false, err
 		}
+
+		err = udc.teslaTaskService.UpdateCredentials(integration, constants.TeslaAPIV2, region)
+		if err != nil {
+			return false, err
+		}
 		accessTk = auth.AccessToken
 	}
 
-	isConnected, err := udc.teslaFleetAPISvc.VirtualTokenConnectionStatus(ctx, accessTk, meta.TeslaRegion, integration.R.UserDevice.VinIdentifier.String)
+	isConnected, err := udc.teslaFleetAPISvc.VirtualTokenConnectionStatus(ctx, accessTk, region, integration.R.UserDevice.VinIdentifier.String)
 	if err != nil {
 		return false, fiber.NewError(fiber.StatusFailedDependency, err.Error())
 	}
@@ -2259,7 +2285,7 @@ type GetUserDeviceIntegrationResponse struct {
 	ExternalID null.String `json:"externalId" swaggertype:"string"`
 
 	// Contains further details about tesla integration status
-	Tesla TeslaConnectionStatus `json:"tesla,omitempty"`
+	Tesla *TeslaConnectionStatus `json:"tesla,omitempty"`
 
 	// CreatedAt is the creation time of this integration for this device.
 	CreatedAt time.Time `json:"createdAt"`

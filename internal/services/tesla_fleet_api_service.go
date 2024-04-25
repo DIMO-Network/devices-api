@@ -1,7 +1,6 @@
 package services
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -9,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -83,6 +83,17 @@ type TelemetryConfigRequest struct {
 	AlertTypes          []string        `json:"alert_types,omitempty"`
 	Expiration          int64           `json:"exp"`
 	Port                int             `json:"port"`
+}
+
+type SkippedVehicles struct {
+	MissingKey          []string
+	UnsupportedHardware []string
+	UnsupportedFirmware []string
+}
+
+type SubscribeForTelemetryDataResponse struct {
+	UpdatedVehicles int
+	SkippedVehicles SkippedVehicles
 }
 
 type teslaFleetAPIService struct {
@@ -205,8 +216,9 @@ func (t *teslaFleetAPIService) VirtualTokenConnectionStatus(ctx context.Context,
 	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
 	url := fmt.Sprintf("%s/api/1/vehicles/fleet_status", baseURL)
 
-	jsonBody := []byte(fmt.Sprintf(`{"vins": ["%s"]}`, vin))
-	body := bytes.NewReader(jsonBody)
+	jsonBody := fmt.Sprintf(`{"vins": [%q]}`, vin)
+	body := strings.NewReader(jsonBody)
+	// bytes.NewReader(jsonBody)
 
 	resp, err := t.performRequest(ctx, url, token, http.MethodPost, body)
 	if err != nil {
@@ -215,12 +227,12 @@ func (t *teslaFleetAPIService) VirtualTokenConnectionStatus(ctx context.Context,
 
 	defer resp.Body.Close()
 
-	var v VirtualTokenConnectionStatusResponse
 	bd, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return false, fmt.Errorf("could not verify connection status %w", err)
 	}
 
+	var v VirtualTokenConnectionStatusResponse
 	err = json.Unmarshal(bd, &v)
 	if err != nil {
 		return false, fmt.Errorf("error occurred decoding connection status %w", err)
@@ -232,26 +244,19 @@ func (t *teslaFleetAPIService) VirtualTokenConnectionStatus(ctx context.Context,
 }
 
 func (t *teslaFleetAPIService) RefreshToken(ctx context.Context, refreshToken string) (*TeslaAuthCodeResponse, error) {
-	reqs := struct {
-		GrantType    string `json:"grant_type"`
-		ClientID     string `json:"client_id"`
-		RefreshToken string `json:"refresh_token"`
-	}{
-		GrantType:    "refresh_token",
-		ClientID:     t.Settings.TeslaClientID,
-		RefreshToken: refreshToken,
-	}
+	data := url.Values{}
+	data.Set("grant_type", "refresh_token")
+	data.Set("client_id", t.Settings.TeslaClientID)
+	data.Set("refresh_token", refreshToken)
 
-	reqb, err := json.Marshal(reqs)
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctxTimeout, "POST", t.Settings.TeslaTokenURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, err
 	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://auth.tesla.com/oauth2/v3/token", bytes.NewBuffer(reqb))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := t.HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -290,14 +295,11 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 		return err
 	}
 
-	exp := time.Now().AddDate(0, 0, 364).Unix()
-
 	r := SubscribeForTelemetryDataRequest{
 		Vins: []string{vin},
 		Config: TelemetryConfigRequest{
 			HostName:            t.Settings.TeslaTelemetryHostName,
 			PublicCACertificate: t.Settings.TeslaTelemetryCACertificate,
-			Expiration:          exp,
 			Port:                t.Settings.TeslaTelemetryPort,
 			Fields:              fields,
 			AlertTypes:          []string{"service"},
@@ -309,18 +311,43 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 		return err
 	}
 
-	resp, err := t.performRequest(ctx, u, token, http.MethodPost, bytes.NewReader(b))
+	req := strings.NewReader(string(b))
+
+	resp, err := t.performRequest(ctx, u, token, http.MethodPost, req)
 	if err != nil {
 		return err
 	}
 
 	defer resp.Body.Close()
 
+	subResp := struct {
+		Response SubscribeForTelemetryDataResponse
+	}{}
+	if err := json.NewDecoder(resp.Body).Decode(&subResp); err != nil {
+		return err
+	}
+
+	if subResp.Response.UpdatedVehicles == 1 {
+		return nil
+	}
+
+	if slices.Contains(subResp.Response.SkippedVehicles.MissingKey, vin) {
+		return fmt.Errorf("vehicle has not approved virtual token connection")
+	}
+
+	if slices.Contains(subResp.Response.SkippedVehicles.UnsupportedHardware, vin) {
+		return fmt.Errorf("vehicle hardware not supported")
+	}
+
+	if slices.Contains(subResp.Response.SkippedVehicles.UnsupportedFirmware, vin) {
+		return fmt.Errorf("vehicle firmware not supported")
+	}
+
 	return nil
 }
 
 // performRequest a helper function for making http requests, it adds a timeout context and parses error response
-func (t *teslaFleetAPIService) performRequest(ctx context.Context, url, token, method string, body *bytes.Reader) (*http.Response, error) {
+func (t *teslaFleetAPIService) performRequest(ctx context.Context, url, token, method string, body *strings.Reader) (*http.Response, error) {
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
