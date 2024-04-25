@@ -94,7 +94,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		if !apiIntegration.ExternalID.Valid || !apiIntegration.AccessToken.Valid || !apiIntegration.R.UserDevice.VinConfirmed || !apiIntegration.R.UserDevice.VinIdentifier.Valid {
 			return fiber.NewError(fiber.StatusFailedDependency, "missing device or integration details")
 		}
-		
+
 		isConnected, err := udc.getDeviceVirtualTokenStatus(c.Context(), meta.TeslaRegion, apiIntegration)
 		if err != nil {
 			return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla connection status %s", err.Error()))
@@ -556,7 +556,6 @@ func (udc *UserDevicesController) TelemetrySubscribe(c *fiber.Ctx) error {
 
 	logger := helpers.GetLogger(c, udc.log).With().
 		Str("IntegrationID", integrationID).
-		Str("UserDeviceID", userDeviceID).
 		Str("Name", "Telemetry/Subscribe").
 		Logger()
 
@@ -598,8 +597,8 @@ func (udc *UserDevicesController) TelemetrySubscribe(c *fiber.Ctx) error {
 	if md.TeslaRegion == "" || md.Commands == nil {
 		return fiber.NewError(fiber.StatusBadRequest, "No commands config for integration and device")
 	}
-
-	if len(md.Commands.Capable) == 0 {
+	
+	if len(md.Commands.Capable) != 0 && !slices.Contains(md.Commands.Capable, constants.TelemetrySubscribe) {
 		return fiber.NewError(fiber.StatusBadRequest, "Telemetry command not available for device and integration combination")
 	}
 
@@ -639,7 +638,7 @@ func (udc *UserDevicesController) TelemetrySubscribe(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Integration not supported for this command")
 	}
 
-	logger.Info().Msg("Successfully enqueued command.")
+	logger.Info().Msg("Successfully subscribed to telemetry")
 
 	return c.SendStatus(fiber.StatusOK)
 }

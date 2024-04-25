@@ -86,14 +86,18 @@ type TelemetryConfigRequest struct {
 }
 
 type SkippedVehicles struct {
-	MissingKey          []string
-	UnsupportedHardware []string
-	UnsupportedFirmware []string
+	MissingKey          []string `json:"missing_key"`
+	UnsupportedHardware []string `json:"unsupported_hardware"`
+	UnsupportedFirmware []string `json:"unsupported_firmware"`
 }
 
 type SubscribeForTelemetryDataResponse struct {
-	UpdatedVehicles int
-	SkippedVehicles SkippedVehicles
+	UpdatedVehicles int             `json:"updated_vehicles"`
+	SkippedVehicles SkippedVehicles `json:"skipped_vehicles"`
+}
+
+type SubscribeForTelemetryDataResponseWrapper struct {
+	Response SubscribeForTelemetryDataResponse `json:"response"`
 }
 
 type teslaFleetAPIService struct {
@@ -320,9 +324,7 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 
 	defer resp.Body.Close()
 
-	subResp := struct {
-		Response SubscribeForTelemetryDataResponse
-	}{}
+	subResp := SubscribeForTelemetryDataResponseWrapper{}
 	if err := json.NewDecoder(resp.Body).Decode(&subResp); err != nil {
 		return err
 	}

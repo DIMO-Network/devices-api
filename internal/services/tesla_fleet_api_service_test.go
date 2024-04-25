@@ -2,11 +2,9 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/suite"
@@ -47,35 +45,85 @@ func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForTelemetryData() {
 	baseURL := fmt.Sprintf(mockTeslaFleetBaeURL, region)
 	u := fmt.Sprintf("%s/api/1/vehicles/fleet_telemetry_config", baseURL)
 
-	exp := time.Now().AddDate(0, 0, 364).Unix()
-	expected := SubscribeForTelemetryDataRequest{
-		Vins: []string{vin},
-		Config: TelemetryConfigRequest{
-			HostName:            t.settings.TeslaTelemetryHostName,
-			PublicCACertificate: t.settings.TeslaTelemetryCACertificate,
-			Expiration:          exp,
-			Port:                t.settings.TeslaTelemetryPort,
-			Fields:              fields,
-			AlertTypes:          []string{"service"},
+	respBody := SubscribeForTelemetryDataResponseWrapper{
+		SubscribeForTelemetryDataResponse{
+			UpdatedVehicles: 1,
+			SkippedVehicles: SkippedVehicles{},
 		},
 	}
 
-	httpmock.RegisterResponder(http.MethodPost, u, func(req *http.Request) (*http.Response, error) {
-		r := SubscribeForTelemetryDataRequest{}
-		if err := json.NewDecoder(req.Body).Decode(&r); err != nil {
-			return httpmock.NewStringResponse(400, ""), nil
-		}
+	jsonResp, err := httpmock.NewJsonResponder(http.StatusOK, respBody)
+	t.Require().NoError(err)
+	httpmock.RegisterResponder(http.MethodPost, u, jsonResp)
 
-		t.Require().Equal(expected, r)
-
-		resp, err := httpmock.NewJsonResponse(200, "")
-		if err != nil {
-			return httpmock.NewStringResponse(500, ""), nil
-		}
-		return resp, nil
-	})
-
-	err := t.SUT.SubscribeForTelemetryData(t.ctx, token, region, vin)
+	err = t.SUT.SubscribeForTelemetryData(t.ctx, token, region, vin)
 
 	t.Require().NoError(err)
+}
+
+func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForTelemetryData_Errror_Cases() {
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	vin := "RandomVin"
+	tests := []struct {
+		response      SubscribeForTelemetryDataResponseWrapper
+		expectedError string
+	}{
+		{
+			response: SubscribeForTelemetryDataResponseWrapper{
+				SubscribeForTelemetryDataResponse{
+					UpdatedVehicles: 0,
+					SkippedVehicles: SkippedVehicles{
+						MissingKey:          []string{vin},
+						UnsupportedHardware: nil,
+						UnsupportedFirmware: nil,
+					},
+				},
+			},
+			expectedError: "vehicle has not approved virtual token connection",
+		},
+		{
+			response: SubscribeForTelemetryDataResponseWrapper{
+				SubscribeForTelemetryDataResponse{
+					UpdatedVehicles: 0,
+					SkippedVehicles: SkippedVehicles{
+						MissingKey:          nil,
+						UnsupportedHardware: []string{vin},
+						UnsupportedFirmware: nil,
+					},
+				},
+			},
+			expectedError: "vehicle hardware not supported",
+		},
+		{
+			response: SubscribeForTelemetryDataResponseWrapper{
+				SubscribeForTelemetryDataResponse{
+					UpdatedVehicles: 0,
+					SkippedVehicles: SkippedVehicles{
+						MissingKey:          nil,
+						UnsupportedHardware: nil,
+						UnsupportedFirmware: []string{vin},
+					},
+				},
+			},
+			expectedError: "vehicle firmware not supported",
+		},
+	}
+
+	for _, tst := range tests {
+		token := "someToken"
+		region := "mockRegion"
+
+		baseURL := fmt.Sprintf(mockTeslaFleetBaeURL, region)
+		u := fmt.Sprintf("%s/api/1/vehicles/fleet_telemetry_config", baseURL)
+
+		responder, err := httpmock.NewJsonResponder(http.StatusOK, tst.response)
+		t.Require().NoError(err)
+		httpmock.RegisterResponder(http.MethodPost, u, responder)
+
+		err = t.SUT.SubscribeForTelemetryData(t.ctx, token, region, vin)
+
+		t.Require().EqualError(err, tst.expectedError)
+	}
 }

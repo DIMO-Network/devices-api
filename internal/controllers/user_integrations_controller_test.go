@@ -1280,6 +1280,7 @@ func (s *UserIntegrationsControllerTestSuite) TestTelemetrySubscribe() {
 	err = udai.Metadata.Unmarshal(md)
 	s.Require().NoError(err)
 
+	s.T().Log(md.Commands.Enabled, "-0------")
 	s.Assert().Equal(md.Commands.Enabled, []string{constants.TelemetrySubscribe})
 }
 
