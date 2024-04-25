@@ -79,7 +79,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		CreatedAt:  apiIntegration.CreatedAt,
 	}
 
-	// Handle fetching virtual token status
+	// Handle fetching virtual key status
 	intd, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "invalid integration id")
@@ -94,20 +94,20 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusFailedDependency, "missing device or integration details")
 		}
 
-		isConnected, err := udc.getDeviceVirtualTokenStatus(c.Context(), meta.TeslaRegion, apiIntegration)
+		isConnected, err := udc.getDeviceVirtualKeyStatus(c.Context(), meta.TeslaRegion, apiIntegration)
 		if err != nil {
 			return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla connection status %s", err.Error()))
 		}
 
 		resp.Tesla = &TeslaConnectionStatus{
-			IsVirtualTokenConnected: isConnected,
+			IsVirtualKeyConnected: isConnected,
 		}
 	}
 
 	return c.JSON(resp)
 }
 
-func (udc *UserDevicesController) getDeviceVirtualTokenStatus(ctx context.Context, region string, integration *models.UserDeviceAPIIntegration) (bool, error) {
+func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context, region string, integration *models.UserDeviceAPIIntegration) (bool, error) {
 	accessTk, err := udc.cipher.Decrypt(integration.AccessToken.String)
 	if err != nil {
 		return false, fmt.Errorf("couldn't decrypt access token: %w", err)
@@ -151,7 +151,7 @@ func (udc *UserDevicesController) getDeviceVirtualTokenStatus(ctx context.Contex
 		accessTk = auth.AccessToken
 	}
 
-	isConnected, err := udc.teslaFleetAPISvc.VirtualTokenConnectionStatus(ctx, accessTk, region, integration.R.UserDevice.VinIdentifier.String)
+	isConnected, err := udc.teslaFleetAPISvc.VirtualKeyConnectionStatus(ctx, accessTk, region, integration.R.UserDevice.VinIdentifier.String)
 	if err != nil {
 		return false, fiber.NewError(fiber.StatusFailedDependency, err.Error())
 	}
@@ -2271,8 +2271,8 @@ type RegisterDeviceIntegrationRequest struct {
 }
 
 type TeslaConnectionStatus struct {
-	// Status of the virtual token connection
-	IsVirtualTokenConnected bool `json:"isVirtualTokenConnected"`
+	// Status of the virtual key connection
+	IsVirtualKeyConnected bool `json:"isVirtualKeyConnected"`
 }
 
 type GetUserDeviceIntegrationResponse struct {
