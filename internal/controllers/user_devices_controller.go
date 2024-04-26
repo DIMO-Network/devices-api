@@ -33,7 +33,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/gofiber/fiber/v2"
@@ -1302,25 +1301,6 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(client.GetPayload(&mvs))
-}
-
-// TODO(elffjs): Do not keep these functions in this file!
-func computeTypedDataHash(td *signer.TypedData) (hash common.Hash, err error) {
-	domainSep, err := td.HashStruct("EIP712Domain", td.Domain.Map())
-	if err != nil {
-		return
-	}
-	msgHash, err := td.HashStruct(td.PrimaryType, td.Message)
-	if err != nil {
-		return
-	}
-
-	payload := []byte{0x19, 0x01}
-	payload = append(payload, domainSep...)
-	payload = append(payload, msgHash...)
-
-	hash = crypto.Keccak256Hash(payload)
-	return
 }
 
 // UpdateNFTImage godoc
