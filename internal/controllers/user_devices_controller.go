@@ -1425,7 +1425,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, fmt.Sprintf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID))
+		return shared.GrpcErrorToFiber(err, fmt.Sprintf("error querying for device definition id: %s", userDevice.DeviceDefinitionID))
 	}
 
 	if dd.Make.TokenId == 0 {
