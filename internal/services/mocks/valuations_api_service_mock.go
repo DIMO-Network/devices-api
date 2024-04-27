@@ -5,6 +5,7 @@
 //
 //	mockgen -source valuations_api_service.go -destination mocks/valuations_api_service_mock.go -package mock_services
 //
+
 // Package mock_services is a generated GoMock package.
 package mock_services
 
