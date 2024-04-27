@@ -1,0 +1,48 @@
+name: generate files
+on:
+  pull_request:
+    branches: [ '**' ]
+env:
+  GOPRIVATE: github.com/DIMO-Network
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+jobs:
+  golangci:
+    runs-on: ubuntu-latest
+
+    name: lint
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.21.x
+
+      - name: Install mockgen
+        run: go install go.uber.org/mock/mockgen@v0.4.0 
+      
+      - name: Install swag
+        run: go install github.com/swaggo/swag/cmd/swag@latest
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: go generate
+        run: go generate ./...
+
+      - name: generate swagger
+        run: swag init -g cmd/devices-api/main.go --parseDependency --parseInternal
+
+      - name: go mod tidy
+        run: go mod tidy
+
+      - name: go mod verify
+        run: go mod verify
+
+      - name: porcelain
+        shell: bash
+        run: |
+          dirty_files="$(git status --porcelain)"
+          if [[ `git status --porcelain` ]]; then
+            echo "The following files are dirty:"
+            echo "${dirty_files}"
+            exit 1
+          fi
