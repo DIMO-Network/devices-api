@@ -1397,21 +1397,29 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
-		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations)),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 	).One(c.Context(), udc.DBS().Reader.DB)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
+			return fiber.NewError(fiber.StatusNotFound, "No device with that id found.")
 		}
 		return err
 	}
 
 	if vnft := userDevice.R.VehicleNFT; vnft != nil {
+		// At the moment, vehicle NFTs are always attached to a mint request.
 		switch vnft.R.MintRequest.Status {
-		case "Confirmed":
+		case models.MetaTransactionRequestStatusConfirmed:
 			return fiber.NewError(fiber.StatusConflict, "Vehicle already minted.")
-		default:
+		case models.MetaTransactionRequestStatusUnsubmitted,
+			models.MetaTransactionRequestStatusSubmitted,
+			models.MetaTransactionRequestStatusMined:
 			return fiber.NewError(fiber.StatusConflict, "Minting in process.")
+		case models.MetaTransactionRequestStatusFailed:
+			_, err := vnft.Delete(c.Context(), udc.DBS().Writer)
+			if err != nil {
+				return fmt.Errorf("failed to delete existing, failed mint attempt: %w", err)
+			}
 		}
 	}
 
@@ -1419,16 +1427,16 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "VIN not confirmed.")
 	}
 
-	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
-	if err2 != nil {
-		return shared.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID))
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
+	if err != nil {
+		return shared.GrpcErrorToFiber(err, fmt.Sprintf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID))
 	}
 
 	if dd.Make.TokenId == 0 {
 		return fiber.NewError(fiber.StatusConflict, "Device make not yet minted.")
 	}
 
-	makeTokenID := big.NewInt(int64(dd.Make.TokenId))
+	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
 
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
@@ -1461,8 +1469,8 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		Infos:            []string{deviceMake, deviceModel, deviceYear},
 	}
 
-	mr := new(MintRequest)
-	if err := c.BodyParser(mr); err != nil {
+	var mr MintRequest
+	if err := c.BodyParser(&mr); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
 	}
 
@@ -1537,7 +1545,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	mtr := models.MetaTransactionRequest{
 		ID:     requestID,
-		Status: "Unsubmitted",
+		Status: models.MetaTransactionRequestStatusUnsubmitted,
 	}
 	err = mtr.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
 	if err != nil {
@@ -1637,7 +1645,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		}
 	}
 
-	logger.Info().Msgf("Submitted metatransaction request %s", requestID)
+	logger.Info().Msgf("Submitted metatransaction request %s.", requestID)
 
 	return client.MintVehicleSign(requestID, makeTokenID, realAddr, []contracts.AttributeInfoPair{
 		{Attribute: "Make", Info: deviceMake},
