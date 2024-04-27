@@ -194,7 +194,7 @@ Note that swagger must be served from fiber-swagger library v2.31.1 +, since the
 To check what cli version you have installed: `swag --version`. As of this writing v1.8.1 is working for us. 
 ```bash
 go install github.com/swaggo/swag/cmd/swag@latest
-swag init -g cmd/devices-api/main.go --parseDependency --parseInternal --generatedTime true 
+swag init -g cmd/devices-api/main.go --parseDependency --parseInternal
 # optionally add `--parseDepth 2` if have issues
 ```
 
