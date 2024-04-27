@@ -45,7 +45,6 @@ env:
   NATS_OFFER_SUBJECT: dd_offer_tasks
   NATS_DURABLE_CONSUMER: dd-valuation-task-consumer
   NATS_ACK_TIMEOUT: 2m
-  SYNTHETIC_DEVICES_ENABLED: true
   SYNTHETIC_WALLET_GRPC_ADDR: synthetic-wallet-instance-prod:8086
   DEVICE_DATA_GRPC_ADDR: device-data-api-prod:8086
   TESLA_TOKEN_URL: https://auth.tesla.com/oauth2/v3/token

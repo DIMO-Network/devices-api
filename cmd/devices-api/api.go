@@ -122,12 +122,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		KeyPrefix: "devices-api",
 	})
 
-	var wallet services.SyntheticWalletInstanceService
-	if settings.SyntheticDevicesEnabled {
-		wallet, err = services.NewSyntheticWalletInstanceService(settings)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Couldn't construct wallet client.")
-		}
+	wallet, err := services.NewSyntheticWalletInstanceService(settings)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Couldn't construct wallet client.")
 	}
 
 	// controllers
@@ -297,15 +294,13 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	vOwner.Get("/commands/burn", userDeviceController.GetBurnDevice)
 	vOwner.Post("/commands/burn", userDeviceController.PostBurnDevice)
 
-	if settings.SyntheticDevicesEnabled {
-		syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, wallet, registryClient)
+	syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, wallet, registryClient)
 
-		udOwner.Get("/integrations/:integrationID/commands/mint", syntheticController.GetSyntheticDeviceMintingPayload)
-		udOwner.Post("/integrations/:integrationID/commands/mint", syntheticController.MintSyntheticDevice)
+	udOwner.Get("/integrations/:integrationID/commands/mint", syntheticController.GetSyntheticDeviceMintingPayload)
+	udOwner.Post("/integrations/:integrationID/commands/mint", syntheticController.MintSyntheticDevice)
 
-		udOwner.Get("/integrations/:integrationID/commands/burn", syntheticController.GetSyntheticDeviceBurnPayload)
-		udOwner.Post("/integrations/:integrationID/commands/burn", syntheticController.BurnSyntheticDevice)
-	}
+	udOwner.Get("/integrations/:integrationID/commands/burn", syntheticController.GetSyntheticDeviceBurnPayload)
+	udOwner.Post("/integrations/:integrationID/commands/burn", syntheticController.BurnSyntheticDevice)
 
 	// Vehicle commands.
 	udOwner.Post("/integrations/:integrationID/commands/doors/unlock", userDeviceController.UnlockDoors)
