@@ -33,6 +33,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
+	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/gofiber/fiber/v2"
@@ -46,6 +47,8 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
+
+var _ = signer.TypedData{} // Use this package so that the swag command doesn't throw a fit.
 
 type UserDevicesController struct {
 	Settings                  *config.Settings
