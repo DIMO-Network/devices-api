@@ -5,6 +5,7 @@
 //
 //	mockgen -source device_definitions_service.go -destination mocks/device_definitions_service_mock.go
 //
+
 // Package mock_services is a generated GoMock package.
 package mock_services
 
@@ -234,18 +235,4 @@ func (m *MockDeviceDefinitionService) GetOrCreateMake(ctx context.Context, tx bo
 func (mr *MockDeviceDefinitionServiceMockRecorder) GetOrCreateMake(ctx, tx, makeName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrCreateMake", reflect.TypeOf((*MockDeviceDefinitionService)(nil).GetOrCreateMake), ctx, tx, makeName)
-}
-
-// UpdateDeviceDefinitionFromNHTSA mocks base method.
-func (m *MockDeviceDefinitionService) UpdateDeviceDefinitionFromNHTSA(ctx context.Context, deviceDefinitionID, vin string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateDeviceDefinitionFromNHTSA", ctx, deviceDefinitionID, vin)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateDeviceDefinitionFromNHTSA indicates an expected call of UpdateDeviceDefinitionFromNHTSA.
-func (mr *MockDeviceDefinitionServiceMockRecorder) UpdateDeviceDefinitionFromNHTSA(ctx, deviceDefinitionID, vin any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDeviceDefinitionFromNHTSA", reflect.TypeOf((*MockDeviceDefinitionService)(nil).UpdateDeviceDefinitionFromNHTSA), ctx, deviceDefinitionID, vin)
 }
