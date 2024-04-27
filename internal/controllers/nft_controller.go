@@ -838,13 +838,9 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 
 func (udc *UserDevicesController) checkDeviceBurn(ctx context.Context, vehicleNFT *models.VehicleNFT, userID string) (registry.BurnVehicleSign, *pb.User, error) {
 	var bvs registry.BurnVehicleSign
+
 	if vehicleNFT.R.VehicleTokenAftermarketDevice != nil || vehicleNFT.R.VehicleTokenSyntheticDevice != nil {
 		return bvs, nil, errors.New("vehicle must be unpaired to burn")
-	}
-
-	tknID, ok := vehicleNFT.TokenID.Int64()
-	if !ok {
-		return bvs, nil, errors.New("failed to parse vehicle token id")
 	}
 
 	user, err := udc.usersClient.GetUser(ctx, &pb.GetUserRequest{Id: userID})
@@ -853,13 +849,12 @@ func (udc *UserDevicesController) checkDeviceBurn(ctx context.Context, vehicleNF
 	}
 
 	if user.EthereumAddress == nil {
-		return bvs, nil, fmt.Errorf("user does not have an Ethereum address on file: %w", err)
+		return bvs, nil, errors.New("user does not have an Ethereum address on file")
 	}
 
-	bvs = registry.BurnVehicleSign{
-		TokenID: big.NewInt(tknID),
-	}
-	return bvs, user, nil
+	return registry.BurnVehicleSign{
+		TokenID: vehicleNFT.TokenID.Int(nil),
+	}, user, nil
 }
 
 // BurnRequest contains the user's signature for the mint request as well as the
