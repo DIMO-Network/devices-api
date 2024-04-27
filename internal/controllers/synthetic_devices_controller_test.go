@@ -60,7 +60,6 @@ func (s *SyntheticDevicesControllerTestSuite) SetupSuite() {
 
 func (s *SyntheticDevicesControllerTestSuite) SetupTest() {
 	s.mockCtrl = gomock.NewController(s.T())
-	var err error
 
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(s.mockCtrl)
 	s.userClient = mock_services.NewMockUserServiceClient(s.mockCtrl)
@@ -82,10 +81,6 @@ func (s *SyntheticDevicesControllerTestSuite) SetupTest() {
 			Name:    "DIMO",
 			Version: "1",
 		},
-	}
-
-	if err != nil {
-		s.T().Fatal(err)
 	}
 
 	logger := test.Logger()
