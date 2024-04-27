@@ -9,7 +9,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/devices-api/internal/services/autopi"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
@@ -30,7 +29,6 @@ type proc struct {
 	ABI      *abi.ABI
 	DB       func() *db.ReaderWriter
 	Logger   *zerolog.Logger
-	ap       *autopi.Integration
 	settings *config.Settings
 	Eventer  services.EventService
 }
@@ -204,7 +202,6 @@ func (p *proc) parseLog(out any, event abi.Event, log ceLog) error {
 func NewProcessor(
 	db func() *db.ReaderWriter,
 	logger *zerolog.Logger,
-	ap *autopi.Integration,
 	settings *config.Settings,
 	eventer services.EventService,
 ) (StatusProcessor, error) {
@@ -217,7 +214,6 @@ func NewProcessor(
 		ABI:      regABI,
 		DB:       db,
 		Logger:   logger,
-		ap:       ap,
 		settings: settings,
 		Eventer:  eventer,
 	}, nil
