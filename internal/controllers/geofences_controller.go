@@ -22,6 +22,7 @@ import (
 	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"golang.org/x/exp/slices"
 )
 
 // TODO(elffjs): Setting?
@@ -228,7 +229,7 @@ func (g *GeofencesController) GetAll(c *fiber.Ctx) error {
 	var ddIDs []string
 	for _, item := range items {
 		for _, udtg := range item.R.UserDeviceToGeofences {
-			if !services.Contains(ddIDs, udtg.R.UserDevice.DeviceDefinitionID) {
+			if !slices.Contains(ddIDs, udtg.R.UserDevice.DeviceDefinitionID) {
 				ddIDs = append(ddIDs, udtg.R.UserDevice.DeviceDefinitionID)
 			}
 		}
