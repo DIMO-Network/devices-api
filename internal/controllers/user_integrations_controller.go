@@ -671,7 +671,7 @@ func (udc *UserDevicesController) GetAutoPiClaimMessage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "Device already claimed.")
 	}
 
-	if unit.R.ClaimMetaTransactionRequest != nil && unit.R.ClaimMetaTransactionRequest.Status != "Failed" {
+	if unit.R.ClaimMetaTransactionRequest != nil && unit.R.ClaimMetaTransactionRequest.Status != models.MetaTransactionRequestStatusFailed {
 		return fiber.NewError(fiber.StatusConflict, "Claiming transaction in progress.")
 	}
 
@@ -704,9 +704,7 @@ func (udc *UserDevicesController) GetAutoPiClaimMessage(c *fiber.Ctx) error {
 		Owner:                 common.HexToAddress(*user.EthereumAddress),
 	}
 
-	var out *signer.TypedData = client.GetPayload(cads)
-
-	return c.JSON(out)
+	return c.JSON(client.GetPayload(cads))
 }
 
 // GetAutoPiPairMessage godoc
