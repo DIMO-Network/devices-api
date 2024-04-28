@@ -58,7 +58,10 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	}
 
 	mtr.Status = data.Type
-	mtr.Hash = null.BytesFrom(common.FromHex(data.Transaction.Hash))
+
+	if data.Type != models.MetaTransactionRequestStatusFailed {
+		mtr.Hash = null.BytesFrom(common.FromHex(data.Transaction.Hash))
+	}
 
 	_, err = mtr.Update(ctx, p.DB().Writer, boil.Infer())
 	if err != nil {
