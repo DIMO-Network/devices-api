@@ -35,7 +35,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -1646,17 +1645,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}, sigBytes)
 }
 
-type MintEventData struct {
-	RequestID    string   `json:"requestId"`
-	UserDeviceID string   `json:"userDeviceId"`
-	Owner        string   `json:"owner"`
-	RootNode     *big.Int `json:"rootNode"`
-	Attributes   []string `json:"attributes"`
-	Infos        []string `json:"infos"`
-	// Signature is the EIP-712 signature of the RootNode, Attributes, and Infos fields.
-	Signature string `json:"signature"`
-}
-
 // MintRequest contains the user's signature for the mint request as well as the
 // NFT image.
 type MintRequest struct {
@@ -1697,16 +1685,6 @@ type RegisterUserDeviceSmartcar struct {
 	Code        string `json:"code"`
 	RedirectURI string `json:"redirectURI"`
 	CountryCode string `json:"countryCode"`
-}
-
-type AdminRegisterUserDevice struct {
-	RegisterUserDevice
-	ID          string  `json:"id"`          // KSUID from client,
-	CreatedDate int64   `json:"createdDate"` // unix timestamp
-	VehicleName *string `json:"vehicleName"`
-	VIN         string  `json:"vin"`
-	ImageURL    *string `json:"imageUrl"`
-	Verified    bool    `json:"verified"`
 }
 
 type UpdateVINReq struct {
@@ -1752,15 +1730,7 @@ func (reg *RegisterUserDeviceSmartcar) Validate() error {
 	)
 }
 
-func (reg *AdminRegisterUserDevice) Validate() error {
-	return validation.ValidateStruct(reg,
-		validation.Field(&reg.RegisterUserDevice),
-		validation.Field(&reg.ID, validation.Required, validation.Length(27, 27), is.Alphanumeric),
-	)
-}
-
 func (u *UpdateVINReq) validate() error {
-
 	validateLengthAndChars := validation.ValidateStruct(u,
 		// vin must be 17 characters in length, alphanumeric
 		validation.Field(&u.VIN, validation.Required, validation.Match(regexp.MustCompile("^[A-Z0-9]{17}$"))),
@@ -1773,7 +1743,6 @@ func (u *UpdateVINReq) validate() error {
 }
 
 func (u *UpdateNameReq) validate() error {
-
 	return validation.ValidateStruct(u,
 		// name must be between 1 and 40 alphanumeric characters in length
 		// NOTE: this captures characters in the latin/ chinese/ cyrillic alphabet but doesn't work as well for thai or arabic
