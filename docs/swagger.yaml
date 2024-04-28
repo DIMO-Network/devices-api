@@ -350,8 +350,6 @@ definitions:
       signature:
         description: Signature is the hex encoding of the EIP-712 signature result.
         type: string
-      tokenId:
-        $ref: '#/definitions/big.Int'
     required:
     - signature
     type: object
@@ -2179,7 +2177,7 @@ paths:
         name: tokenID
         required: true
         type: integer
-      - description: Signature and Token ID
+      - description: Signature
         in: body
         name: burnRequest
         required: true
