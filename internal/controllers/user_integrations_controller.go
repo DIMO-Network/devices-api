@@ -959,10 +959,12 @@ func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.C
 	}
 
 	if ad.R.PairRequest != nil {
-		if ad.R.PairRequest.Status == models.MetaTransactionRequestStatusConfirmed {
+		switch ad.R.PairRequest.Status {
+		case models.MetaTransactionRequestStatusConfirmed:
 			return nil, nil, fiber.NewError(fiber.StatusConflict, "Aftermarket device already paired.")
+		case models.MetaTransactionRequestStatusUnsubmitted, models.MetaTransactionRequestStatusSubmitted, models.MetaTransactionRequestStatusMined:
+			return nil, nil, fiber.NewError(fiber.StatusConflict, "Aftermarket device already in the pairing process.")
 		}
-		return nil, nil, fiber.NewError(fiber.StatusConflict, "Aftermarket device already in the pairing process.")
 	}
 
 	return vnft, ad, nil
@@ -971,7 +973,7 @@ func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.C
 func (udc *UserDevicesController) checkUnpairable(ctx context.Context, exec boil.ContextExecutor, userDeviceID string) (*models.VehicleNFT, *models.AftermarketDevice, error) {
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAftermarketDevice)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAftermarketDevice, models.AftermarketDeviceRels.UnpairRequest)),
 	).One(ctx, exec)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -992,8 +994,11 @@ func (udc *UserDevicesController) checkUnpairable(ctx context.Context, exec boil
 
 	ad := vnft.R.VehicleTokenAftermarketDevice
 
-	if ad.UnpairRequestID.Valid {
-		return nil, nil, fiber.NewError(fiber.StatusConflict, "Unpairing already in progress.")
+	if ad.R.UnpairRequest != nil {
+		switch ad.R.UnpairRequest.Status {
+		case models.MetaTransactionRequestStatusConfirmed, models.MetaTransactionRequestStatusUnsubmitted, models.MetaTransactionRequestStatusSubmitted, models.MetaTransactionRequestStatusMined:
+			return nil, nil, fiber.NewError(fiber.StatusConflict, "Aftermarket device already in the unpairing process.")
+		}
 	}
 
 	return vnft, ad, nil
