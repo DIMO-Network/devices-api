@@ -242,7 +242,7 @@ definitions:
       powertrainType:
         $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.PowertrainType'
     type: object
-  internal_controllers.AutoPiClaimRequest:
+  internal_controllers.AftermarketClaimRequest:
     properties:
       aftermarketDeviceSignature:
         description: AftermarketDeviceSignature is the signature from the aftermarket
@@ -1014,7 +1014,7 @@ paths:
       description: Return the EIP-712 payload to be signed for Aftermarket device
         claiming.
       parameters:
-      - description: AutoPi unit id
+      - description: Device serial number
         in: path
         name: serial
         required: true
@@ -1032,7 +1032,7 @@ paths:
       description: Return the EIP-712 payload to be signed for Aftermarket device
         claiming.
       parameters:
-      - description: AutoPi unit id
+      - description: Device serial number
         in: path
         name: serial
         required: true
@@ -1042,7 +1042,7 @@ paths:
         name: claimRequest
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.AutoPiClaimRequest'
+          $ref: '#/definitions/internal_controllers.AftermarketClaimRequest'
       produces:
       - application/json
       responses:

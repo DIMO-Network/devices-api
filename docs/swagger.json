@@ -85,7 +85,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "AutoPi unit id",
+                        "description": "Device serial number",
                         "name": "serial",
                         "in": "path",
                         "required": true
@@ -113,7 +113,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "AutoPi unit id",
+                        "description": "Device serial number",
                         "name": "serial",
                         "in": "path",
                         "required": true
@@ -124,7 +124,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.AutoPiClaimRequest"
+                            "$ref": "#/definitions/internal_controllers.AftermarketClaimRequest"
                         }
                     }
                 ],
@@ -2600,7 +2600,7 @@
                 }
             }
         },
-        "internal_controllers.AutoPiClaimRequest": {
+        "internal_controllers.AftermarketClaimRequest": {
             "type": "object",
             "properties": {
                 "aftermarketDeviceSignature": {

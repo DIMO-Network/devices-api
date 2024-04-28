@@ -639,10 +639,10 @@ func (udc *UserDevicesController) StartAutoPiUpdateTask(c *fiber.Ctx) error {
 	})
 }
 
-// GetAutoPiClaimMessage godoc
+// GetAftermarketDeviceClaimMessage godoc
 // @Description Return the EIP-712 payload to be signed for Aftermarket device claiming.
 // @Produce json
-// @Param serial path string true "AutoPi unit id"
+// @Param serial path string true "Device serial number"
 // @Success 200 {object} signer.TypedData
 // @Security BearerAuth
 // @Router /aftermarket/device/by-serial/:serial/commands/claim [get]
@@ -1208,7 +1208,7 @@ func (udc *UserDevicesController) GetAutoPiUnpairMessage(c *fiber.Ctx) error {
 	return c.JSON(out)
 }
 
-type AutoPiClaimRequest struct {
+type AftermarketClaimRequest struct {
 	// UserSignature is the signature from the user, using their private key.
 	UserSignature string `json:"userSignature"`
 	// AftermarketDeviceSignature is the signature from the aftermarket device.
@@ -1274,21 +1274,21 @@ func (udc *UserDevicesController) PostUnclaimAutoPi(c *fiber.Ctx) error {
 	return client.UnclaimAftermarketDeviceNode(requestID, []*big.Int{apToken})
 }
 
-// PostClaimAutoPi godoc
+// PostClaimAftermarketDevice godoc
 // @Description Return the EIP-712 payload to be signed for Aftermarket device claiming.
 // @Produce json
-// @Param serial path string true "AutoPi unit id"
-// @Param claimRequest body controllers.AutoPiClaimRequest true "Signatures from the user and AutoPi"
+// @Param serial path string true "Device serial number"
+// @Param claimRequest body controllers.AftermarketClaimRequest true "Signatures from the user and AutoPi"
 // @Success 204
 // @Security BearerAuth
 // @Router /aftermarket/device/by-serial/:serial/commands/claim [post]
-func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
+func (udc *UserDevicesController) PostClaimAftermarketDevice(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 	unitID := c.Params("serial")
 
 	logger := udc.log.With().Str("userId", userID).Str("serial", unitID).Str("route", c.Route().Name).Logger()
 
-	reqBody := AutoPiClaimRequest{}
+	var reqBody AftermarketClaimRequest
 	err := c.BodyParser(&reqBody)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
@@ -1317,7 +1317,7 @@ func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "Device already claimed.")
 	}
 
-	if unit.R.ClaimMetaTransactionRequest != nil && unit.R.ClaimMetaTransactionRequest.Status != "Failed" {
+	if unit.R.ClaimMetaTransactionRequest != nil && unit.R.ClaimMetaTransactionRequest.Status != models.MetaTransactionRequestStatusFailed {
 		return fiber.NewError(fiber.StatusConflict, "Claiming transaction in progress.")
 	}
 

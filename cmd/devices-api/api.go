@@ -239,8 +239,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	apOwner.Get("/commands/claim", userDeviceController.GetAutoPiClaimMessage)
 	amdOwner.Get("/commands/claim", userDeviceController.GetAutoPiClaimMessage)
 
-	apOwner.Post("/commands/claim", userDeviceController.PostClaimAutoPi).Name("PostClaimAutoPi")
-	amdOwner.Post("/commands/claim", userDeviceController.PostClaimAutoPi).Name("PostClaimAutoPi")
+	apOwner.Post("/commands/claim", userDeviceController.PostClaimAftermarketDevice).Name("PostClaimAutoPi")
+	amdOwner.Post("/commands/claim", userDeviceController.PostClaimAftermarketDevice).Name("PostClaimAutoPi")
 	if !settings.IsProduction() {
 		// Used by mobile to test. Easy to misuse.
 		apOwner.Post("/commands/unclaim", userDeviceController.PostUnclaimAutoPi)

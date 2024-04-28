@@ -93,7 +93,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "AutoPi unit id",
+                        "description": "Device serial number",
                         "name": "serial",
                         "in": "path",
                         "required": true
@@ -121,7 +121,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "AutoPi unit id",
+                        "description": "Device serial number",
                         "name": "serial",
                         "in": "path",
                         "required": true
@@ -132,7 +132,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.AutoPiClaimRequest"
+                            "$ref": "#/definitions/internal_controllers.AftermarketClaimRequest"
                         }
                     }
                 ],
@@ -2608,7 +2608,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers.AutoPiClaimRequest": {
+        "internal_controllers.AftermarketClaimRequest": {
             "type": "object",
             "properties": {
                 "aftermarketDeviceSignature": {
