@@ -432,15 +432,15 @@ func (udc *UserDevicesController) OpenFrunk(c *fiber.Ctx) error {
 	return udc.handleEnqueueCommand(c, "frunk/open")
 }
 
-// GetAutoPiUnitInfo godoc
-// @Description gets the information about the aftermarket device by the hw serial
+// GetAftermarketDeviceInfo godoc
+// @Description Gets the information about the aftermarket device by serial number.
 // @Tags        integrations
 // @Produce     json
-// @Param       serial path     string true "autopi unit id or macaron serial"
+// @Param       serial path     string true "AutoPi unit id or Macaron serial number"
 // @Success     200    {object} controllers.AutoPiDeviceInfo
 // @Security    BearerAuth
 // @Router      /aftermarket/device/by-serial/:serial [get]
-func (udc *UserDevicesController) GetAutoPiUnitInfo(c *fiber.Ctx) error {
+func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 	const minimumAutoPiRelease = "v1.22.8" // correct semver has leading v
 
 	serial := c.Locals("serial").(string)
@@ -639,14 +639,14 @@ func (udc *UserDevicesController) StartAutoPiUpdateTask(c *fiber.Ctx) error {
 	})
 }
 
-// GetAutoPiClaimMessage godoc
+// GetAftermarketDeviceClaimMessage godoc
 // @Description Return the EIP-712 payload to be signed for Aftermarket device claiming.
 // @Produce json
 // @Param serial path string true "AutoPi unit id"
 // @Success 200 {object} signer.TypedData
 // @Security BearerAuth
 // @Router /aftermarket/device/by-serial/:serial/commands/claim [get]
-func (udc *UserDevicesController) GetAutoPiClaimMessage(c *fiber.Ctx) error {
+func (udc *UserDevicesController) GetAftermarketDeviceClaimMessage(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 
 	unitID := c.Params("serial")
@@ -709,7 +709,7 @@ func (udc *UserDevicesController) GetAutoPiClaimMessage(c *fiber.Ctx) error {
 	return c.JSON(out)
 }
 
-// GetAutoPiPairMessage godoc
+// GetAftermarketDeviceMessage godoc
 // @Description Return the EIP-712 payload to be signed for Aftermarket device pairing. The device must
 // @Description either already be integrated with the vehicle, or you must provide its unit id
 // @Description as a query parameter. In the latter case, the integration process will start
@@ -720,7 +720,7 @@ func (udc *UserDevicesController) GetAutoPiClaimMessage(c *fiber.Ctx) error {
 // @Success 200 {object} signer.TypedData "EIP-712 message for pairing."
 // @Security BearerAuth
 // @Router /user/devices/:userDeviceID/aftermarket/commands/pair [get]
-func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
+func (udc *UserDevicesController) GetAftermarketDeviceMessage(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 	userDeviceID := c.Params("userDeviceID")
 	logger := helpers.GetLogger(c, udc.log)
@@ -768,21 +768,21 @@ func (udc *UserDevicesController) GetAutoPiPairMessage(c *fiber.Ctx) error {
 	return c.JSON(client.GetPayload(pads))
 }
 
-// PostPairAutoPi godoc
+// PostAftermarketDevicePair godoc
 // @Description Submit the signature for pairing this device with its attached Aftermarket.
 // @Produce json
 // @Param userDeviceID path string true "Device id"
-// @Param userSignature body controllers.AutoPiPairRequest true "User signature."
+// @Param userSignature body controllers.AftermarketDevicePairRequest true "User signature."
 // @Security BearerAuth
 // @Router /user/devices/:userDeviceID/aftermarket/commands/pair [post]
-func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
+func (udc *UserDevicesController) PostAftermarketDevicePair(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 	userDeviceID := c.Params("userDeviceID")
 	logger := helpers.GetLogger(c, udc.log)
 
 	logger.Info().Msg("Got aftermarket device pair submission request.")
 
-	var pairReq AutoPiPairRequest
+	var pairReq AftermarketDevicePairRequest
 	err := c.BodyParser(&pairReq)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
@@ -1049,7 +1049,7 @@ func (udc *UserDevicesController) CloudRepairAutoPi(c *fiber.Ctx) error {
 // @Description Submit the signature for unpairing this device from its attached Aftermarket.
 // @Produce json
 // @Param userDeviceID path string true "Device id"
-// @Param userSignature body controllers.AutoPiPairRequest true "User signature."
+// @Param userSignature body controllers.AftermarketDevicePairRequest true "User signature."
 // @Security BearerAuth
 // @Router /user/devices/:userDeviceID/aftermarket/commands/unpair [post]
 func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
@@ -1103,7 +1103,7 @@ func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 		VehicleNode:           vehicleToken,
 	}
 
-	var pairReq AutoPiPairRequest
+	var pairReq AftermarketDevicePairRequest
 	err = c.BodyParser(&pairReq)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
@@ -1208,16 +1208,19 @@ func (udc *UserDevicesController) GetAutoPiUnpairMessage(c *fiber.Ctx) error {
 	return c.JSON(out)
 }
 
-type AutoPiClaimRequest struct {
+type AftermarketDeviceClaimRequest struct {
 	// UserSignature is the signature from the user, using their private key.
 	UserSignature string `json:"userSignature"`
 	// AftermarketDeviceSignature is the signature from the aftermarket device.
 	AftermarketDeviceSignature string `json:"aftermarketDeviceSignature"`
 }
 
-type AutoPiPairRequest struct {
-	ExternalID string        `json:"externalId"`
-	Signature  hexutil.Bytes `json:"signature"`
+type AftermarketDevicePairRequest struct {
+	// ExternalID is the serial number of the aftermarket device.
+	ExternalID string `json:"externalId"`
+	// Signature is the 65-byte, hex-encoded Ethereum signature of the pairing payload
+	// by the vehicle owner.
+	Signature hexutil.Bytes `json:"signature"`
 	// AftermarketDeviceSignature is the 65-byte, hex-encoded Ethereum signature of
 	// the pairing payload by the device. Only needed if the vehicle owner and aftermarket
 	// device owner are not the same.
@@ -1274,21 +1277,21 @@ func (udc *UserDevicesController) PostUnclaimAutoPi(c *fiber.Ctx) error {
 	return client.UnclaimAftermarketDeviceNode(requestID, []*big.Int{apToken})
 }
 
-// PostClaimAutoPi godoc
+// PostAftermarketDeviceClaim godoc
 // @Description Return the EIP-712 payload to be signed for Aftermarket device claiming.
 // @Produce json
 // @Param serial path string true "AutoPi unit id"
-// @Param claimRequest body controllers.AutoPiClaimRequest true "Signatures from the user and AutoPi"
+// @Param claimRequest body controllers.AftermarketDeviceClaimRequest true "Signatures from the user and device."
 // @Success 204
 // @Security BearerAuth
 // @Router /aftermarket/device/by-serial/:serial/commands/claim [post]
-func (udc *UserDevicesController) PostClaimAutoPi(c *fiber.Ctx) error {
+func (udc *UserDevicesController) PostAftermarketDeviceClaim(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 	unitID := c.Params("serial")
 
 	logger := udc.log.With().Str("userId", userID).Str("serial", unitID).Str("route", c.Route().Name).Logger()
 
-	reqBody := AutoPiClaimRequest{}
+	reqBody := AftermarketDeviceClaimRequest{}
 	err := c.BodyParser(&reqBody)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
@@ -2044,7 +2047,8 @@ type RegisterDeviceIntegrationRequest struct {
 	Code string `json:"code"`
 	// RedirectURI is the OAuth redirect URI used by the frontend. Not used in all integrations.
 	RedirectURI string `json:"redirectURI"`
-	// ExternalID is the only field needed for AutoPi registrations. It is the UnitID.
+	// ExternalID specifies which vehicle on the account to select. It is only used for
+	// software integrations.
 	ExternalID   string `json:"externalId"`
 	AccessToken  string `json:"accessToken"`
 	ExpiresIn    int    `json:"expiresIn"`
