@@ -1266,7 +1266,7 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 	}
 
 	if dd.Make.TokenId == 0 {
-		return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Device make %q not yet minted.", dd.Make.Name))
+		return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle make %q not yet minted.", dd.Make.Name))
 	}
 	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
 
@@ -1350,7 +1350,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}
 
 	if dd.Make.TokenId == 0 {
-		return fiber.NewError(fiber.StatusConflict, "Device make not yet minted.")
+		return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle make %q not yet minted.", dd.Make.Name))
 	}
 
 	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
