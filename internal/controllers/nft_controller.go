@@ -701,17 +701,15 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 
 	vehicleNFT, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.TokenID.EQ(tid),
-		qm.Load(qm.Rels(models.VehicleNFTRels.UserDevice)),
-		qm.Load(qm.Rels(models.VehicleNFTRels.MintRequest)),
-		qm.Load(qm.Rels(models.VehicleNFTRels.VehicleTokenAftermarketDevice)),
-		qm.Load(qm.Rels(models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
-		qm.Load(qm.Rels(models.VehicleNFTRels.UserDevice, models.UserDeviceRels.UserDeviceAPIIntegrations)),
+		qm.Load(models.VehicleNFTRels.UserDevice),
+		qm.Load(models.VehicleNFTRels.VehicleTokenAftermarketDevice),
+		qm.Load(models.VehicleNFTRels.VehicleTokenSyntheticDevice),
 	).One(c.Context(), tx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "No command-capable integrations found for this vehicle.")
+			return fiber.NewError(fiber.StatusNotFound, "No vehicle NFT with that token id.")
 		}
-		return opaqueInternalError
+		return err
 	}
 
 	if vehicleNFT.R.UserDevice == nil {
@@ -730,7 +728,7 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 // PostBurnDevice godoc
 // @Description Sends a burn device request to the blockchain
 // @Param       tokenID path int true "token id"
-// @Param       burnRequest  body controllers.BurnRequest true "Signature and Token ID"
+// @Param       burnRequest  body controllers.BurnRequest true "Signature"
 // @Success     200
 // @Security    BearerAuth
 // @Router      /user/vehicle/{tokenID}/commands/burn [post]
@@ -761,17 +759,16 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 
 	vehicleNFT, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.TokenID.EQ(tid),
-		qm.Load(qm.Rels(models.VehicleNFTRels.UserDevice)),
-		qm.Load(qm.Rels(models.VehicleNFTRels.MintRequest)),
-		qm.Load(qm.Rels(models.VehicleNFTRels.VehicleTokenAftermarketDevice)),
-		qm.Load(qm.Rels(models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
-		qm.Load(qm.Rels(models.VehicleNFTRels.UserDevice, models.UserDeviceRels.UserDeviceAPIIntegrations)),
+		qm.Load(models.VehicleNFTRels.UserDevice),
+		qm.Load(models.VehicleNFTRels.BurnRequest),
+		qm.Load(models.VehicleNFTRels.VehicleTokenAftermarketDevice),
+		qm.Load(models.VehicleNFTRels.VehicleTokenSyntheticDevice),
 	).One(c.Context(), tx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "No command-capable integrations found for this vehicle.")
+			return fiber.NewError(fiber.StatusNotFound, "No vehicle NFT with that token id.")
 		}
-		return opaqueInternalError
+		return err
 	}
 
 	if vehicleNFT.R.UserDevice == nil {
@@ -784,8 +781,8 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	br := new(BurnRequest)
-	if err := c.BodyParser(br); err != nil {
+	var br BurnRequest
+	if err := c.BodyParser(&br); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
@@ -816,7 +813,7 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 
 	mtr := models.MetaTransactionRequest{
 		ID:     requestID,
-		Status: "Unsubmitted",
+		Status: models.MetaTransactionRequestStatusUnsubmitted,
 	}
 
 	if err := mtr.Insert(c.Context(), tx, boil.Infer()); err != nil {
@@ -839,6 +836,10 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 func (udc *UserDevicesController) checkDeviceBurn(ctx context.Context, vehicleNFT *models.VehicleNFT, userID string) (registry.BurnVehicleSign, *pb.User, error) {
 	var bvs registry.BurnVehicleSign
 
+	if vehicleNFT.R.BurnRequest != nil && vehicleNFT.R.BurnRequest.Status != models.MetaTransactionRequestStatusFailed {
+		return bvs, nil, errors.New("burning already in progress")
+	}
+
 	if vehicleNFT.R.VehicleTokenAftermarketDevice != nil || vehicleNFT.R.VehicleTokenSyntheticDevice != nil {
 		return bvs, nil, errors.New("vehicle must be unpaired to burn")
 	}
@@ -857,10 +858,8 @@ func (udc *UserDevicesController) checkDeviceBurn(ctx context.Context, vehicleNF
 	}, user, nil
 }
 
-// BurnRequest contains the user's signature for the mint request as well as the
-// NFT image.
+// BurnRequest contains the user's signature for the burn request.
 type BurnRequest struct {
-	TokenID *big.Int `json:"tokenId"`
 	// Signature is the hex encoding of the EIP-712 signature result.
 	Signature string `json:"signature" validate:"required"`
 }

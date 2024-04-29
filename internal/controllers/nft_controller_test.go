@@ -113,7 +113,6 @@ func (s *UserDevicesControllerTestSuite) TestPostBurn() {
 	userSig[64] += 27
 
 	br := new(BurnRequest)
-	br.TokenID = bvs.TokenID
 	br.Signature = hexutil.Encode(userSig)
 
 	inp, err := json.Marshal(br)

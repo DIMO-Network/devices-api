@@ -1979,7 +1979,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Signature and Token ID",
+                        "description": "Signature",
                         "name": "burnRequest",
                         "in": "body",
                         "required": true,
@@ -2762,9 +2762,6 @@ const docTemplate = `{
                 "signature": {
                     "description": "Signature is the hex encoding of the EIP-712 signature result.",
                     "type": "string"
-                },
-                "tokenId": {
-                    "$ref": "#/definitions/big.Int"
                 }
             }
         },
