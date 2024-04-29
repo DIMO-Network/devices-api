@@ -1391,7 +1391,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		Infos:            []string{deviceMake, deviceModel, deviceYear},
 	}
 
-	mr := new(MintRequest)
+	mr := new(VehicleMintRequest)
 	if err := c.BodyParser(mr); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
 	}
@@ -1599,7 +1599,7 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
 	}
 
-	mr := new(MintRequest)
+	mr := new(VehicleMintRequest)
 	if err := c.BodyParser(mr); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
 	}
@@ -1650,15 +1650,11 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 	return err
 }
 
-// MintRequest contains the user's signature for the mint request as well as the
-// NFT image.
-type MintRequest struct {
-	NFTImageData
+// VehicleMintRequest contains the user's signature for the vehicle mint request
+// as well as the NFT image.
+type VehicleMintRequest struct {
 	// Signature is the hex encoding of the EIP-712 signature result.
 	Signature string `json:"signature" validate:"required"`
-}
-
-type NFTImageData struct {
 	// ImageData contains the base64-encoded NFT PNG image.
 	ImageData string `json:"imageData" validate:"required"`
 	// ImageDataTransparent contains the base64-encoded NFT PNG image
