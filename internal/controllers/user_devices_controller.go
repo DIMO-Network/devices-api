@@ -1309,7 +1309,7 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 // @Description Sends a mint device request to the blockchain
 // @Tags        user-devices
 // @Param       userDeviceID path string                  true "user device ID"
-// @Param       mintRequest  body controllers.MintRequest true "Signature and NFT data"
+// @Param       mintRequest  body controllers.VehicleMintRequest true "Signature and NFT data"
 // @Success     200
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/commands/mint [post]
@@ -1653,8 +1653,12 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 // VehicleMintRequest contains the user's signature for the vehicle mint request
 // as well as the NFT image.
 type VehicleMintRequest struct {
+	NFTImageData
 	// Signature is the hex encoding of the EIP-712 signature result.
 	Signature string `json:"signature" validate:"required"`
+}
+
+type NFTImageData struct {
 	// ImageData contains the base64-encoded NFT PNG image.
 	ImageData string `json:"imageData" validate:"required"`
 	// ImageDataTransparent contains the base64-encoded NFT PNG image
