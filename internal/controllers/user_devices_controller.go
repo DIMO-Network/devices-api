@@ -1322,7 +1322,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
-		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations)),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 	).One(c.Context(), udc.DBS().Reader.DB)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -1353,7 +1353,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "Device make not yet minted.")
 	}
 
-	makeTokenID := big.NewInt(int64(dd.Make.TokenId))
+	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
 
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
