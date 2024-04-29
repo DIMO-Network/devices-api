@@ -45,7 +45,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "gets the information about the aftermarket device by the hw serial",
+                "description": "Gets the information about the aftermarket device by serial number.",
                 "produces": [
                     "application/json"
                 ],
@@ -55,7 +55,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "autopi unit id or macaron serial",
+                        "description": "AutoPi unit id or Macaron serial number",
                         "name": "serial",
                         "in": "path",
                         "required": true
@@ -119,12 +119,12 @@
                         "required": true
                     },
                     {
-                        "description": "Signatures from the user and AutoPi",
+                        "description": "Signatures from the user and device.",
                         "name": "claimRequest",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.AutoPiClaimRequest"
+                            "$ref": "#/definitions/internal_controllers.AftermarketDeviceClaimRequest"
                         }
                     }
                 ],
@@ -687,7 +687,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.AutoPiPairRequest"
+                            "$ref": "#/definitions/internal_controllers.AftermarketDevicePairRequest"
                         }
                     }
                 ],
@@ -747,7 +747,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.AutoPiPairRequest"
+                            "$ref": "#/definitions/internal_controllers.AftermarketDevicePairRequest"
                         }
                     }
                 ],
@@ -2600,7 +2600,7 @@
                 }
             }
         },
-        "internal_controllers.AutoPiClaimRequest": {
+        "internal_controllers.AftermarketDeviceClaimRequest": {
             "type": "object",
             "properties": {
                 "aftermarketDeviceSignature": {
@@ -2610,6 +2610,29 @@
                 "userSignature": {
                     "description": "UserSignature is the signature from the user, using their private key.",
                     "type": "string"
+                }
+            }
+        },
+        "internal_controllers.AftermarketDevicePairRequest": {
+            "type": "object",
+            "properties": {
+                "aftermarketDeviceSignature": {
+                    "description": "AftermarketDeviceSignature is the 65-byte, hex-encoded Ethereum signature of\nthe pairing payload by the device. Only needed if the vehicle owner and aftermarket\ndevice owner are not the same.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "externalId": {
+                    "description": "ExternalID is the serial number of the aftermarket device.",
+                    "type": "string"
+                },
+                "signature": {
+                    "description": "Signature is the 65-byte, hex-encoded Ethereum signature of the pairing payload\nby the vehicle owner.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         },
@@ -2690,27 +2713,6 @@
                             "$ref": "#/definitions/internal_controllers.AutoPiTransactionStatus"
                         }
                     ]
-                }
-            }
-        },
-        "internal_controllers.AutoPiPairRequest": {
-            "type": "object",
-            "properties": {
-                "aftermarketDeviceSignature": {
-                    "description": "AftermarketDeviceSignature is the 65-byte, hex-encoded Ethereum signature of\nthe pairing payload by the device. Only needed if the vehicle owner and aftermarket\ndevice owner are not the same.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "externalId": {
-                    "type": "string"
-                },
-                "signature": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
                 }
             }
         },
@@ -3289,7 +3291,7 @@
                     "type": "integer"
                 },
                 "externalId": {
-                    "description": "ExternalID is the only field needed for AutoPi registrations. It is the UnitID.",
+                    "description": "ExternalID specifies which vehicle on the account to select. It is only used for\nsoftware integrations.",
                     "type": "string"
                 },
                 "redirectURI": {

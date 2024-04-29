@@ -242,7 +242,7 @@ definitions:
       powertrainType:
         $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.PowertrainType'
     type: object
-  internal_controllers.AutoPiClaimRequest:
+  internal_controllers.AftermarketDeviceClaimRequest:
     properties:
       aftermarketDeviceSignature:
         description: AftermarketDeviceSignature is the signature from the aftermarket
@@ -252,6 +252,27 @@ definitions:
         description: UserSignature is the signature from the user, using their private
           key.
         type: string
+    type: object
+  internal_controllers.AftermarketDevicePairRequest:
+    properties:
+      aftermarketDeviceSignature:
+        description: |-
+          AftermarketDeviceSignature is the 65-byte, hex-encoded Ethereum signature of
+          the pairing payload by the device. Only needed if the vehicle owner and aftermarket
+          device owner are not the same.
+        items:
+          type: integer
+        type: array
+      externalId:
+        description: ExternalID is the serial number of the aftermarket device.
+        type: string
+      signature:
+        description: |-
+          Signature is the 65-byte, hex-encoded Ethereum signature of the pairing payload
+          by the vehicle owner.
+        items:
+          type: integer
+        type: array
     type: object
   internal_controllers.AutoPiDeviceInfo:
     properties:
@@ -301,23 +322,6 @@ definitions:
         allOf:
         - $ref: '#/definitions/internal_controllers.AutoPiTransactionStatus'
         description: Unpair contains the status of the on-chain unpairing meta-transaction.
-    type: object
-  internal_controllers.AutoPiPairRequest:
-    properties:
-      aftermarketDeviceSignature:
-        description: |-
-          AftermarketDeviceSignature is the 65-byte, hex-encoded Ethereum signature of
-          the pairing payload by the device. Only needed if the vehicle owner and aftermarket
-          device owner are not the same.
-        items:
-          type: integer
-        type: array
-      externalId:
-        type: string
-      signature:
-        items:
-          type: integer
-        type: array
     type: object
   internal_controllers.AutoPiTransactionStatus:
     properties:
@@ -728,8 +732,9 @@ definitions:
       expiresIn:
         type: integer
       externalId:
-        description: ExternalID is the only field needed for AutoPi registrations.
-          It is the UnitID.
+        description: |-
+          ExternalID specifies which vehicle on the account to select. It is only used for
+          software integrations.
         type: string
       redirectURI:
         description: RedirectURI is the OAuth redirect URI used by the frontend. Not
@@ -989,9 +994,9 @@ paths:
       - nfts
   /aftermarket/device/by-serial/:serial:
     get:
-      description: gets the information about the aftermarket device by the hw serial
+      description: Gets the information about the aftermarket device by serial number.
       parameters:
-      - description: autopi unit id or macaron serial
+      - description: AutoPi unit id or Macaron serial number
         in: path
         name: serial
         required: true
@@ -1035,12 +1040,12 @@ paths:
         name: serial
         required: true
         type: string
-      - description: Signatures from the user and AutoPi
+      - description: Signatures from the user and device.
         in: body
         name: claimRequest
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.AutoPiClaimRequest'
+          $ref: '#/definitions/internal_controllers.AftermarketDeviceClaimRequest'
       produces:
       - application/json
       responses:
@@ -1361,7 +1366,7 @@ paths:
         name: userSignature
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.AutoPiPairRequest'
+          $ref: '#/definitions/internal_controllers.AftermarketDevicePairRequest'
       produces:
       - application/json
       responses: {}
@@ -1400,7 +1405,7 @@ paths:
         name: userSignature
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.AutoPiPairRequest'
+          $ref: '#/definitions/internal_controllers.AftermarketDevicePairRequest'
       produces:
       - application/json
       responses: {}

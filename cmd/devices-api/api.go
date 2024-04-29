@@ -229,18 +229,18 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// same as above but AftermarketDevice
 	amdOwner := v1Auth.Group("/aftermarket/device/by-serial/:serial", amdOwnerMw)
 
-	apOwner.Get("/", userDeviceController.GetAutoPiUnitInfo)
-	amdOwner.Get("/", userDeviceController.GetAutoPiUnitInfo)
+	apOwner.Get("/", userDeviceController.GetAftermarketDeviceInfo)
+	amdOwner.Get("/", userDeviceController.GetAftermarketDeviceInfo)
 
 	apOwner.Post("/update", userDeviceController.StartAutoPiUpdateTask)
 	amdOwner.Post("/update", userDeviceController.StartAutoPiUpdateTask)
 
 	// AftermarketDevice claiming, formerly AutoPi
-	apOwner.Get("/commands/claim", userDeviceController.GetAutoPiClaimMessage)
-	amdOwner.Get("/commands/claim", userDeviceController.GetAutoPiClaimMessage)
+	apOwner.Get("/commands/claim", userDeviceController.GetAftermarketDeviceClaimMessage)
+	amdOwner.Get("/commands/claim", userDeviceController.GetAftermarketDeviceClaimMessage)
 
-	apOwner.Post("/commands/claim", userDeviceController.PostClaimAutoPi).Name("PostClaimAutoPi")
-	amdOwner.Post("/commands/claim", userDeviceController.PostClaimAutoPi).Name("PostClaimAutoPi")
+	apOwner.Post("/commands/claim", userDeviceController.PostAftermarketDeviceClaim).Name("PostClaimAutoPi")
+	amdOwner.Post("/commands/claim", userDeviceController.PostAftermarketDeviceClaim).Name("PostClaimAutoPi")
 	if !settings.IsProduction() {
 		// Used by mobile to test. Easy to misuse.
 		apOwner.Post("/commands/unclaim", userDeviceController.PostUnclaimAutoPi)
@@ -313,8 +313,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// AftermarketDevice pairing and unpairing.
 	// Routes were transitioned from /autopi to /aftermarket
-	udOwner.Get("/aftermarket/commands/pair", userDeviceController.GetAutoPiPairMessage)
-	udOwner.Post("/aftermarket/commands/pair", userDeviceController.PostPairAutoPi)
+	udOwner.Get("/aftermarket/commands/pair", userDeviceController.GetAftermarketDeviceMessage)
+	udOwner.Post("/aftermarket/commands/pair", userDeviceController.PostAftermarketDevicePair)
 	udOwner.Get("/aftermarket/commands/unpair", userDeviceController.GetAutoPiUnpairMessage)
 	udOwner.Post("/aftermarket/commands/unpair", userDeviceController.UnpairAutoPi)
 	udOwner.Post("/aftermarket/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
