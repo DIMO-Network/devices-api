@@ -820,7 +820,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 
 	app := fiber.New()
 	app.Use(test.AuthInjectorTestHandler(userID))
-	app.Get("/:userDeviceID/pair", c.GetAftermarketDeviceMessage)
+	app.Get("/:userDeviceID/pair", c.GetAftermarketDevicePairMessage)
 	app.Post("/:userDeviceID/pair", c.PostAftermarketDevicePair)
 
 	req := test.BuildRequest("GET", "/"+ud.ID+"/pair?external_id="+aftermarketDevice.Serial, "")

@@ -313,7 +313,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// AftermarketDevice pairing and unpairing.
 	// Routes were transitioned from /autopi to /aftermarket
-	udOwner.Get("/aftermarket/commands/pair", userDeviceController.GetAftermarketDeviceMessage)
+	udOwner.Get("/aftermarket/commands/pair", userDeviceController.GetAftermarketDevicePairMessage)
 	udOwner.Post("/aftermarket/commands/pair", userDeviceController.PostAftermarketDevicePair)
 	udOwner.Get("/aftermarket/commands/unpair", userDeviceController.GetAutoPiUnpairMessage)
 	udOwner.Post("/aftermarket/commands/unpair", userDeviceController.UnpairAutoPi)
