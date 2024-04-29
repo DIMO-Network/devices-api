@@ -702,6 +702,7 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 	vehicleNFT, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.TokenID.EQ(tid),
 		qm.Load(models.VehicleNFTRels.UserDevice),
+		qm.Load(models.VehicleNFTRels.BurnRequest),
 		qm.Load(models.VehicleNFTRels.VehicleTokenAftermarketDevice),
 		qm.Load(models.VehicleNFTRels.VehicleTokenSyntheticDevice),
 	).One(c.Context(), tx)

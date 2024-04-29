@@ -1333,8 +1333,13 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	if vnft := userDevice.R.VehicleNFT; vnft != nil {
 		switch vnft.R.MintRequest.Status {
-		case "Confirmed":
+		case models.MetaTransactionRequestStatusConfirmed:
 			return fiber.NewError(fiber.StatusConflict, "Vehicle already minted.")
+		case models.DeviceCommandRequestStatusFailed:
+			_, err := vnft.Delete(c.Context(), udc.DBS().Writer)
+			if err != nil {
+				return fmt.Errorf("couldn't delete existing mint attempt: %w", err)
+			}
 		default:
 			return fiber.NewError(fiber.StatusConflict, "Minting in process.")
 		}
