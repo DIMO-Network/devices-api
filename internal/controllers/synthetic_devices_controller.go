@@ -203,7 +203,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
 	).One(c.Context(), sdc.DBS().Reader)
 	if err != nil {
@@ -215,7 +215,14 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice != nil {
-		return fiber.NewError(fiber.StatusConflict, "Vehicle already paired with a synthetic device.")
+		if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice.R.MintRequest.Status != models.MetaTransactionRequestStatusFailed {
+			return fiber.NewError(fiber.StatusConflict, "Vehicle already paired with a synthetic device.")
+		}
+
+		_, err := ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice.Delete(c.Context(), sdc.DBS().Writer)
+		if err != nil {
+			return fmt.Errorf("failed to delete failed synthetic minting: %v", err)
+		}
 	}
 
 	if len(ud.R.UserDeviceAPIIntegrations) == 0 {
