@@ -25,6 +25,7 @@ require (
 	github.com/elastic/go-elasticsearch/v8 v8.12.0
 	github.com/friendsofgo/errors v0.9.2
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
+	github.com/goccy/go-json v0.10.2
 	github.com/gofiber/fiber/v2 v2.52.1
 	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/google/subcommands v1.2.0
@@ -80,7 +81,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
-	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/holiman/uint256 v1.2.4 // indirect
