@@ -992,7 +992,7 @@ paths:
           description: Not Found
       tags:
       - nfts
-  /aftermarket/device/by-serial/:serial:
+  /aftermarket/device/by-serial/{serial}:
     get:
       description: Gets the information about the aftermarket device by serial number.
       parameters:
@@ -1012,7 +1012,7 @@ paths:
       - BearerAuth: []
       tags:
       - integrations
-  /aftermarket/device/by-serial/:serial/commands/claim:
+  /aftermarket/device/by-serial/{serial}/commands/claim:
     get:
       description: Return the EIP-712 payload to be signed for Aftermarket device
         claiming.
@@ -1053,7 +1053,7 @@ paths:
           description: No Content
       security:
       - BearerAuth: []
-  /aftermarket/device/by-serial/:serial/commands/unclaim:
+  /aftermarket/device/by-serial/{serial}/commands/unclaim:
     post:
       description: |-
         Dev-only endpoint for removing a claim. Removes the flag on-chain and clears
@@ -1071,7 +1071,7 @@ paths:
           description: No Content
       security:
       - BearerAuth: []
-  /aftermarket/device/by-serial/:serial/update:
+  /aftermarket/device/by-serial/{serial}/update:
     post:
       description: checks to see if aftermarket device needs to be updated, and starts
         update process if so.
@@ -1241,7 +1241,7 @@ paths:
       - BearerAuth: []
       tags:
       - documents
-  /integration/:tokenID:
+  /integration/{tokenID}:
     get:
       description: gets an integration using its tokenID
       produces:
@@ -1255,7 +1255,7 @@ paths:
             type: array
       tags:
       - integrations
-  /integration/:tokenID/credentials:
+  /integration/{tokenID}/credentials:
     post:
       consumes:
       - application/json
@@ -1309,7 +1309,23 @@ paths:
       - BearerAuth: []
       tags:
       - user-devices
-  /user/devices/:userDeviceID/aftermarket/commands/cloud-repair:
+  /user/devices/{userDeviceID}:
+    delete:
+      description: delete the user device record (hard delete)
+      parameters:
+      - description: device id
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
+  /user/devices/{userDeviceID}/aftermarket/commands/cloud-repair:
     post:
       description: Re-apply AutoPi cloud actions in an attempt to get the device transmitting
         data again.
@@ -1326,7 +1342,7 @@ paths:
           description: No Content
       security:
       - BearerAuth: []
-  /user/devices/:userDeviceID/aftermarket/commands/pair:
+  /user/devices/{userDeviceID}/aftermarket/commands/pair:
     get:
       description: |-
         Return the EIP-712 payload to be signed for Aftermarket device pairing. The device must
@@ -1372,7 +1388,7 @@ paths:
       responses: {}
       security:
       - BearerAuth: []
-  /user/devices/:userDeviceID/aftermarket/commands/unpair:
+  /user/devices/{userDeviceID}/aftermarket/commands/unpair:
     get:
       description: Return the EIP-712 payload to be signed for Aftermarket device
         unpairing.
@@ -1411,41 +1427,6 @@ paths:
       responses: {}
       security:
       - BearerAuth: []
-  /user/devices/:userDeviceID/integrations/:integrationID:
-    post:
-      consumes:
-      - application/json
-      description: Submit credentials for registering a device with a given integration.
-      parameters:
-      - description: Integration credentials
-        in: body
-        name: userDeviceIntegrationRegistration
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.RegisterDeviceIntegrationRequest'
-      responses:
-        "204":
-          description: No Content
-      security:
-      - BearerAuth: []
-      tags:
-      - integrations
-  /user/devices/{userDeviceID}:
-    delete:
-      description: delete the user device record (hard delete)
-      parameters:
-      - description: device id
-        in: path
-        name: userDeviceID
-        required: true
-        type: string
-      responses:
-        "204":
-          description: No Content
-      security:
-      - BearerAuth: []
-      tags:
-      - user-devices
   /user/devices/{userDeviceID}/commands/mint:
     get:
       description: Returns the data the user must sign in order to mint this device.
@@ -1629,6 +1610,24 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/internal_controllers.GetUserDeviceIntegrationResponse'
+      security:
+      - BearerAuth: []
+      tags:
+      - integrations
+    post:
+      consumes:
+      - application/json
+      description: Submit credentials for registering a device with a given integration.
+      parameters:
+      - description: Integration credentials
+        in: body
+        name: userDeviceIntegrationRegistration
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.RegisterDeviceIntegrationRequest'
+      responses:
+        "204":
+          description: No Content
       security:
       - BearerAuth: []
       tags:
