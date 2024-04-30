@@ -439,7 +439,7 @@ func (udc *UserDevicesController) OpenFrunk(c *fiber.Ctx) error {
 // @Param       serial path     string true "AutoPi unit id or Macaron serial number"
 // @Success     200    {object} controllers.AutoPiDeviceInfo
 // @Security    BearerAuth
-// @Router      /aftermarket/device/by-serial/:serial [get]
+// @Router      /aftermarket/device/by-serial/{serial} [get]
 func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 	const minimumAutoPiRelease = "v1.22.8" // correct semver has leading v
 
@@ -602,7 +602,7 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 // @Param       serial path     string true "autopi unit id", ie. physical barcode
 // @Success     200    {object} services.AutoPiTask
 // @Security    BearerAuth
-// @Router      /aftermarket/device/by-serial/:serial/update [post]
+// @Router      /aftermarket/device/by-serial/{serial}/update [post]
 func (udc *UserDevicesController) StartAutoPiUpdateTask(c *fiber.Ctx) error {
 	unitID := c.Locals("serial").(string)
 	userID := helpers.GetUserID(c)
@@ -645,7 +645,7 @@ func (udc *UserDevicesController) StartAutoPiUpdateTask(c *fiber.Ctx) error {
 // @Param serial path string true "AutoPi unit id"
 // @Success 200 {object} signer.TypedData
 // @Security BearerAuth
-// @Router /aftermarket/device/by-serial/:serial/commands/claim [get]
+// @Router /aftermarket/device/by-serial/{serial}/commands/claim [get]
 func (udc *UserDevicesController) GetAftermarketDeviceClaimMessage(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 
@@ -716,7 +716,7 @@ func (udc *UserDevicesController) GetAftermarketDeviceClaimMessage(c *fiber.Ctx)
 // @Param claimRequest body controllers.AftermarketDeviceClaimRequest true "Signatures from the user and device."
 // @Success 204
 // @Security BearerAuth
-// @Router /aftermarket/device/by-serial/:serial/commands/claim [post]
+// @Router /aftermarket/device/by-serial/{serial}/commands/claim [post]
 func (udc *UserDevicesController) PostAftermarketDeviceClaim(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 	unitID := c.Params("serial")
@@ -861,7 +861,7 @@ func (udc *UserDevicesController) PostAftermarketDeviceClaim(c *fiber.Ctx) error
 // @Param external_id query string false "External id, for now AutoPi unit id"
 // @Success 200 {object} signer.TypedData "EIP-712 message for pairing."
 // @Security BearerAuth
-// @Router /user/devices/:userDeviceID/aftermarket/commands/pair [get]
+// @Router /user/devices/{userDeviceID}/aftermarket/commands/pair [get]
 func (udc *UserDevicesController) GetAftermarketDevicePairMessage(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 	userDeviceID := c.Params("userDeviceID")
@@ -916,7 +916,7 @@ func (udc *UserDevicesController) GetAftermarketDevicePairMessage(c *fiber.Ctx) 
 // @Param userDeviceID path string true "Device id"
 // @Param userSignature body controllers.AftermarketDevicePairRequest true "User signature."
 // @Security BearerAuth
-// @Router /user/devices/:userDeviceID/aftermarket/commands/pair [post]
+// @Router /user/devices/{userDeviceID}/aftermarket/commands/pair [post]
 func (udc *UserDevicesController) PostAftermarketDevicePair(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 	userDeviceID := c.Params("userDeviceID")
@@ -1149,7 +1149,7 @@ func (udc *UserDevicesController) checkUnpairable(ctx context.Context, exec boil
 // @Param userDeviceID path string true "Device id"
 // @Success 204
 // @Security BearerAuth
-// @Router /user/devices/:userDeviceID/aftermarket/commands/cloud-repair [post]
+// @Router /user/devices/{userDeviceID}/aftermarket/commands/cloud-repair [post]
 func (udc *UserDevicesController) CloudRepairAutoPi(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
 
@@ -1193,7 +1193,7 @@ func (udc *UserDevicesController) CloudRepairAutoPi(c *fiber.Ctx) error {
 // @Param userDeviceID path string true "Device id"
 // @Success 200 {object} signer.TypedData
 // @Security BearerAuth
-// @Router /user/devices/:userDeviceID/aftermarket/commands/unpair [get]
+// @Router /user/devices/{userDeviceID}/aftermarket/commands/unpair [get]
 func (udc *UserDevicesController) GetAutoPiUnpairMessage(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 
@@ -1246,7 +1246,7 @@ func (udc *UserDevicesController) GetAutoPiUnpairMessage(c *fiber.Ctx) error {
 // @Param userDeviceID path string true "Device id"
 // @Param userSignature body controllers.AftermarketDevicePairRequest true "User signature."
 // @Security BearerAuth
-// @Router /user/devices/:userDeviceID/aftermarket/commands/unpair [post]
+// @Router /user/devices/{userDeviceID}/aftermarket/commands/unpair [post]
 func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 
@@ -1376,7 +1376,7 @@ type AftermarketDevicePairRequest struct {
 // @Param serial path string true "AutoPi unit id"
 // @Success 204
 // @Security BearerAuth
-// @Router /aftermarket/device/by-serial/:serial/commands/unclaim [post]
+// @Router /aftermarket/device/by-serial/{serial}/commands/unclaim [post]
 func (udc *UserDevicesController) PostUnclaimAutoPi(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 	unitID := c.Params("serial")
@@ -1521,7 +1521,7 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 // @Param       userDeviceIntegrationRegistration body controllers.RegisterDeviceIntegrationRequest true "Integration credentials"
 // @Success     204
 // @Security    BearerAuth
-// @Router      /user/devices/:userDeviceID/integrations/:integrationID [post]
+// @Router      /user/devices/{userDeviceID}/integrations/{integrationID} [post]
 func (udc *UserDevicesController) RegisterDeviceIntegration(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 	userDeviceID := c.Params("userDeviceID")

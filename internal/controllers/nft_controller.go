@@ -153,7 +153,7 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 // @Tags        integrations
 // @Produce     json
 // @Success     200 {array} controllers.NFTMetadataResp
-// @Router      /integration/:tokenID [get]
+// @Router      /integration/{tokenID} [get]
 func (nc *NFTController) GetIntegrationNFTMetadata(c *fiber.Ctx) error {
 	tokenID := c.Params("tokenID")
 

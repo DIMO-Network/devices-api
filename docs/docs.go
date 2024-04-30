@@ -46,7 +46,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/aftermarket/device/by-serial/:serial": {
+        "/aftermarket/device/by-serial/{serial}": {
             "get": {
                 "security": [
                     {
@@ -79,7 +79,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/aftermarket/device/by-serial/:serial/commands/claim": {
+        "/aftermarket/device/by-serial/{serial}/commands/claim": {
             "get": {
                 "security": [
                     {
@@ -143,7 +143,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/aftermarket/device/by-serial/:serial/commands/unclaim": {
+        "/aftermarket/device/by-serial/{serial}/commands/unclaim": {
             "post": {
                 "security": [
                     {
@@ -170,7 +170,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/aftermarket/device/by-serial/:serial/update": {
+        "/aftermarket/device/by-serial/{serial}/update": {
             "post": {
                 "security": [
                     {
@@ -498,7 +498,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/integration/:tokenID": {
+        "/integration/{tokenID}": {
             "get": {
                 "description": "gets an integration using its tokenID",
                 "produces": [
@@ -520,7 +520,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/integration/:tokenID/credentials": {
+        "/integration/{tokenID}/credentials": {
             "post": {
                 "security": [
                     {
@@ -605,191 +605,6 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/internal_controllers.RegisterUserDeviceResponse"
                         }
-                    }
-                }
-            }
-        },
-        "/user/devices/:userDeviceID/aftermarket/commands/cloud-repair": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Re-apply AutoPi cloud actions in an attempt to get the device transmitting data again.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
-        "/user/devices/:userDeviceID/aftermarket/commands/pair": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Return the EIP-712 payload to be signed for Aftermarket device pairing. The device must\neither already be integrated with the vehicle, or you must provide its unit id\nas a query parameter. In the latter case, the integration process will start\nonce the transaction confirms.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "External id, for now AutoPi unit id",
-                        "name": "external_id",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "EIP-712 message for pairing.",
-                        "schema": {
-                            "$ref": "#/definitions/apitypes.TypedData"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Submit the signature for pairing this device with its attached Aftermarket.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "User signature.",
-                        "name": "userSignature",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.AftermarketDevicePairRequest"
-                        }
-                    }
-                ],
-                "responses": {}
-            }
-        },
-        "/user/devices/:userDeviceID/aftermarket/commands/unpair": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Return the EIP-712 payload to be signed for Aftermarket device unpairing.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apitypes.TypedData"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Submit the signature for unpairing this device from its attached Aftermarket.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "User signature.",
-                        "name": "userSignature",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.AftermarketDevicePairRequest"
-                        }
-                    }
-                ],
-                "responses": {}
-            }
-        },
-        "/user/devices/:userDeviceID/integrations/:integrationID": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Submit credentials for registering a device with a given integration.",
-                "consumes": [
-                    "application/json"
-                ],
-                "tags": [
-                    "integrations"
-                ],
-                "parameters": [
-                    {
-                        "description": "Integration credentials",
-                        "name": "userDeviceIntegrationRegistration",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.RegisterDeviceIntegrationRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
                     }
                 }
             }
@@ -976,6 +791,159 @@ const docTemplate = `{
                         "description": "No Content"
                     }
                 }
+            }
+        },
+        "/user/devices/{userDeviceID}/aftermarket/commands/cloud-repair": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Re-apply AutoPi cloud actions in an attempt to get the device transmitting data again.",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device id",
+                        "name": "userDeviceID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/user/devices/{userDeviceID}/aftermarket/commands/pair": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Return the EIP-712 payload to be signed for Aftermarket device pairing. The device must\neither already be integrated with the vehicle, or you must provide its unit id\nas a query parameter. In the latter case, the integration process will start\nonce the transaction confirms.",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device id",
+                        "name": "userDeviceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "External id, for now AutoPi unit id",
+                        "name": "external_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "EIP-712 message for pairing.",
+                        "schema": {
+                            "$ref": "#/definitions/apitypes.TypedData"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Submit the signature for pairing this device with its attached Aftermarket.",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device id",
+                        "name": "userDeviceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "User signature.",
+                        "name": "userSignature",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.AftermarketDevicePairRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/user/devices/{userDeviceID}/aftermarket/commands/unpair": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Return the EIP-712 payload to be signed for Aftermarket device unpairing.",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device id",
+                        "name": "userDeviceID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apitypes.TypedData"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Submit the signature for unpairing this device from its attached Aftermarket.",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device id",
+                        "name": "userDeviceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "User signature.",
+                        "name": "userSignature",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.AftermarketDevicePairRequest"
+                        }
+                    }
+                ],
+                "responses": {}
             }
         },
         "/user/devices/{userDeviceID}/commands/mint": {
@@ -1266,6 +1234,36 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/internal_controllers.GetUserDeviceIntegrationResponse"
                         }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Submit credentials for registering a device with a given integration.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "integrations"
+                ],
+                "parameters": [
+                    {
+                        "description": "Integration credentials",
+                        "name": "userDeviceIntegrationRegistration",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.RegisterDeviceIntegrationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             },
