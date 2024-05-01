@@ -13,6 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	services "github.com/DIMO-Network/devices-api/internal/services"
 	smartcar "github.com/smartcar/go-sdk"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -53,6 +54,20 @@ func (m *MockSmartcarClient) ExchangeCode(ctx context.Context, code, redirectURI
 func (mr *MockSmartcarClientMockRecorder) ExchangeCode(ctx, code, redirectURI any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExchangeCode", reflect.TypeOf((*MockSmartcarClient)(nil).ExchangeCode), ctx, code, redirectURI)
+}
+
+// GetAvailableCommands mocks base method.
+func (m *MockSmartcarClient) GetAvailableCommands() *services.UserDeviceAPIIntegrationsMetadataCommands {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAvailableCommands")
+	ret0, _ := ret[0].(*services.UserDeviceAPIIntegrationsMetadataCommands)
+	return ret0
+}
+
+// GetAvailableCommands indicates an expected call of GetAvailableCommands.
+func (mr *MockSmartcarClientMockRecorder) GetAvailableCommands() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAvailableCommands", reflect.TypeOf((*MockSmartcarClient)(nil).GetAvailableCommands))
 }
 
 // GetEndpoints mocks base method.

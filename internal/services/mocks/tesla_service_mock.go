@@ -39,6 +39,20 @@ func (m *MockTeslaService) EXPECT() *MockTeslaServiceMockRecorder {
 	return m.recorder
 }
 
+// GetAvailableCommands mocks base method.
+func (m *MockTeslaService) GetAvailableCommands() *services.UserDeviceAPIIntegrationsMetadataCommands {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAvailableCommands")
+	ret0, _ := ret[0].(*services.UserDeviceAPIIntegrationsMetadataCommands)
+	return ret0
+}
+
+// GetAvailableCommands indicates an expected call of GetAvailableCommands.
+func (mr *MockTeslaServiceMockRecorder) GetAvailableCommands() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAvailableCommands", reflect.TypeOf((*MockTeslaService)(nil).GetAvailableCommands))
+}
+
 // GetVehicle mocks base method.
 func (m *MockTeslaService) GetVehicle(ownerAccessToken string, id int) (*services.TeslaVehicle, error) {
 	m.ctrl.T.Helper()

@@ -40,7 +40,6 @@ import (
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cache"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 	fiberrecover "github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/swagger"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -138,9 +137,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	countriesController := controllers.NewCountriesController()
 	userIntegrationAuthController := controllers.NewUserIntegrationAuthController(settings, pdb.DBS, &logger, ddSvc, teslaFleetAPISvc, redisCache, cipher, usersClient)
 
-	// commenting this out b/c the library includes the path in the metrics which saturates prometheus queries - need to fork / make our own
-	//prometheus := fiberprometheus.New("devices-api")
-	//app.Use(prometheus.Middleware)
 	app.Use(metrics.HTTPMetricsMiddleware)
 
 	app.Use(fiberrecover.New(fiberrecover.Config{
@@ -148,11 +144,10 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		EnableStackTrace:  true,
 		StackTraceHandler: nil,
 	}))
-	//cors
-	app.Use(cors.New())
-	// request logging
-	app.Use(zflogger.New(logger, nil))
-	//cache
+
+	// Request logging.
+	app.Use(zflogger.New(logger, nil)) // TODO(elffjs): Is this even printing?
+
 	cacheHandler := cache.New(cache.Config{
 		Next: func(c *fiber.Ctx) bool {
 			return c.Query("refresh") == "true"
@@ -308,6 +303,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Post("/integrations/:integrationID/commands/trunk/open", userDeviceController.OpenTrunk)
 	udOwner.Post("/integrations/:integrationID/commands/frunk/open", userDeviceController.OpenFrunk)
 	udOwner.Get("/integrations/:integrationID/commands/:requestID", userDeviceController.GetCommandRequestStatus)
+	udOwner.Post("/integrations/:integrationID/commands/telemetry/subscribe", userDeviceController.TelemetrySubscribe)
 
 	udOwner.Post("/commands/opt-in", userDeviceController.DeviceOptIn)
 

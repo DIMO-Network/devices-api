@@ -473,7 +473,7 @@ func (nc *NFTController) GetVehicleStatus(c *fiber.Ctx) error {
 // @Param       tokenID  path string true "Token ID"
 // @Router      /vehicle/{tokenID}/commands/doors/unlock [post]
 func (nc *NFTController) UnlockDoors(c *fiber.Ctx) error {
-	return nc.handleEnqueueCommand(c, "doors/unlock")
+	return nc.handleEnqueueCommand(c, constants.DoorsUnlock)
 }
 
 // LockDoors godoc
@@ -485,7 +485,7 @@ func (nc *NFTController) UnlockDoors(c *fiber.Ctx) error {
 // @Param       tokenID  path string true "Token ID"
 // @Router      /vehicle/{tokenID}/commands/doors/lock [post]
 func (nc *NFTController) LockDoors(c *fiber.Ctx) error {
-	return nc.handleEnqueueCommand(c, "doors/lock")
+	return nc.handleEnqueueCommand(c, constants.DoorsLock)
 }
 
 // OpenTrunk godoc
@@ -497,7 +497,7 @@ func (nc *NFTController) LockDoors(c *fiber.Ctx) error {
 // @Param       tokenID  path string true "Token ID"
 // @Router      /vehicle/{tokenID}/commands/trunk/open [post]
 func (nc *NFTController) OpenTrunk(c *fiber.Ctx) error {
-	return nc.handleEnqueueCommand(c, "trunk/open")
+	return nc.handleEnqueueCommand(c, constants.TrunkOpen)
 }
 
 // OpenFrunk godoc
@@ -509,7 +509,7 @@ func (nc *NFTController) OpenTrunk(c *fiber.Ctx) error {
 // @Param       tokenID  path string true "Token ID"
 // @Router      /vehicle/{tokenID}/commands/frunk/open [post]
 func (nc *NFTController) OpenFrunk(c *fiber.Ctx) error {
-	return nc.handleEnqueueCommand(c, "frunk/open")
+	return nc.handleEnqueueCommand(c, constants.FrunkOpen)
 }
 
 // handleEnqueueCommand enqueues the command specified by commandPath with the

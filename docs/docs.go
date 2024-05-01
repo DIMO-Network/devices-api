@@ -1555,6 +1555,38 @@ const docTemplate = `{
                 }
             }
         },
+        "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/telemetry/subscribe": {
+            "post": {
+                "description": "Subscribe vehicle for Telemetry Data. Currently, this only works for Teslas connected through Tesla.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "device",
+                    "integration",
+                    "command"
+                ],
+                "summary": "Subscribe vehicle for Telemetry Data",
+                "operationId": "telemetry-subscribe",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "userDeviceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Integration ID",
+                        "name": "integrationID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/trunk/open": {
             "post": {
                 "description": "Open the device's front trunk. Currently, this only works for Teslas connected through Tesla.",
@@ -3082,6 +3114,14 @@ const docTemplate = `{
                 "status": {
                     "description": "Status is one of \"Pending\", \"PendingFirstData\", \"Active\", \"Failed\", \"DuplicateIntegration\".",
                     "type": "string"
+                },
+                "tesla": {
+                    "description": "Contains further details about tesla integration status",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/internal_controllers.TeslaConnectionStatus"
+                        }
+                    ]
                 }
             }
         },
@@ -3394,6 +3434,15 @@ const docTemplate = `{
                 "txHash": {
                     "type": "string",
                     "example": "0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"
+                }
+            }
+        },
+        "internal_controllers.TeslaConnectionStatus": {
+            "type": "object",
+            "properties": {
+                "isVirtualKeyConnected": {
+                    "description": "Status of the virtual key connection",
+                    "type": "boolean"
                 }
             }
         },
