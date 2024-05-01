@@ -1,16 +1,13 @@
 package controllers
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
-	_ "embed"
 	"fmt"
 	"io"
 	"math/big"
 	"strconv"
 	"strings"
-	"text/template"
 
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/utils"
@@ -49,13 +46,8 @@ type NFTController struct {
 	integSvc         services.DeviceDefinitionIntegrationService
 	smartcarTaskSvc  services.SmartcarTaskService
 	teslaTaskService services.TeslaTaskService
-	dcnService       registry.DCNService
-	dcnTmpl          *template.Template
 	deviceDataSvc    services.DeviceDataService
 }
-
-//go:embed dcn.svg
-var dcnImageTemplate string
 
 // NewNFTController constructor
 func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, s3 *s3.Client,
@@ -63,10 +55,8 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 	smartcarTaskSvc services.SmartcarTaskService,
 	teslaTaskService services.TeslaTaskService,
 	integSvc services.DeviceDefinitionIntegrationService,
-	dcnSVc registry.DCNService,
 	deviceDataSvc services.DeviceDataService,
 ) NFTController {
-	dcn, _ := template.New("dcn_image").Parse(dcnImageTemplate)
 
 	return NFTController{
 		Settings:         settings,
@@ -77,8 +67,6 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 		smartcarTaskSvc:  smartcarTaskSvc,
 		teslaTaskService: teslaTaskService,
 		integSvc:         integSvc,
-		dcnService:       dcnSVc,
-		dcnTmpl:          dcn,
 		deviceDataSvc:    deviceDataSvc,
 	}
 }
@@ -159,108 +147,12 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 	})
 }
 
-// GetDcnNFTMetadata godoc
-// @Description retrieves the DCN NFT metadata for a given token ID address
-// @Tags        dcn
-// @Param       tokenID path string true "DCN node id decimal representation"
-// @Produce     json
-// @Success     200 {object} controllers.NFTMetadataResp
-// @Failure     404
-// @Failure     400
-// @Router      /dcn/{tokenID} [get]
-func (nc *NFTController) GetDcnNFTMetadata(c *fiber.Ctx) error {
-	ndStr := c.Params("tokenID")
-	ndid, ok := new(big.Int).SetString(ndStr, 10)
-	if !ok {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", ndStr))
-	}
-
-	dcn, err := models.DCNS(models.DCNWhere.NFTNodeID.EQ(ndid.Bytes())).One(c.Context(), nc.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "DCN not found with node address "+ndid.String())
-		}
-		return err
-	}
-	attrs := make([]NFTAttribute, 0)
-	if dcn.NFTNodeBlockCreateTime.Valid {
-		attrs = append(attrs, NFTAttribute{
-			TraitType: "Creation Date", Value: strconv.FormatInt(dcn.NFTNodeBlockCreateTime.Time.Unix(), 10),
-		})
-	}
-	if dcn.NFTNodeBlockCreateTime.Valid {
-		attrs = append(attrs, NFTAttribute{
-			TraitType: "Registration Date", Value: strconv.FormatInt(dcn.NFTNodeBlockCreateTime.Time.Unix(), 10),
-		})
-	}
-	if dcn.Expiration.Valid {
-		attrs = append(attrs, NFTAttribute{
-			TraitType: "Expiration Date", Value: strconv.FormatInt(dcn.Expiration.Time.Unix(), 10),
-		})
-	}
-	nameArray := strings.Split(dcn.Name.String, ".")
-	nameLength := len(nameArray[0])
-
-	attrs = append(attrs, NFTAttribute{
-		TraitType: "Character Set", Value: "alphanumeric",
-	})
-
-	attrs = append(attrs, NFTAttribute{
-		TraitType: "Length", Value: strconv.Itoa(nameLength),
-	})
-
-	attrs = append(attrs, NFTAttribute{
-		TraitType: "Nodehash", Value: "0x" + common.Bytes2Hex(ndid.Bytes()),
-	})
-
-	return c.JSON(NFTMetadataResp{
-		Name:        dcn.Name.String,
-		Description: dcn.Name.String + ", a DCN name.",
-		Image:       fmt.Sprintf("%s/v1/dcn/%s/image", nc.Settings.DeploymentBaseURL, ndStr),
-		Attributes:  attrs,
-	})
-}
-
-// GetDCNNFTImage godoc
-// @Description retrieves the DCN NFT metadata for a given token address
-// @Tags        dcn
-// @Param       tokenID path string true "DCN node id decimal representation"
-// @Produce     image/svg+xml
-// @Success     200 {object} controllers.NFTMetadataResp
-// @Failure     404
-// @Failure     400
-// @Router      /dcn/{tokenID}/image [get]
-func (nc *NFTController) GetDCNNFTImage(c *fiber.Ctx) error {
-	ndStr := c.Params("tokenID")
-	ndid, ok := new(big.Int).SetString(ndStr, 10)
-	if !ok {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", ndStr))
-	}
-
-	dcn, err := models.DCNS(models.DCNWhere.NFTNodeID.EQ(ndid.Bytes())).One(c.Context(), nc.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "DCN not found with node address "+ndid.String())
-		}
-		return err
-	}
-
-	c.Set("Content-Type", "image/svg+xml")
-
-	var b bytes.Buffer
-	if err = nc.dcnTmpl.Execute(&b, struct{ Name string }{dcn.Name.String}); err != nil {
-		return err
-	}
-
-	return c.Send(b.Bytes())
-}
-
 // GetIntegrationNFTMetadata godoc
 // @Description gets an integration using its tokenID
 // @Tags        integrations
 // @Produce     json
 // @Success     200 {array} controllers.NFTMetadataResp
-// @Router      /integration/:tokenID [get]
+// @Router      /integration/{tokenID} [get]
 func (nc *NFTController) GetIntegrationNFTMetadata(c *fiber.Ctx) error {
 	tokenID := c.Params("tokenID")
 
@@ -414,48 +306,6 @@ func (nc *NFTController) GetAftermarketDeviceNFTMetadataByAddress(c *fiber.Ctx) 
 	})
 }
 
-// GetSyntheticDeviceNFTMetadata godoc
-// @Description Retrieves NFT metadata for a given synthetic device.
-// @Tags        nfts
-// @Param       tokenId path int true "token id"
-// @Produce     json
-// @Success     200 {object} controllers.NFTMetadataResp
-// @Failure     404
-// @Router      /synthetic/device/{tokenId} [get]
-func (nc *NFTController) GetSyntheticDeviceNFTMetadata(c *fiber.Ctx) error {
-	tidStr := c.Params("tokenID")
-
-	tid, ok := new(big.Int).SetString(tidStr, 10)
-	if !ok {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse token id.")
-	}
-
-	sd, err := models.SyntheticDevices(
-		models.SyntheticDeviceWhere.TokenID.EQ(types.NullDecimal(utils.BigToDecimal(tid))),
-	).One(c.Context(), nc.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// Indexers start looking immediately.
-			helpers.SkipErrorLog(c)
-			return fiber.NewError(fiber.StatusNotFound, "No synthetic device with that id.")
-		}
-		return err
-	}
-
-	var name string
-	if three, err := mnemonic.EntropyToMnemonicThreeWords(sd.WalletAddress); err == nil {
-		name = strings.Join(three, " ")
-	}
-
-	return c.JSON(NFTMetadataResp{
-		Name:        name,
-		Description: name + ", a DIMO synthetic device.",
-		Attributes: []NFTAttribute{
-			{TraitType: "Ethereum Address", Value: common.BytesToAddress(sd.WalletAddress).String()},
-		},
-	})
-}
-
 // GetAftermarketDeviceNFTMetadata godoc
 // @Description Retrieves NFT metadata for a given aftermarket device.
 // @Tags        nfts
@@ -555,33 +405,6 @@ func (nc *NFTController) GetAftermarketDeviceNFTImage(c *fiber.Ctx) error {
 
 	c.Set("Content-Type", "image/png")
 	return c.Send(b)
-}
-
-// GetManufacturerNFTMetadata godoc
-// @Description Retrieves NFT metadata for a given manufacturer.
-// @Tags        nfts
-// @Param       tokenId path int true "token id"
-// @Produce     json
-// @Success     200 {object} controllers.NFTMetadataResp
-// @Failure     404
-// @Router      /manufacturer/{tokenId} [get]
-func (nc *NFTController) GetManufacturerNFTMetadata(c *fiber.Ctx) error {
-	tidStr := c.Params("tokenID")
-
-	tid, ok := new(big.Int).SetString(tidStr, 10)
-	if !ok {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse token id.")
-	}
-
-	dm, err := nc.deviceDefSvc.GetMakeByTokenID(c.Context(), tid)
-	if err != nil {
-		return shared.GrpcErrorToFiber(err, "Couldn't retrieve manufacturer")
-	}
-
-	return c.JSON(NFTMetadataResp{
-		Name:       dm.Name,
-		Attributes: []NFTAttribute{},
-	})
 }
 
 // UnlockDoors godoc
@@ -801,7 +624,7 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("failed to parse token id %q", tis))
 	}
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
-	udc.log.Info().Str("tokenID", tid.String()).Msg("GetBurnDevice request")
+
 	client := registry.Client{
 		Producer:     udc.producer,
 		RequestTopic: "topic.transaction.request.send",
@@ -821,17 +644,15 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 
 	vehicleNFT, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.TokenID.EQ(tid),
-		qm.Load(qm.Rels(models.VehicleNFTRels.UserDevice)),
-		qm.Load(qm.Rels(models.VehicleNFTRels.MintRequest)),
-		qm.Load(qm.Rels(models.VehicleNFTRels.VehicleTokenAftermarketDevice)),
-		qm.Load(qm.Rels(models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
-		qm.Load(qm.Rels(models.VehicleNFTRels.UserDevice, models.UserDeviceRels.UserDeviceAPIIntegrations)),
+		qm.Load(models.VehicleNFTRels.UserDevice),
+		qm.Load(models.VehicleNFTRels.VehicleTokenAftermarketDevice),
+		qm.Load(models.VehicleNFTRels.VehicleTokenSyntheticDevice),
 	).One(c.Context(), tx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "No command-capable integrations found for this vehicle.")
+			return fiber.NewError(fiber.StatusNotFound, "No vehicle NFT with that token id.")
 		}
-		return opaqueInternalError
+		return err
 	}
 
 	if vehicleNFT.R.UserDevice == nil {
@@ -850,7 +671,7 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 // PostBurnDevice godoc
 // @Description Sends a burn device request to the blockchain
 // @Param       tokenID path int true "token id"
-// @Param       burnRequest  body controllers.BurnRequest true "Signature and Token ID"
+// @Param       burnRequest  body controllers.BurnRequest true "Signature"
 // @Success     200
 // @Security    BearerAuth
 // @Router      /user/vehicle/{tokenID}/commands/burn [post]
@@ -861,7 +682,7 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("failed to parse token id %q", tis))
 	}
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
-	udc.log.Info().Str("tokenID", tid.String()).Msg("PostBurnDevice request")
+
 	client := registry.Client{
 		Producer:     udc.producer,
 		RequestTopic: "topic.transaction.request.send",
@@ -881,17 +702,16 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 
 	vehicleNFT, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.TokenID.EQ(tid),
-		qm.Load(qm.Rels(models.VehicleNFTRels.UserDevice)),
-		qm.Load(qm.Rels(models.VehicleNFTRels.MintRequest)),
-		qm.Load(qm.Rels(models.VehicleNFTRels.VehicleTokenAftermarketDevice)),
-		qm.Load(qm.Rels(models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
-		qm.Load(qm.Rels(models.VehicleNFTRels.UserDevice, models.UserDeviceRels.UserDeviceAPIIntegrations)),
+		qm.Load(models.VehicleNFTRels.UserDevice),
+		qm.Load(models.VehicleNFTRels.BurnRequest),
+		qm.Load(models.VehicleNFTRels.VehicleTokenAftermarketDevice),
+		qm.Load(models.VehicleNFTRels.VehicleTokenSyntheticDevice),
 	).One(c.Context(), tx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "No command-capable integrations found for this vehicle.")
+			return fiber.NewError(fiber.StatusNotFound, "No vehicle NFT with that token id.")
 		}
-		return opaqueInternalError
+		return err
 	}
 
 	if vehicleNFT.R.UserDevice == nil {
@@ -904,9 +724,9 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	br := new(BurnRequest)
-	if err := c.BodyParser(br); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "failed to parse request body")
+	var br BurnRequest
+	if err := c.BodyParser(&br); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
 	udc.log.Info().
@@ -924,7 +744,7 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	sigBytes := common.FromHex(br.Signature)
 	recAddr, err := helpers.Ecrecover(hash, sigBytes)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not recover signature: %w", err)
 	}
 
 	realAddr := common.HexToAddress(*user.EthereumAddress)
@@ -933,37 +753,38 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	}
 
 	requestID := ksuid.New().String()
+
 	mtr := models.MetaTransactionRequest{
 		ID:     requestID,
-		Status: "Unsubmitted",
+		Status: models.MetaTransactionRequestStatusUnsubmitted,
 	}
 
 	if err := mtr.Insert(c.Context(), tx, boil.Infer()); err != nil {
-		return err
+		return fmt.Errorf("failed to insert metatransaction request: %w", err)
 	}
 
 	vehicleNFT.BurnRequestID = null.StringFrom(requestID)
 	if _, err := vehicleNFT.Update(c.Context(), tx, boil.Infer()); err != nil {
-		return err
+		return fmt.Errorf("failed to update vehicle nft: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return err
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	udc.log.Debug().Msgf("submitted metatransaction request %s", requestID)
+	udc.log.Info().Msgf("submitted metatransaction request %s", requestID)
 	return client.BurnVehicleSign(requestID, bvs.TokenID, sigBytes)
 }
 
 func (udc *UserDevicesController) checkDeviceBurn(ctx context.Context, vehicleNFT *models.VehicleNFT, userID string) (registry.BurnVehicleSign, *pb.User, error) {
 	var bvs registry.BurnVehicleSign
-	if vehicleNFT.R.VehicleTokenAftermarketDevice != nil || vehicleNFT.R.VehicleTokenSyntheticDevice != nil {
-		return bvs, nil, errors.New("vehicle must be unpaired to burn")
+
+	if vehicleNFT.R.BurnRequest != nil && vehicleNFT.R.BurnRequest.Status != models.MetaTransactionRequestStatusFailed {
+		return bvs, nil, errors.New("burning already in progress")
 	}
 
-	tknID, ok := vehicleNFT.TokenID.Int64()
-	if !ok {
-		return bvs, nil, errors.New("failed to parse vehicle token id")
+	if vehicleNFT.R.VehicleTokenAftermarketDevice != nil || vehicleNFT.R.VehicleTokenSyntheticDevice != nil {
+		return bvs, nil, errors.New("vehicle must be unpaired to burn")
 	}
 
 	user, err := udc.usersClient.GetUser(ctx, &pb.GetUserRequest{Id: userID})
@@ -972,19 +793,16 @@ func (udc *UserDevicesController) checkDeviceBurn(ctx context.Context, vehicleNF
 	}
 
 	if user.EthereumAddress == nil {
-		return bvs, nil, fmt.Errorf("user does not have an Ethereum address on file: %w", err)
+		return bvs, nil, errors.New("user does not have an Ethereum address on file")
 	}
 
-	bvs = registry.BurnVehicleSign{
-		TokenID: big.NewInt(tknID),
-	}
-	return bvs, user, nil
+	return registry.BurnVehicleSign{
+		TokenID: vehicleNFT.TokenID.Int(nil),
+	}, user, nil
 }
 
-// BurnRequest contains the user's signature for the mint request as well as the
-// NFT image.
+// BurnRequest contains the user's signature for the burn request.
 type BurnRequest struct {
-	TokenID *big.Int `json:"tokenId"`
 	// Signature is the hex encoding of the EIP-712 signature result.
 	Signature string `json:"signature" validate:"required"`
 }

@@ -2,7 +2,7 @@ replicaCount: 3
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 1.25.12
+  tag: 1.25.21
 cronJob:
   enabled: false
   schedule: 0 0 1 * *
@@ -35,7 +35,6 @@ env:
   DEFINITIONS_GRPC_ADDR: device-definitions-api-prod:8086
   ELASTIC_DEVICE_STATUS_INDEX: device-status-prod-*
   DIMO_REGISTRY_ADDR: '0xFA8beC73cebB9D88FF88a2f75E7D7312f2Fd39EC'
-  ENABLE_PRIVILEGES: true
   TOKEN_EXCHANGE_JWK_KEY_SET_URL: http://dex-roles-rights-prod.prod.svc.cluster.local:5556/keys
   VEHICLE_NFT_ADDRESS: '0xba5738a18d83d41847dffbdc6101d37c69c9b0cf'
   AFTERMARKET_DEVICE_CONTRACT_ADDRESS: '0x9c94c395cbcbde662235e0a9d3bb87ad708561ba'
@@ -46,11 +45,11 @@ env:
   NATS_OFFER_SUBJECT: dd_offer_tasks
   NATS_DURABLE_CONSUMER: dd-valuation-task-consumer
   NATS_ACK_TIMEOUT: 2m
-  SYNTHETIC_DEVICES_ENABLED: true
   SYNTHETIC_WALLET_GRPC_ADDR: synthetic-wallet-instance-prod:8086
   DEVICE_DATA_GRPC_ADDR: device-data-api-prod:8086
   TESLA_TOKEN_URL: https://auth.tesla.com/oauth2/v3/token
   TESLA_FLEET_URL: https://fleet-api.prd.%s.vn.cloud.tesla.com
+  META_TRANSACTION_PROCESSOR_GRPC_ADDR: meta-transaction-processor-prod:8086
 ingress:
   enabled: true
   className: nginx
