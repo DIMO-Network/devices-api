@@ -523,17 +523,6 @@ definitions:
       userDeviceId:
         type: string
     type: object
-  internal_controllers.GetCommandsByIntegrationResponse:
-    properties:
-      disabled:
-        items:
-          type: string
-        type: array
-      enabled:
-        items:
-          type: string
-        type: array
-    type: object
   internal_controllers.GetGeofence:
     properties:
       createdAt:
@@ -1262,29 +1251,6 @@ paths:
       - BearerAuth: []
       tags:
       - documents
-  /integration/:tokenID/commands:
-    get:
-      consumes:
-      - application/json
-      description: Get a list of available commands by integration
-      parameters:
-      - description: token id for integration
-        in: path
-        name: tokenID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.GetCommandsByIntegrationResponse'
-      security:
-      - ApiKeyAuth: []
-      - BearerAuth: []
-      tags:
-      - integrations
   /integration/{tokenID}:
     get:
       description: gets an integration using its tokenID

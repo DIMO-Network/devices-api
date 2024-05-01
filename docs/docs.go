@@ -498,45 +498,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/integration/:tokenID/commands": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get a list of available commands by integration",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "integrations"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "token id for integration",
-                        "name": "tokenID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.GetCommandsByIntegrationResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/integration/{tokenID}": {
             "get": {
                 "description": "gets an integration using its tokenID",
@@ -3073,23 +3034,6 @@ const docTemplate = `{
                 },
                 "userDeviceId": {
                     "type": "string"
-                }
-            }
-        },
-        "internal_controllers.GetCommandsByIntegrationResponse": {
-            "type": "object",
-            "properties": {
-                "disabled": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "enabled": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 }
             }
         },
