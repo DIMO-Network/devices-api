@@ -232,9 +232,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	apOwner.Get("/", userDeviceController.GetAftermarketDeviceInfo)
 	amdOwner.Get("/", userDeviceController.GetAftermarketDeviceInfo)
 
-	apOwner.Post("/update", userDeviceController.StartAutoPiUpdateTask)
-	amdOwner.Post("/update", userDeviceController.StartAutoPiUpdateTask)
-
 	// AftermarketDevice claiming, formerly AutoPi
 	apOwner.Get("/commands/claim", userDeviceController.GetAftermarketDeviceClaimMessage)
 	amdOwner.Get("/commands/claim", userDeviceController.GetAftermarketDeviceClaimMessage)
