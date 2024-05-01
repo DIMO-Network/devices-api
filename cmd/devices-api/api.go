@@ -11,42 +11,33 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/DIMO-Network/shared/privileges"
-
-	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
-
-	"github.com/DIMO-Network/devices-api/internal/middleware"
-
-	"github.com/DIMO-Network/devices-api/internal/rpc"
-
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-
-	"github.com/DIMO-Network/devices-api/internal/middleware/metrics"
-
-	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
-
-	"github.com/DIMO-Network/shared/redis"
-
-	"github.com/DIMO-Network/shared/db"
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
+	"github.com/DIMO-Network/devices-api/internal/middleware"
+	"github.com/DIMO-Network/devices-api/internal/middleware/metrics"
 	"github.com/DIMO-Network/devices-api/internal/middleware/owner"
-
+	"github.com/DIMO-Network/devices-api/internal/rpc"
+	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
 	"github.com/DIMO-Network/shared"
 	pbuser "github.com/DIMO-Network/shared/api/users"
+	"github.com/DIMO-Network/shared/db"
 	"github.com/DIMO-Network/shared/middleware/privilegetoken"
+	"github.com/DIMO-Network/shared/privileges"
+	"github.com/DIMO-Network/shared/redis"
 	"github.com/DIMO-Network/zflogger"
 	"github.com/Shopify/sarama"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/goccy/go-json"
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cache"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	fiberrecover "github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/swagger"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -70,6 +61,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		DisableStartupMessage: true,
 		ReadBufferSize:        16000,
 		BodyLimit:             10 * 1024 * 1024,
+		JSONEncoder:           json.Marshal,
+		JSONDecoder:           json.Unmarshal,
 	})
 
 	var cipher shared.Cipher
@@ -130,12 +123,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		KeyPrefix: "devices-api",
 	})
 
-	var wallet services.SyntheticWalletInstanceService
-	if settings.SyntheticDevicesEnabled {
-		wallet, err = services.NewSyntheticWalletInstanceService(settings)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Couldn't construct wallet client.")
-		}
+	wallet, err := services.NewSyntheticWalletInstanceService(settings)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Couldn't construct wallet client.")
 	}
 
 	// controllers
@@ -241,18 +231,18 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// same as above but AftermarketDevice
 	amdOwner := v1Auth.Group("/aftermarket/device/by-serial/:serial", amdOwnerMw)
 
-	apOwner.Get("/", userDeviceController.GetAutoPiUnitInfo)
-	amdOwner.Get("/", userDeviceController.GetAutoPiUnitInfo)
+	apOwner.Get("/", userDeviceController.GetAftermarketDeviceInfo)
+	amdOwner.Get("/", userDeviceController.GetAftermarketDeviceInfo)
 
 	apOwner.Post("/update", userDeviceController.StartAutoPiUpdateTask)
 	amdOwner.Post("/update", userDeviceController.StartAutoPiUpdateTask)
 
 	// AftermarketDevice claiming, formerly AutoPi
-	apOwner.Get("/commands/claim", userDeviceController.GetAutoPiClaimMessage)
-	amdOwner.Get("/commands/claim", userDeviceController.GetAutoPiClaimMessage)
+	apOwner.Get("/commands/claim", userDeviceController.GetAftermarketDeviceClaimMessage)
+	amdOwner.Get("/commands/claim", userDeviceController.GetAftermarketDeviceClaimMessage)
 
-	apOwner.Post("/commands/claim", userDeviceController.PostClaimAutoPi).Name("PostClaimAutoPi")
-	amdOwner.Post("/commands/claim", userDeviceController.PostClaimAutoPi).Name("PostClaimAutoPi")
+	apOwner.Post("/commands/claim", userDeviceController.PostAftermarketDeviceClaim).Name("PostClaimAutoPi")
+	amdOwner.Post("/commands/claim", userDeviceController.PostAftermarketDeviceClaim).Name("PostClaimAutoPi")
 	if !settings.IsProduction() {
 		// Used by mobile to test. Easy to misuse.
 		apOwner.Post("/commands/unclaim", userDeviceController.PostUnclaimAutoPi)
@@ -306,15 +296,13 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	vOwner.Get("/commands/burn", userDeviceController.GetBurnDevice)
 	vOwner.Post("/commands/burn", userDeviceController.PostBurnDevice)
 
-	if settings.SyntheticDevicesEnabled {
-		syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, wallet, registryClient)
+	syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, wallet, registryClient)
 
-		udOwner.Get("/integrations/:integrationID/commands/mint", syntheticController.GetSyntheticDeviceMintingPayload)
-		udOwner.Post("/integrations/:integrationID/commands/mint", syntheticController.MintSyntheticDevice)
+	udOwner.Get("/integrations/:integrationID/commands/mint", syntheticController.GetSyntheticDeviceMintingPayload)
+	udOwner.Post("/integrations/:integrationID/commands/mint", syntheticController.MintSyntheticDevice)
 
-		udOwner.Get("/integrations/:integrationID/commands/burn", syntheticController.GetSyntheticDeviceBurnPayload)
-		udOwner.Post("/integrations/:integrationID/commands/burn", syntheticController.BurnSyntheticDevice)
-	}
+	udOwner.Get("/integrations/:integrationID/commands/burn", syntheticController.GetSyntheticDeviceBurnPayload)
+	udOwner.Post("/integrations/:integrationID/commands/burn", syntheticController.BurnSyntheticDevice)
 
 	// Vehicle commands.
 	udOwner.Post("/integrations/:integrationID/commands/doors/unlock", userDeviceController.UnlockDoors)
@@ -328,8 +316,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// AftermarketDevice pairing and unpairing.
 	// Routes were transitioned from /autopi to /aftermarket
-	udOwner.Get("/aftermarket/commands/pair", userDeviceController.GetAutoPiPairMessage)
-	udOwner.Post("/aftermarket/commands/pair", userDeviceController.PostPairAutoPi)
+	udOwner.Get("/aftermarket/commands/pair", userDeviceController.GetAftermarketDevicePairMessage)
+	udOwner.Post("/aftermarket/commands/pair", userDeviceController.PostAftermarketDevicePair)
 	udOwner.Get("/aftermarket/commands/unpair", userDeviceController.GetAutoPiUnpairMessage)
 	udOwner.Post("/aftermarket/commands/unpair", userDeviceController.UnpairAutoPi)
 	udOwner.Post("/aftermarket/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
@@ -363,7 +351,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	startContractEventsConsumer(logger, settings, pdb, autoPi, macaron, ddSvc)
 
-	store, err := registry.NewProcessor(pdb.DBS, &logger, autoPi, settings, eventService)
+	store, err := registry.NewProcessor(pdb.DBS, &logger, settings, eventService)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to create registry storage client")
 	}

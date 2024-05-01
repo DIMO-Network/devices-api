@@ -98,7 +98,7 @@ type DeviceDefinition struct {
 // @Security    ApiKeyAuth
 // @Success     200 {object} controllers.CompleteOAuthExchangeResponseWrapper
 // @Security    BearerAuth
-// @Router      /integration/:tokenID/credentials [post]
+// @Router      /integration/{tokenID}/credentials [post]
 func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) error {
 	// Get the current user
 	userID := helpers.GetUserID(c)

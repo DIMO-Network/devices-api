@@ -25,8 +25,6 @@ import (
 	"github.com/DIMO-Network/shared/db"
 	"github.com/DIMO-Network/shared/redis/mocks"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/math"
-	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
@@ -879,41 +877,6 @@ func (s *UserDevicesControllerTestSuite) TestPostRefreshSmartCarRateLimited() {
 	if assert.Equal(s.T(), fiber.StatusTooManyRequests, response.StatusCode) == false {
 		body, _ := io.ReadAll(response.Body)
 		fmt.Println("unexpected response: " + string(body))
-	}
-}
-
-func TestEIP712Hash(t *testing.T) {
-	td := &signer.TypedData{
-		Types: signer.Types{
-			"EIP712Domain": []signer.Type{
-				{Name: "name", Type: "string"},
-				{Name: "version", Type: "string"},
-				{Name: "chainId", Type: "uint256"},
-				{Name: "verifyingContract", Type: "address"},
-			},
-			"MintDevice": {
-				{Name: "rootNode", Type: "uint256"},
-				{Name: "attributes", Type: "string[]"},
-				{Name: "infos", Type: "string[]"},
-			},
-		},
-		PrimaryType: "MintDevice",
-		Domain: signer.TypedDataDomain{
-			Name:              "DIMO",
-			Version:           "1",
-			ChainId:           math.NewHexOrDecimal256(31337),
-			VerifyingContract: "0x5fbdb2315678afecb367f032d93f642f64180aa3",
-		},
-		Message: signer.TypedDataMessage{
-			"rootNode":   math.NewHexOrDecimal256(7), // Just hardcoding this. We need a node for each make, and to keep these in sync.
-			"attributes": []any{"Make", "Model", "Year"},
-			"infos":      []any{"Tesla", "Model 3", "2020"},
-		},
-	}
-	hash, err := computeTypedDataHash(td)
-	if assert.NoError(t, err) {
-		realHash := common.HexToHash("0x8258cd28afb13c201c07bf80c717d55ce13e226b725dd8a115ae5ab064e537da")
-		assert.Equal(t, realHash, hash)
 	}
 }
 

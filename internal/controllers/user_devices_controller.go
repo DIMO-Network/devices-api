@@ -35,7 +35,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -47,6 +46,8 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
+
+var _ = signer.TypedData{} // Use this package so that the swag command doesn't throw a fit.
 
 type UserDevicesController struct {
 	Settings                  *config.Settings
@@ -784,21 +785,12 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	if info == nil {
 		info = &smartcar.Info{}
 	}
-	// block kia
-	if strings.ToLower(info.Make) == "kia" {
-		localLog.Warn().Msgf("kia blocked, smartcar make")
-		return fiber.NewError(fiber.StatusFailedDependency, "Kia vehicles are only supported via Hardware connections for now.")
-	}
+
 	// decode VIN with grpc call, including any possible smartcar known info
 	decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, info.Model, info.Year, reg.CountryCode)
 	if err != nil {
 		localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle")
 		return shared.GrpcErrorToFiber(err, "unable to decode vin: "+vin)
-	}
-	// jic kia block by make id
-	if decodeVIN.DeviceMakeId == "2681cSm2zmTmGHzqK3ldzoTLZIw" {
-		localLog.Warn().Msgf("kia blocked, by smartcar vin decode to kia meke id")
-		return fiber.NewError(fiber.StatusFailedDependency, "Kia vehicles are only supported via Hardware connections for now.")
 	}
 
 	// in case err is nil but we don't get a valid decode
@@ -1265,7 +1257,7 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 
 	userDevice, err := models.FindUserDevice(c.Context(), udc.DBS().Reader, userDeviceID)
 	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
+		return fiber.NewError(fiber.StatusNotFound, "No vehicle with that id found.")
 	}
 
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
@@ -1274,9 +1266,9 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 	}
 
 	if dd.Make.TokenId == 0 {
-		return fiber.NewError(fiber.StatusConflict, "Device make not yet minted.")
+		return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle make %q not yet minted.", dd.Make.Name))
 	}
-	makeTokenID := big.NewInt(int64(dd.Make.TokenId))
+	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
 
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
@@ -1313,99 +1305,6 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 	return c.JSON(client.GetPayload(&mvs))
 }
 
-// TODO(elffjs): Do not keep these functions in this file!
-func computeTypedDataHash(td *signer.TypedData) (hash common.Hash, err error) {
-	domainSep, err := td.HashStruct("EIP712Domain", td.Domain.Map())
-	if err != nil {
-		return
-	}
-	msgHash, err := td.HashStruct(td.PrimaryType, td.Message)
-	if err != nil {
-		return
-	}
-
-	payload := []byte{0x19, 0x01}
-	payload = append(payload, domainSep...)
-	payload = append(payload, msgHash...)
-
-	hash = crypto.Keccak256Hash(payload)
-	return
-}
-
-// UpdateNFTImage godoc
-// @Description Updates a user's NFT image.
-// @Tags        user-devices
-// @Param       userDeviceId path string                   true "user device id"
-// @Param       nftIamges body controllers.NFTImageData true "base64-encoded NFT image data"
-// @Success     204
-// @Security    BearerAuth
-// @Router      /user/devices/{userDeviceId}/commands/update-nft-image [post]
-func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
-	userDeviceID := c.Params("userDeviceID")
-
-	userDevice, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(models.UserDeviceRels.VehicleNFT),
-	).One(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
-	}
-
-	if userDevice.R.VehicleNFT == nil || userDevice.R.VehicleNFT.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
-	}
-
-	mr := new(MintRequest)
-	if err := c.BodyParser(mr); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
-	}
-
-	// This may not be there, but if it is we should delete it.
-	imageData := strings.TrimPrefix(mr.ImageData, "data:image/png;base64,")
-
-	image, err := base64.StdEncoding.DecodeString(imageData)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Primary image not properly base64-encoded.")
-	}
-
-	if len(image) == 0 {
-		return fiber.NewError(fiber.StatusBadRequest, "Empty image field.")
-	}
-
-	_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
-		Bucket: &udc.Settings.NFTS3Bucket,
-		Key:    aws.String(userDevice.R.VehicleNFT.MintRequestID + ".png"),
-		Body:   bytes.NewReader(image),
-	})
-	if err != nil {
-		udc.log.Err(err).Msg("Failed to save image to S3.")
-		return opaqueInternalError
-	}
-
-	// This may not be there, but if it is we should delete it.
-	imageDataTransp := strings.TrimPrefix(mr.ImageDataTransparent, "data:image/png;base64,")
-
-	// Should be okay if empty or not provided.
-	imageTransp, err := base64.StdEncoding.DecodeString(imageDataTransp)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Transparent image not properly base64-encoded.")
-	}
-
-	if len(imageTransp) != 0 {
-		_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
-			Bucket: &udc.Settings.NFTS3Bucket,
-			Key:    aws.String(userDevice.R.VehicleNFT.MintRequestID + "_transparent.png"),
-			Body:   bytes.NewReader(imageTransp),
-		})
-		if err != nil {
-			udc.log.Err(err).Msg("Failed to save transparent image to S3.")
-			return opaqueInternalError
-		}
-	}
-
-	return err
-}
-
 // PostMintDevice godoc
 // @Description Sends a mint device request to the blockchain
 // @Tags        user-devices
@@ -1423,7 +1322,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
-		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations)),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 	).One(c.Context(), udc.DBS().Reader.DB)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -1451,10 +1350,10 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}
 
 	if dd.Make.TokenId == 0 {
-		return fiber.NewError(fiber.StatusConflict, "Device make not yet minted.")
+		return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle make %q not yet minted.", dd.Make.Name))
 	}
 
-	makeTokenID := big.NewInt(int64(dd.Make.TokenId))
+	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
 
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
@@ -1589,6 +1488,12 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
+			// block new kias from minting
+			if (strings.ToLower(dd.Make.NameSlug) == "kia" || dd.Make.Id == "2681cSm2zmTmGHzqK3ldzoTLZIw") && in.Vendor == constants.SmartCarVendor {
+				udc.log.Warn().Msgf("new kias blocked from minting with smartcar connections")
+				return fiber.NewError(fiber.StatusFailedDependency, "Kia vehicles connected via smartcar cannot be manually minted for now.")
+			}
+
 			if in.Vendor == constants.TeslaVendor {
 				intID = in.TokenId
 				break
@@ -1666,15 +1571,78 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}, sigBytes)
 }
 
-type MintEventData struct {
-	RequestID    string   `json:"requestId"`
-	UserDeviceID string   `json:"userDeviceId"`
-	Owner        string   `json:"owner"`
-	RootNode     *big.Int `json:"rootNode"`
-	Attributes   []string `json:"attributes"`
-	Infos        []string `json:"infos"`
-	// Signature is the EIP-712 signature of the RootNode, Attributes, and Infos fields.
-	Signature string `json:"signature"`
+// UpdateNFTImage godoc
+// @Description Updates a user's NFT image.
+// @Tags        user-devices
+// @Param       userDeviceId path string                   true "user device id"
+// @Param       nftIamges body controllers.NFTImageData true "base64-encoded NFT image data"
+// @Success     204
+// @Security    BearerAuth
+// @Router      /user/devices/{userDeviceId}/commands/update-nft-image [post]
+func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
+	userDeviceID := c.Params("userDeviceID")
+
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(models.UserDeviceRels.VehicleNFT),
+	).One(c.Context(), udc.DBS().Reader)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
+	}
+
+	if userDevice.R.VehicleNFT == nil || userDevice.R.VehicleNFT.TokenID.IsZero() {
+		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
+	}
+
+	mr := new(MintRequest)
+	if err := c.BodyParser(mr); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
+	}
+
+	// This may not be there, but if it is we should delete it.
+	imageData := strings.TrimPrefix(mr.ImageData, "data:image/png;base64,")
+
+	image, err := base64.StdEncoding.DecodeString(imageData)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Primary image not properly base64-encoded.")
+	}
+
+	if len(image) == 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "Empty image field.")
+	}
+
+	_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
+		Bucket: &udc.Settings.NFTS3Bucket,
+		Key:    aws.String(userDevice.R.VehicleNFT.MintRequestID + ".png"),
+		Body:   bytes.NewReader(image),
+	})
+	if err != nil {
+		udc.log.Err(err).Msg("Failed to save image to S3.")
+		return opaqueInternalError
+	}
+
+	// This may not be there, but if it is we should delete it.
+	imageDataTransp := strings.TrimPrefix(mr.ImageDataTransparent, "data:image/png;base64,")
+
+	// Should be okay if empty or not provided.
+	imageTransp, err := base64.StdEncoding.DecodeString(imageDataTransp)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Transparent image not properly base64-encoded.")
+	}
+
+	if len(imageTransp) != 0 {
+		_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
+			Bucket: &udc.Settings.NFTS3Bucket,
+			Key:    aws.String(userDevice.R.VehicleNFT.MintRequestID + "_transparent.png"),
+			Body:   bytes.NewReader(imageTransp),
+		})
+		if err != nil {
+			udc.log.Err(err).Msg("Failed to save transparent image to S3.")
+			return opaqueInternalError
+		}
+	}
+
+	return err
 }
 
 // MintRequest contains the user's signature for the mint request as well as the
@@ -1717,16 +1685,6 @@ type RegisterUserDeviceSmartcar struct {
 	Code        string `json:"code"`
 	RedirectURI string `json:"redirectURI"`
 	CountryCode string `json:"countryCode"`
-}
-
-type AdminRegisterUserDevice struct {
-	RegisterUserDevice
-	ID          string  `json:"id"`          // KSUID from client,
-	CreatedDate int64   `json:"createdDate"` // unix timestamp
-	VehicleName *string `json:"vehicleName"`
-	VIN         string  `json:"vin"`
-	ImageURL    *string `json:"imageUrl"`
-	Verified    bool    `json:"verified"`
 }
 
 type UpdateVINReq struct {
@@ -1772,15 +1730,7 @@ func (reg *RegisterUserDeviceSmartcar) Validate() error {
 	)
 }
 
-func (reg *AdminRegisterUserDevice) Validate() error {
-	return validation.ValidateStruct(reg,
-		validation.Field(&reg.RegisterUserDevice),
-		validation.Field(&reg.ID, validation.Required, validation.Length(27, 27), is.Alphanumeric),
-	)
-}
-
 func (u *UpdateVINReq) validate() error {
-
 	validateLengthAndChars := validation.ValidateStruct(u,
 		// vin must be 17 characters in length, alphanumeric
 		validation.Field(&u.VIN, validation.Required, validation.Match(regexp.MustCompile("^[A-Z0-9]{17}$"))),
@@ -1793,7 +1743,6 @@ func (u *UpdateVINReq) validate() error {
 }
 
 func (u *UpdateNameReq) validate() error {
-
 	return validation.ValidateStruct(u,
 		// name must be between 1 and 40 alphanumeric characters in length
 		// NOTE: this captures characters in the latin/ chinese/ cyrillic alphabet but doesn't work as well for thai or arabic

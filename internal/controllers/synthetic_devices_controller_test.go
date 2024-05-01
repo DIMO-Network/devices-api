@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/shared"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
@@ -60,7 +61,6 @@ func (s *SyntheticDevicesControllerTestSuite) SetupSuite() {
 
 func (s *SyntheticDevicesControllerTestSuite) SetupTest() {
 	s.mockCtrl = gomock.NewController(s.T())
-	var err error
 
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(s.mockCtrl)
 	s.userClient = mock_services.NewMockUserServiceClient(s.mockCtrl)
@@ -82,10 +82,6 @@ func (s *SyntheticDevicesControllerTestSuite) SetupTest() {
 			Name:    "DIMO",
 			Version: "1",
 		},
-	}
-
-	if err != nil {
-		s.T().Fatal(err)
 	}
 
 	logger := test.Logger()
@@ -131,6 +127,14 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), "ddID                       ").Return(&grpc.GetDeviceDefinitionItemResponse{
+		DeviceDefinitionId: "ddID",
+		Make: &grpc.DeviceMake{
+			Name: "Ford",
+			Id:   ksuid.New().String(),
+		},
+		Verified: true,
+	}, nil)
 
 	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
 
@@ -362,6 +366,47 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceSmartcar()
 	assert.NoError(s.T(), err)
 
 	assert.Equal(s.T(), metaTrxReq, true)
+}
+
+func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload_FailToMintKia() {
+	_, addr, err := test.GenerateWallet()
+	s.Require().NoError(err)
+
+	email := "some@email.com"
+	eth := addr.Hex()
+
+	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &pb.UserReferrer{})
+	s.userClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: mockUserID}).Return(user, nil)
+
+	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), "ddID                       ").Return(&grpc.GetDeviceDefinitionItemResponse{
+		DeviceDefinitionId: "ddID",
+		Make: &grpc.DeviceMake{
+			Name: "Kia",
+			Id:   "2681cSm2zmTmGHzqK3ldzoTLZIw",
+		},
+		Verified: true,
+	}, nil)
+
+	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Kia", "Soul", 2022, nil)
+
+	udID := ksuid.New().String()
+	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, 57, s.pdb)
+	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, integration.Id, s.pdb)
+
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, integration.Id), "")
+	response, err := s.app.Test(request)
+	s.Require().NoError(err)
+	s.Equal(fiber.StatusFailedDependency, response.StatusCode)
+
+	body, _ := io.ReadAll(response.Body)
+
+	var resp map[string]interface{}
+	err = json.Unmarshal(body, &resp)
+	s.Require().NoError(err)
+
+	s.Equal("Kia vehicles connected via smartcar cannot be manually minted.", resp["message"])
 }
 
 func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayload_BadSignatureFailure() {
