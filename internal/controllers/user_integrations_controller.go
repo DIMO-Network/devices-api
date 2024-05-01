@@ -606,8 +606,12 @@ func (udc *UserDevicesController) TelemetrySubscribe(c *fiber.Ctx) error {
 
 	switch integration.Vendor {
 	case constants.TeslaVendor:
+		accessToken, err := udc.cipher.Decrypt(udai.AccessToken.String)
+		if err != nil {
+			return fmt.Errorf("failed to decrypt access token: %w", err)
+		}
 		if err := udc.teslaFleetAPISvc.SubscribeForTelemetryData(c.Context(),
-			udai.AccessToken.String,
+			accessToken,
 			md.TeslaRegion,
 			device.VinIdentifier.String,
 		); err != nil {

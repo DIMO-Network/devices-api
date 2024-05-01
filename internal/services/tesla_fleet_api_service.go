@@ -179,7 +179,7 @@ func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region str
 	var vehicle TeslaResponseWrapper[TeslaVehicle]
 	err = json.Unmarshal(body, &vehicle)
 	if err != nil {
-		return nil, fmt.Errorf("invalid response encountered while fetching user vehicles: %w", err)
+		return nil, fmt.Errorf("invalid response encountered while fetching vehicles: %w", err)
 	}
 
 	return &vehicle.Response, nil
@@ -358,9 +358,9 @@ func (t *teslaFleetAPIService) performRequest(ctx context.Context, url, token, m
 				Err(err).
 				Str("url", url).
 				Msg("An error occurred when attempting to decode the error message from the api.")
-			return nil, fmt.Errorf("invalid response encountered while fetching user vehicles: %s", errBody.ErrorDescription)
+			return nil, fmt.Errorf("couldn't parse Tesla error response body: %w", err)
 		}
-		return nil, fmt.Errorf("error occurred calling tesla api: %s", errBody.ErrorDescription)
+		return nil, fmt.Errorf("error occurred calling Tesla api: %s", errBody.ErrorDescription)
 	}
 
 	b, err := io.ReadAll(resp.Body)
