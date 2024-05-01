@@ -595,13 +595,8 @@ func (udc *UserDevicesController) TelemetrySubscribe(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "No commands config for integration and device")
 	}
 
-	if len(md.Commands.Capable) != 0 && !slices.Contains(md.Commands.Capable, constants.TelemetrySubscribe) {
-		return fiber.NewError(fiber.StatusBadRequest, "Telemetry command not available for device and integration combination")
-	}
-
-	// Is telemetry already enabled, return early
-	if ok := slices.Contains(md.Commands.Enabled, constants.TelemetrySubscribe); ok {
-		return c.SendStatus(fiber.StatusOK)
+	if !slices.Contains(md.Commands.Enabled, constants.TelemetrySubscribe) {
+		return fiber.NewError(fiber.StatusBadRequest, "Telemetry command not available for device and integration combination.")
 	}
 
 	integration, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), udai.IntegrationID)
@@ -618,18 +613,6 @@ func (udc *UserDevicesController) TelemetrySubscribe(c *fiber.Ctx) error {
 		); err != nil {
 			logger.Error().Err(err).Msg("error registering for telemetry")
 			return fiber.NewError(fiber.StatusFailedDependency, "could not register device for tesla telemetry: ", err.Error())
-		}
-
-		newEnabledCmd := append(md.Commands.Enabled, constants.TelemetrySubscribe)
-		md.Commands.Enabled = newEnabledCmd
-		newMeta, err := json.Marshal(md)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "could not save command state", err.Error())
-		}
-		udai.Metadata = null.JSONFrom(newMeta)
-		_, err = udai.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.UserDeviceAPIIntegrationColumns.Metadata))
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "could not save command state", err.Error())
 		}
 	default:
 		return fiber.NewError(fiber.StatusBadRequest, "Integration not supported for this command")
