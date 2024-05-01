@@ -11,7 +11,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/shared"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
@@ -209,71 +208,4 @@ func (u *UserIntegrationAuthController) persistOauthCredentials(ctx context.Cont
 	}
 
 	return nil
-}
-
-// GetCommandsByIntegration godoc
-// @Description Get a list of available commands by integration
-// @Tags        integrations
-// @Produce     json
-// @Accept      json
-// @Param       tokenID path string                   true "token id for integration"
-// @Security    ApiKeyAuth
-// @Success     200 {object} controllers.GetCommandsByIntegrationResponse
-// @Security    BearerAuth
-// @Router      /integration/:tokenID/commands [get]
-func (u *UserIntegrationAuthController) GetCommandsByIntegration(c *fiber.Ctx) error {
-	tokenID := c.Params("tokenID")
-	tkID, err := strconv.ParseUint(tokenID, 10, 64)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "could not process the provided tokenId!")
-	}
-
-	intd, err := u.DeviceDefSvc.GetIntegrationByTokenID(c.Context(), tkID)
-	if err != nil {
-		u.log.Err(err).Str("Calling Function", "GetIntegrationByTokenID").Uint64("tokenID", tkID).Msg("Error occurred trying to get integration using tokenID")
-		return fiber.NewError(fiber.StatusBadRequest, "could not find integration with token Id")
-	}
-
-	var commands *services.UserDeviceAPIIntegrationsMetadataCommands
-	switch intd.Vendor {
-	case constants.TeslaVendor:
-		vrsn := c.Query("version")
-		version, err := strconv.Atoi(vrsn)
-		if err != nil {
-			version = constants.TeslaAPIV1
-		}
-		commands = u.getTeslaCommands(version)
-	case constants.SmartCarVendor:
-		commands = u.getSmartCarCommands()
-	default:
-		return fiber.NewError(fiber.StatusBadRequest, "unsupported or invalid integration")
-	}
-	return c.JSON(commands)
-}
-
-func (u *UserIntegrationAuthController) getTeslaCommands(version int) *services.UserDeviceAPIIntegrationsMetadataCommands {
-	var cmds *services.UserDeviceAPIIntegrationsMetadataCommands
-	if version == constants.TeslaAPIV2 {
-		cmds = u.teslaFleetAPISvc.GetAvailableCommands()
-	} else {
-		svc := services.NewTeslaService(u.Settings)
-		cmds = svc.GetAvailableCommands()
-	}
-
-	return u.prepareCommandsResponse(cmds)
-}
-
-func (u *UserIntegrationAuthController) getSmartCarCommands() *services.UserDeviceAPIIntegrationsMetadataCommands {
-	svc := services.NewSmartcarClient(u.Settings)
-	cmds := svc.GetAvailableCommands()
-	return u.prepareCommandsResponse(cmds)
-}
-
-func (u *UserIntegrationAuthController) prepareCommandsResponse(cmds *services.UserDeviceAPIIntegrationsMetadataCommands) *services.UserDeviceAPIIntegrationsMetadataCommands {
-	disabled := utils.SliceDiff(cmds.Capable, cmds.Enabled)
-	return &services.UserDeviceAPIIntegrationsMetadataCommands{
-		Capable:  cmds.Capable,
-		Enabled:  cmds.Enabled,
-		Disabled: disabled,
-	}
 }
