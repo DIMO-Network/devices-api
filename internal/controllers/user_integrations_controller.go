@@ -274,7 +274,7 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 		return err
 	}
 
-	defer tx.Rollback() // nolint
+	defer tx.Rollback() //nolint
 
 	device, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
@@ -1144,7 +1144,7 @@ func (udc *UserDevicesController) PostAftermarketDevicePair(c *fiber.Ctx) error 
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() // nolint
+	defer tx.Rollback() //nolint
 
 	vnft, ad, err := udc.checkPairable(c.Context(), tx, userDeviceID, pairReq.ExternalID)
 	if err != nil {
@@ -1480,7 +1480,7 @@ func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() // nolint
+	defer tx.Rollback() //nolint
 
 	vnft, apnft, err := udc.checkUnpairable(c.Context(), tx, userDeviceID)
 	if err != nil {
@@ -1640,7 +1640,7 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("failed to create transaction: %s", err))
 	}
-	defer tx.Rollback() // nolint
+	defer tx.Rollback() //nolint
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 	).One(c.Context(), tx)
