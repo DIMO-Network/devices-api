@@ -88,6 +88,9 @@ type Settings struct {
 	TeslaClientSecret                 string `yaml:"TESLA_CLIENT_SECRET"`
 	TeslaTokenURL                     string `yaml:"TESLA_TOKEN_URL"`
 	TeslaFleetURL                     string `yaml:"TESLA_FLEET_URL"`
+	TeslaTelemetryHostName            string `yaml:"TESLA_TELEMETRY_HOST_NAME"`
+	TeslaTelemetryPort                int    `yaml:"TESLA_TELEMETRY_PORT"`
+	TeslaTelemetryCACertificate       string `yaml:"TESLA_TELEMETRY_CA_CERTIFICATE"`
 }
 
 func (s *Settings) IsProduction() bool {

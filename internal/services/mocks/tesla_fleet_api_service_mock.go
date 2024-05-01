@@ -114,6 +114,20 @@ func (mr *MockTeslaFleetAPIServiceMockRecorder) RefreshToken(ctx, refreshToken a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshToken", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).RefreshToken), ctx, refreshToken)
 }
 
+// SubscribeForTelemetryData mocks base method.
+func (m *MockTeslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, token, region, vin string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubscribeForTelemetryData", ctx, token, region, vin)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SubscribeForTelemetryData indicates an expected call of SubscribeForTelemetryData.
+func (mr *MockTeslaFleetAPIServiceMockRecorder) SubscribeForTelemetryData(ctx, token, region, vin any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeForTelemetryData", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).SubscribeForTelemetryData), ctx, token, region, vin)
+}
+
 // VirtualKeyConnectionStatus mocks base method.
 func (m *MockTeslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, token, region, vin string) (bool, error) {
 	m.ctrl.T.Helper()

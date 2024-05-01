@@ -539,6 +539,109 @@ func (udc *UserDevicesController) OpenFrunk(c *fiber.Ctx) error {
 	return udc.handleEnqueueCommand(c, constants.FrunkOpen)
 }
 
+// TelemetrySubscribe godoc
+// @Summary     Subscribe vehicle for Telemetry Data
+// @Description Subscribe vehicle for Telemetry Data. Currently, this only works for Teslas connected through Tesla.
+// @ID          telemetry-subscribe
+// @Tags        device,integration,command
+// @Success 	200 {object}
+// @Produce     json
+// @Param       userDeviceID  path string true "Device ID"
+// @Param       integrationID path string true "Integration ID"
+// @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/telemetry/subscribe [post]
+func (udc *UserDevicesController) TelemetrySubscribe(c *fiber.Ctx) error {
+	userDeviceID := c.Params("userDeviceID")
+	integrationID := c.Params("integrationID")
+
+	logger := helpers.GetLogger(c, udc.log).With().
+		Str("IntegrationID", integrationID).
+		Str("Name", "Telemetry/Subscribe").
+		Logger()
+
+	logger.Info().Msg("Received command request.")
+
+	device, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+	).One(c.Context(), udc.DBS().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fiber.NewError(fiber.StatusNotFound, "Device not found.")
+		}
+		logger.Err(err).Msg("Failed to search for device.")
+		return opaqueInternalError
+	}
+
+	udai, err := models.UserDeviceAPIIntegrations(
+		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
+		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID),
+	).One(c.Context(), udc.DBS().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fiber.NewError(fiber.StatusNotFound, "Integration not found for this device.")
+		}
+		logger.Err(err).Msg("Failed to search for device integration record.")
+		return opaqueInternalError
+	}
+
+	if udai.Status != models.UserDeviceAPIIntegrationStatusActive {
+		return fiber.NewError(fiber.StatusConflict, "Integration is not active for this device.")
+	}
+
+	md := new(services.UserDeviceAPIIntegrationsMetadata)
+	if err := udai.Metadata.Unmarshal(md); err != nil {
+		logger.Err(err).Msg("Couldn't parse metadata JSON.")
+		return opaqueInternalError
+	}
+
+	if md.TeslaRegion == "" || md.Commands == nil {
+		return fiber.NewError(fiber.StatusBadRequest, "No commands config for integration and device")
+	}
+
+	if len(md.Commands.Capable) != 0 && !slices.Contains(md.Commands.Capable, constants.TelemetrySubscribe) {
+		return fiber.NewError(fiber.StatusBadRequest, "Telemetry command not available for device and integration combination")
+	}
+
+	// Is telemetry already enabled, return early
+	if ok := slices.Contains(md.Commands.Enabled, constants.TelemetrySubscribe); ok {
+		return c.SendStatus(fiber.StatusOK)
+	}
+
+	integration, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), udai.IntegrationID)
+	if err != nil {
+		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting integration id: "+udai.IntegrationID)
+	}
+
+	switch integration.Vendor {
+	case constants.TeslaVendor:
+		if err := udc.teslaFleetAPISvc.SubscribeForTelemetryData(c.Context(),
+			udai.AccessToken.String,
+			md.TeslaRegion,
+			device.VinIdentifier.String,
+		); err != nil {
+			logger.Error().Err(err).Msg("error registering for telemetry")
+			return fiber.NewError(fiber.StatusFailedDependency, "could not register device for tesla telemetry: ", err.Error())
+		}
+
+		newEnabledCmd := append(md.Commands.Enabled, constants.TelemetrySubscribe)
+		md.Commands.Enabled = newEnabledCmd
+		newMeta, err := json.Marshal(md)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "could not save command state", err.Error())
+		}
+		udai.Metadata = null.JSONFrom(newMeta)
+		_, err = udai.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.UserDeviceAPIIntegrationColumns.Metadata))
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "could not save command state", err.Error())
+		}
+	default:
+		return fiber.NewError(fiber.StatusBadRequest, "Integration not supported for this command")
+	}
+
+	logger.Info().Msg("Successfully subscribed to telemetry")
+
+	return c.SendStatus(fiber.StatusOK)
+}
+
 // GetAutoPiUnitInfo godoc
 // @Description gets the information about the aftermarket device by the hw serial
 // @Tags        integrations
