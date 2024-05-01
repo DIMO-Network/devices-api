@@ -178,7 +178,7 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() // nolint
+	defer tx.Rollback() //nolint
 
 	apiInt, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
