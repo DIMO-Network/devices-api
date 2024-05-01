@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -61,12 +63,12 @@ type VirtualKeyConnectionStatusResponse struct {
 }
 
 type VirtualKeyConnectionStatus struct {
-	UnpairedVins  []string `json:"unpaired_vins"`
-	KeyPairedVins []string `json:"key_paired_vins"`
+	UnpairedVINs  []string `json:"unpaired_vins"`
+	KeyPairedVINs []string `json:"key_paired_vins"`
 }
 
 type SubscribeForTelemetryDataRequest struct {
-	Vins   []string               `json:"vins"`
+	VINs   []string               `json:"vins"`
 	Config TelemetryConfigRequest `json:"config"`
 }
 
@@ -150,7 +152,7 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 // GetVehicles calls Tesla Fleet API to get a list of vehicles using authorization token
 func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region string) ([]TeslaVehicle, error) {
 	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
-	url := baseURL + "/api/1/vehicles"
+	url := path.Join(baseURL, "/api/1/vehicles")
 
 	resp, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
@@ -173,7 +175,7 @@ func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region st
 // GetVehicle calls Tesla Fleet API to get a single vehicle by ID
 func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region string, vehicleID int) (*TeslaVehicle, error) {
 	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
-	url := fmt.Sprintf("%s/api/1/vehicles/%d", baseURL, vehicleID)
+	url := path.Join(baseURL, "/api/1/vehicles", strconv.Itoa(vehicleID))
 
 	resp, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
@@ -192,7 +194,7 @@ func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region str
 // WakeUpVehicle Calls Tesla Fleet API to wake a vehicle from sleep
 func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error {
 	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
-	url := fmt.Sprintf("%s/api/1/vehicles/%d/wake_up", baseURL, vehicleID)
+	url := path.Join(baseURL, "/api/1/vehicles", strconv.Itoa(vehicleID), "wake_up")
 
 	resp, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
@@ -218,7 +220,7 @@ func (t *teslaFleetAPIService) GetAvailableCommands() *UserDeviceAPIIntegrations
 // VirtualKeyConnectionStatus Checks whether vehicles can accept Tesla commands protocol for the partner's public key
 func (t *teslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, token, region, vin string) (bool, error) {
 	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
-	url := fmt.Sprintf("%s/api/1/vehicles/fleet_status", baseURL)
+	url := path.Join(baseURL, "/api/1/vehicles/fleet_status")
 
 	jsonBody := fmt.Sprintf(`{"vins": [%q]}`, vin)
 	body := strings.NewReader(jsonBody)
@@ -241,7 +243,7 @@ func (t *teslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, t
 		return false, fmt.Errorf("error occurred decoding connection status %w", err)
 	}
 
-	isConnected := slices.Contains(v.Response.KeyPairedVins, vin)
+	isConnected := slices.Contains(v.Response.KeyPairedVINs, vin)
 
 	return isConnected, nil
 }
@@ -293,13 +295,10 @@ var fields = TelemetryFields{
 
 func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, token, region, vin string) error {
 	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
-	u, err := url.JoinPath(baseURL, "/api/1/vehicles/fleet_telemetry_config")
-	if err != nil {
-		return err
-	}
+	u := path.Join(baseURL, "/api/1/vehicles/fleet_telemetry_config")
 
 	r := SubscribeForTelemetryDataRequest{
-		Vins: []string{vin},
+		VINs: []string{vin},
 		Config: TelemetryConfigRequest{
 			HostName:            t.Settings.TeslaTelemetryHostName,
 			PublicCACertificate: t.Settings.TeslaTelemetryCACertificate,
