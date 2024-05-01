@@ -76,8 +76,8 @@ type CompleteOAuthExchangeResponse struct {
 }
 
 type GetCommandsByIntegrationResponse struct {
-	Enabled  []string `json:"enabled,omitempty"`
-	Disabled []string `json:"disabled,omitempty"`
+	Enabled  []string `json:"enabled"`
+	Disabled []string `json:"disabled"`
 }
 
 // DeviceDefinition inner definition object containing meta data for each tesla vehicle
