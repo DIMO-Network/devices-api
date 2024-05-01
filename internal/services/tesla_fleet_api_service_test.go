@@ -45,7 +45,7 @@ func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForTelemetryData() {
 	baseURL := fmt.Sprintf(mockTeslaFleetBaseURL, region)
 	u := fmt.Sprintf("%s/api/1/vehicles/fleet_telemetry_config", baseURL)
 
-	respBody := SubscribeForTelemetryDataResponseWrapper{
+	respBody := TeslaResponseWrapper[SubscribeForTelemetryDataResponse]{
 		SubscribeForTelemetryDataResponse{
 			UpdatedVehicles: 1,
 			SkippedVehicles: SkippedVehicles{},
@@ -67,11 +67,11 @@ func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForTelemetryData_Errror_Cas
 
 	vin := "RandomVin"
 	tests := []struct {
-		response      SubscribeForTelemetryDataResponseWrapper
+		response      TeslaResponseWrapper[SubscribeForTelemetryDataResponse]
 		expectedError string
 	}{
 		{
-			response: SubscribeForTelemetryDataResponseWrapper{
+			response: TeslaResponseWrapper[SubscribeForTelemetryDataResponse]{
 				SubscribeForTelemetryDataResponse{
 					UpdatedVehicles: 0,
 					SkippedVehicles: SkippedVehicles{
@@ -84,7 +84,7 @@ func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForTelemetryData_Errror_Cas
 			expectedError: "vehicle has not approved virtual token connection",
 		},
 		{
-			response: SubscribeForTelemetryDataResponseWrapper{
+			response: TeslaResponseWrapper[SubscribeForTelemetryDataResponse]{
 				SubscribeForTelemetryDataResponse{
 					UpdatedVehicles: 0,
 					SkippedVehicles: SkippedVehicles{
@@ -97,7 +97,7 @@ func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForTelemetryData_Errror_Cas
 			expectedError: "vehicle hardware not supported",
 		},
 		{
-			response: SubscribeForTelemetryDataResponseWrapper{
+			response: TeslaResponseWrapper[SubscribeForTelemetryDataResponse]{
 				SubscribeForTelemetryDataResponse{
 					UpdatedVehicles: 0,
 					SkippedVehicles: SkippedVehicles{

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -78,8 +79,6 @@ type TelemetryConfigRequest struct {
 	HostName            string          `json:"hostName"`
 	PublicCACertificate string          `json:"ca"`
 	Fields              TelemetryFields `json:"fields"`
-	AlertTypes          []string        `json:"alert_types,omitempty"`
-	Expiration          int64           `json:"exp"`
 	Port                int             `json:"port"`
 }
 
@@ -145,14 +144,14 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region string) ([]TeslaVehicle, error) {
 	url := path.Join(t.fleetURLForRegion(region), "/api/1/vehicles")
 
-	resp, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
+	body, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch vehicles for user: %w", err)
 	}
-	defer resp.Body.Close()
 
 	var vehicles TeslaResponseWrapper[[]TeslaVehicle]
-	if err := json.NewDecoder(resp.Body).Decode(&vehicles); err != nil {
+	err = json.Unmarshal(body, &vehicles)
+	if err != nil {
 		return nil, fmt.Errorf("invalid response encountered while fetching user vehicles: %w", err)
 	}
 
@@ -167,14 +166,14 @@ func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region st
 func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region string, vehicleID int) (*TeslaVehicle, error) {
 	url := path.Join(t.fleetURLForRegion(region), "/api/1/vehicles", strconv.Itoa(vehicleID))
 
-	resp, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
+	body, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch vehicles for user: %w", err)
 	}
-	defer resp.Body.Close()
 
 	var vehicle TeslaResponseWrapper[TeslaVehicle]
-	if err := json.NewDecoder(resp.Body).Decode(&vehicle); err != nil {
+	err = json.Unmarshal(body, &vehicle)
+	if err != nil {
 		return nil, fmt.Errorf("invalid response encountered while fetching user vehicles: %w", err)
 	}
 
@@ -185,18 +184,12 @@ func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region str
 func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error {
 	url := path.Join(t.fleetURLForRegion(region), "/api/1/vehicles", strconv.Itoa(vehicleID), "wake_up")
 
-	resp, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
+	_, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
 		return fmt.Errorf("could not fetch vehicles for user: %w", err)
 	}
 
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("got status code %d waking up vehicle %d", resp.StatusCode, vehicleID)
-	}
-
-	return nil
+	return err
 }
 
 func (t *teslaFleetAPIService) GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands {
@@ -211,27 +204,20 @@ func (t *teslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, t
 	url := path.Join(t.fleetURLForRegion(region), "/api/1/vehicles/fleet_status")
 
 	jsonBody := fmt.Sprintf(`{"vins": [%q]}`, vin)
-	body := strings.NewReader(jsonBody)
+	inBody := strings.NewReader(jsonBody)
 
-	resp, err := t.performRequest(ctx, url, token, http.MethodPost, body)
+	body, err := t.performRequest(ctx, url, token, http.MethodPost, inBody)
 	if err != nil {
 		return false, fmt.Errorf("could not fetch vehicles for user: %w", err)
 	}
 
-	defer resp.Body.Close()
-
-	bd, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false, fmt.Errorf("could not verify connection status %w", err)
-	}
-
-	var v TeslaResponseWrapper[VirtualKeyConnectionStatus]
-	err = json.Unmarshal(bd, &v)
+	var keyConn TeslaResponseWrapper[VirtualKeyConnectionStatus]
+	err = json.Unmarshal(body, &keyConn)
 	if err != nil {
 		return false, fmt.Errorf("error occurred decoding connection status %w", err)
 	}
 
-	isConnected := slices.Contains(v.Response.KeyPairedVINs, vin)
+	isConnected := slices.Contains(keyConn.Response.KeyPairedVINs, vin)
 
 	return isConnected, nil
 }
@@ -303,17 +289,14 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 		return err
 	}
 
-	req := strings.NewReader(string(b))
-
-	resp, err := t.performRequest(ctx, u, token, http.MethodPost, req)
+	body, err := t.performRequest(ctx, u, token, http.MethodPost, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
 
-	defer resp.Body.Close()
-
 	var subResp TeslaResponseWrapper[SubscribeForTelemetryDataResponse]
-	if err := json.NewDecoder(resp.Body).Decode(&subResp); err != nil {
+	err = json.Unmarshal(body, &subResp)
+	if err != nil {
 		return err
 	}
 
@@ -337,7 +320,7 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 }
 
 // performRequest a helper function for making http requests, it adds a timeout context and parses error response
-func (t *teslaFleetAPIService) performRequest(ctx context.Context, url, token, method string, body *strings.Reader) (*http.Response, error) {
+func (t *teslaFleetAPIService) performRequest(ctx context.Context, url, token, method string, body io.Reader) ([]byte, error) {
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
@@ -352,9 +335,11 @@ func (t *teslaFleetAPIService) performRequest(ctx context.Context, url, token, m
 		return nil, fmt.Errorf("error occurred calling tesla fleet api: %w", err)
 	}
 
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
-		errBody := new(TeslaFleetAPIError)
-		if err := json.NewDecoder(resp.Body).Decode(errBody); err != nil {
+		var errBody TeslaFleetAPIError
+		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
 			t.log.
 				Err(err).
 				Str("url", url).
@@ -364,5 +349,10 @@ func (t *teslaFleetAPIService) performRequest(ctx context.Context, url, token, m
 		return nil, fmt.Errorf("error occurred calling tesla api: %s", errBody.ErrorDescription)
 	}
 
-	return resp, nil
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+
+	return b, nil
 }
