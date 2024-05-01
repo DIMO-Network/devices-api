@@ -11,11 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-	smartcar "github.com/smartcar/go-sdk"
-
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/pkg/errors"
+	smartcar "github.com/smartcar/go-sdk"
 )
 
 //go:generate mockgen -source smartcar_client.go -destination mocks/smartcar_client_mock.go

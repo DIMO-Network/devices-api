@@ -13,15 +13,14 @@ import (
 
 	"github.com/DIMO-Network/shared/db"
 
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type setCommandCompatibilityCmd struct {

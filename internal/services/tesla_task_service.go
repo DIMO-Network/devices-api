@@ -6,12 +6,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/Shopify/sarama"
 	"github.com/segmentio/ksuid"
-
-	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/models"
 )
 
 //go:generate mockgen -source tesla_task_service.go -destination mocks/tesla_task_service_mock.go
