@@ -35,12 +35,8 @@ type TeslaFleetAPIService interface {
 
 var teslaScopes = []string{"openid", "offline_access", "user_data", "vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds", "energy_device_data", "energy_device_data", "energy_cmds"}
 
-type GetVehiclesResponse struct {
-	Response []TeslaVehicle `json:"response"`
-}
-
-type GetSingleVehicleItemResponse struct {
-	Response TeslaVehicle `json:"response"`
+type TeslaResponseWrapper[A any] struct {
+	Response A `json:"response"`
 }
 
 type TeslaFleetAPIError struct {
@@ -98,10 +94,6 @@ type SubscribeForTelemetryDataResponse struct {
 	SkippedVehicles SkippedVehicles `json:"skipped_vehicles"`
 }
 
-type SubscribeForTelemetryDataResponseWrapper struct {
-	Response SubscribeForTelemetryDataResponse `json:"response"`
-}
-
 type teslaFleetAPIService struct {
 	Settings   *config.Settings
 	HTTPClient *http.Client
@@ -151,8 +143,7 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 
 // GetVehicles calls Tesla Fleet API to get a list of vehicles using authorization token
 func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region string) ([]TeslaVehicle, error) {
-	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
-	url := path.Join(baseURL, "/api/1/vehicles")
+	url := path.Join(t.fleetURLForRegion(region), "/api/1/vehicles")
 
 	resp, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
@@ -160,8 +151,8 @@ func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region st
 	}
 	defer resp.Body.Close()
 
-	vehicles := new(GetVehiclesResponse)
-	if err := json.NewDecoder(resp.Body).Decode(vehicles); err != nil {
+	var vehicles TeslaResponseWrapper[[]TeslaVehicle]
+	if err := json.NewDecoder(resp.Body).Decode(&vehicles); err != nil {
 		return nil, fmt.Errorf("invalid response encountered while fetching user vehicles: %w", err)
 	}
 
@@ -174,8 +165,7 @@ func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region st
 
 // GetVehicle calls Tesla Fleet API to get a single vehicle by ID
 func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region string, vehicleID int) (*TeslaVehicle, error) {
-	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
-	url := path.Join(baseURL, "/api/1/vehicles", strconv.Itoa(vehicleID))
+	url := path.Join(t.fleetURLForRegion(region), "/api/1/vehicles", strconv.Itoa(vehicleID))
 
 	resp, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
@@ -183,8 +173,8 @@ func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region str
 	}
 	defer resp.Body.Close()
 
-	vehicle := new(GetSingleVehicleItemResponse)
-	if err := json.NewDecoder(resp.Body).Decode(vehicle); err != nil {
+	var vehicle TeslaResponseWrapper[TeslaVehicle]
+	if err := json.NewDecoder(resp.Body).Decode(&vehicle); err != nil {
 		return nil, fmt.Errorf("invalid response encountered while fetching user vehicles: %w", err)
 	}
 
@@ -193,8 +183,7 @@ func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region str
 
 // WakeUpVehicle Calls Tesla Fleet API to wake a vehicle from sleep
 func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error {
-	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
-	url := path.Join(baseURL, "/api/1/vehicles", strconv.Itoa(vehicleID), "wake_up")
+	url := path.Join(t.fleetURLForRegion(region), "/api/1/vehicles", strconv.Itoa(vehicleID), "wake_up")
 
 	resp, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
@@ -219,8 +208,7 @@ func (t *teslaFleetAPIService) GetAvailableCommands() *UserDeviceAPIIntegrations
 
 // VirtualKeyConnectionStatus Checks whether vehicles can accept Tesla commands protocol for the partner's public key
 func (t *teslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, token, region, vin string) (bool, error) {
-	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
-	url := path.Join(baseURL, "/api/1/vehicles/fleet_status")
+	url := path.Join(t.fleetURLForRegion(region), "/api/1/vehicles/fleet_status")
 
 	jsonBody := fmt.Sprintf(`{"vins": [%q]}`, vin)
 	body := strings.NewReader(jsonBody)
@@ -237,7 +225,7 @@ func (t *teslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, t
 		return false, fmt.Errorf("could not verify connection status %w", err)
 	}
 
-	var v VirtualKeyConnectionStatusResponse
+	var v TeslaResponseWrapper[VirtualKeyConnectionStatus]
 	err = json.Unmarshal(bd, &v)
 	if err != nil {
 		return false, fmt.Errorf("error occurred decoding connection status %w", err)
@@ -271,12 +259,12 @@ func (t *teslaFleetAPIService) RefreshToken(ctx context.Context, refreshToken st
 		return nil, fmt.Errorf("status code %d", code)
 	}
 
-	tokResp := new(TeslaAuthCodeResponse)
-	if err := json.NewDecoder(resp.Body).Decode(tokResp); err != nil {
+	var tokResp TeslaAuthCodeResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tokResp); err != nil {
 		return nil, err
 	}
 
-	return tokResp, nil
+	return &tokResp, nil
 }
 
 var fields = TelemetryFields{
@@ -293,9 +281,12 @@ var fields = TelemetryFields{
 	"BatteryLevel":        {IntervalSeconds: 60},
 }
 
+func (t *teslaFleetAPIService) fleetURLForRegion(region string) string {
+	return fmt.Sprintf(t.Settings.TeslaFleetURL, region)
+}
+
 func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, token, region, vin string) error {
-	baseURL := fmt.Sprintf(t.Settings.TeslaFleetURL, region)
-	u := path.Join(baseURL, "/api/1/vehicles/fleet_telemetry_config")
+	u := path.Join(t.fleetURLForRegion(region), "/api/1/vehicles/fleet_telemetry_config")
 
 	r := SubscribeForTelemetryDataRequest{
 		VINs: []string{vin},
@@ -304,7 +295,6 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 			PublicCACertificate: t.Settings.TeslaTelemetryCACertificate,
 			Port:                t.Settings.TeslaTelemetryPort,
 			Fields:              fields,
-			AlertTypes:          []string{"service"},
 		},
 	}
 
@@ -322,7 +312,7 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 
 	defer resp.Body.Close()
 
-	subResp := SubscribeForTelemetryDataResponseWrapper{}
+	var subResp TeslaResponseWrapper[SubscribeForTelemetryDataResponse]
 	if err := json.NewDecoder(resp.Body).Decode(&subResp); err != nil {
 		return err
 	}
