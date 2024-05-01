@@ -13,7 +13,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/test"
 )
 
-const mockTeslaFleetBaeURL = "https://fleet-mock-api.%s.tesla.com"
+const mockTeslaFleetBaseURL = "https://fleet-mock-api.%s.tesla.com"
 
 type TeslaFleetAPIServiceTestSuite struct {
 	suite.Suite
@@ -25,7 +25,7 @@ type TeslaFleetAPIServiceTestSuite struct {
 func (t *TeslaFleetAPIServiceTestSuite) SetupSuite() {
 	t.ctx = context.Background()
 	logger := test.Logger()
-	t.settings = &config.Settings{TeslaFleetURL: mockTeslaFleetBaeURL, TeslaTelemetryCACertificate: "Ca-Cert", TeslaTelemetryPort: 443, TeslaTelemetryHostName: "tel.dimo.com"}
+	t.settings = &config.Settings{TeslaFleetURL: mockTeslaFleetBaseURL, TeslaTelemetryCACertificate: "Ca-Cert", TeslaTelemetryPort: 443, TeslaTelemetryHostName: "tel.dimo.com"}
 
 	t.SUT = NewTeslaFleetAPIService(t.settings, logger)
 }
@@ -42,7 +42,7 @@ func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForTelemetryData() {
 	region := "mockRegion"
 	vin := "RandomVin"
 
-	baseURL := fmt.Sprintf(mockTeslaFleetBaeURL, region)
+	baseURL := fmt.Sprintf(mockTeslaFleetBaseURL, region)
 	u := fmt.Sprintf("%s/api/1/vehicles/fleet_telemetry_config", baseURL)
 
 	respBody := SubscribeForTelemetryDataResponseWrapper{
@@ -115,7 +115,7 @@ func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForTelemetryData_Errror_Cas
 		token := "someToken"
 		region := "mockRegion"
 
-		baseURL := fmt.Sprintf(mockTeslaFleetBaeURL, region)
+		baseURL := fmt.Sprintf(mockTeslaFleetBaseURL, region)
 		u := fmt.Sprintf("%s/api/1/vehicles/fleet_telemetry_config", baseURL)
 
 		responder, err := httpmock.NewJsonResponder(http.StatusOK, tst.response)
