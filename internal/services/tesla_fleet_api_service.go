@@ -352,8 +352,13 @@ func (t *teslaFleetAPIService) performRequest(ctx context.Context, url, token, m
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("error reading response body: %w", err)
+		}
+		t.log.Info().Str("teslaError", string(b)).Int("code", resp.StatusCode).Msg("xdd")
 		var errBody TeslaFleetAPIError
-		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
+		if err := json.Unmarshal(b, &errBody); err != nil {
 			t.log.
 				Err(err).
 				Str("url", url).
