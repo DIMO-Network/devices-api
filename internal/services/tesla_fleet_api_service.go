@@ -75,7 +75,7 @@ type Interval struct {
 type TelemetryFields map[string]Interval
 
 type TelemetryConfigRequest struct {
-	HostName            string          `json:"hostName"`
+	HostName            string          `json:"hostname"`
 	PublicCACertificate string          `json:"ca"`
 	Fields              TelemetryFields `json:"fields"`
 	Port                int             `json:"port"`
