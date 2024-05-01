@@ -216,8 +216,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	vPriv.Post("/commands/burn", userDeviceController.PostBurnDevice)
 
 	// vehicle command privileges
-	vPriv.Get("/status", privTokenWare.OneOf(vehicleAddr,
-		[]privileges.Privilege{privileges.VehicleNonLocationData, privileges.VehicleCurrentLocation, privileges.VehicleAllTimeLocation}), nftController.GetVehicleStatus)
 	if !settings.IsProduction() {
 		vPriv.Get("/vin-credential", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleVinCredential}), nftController.GetVinCredential)
 	}
@@ -287,7 +285,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwnerMw := owner.UserDevice(pdb, usersClient, &logger)
 	udOwner := v1Auth.Group("/user/devices/:userDeviceID", udOwnerMw)
 
-	udOwner.Get("/status", userDeviceController.GetUserDeviceStatus)
 	udOwner.Delete("/", userDeviceController.DeleteUserDevice)
 	udOwner.Get("/commands/mint", userDeviceController.GetMintDevice)
 	udOwner.Post("/commands/mint", userDeviceController.PostMintDevice)
