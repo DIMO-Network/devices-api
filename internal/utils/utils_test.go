@@ -9,8 +9,8 @@ import (
 )
 
 func TestGetSliceDiff(t *testing.T) {
-	enabled := []string{constants.DoorsLock, constants.DoorsUnlock}
 	capable := []string{constants.TelemetrySubscribe, constants.DoorsLock, constants.DoorsUnlock}
-	actual := GetSliceDiff(enabled, capable)
-	assert.Equal(t, []string{constants.TelemetrySubscribe}, actual)
+	enabled := []string{constants.DoorsLock, constants.DoorsUnlock}
+	actual := SliceDiff(capable, enabled)
+	assert.ElementsMatch(t, []string{constants.TelemetrySubscribe}, actual)
 }

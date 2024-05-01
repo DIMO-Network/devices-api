@@ -13,21 +13,19 @@ func BigToDecimal(x *big.Int) types.Decimal {
 	return types.NewDecimal(new(decimal.Big).SetBigMantScale(x, 0))
 }
 
-type void struct{}
+// SliceDiff compares two slices and returns slice of differences
+func SliceDiff(set, other []string) []string {
+	otherSet := make(map[string]struct{}, len(other))
 
-// GetSliceDiff compares two slices and returns slice of differences
-func GetSliceDiff(subset, superset []string) []string {
-	ma := make(map[string]void, len(subset))
-
-	diffs := make([]string, 0)
-	for _, ka := range subset {
-		ma[ka] = void{}
+	for _, x := range other {
+		otherSet[x] = struct{}{}
 	}
 
-	for _, kb := range superset {
-		if _, ok := ma[kb]; !ok {
-			diffs = append(diffs, kb)
+	var diff []string
+	for _, x := range set {
+		if _, ok := otherSet[x]; !ok {
+			diff = append(diff, x)
 		}
 	}
-	return diffs
+	return diff
 }

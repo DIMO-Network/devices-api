@@ -270,10 +270,10 @@ func (u *UserIntegrationAuthController) getSmartCarCommands() *services.UserDevi
 }
 
 func (u *UserIntegrationAuthController) prepareCommandsResponse(cmds *services.UserDeviceAPIIntegrationsMetadataCommands) *services.UserDeviceAPIIntegrationsMetadataCommands {
-	disabled := utils.GetSliceDiff(cmds.Enabled, cmds.Capable)
+	disabled := utils.SliceDiff(cmds.Capable, cmds.Enabled)
 	return &services.UserDeviceAPIIntegrationsMetadataCommands{
-		Enabled:  cmds.Enabled,
 		Capable:  cmds.Capable,
+		Enabled:  cmds.Enabled,
 		Disabled: disabled,
 	}
 }
