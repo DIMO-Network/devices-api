@@ -144,9 +144,10 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		EnableStackTrace:  true,
 		StackTraceHandler: nil,
 	}))
-	// request logging
+
+	// Request logging.
 	app.Use(zflogger.New(logger, nil)) // TODO(elffjs): Is this even printing?
-	// cache
+
 	cacheHandler := cache.New(cache.Config{
 		Next: func(c *fiber.Ctx) bool {
 			return c.Query("refresh") == "true"
