@@ -697,7 +697,7 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() // nolint
+	defer tx.Rollback() //nolint
 
 	vehicleNFT, err := models.VehicleNFTS(
 		models.VehicleNFTWhere.TokenID.EQ(tid),
