@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -142,7 +141,10 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 
 // GetVehicles calls Tesla Fleet API to get a list of vehicles using authorization token
 func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region string) ([]TeslaVehicle, error) {
-	url := path.Join(t.fleetURLForRegion(region), "/api/1/vehicles")
+	url, err := url.JoinPath(t.fleetURLForRegion(region), "/api/1/vehicles")
+	if err != nil {
+		return nil, err
+	}
 
 	body, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
@@ -164,7 +166,10 @@ func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region st
 
 // GetVehicle calls Tesla Fleet API to get a single vehicle by ID
 func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region string, vehicleID int) (*TeslaVehicle, error) {
-	url := path.Join(t.fleetURLForRegion(region), "/api/1/vehicles", strconv.Itoa(vehicleID))
+	url, err := url.JoinPath(t.fleetURLForRegion(region), "/api/1/vehicles", strconv.Itoa(vehicleID))
+	if err != nil {
+		return nil, fmt.Errorf("error constructing URL: %w", err)
+	}
 
 	body, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
@@ -182,9 +187,12 @@ func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region str
 
 // WakeUpVehicle Calls Tesla Fleet API to wake a vehicle from sleep
 func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error {
-	url := path.Join(t.fleetURLForRegion(region), "/api/1/vehicles", strconv.Itoa(vehicleID), "wake_up")
+	url, err := url.JoinPath(t.fleetURLForRegion(region), "/api/1/vehicles", strconv.Itoa(vehicleID), "wake_up")
+	if err != nil {
+		return fmt.Errorf("error constructing URL: %w", err)
+	}
 
-	_, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
+	_, err = t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
 		return fmt.Errorf("could not fetch vehicles for user: %w", err)
 	}
@@ -201,7 +209,10 @@ func (t *teslaFleetAPIService) GetAvailableCommands() *UserDeviceAPIIntegrations
 
 // VirtualKeyConnectionStatus Checks whether vehicles can accept Tesla commands protocol for the partner's public key
 func (t *teslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, token, region, vin string) (bool, error) {
-	url := path.Join(t.fleetURLForRegion(region), "/api/1/vehicles/fleet_status")
+	url, err := url.JoinPath(t.fleetURLForRegion(region), "/api/1/vehicles/fleet_status")
+	if err != nil {
+		return false, fmt.Errorf("error constructing URL: %w", err)
+	}
 
 	jsonBody := fmt.Sprintf(`{"vins": [%q]}`, vin)
 	inBody := strings.NewReader(jsonBody)
@@ -272,7 +283,10 @@ func (t *teslaFleetAPIService) fleetURLForRegion(region string) string {
 }
 
 func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, token, region, vin string) error {
-	u := path.Join(t.fleetURLForRegion(region), "/api/1/vehicles/fleet_telemetry_config")
+	u, err := url.JoinPath(t.fleetURLForRegion(region), "/api/1/vehicles/fleet_telemetry_config")
+	if err != nil {
+		return fmt.Errorf("error constructing URL: %w", err)
+	}
 
 	r := SubscribeForTelemetryDataRequest{
 		VINs: []string{vin},
