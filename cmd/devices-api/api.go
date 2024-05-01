@@ -11,12 +11,21 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/controllers"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/middleware"
 	"github.com/DIMO-Network/devices-api/internal/middleware/metrics"
 	"github.com/DIMO-Network/devices-api/internal/middleware/owner"
 	"github.com/DIMO-Network/devices-api/internal/rpc"
+	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/internal/services/autopi"
 	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
+	"github.com/DIMO-Network/devices-api/internal/services/issuer"
+	"github.com/DIMO-Network/devices-api/internal/services/macaron"
+	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 	"github.com/DIMO-Network/shared"
 	pbuser "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
@@ -41,16 +50,6 @@ import (
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-
-	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/controllers"
-	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/devices-api/internal/services/autopi"
-	"github.com/DIMO-Network/devices-api/internal/services/issuer"
-	"github.com/DIMO-Network/devices-api/internal/services/macaron"
-	"github.com/DIMO-Network/devices-api/internal/services/registry"
-	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 )
 
 func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store, eventService services.EventService, producer sarama.SyncProducer, s3ServiceClient *s3.Client, s3NFTServiceClient *s3.Client) {
