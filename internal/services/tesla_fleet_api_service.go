@@ -32,7 +32,7 @@ type TeslaFleetAPIService interface {
 	SubscribeForTelemetryData(ctx context.Context, token, region, vin string) error
 }
 
-var teslaScopes = []string{"openid", "offline_access", "user_data", "vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds", "energy_device_data", "energy_device_data", "energy_cmds"}
+var teslaScopes = []string{"openid", "offline_access", "user_data", "vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds"}
 
 type TeslaResponseWrapper[A any] struct {
 	Response A `json:"response"`
