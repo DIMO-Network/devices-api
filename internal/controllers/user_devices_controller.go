@@ -361,9 +361,9 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 
 	query = append(query,
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-		qm.Load(qm.Rels(models.UserDeviceRels.MintRequest)),
+		qm.Load(models.UserDeviceRels.MintRequest),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
-		qm.Load(qm.Rels(models.UserDeviceRels.Claim)),
+		qm.Load(models.UserDeviceRels.Claim),
 		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" DESC"))
 
 	devices, err := models.UserDevices(query...).All(c.Context(), udc.DBS().Reader)
@@ -442,9 +442,9 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 				models.UserDeviceWhere.ID.EQ(nft.UserDeviceID.String),
 				qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 				// Would we get this backreference for free?
-				qm.Load(qm.Rels(models.UserDeviceRels.MintRequest)),
+				qm.Load(models.UserDeviceRels.MintRequest),
 				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
-				qm.Load(qm.Rels(models.UserDeviceRels.Claim)),
+				qm.Load(models.UserDeviceRels.Claim),
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
 				return err
@@ -1644,8 +1644,8 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.MintRequest)),
-		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations)),
+		qm.Load(models.UserDeviceRels.MintRequest),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 	).One(c.Context(), udc.DBS().Reader.DB)
 	if err != nil {
 		if err == sql.ErrNoRows {

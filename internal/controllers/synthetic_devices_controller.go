@@ -125,7 +125,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 	integrationID := c.Params("integrationID")
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice)),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
 	).One(c.Context(), sdc.DBS().Reader)
 	if err != nil {
@@ -189,7 +189,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice)),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
 	).One(c.Context(), sdc.DBS().Reader)
 	if err != nil {
@@ -324,7 +324,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceBurnPayload(c *fiber.Ct
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice)),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(c.Context(), sdc.DBS().Reader)
 	if err != nil {
 		return err
@@ -405,7 +405,7 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice)),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(c.Context(), tx)
 	if err != nil {
 		return err

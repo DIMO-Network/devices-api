@@ -173,7 +173,7 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	device, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice)),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(c.Context(), tx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -935,7 +935,7 @@ func (udc *UserDevicesController) PostPairAutoPi(c *fiber.Ctx) error {
 func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.ContextExecutor, userDeviceID, serial string) (*models.UserDevice, *models.AftermarketDevice, error) {
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenAftermarketDevice)),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
 	).One(ctx, exec)
 	if err != nil {
 		// Access middleware will catch "not found".
@@ -989,7 +989,7 @@ func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.C
 func (udc *UserDevicesController) checkUnpairable(ctx context.Context, exec boil.ContextExecutor, userDeviceID string) (*models.UserDevice, *models.AftermarketDevice, error) {
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenAftermarketDevice)),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
 	).One(ctx, exec)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1030,7 +1030,7 @@ func (udc *UserDevicesController) CloudRepairAutoPi(c *fiber.Ctx) error {
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenAftermarketDevice)),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1554,7 +1554,7 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 	udai, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID),
-		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.UserDevice)),
+		qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
 	).One(ctx, udc.DBS().Reader)
 	if err != nil {
 		logger.Err(err).Msg("Couldn't retrieve UDAI for post-registration tasks.")

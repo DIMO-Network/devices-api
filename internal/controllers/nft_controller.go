@@ -846,10 +846,10 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.TokenID.EQ(tid),
-		qm.Load(qm.Rels(models.UserDeviceRels.MintRequest)),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenAftermarketDevice)),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice)),
-		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations)),
+		qm.Load(models.UserDeviceRels.MintRequest),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 	).One(c.Context(), tx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -900,10 +900,10 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.TokenID.EQ(tid),
-		qm.Load(qm.Rels(models.UserDeviceRels.MintRequest)),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenAftermarketDevice)),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice)),
-		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations)),
+		qm.Load(models.UserDeviceRels.MintRequest),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 	).One(c.Context(), tx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

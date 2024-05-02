@@ -47,8 +47,8 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	mtr, err := models.MetaTransactionRequests(
 		models.MetaTransactionRequestWhere.ID.EQ(data.RequestID),
 		// This is really ugly. We should probably link back to the type instead of doing this.
-		qm.Load(qm.Rels(models.MetaTransactionRequestRels.MintRequestUserDevice)),
-		qm.Load(qm.Rels(models.MetaTransactionRequestRels.BurnRequestUserDevice)),
+		qm.Load(models.MetaTransactionRequestRels.MintRequestUserDevice),
+		qm.Load(models.MetaTransactionRequestRels.BurnRequestUserDevice),
 		qm.Load(models.MetaTransactionRequestRels.ClaimMetaTransactionRequestAftermarketDevice),
 		qm.Load(models.MetaTransactionRequestRels.PairRequestAftermarketDevice),
 		qm.Load(models.MetaTransactionRequestRels.UnpairRequestAftermarketDevice),

@@ -79,18 +79,10 @@ type userDeviceRPCServer struct {
 func (s *userDeviceRPCServer) GetUserDevice(ctx context.Context, req *pb.GetUserDeviceRequest) (*pb.UserDevice, error) {
 	dbDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(req.Id),
-		qm.Load(
-			qm.Rels(models.UserDeviceRels.VehicleTokenAftermarketDevice),
-		),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-		qm.Load(
-			qm.Rels(
-				models.UserDeviceRels.Claim,
-			),
-		),
-		qm.Load(
-			qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice),
-		),
+		qm.Load(models.UserDeviceRels.Claim),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(ctx, s.dbs().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -107,18 +99,10 @@ func (s *userDeviceRPCServer) GetUserDeviceByVIN(ctx context.Context, req *pb.Ge
 	dbDevice, err := models.UserDevices(
 		models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(req.Vin)),
 		qm.OrderBy("vin_confirmed desc"),
-		qm.Load(
-			qm.Rels(models.UserDeviceRels.VehicleTokenAftermarketDevice),
-		),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-		qm.Load(
-			qm.Rels(
-				models.UserDeviceRels.Claim,
-			),
-		),
-		qm.Load(
-			qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice),
-		),
+		qm.Load(models.UserDeviceRels.Claim),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(ctx, s.dbs().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -153,16 +137,10 @@ func (s *userDeviceRPCServer) GetUserDeviceByEthAddr(ctx context.Context, req *p
 	userDeviceID := aftermarketDevice.R.VehicleToken.ID
 	dbDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(
-			qm.Rels(models.UserDeviceRels.VehicleTokenAftermarketDevice),
-		),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-		qm.Load(
-			qm.Rels(
-				models.UserDeviceRels.Claim,
-			),
-		),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice)),
+		qm.Load(models.UserDeviceRels.Claim),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(ctx, s.dbs().Reader)
 
 	if err != nil {
@@ -219,8 +197,8 @@ func (s *userDeviceRPCServer) ListUserDevicesForUser(ctx context.Context, req *p
 	}
 
 	query = append(query,
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenAftermarketDevice)),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice)),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 		qm.OrderBy(models.UserDeviceTableColumns.CreatedAt+" DESC"),
 	)
@@ -390,7 +368,7 @@ func (s *userDeviceRPCServer) GetAllUserDevice(req *pb.GetAllUserDeviceRequest, 
 	ctx := context.Background()
 	all, err := models.UserDevices(
 		models.UserDeviceWhere.VinConfirmed.EQ(true),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice)),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).All(ctx, s.dbs().Reader)
 	if err != nil {
 		s.logger.Err(err).Msg("Database failure retrieving all user devices.")
