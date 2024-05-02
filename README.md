@@ -44,7 +44,6 @@ go run ./cmd/devices-api
    - [Redis](https://redis.io), used by the [taskq library](https://taskq.uptrace.dev) to enqueue interactions with the AutoPi API, on port 6379.
    - [ElasticSearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html), only used by the sub-command `search-sync-dds`, on port 9200. Kibana provides a UI for this on port 5601.
    - [LocalStack](https://localstack.cloud), for testing our use of AWS S3 to store user documents and NFTs, takes up ports 4566–4583.
-   - [IPFS](https://ipfs.tech), which we hope to use to store device definitions, takes up ports 4001, 8080, 8081, and 5001.
    - [Kafka](https://kafka.apache.org) is used to receive vehicle and task status updates, and emit events. It lives on port 9092, and the supporting Zookeeper service lives on port 2181.
 
    If you get a port conflict, you can find the existing process using the port with, e.g., `lsof -i :5432`. Most of these containers have attached volumes, so their data will persist across restarts. To check container status, run `docker ps`.
@@ -195,7 +194,7 @@ Note that swagger must be served from fiber-swagger library v2.31.1 +, since the
 To check what cli version you have installed: `swag --version`. As of this writing v1.8.1 is working for us. 
 ```bash
 go install github.com/swaggo/swag/cmd/swag@latest
-swag init -g cmd/devices-api/main.go --parseDependency --parseInternal --generatedTime true 
+swag init -g cmd/devices-api/main.go --parseDependency --parseInternal
 # optionally add `--parseDepth 2` if have issues
 ```
 

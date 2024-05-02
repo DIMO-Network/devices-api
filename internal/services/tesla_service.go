@@ -7,12 +7,14 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 )
 
 //go:generate mockgen -source tesla_service.go -destination mocks/tesla_service_mock.go
 type TeslaService interface {
 	GetVehicle(ownerAccessToken string, id int) (*TeslaVehicle, error)
 	WakeUpVehicle(ownerAccessToken string, id int) error
+	GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands
 }
 
 type teslaService struct {
@@ -75,6 +77,13 @@ func (t *teslaService) WakeUpVehicle(ownerAccessToken string, id int) error {
 	}
 
 	return nil
+}
+
+func (t *teslaService) GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands {
+	return &UserDeviceAPIIntegrationsMetadataCommands{
+		Enabled: []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
+		Capable: []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
+	}
 }
 
 type TeslaVehicle struct {

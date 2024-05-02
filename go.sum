@@ -86,8 +86,6 @@ github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb
 github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3/go.mod h1:+8E6RVHd04ewjrSOohmLf82Grt0kfSaVTQlCnHCTLZU=
 github.com/DIMO-Network/taskq/v3 v3.2.9-0.20220518233332-179b5552605f h1:pHPu50/uAiENAiUTQkdThxr7GxzVFwO9STl/jzSaKXg=
 github.com/DIMO-Network/taskq/v3 v3.2.9-0.20220518233332-179b5552605f/go.mod h1:ZoRbkYMZWEUKtKvYlLGKiaRQKUjdvwWAIs/WiW1Nwtg=
-github.com/DIMO-Network/valuations-api v0.2.0 h1:FtXyvxxMlc3FBC0DaDPayJ6PfX4zPPxVcT6lvVcivTQ=
-github.com/DIMO-Network/valuations-api v0.2.0/go.mod h1:tyAS6yoWCqbGAkXEMo35UkaazDLAXbSecR1nbFWlEWs=
 github.com/DIMO-Network/zflogger v1.0.0-beta h1:SlXZmahk4tZqprjHzp14mbLQFMrOcyJ9jpLJLQk8bhw=
 github.com/DIMO-Network/zflogger v1.0.0-beta/go.mod h1:JZX9lQhjzPs9auqY+oNruiWsvhBufEopRRLWraSi148=
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=

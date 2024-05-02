@@ -400,13 +400,14 @@ func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) 
 		return err
 	}
 
-	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Int64("aftermarketDeviceNode", args.AftermarketDeviceNode.Int64()).Msg("Pairing aftermarket device and vehicle.")
+	log := c.log.With().Int64("vehicleNode", args.VehicleNode.Int64()).Int64("aftermarketDeviceNode", args.AftermarketDeviceNode.Int64()).Logger()
+	log.Info().Msg("Pairing aftermarket device and vehicle.")
 
 	am, err := models.AftermarketDevices(
 		models.AftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(args.AftermarketDeviceNode)),
 	).One(context.TODO(), c.db.DBS().Reader)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to retrieve aftermarket device: %w", err)
 	}
 
 	dm, err := c.ddSvc.GetMakeByTokenID(context.TODO(), am.DeviceManufacturerTokenID.Int(nil))
@@ -417,7 +418,7 @@ func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) 
 	am.VehicleTokenID = types.NewNullDecimal(utils.BigToDecimal(args.VehicleNode).Big)
 	_, err = am.Update(context.TODO(), c.db.DBS().Writer, boil.Whitelist(models.AftermarketDeviceColumns.VehicleTokenID))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update aftermarket device: %w", err)
 	}
 
 	switch dm.Name {
@@ -429,6 +430,7 @@ func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) 
 		err = fmt.Errorf("unexpected aftermarket device manufacturer vendor %s", dm.Name)
 	}
 
+	log.Info().Msg("aftermarket device pairing completed")
 	return err
 
 }
@@ -685,6 +687,7 @@ func (c *ContractsEventsConsumer) vehicleNodeBurned(e *ContractEventData) error 
 		return err
 	}
 
+	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Msg("burning vehicle node")
 	tx, err := c.db.DBS().Reader.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -712,7 +715,7 @@ func (c *ContractsEventsConsumer) vehicleNodeBurned(e *ContractEventData) error 
 		}
 	}
 
-	c.log.Info().Int64("tokenID", args.VehicleNode.Int64()).Msg("burning vehicle node")
+	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Msg("vehicle node burned")
 	return tx.Commit()
 }
 

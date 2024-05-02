@@ -87,6 +87,7 @@ const (
 	MetaTransactionRequestStatusSubmitted   string = "Submitted"
 	MetaTransactionRequestStatusMined       string = "Mined"
 	MetaTransactionRequestStatusConfirmed   string = "Confirmed"
+	MetaTransactionRequestStatusFailed      string = "Failed"
 )
 
 func AllMetaTransactionRequestStatus() []string {
@@ -95,6 +96,7 @@ func AllMetaTransactionRequestStatus() []string {
 		MetaTransactionRequestStatusSubmitted,
 		MetaTransactionRequestStatusMined,
 		MetaTransactionRequestStatusConfirmed,
+		MetaTransactionRequestStatusFailed,
 	}
 }
 

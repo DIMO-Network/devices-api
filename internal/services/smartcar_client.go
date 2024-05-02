@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/pkg/errors"
 	smartcar "github.com/smartcar/go-sdk"
 )
@@ -28,6 +29,7 @@ type SmartcarClient interface {
 	HasDoorControl(ctx context.Context, accessToken string, id string) (bool, error)
 	GetVIN(ctx context.Context, accessToken string, id string) (string, error)
 	GetInfo(ctx context.Context, accessToken string, id string) (*smartcar.Info, error)
+	GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands
 }
 
 type smartcarClient struct {
@@ -237,4 +239,11 @@ func (s *smartcarClient) GetInfo(ctx context.Context, accessToken string, id str
 		return nil, errors.New("nil info object")
 	}
 	return info, nil
+}
+
+func (s *smartcarClient) GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands {
+	return &UserDeviceAPIIntegrationsMetadataCommands{
+		Enabled: []string{constants.DoorsUnlock, constants.DoorsLock},
+		Capable: []string{constants.DoorsUnlock, constants.DoorsLock},
+	}
 }

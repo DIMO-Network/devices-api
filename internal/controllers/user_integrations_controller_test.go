@@ -7,11 +7,9 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"net/http"
 	"testing"
 	"time"
-
-	"github.com/nats-io/nats-server/v2/server"
-	"github.com/rs/zerolog"
 
 	"github.com/DIMO-Network/shared/redis/mocks"
 	"github.com/ericlagergren/decimal"
@@ -21,6 +19,8 @@ import (
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/nats-io/nats-server/v2/server"
+	"github.com/rs/zerolog"
 
 	pbuser "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
@@ -72,7 +72,6 @@ type UserIntegrationsControllerTestSuite struct {
 	deviceDefIntSvc           *mock_services.MockDeviceDefinitionIntegrationService
 	redisClient               *mocks.MockCacheService
 	userClient                *mock_services.MockUserServiceClient
-	valuationsSrvc            *mock_services.MockValuationsAPIService
 	natsSvc                   *services.NATSService
 	natsServer                *server.Server
 	userDeviceSvc             *mock_services.MockUserDeviceService
@@ -106,7 +105,6 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 	s.userClient = mock_services.NewMockUserServiceClient(s.mockCtrl)
 	s.natsSvc, s.natsServer, err = mock_services.NewMockNATSService(natsStreamName)
 	s.userDeviceSvc = mock_services.NewMockUserDeviceService(s.mockCtrl)
-	s.valuationsSrvc = mock_services.NewMockValuationsAPIService(s.mockCtrl)
 	s.teslaFleetAPISvc = mock_services.NewMockTeslaFleetAPIService(s.mockCtrl)
 	s.cipher = new(shared.ROT13Cipher)
 
@@ -115,8 +113,8 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 	}
 
 	logger := test.Logger()
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, s.eventSvc, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, s.cipher, s.autopiAPISvc, nil,
-		s.autoPiIngest, s.deviceDefinitionRegistrar, s.autoPiTaskService, nil, nil, nil, s.redisClient, nil, s.userClient, nil, s.natsSvc, nil, s.userDeviceSvc, s.valuationsSrvc,
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, s.eventSvc, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, s.cipher, s.autopiAPISvc,
+		s.autoPiIngest, s.deviceDefinitionRegistrar, s.autoPiTaskService, nil, nil, nil, s.redisClient, nil, s.userClient, nil, s.natsSvc, nil, s.userDeviceSvc,
 		s.teslaFleetAPISvc)
 
 	app := test.SetupAppFiber(*logger)
@@ -125,7 +123,12 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 	app.Delete("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.DeleteUserDeviceIntegration)
 
 	app.Post("/user2/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUser2), c.RegisterDeviceIntegration)
-	app.Get("/integrations", c.GetIntegrations)
+	app.Get("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.GetUserDeviceIntegration)
+	app.Post("/user/devices/:userDeviceID/integrations/:integrationID/commands/telemetry/subscribe",
+		test.AuthInjectorTestHandler(testUserID),
+		c.TelemetrySubscribe,
+	)
+
 	s.app = app
 }
 
@@ -150,24 +153,7 @@ func TestUserIntegrationsControllerTestSuite(t *testing.T) {
 }
 
 /* Actual Tests */
-func (s *UserIntegrationsControllerTestSuite) TestGetIntegrations() {
-	integrations := make([]*ddgrpc.Integration, 2)
-	integrations[0] = test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
-	integrations[1] = test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
-	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return(integrations, nil)
 
-	request := test.BuildRequest("GET", "/integrations", "")
-	response, err := s.app.Test(request)
-	require.NoError(s.T(), err)
-	body, _ := io.ReadAll(response.Body)
-
-	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-
-	jsonIntegrations := gjson.GetBytes(body, "integrations")
-	assert.True(s.T(), jsonIntegrations.IsArray())
-	assert.Equal(s.T(), gjson.GetBytes(body, "integrations.0.id").Str, integrations[0].Id)
-	assert.Equal(s.T(), gjson.GetBytes(body, "integrations.1.id").Str, integrations[1].Id)
-}
 func (s *UserIntegrationsControllerTestSuite) TestPostSmartCarFailure() {
 	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Mach E", 2020, integration)
@@ -336,8 +322,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_FailureTestVIN() 
 	s.scClient.EXPECT().GetVIN(gomock.Any(), "myAccess", "smartcar-idx").Return(vin, nil)
 
 	logger := test.Logger()
-	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, s.eventSvc, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), s.autopiAPISvc, nil,
-		s.autoPiIngest, s.deviceDefinitionRegistrar, s.autoPiTaskService, nil, nil, nil, s.redisClient, nil, nil, nil, s.natsSvc, nil, s.userDeviceSvc, s.valuationsSrvc, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, s.eventSvc, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), s.autopiAPISvc,
+		s.autoPiIngest, s.deviceDefinitionRegistrar, s.autoPiTaskService, nil, nil, nil, s.redisClient, nil, nil, nil, s.natsSvc, nil, s.userDeviceSvc, nil)
 
 	app := test.SetupAppFiber(*logger)
 
@@ -504,6 +490,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
 		VIN:       "5YJYGDEF9NF010423",
 	}, nil)
 	s.teslaSvc.EXPECT().WakeUpVehicle("abc", 1145).Return(nil)
+	s.teslaSvc.EXPECT().GetAvailableCommands().Return(&services.UserDeviceAPIIntegrationsMetadataCommands{Enabled: []string{constants.DoorsUnlock, constants.DoorsLock}})
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd[0], nil)
 	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dd[0], nil)
 
@@ -567,7 +554,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateD
 	// specific dependency and controller
 	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
 	logger := test.Logger()
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, s.autoPiTaskService, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, s.valuationsSrvc, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, s.deviceDefinitionRegistrar, s.autoPiTaskService, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.RegisterDeviceIntegration)
 	// arrange
@@ -603,7 +590,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateD
 	// specific dependency and controller
 	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
 	logger := test.Logger()
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, s.autoPiTaskService, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, s.valuationsSrvc, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, s.deviceDefinitionRegistrar, s.autoPiTaskService, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUser2), c.RegisterDeviceIntegration)
 	// arrange
@@ -639,10 +626,10 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	const environment = "prod" // shouldUpdate only applies in prod
 	// specific dependency and controller
 	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
-	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, s.valuationsSrvc, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	logger := zerolog.Nop()
-	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
+	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAftermarketDeviceInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
@@ -667,7 +654,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	// assert
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
 	body, _ := io.ReadAll(response.Body)
-	//assert
+	// assert
 	assert.Equal(s.T(), false, gjson.GetBytes(body, "isUpdated").Bool())
 	assert.Equal(s.T(), unitID, gjson.GetBytes(body, "unitId").String())
 	assert.Equal(s.T(), "4321", gjson.GetBytes(body, "deviceId").String())
@@ -679,10 +666,10 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_UpToDate()
 	const environment = "prod" // shouldUpdate only applies in prod
 	// specific dependency and controller
 	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
-	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, s.valuationsSrvc, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	logger := zerolog.Nop()
-	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
+	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAftermarketDeviceInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
@@ -707,7 +694,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_UpToDate()
 	// assert
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
 	body, _ := io.ReadAll(response.Body)
-	//assert
+	// assert
 	assert.Equal(s.T(), true, gjson.GetBytes(body, "isUpdated").Bool())
 	assert.Equal(s.T(), "1.22.8", gjson.GetBytes(body, "releaseVersion").String())
 	assert.Equal(s.T(), false, gjson.GetBytes(body, "shouldUpdate").Bool()) // returned version is 1.21.9 which is our cutoff
@@ -716,10 +703,10 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_FutureUpda
 	const environment = "prod" // shouldUpdate only applies in prod
 	// specific dependency and controller
 	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
-	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, s.valuationsSrvc, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	logger := zerolog.Nop()
-	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
+	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAftermarketDeviceInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
@@ -744,7 +731,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_FutureUpda
 	// assert
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
 	body, _ := io.ReadAll(response.Body)
-	//assert
+	// assert
 	assert.Equal(s.T(), false, gjson.GetBytes(body, "isUpdated").Bool())
 	assert.Equal(s.T(), "1.23.1", gjson.GetBytes(body, "releaseVersion").String())
 	assert.Equal(s.T(), false, gjson.GetBytes(body, "shouldUpdate").Bool())
@@ -755,10 +742,10 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	const environment = "prod" // shouldUpdate only applies in prod
 	// specific dependency and controller
 	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
-	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, s.valuationsSrvc, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	logger := zerolog.Nop()
-	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAutoPiUnitInfo)
+	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAftermarketDeviceInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
@@ -783,7 +770,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	// assert
 	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
 	body, _ := io.ReadAll(response.Body)
-	//assert
+	// assert
 	assert.Equal(s.T(), unitID, gjson.GetBytes(body, "unitId").String())
 	assert.Equal(s.T(), "v1.22.8", gjson.GetBytes(body, "releaseVersion").String())
 	assert.Equal(s.T(), false, gjson.GetBytes(body, "shouldUpdate").Bool()) // this because releaseVersion below 1.21.9
@@ -805,7 +792,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 	userAddr := crypto.PubkeyToAddress(privateKey.PublicKey)
 
 	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
-	c := NewUserDevicesController(&config.Settings{Port: "3000", DIMORegistryChainID: 1337, DIMORegistryAddr: common.BigToAddress(big.NewInt(7)).Hex()}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, nil, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, kprod, nil, nil, nil, nil, s.userClient, nil, nil, nil, nil, s.valuationsSrvc, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000", DIMORegistryChainID: 1337, DIMORegistryAddr: common.BigToAddress(big.NewInt(7)).Hex()}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, kprod, nil, nil, nil, nil, s.userClient, nil, nil, nil, nil, nil)
 	s.deviceDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Return(&ddgrpc.Integration{Id: ksuid.New().String()}, nil).AnyTimes()
 
 	userID := "louxUser"
@@ -828,8 +815,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 
 	app := fiber.New()
 	app.Use(test.AuthInjectorTestHandler(userID))
-	app.Get("/:userDeviceID/pair", c.GetAutoPiPairMessage)
-	app.Post("/:userDeviceID/pair", c.PostPairAutoPi)
+	app.Get("/:userDeviceID/pair", c.GetAftermarketDevicePairMessage)
+	app.Post("/:userDeviceID/pair", c.PostAftermarketDevicePair)
 
 	req := test.BuildRequest("GET", "/"+ud.ID+"/pair?external_id="+aftermarketDevice.Serial, "")
 
@@ -943,6 +930,10 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 		VIN:       "5YJYGDEF9NF010423",
 	}, nil)
 	s.teslaFleetAPISvc.EXPECT().WakeUpVehicle(gomock.Any(), "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", "na", 1145).Return(nil)
+	s.teslaFleetAPISvc.EXPECT().GetAvailableCommands().Return(&services.UserDeviceAPIIntegrationsMetadataCommands{
+		Enabled:  []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
+		Disabled: []string{constants.TelemetrySubscribe},
+	})
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd[0], nil)
 	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dd[0], nil)
 
@@ -1067,4 +1058,288 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_MissingCredential
 	s.Assert().Equal(err.Error(), sql.ErrNoRows.Error())
 
 	s.Assert().Equal("Couldn't retrieve stored credentials: no credential found", gjson.GetBytes(body, "message").String())
+}
+
+func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
+	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
+
+	accessTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+	refreshTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw"
+	extID := "SomeID"
+	expectedExpiry := time.Now().Add(10 * time.Minute)
+	region := "na"
+
+	encAccessTk, err := s.cipher.Encrypt(accessTk)
+	s.Require().NoError(err)
+	encRefreshTk, err := s.cipher.Encrypt(refreshTk)
+	s.Require().NoError(err)
+
+	apIntd := models.UserDeviceAPIIntegration{
+		UserDeviceID:    ud.ID,
+		IntegrationID:   integration.Id,
+		Status:          models.UserDeviceAPIIntegrationStatusActive,
+		AccessToken:     null.StringFrom(encAccessTk),
+		AccessExpiresAt: null.TimeFrom(expectedExpiry),
+		RefreshToken:    null.StringFrom(encRefreshTk),
+		ExternalID:      null.StringFrom(extID),
+		Metadata:        null.JSONFrom([]byte(fmt.Sprintf(`{"teslaRegion":%q, "teslaApiVersion": 2}`, region))),
+	}
+	err = apIntd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
+	s.teslaFleetAPISvc.EXPECT().VirtualKeyConnectionStatus(gomock.Any(), accessTk, region, ud.VinIdentifier.String).Return(true, nil)
+
+	request := test.BuildRequest(http.MethodGet, fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), "")
+	res, err := s.app.Test(request, 60*1000)
+	s.Assert().NoError(err)
+
+	s.Require().Equal(res.StatusCode, fiber.StatusOK)
+	body, _ := io.ReadAll(res.Body)
+
+	defer res.Body.Close()
+
+	actual := GetUserDeviceIntegrationResponse{}
+	s.Require().NoError(json.Unmarshal(body, &actual))
+
+	s.Assert().True(actual.Tesla.IsVirtualKeyConnected)
+	s.Assert().Equal(models.UserDeviceAPIIntegrationStatusActive, actual.Status)
+	s.Assert().Equal(extID, actual.ExternalID.String)
+}
+
+type deviceIntegrationCredentialsMatcher struct {
+	accessToken  string
+	refreshToken string
+	expireAt     time.Time
+}
+
+func (m *deviceIntegrationCredentialsMatcher) String() string {
+	return ""
+}
+
+func (m *deviceIntegrationCredentialsMatcher) Matches(x interface{}) bool {
+	creds := x.(*models.UserDeviceAPIIntegration)
+
+	if creds.AccessToken.String != m.accessToken {
+		return false
+	}
+
+	if creds.RefreshToken.String != m.refreshToken {
+		return false
+	}
+
+	if creds.AccessExpiresAt.Time != m.expireAt {
+		return false
+	}
+
+	return true
+}
+
+func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration_RefreshToken() {
+	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
+
+	accessTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+	refreshTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw"
+	extID := "SomeID"
+	expectedExpiry := time.Now().Add(-10 * time.Minute)
+	region := "na"
+
+	newCredentials := &services.TeslaAuthCodeResponse{
+		AccessToken:  accessTk,
+		RefreshToken: refreshTk,
+		Expiry:       time.Now().Add(10 * time.Hour),
+		Region:       region,
+	}
+
+	expiredRefreshTk := "SomeExpRefTk"
+	encExpiredAccessTk, err := s.cipher.Encrypt("SomeAccessTk")
+	s.Require().NoError(err)
+	encExpiredRefreshTk, err := s.cipher.Encrypt("SomeExpRefTk")
+	s.Require().NoError(err)
+
+	encAccessTk, err := s.cipher.Encrypt(newCredentials.AccessToken)
+	s.Require().NoError(err)
+	encRefreshTk, err := s.cipher.Encrypt(newCredentials.RefreshToken)
+	s.Require().NoError(err)
+
+	apIntd := models.UserDeviceAPIIntegration{
+		UserDeviceID:    ud.ID,
+		IntegrationID:   integration.Id,
+		Status:          models.UserDeviceAPIIntegrationStatusActive,
+		AccessToken:     null.StringFrom(encExpiredAccessTk),
+		AccessExpiresAt: null.TimeFrom(expectedExpiry),
+		RefreshToken:    null.StringFrom(encExpiredRefreshTk),
+		ExternalID:      null.StringFrom(extID),
+		Metadata:        null.JSONFrom([]byte(fmt.Sprintf(`{"teslaRegion":"%s", "teslaApiVersion":2}`, region))),
+	}
+	err = apIntd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
+	s.teslaFleetAPISvc.EXPECT().VirtualKeyConnectionStatus(gomock.Any(), accessTk, region, ud.VinIdentifier.String).Return(true, nil)
+
+	s.teslaTaskService.EXPECT().UpdateCredentials(&deviceIntegrationCredentialsMatcher{
+		accessToken:  encAccessTk,
+		refreshToken: encRefreshTk,
+		expireAt:     newCredentials.Expiry,
+	}, constants.TeslaAPIV2, region).Return(nil)
+	s.teslaFleetAPISvc.EXPECT().RefreshToken(gomock.Any(), expiredRefreshTk).Return(newCredentials, nil)
+
+	request := test.BuildRequest(http.MethodGet, fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), "")
+	res, err := s.app.Test(request, 60*1000)
+	s.Assert().NoError(err)
+
+	s.Assert().True(res.StatusCode == fiber.StatusOK)
+	body, _ := io.ReadAll(res.Body)
+
+	defer res.Body.Close()
+
+	actual := GetUserDeviceIntegrationResponse{}
+	s.Assert().NoError(json.Unmarshal(body, &actual))
+
+	s.Assert().True(actual.Tesla.IsVirtualKeyConnected)
+	s.Assert().Equal(models.UserDeviceAPIIntegrationStatusActive, actual.Status)
+	s.Assert().Equal(extID, actual.ExternalID.String)
+
+	newAPIInt, err := models.UserDeviceAPIIntegrations(
+		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(ud.ID),
+		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integration.Id),
+	).One(s.ctx, s.pdb.DBS().Reader)
+	s.Require().NoError(err)
+
+	s.Assert().Equal(encRefreshTk, newAPIInt.RefreshToken.String)
+	s.Assert().Equal(encAccessTk, newAPIInt.AccessToken.String)
+}
+
+func (s *UserIntegrationsControllerTestSuite) TestTelemetrySubscribe() {
+	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
+
+	accessTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+	accessTkEnc, _ := s.cipher.Encrypt(accessTk)
+	refreshTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw"
+	extID := "SomeID"
+	expectedExpiry := time.Now().Add(10 * time.Minute)
+	region := "na"
+
+	mtd, err := json.Marshal(services.UserDeviceAPIIntegrationsMetadata{
+		TeslaRegion: region,
+		Commands: &services.UserDeviceAPIIntegrationsMetadataCommands{
+			Enabled: []string{constants.TelemetrySubscribe},
+		},
+	})
+	s.Require().NoError(err)
+
+	apIntd := models.UserDeviceAPIIntegration{
+		UserDeviceID:    ud.ID,
+		IntegrationID:   integration.Id,
+		Status:          models.UserDeviceAPIIntegrationStatusActive,
+		AccessToken:     null.StringFrom(accessTkEnc),
+		AccessExpiresAt: null.TimeFrom(expectedExpiry),
+		RefreshToken:    null.StringFrom(refreshTk),
+		ExternalID:      null.StringFrom(extID),
+		Metadata:        null.JSONFrom(mtd),
+	}
+	err = apIntd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
+	s.teslaFleetAPISvc.EXPECT().SubscribeForTelemetryData(gomock.Any(), accessTk, region, ud.VinIdentifier.String).Return(nil)
+
+	request := test.BuildRequest(http.MethodPost, fmt.Sprintf("/user/devices/%s/integrations/%s/commands/telemetry/subscribe", ud.ID, integration.Id), "")
+	res, err := s.app.Test(request, 60*1000)
+	s.Assert().NoError(err)
+
+	s.Assert().True(res.StatusCode == fiber.StatusOK)
+
+	udai, err := models.UserDeviceAPIIntegrations(
+		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integration.Id),
+		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(ud.ID),
+	).One(s.ctx, s.pdb.DBS().Reader)
+	s.Require().NoError(err)
+
+	md := new(services.UserDeviceAPIIntegrationsMetadata)
+	err = udai.Metadata.Unmarshal(md)
+	s.Require().NoError(err)
+
+	s.T().Log(md.Commands.Enabled, "-0------")
+	s.Assert().Equal(md.Commands.Enabled, []string{constants.TelemetrySubscribe})
+}
+
+func (s *UserIntegrationsControllerTestSuite) Test_NoUserDevice_TelemetrySubscribe() {
+	request := test.BuildRequest(http.MethodPost, fmt.Sprintf("/user/devices/%s/integrations/%s/commands/telemetry/subscribe", "mockUserDeviceID", "mockIntID"), "")
+	res, err := s.app.Test(request, 60*1000)
+	s.Assert().NoError(err)
+
+	s.Assert().True(res.StatusCode == fiber.StatusNotFound)
+}
+
+func (s *UserIntegrationsControllerTestSuite) Test_InactiveIntegration_TelemetrySubscribe() {
+	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
+
+	apIntd := models.UserDeviceAPIIntegration{
+		UserDeviceID:  ud.ID,
+		IntegrationID: integration.Id,
+		Status:        models.DeviceCommandRequestStatusPending,
+	}
+	err := apIntd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+
+	request := test.BuildRequest(http.MethodPost, fmt.Sprintf("/user/devices/%s/integrations/%s/commands/telemetry/subscribe", ud.ID, integration.Id), "")
+	res, err := s.app.Test(request, 60*1000)
+	s.Assert().NoError(err)
+
+	s.Assert().True(res.StatusCode == fiber.StatusConflict)
+}
+
+func (s *UserIntegrationsControllerTestSuite) Test_MissingRegionAndCapable_TelemetrySubscribe() {
+	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
+
+	apIntd := models.UserDeviceAPIIntegration{
+		UserDeviceID:  ud.ID,
+		IntegrationID: integration.Id,
+		Status:        models.UserDeviceAPIIntegrationStatusActive,
+	}
+	err := apIntd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+
+	request := test.BuildRequest(http.MethodPost, fmt.Sprintf("/user/devices/%s/integrations/%s/commands/telemetry/subscribe", ud.ID, integration.Id), "")
+	res, err := s.app.Test(request, 60*1000)
+	s.Assert().NoError(err)
+
+	s.Assert().True(res.StatusCode == fiber.StatusBadRequest)
+}
+
+func (s *UserIntegrationsControllerTestSuite) Test_TelemetrySubscribe_NotCapable() {
+	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
+
+	mtd, err := json.Marshal(services.UserDeviceAPIIntegrationsMetadata{
+		TeslaRegion: "na",
+	})
+	s.Require().NoError(err)
+	apIntd := models.UserDeviceAPIIntegration{
+		UserDeviceID:  ud.ID,
+		IntegrationID: integration.Id,
+		Status:        models.UserDeviceAPIIntegrationStatusActive,
+		Metadata:      null.JSONFrom(mtd),
+	}
+	err = apIntd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+
+	request := test.BuildRequest(http.MethodPost, fmt.Sprintf("/user/devices/%s/integrations/%s/commands/telemetry/subscribe", ud.ID, integration.Id), "")
+	res, err := s.app.Test(request, 60*1000)
+	s.Assert().NoError(err)
+
+	s.Assert().True(res.StatusCode == fiber.StatusBadRequest)
 }
