@@ -332,7 +332,7 @@ func (t *teslaFleetAPIService) performRequest(ctx context.Context, url, token, m
 				Msg("An error occurred when attempting to decode the error message from the api.")
 			return nil, fmt.Errorf("couldn't parse Tesla error response body: %w", err)
 		}
-		return nil, fmt.Errorf("error occurred calling Tesla api: %s", errBody.ErrorDescription)
+		return nil, fmt.Errorf("error occurred calling Tesla api: %s", errBody.Error)
 	}
 
 	b, err := io.ReadAll(resp.Body)
