@@ -29,7 +29,6 @@ type TeslaFleetAPIService interface {
 	WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error
 	GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands
 	VirtualKeyConnectionStatus(ctx context.Context, token, region, vin string) (bool, error)
-	RefreshToken(ctx context.Context, refreshToken string) (*TeslaAuthCodeResponse, error)
 	SubscribeForTelemetryData(ctx context.Context, token, region, vin string) error
 }
 
@@ -230,37 +229,6 @@ func (t *teslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, t
 	isConnected := slices.Contains(keyConn.Response.KeyPairedVINs, vin)
 
 	return isConnected, nil
-}
-
-func (t *teslaFleetAPIService) RefreshToken(ctx context.Context, refreshToken string) (*TeslaAuthCodeResponse, error) {
-	data := url.Values{}
-	data.Set("grant_type", "refresh_token")
-	data.Set("client_id", t.Settings.TeslaClientID)
-	data.Set("refresh_token", refreshToken)
-
-	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctxTimeout, "POST", t.Settings.TeslaTokenURL, strings.NewReader(data.Encode()))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := t.HTTPClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if code := resp.StatusCode; code != http.StatusOK {
-		return nil, fmt.Errorf("status code %d", code)
-	}
-
-	var tokResp TeslaAuthCodeResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tokResp); err != nil {
-		return nil, err
-	}
-
-	return &tokResp, nil
 }
 
 var fields = TelemetryFields{
