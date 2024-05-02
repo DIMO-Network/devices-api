@@ -192,13 +192,12 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// vehicle command privileges
 	vPriv.Get("/status", privTokenWare.OneOf(vehicleAddr,
 		[]privileges.Privilege{privileges.VehicleNonLocationData, privileges.VehicleCurrentLocation, privileges.VehicleAllTimeLocation}), nftController.GetVehicleStatus)
-	if !settings.IsProduction() {
-		vPriv.Get("/vin-credential", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleVinCredential}), nftController.GetVinCredential)
-	}
+
 	vPriv.Post("/commands/doors/unlock", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.UnlockDoors)
 	vPriv.Post("/commands/doors/lock", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.LockDoors)
 	vPriv.Post("/commands/trunk/open", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.OpenTrunk)
 	vPriv.Post("/commands/frunk/open", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.OpenFrunk)
+	vPriv.Get("/vin-credential", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleVinCredential}), nftController.GetVinCredential)
 
 	// Traditional tokens
 
@@ -236,6 +235,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	apOwner.Post("/commands/claim", userDeviceController.PostAftermarketDeviceClaim).Name("PostClaimAutoPi")
 	amdOwner.Post("/commands/claim", userDeviceController.PostAftermarketDeviceClaim).Name("PostClaimAutoPi")
+
 	if !settings.IsProduction() {
 		// Used by mobile to test. Easy to misuse.
 		apOwner.Post("/commands/unclaim", userDeviceController.PostUnclaimAutoPi)
