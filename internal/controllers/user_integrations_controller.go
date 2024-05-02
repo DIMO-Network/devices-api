@@ -112,65 +112,12 @@ func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context,
 		return false, fmt.Errorf("couldn't decrypt access token: %w", err)
 	}
 
-	refreshTk, err := udc.cipher.Decrypt(integration.RefreshToken.String)
-	if err != nil {
-		return false, fmt.Errorf("couldn't decrypt refresh token: %w", err)
-	}
-
-	isNewToken, auth, err := udc.ensureTeslaTokenValidty(ctx, refreshTk, integration.AccessExpiresAt.Time)
-	if err != nil {
-		return false, errors.Wrap(err, "failed to get tesla credentials")
-	}
-
-	if isNewToken {
-		encAccessTk, err := udc.cipher.Encrypt(auth.AccessToken)
-		if err != nil {
-			return false, fmt.Errorf("couldn't encrypt refresh token: %w", err)
-		}
-
-		encRefreshTk, err := udc.cipher.Encrypt(auth.RefreshToken)
-		if err != nil {
-			return false, fmt.Errorf("couldn't encrypt access token: %w", err)
-		}
-
-		integration.RefreshToken = null.StringFrom(encRefreshTk)
-		integration.AccessToken = null.StringFrom(encAccessTk)
-		integration.AccessExpiresAt = null.TimeFrom(auth.Expiry)
-
-		cols := models.UserDeviceAPIIntegrationColumns
-		_, err = integration.Update(ctx, udc.DBS().Writer, boil.Whitelist(cols.RefreshToken, cols.AccessToken, cols.AccessExpiresAt))
-		if err != nil {
-			return false, err
-		}
-
-		err = udc.teslaTaskService.UpdateCredentials(integration, constants.TeslaAPIV2, region)
-		if err != nil {
-			return false, err
-		}
-		accessTk = auth.AccessToken
-	}
-
 	isConnected, err := udc.teslaFleetAPISvc.VirtualKeyConnectionStatus(ctx, accessTk, region, integration.R.UserDevice.VinIdentifier.String)
 	if err != nil {
 		return false, fiber.NewError(fiber.StatusFailedDependency, err.Error())
 	}
 
 	return isConnected, nil
-}
-
-func (udc *UserDevicesController) ensureTeslaTokenValidty(ctx context.Context, refreshToken string, expiry time.Time) (bool, *services.TeslaAuthCodeResponse, error) {
-	const delta = 10 * time.Second
-
-	now := time.Now
-	if now().Before(expiry.Add(-delta)) {
-		return false, nil, nil
-	}
-	authResp, err := udc.teslaFleetAPISvc.RefreshToken(ctx, refreshToken)
-	if err != nil {
-		return false, nil, err
-	}
-
-	return true, authResp, nil
 }
 
 func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, userID, userDeviceID, integrationID string, dd *ddgrpc.GetDeviceDefinitionItemResponse) error {
