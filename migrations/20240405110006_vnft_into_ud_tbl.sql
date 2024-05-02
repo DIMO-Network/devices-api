@@ -1,7 +1,5 @@
 -- +goose Up
 -- +goose StatementBegin
-SELECT 'up SQL query';
-
 SET search_path = devices_api, public;
 CREATE TABLE vehicle_nfts_backup AS SELECT *  FROM vehicle_nfts;
 
