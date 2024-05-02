@@ -1,7 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
 SET search_path = devices_api, public;
-CREATE TABLE vehicle_nfts_backup AS SELECT *  FROM vehicle_nfts;
 
 ALTER TABLE user_devices
     ADD COLUMN mint_request_id char(27) CONSTRAINT user_devices_mint_request_id_fkey UNIQUE REFERENCES meta_transaction_requests(id);
@@ -29,13 +28,12 @@ FROM vehicle_nfts vnft
 WHERE vnft.user_device_id = user_devices.id;
 
 ALTER TABLE aftermarket_devices DROP CONSTRAINT autopi_units_vehicle_token_id_fkey;
-ALTER TABLE aftermarket_devices ADD CONSTRAINT autopi_units_vehicle_token_id_fkey FOREIGN KEY (vehicle_token_id) REFERENCES user_devices(token_id) ON DELETE CASCADE;
+ALTER TABLE aftermarket_devices ADD CONSTRAINT autopi_units_vehicle_token_id_fkey FOREIGN KEY (vehicle_token_id) REFERENCES user_devices(token_id) ON DELETE SET NULL;
 
 ALTER TABLE synthetic_devices DROP CONSTRAINT fkey_vehicle_token_id;
 ALTER TABLE synthetic_devices ADD CONSTRAINT fkey_vehicle_token_id FOREIGN KEY (vehicle_token_id) REFERENCES user_devices(token_id);
 
 DROP TABLE vehicle_nfts;
-DROP TABLE vehicle_nfts_backup;
 
 CREATE MATERIALIZED VIEW vehicle_nfts
 AS
