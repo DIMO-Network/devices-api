@@ -1944,14 +1944,13 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	}
 
 	if reqBody.ExternalID == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "Missing externalID parameter")
+		return fiber.NewError(fiber.StatusBadRequest, "Missing externalId field.")
 	}
 
-	v := &services.TeslaVehicle{}
 	// We'll use this to kick off the job
 	teslaID, err := strconv.Atoi(reqBody.ExternalID)
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse external id %q as an integer.", teslaID))
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse externalId %q as an integer.", teslaID))
 	}
 
 	region := ""
@@ -1977,7 +1976,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		region = deviceIntReq.Region
 	}
 
-	v, err = udc.getTeslaVehicle(c.Context(), reqBody.AccessToken, region, teslaID, apiVersion)
+	v, err := udc.getTeslaVehicle(c.Context(), reqBody.AccessToken, region, teslaID, apiVersion)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't retrieve vehicle from Tesla.")
 	}
@@ -2023,7 +2022,6 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		commands = udc.teslaService.GetAvailableCommands()
 	}
 
-	// TODO(elffjs): Stupid to marshal this again and again.
 	meta := services.UserDeviceAPIIntegrationsMetadata{
 		Commands:        commands,
 		TeslaAPIVersion: apiVersion,
