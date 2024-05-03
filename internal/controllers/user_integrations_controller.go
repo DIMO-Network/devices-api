@@ -98,8 +98,14 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla connection status %s", err.Error()))
 		}
 
-		resp.Tesla = &TeslaConnectionStatus{
-			IsVirtualKeyConnected: isConnected,
+		isSubscribed, err := udc.getTelemetrySubscriptionStatus(c.Context(), meta.TeslaRegion, apiIntegration)
+		if err != nil {
+			return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla telemetry subscription status %s", err.Error()))
+		}
+
+		resp.Tesla = &TeslaIntegrationInfo{
+			VirtualKeyAdded:     isConnected,
+			TelemetrySubscribed: isSubscribed,
 		}
 	}
 
@@ -118,6 +124,20 @@ func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context,
 	}
 
 	return isConnected, nil
+}
+
+func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Context, region string, integration *models.UserDeviceAPIIntegration) (bool, error) {
+	accessTk, err := udc.cipher.Decrypt(integration.AccessToken.String)
+	if err != nil {
+		return false, fmt.Errorf("couldn't decrypt access token: %w", err)
+	}
+
+	isSubscribed, err := udc.teslaFleetAPISvc.GetTelemetrySubscriptionStatus(ctx, accessTk, region, integration.R.UserDevice.VinIdentifier.String)
+	if err != nil {
+		return false, fiber.NewError(fiber.StatusFailedDependency, err.Error())
+	}
+
+	return isSubscribed, nil
 }
 
 func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, userID, userDeviceID, integrationID string, dd *ddgrpc.GetDeviceDefinitionItemResponse) error {
@@ -1944,14 +1964,13 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	}
 
 	if reqBody.ExternalID == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "Missing externalID parameter")
+		return fiber.NewError(fiber.StatusBadRequest, "Missing externalId field.")
 	}
 
-	v := &services.TeslaVehicle{}
 	// We'll use this to kick off the job
 	teslaID, err := strconv.Atoi(reqBody.ExternalID)
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse external id %q as an integer.", teslaID))
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse externalId %q as an integer.", teslaID))
 	}
 
 	region := ""
@@ -1977,7 +1996,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		region = deviceIntReq.Region
 	}
 
-	v, err = udc.getTeslaVehicle(c.Context(), reqBody.AccessToken, region, teslaID, apiVersion)
+	v, err := udc.getTeslaVehicle(c.Context(), reqBody.AccessToken, region, teslaID, apiVersion)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't retrieve vehicle from Tesla.")
 	}
@@ -2023,7 +2042,6 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		commands = udc.teslaService.GetAvailableCommands()
 	}
 
-	// TODO(elffjs): Stupid to marshal this again and again.
 	meta := services.UserDeviceAPIIntegrationsMetadata{
 		Commands:        commands,
 		TeslaAPIVersion: apiVersion,
@@ -2202,9 +2220,10 @@ type RegisterDeviceIntegrationRequest struct {
 	Version      int    `json:"version"`
 }
 
-type TeslaConnectionStatus struct {
+type TeslaIntegrationInfo struct {
 	// Status of the virtual key connection
-	IsVirtualKeyConnected bool `json:"isVirtualKeyConnected"`
+	VirtualKeyAdded     bool `json:"virtualKeyAdded"`
+	TelemetrySubscribed bool `json:"telemetrySubscribed"`
 }
 
 type GetUserDeviceIntegrationResponse struct {
@@ -2215,7 +2234,7 @@ type GetUserDeviceIntegrationResponse struct {
 	ExternalID null.String `json:"externalId" swaggertype:"string"`
 
 	// Contains further details about tesla integration status
-	Tesla *TeslaConnectionStatus `json:"tesla,omitempty"`
+	Tesla *TeslaIntegrationInfo `json:"tesla,omitempty"`
 
 	// CreatedAt is the creation time of this integration for this device.
 	CreatedAt time.Time `json:"createdAt"`

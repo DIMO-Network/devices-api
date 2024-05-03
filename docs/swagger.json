@@ -3111,7 +3111,7 @@
                     "description": "Contains further details about tesla integration status",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_controllers.TeslaConnectionStatus"
+                            "$ref": "#/definitions/internal_controllers.TeslaIntegrationInfo"
                         }
                     ]
                 }
@@ -3429,10 +3429,13 @@
                 }
             }
         },
-        "internal_controllers.TeslaConnectionStatus": {
+        "internal_controllers.TeslaIntegrationInfo": {
             "type": "object",
             "properties": {
-                "isVirtualKeyConnected": {
+                "telemetrySubscribed": {
+                    "type": "boolean"
+                },
+                "virtualKeyAdded": {
                     "description": "Status of the virtual key connection",
                     "type": "boolean"
                 }
