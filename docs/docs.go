@@ -2862,56 +2862,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers.DeviceSnapshot": {
-            "type": "object",
-            "properties": {
-                "ambientTemp": {
-                    "type": "number"
-                },
-                "batteryCapacity": {
-                    "type": "integer"
-                },
-                "batteryVoltage": {
-                    "type": "number"
-                },
-                "chargeLimit": {
-                    "type": "number"
-                },
-                "charging": {
-                    "type": "boolean"
-                },
-                "fuelPercentRemaining": {
-                    "type": "number"
-                },
-                "latitude": {
-                    "type": "number"
-                },
-                "longitude": {
-                    "type": "number"
-                },
-                "odometer": {
-                    "type": "number"
-                },
-                "oil": {
-                    "type": "number"
-                },
-                "range": {
-                    "type": "number"
-                },
-                "recordCreatedAt": {
-                    "type": "string"
-                },
-                "recordUpdatedAt": {
-                    "type": "string"
-                },
-                "soc": {
-                    "type": "number"
-                },
-                "tirePressure": {
-                    "$ref": "#/definitions/smartcar.TirePressure"
-                }
-            }
-        },
         "internal_controllers.DocumentResponse": {
             "type": "object",
             "properties": {
@@ -3520,47 +3470,6 @@ const docTemplate = `{
         },
         "math.HexOrDecimal256": {
             "type": "object"
-        },
-        "smartcar.TirePressure": {
-            "type": "object",
-            "properties": {
-                "age": {
-                    "description": "Deprecated: Should use DataAge instead of Age",
-                    "type": "string"
-                },
-                "backLeft": {
-                    "type": "number"
-                },
-                "backRight": {
-                    "type": "number"
-                },
-                "dataAge": {
-                    "type": "string"
-                },
-                "frontLeft": {
-                    "type": "number"
-                },
-                "frontRight": {
-                    "type": "number"
-                },
-                "requestId": {
-                    "type": "string"
-                },
-                "unitSystem": {
-                    "$ref": "#/definitions/smartcar.UnitSystem"
-                }
-            }
-        },
-        "smartcar.UnitSystem": {
-            "type": "string",
-            "enum": [
-                "metric",
-                "imperial"
-            ],
-            "x-enum-varnames": [
-                "Metric",
-                "Imperial"
-            ]
         }
     },
     "securityDefinitions": {
