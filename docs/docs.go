@@ -3119,7 +3119,7 @@ const docTemplate = `{
                     "description": "Contains further details about tesla integration status",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_controllers.TeslaConnectionStatus"
+                            "$ref": "#/definitions/internal_controllers.TeslIntegrationInfo"
                         }
                     ]
                 }
@@ -3437,10 +3437,13 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers.TeslaConnectionStatus": {
+        "internal_controllers.TeslIntegrationInfo": {
             "type": "object",
             "properties": {
-                "isVirtualKeyConnected": {
+                "telemetrySubscribed": {
+                    "type": "boolean"
+                },
+                "virtualKeyAdded": {
                     "description": "Status of the virtual key connection",
                     "type": "boolean"
                 }
