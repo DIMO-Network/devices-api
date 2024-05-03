@@ -8,9 +8,6 @@ import (
 	"regexp"
 	"time"
 
-	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	"github.com/DIMO-Network/shared"
 
 	"github.com/DIMO-Network/devices-api/internal/services"
@@ -72,26 +69,6 @@ func calculateRange(ctx context.Context, ddSvc services.DeviceDefinitionService,
 	}
 
 	return nil, nil
-}
-
-func convertTimestamp(ts *timestamppb.Timestamp) *time.Time {
-	if ts == nil {
-		return nil
-	}
-	t := ts.AsTime()
-	return &t
-}
-
-func convertTirePressure(tp *dagrpc.TirePressureResponse) *smartcar.TirePressure {
-	if tp == nil {
-		return nil
-	}
-	return &smartcar.TirePressure{
-		FrontLeft:  tp.FrontLeft,
-		FrontRight: tp.FrontRight,
-		BackLeft:   tp.BackLeft,
-		BackRight:  tp.BackRight,
-	}
 }
 
 // RefreshUserDeviceStatus godoc
