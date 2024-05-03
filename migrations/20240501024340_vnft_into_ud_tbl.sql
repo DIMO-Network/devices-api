@@ -4,18 +4,18 @@ SET search_path = devices_api, public;
 
 ALTER TABLE user_devices ADD COLUMN mint_request_id char(27);
 ALTER TABLE user_devices ADD CONSTRAINT user_devices_mint_request_id_key UNIQUE (mint_request_id);
-ALTER TABLE user_devices ADD CONSTRAINT user_devices_mint_request_id_fkey REFERENCES meta_transaction_requests(id);
+ALTER TABLE user_devices ADD CONSTRAINT user_devices_mint_request_id_fkey FOREIGN KEY (mint_request_id) REFERENCES meta_transaction_requests(id);
 
 ALTER TABLE user_devices ADD COLUMN burn_request_id char(27);
 ALTER TABLE user_devices ADD CONSTRAINT user_devices_burn_request_id_key UNIQUE (burn_request_id);
-ALTER TABLE user_devices ADD CONSTRAINT user_devices_burn_request_id_fkey REFERENCES meta_transaction_requests(id);
+ALTER TABLE user_devices ADD CONSTRAINT user_devices_burn_request_id_fkey FOREIGN KEY (burn_request_id) REFERENCES meta_transaction_requests(id);
 
 ALTER TABLE user_devices ADD COLUMN token_id numeric(78, 0);
 ALTER TABLE user_devices ADD CONSTRAINT user_devices_token_id_key UNIQUE (token_id);
 
 ALTER TABLE user_devices ADD COLUMN claim_id varchar;
 ALTER TABLE user_devices ADD CONSTRAINT user_devices_claim_id_key UNIQUE (claim_id);
-ALTER TABLE user_devices ADD CONSTRAINT user_devices_claim_id_fkey REFERENCES verifiable_credentials(claim_id);
+ALTER TABLE user_devices ADD CONSTRAINT user_devices_claim_id_fkey FOREIGN KEY (claim_id) REFERENCES verifiable_credentials(claim_id);
 
 ALTER TABLE user_devices ADD COLUMN owner_address BYTEA;
 ALTER TABLE user_devices ADD CONSTRAINT user_devices_owner_address_check CHECK (length(owner_address) = 20);
@@ -85,10 +85,11 @@ SELECT
         ud.claim_id,
         ud.owner_address,
         ud.vin_identifier as vin
-FROM user_devices ud;
+FROM user_devices ud
+WHERE ud.token_id IS NOT NULL;
 
 ALTER TABLE aftermarket_devices DROP CONSTRAINT aftermarket_devices_vehicle_token_id_fkey;
-ALTER TABLE aftermarket_devices ADD CONSTRAINT aftermarket_devices_vehicle_token_id_fkey FOREIGN KEY (vehicle_token_id) REFERENCES vehicle_nfts(token_id);
+ALTER TABLE aftermarket_devices ADD CONSTRAINT autopi_units_vehicle_token_id_fkey FOREIGN KEY (vehicle_token_id) REFERENCES vehicle_nfts(token_id);
 
 ALTER TABLE synthetic_devices DROP CONSTRAINT fkey_vehicle_token_id;
 ALTER TABLE synthetic_devices ADD CONSTRAINT fkey_vehicle_token_id FOREIGN KEY (vehicle_token_id) REFERENCES vehicle_nfts(token_id);
@@ -105,7 +106,6 @@ ALTER TABLE user_devices
 ALTER TABLE user_devices
     DROP COLUMN owner_address;
 
-SET search_path = devices_api, public;
 ALTER TABLE user_devices
     DROP COLUMN burn_request_id;
 
