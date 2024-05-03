@@ -274,56 +274,7 @@ definitions:
           type: integer
         type: array
     type: object
-  internal_controllers.AutoPiDeviceInfo:
-    properties:
-      beneficiaryAddress:
-        items:
-          type: integer
-        type: array
-      claim:
-        allOf:
-        - $ref: '#/definitions/internal_controllers.AutoPiTransactionStatus'
-        description: Claim contains the status of the on-chain claiming meta-transaction.
-      deviceId:
-        type: string
-      dockerReleases:
-        items:
-          type: integer
-        type: array
-      ethereumAddress:
-        items:
-          type: integer
-        type: array
-      hwRevision:
-        type: string
-      isUpdated:
-        type: boolean
-      lastCommunication:
-        type: string
-      manufacturer:
-        $ref: '#/definitions/internal_controllers.ManufacturerInfo'
-      ownerAddress:
-        type: string
-      pair:
-        allOf:
-        - $ref: '#/definitions/internal_controllers.AutoPiTransactionStatus'
-        description: Pair contains the status of the on-chain pairing meta-transaction.
-      releaseVersion:
-        type: string
-      shouldUpdate:
-        type: boolean
-      template:
-        type: integer
-      tokenId:
-        $ref: '#/definitions/big.Int'
-      unitId:
-        type: string
-      unpair:
-        allOf:
-        - $ref: '#/definitions/internal_controllers.AutoPiTransactionStatus'
-        description: Unpair contains the status of the on-chain unpairing meta-transaction.
-    type: object
-  internal_controllers.AutoPiTransactionStatus:
+  internal_controllers.AftermarketDeviceTransactionStatus:
     properties:
       createdAt:
         description: CreatedAt is the timestamp of the creation of the meta-transaction.
@@ -348,6 +299,55 @@ definitions:
         description: UpdatedAt is the last time we updated the status of the transaction.
         example: "2022-10-01T09:22:26.337Z"
         type: string
+    type: object
+  internal_controllers.AutoPiDeviceInfo:
+    properties:
+      beneficiaryAddress:
+        items:
+          type: integer
+        type: array
+      claim:
+        allOf:
+        - $ref: '#/definitions/internal_controllers.AftermarketDeviceTransactionStatus'
+        description: Claim contains the status of the on-chain claiming meta-transaction.
+      deviceId:
+        type: string
+      dockerReleases:
+        items:
+          type: integer
+        type: array
+      ethereumAddress:
+        items:
+          type: integer
+        type: array
+      hwRevision:
+        type: string
+      isUpdated:
+        type: boolean
+      lastCommunication:
+        type: string
+      manufacturer:
+        $ref: '#/definitions/internal_controllers.ManufacturerInfo'
+      ownerAddress:
+        type: string
+      pair:
+        allOf:
+        - $ref: '#/definitions/internal_controllers.AftermarketDeviceTransactionStatus'
+        description: Pair contains the status of the on-chain pairing meta-transaction.
+      releaseVersion:
+        type: string
+      shouldUpdate:
+        type: boolean
+      template:
+        type: integer
+      tokenId:
+        $ref: '#/definitions/big.Int'
+      unitId:
+        type: string
+      unpair:
+        allOf:
+        - $ref: '#/definitions/internal_controllers.AftermarketDeviceTransactionStatus'
+        description: Unpair contains the status of the on-chain unpairing meta-transaction.
     type: object
   internal_controllers.BurnRequest:
     properties:
@@ -581,6 +581,10 @@ definitions:
         description: Status is one of "Pending", "PendingFirstData", "Active", "Failed",
           "DuplicateIntegration".
         type: string
+      tesla:
+        allOf:
+        - $ref: '#/definitions/internal_controllers.TeslaIntegrationInfo'
+        description: Contains further details about tesla integration status
     type: object
   internal_controllers.ManufacturerInfo:
     properties:
@@ -629,33 +633,6 @@ definitions:
       trait_type:
         type: string
       value:
-        type: string
-    type: object
-  internal_controllers.NFTData:
-    properties:
-      ownerAddress:
-        description: OwnerAddress is the Ethereum address of the NFT owner.
-        items:
-          type: integer
-        type: array
-      status:
-        description: Status is the minting status of the NFT.
-        enum:
-        - Unstarted
-        - Submitted
-        - Mined
-        - Confirmed
-        example: Confirmed
-        type: string
-      tokenId:
-        example: 37
-        type: number
-      tokenUri:
-        example: https://nft.dimo.zone/37
-        type: string
-      txHash:
-        description: TxHash is the hash of the minting transaction.
-        example: 0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e
         type: string
     type: object
   internal_controllers.NFTImageData:
@@ -805,6 +782,14 @@ definitions:
         example: 0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e
         type: string
     type: object
+  internal_controllers.TeslaIntegrationInfo:
+    properties:
+      telemetrySubscribed:
+        type: boolean
+      virtualKeyAdded:
+        description: Status of the virtual key connection
+        type: boolean
+    type: object
   internal_controllers.UpdateCountryCodeReq:
     properties:
       countryCode:
@@ -851,7 +836,7 @@ definitions:
       name:
         type: string
       nft:
-        $ref: '#/definitions/internal_controllers.NFTData'
+        $ref: '#/definitions/internal_controllers.VehicleNFTData'
       optedInAt:
         type: string
       privilegedUsers:
@@ -895,6 +880,33 @@ definitions:
       valid:
         type: boolean
       vin:
+        type: string
+    type: object
+  internal_controllers.VehicleNFTData:
+    properties:
+      ownerAddress:
+        description: OwnerAddress is the Ethereum address of the NFT owner.
+        items:
+          type: integer
+        type: array
+      status:
+        description: Status is the minting status of the NFT.
+        enum:
+        - Unstarted
+        - Submitted
+        - Mined
+        - Confirmed
+        example: Confirmed
+        type: string
+      tokenId:
+        example: 37
+        type: number
+      tokenUri:
+        example: https://nft.dimo.zone/37
+        type: string
+      txHash:
+        description: TxHash is the hash of the minting transaction.
+        example: 0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e
         type: string
     type: object
   math.HexOrDecimal256:
@@ -1852,6 +1864,30 @@ paths:
           description: No Content
       tags:
       - integrations
+  /user/devices/{userDeviceID}/integrations/{integrationID}/commands/telemetry/subscribe:
+    post:
+      description: Subscribe vehicle for Telemetry Data. Currently, this only works
+        for Teslas connected through Tesla.
+      operationId: telemetry-subscribe
+      parameters:
+      - description: Device ID
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      - description: Integration ID
+        in: path
+        name: integrationID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      summary: Subscribe vehicle for Telemetry Data
+      tags:
+      - device
+      - integration
+      - command
   /user/devices/{userDeviceID}/integrations/{integrationID}/commands/trunk/open:
     post:
       description: Open the device's front trunk. Currently, this only works for Teslas

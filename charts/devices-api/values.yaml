@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 9d08696
+  tag: dc43cc8
 imagePullSecrets: []
 nameOverride: ''
 fullnameOverride: ''
@@ -90,6 +90,33 @@ env:
   TESLA_TOKEN_URL: https://auth.tesla.com/oauth2/v3/token
   TESLA_FLEET_URL: https://fleet-api.prd.%s.vn.cloud.tesla.com
   META_TRANSACTION_PROCESSOR_GRPC_ADDR: meta-transaction-processor-dev:8086
+  TESLA_TELEMETRY_HOST_NAME: ingest-tesla.dev.dimo.zone
+  TESLA_TELEMETRY_PORT: 443
+  TESLA_TELEMETRY_CA_CERTIFICATE: |
+    -----BEGIN CERTIFICATE-----
+    MIIBvDCCAWKgAwIBAgIRAL6QCUcK/8jy48V7ElERABowCgYIKoZIzj0EAwIwIzEh
+    MB8GA1UEAxMYRElNTyBDQSBEZXZlbG9wbWVudCBSb290MCAXDTIyMDQyMzExMTEw
+    M1oYDzIwNzIwNDEwMTExMTAzWjAyMTAwLgYDVQQDEydESU1PIENBIERldmVsb3Bt
+    ZW50IFNlcnZlciBJbnRlcm1lZGlhdGUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNC
+    AAQMyh6plUM3p4KWWfK0CqWXr1B9NWk53+c9ps8OpgZZIyXjxiw1EHxrpcqU7C9e
+    hw+6JfmvTqqi3F4ES8K+Tt/mo2YwZDAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/
+    BAgwBgEB/wIBADAdBgNVHQ4EFgQU+7zrfioO4bjNpD9KiG8fbTcIq8kwHwYDVR0j
+    BBgwFoAUeMfSSqt+S65xQF82yRnjr+J5XC8wCgYIKoZIzj0EAwIDSAAwRQIhAK3s
+    Wtlk+d0fnkii091dTZGt+dtzEbM4HuizaG6mO5zPAiApi03qU/hdsAxXwlbhufH/
+    5HuUiCLgBK8vPvL2YdMaKQ==
+    -----END CERTIFICATE-----
+    -----BEGIN CERTIFICATE-----
+    MIIBrTCCAVKgAwIBAgIQEgthFz9Ww3+VaErBc3nDFjAKBggqhkjOPQQDAjAjMSEw
+    HwYDVQQDExhESU1PIENBIERldmVsb3BtZW50IFJvb3QwIBcNMjIwNDIzMTExMTAz
+    WhgPMjEyMjAzMzAxMTExMDNaMCMxITAfBgNVBAMTGERJTU8gQ0EgRGV2ZWxvcG1l
+    bnQgUm9vdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABBuxEb6jTyfrUwI8RiBV
+    KCQWqTAeLdHPj60Qk7HeMeaEcGjzF799xgpl6/8iNKaHN/w+705cdxp5pRswbUtu
+    izWjZjBkMA4GA1UdDwEB/wQEAwIBBjASBgNVHRMBAf8ECDAGAQH/AgEBMB0GA1Ud
+    DgQWBBR4x9JKq35LrnFAXzbJGeOv4nlcLzAfBgNVHSMEGDAWgBR4x9JKq35LrnFA
+    XzbJGeOv4nlcLzAKBggqhkjOPQQDAgNJADBGAiEAlslTE9mX+VjPSYLKEsy48Rzh
+    OUCdaWovmF+28PyAi4wCIQDXRKpYK+VMFyUR1GJVoV3gWezQcJmFswuWq+7M+XPb
+    GQ==
+    -----END CERTIFICATE-----
 service:
   type: ClusterIP
   ports:

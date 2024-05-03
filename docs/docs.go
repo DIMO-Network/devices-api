@@ -1555,6 +1555,38 @@ const docTemplate = `{
                 }
             }
         },
+        "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/telemetry/subscribe": {
+            "post": {
+                "description": "Subscribe vehicle for Telemetry Data. Currently, this only works for Teslas connected through Tesla.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "device",
+                    "integration",
+                    "command"
+                ],
+                "summary": "Subscribe vehicle for Telemetry Data",
+                "operationId": "telemetry-subscribe",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "userDeviceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Integration ID",
+                        "name": "integrationID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/trunk/open": {
             "post": {
                 "description": "Open the device's front trunk. Currently, this only works for Teslas connected through Tesla.",
@@ -2578,6 +2610,37 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_controllers.AftermarketDeviceTransactionStatus": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "CreatedAt is the timestamp of the creation of the meta-transaction.",
+                    "type": "string",
+                    "example": "2022-10-01T09:22:21.002Z"
+                },
+                "hash": {
+                    "description": "Hash is the hexidecimal transaction hash, available for any transaction at the Submitted stage or greater.",
+                    "type": "string",
+                    "example": "0x28b4662f1e1b15083261a4a5077664f4003d58cb528826b7aab7fad466c28e70"
+                },
+                "status": {
+                    "description": "Status is the state of the transaction performing this operation. There are only four options.",
+                    "type": "string",
+                    "enum": [
+                        "Unsubmitted",
+                        "Submitted",
+                        "Mined",
+                        "Confirmed"
+                    ],
+                    "example": "Mined"
+                },
+                "updatedAt": {
+                    "description": "UpdatedAt is the last time we updated the status of the transaction.",
+                    "type": "string",
+                    "example": "2022-10-01T09:22:26.337Z"
+                }
+            }
+        },
         "internal_controllers.AutoPiDeviceInfo": {
             "type": "object",
             "properties": {
@@ -2591,7 +2654,7 @@ const docTemplate = `{
                     "description": "Claim contains the status of the on-chain claiming meta-transaction.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_controllers.AutoPiTransactionStatus"
+                            "$ref": "#/definitions/internal_controllers.AftermarketDeviceTransactionStatus"
                         }
                     ]
                 },
@@ -2629,7 +2692,7 @@ const docTemplate = `{
                     "description": "Pair contains the status of the on-chain pairing meta-transaction.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_controllers.AutoPiTransactionStatus"
+                            "$ref": "#/definitions/internal_controllers.AftermarketDeviceTransactionStatus"
                         }
                     ]
                 },
@@ -2652,40 +2715,9 @@ const docTemplate = `{
                     "description": "Unpair contains the status of the on-chain unpairing meta-transaction.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_controllers.AutoPiTransactionStatus"
+                            "$ref": "#/definitions/internal_controllers.AftermarketDeviceTransactionStatus"
                         }
                     ]
-                }
-            }
-        },
-        "internal_controllers.AutoPiTransactionStatus": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "description": "CreatedAt is the timestamp of the creation of the meta-transaction.",
-                    "type": "string",
-                    "example": "2022-10-01T09:22:21.002Z"
-                },
-                "hash": {
-                    "description": "Hash is the hexidecimal transaction hash, available for any transaction at the Submitted stage or greater.",
-                    "type": "string",
-                    "example": "0x28b4662f1e1b15083261a4a5077664f4003d58cb528826b7aab7fad466c28e70"
-                },
-                "status": {
-                    "description": "Status is the state of the transaction performing this operation. There are only four options.",
-                    "type": "string",
-                    "enum": [
-                        "Unsubmitted",
-                        "Submitted",
-                        "Mined",
-                        "Confirmed"
-                    ],
-                    "example": "Mined"
-                },
-                "updatedAt": {
-                    "description": "UpdatedAt is the last time we updated the status of the transaction.",
-                    "type": "string",
-                    "example": "2022-10-01T09:22:26.337Z"
                 }
             }
         },
@@ -3018,6 +3050,14 @@ const docTemplate = `{
                 "status": {
                     "description": "Status is one of \"Pending\", \"PendingFirstData\", \"Active\", \"Failed\", \"DuplicateIntegration\".",
                     "type": "string"
+                },
+                "tesla": {
+                    "description": "Contains further details about tesla integration status",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/internal_controllers.TeslaIntegrationInfo"
+                        }
+                    ]
                 }
             }
         },
@@ -3087,42 +3127,6 @@ const docTemplate = `{
                 },
                 "value": {
                     "type": "string"
-                }
-            }
-        },
-        "internal_controllers.NFTData": {
-            "type": "object",
-            "properties": {
-                "ownerAddress": {
-                    "description": "OwnerAddress is the Ethereum address of the NFT owner.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "status": {
-                    "description": "Status is the minting status of the NFT.",
-                    "type": "string",
-                    "enum": [
-                        "Unstarted",
-                        "Submitted",
-                        "Mined",
-                        "Confirmed"
-                    ],
-                    "example": "Confirmed"
-                },
-                "tokenId": {
-                    "type": "number",
-                    "example": 37
-                },
-                "tokenUri": {
-                    "type": "string",
-                    "example": "https://nft.dimo.zone/37"
-                },
-                "txHash": {
-                    "description": "TxHash is the hash of the minting transaction.",
-                    "type": "string",
-                    "example": "0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"
                 }
             }
         },
@@ -3333,6 +3337,18 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_controllers.TeslaIntegrationInfo": {
+            "type": "object",
+            "properties": {
+                "telemetrySubscribed": {
+                    "type": "boolean"
+                },
+                "virtualKeyAdded": {
+                    "description": "Status of the virtual key connection",
+                    "type": "boolean"
+                }
+            }
+        },
         "internal_controllers.UpdateCountryCodeReq": {
             "type": "object",
             "properties": {
@@ -3395,7 +3411,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "nft": {
-                    "$ref": "#/definitions/internal_controllers.NFTData"
+                    "$ref": "#/definitions/internal_controllers.VehicleNFTData"
                 },
                 "optedInAt": {
                     "type": "string"
@@ -3463,6 +3479,42 @@ const docTemplate = `{
                 },
                 "vin": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_controllers.VehicleNFTData": {
+            "type": "object",
+            "properties": {
+                "ownerAddress": {
+                    "description": "OwnerAddress is the Ethereum address of the NFT owner.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "status": {
+                    "description": "Status is the minting status of the NFT.",
+                    "type": "string",
+                    "enum": [
+                        "Unstarted",
+                        "Submitted",
+                        "Mined",
+                        "Confirmed"
+                    ],
+                    "example": "Confirmed"
+                },
+                "tokenId": {
+                    "type": "number",
+                    "example": 37
+                },
+                "tokenUri": {
+                    "type": "string",
+                    "example": "https://nft.dimo.zone/37"
+                },
+                "txHash": {
+                    "description": "TxHash is the hash of the minting transaction.",
+                    "type": "string",
+                    "example": "0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"
                 }
             }
         },
