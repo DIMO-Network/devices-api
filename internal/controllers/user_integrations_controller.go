@@ -103,7 +103,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla telemetry subscription status %s", err.Error()))
 		}
 
-		resp.Tesla = &TeslIntegrationInfo{
+		resp.Tesla = &TeslaIntegrationInfo{
 			VirtualKeyAdded:     isConnected,
 			TelemetrySubscribed: isSubscribed,
 		}
@@ -2220,7 +2220,7 @@ type RegisterDeviceIntegrationRequest struct {
 	Version      int    `json:"version"`
 }
 
-type TeslIntegrationInfo struct {
+type TeslaIntegrationInfo struct {
 	// Status of the virtual key connection
 	VirtualKeyAdded     bool `json:"virtualKeyAdded"`
 	TelemetrySubscribed bool `json:"telemetrySubscribed"`
@@ -2234,7 +2234,7 @@ type GetUserDeviceIntegrationResponse struct {
 	ExternalID null.String `json:"externalId" swaggertype:"string"`
 
 	// Contains further details about tesla integration status
-	Tesla *TeslIntegrationInfo `json:"tesla,omitempty"`
+	Tesla *TeslaIntegrationInfo `json:"tesla,omitempty"`
 
 	// CreatedAt is the creation time of this integration for this device.
 	CreatedAt time.Time `json:"createdAt"`

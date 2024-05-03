@@ -583,7 +583,7 @@ definitions:
         type: string
       tesla:
         allOf:
-        - $ref: '#/definitions/internal_controllers.TeslIntegrationInfo'
+        - $ref: '#/definitions/internal_controllers.TeslaIntegrationInfo'
         description: Contains further details about tesla integration status
     type: object
   internal_controllers.ManufacturerInfo:
@@ -809,7 +809,7 @@ definitions:
         example: 0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e
         type: string
     type: object
-  internal_controllers.TeslIntegrationInfo:
+  internal_controllers.TeslaIntegrationInfo:
     properties:
       telemetrySubscribed:
         type: boolean

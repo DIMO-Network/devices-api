@@ -3119,7 +3119,7 @@ const docTemplate = `{
                     "description": "Contains further details about tesla integration status",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_controllers.TeslIntegrationInfo"
+                            "$ref": "#/definitions/internal_controllers.TeslaIntegrationInfo"
                         }
                     ]
                 }
@@ -3437,7 +3437,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers.TeslIntegrationInfo": {
+        "internal_controllers.TeslaIntegrationInfo": {
             "type": "object",
             "properties": {
                 "telemetrySubscribed": {
