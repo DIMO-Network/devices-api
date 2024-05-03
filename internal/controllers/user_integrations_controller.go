@@ -607,7 +607,7 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 
 	serial := c.Locals("serial").(string)
 
-	var claim, pair, unpair *AutoPiTransactionStatus
+	var claim, pair, unpair *AftermarketDeviceTransactionStatus
 
 	var tokenID *big.Int
 	var ethereumAddress, beneficiaryAddress *common.Address
@@ -636,7 +636,7 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 			addrStr := addr.Hex()
 			ownerAddress = &addrStr
 			beneficiaryAddress = &addr
-			claim = &AutoPiTransactionStatus{
+			claim = &AftermarketDeviceTransactionStatus{
 				Status: models.MetaTransactionRequestStatusConfirmed,
 			}
 		}
@@ -647,7 +647,7 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 		}
 
 		if req := dbUnit.R.ClaimMetaTransactionRequest; req != nil {
-			claim = &AutoPiTransactionStatus{
+			claim = &AftermarketDeviceTransactionStatus{
 				Status:    req.Status,
 				CreatedAt: req.CreatedAt,
 				UpdatedAt: req.UpdatedAt,
@@ -660,7 +660,7 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 
 		// Check for pair.
 		if req := dbUnit.R.PairRequest; req != nil {
-			pair = &AutoPiTransactionStatus{
+			pair = &AftermarketDeviceTransactionStatus{
 				Status:    req.Status,
 				CreatedAt: req.CreatedAt,
 				UpdatedAt: req.UpdatedAt,
@@ -673,7 +673,7 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 
 		// Check for unpair.
 		if req := dbUnit.R.UnpairRequest; req != nil {
-			unpair = &AutoPiTransactionStatus{
+			unpair = &AftermarketDeviceTransactionStatus{
 				Status:    req.Status,
 				CreatedAt: req.CreatedAt,
 				UpdatedAt: req.UpdatedAt,
@@ -2240,10 +2240,6 @@ type GetUserDeviceIntegrationResponse struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-type AutoPiCommandRequest struct {
-	Command string `json:"command"`
-}
-
 type ManufacturerInfo struct {
 	TokenID *big.Int `json:"tokenId"`
 	Name    string   `json:"name"`
@@ -2267,17 +2263,18 @@ type AutoPiDeviceInfo struct {
 	BeneficiaryAddress *common.Address `json:"beneficiaryAddress,omitempty"`
 
 	// Claim contains the status of the on-chain claiming meta-transaction.
-	Claim *AutoPiTransactionStatus `json:"claim,omitempty"`
+	Claim *AftermarketDeviceTransactionStatus `json:"claim,omitempty"`
 	// Pair contains the status of the on-chain pairing meta-transaction.
-	Pair *AutoPiTransactionStatus `json:"pair,omitempty"`
+	Pair *AftermarketDeviceTransactionStatus `json:"pair,omitempty"`
 	// Unpair contains the status of the on-chain unpairing meta-transaction.
-	Unpair *AutoPiTransactionStatus `json:"unpair,omitempty"`
+	Unpair *AftermarketDeviceTransactionStatus `json:"unpair,omitempty"`
 
 	Manufacturer *ManufacturerInfo `json:"manufacturer,omitempty"`
 }
 
-// AutoPiTransactionStatus summarizes the state of an on-chain AutoPi operation.
-type AutoPiTransactionStatus struct {
+// AftermarketDeviceTransactionStatus summarizes the state of an on-chain aftermarket device
+// operation: pairing, claiming, or unpairing.
+type AftermarketDeviceTransactionStatus struct {
 	// Status is the state of the transaction performing this operation. There are only four options.
 	Status string `json:"status" enums:"Unsubmitted,Submitted,Mined,Confirmed" example:"Mined"`
 	// Hash is the hexidecimal transaction hash, available for any transaction at the Submitted stage or greater.
