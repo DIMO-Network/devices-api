@@ -22,7 +22,6 @@ import (
 	"github.com/DIMO-Network/go-mnemonic"
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
-	pr "github.com/DIMO-Network/shared/middleware/privilegetoken"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
@@ -406,62 +405,6 @@ func (nc *NFTController) GetAftermarketDeviceNFTImage(c *fiber.Ctx) error {
 
 	c.Set("Content-Type", "image/png")
 	return c.Send(b)
-}
-
-// GetVehicleStatus godoc
-// @Description Returns the latest status update for the vehicle with a given token id.
-// @Tags        permission
-// @Param       tokenId path int true "token id"
-// @Produce     json
-// @Success     200 {object} controllers.DeviceSnapshot
-// @Failure     404
-// @Router      /vehicle/{tokenId}/status [get]
-func (nc *NFTController) GetVehicleStatus(c *fiber.Ctx) error {
-	tis := c.Params("tokenID")
-	claims := c.Locals("tokenClaims").(pr.CustomClaims)
-
-	privileges := claims.PrivilegeIDs
-
-	ti, ok := new(big.Int).SetString(tis, 10)
-	if !ok {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
-	}
-
-	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
-	nft, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(tid),
-		qm.Load(models.VehicleNFTRels.UserDevice),
-	).One(c.Context(), nc.DBS().Reader)
-
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "NFT not found.")
-		}
-		nc.log.Err(err).Msg("Database error retrieving NFT metadata.")
-		return opaqueInternalError
-	}
-
-	if nft.R.UserDevice == nil {
-		return fiber.NewError(fiber.StatusNotFound, "NFT not found.")
-	}
-
-	udd, err := nc.deviceDataSvc.GetDeviceData(c.Context(),
-		nft.R.UserDevice.ID,
-		nft.R.UserDevice.DeviceDefinitionID,
-		nft.R.UserDevice.DeviceStyleID.String,
-		privileges,
-	)
-	if err != nil {
-		err := shared.GrpcErrorToFiber(err, "failed to get user device data grpc")
-		if err, ok := err.(*fiber.Error); ok && err.Code == 404 {
-			helpers.SkipErrorLog(c)
-		}
-		return err
-	}
-
-	ds := grpcDeviceDataToSnapshot(udd)
-
-	return c.JSON(ds)
 }
 
 // UnlockDoors godoc

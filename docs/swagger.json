@@ -1706,39 +1706,6 @@
                 }
             }
         },
-        "/user/devices/{userDeviceID}/status": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns the latest status update for the device. May return 404 if the\nuser does not have a device with the ID, or if no status updates have come. Note this endpoint also exists under nft_controllers",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "user device ID",
-                        "name": "user_device_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.DeviceSnapshot"
-                        }
-                    }
-                }
-            }
-        },
         "/user/devices/{userDeviceID}/vin": {
             "patch": {
                 "security": [
@@ -2199,37 +2166,6 @@
                 "responses": {
                     "200": {
                         "description": "OK"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    }
-                }
-            }
-        },
-        "/vehicle/{tokenId}/status": {
-            "get": {
-                "description": "Returns the latest status update for the vehicle with a given token id.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permission"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.DeviceSnapshot"
-                        }
                     },
                     "404": {
                         "description": "Not Found"

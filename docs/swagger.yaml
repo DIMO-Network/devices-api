@@ -1942,28 +1942,6 @@ paths:
       - BearerAuth: []
       tags:
       - user-devices
-  /user/devices/{userDeviceID}/status:
-    get:
-      description: |-
-        Returns the latest status update for the device. May return 404 if the
-        user does not have a device with the ID, or if no status updates have come. Note this endpoint also exists under nft_controllers
-      parameters:
-      - description: user device ID
-        in: path
-        name: user_device_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.DeviceSnapshot'
-      security:
-      - BearerAuth: []
-      tags:
-      - user-devices
   /user/devices/{userDeviceID}/vin:
     patch:
       consumes:
@@ -2356,27 +2334,6 @@ paths:
           description: Not Found
       tags:
       - nfts
-  /vehicle/{tokenId}/status:
-    get:
-      description: Returns the latest status update for the vehicle with a given token
-        id.
-      parameters:
-      - description: token id
-        in: path
-        name: tokenId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.DeviceSnapshot'
-        "404":
-          description: Not Found
-      tags:
-      - permission
   /vehicle/{tokenId}/vin-credential:
     get:
       description: Returns the vin credential for the vehicle with a given token id.
