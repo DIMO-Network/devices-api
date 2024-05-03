@@ -30,6 +30,7 @@ type TeslaFleetAPIService interface {
 	GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands
 	VirtualKeyConnectionStatus(ctx context.Context, token, region, vin string) (bool, error)
 	SubscribeForTelemetryData(ctx context.Context, token, region, vin string) error
+	GetTelemetrySubscriptionStatus(ctx context.Context, token, region, vin string) (bool, error)
 }
 
 var teslaScopes = []string{"openid", "offline_access", "user_data", "vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds"}
@@ -74,10 +75,15 @@ type Interval struct {
 type TelemetryFields map[string]Interval
 
 type TelemetryConfigRequest struct {
-	HostName            string          `json:"hostname"`
-	PublicCACertificate string          `json:"ca"`
-	Fields              TelemetryFields `json:"fields"`
-	Port                int             `json:"port"`
+	HostName string          `json:"hostname"`
+	CA       string          `json:"ca"`
+	Fields   TelemetryFields `json:"fields"`
+	Port     int             `json:"port"`
+}
+
+type TelemetryConfigStatusResponse struct {
+	Synced bool                    `json:"synced"`
+	Config *TelemetryConfigRequest `json:"config"`
 }
 
 type SkippedVehicles struct {
@@ -258,10 +264,10 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 	r := SubscribeForTelemetryDataRequest{
 		VINs: []string{vin},
 		Config: TelemetryConfigRequest{
-			HostName:            t.Settings.TeslaTelemetryHostName,
-			PublicCACertificate: t.Settings.TeslaTelemetryCACertificate,
-			Port:                t.Settings.TeslaTelemetryPort,
-			Fields:              fields,
+			HostName: t.Settings.TeslaTelemetryHostName,
+			CA:       t.Settings.TeslaTelemetryCACertificate,
+			Port:     t.Settings.TeslaTelemetryPort,
+			Fields:   fields,
 		},
 	}
 
@@ -298,6 +304,26 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 	}
 
 	return nil
+}
+
+func (t *teslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Context, token, region, vin string) (bool, error) {
+	u, err := url.JoinPath(t.fleetURLForRegion(region), "/api/1/vehicles", vin, "fleet_telemetry_config")
+	if err != nil {
+		return false, fmt.Errorf("error constructing URL: %w", err)
+	}
+
+	body, err := t.performRequest(ctx, u, token, http.MethodGet, nil)
+	if err != nil {
+		return false, err
+	}
+
+	var statResp TeslaResponseWrapper[TelemetryConfigStatusResponse]
+	err = json.Unmarshal(body, &statResp)
+	if err != nil {
+		return false, err
+	}
+
+	return statResp.Response.Config != nil, nil
 }
 
 // performRequest a helper function for making http requests, it adds a timeout context and parses error response

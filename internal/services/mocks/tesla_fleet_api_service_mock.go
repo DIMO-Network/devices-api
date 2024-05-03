@@ -69,6 +69,21 @@ func (mr *MockTeslaFleetAPIServiceMockRecorder) GetAvailableCommands() *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAvailableCommands", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).GetAvailableCommands))
 }
 
+// GetTelemetrySubscriptionStatus mocks base method.
+func (m *MockTeslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Context, token, region, vin string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTelemetrySubscriptionStatus", ctx, token, region, vin)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTelemetrySubscriptionStatus indicates an expected call of GetTelemetrySubscriptionStatus.
+func (mr *MockTeslaFleetAPIServiceMockRecorder) GetTelemetrySubscriptionStatus(ctx, token, region, vin any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTelemetrySubscriptionStatus", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).GetTelemetrySubscriptionStatus), ctx, token, region, vin)
+}
+
 // GetVehicle mocks base method.
 func (m *MockTeslaFleetAPIService) GetVehicle(ctx context.Context, token, region string, vehicleID int) (*services.TeslaVehicle, error) {
 	m.ctrl.T.Helper()
@@ -97,21 +112,6 @@ func (m *MockTeslaFleetAPIService) GetVehicles(ctx context.Context, token, regio
 func (mr *MockTeslaFleetAPIServiceMockRecorder) GetVehicles(ctx, token, region any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVehicles", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).GetVehicles), ctx, token, region)
-}
-
-// RefreshToken mocks base method.
-func (m *MockTeslaFleetAPIService) RefreshToken(ctx context.Context, refreshToken string) (*services.TeslaAuthCodeResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RefreshToken", ctx, refreshToken)
-	ret0, _ := ret[0].(*services.TeslaAuthCodeResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// RefreshToken indicates an expected call of RefreshToken.
-func (mr *MockTeslaFleetAPIServiceMockRecorder) RefreshToken(ctx, refreshToken any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshToken", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).RefreshToken), ctx, refreshToken)
 }
 
 // SubscribeForTelemetryData mocks base method.
