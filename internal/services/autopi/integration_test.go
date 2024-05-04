@@ -46,7 +46,6 @@ const migrationsDirRelPath = "../../../migrations"
 // SetupSuite starts container db
 func (s *IntegrationTestSuite) SetupSuite() {
 	mockCtrl := gomock.NewController(s.T())
-	defer mockCtrl.Finish()
 	logger := test.Logger()
 
 	s.ctx = context.Background()
