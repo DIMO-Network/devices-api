@@ -72,7 +72,6 @@ func (p *web2PairCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interfa
 	p.logger.Info().Msgf("Attempting to web2 pair am device %s to vehicle %s.", amToken, vToken)
 
 	autoPiSvc := services.NewAutoPiAPIService(&p.settings, p.pdb.DBS)
-	autoPiTaskService := services.NewAutoPiTaskService(&p.settings, autoPiSvc, p.pdb.DBS, p.logger)
 	autoPiIngest := services.NewIngestRegistrar(producer)
 	eventService := services.NewEventService(&p.logger, &p.settings, producer)
 	deviceDefinitionRegistrar := services.NewDeviceDefinitionRegistrar(producer, &p.settings)
@@ -80,7 +79,7 @@ func (p *web2PairCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interfa
 
 	switch dm.Name {
 	case constants.AutoPiVendor:
-		autoPi := autopi.NewIntegration(p.pdb.DBS, ddSvc, autoPiSvc, autoPiTaskService, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &p.logger)
+		autoPi := autopi.NewIntegration(p.pdb.DBS, ddSvc, autoPiSvc, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &p.logger)
 
 		err = autoPi.Pair(ctx, amToken, vToken)
 		if err != nil {
