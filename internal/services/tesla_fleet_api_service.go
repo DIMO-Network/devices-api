@@ -126,7 +126,7 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	tok, err := conf.Exchange(ctxTimeout, authCode, oauth2.SetAuthURLParam("audience", fmt.Sprintf(t.Settings.TeslaFleetURL, region)))
+	tok, err := conf.Exchange(ctxTimeout, authCode, oauth2.SetAuthURLParam("audience", t.fleetURLForRegion(region)))
 	if err != nil {
 		var e *oauth2.RetrieveError
 		errString := err.Error()
@@ -199,7 +199,7 @@ func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region 
 
 	_, err = t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
-		return fmt.Errorf("could not fetch vehicles for user: %w", err)
+		return fmt.Errorf("could not wake vehicle: %w", err)
 	}
 
 	return err
@@ -211,7 +211,8 @@ func (t *teslaFleetAPIService) GetAvailableCommands() *UserDeviceAPIIntegrations
 	}
 }
 
-// VirtualKeyConnectionStatus Checks whether vehicles can accept Tesla commands protocol for the partner's public key
+// VirtualKeyConnectionStatus returns true if our virtual key (public key) has been added to the vehicle.
+// This is a prerequisite for issuing commands or subscribing to telemetry.
 func (t *teslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, token, region, vin string) (bool, error) {
 	url, err := url.JoinPath(t.fleetURLForRegion(region), "/api/1/vehicles/fleet_status")
 	if err != nil {
