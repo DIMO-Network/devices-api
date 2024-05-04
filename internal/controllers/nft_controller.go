@@ -71,14 +71,6 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 	}
 }
 
-const (
-	NonLocationData int64 = 1
-	Commands        int64 = 2
-	CurrentLocation int64 = 3
-	AllTimeLocation int64 = 4
-	VinCredential   int64 = 5
-)
-
 // GetNFTMetadata godoc
 // @Description retrieves NFT metadata for a given tokenID
 // @Tags        nfts
