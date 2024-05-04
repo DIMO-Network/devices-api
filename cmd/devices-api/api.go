@@ -216,26 +216,18 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// Autopi specific routes.
 	amdOwnerMw := owner.AftermarketDevice(pdb, usersClient, &logger)
-	apOwner := v1Auth.Group("/autopi/unit/:serial", amdOwnerMw)
 	// same as above but AftermarketDevice
 	amdOwner := v1Auth.Group("/aftermarket/device/by-serial/:serial", amdOwnerMw)
 
-	apOwner.Get("/", userDeviceController.GetAftermarketDeviceInfo)
 	amdOwner.Get("/", userDeviceController.GetAftermarketDeviceInfo)
-
-	apOwner.Post("/update", userDeviceController.StartAutoPiUpdateTask)
 	amdOwner.Post("/update", userDeviceController.StartAutoPiUpdateTask)
 
 	// AftermarketDevice claiming, formerly AutoPi
-	apOwner.Get("/commands/claim", userDeviceController.GetAftermarketDeviceClaimMessage)
 	amdOwner.Get("/commands/claim", userDeviceController.GetAftermarketDeviceClaimMessage)
-
-	apOwner.Post("/commands/claim", userDeviceController.PostAftermarketDeviceClaim).Name("PostClaimAutoPi")
 	amdOwner.Post("/commands/claim", userDeviceController.PostAftermarketDeviceClaim).Name("PostClaimAutoPi")
 
 	if !settings.IsProduction() {
 		// Used by mobile to test. Easy to misuse.
-		apOwner.Post("/commands/unclaim", userDeviceController.PostUnclaimAutoPi)
 		amdOwner.Post("/commands/unclaim", userDeviceController.PostUnclaimAutoPi)
 	}
 
