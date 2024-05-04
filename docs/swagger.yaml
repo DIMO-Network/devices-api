@@ -1349,7 +1349,7 @@ paths:
       - BearerAuth: []
   /user/devices/{userDeviceID}/aftermarket/commands/unpair:
     get:
-      description: Return the EIP-712 payload to be signed for Aftermarket device
+      description: Return the EIP-712 payload to be signed for aftermarket device
         unpairing.
       parameters:
       - description: Device id
@@ -1367,8 +1367,8 @@ paths:
       security:
       - BearerAuth: []
     post:
-      description: Submit the signature for unpairing this device from its attached
-        Aftermarket.
+      description: Submit the signature for unpairing this user device from its attached
+        aftermarket device.
       parameters:
       - description: Device id
         in: path

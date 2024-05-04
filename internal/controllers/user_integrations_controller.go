@@ -1366,14 +1366,14 @@ func (udc *UserDevicesController) CloudRepairAutoPi(c *fiber.Ctx) error {
 	return c.SendStatus(204)
 }
 
-// GetAutoPiUnpairMessage godoc
-// @Description Return the EIP-712 payload to be signed for Aftermarket device unpairing.
+// GetAftermarketDeviceUnpairMessage godoc
+// @Description Return the EIP-712 payload to be signed for aftermarket device unpairing.
 // @Produce json
 // @Param userDeviceID path string true "Device id"
 // @Success 200 {object} signer.TypedData
 // @Security BearerAuth
 // @Router /user/devices/{userDeviceID}/aftermarket/commands/unpair [get]
-func (udc *UserDevicesController) GetAutoPiUnpairMessage(c *fiber.Ctx) error {
+func (udc *UserDevicesController) GetAftermarketDeviceUnpairMessage(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 
 	userDeviceID := c.Params("userDeviceID")
@@ -1419,14 +1419,14 @@ func (udc *UserDevicesController) GetAutoPiUnpairMessage(c *fiber.Ctx) error {
 	return c.JSON(out)
 }
 
-// UnpairAutoPi godoc
-// @Description Submit the signature for unpairing this device from its attached Aftermarket.
+// PostAftermarketDeviceUnpair godoc
+// @Description Submit the signature for unpairing this user device from its attached aftermarket device.
 // @Produce json
 // @Param userDeviceID path string true "Device id"
 // @Param userSignature body controllers.AftermarketDevicePairRequest true "User signature."
 // @Security BearerAuth
 // @Router /user/devices/{userDeviceID}/aftermarket/commands/unpair [post]
-func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
+func (udc *UserDevicesController) PostAftermarketDeviceUnpair(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
@@ -1477,6 +1477,7 @@ func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 		VehicleNode:           vehicleToken,
 	}
 
+	// Re-using this struct. A bit lazy.
 	var pairReq AftermarketDevicePairRequest
 	err = c.BodyParser(&pairReq)
 	if err != nil {

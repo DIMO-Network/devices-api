@@ -308,8 +308,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// Routes were transitioned from /autopi to /aftermarket
 	udOwner.Get("/aftermarket/commands/pair", userDeviceController.GetAftermarketDevicePairMessage)
 	udOwner.Post("/aftermarket/commands/pair", userDeviceController.PostAftermarketDevicePair)
-	udOwner.Get("/aftermarket/commands/unpair", userDeviceController.GetAutoPiUnpairMessage)
-	udOwner.Post("/aftermarket/commands/unpair", userDeviceController.UnpairAutoPi)
+	udOwner.Get("/aftermarket/commands/unpair", userDeviceController.GetAftermarketDeviceUnpairMessage)
+	udOwner.Post("/aftermarket/commands/unpair", userDeviceController.PostAftermarketDeviceUnpair)
 	udOwner.Post("/aftermarket/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
 
 	logger.Info().Msg("Server started on port " + settings.Port)

@@ -893,7 +893,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Return the EIP-712 payload to be signed for Aftermarket device unpairing.",
+                "description": "Return the EIP-712 payload to be signed for aftermarket device unpairing.",
                 "produces": [
                     "application/json"
                 ],
@@ -921,7 +921,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Submit the signature for unpairing this device from its attached Aftermarket.",
+                "description": "Submit the signature for unpairing this user device from its attached aftermarket device.",
                 "produces": [
                     "application/json"
                 ],
