@@ -15,7 +15,6 @@ var TableNames = struct {
 	PartialAftermarketDevices string
 	SyntheticDevices          string
 	UserDeviceAPIIntegrations string
-	UserDeviceData            string
 	UserDeviceToGeofence      string
 	UserDevices               string
 	VehicleNFTS               string
@@ -32,7 +31,6 @@ var TableNames = struct {
 	PartialAftermarketDevices: "partial_aftermarket_devices",
 	SyntheticDevices:          "synthetic_devices",
 	UserDeviceAPIIntegrations: "user_device_api_integrations",
-	UserDeviceData:            "user_device_data",
 	UserDeviceToGeofence:      "user_device_to_geofence",
 	UserDevices:               "user_devices",
 	VehicleNFTS:               "vehicle_nfts",
