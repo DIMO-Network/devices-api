@@ -29,7 +29,6 @@ type Integration struct {
 	db                      func() *db.ReaderWriter
 	defs                    services.DeviceDefinitionService
 	ap                      services.AutoPiAPIService
-	apTask                  services.AutoPiTaskService
 	apReg                   services.IngestRegistrar
 	eventer                 services.EventService
 	ddRegistrar             services.DeviceDefinitionRegistrar
@@ -41,7 +40,6 @@ func NewIntegration(
 	db func() *db.ReaderWriter,
 	defs services.DeviceDefinitionService,
 	ap services.AutoPiAPIService,
-	apTask services.AutoPiTaskService,
 	apReg services.IngestRegistrar,
 	eventer services.EventService,
 	ddRegistrar services.DeviceDefinitionRegistrar,
@@ -52,7 +50,6 @@ func NewIntegration(
 		db:                      db,
 		defs:                    defs,
 		ap:                      ap,
-		apTask:                  apTask,
 		apReg:                   apReg,
 		eventer:                 eventer,
 		ddRegistrar:             ddRegistrar,
