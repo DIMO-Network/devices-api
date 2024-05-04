@@ -73,24 +73,6 @@ definitions:
       message:
         type: string
     type: object
-  github_com_DIMO-Network_devices-api_internal_services.AutoPiTask:
-    properties:
-      code:
-        type: integer
-      description:
-        type: string
-      error:
-        type: string
-      status:
-        type: string
-      taskId:
-        type: string
-      updatedAt:
-        type: string
-      updates:
-        description: Updates increments every time the job was updated.
-        type: integer
-    type: object
   github_com_DIMO-Network_devices-api_internal_services.DeviceAttribute:
     properties:
       name:

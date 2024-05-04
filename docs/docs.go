@@ -2294,33 +2294,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_DIMO-Network_devices-api_internal_services.AutoPiTask": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "error": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "taskId": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "updates": {
-                    "description": "Updates increments every time the job was updated.",
-                    "type": "integer"
-                }
-            }
-        },
         "github_com_DIMO-Network_devices-api_internal_services.DeviceAttribute": {
             "type": "object",
             "properties": {
