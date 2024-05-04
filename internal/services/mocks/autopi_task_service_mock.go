@@ -57,21 +57,6 @@ func (mr *MockAutoPiTaskServiceMockRecorder) GetTaskStatus(ctx, taskID any) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskStatus", reflect.TypeOf((*MockAutoPiTaskService)(nil).GetTaskStatus), ctx, taskID)
 }
 
-// StartAutoPiUpdate mocks base method.
-func (m *MockAutoPiTaskService) StartAutoPiUpdate(deviceID, userID, unitID string) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StartAutoPiUpdate", deviceID, userID, unitID)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StartAutoPiUpdate indicates an expected call of StartAutoPiUpdate.
-func (mr *MockAutoPiTaskServiceMockRecorder) StartAutoPiUpdate(deviceID, userID, unitID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartAutoPiUpdate", reflect.TypeOf((*MockAutoPiTaskService)(nil).StartAutoPiUpdate), deviceID, userID, unitID)
-}
-
 // StartConsumer mocks base method.
 func (m *MockAutoPiTaskService) StartConsumer(ctx context.Context) {
 	m.ctrl.T.Helper()
