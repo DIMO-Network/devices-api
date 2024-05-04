@@ -55,6 +55,35 @@ func (mr *MockTeslaFleetAPIServiceMockRecorder) CompleteTeslaAuthCodeExchange(ct
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompleteTeslaAuthCodeExchange", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).CompleteTeslaAuthCodeExchange), ctx, authCode, redirectURI, region)
 }
 
+// GetAvailableCommands mocks base method.
+func (m *MockTeslaFleetAPIService) GetAvailableCommands() *services.UserDeviceAPIIntegrationsMetadataCommands {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAvailableCommands")
+	ret0, _ := ret[0].(*services.UserDeviceAPIIntegrationsMetadataCommands)
+	return ret0
+}
+
+// GetAvailableCommands indicates an expected call of GetAvailableCommands.
+func (mr *MockTeslaFleetAPIServiceMockRecorder) GetAvailableCommands() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAvailableCommands", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).GetAvailableCommands))
+}
+
+// GetTelemetrySubscriptionStatus mocks base method.
+func (m *MockTeslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Context, token, region, vin string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTelemetrySubscriptionStatus", ctx, token, region, vin)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTelemetrySubscriptionStatus indicates an expected call of GetTelemetrySubscriptionStatus.
+func (mr *MockTeslaFleetAPIServiceMockRecorder) GetTelemetrySubscriptionStatus(ctx, token, region, vin any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTelemetrySubscriptionStatus", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).GetTelemetrySubscriptionStatus), ctx, token, region, vin)
+}
+
 // GetVehicle mocks base method.
 func (m *MockTeslaFleetAPIService) GetVehicle(ctx context.Context, token, region string, vehicleID int) (*services.TeslaVehicle, error) {
 	m.ctrl.T.Helper()
@@ -83,6 +112,35 @@ func (m *MockTeslaFleetAPIService) GetVehicles(ctx context.Context, token, regio
 func (mr *MockTeslaFleetAPIServiceMockRecorder) GetVehicles(ctx, token, region any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVehicles", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).GetVehicles), ctx, token, region)
+}
+
+// SubscribeForTelemetryData mocks base method.
+func (m *MockTeslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, token, region, vin string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubscribeForTelemetryData", ctx, token, region, vin)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SubscribeForTelemetryData indicates an expected call of SubscribeForTelemetryData.
+func (mr *MockTeslaFleetAPIServiceMockRecorder) SubscribeForTelemetryData(ctx, token, region, vin any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeForTelemetryData", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).SubscribeForTelemetryData), ctx, token, region, vin)
+}
+
+// VirtualKeyConnectionStatus mocks base method.
+func (m *MockTeslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, token, region, vin string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "VirtualKeyConnectionStatus", ctx, token, region, vin)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// VirtualKeyConnectionStatus indicates an expected call of VirtualKeyConnectionStatus.
+func (mr *MockTeslaFleetAPIServiceMockRecorder) VirtualKeyConnectionStatus(ctx, token, region, vin any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VirtualKeyConnectionStatus", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).VirtualKeyConnectionStatus), ctx, token, region, vin)
 }
 
 // WakeUpVehicle mocks base method.

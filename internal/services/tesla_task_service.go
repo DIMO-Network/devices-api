@@ -22,6 +22,7 @@ type TeslaTaskService interface {
 	LockDoors(udai *models.UserDeviceAPIIntegration) (string, error)
 	OpenTrunk(udai *models.UserDeviceAPIIntegration) (string, error)
 	OpenFrunk(udai *models.UserDeviceAPIIntegration) (string, error)
+	UpdateCredentials(udai *models.UserDeviceAPIIntegration, version int, region string) error
 }
 
 func NewTeslaTaskService(settings *config.Settings, producer sarama.SyncProducer) TeslaTaskService {
@@ -150,6 +151,42 @@ func (t *teslaTaskService) StartPoll(vehicle *TeslaVehicle, udai *models.UserDev
 			},
 		},
 	)
+
+	return err
+}
+
+func (t *teslaTaskService) UpdateCredentials(udai *models.UserDeviceAPIIntegration, version int, region string) error {
+	tc := TeslaCredentialsCloudEventV2{
+		CloudEventHeaders: CloudEventHeaders{
+			ID:          ksuid.New().String(),
+			Source:      "dimo/integration/" + udai.IntegrationID,
+			SpecVersion: "1.0",
+			Subject:     udai.UserDeviceID,
+			Time:        time.Now(),
+			Type:        "zone.dimo.task.tesla.poll.credential.v2",
+		},
+		Data: TeslaCredentialsV2{
+			TaskID:        udai.TaskID.String,
+			UserDeviceID:  udai.UserDeviceID,
+			IntegrationID: udai.IntegrationID,
+			AccessToken:   udai.AccessToken.String,
+			Expiry:        udai.AccessExpiresAt.Time,
+			RefreshToken:  udai.RefreshToken.String,
+			Version:       version,
+			Region:        region,
+		},
+	}
+
+	tcb, err := json.Marshal(tc)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = t.Producer.SendMessage(&sarama.ProducerMessage{
+		Topic: t.Settings.TaskCredentialTopic,
+		Key:   sarama.StringEncoder(udai.TaskID.String),
+		Value: sarama.ByteEncoder(tcb),
+	})
 
 	return err
 }

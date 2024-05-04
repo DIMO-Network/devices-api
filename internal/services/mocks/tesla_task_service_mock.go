@@ -127,3 +127,17 @@ func (mr *MockTeslaTaskServiceMockRecorder) UnlockDoors(udai any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlockDoors", reflect.TypeOf((*MockTeslaTaskService)(nil).UnlockDoors), udai)
 }
+
+// UpdateCredentials mocks base method.
+func (m *MockTeslaTaskService) UpdateCredentials(udai *models.UserDeviceAPIIntegration, version int, region string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateCredentials", udai, version, region)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateCredentials indicates an expected call of UpdateCredentials.
+func (mr *MockTeslaTaskServiceMockRecorder) UpdateCredentials(udai, version, region any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateCredentials", reflect.TypeOf((*MockTeslaTaskService)(nil).UpdateCredentials), udai, version, region)
+}

@@ -274,56 +274,7 @@ definitions:
           type: integer
         type: array
     type: object
-  internal_controllers.AutoPiDeviceInfo:
-    properties:
-      beneficiaryAddress:
-        items:
-          type: integer
-        type: array
-      claim:
-        allOf:
-        - $ref: '#/definitions/internal_controllers.AutoPiTransactionStatus'
-        description: Claim contains the status of the on-chain claiming meta-transaction.
-      deviceId:
-        type: string
-      dockerReleases:
-        items:
-          type: integer
-        type: array
-      ethereumAddress:
-        items:
-          type: integer
-        type: array
-      hwRevision:
-        type: string
-      isUpdated:
-        type: boolean
-      lastCommunication:
-        type: string
-      manufacturer:
-        $ref: '#/definitions/internal_controllers.ManufacturerInfo'
-      ownerAddress:
-        type: string
-      pair:
-        allOf:
-        - $ref: '#/definitions/internal_controllers.AutoPiTransactionStatus'
-        description: Pair contains the status of the on-chain pairing meta-transaction.
-      releaseVersion:
-        type: string
-      shouldUpdate:
-        type: boolean
-      template:
-        type: integer
-      tokenId:
-        $ref: '#/definitions/big.Int'
-      unitId:
-        type: string
-      unpair:
-        allOf:
-        - $ref: '#/definitions/internal_controllers.AutoPiTransactionStatus'
-        description: Unpair contains the status of the on-chain unpairing meta-transaction.
-    type: object
-  internal_controllers.AutoPiTransactionStatus:
+  internal_controllers.AftermarketDeviceTransactionStatus:
     properties:
       createdAt:
         description: CreatedAt is the timestamp of the creation of the meta-transaction.
@@ -348,6 +299,55 @@ definitions:
         description: UpdatedAt is the last time we updated the status of the transaction.
         example: "2022-10-01T09:22:26.337Z"
         type: string
+    type: object
+  internal_controllers.AutoPiDeviceInfo:
+    properties:
+      beneficiaryAddress:
+        items:
+          type: integer
+        type: array
+      claim:
+        allOf:
+        - $ref: '#/definitions/internal_controllers.AftermarketDeviceTransactionStatus'
+        description: Claim contains the status of the on-chain claiming meta-transaction.
+      deviceId:
+        type: string
+      dockerReleases:
+        items:
+          type: integer
+        type: array
+      ethereumAddress:
+        items:
+          type: integer
+        type: array
+      hwRevision:
+        type: string
+      isUpdated:
+        type: boolean
+      lastCommunication:
+        type: string
+      manufacturer:
+        $ref: '#/definitions/internal_controllers.ManufacturerInfo'
+      ownerAddress:
+        type: string
+      pair:
+        allOf:
+        - $ref: '#/definitions/internal_controllers.AftermarketDeviceTransactionStatus'
+        description: Pair contains the status of the on-chain pairing meta-transaction.
+      releaseVersion:
+        type: string
+      shouldUpdate:
+        type: boolean
+      template:
+        type: integer
+      tokenId:
+        $ref: '#/definitions/big.Int'
+      unitId:
+        type: string
+      unpair:
+        allOf:
+        - $ref: '#/definitions/internal_controllers.AftermarketDeviceTransactionStatus'
+        description: Unpair contains the status of the on-chain unpairing meta-transaction.
     type: object
   internal_controllers.BurnRequest:
     properties:
@@ -445,39 +445,6 @@ definitions:
         type: string
       year:
         type: integer
-    type: object
-  internal_controllers.DeviceSnapshot:
-    properties:
-      ambientTemp:
-        type: number
-      batteryCapacity:
-        type: integer
-      batteryVoltage:
-        type: number
-      chargeLimit:
-        type: number
-      charging:
-        type: boolean
-      fuelPercentRemaining:
-        type: number
-      latitude:
-        type: number
-      longitude:
-        type: number
-      odometer:
-        type: number
-      oil:
-        type: number
-      range:
-        type: number
-      recordCreatedAt:
-        type: string
-      recordUpdatedAt:
-        type: string
-      soc:
-        type: number
-      tirePressure:
-        $ref: '#/definitions/smartcar.TirePressure'
     type: object
   internal_controllers.DocumentResponse:
     properties:
@@ -581,6 +548,10 @@ definitions:
         description: Status is one of "Pending", "PendingFirstData", "Active", "Failed",
           "DuplicateIntegration".
         type: string
+      tesla:
+        allOf:
+        - $ref: '#/definitions/internal_controllers.TeslaIntegrationInfo'
+        description: Contains further details about tesla integration status
     type: object
   internal_controllers.ManufacturerInfo:
     properties:
@@ -629,33 +600,6 @@ definitions:
       trait_type:
         type: string
       value:
-        type: string
-    type: object
-  internal_controllers.NFTData:
-    properties:
-      ownerAddress:
-        description: OwnerAddress is the Ethereum address of the NFT owner.
-        items:
-          type: integer
-        type: array
-      status:
-        description: Status is the minting status of the NFT.
-        enum:
-        - Unstarted
-        - Submitted
-        - Mined
-        - Confirmed
-        example: Confirmed
-        type: string
-      tokenId:
-        example: 37
-        type: number
-      tokenUri:
-        example: https://nft.dimo.zone/37
-        type: string
-      txHash:
-        description: TxHash is the hash of the minting transaction.
-        example: 0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e
         type: string
     type: object
   internal_controllers.NFTImageData:
@@ -805,6 +749,22 @@ definitions:
         example: 0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e
         type: string
     type: object
+  internal_controllers.TeslaIntegrationInfo:
+    properties:
+      apiVersion:
+        description: |-
+          APIVersion is the version of the Tesla API being used. There are currently two valid values:
+          1 is the old "Owner API", 2 is the new "Fleet API".
+        type: integer
+      telemetrySubscribed:
+        description: TelemetrySubscribed is true if DIMO has subscribed to the vehicle's
+          telemetry stream.
+        type: boolean
+      virtualKeyAdded:
+        description: VirtualKeyAdded is true if the DIMO virtual key has been added
+          to the vehicle.
+        type: boolean
+    type: object
   internal_controllers.UpdateCountryCodeReq:
     properties:
       countryCode:
@@ -851,7 +811,7 @@ definitions:
       name:
         type: string
       nft:
-        $ref: '#/definitions/internal_controllers.NFTData'
+        $ref: '#/definitions/internal_controllers.VehicleNFTData'
       optedInAt:
         type: string
       privilegedUsers:
@@ -897,36 +857,35 @@ definitions:
       vin:
         type: string
     type: object
+  internal_controllers.VehicleNFTData:
+    properties:
+      ownerAddress:
+        description: OwnerAddress is the Ethereum address of the NFT owner.
+        items:
+          type: integer
+        type: array
+      status:
+        description: Status is the minting status of the NFT.
+        enum:
+        - Unstarted
+        - Submitted
+        - Mined
+        - Confirmed
+        example: Confirmed
+        type: string
+      tokenId:
+        example: 37
+        type: number
+      tokenUri:
+        example: https://nft.dimo.zone/37
+        type: string
+      txHash:
+        description: TxHash is the hash of the minting transaction.
+        example: 0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e
+        type: string
+    type: object
   math.HexOrDecimal256:
     type: object
-  smartcar.TirePressure:
-    properties:
-      age:
-        description: 'Deprecated: Should use DataAge instead of Age'
-        type: string
-      backLeft:
-        type: number
-      backRight:
-        type: number
-      dataAge:
-        type: string
-      frontLeft:
-        type: number
-      frontRight:
-        type: number
-      requestId:
-        type: string
-      unitSystem:
-        $ref: '#/definitions/smartcar.UnitSystem'
-    type: object
-  smartcar.UnitSystem:
-    enum:
-    - metric
-    - imperial
-    type: string
-    x-enum-varnames:
-    - Metric
-    - Imperial
 info:
   contact: {}
   title: DIMO Devices API
@@ -1369,7 +1328,7 @@ paths:
       - BearerAuth: []
   /user/devices/{userDeviceID}/aftermarket/commands/unpair:
     get:
-      description: Return the EIP-712 payload to be signed for Aftermarket device
+      description: Return the EIP-712 payload to be signed for aftermarket device
         unpairing.
       parameters:
       - description: Device id
@@ -1387,8 +1346,8 @@ paths:
       security:
       - BearerAuth: []
     post:
-      description: Submit the signature for unpairing this device from its attached
-        Aftermarket.
+      description: Submit the signature for unpairing this user device from its attached
+        aftermarket device.
       parameters:
       - description: Device id
         in: path
@@ -1831,6 +1790,30 @@ paths:
           description: No Content
       tags:
       - integrations
+  /user/devices/{userDeviceID}/integrations/{integrationID}/commands/telemetry/subscribe:
+    post:
+      description: Subscribe vehicle for Telemetry Data. Currently, this only works
+        for Teslas connected through Tesla.
+      operationId: telemetry-subscribe
+      parameters:
+      - description: Device ID
+        in: path
+        name: userDeviceID
+        required: true
+        type: string
+      - description: Integration ID
+        in: path
+        name: integrationID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      summary: Subscribe vehicle for Telemetry Data
+      tags:
+      - device
+      - integration
+      - command
   /user/devices/{userDeviceID}/integrations/{integrationID}/commands/trunk/open:
     post:
       description: Open the device's front trunk. Currently, this only works for Teslas
@@ -1881,28 +1864,6 @@ paths:
       responses:
         "204":
           description: No Content
-      security:
-      - BearerAuth: []
-      tags:
-      - user-devices
-  /user/devices/{userDeviceID}/status:
-    get:
-      description: |-
-        Returns the latest status update for the device. May return 404 if the
-        user does not have a device with the ID, or if no status updates have come. Note this endpoint also exists under nft_controllers
-      parameters:
-      - description: user device ID
-        in: path
-        name: user_device_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.DeviceSnapshot'
       security:
       - BearerAuth: []
       tags:
@@ -2299,27 +2260,6 @@ paths:
           description: Not Found
       tags:
       - nfts
-  /vehicle/{tokenId}/status:
-    get:
-      description: Returns the latest status update for the vehicle with a given token
-        id.
-      parameters:
-      - description: token id
-        in: path
-        name: tokenId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.DeviceSnapshot'
-        "404":
-          description: Not Found
-      tags:
-      - permission
   /vehicle/{tokenId}/vin-credential:
     get:
       description: Returns the vin credential for the vehicle with a given token id.
