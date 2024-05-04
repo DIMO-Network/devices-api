@@ -3,7 +3,6 @@ package services
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -13,12 +12,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/goccy/go-json"
 	"github.com/rs/zerolog"
 	"golang.org/x/exp/slices"
 	"golang.org/x/oauth2"
-
-	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/constants"
 )
 
 //go:generate mockgen -source tesla_fleet_api_service.go -destination mocks/tesla_fleet_api_service_mock.go
@@ -224,13 +223,13 @@ func (t *teslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, t
 
 	body, err := t.performRequest(ctx, url, token, http.MethodPost, inBody)
 	if err != nil {
-		return false, fmt.Errorf("could not fetch vehicles for user: %w", err)
+		return false, fmt.Errorf("error requesting key status: %w", err)
 	}
 
 	var keyConn TeslaResponseWrapper[VirtualKeyConnectionStatus]
 	err = json.Unmarshal(body, &keyConn)
 	if err != nil {
-		return false, fmt.Errorf("error occurred decoding connection status %w", err)
+		return false, fmt.Errorf("error decoding key status %w", err)
 	}
 
 	isConnected := slices.Contains(keyConn.Response.KeyPairedVINs, vin)
@@ -293,15 +292,15 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 	}
 
 	if slices.Contains(subResp.Response.SkippedVehicles.MissingKey, vin) {
-		return fmt.Errorf("vehicle has not approved virtual token connection")
+		return errors.New("virtual key not added to vehicle")
 	}
 
 	if slices.Contains(subResp.Response.SkippedVehicles.UnsupportedHardware, vin) {
-		return fmt.Errorf("vehicle hardware not supported")
+		return errors.New("vehicle hardware not supported")
 	}
 
 	if slices.Contains(subResp.Response.SkippedVehicles.UnsupportedFirmware, vin) {
-		return fmt.Errorf("vehicle firmware not supported")
+		return errors.New("vehicle firmware not supported")
 	}
 
 	return nil
