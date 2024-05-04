@@ -59,11 +59,7 @@ func remakeDeviceDefinitionTopics(ctx context.Context, settings *config.Settings
 	// Find all integrations instances.
 	apiInts, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.ExternalID.IsNotNull(),
-		qm.Load(
-			qm.Rels(
-				models.UserDeviceAPIIntegrationRels.UserDevice,
-			),
-		),
+		qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
 	).All(ctx, db)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve integration instances: %w", err)

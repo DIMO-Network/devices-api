@@ -1719,7 +1719,7 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 	udai, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID),
-		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.UserDevice)),
+		qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
 	).One(ctx, udc.DBS().Reader)
 	if err != nil {
 		logger.Err(err).Msg("Couldn't retrieve UDAI for post-registration tasks.")
