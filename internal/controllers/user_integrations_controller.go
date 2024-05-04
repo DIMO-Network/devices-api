@@ -151,6 +151,7 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID),
 		qm.Load(models.UserDeviceAPIIntegrationRels.SerialAftermarketDevice),
+		qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
 	).One(ctx, tx)
 	if err != nil {
 		return err
@@ -197,6 +198,11 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 		return err
 	}
 
+	var vin string
+	if apiInt.R.UserDevice.VinConfirmed {
+		vin = apiInt.R.UserDevice.VinIdentifier.String
+	}
+
 	err = udc.eventService.Emit(&shared.CloudEvent[any]{
 		Type:    "com.dimo.zone.device.integration.delete",
 		Source:  "devices-api",
@@ -209,6 +215,7 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 				Make:  dd.Make.Name,
 				Model: dd.Type.Model,
 				Year:  int(dd.Type.Year),
+				VIN:   vin,
 			},
 			Integration: services.UserDeviceEventIntegration{
 				ID:     integ.Id,
