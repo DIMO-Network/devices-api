@@ -66,12 +66,6 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		return err
 	}
 
-	var meta services.UserDeviceAPIIntegrationsMetadata
-	err = apiIntegration.Metadata.Unmarshal(&meta)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "error occurred decoding integration metadata")
-	}
-
 	resp := GetUserDeviceIntegrationResponse{
 		Status:     apiIntegration.Status,
 		ExternalID: apiIntegration.ExternalID,
@@ -84,28 +78,44 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		return shared.GrpcErrorToFiber(err, "invalid integration id")
 	}
 
-	if intd.Vendor == constants.TeslaVendor && meta.TeslaAPIVersion == constants.TeslaAPIV2 {
-		if meta.TeslaRegion == "" {
-			return fiber.NewError(fiber.StatusFailedDependency, "missing tesla region")
-		}
-
-		if !apiIntegration.ExternalID.Valid || !apiIntegration.AccessToken.Valid || !apiIntegration.R.UserDevice.VinConfirmed || !apiIntegration.R.UserDevice.VinIdentifier.Valid {
-			return fiber.NewError(fiber.StatusFailedDependency, "missing device or integration details")
-		}
-
-		isConnected, err := udc.getDeviceVirtualKeyStatus(c.Context(), meta.TeslaRegion, apiIntegration)
+	if intd.Vendor == constants.TeslaVendor {
+		var meta services.UserDeviceAPIIntegrationsMetadata
+		err = apiIntegration.Metadata.Unmarshal(&meta)
 		if err != nil {
-			return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla connection status %s", err.Error()))
+			return fiber.NewError(fiber.StatusInternalServerError, "error occurred decoding integration metadata")
 		}
 
-		isSubscribed, err := udc.getTelemetrySubscriptionStatus(c.Context(), meta.TeslaRegion, apiIntegration)
-		if err != nil {
-			return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla telemetry subscription status %s", err.Error()))
+		apiVersion := 1
+
+		if meta.TeslaAPIVersion != 0 {
+			apiVersion = meta.TeslaAPIVersion
 		}
 
 		resp.Tesla = &TeslaIntegrationInfo{
-			VirtualKeyAdded:     isConnected,
-			TelemetrySubscribed: isSubscribed,
+			APIVersion: apiVersion,
+		}
+
+		if apiVersion == constants.TeslaAPIV2 {
+			if meta.TeslaRegion == "" {
+				return fiber.NewError(fiber.StatusFailedDependency, "missing tesla region")
+			}
+
+			if !apiIntegration.ExternalID.Valid || !apiIntegration.AccessToken.Valid || !apiIntegration.R.UserDevice.VinConfirmed || !apiIntegration.R.UserDevice.VinIdentifier.Valid {
+				return fiber.NewError(fiber.StatusFailedDependency, "missing device or integration details")
+			}
+
+			isConnected, err := udc.getDeviceVirtualKeyStatus(c.Context(), meta.TeslaRegion, apiIntegration)
+			if err != nil {
+				return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla connection status %s", err.Error()))
+			}
+
+			isSubscribed, err := udc.getTelemetrySubscriptionStatus(c.Context(), meta.TeslaRegion, apiIntegration)
+			if err != nil {
+				return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla telemetry subscription status %s", err.Error()))
+			}
+
+			resp.Tesla.VirtualKeyAdded = isConnected
+			resp.Tesla.TelemetrySubscribed = isSubscribed
 		}
 	}
 
@@ -2228,8 +2238,12 @@ type RegisterDeviceIntegrationRequest struct {
 }
 
 type TeslaIntegrationInfo struct {
-	// Status of the virtual key connection
-	VirtualKeyAdded     bool `json:"virtualKeyAdded"`
+	// APIVersion is the version of the Tesla API being used. There are currently two valid values:
+	// 1 is the old "Owner API", 2 is the new "Fleet API".
+	APIVersion int `json:"apiVersion"`
+	// VirtualKeyAdded is true if the DIMO virtual key has been added to the vehicle.
+	VirtualKeyAdded bool `json:"virtualKeyAdded"`
+	// TelemetrySubscribed is true if DIMO has subscribed to the vehicle's telemetry stream.
 	TelemetrySubscribed bool `json:"telemetrySubscribed"`
 }
 
