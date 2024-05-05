@@ -611,7 +611,7 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.TokenID.EQ(tid),
-		qm.Load(models.UserDeviceRels.MintRequest),
+		qm.Load(models.UserDeviceRels.BurnRequest),
 		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
 		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
@@ -665,7 +665,7 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.TokenID.EQ(tid),
-		qm.Load(models.UserDeviceRels.MintRequest),
+		qm.Load(models.UserDeviceRels.BurnRequest),
 		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
 		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
@@ -736,6 +736,11 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 
 func (udc *UserDevicesController) checkDeviceBurn(ctx context.Context, userDevice *models.UserDevice) (registry.BurnVehicleSign, *pb.User, error) {
 	var bvs registry.BurnVehicleSign
+
+	if userDevice.R.BurnRequest != nil && userDevice.R.BurnRequest.Status != models.MetaTransactionRequestStatusFailed {
+		return bvs, nil, errors.New("burning already in progress")
+	}
+
 	if userDevice.R.VehicleTokenAftermarketDevice != nil || userDevice.R.VehicleTokenSyntheticDevice != nil {
 		return bvs, nil, errors.New("vehicle must be unpaired to burn")
 	}
