@@ -200,6 +200,10 @@ func (nc *NFTController) GetNFTImage(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
+	if !nft.MintRequestID.Valid {
+		return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("No image available for vehicle %d.", ti))
+	}
+
 	imageName := nft.MintRequestID.String
 	suffix := ".png"
 
