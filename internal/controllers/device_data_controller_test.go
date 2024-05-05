@@ -9,11 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DIMO-Network/shared/privileges"
-
-	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
-	"github.com/tidwall/gjson"
-
 	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -126,58 +121,6 @@ func createMockDependencies(t *testing.T) deps {
 		credentialSvc:          credentialSvc,
 		deviceDataSvc:          deviceDataSvc,
 	}
-
-}
-
-// Device Data Tests
-func TestUserDevicesController_GetUserDeviceStatus(t *testing.T) {
-	mockDeps := createMockDependencies(t)
-	defer mockDeps.mockCtrl.Finish()
-
-	ctx := context.Background()
-	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
-	defer func() {
-		if err := container.Terminate(ctx); err != nil {
-			t.Fatal(err)
-		}
-	}()
-
-	testUserID := "123123"
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, mockDeps.autoPiTaskSvc, nil, nil, nil, nil, mockDeps.openAISvc, nil, mockDeps.deviceDataSvc, nil, nil, nil, nil)
-	app := fiber.New()
-	app.Get("/user/devices/:userDeviceID/status", test.AuthInjectorTestHandler(testUserID), c.GetUserDeviceStatus)
-
-	t.Run("GET - get device status happy path", func(t *testing.T) {
-		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
-		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
-		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
-		fuel := 0.50
-		odo := 3000.50
-		volt := 13.3
-		mockDeps.deviceDataSvc.EXPECT().GetDeviceData(gomock.Any(), ud.ID, ud.DeviceDefinitionID,
-			ud.DeviceStyleID.String, []privileges.Privilege{1, 3, 4}).Times(1).
-			Return(&dagrpc.UserDeviceDataResponse{
-				FuelPercentRemaining: &fuel,
-				Odometer:             &odo,
-				RecordUpdatedAt:      nil,
-				RecordCreatedAt:      nil,
-				BatteryVoltage:       &volt,
-			}, nil)
-
-		request := test.BuildRequest("GET", "/user/devices/"+ud.ID+"/status", "")
-		response, err := app.Test(request, 60*1000)
-		require.NoError(t, err, "failed to make request")
-		assert.Equal(t, fiber.StatusOK, response.StatusCode)
-
-		body, _ := io.ReadAll(response.Body)
-		if response.StatusCode != fiber.StatusOK {
-			fmt.Println("body response: " + string(body))
-		}
-
-		assert.Equal(t, odo, gjson.GetBytes(body, "odometer").Float())
-		assert.Equal(t, fuel, gjson.GetBytes(body, "fuelPercentRemaining").Float())
-		assert.Equal(t, volt, gjson.GetBytes(body, "batteryVoltage").Float())
-	})
 
 }
 

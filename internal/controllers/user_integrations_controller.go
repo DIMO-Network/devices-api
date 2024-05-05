@@ -66,12 +66,6 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		return err
 	}
 
-	var meta services.UserDeviceAPIIntegrationsMetadata
-	err = apiIntegration.Metadata.Unmarshal(&meta)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "error occurred decoding integration metadata")
-	}
-
 	resp := GetUserDeviceIntegrationResponse{
 		Status:     apiIntegration.Status,
 		ExternalID: apiIntegration.ExternalID,
@@ -84,22 +78,44 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		return shared.GrpcErrorToFiber(err, "invalid integration id")
 	}
 
-	if intd.Vendor == constants.TeslaVendor && meta.TeslaAPIVersion == constants.TeslaAPIV2 {
-		if meta.TeslaRegion == "" {
-			return fiber.NewError(fiber.StatusFailedDependency, "missing tesla region")
-		}
-
-		if !apiIntegration.ExternalID.Valid || !apiIntegration.AccessToken.Valid || !apiIntegration.R.UserDevice.VinConfirmed || !apiIntegration.R.UserDevice.VinIdentifier.Valid {
-			return fiber.NewError(fiber.StatusFailedDependency, "missing device or integration details")
-		}
-
-		isConnected, err := udc.getDeviceVirtualKeyStatus(c.Context(), meta.TeslaRegion, apiIntegration)
+	if intd.Vendor == constants.TeslaVendor {
+		var meta services.UserDeviceAPIIntegrationsMetadata
+		err = apiIntegration.Metadata.Unmarshal(&meta)
 		if err != nil {
-			return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla connection status %s", err.Error()))
+			return fiber.NewError(fiber.StatusInternalServerError, "error occurred decoding integration metadata")
 		}
 
-		resp.Tesla = &TeslaConnectionStatus{
-			IsVirtualKeyConnected: isConnected,
+		apiVersion := 1
+
+		if meta.TeslaAPIVersion != 0 {
+			apiVersion = meta.TeslaAPIVersion
+		}
+
+		resp.Tesla = &TeslaIntegrationInfo{
+			APIVersion: apiVersion,
+		}
+
+		if apiVersion == constants.TeslaAPIV2 {
+			if meta.TeslaRegion == "" {
+				return fiber.NewError(fiber.StatusFailedDependency, "missing tesla region")
+			}
+
+			if !apiIntegration.ExternalID.Valid || !apiIntegration.AccessToken.Valid || !apiIntegration.R.UserDevice.VinConfirmed || !apiIntegration.R.UserDevice.VinIdentifier.Valid {
+				return fiber.NewError(fiber.StatusFailedDependency, "missing device or integration details")
+			}
+
+			isConnected, err := udc.getDeviceVirtualKeyStatus(c.Context(), meta.TeslaRegion, apiIntegration)
+			if err != nil {
+				return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla connection status %s", err.Error()))
+			}
+
+			isSubscribed, err := udc.getTelemetrySubscriptionStatus(c.Context(), meta.TeslaRegion, apiIntegration)
+			if err != nil {
+				return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla telemetry subscription status %s", err.Error()))
+			}
+
+			resp.Tesla.VirtualKeyAdded = isConnected
+			resp.Tesla.TelemetrySubscribed = isSubscribed
 		}
 	}
 
@@ -112,44 +128,6 @@ func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context,
 		return false, fmt.Errorf("couldn't decrypt access token: %w", err)
 	}
 
-	refreshTk, err := udc.cipher.Decrypt(integration.RefreshToken.String)
-	if err != nil {
-		return false, fmt.Errorf("couldn't decrypt refresh token: %w", err)
-	}
-
-	isNewToken, auth, err := udc.ensureTeslaTokenValidty(ctx, refreshTk, integration.AccessExpiresAt.Time)
-	if err != nil {
-		return false, errors.Wrap(err, "failed to get tesla credentials")
-	}
-
-	if isNewToken {
-		encAccessTk, err := udc.cipher.Encrypt(auth.AccessToken)
-		if err != nil {
-			return false, fmt.Errorf("couldn't encrypt refresh token: %w", err)
-		}
-
-		encRefreshTk, err := udc.cipher.Encrypt(auth.RefreshToken)
-		if err != nil {
-			return false, fmt.Errorf("couldn't encrypt access token: %w", err)
-		}
-
-		integration.RefreshToken = null.StringFrom(encRefreshTk)
-		integration.AccessToken = null.StringFrom(encAccessTk)
-		integration.AccessExpiresAt = null.TimeFrom(auth.Expiry)
-
-		cols := models.UserDeviceAPIIntegrationColumns
-		_, err = integration.Update(ctx, udc.DBS().Writer, boil.Whitelist(cols.RefreshToken, cols.AccessToken, cols.AccessExpiresAt))
-		if err != nil {
-			return false, err
-		}
-
-		err = udc.teslaTaskService.UpdateCredentials(integration, constants.TeslaAPIV2, region)
-		if err != nil {
-			return false, err
-		}
-		accessTk = auth.AccessToken
-	}
-
 	isConnected, err := udc.teslaFleetAPISvc.VirtualKeyConnectionStatus(ctx, accessTk, region, integration.R.UserDevice.VinIdentifier.String)
 	if err != nil {
 		return false, fiber.NewError(fiber.StatusFailedDependency, err.Error())
@@ -158,19 +136,18 @@ func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context,
 	return isConnected, nil
 }
 
-func (udc *UserDevicesController) ensureTeslaTokenValidty(ctx context.Context, refreshToken string, expiry time.Time) (bool, *services.TeslaAuthCodeResponse, error) {
-	const delta = 10 * time.Second
-
-	now := time.Now
-	if now().Before(expiry.Add(-delta)) {
-		return false, nil, nil
-	}
-	authResp, err := udc.teslaFleetAPISvc.RefreshToken(ctx, refreshToken)
+func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Context, region string, integration *models.UserDeviceAPIIntegration) (bool, error) {
+	accessTk, err := udc.cipher.Decrypt(integration.AccessToken.String)
 	if err != nil {
-		return false, nil, err
+		return false, fmt.Errorf("couldn't decrypt access token: %w", err)
 	}
 
-	return true, authResp, nil
+	isSubscribed, err := udc.teslaFleetAPISvc.GetTelemetrySubscriptionStatus(ctx, accessTk, region, integration.R.UserDevice.VinIdentifier.String)
+	if err != nil {
+		return false, fiber.NewError(fiber.StatusFailedDependency, err.Error())
+	}
+
+	return isSubscribed, nil
 }
 
 func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, userID, userDeviceID, integrationID string, dd *ddgrpc.GetDeviceDefinitionItemResponse) error {
@@ -184,6 +161,7 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID),
 		qm.Load(models.UserDeviceAPIIntegrationRels.SerialAftermarketDevice),
+		qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
 	).One(ctx, tx)
 	if err != nil {
 		return err
@@ -230,6 +208,11 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 		return err
 	}
 
+	var vin string
+	if apiInt.R.UserDevice.VinConfirmed {
+		vin = apiInt.R.UserDevice.VinIdentifier.String
+	}
+
 	err = udc.eventService.Emit(&shared.CloudEvent[any]{
 		Type:    "com.dimo.zone.device.integration.delete",
 		Source:  "devices-api",
@@ -242,6 +225,7 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 				Make:  dd.Make.Name,
 				Model: dd.Type.Model,
 				Year:  int(dd.Type.Year),
+				VIN:   vin,
 			},
 			Integration: services.UserDeviceEventIntegration{
 				ID:     integ.Id,
@@ -640,7 +624,7 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 
 	serial := c.Locals("serial").(string)
 
-	var claim, pair, unpair *AutoPiTransactionStatus
+	var claim, pair, unpair *AftermarketDeviceTransactionStatus
 
 	var tokenID *big.Int
 	var ethereumAddress, beneficiaryAddress *common.Address
@@ -669,7 +653,7 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 			addrStr := addr.Hex()
 			ownerAddress = &addrStr
 			beneficiaryAddress = &addr
-			claim = &AutoPiTransactionStatus{
+			claim = &AftermarketDeviceTransactionStatus{
 				Status: models.MetaTransactionRequestStatusConfirmed,
 			}
 		}
@@ -680,7 +664,7 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 		}
 
 		if req := dbUnit.R.ClaimMetaTransactionRequest; req != nil {
-			claim = &AutoPiTransactionStatus{
+			claim = &AftermarketDeviceTransactionStatus{
 				Status:    req.Status,
 				CreatedAt: req.CreatedAt,
 				UpdatedAt: req.UpdatedAt,
@@ -693,7 +677,7 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 
 		// Check for pair.
 		if req := dbUnit.R.PairRequest; req != nil {
-			pair = &AutoPiTransactionStatus{
+			pair = &AftermarketDeviceTransactionStatus{
 				Status:    req.Status,
 				CreatedAt: req.CreatedAt,
 				UpdatedAt: req.UpdatedAt,
@@ -706,7 +690,7 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 
 		// Check for unpair.
 		if req := dbUnit.R.UnpairRequest; req != nil {
-			unpair = &AutoPiTransactionStatus{
+			unpair = &AftermarketDeviceTransactionStatus{
 				Status:    req.Status,
 				CreatedAt: req.CreatedAt,
 				UpdatedAt: req.UpdatedAt,
@@ -1378,14 +1362,14 @@ func (udc *UserDevicesController) CloudRepairAutoPi(c *fiber.Ctx) error {
 	return c.SendStatus(204)
 }
 
-// GetAutoPiUnpairMessage godoc
-// @Description Return the EIP-712 payload to be signed for Aftermarket device unpairing.
+// GetAftermarketDeviceUnpairMessage godoc
+// @Description Return the EIP-712 payload to be signed for aftermarket device unpairing.
 // @Produce json
 // @Param userDeviceID path string true "Device id"
 // @Success 200 {object} signer.TypedData
 // @Security BearerAuth
 // @Router /user/devices/{userDeviceID}/aftermarket/commands/unpair [get]
-func (udc *UserDevicesController) GetAutoPiUnpairMessage(c *fiber.Ctx) error {
+func (udc *UserDevicesController) GetAftermarketDeviceUnpairMessage(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 
 	userDeviceID := c.Params("userDeviceID")
@@ -1431,14 +1415,14 @@ func (udc *UserDevicesController) GetAutoPiUnpairMessage(c *fiber.Ctx) error {
 	return c.JSON(out)
 }
 
-// UnpairAutoPi godoc
-// @Description Submit the signature for unpairing this device from its attached Aftermarket.
+// PostAftermarketDeviceUnpair godoc
+// @Description Submit the signature for unpairing this user device from its attached aftermarket device.
 // @Produce json
 // @Param userDeviceID path string true "Device id"
 // @Param userSignature body controllers.AftermarketDevicePairRequest true "User signature."
 // @Security BearerAuth
 // @Router /user/devices/{userDeviceID}/aftermarket/commands/unpair [post]
-func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
+func (udc *UserDevicesController) PostAftermarketDeviceUnpair(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
@@ -1489,6 +1473,7 @@ func (udc *UserDevicesController) UnpairAutoPi(c *fiber.Ctx) error {
 		VehicleNode:           vehicleToken,
 	}
 
+	// Re-using this struct. A bit lazy.
 	var pairReq AftermarketDevicePairRequest
 	err = c.BodyParser(&pairReq)
 	if err != nil {
@@ -1993,14 +1978,13 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	}
 
 	if reqBody.ExternalID == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "Missing externalID parameter")
+		return fiber.NewError(fiber.StatusBadRequest, "Missing externalId field.")
 	}
 
-	v := &services.TeslaVehicle{}
 	// We'll use this to kick off the job
 	teslaID, err := strconv.Atoi(reqBody.ExternalID)
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse external id %q as an integer.", teslaID))
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse externalId %q as an integer.", teslaID))
 	}
 
 	region := ""
@@ -2026,7 +2010,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		region = deviceIntReq.Region
 	}
 
-	v, err = udc.getTeslaVehicle(c.Context(), reqBody.AccessToken, region, teslaID, apiVersion)
+	v, err := udc.getTeslaVehicle(c.Context(), reqBody.AccessToken, region, teslaID, apiVersion)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't retrieve vehicle from Tesla.")
 	}
@@ -2072,7 +2056,6 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		commands = udc.teslaService.GetAvailableCommands()
 	}
 
-	// TODO(elffjs): Stupid to marshal this again and again.
 	meta := services.UserDeviceAPIIntegrationsMetadata{
 		Commands:        commands,
 		TeslaAPIVersion: apiVersion,
@@ -2251,9 +2234,14 @@ type RegisterDeviceIntegrationRequest struct {
 	Version      int    `json:"version"`
 }
 
-type TeslaConnectionStatus struct {
-	// Status of the virtual key connection
-	IsVirtualKeyConnected bool `json:"isVirtualKeyConnected"`
+type TeslaIntegrationInfo struct {
+	// APIVersion is the version of the Tesla API being used. There are currently two valid values:
+	// 1 is the old "Owner API", 2 is the new "Fleet API".
+	APIVersion int `json:"apiVersion"`
+	// VirtualKeyAdded is true if the DIMO virtual key has been added to the vehicle.
+	VirtualKeyAdded bool `json:"virtualKeyAdded"`
+	// TelemetrySubscribed is true if DIMO has subscribed to the vehicle's telemetry stream.
+	TelemetrySubscribed bool `json:"telemetrySubscribed"`
 }
 
 type GetUserDeviceIntegrationResponse struct {
@@ -2264,14 +2252,10 @@ type GetUserDeviceIntegrationResponse struct {
 	ExternalID null.String `json:"externalId" swaggertype:"string"`
 
 	// Contains further details about tesla integration status
-	Tesla *TeslaConnectionStatus `json:"tesla,omitempty"`
+	Tesla *TeslaIntegrationInfo `json:"tesla,omitempty"`
 
 	// CreatedAt is the creation time of this integration for this device.
 	CreatedAt time.Time `json:"createdAt"`
-}
-
-type AutoPiCommandRequest struct {
-	Command string `json:"command"`
 }
 
 type ManufacturerInfo struct {
@@ -2297,17 +2281,18 @@ type AutoPiDeviceInfo struct {
 	BeneficiaryAddress *common.Address `json:"beneficiaryAddress,omitempty"`
 
 	// Claim contains the status of the on-chain claiming meta-transaction.
-	Claim *AutoPiTransactionStatus `json:"claim,omitempty"`
+	Claim *AftermarketDeviceTransactionStatus `json:"claim,omitempty"`
 	// Pair contains the status of the on-chain pairing meta-transaction.
-	Pair *AutoPiTransactionStatus `json:"pair,omitempty"`
+	Pair *AftermarketDeviceTransactionStatus `json:"pair,omitempty"`
 	// Unpair contains the status of the on-chain unpairing meta-transaction.
-	Unpair *AutoPiTransactionStatus `json:"unpair,omitempty"`
+	Unpair *AftermarketDeviceTransactionStatus `json:"unpair,omitempty"`
 
 	Manufacturer *ManufacturerInfo `json:"manufacturer,omitempty"`
 }
 
-// AutoPiTransactionStatus summarizes the state of an on-chain AutoPi operation.
-type AutoPiTransactionStatus struct {
+// AftermarketDeviceTransactionStatus summarizes the state of an on-chain aftermarket device
+// operation: pairing, claiming, or unpairing.
+type AftermarketDeviceTransactionStatus struct {
 	// Status is the state of the transaction performing this operation. There are only four options.
 	Status string `json:"status" enums:"Unsubmitted,Submitted,Mined,Confirmed" example:"Mined"`
 	// Hash is the hexidecimal transaction hash, available for any transaction at the Submitted stage or greater.

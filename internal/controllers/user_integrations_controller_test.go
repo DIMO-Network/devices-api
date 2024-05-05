@@ -1091,6 +1091,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
 
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
 	s.teslaFleetAPISvc.EXPECT().VirtualKeyConnectionStatus(gomock.Any(), accessTk, region, ud.VinIdentifier.String).Return(true, nil)
+	s.teslaFleetAPISvc.EXPECT().GetTelemetrySubscriptionStatus(gomock.Any(), accessTk, region, ud.VinIdentifier.String).Return(false, nil)
 
 	request := test.BuildRequest(http.MethodGet, fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), "")
 	res, err := s.app.Test(request, 60*1000)
@@ -1104,115 +1105,10 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
 	actual := GetUserDeviceIntegrationResponse{}
 	s.Require().NoError(json.Unmarshal(body, &actual))
 
-	s.Assert().True(actual.Tesla.IsVirtualKeyConnected)
+	s.Assert().True(actual.Tesla.VirtualKeyAdded)
+	s.Assert().False(actual.Tesla.TelemetrySubscribed)
 	s.Assert().Equal(models.UserDeviceAPIIntegrationStatusActive, actual.Status)
 	s.Assert().Equal(extID, actual.ExternalID.String)
-}
-
-type deviceIntegrationCredentialsMatcher struct {
-	accessToken  string
-	refreshToken string
-	expireAt     time.Time
-}
-
-func (m *deviceIntegrationCredentialsMatcher) String() string {
-	return ""
-}
-
-func (m *deviceIntegrationCredentialsMatcher) Matches(x interface{}) bool {
-	creds := x.(*models.UserDeviceAPIIntegration)
-
-	if creds.AccessToken.String != m.accessToken {
-		return false
-	}
-
-	if creds.RefreshToken.String != m.refreshToken {
-		return false
-	}
-
-	if creds.AccessExpiresAt.Time != m.expireAt {
-		return false
-	}
-
-	return true
-}
-
-func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration_RefreshToken() {
-	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
-
-	accessTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-	refreshTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw"
-	extID := "SomeID"
-	expectedExpiry := time.Now().Add(-10 * time.Minute)
-	region := "na"
-
-	newCredentials := &services.TeslaAuthCodeResponse{
-		AccessToken:  accessTk,
-		RefreshToken: refreshTk,
-		Expiry:       time.Now().Add(10 * time.Hour),
-		Region:       region,
-	}
-
-	expiredRefreshTk := "SomeExpRefTk"
-	encExpiredAccessTk, err := s.cipher.Encrypt("SomeAccessTk")
-	s.Require().NoError(err)
-	encExpiredRefreshTk, err := s.cipher.Encrypt("SomeExpRefTk")
-	s.Require().NoError(err)
-
-	encAccessTk, err := s.cipher.Encrypt(newCredentials.AccessToken)
-	s.Require().NoError(err)
-	encRefreshTk, err := s.cipher.Encrypt(newCredentials.RefreshToken)
-	s.Require().NoError(err)
-
-	apIntd := models.UserDeviceAPIIntegration{
-		UserDeviceID:    ud.ID,
-		IntegrationID:   integration.Id,
-		Status:          models.UserDeviceAPIIntegrationStatusActive,
-		AccessToken:     null.StringFrom(encExpiredAccessTk),
-		AccessExpiresAt: null.TimeFrom(expectedExpiry),
-		RefreshToken:    null.StringFrom(encExpiredRefreshTk),
-		ExternalID:      null.StringFrom(extID),
-		Metadata:        null.JSONFrom([]byte(fmt.Sprintf(`{"teslaRegion":"%s", "teslaApiVersion":2}`, region))),
-	}
-	err = apIntd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
-	s.Require().NoError(err)
-
-	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
-	s.teslaFleetAPISvc.EXPECT().VirtualKeyConnectionStatus(gomock.Any(), accessTk, region, ud.VinIdentifier.String).Return(true, nil)
-
-	s.teslaTaskService.EXPECT().UpdateCredentials(&deviceIntegrationCredentialsMatcher{
-		accessToken:  encAccessTk,
-		refreshToken: encRefreshTk,
-		expireAt:     newCredentials.Expiry,
-	}, constants.TeslaAPIV2, region).Return(nil)
-	s.teslaFleetAPISvc.EXPECT().RefreshToken(gomock.Any(), expiredRefreshTk).Return(newCredentials, nil)
-
-	request := test.BuildRequest(http.MethodGet, fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), "")
-	res, err := s.app.Test(request, 60*1000)
-	s.Assert().NoError(err)
-
-	s.Assert().True(res.StatusCode == fiber.StatusOK)
-	body, _ := io.ReadAll(res.Body)
-
-	defer res.Body.Close()
-
-	actual := GetUserDeviceIntegrationResponse{}
-	s.Assert().NoError(json.Unmarshal(body, &actual))
-
-	s.Assert().True(actual.Tesla.IsVirtualKeyConnected)
-	s.Assert().Equal(models.UserDeviceAPIIntegrationStatusActive, actual.Status)
-	s.Assert().Equal(extID, actual.ExternalID.String)
-
-	newAPIInt, err := models.UserDeviceAPIIntegrations(
-		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(ud.ID),
-		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integration.Id),
-	).One(s.ctx, s.pdb.DBS().Reader)
-	s.Require().NoError(err)
-
-	s.Assert().Equal(encRefreshTk, newAPIInt.RefreshToken.String)
-	s.Assert().Equal(encAccessTk, newAPIInt.AccessToken.String)
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestTelemetrySubscribe() {

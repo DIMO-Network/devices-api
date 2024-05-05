@@ -228,12 +228,12 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 
 		var sdStat *SyntheticDeviceStatus
 
-		var nft *NFTData
+		var nft *VehicleNFTData
 		var credential *VINCredentialData
 		pu := []PrivilegeUser{}
 		if !d.TokenID.IsZero() {
 			nftStatus := d.R.MintRequest
-			nft = &NFTData{
+			nft = &VehicleNFTData{
 				Status: nftStatus.Status,
 			}
 			if nftStatus.Hash.Valid {
@@ -1764,13 +1764,13 @@ type UserDeviceFull struct {
 	CountryCode      *string                       `json:"countryCode"`
 	Integrations     []UserDeviceIntegrationStatus `json:"integrations"`
 	Metadata         services.UserDeviceMetadata   `json:"metadata"`
-	NFT              *NFTData                      `json:"nft,omitempty"`
+	NFT              *VehicleNFTData               `json:"nft,omitempty"`
 	OptedInAt        *time.Time                    `json:"optedInAt"`
 	PrivilegeUsers   []PrivilegeUser               `json:"privilegedUsers"`
 	VINCredential    *VINCredentialData            `json:"vinCredential,omitempty"`
 }
 
-type NFTData struct {
+type VehicleNFTData struct {
 	TokenID *big.Int `json:"tokenId,omitempty" swaggertype:"number" example:"37"`
 	// OwnerAddress is the Ethereum address of the NFT owner.
 	OwnerAddress *common.Address `json:"ownerAddress,omitempty"`

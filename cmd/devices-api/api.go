@@ -103,7 +103,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	deviceDefinitionRegistrar := services.NewDeviceDefinitionRegistrar(producer, settings)
 	autoPiTaskService := services.NewAutoPiTaskService(settings, autoPiSvc, pdb.DBS, logger)
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, pdb.DBS, &logger)
-	autoPi := autopi.NewIntegration(pdb.DBS, ddSvc, autoPiSvc, autoPiTaskService, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &logger)
+	autoPi := autopi.NewIntegration(pdb.DBS, ddSvc, autoPiSvc, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &logger)
 	macaron := macaron.NewIntegration(pdb.DBS, ddSvc, autoPiIngest, eventService, deviceDefinitionRegistrar, &logger)
 	userDeviceSvc := services.NewUserDeviceService(ddSvc, logger, pdb.DBS, eventService, usersClient)
 
@@ -190,15 +190,11 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 
 	// vehicle command privileges
-	vPriv.Get("/status", privTokenWare.OneOf(vehicleAddr,
-		[]privileges.Privilege{privileges.VehicleNonLocationData, privileges.VehicleCurrentLocation, privileges.VehicleAllTimeLocation}), nftController.GetVehicleStatus)
-	if !settings.IsProduction() {
-		vPriv.Get("/vin-credential", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleVinCredential}), nftController.GetVinCredential)
-	}
 	vPriv.Post("/commands/doors/unlock", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.UnlockDoors)
 	vPriv.Post("/commands/doors/lock", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.LockDoors)
 	vPriv.Post("/commands/trunk/open", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.OpenTrunk)
 	vPriv.Post("/commands/frunk/open", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.OpenFrunk)
+	vPriv.Get("/vin-credential", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleVinCredential}), nftController.GetVinCredential)
 
 	// Traditional tokens
 
@@ -236,6 +232,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	apOwner.Post("/commands/claim", userDeviceController.PostAftermarketDeviceClaim).Name("PostClaimAutoPi")
 	amdOwner.Post("/commands/claim", userDeviceController.PostAftermarketDeviceClaim).Name("PostClaimAutoPi")
+
 	if !settings.IsProduction() {
 		// Used by mobile to test. Easy to misuse.
 		apOwner.Post("/commands/unclaim", userDeviceController.PostUnclaimAutoPi)
@@ -258,9 +255,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// Vehicle owner routes.
 	udOwnerMw := owner.UserDevice(pdb, usersClient, &logger)
 	udOwner := v1Auth.Group("/user/devices/:userDeviceID", udOwnerMw)
-
-	// todo: should be able to remove this too, but someone not mobile app queries this for DIMO test vehicles (yev,bender)
-	udOwner.Get("/status", userDeviceController.GetUserDeviceStatus)
 
 	udOwner.Delete("/", userDeviceController.DeleteUserDevice)
 	udOwner.Get("/commands/mint", userDeviceController.GetMintDevice)
@@ -314,8 +308,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// Routes were transitioned from /autopi to /aftermarket
 	udOwner.Get("/aftermarket/commands/pair", userDeviceController.GetAftermarketDevicePairMessage)
 	udOwner.Post("/aftermarket/commands/pair", userDeviceController.PostAftermarketDevicePair)
-	udOwner.Get("/aftermarket/commands/unpair", userDeviceController.GetAutoPiUnpairMessage)
-	udOwner.Post("/aftermarket/commands/unpair", userDeviceController.UnpairAutoPi)
+	udOwner.Get("/aftermarket/commands/unpair", userDeviceController.GetAftermarketDeviceUnpairMessage)
+	udOwner.Post("/aftermarket/commands/unpair", userDeviceController.PostAftermarketDeviceUnpair)
 	udOwner.Post("/aftermarket/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
 
 	logger.Info().Msg("Server started on port " + settings.Port)
