@@ -1311,7 +1311,7 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 // @Description Sends a mint device request to the blockchain
 // @Tags        user-devices
 // @Param       userDeviceID path string                  true "user device ID"
-// @Param       mintRequest  body controllers.MintRequest true "Signature and NFT data"
+// @Param       mintRequest  body controllers.VehicleMintRequest true "Signature and NFT data"
 // @Success     200
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/commands/mint [post]
@@ -1387,8 +1387,8 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		Infos:            []string{deviceMake, deviceModel, deviceYear},
 	}
 
-	mr := new(MintRequest)
-	if err := c.BodyParser(mr); err != nil {
+	var mr VehicleMintRequest
+	if err := c.BodyParser(&mr); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
 	}
 
@@ -1592,13 +1592,13 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Can't edit this vehicle's NFT image.")
 	}
 
-	mr := new(MintRequest)
-	if err := c.BodyParser(mr); err != nil {
+	var nid NFTImageData
+	if err := c.BodyParser(&nid); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
 	}
 
 	// This may not be there, but if it is we should delete it.
-	imageData := strings.TrimPrefix(mr.ImageData, "data:image/png;base64,")
+	imageData := strings.TrimPrefix(nid.ImageData, "data:image/png;base64,")
 
 	image, err := base64.StdEncoding.DecodeString(imageData)
 	if err != nil {
@@ -1620,7 +1620,7 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 	}
 
 	// This may not be there, but if it is we should delete it.
-	imageDataTransp := strings.TrimPrefix(mr.ImageDataTransparent, "data:image/png;base64,")
+	imageDataTransp := strings.TrimPrefix(nid.ImageDataTransparent, "data:image/png;base64,")
 
 	// Should be okay if empty or not provided.
 	imageTransp, err := base64.StdEncoding.DecodeString(imageDataTransp)
@@ -1643,9 +1643,9 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 	return err
 }
 
-// MintRequest contains the user's signature for the mint request as well as the
+// VehicleMintRequest contains the user's signature for the mint request as well as the
 // NFT image.
-type MintRequest struct {
+type VehicleMintRequest struct {
 	NFTImageData
 	// Signature is the hex encoding of the EIP-712 signature result.
 	Signature string `json:"signature" validate:"required"`

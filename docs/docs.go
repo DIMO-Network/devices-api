@@ -999,7 +999,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.MintRequest"
+                            "$ref": "#/definitions/internal_controllers.VehicleMintRequest"
                         }
                     }
                 ],
@@ -3023,27 +3023,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers.MintRequest": {
-            "type": "object",
-            "required": [
-                "imageData",
-                "signature"
-            ],
-            "properties": {
-                "imageData": {
-                    "description": "ImageData contains the base64-encoded NFT PNG image.",
-                    "type": "string"
-                },
-                "imageDataTransparent": {
-                    "description": "ImageDataTransparent contains the base64-encoded NFT PNG image\nwith a transparent background, for use in the app. For compatibility\nwith older versions it is not required.",
-                    "type": "string"
-                },
-                "signature": {
-                    "description": "Signature is the hex encoding of the EIP-712 signature result.",
-                    "type": "string"
-                }
-            }
-        },
         "internal_controllers.MintSyntheticDeviceRequest": {
             "type": "object",
             "properties": {
@@ -3435,6 +3414,27 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "vin": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_controllers.VehicleMintRequest": {
+            "type": "object",
+            "required": [
+                "imageData",
+                "signature"
+            ],
+            "properties": {
+                "imageData": {
+                    "description": "ImageData contains the base64-encoded NFT PNG image.",
+                    "type": "string"
+                },
+                "imageDataTransparent": {
+                    "description": "ImageDataTransparent contains the base64-encoded NFT PNG image\nwith a transparent background, for use in the app. For compatibility\nwith older versions it is not required.",
+                    "type": "string"
+                },
+                "signature": {
+                    "description": "Signature is the hex encoding of the EIP-712 signature result.",
                     "type": "string"
                 }
             }

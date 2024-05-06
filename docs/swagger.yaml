@@ -561,24 +561,6 @@ definitions:
       tokenId:
         $ref: '#/definitions/big.Int'
     type: object
-  internal_controllers.MintRequest:
-    properties:
-      imageData:
-        description: ImageData contains the base64-encoded NFT PNG image.
-        type: string
-      imageDataTransparent:
-        description: |-
-          ImageDataTransparent contains the base64-encoded NFT PNG image
-          with a transparent background, for use in the app. For compatibility
-          with older versions it is not required.
-        type: string
-      signature:
-        description: Signature is the hex encoding of the EIP-712 signature result.
-        type: string
-    required:
-    - imageData
-    - signature
-    type: object
   internal_controllers.MintSyntheticDeviceRequest:
     properties:
       signature:
@@ -858,6 +840,24 @@ definitions:
         type: boolean
       vin:
         type: string
+    type: object
+  internal_controllers.VehicleMintRequest:
+    properties:
+      imageData:
+        description: ImageData contains the base64-encoded NFT PNG image.
+        type: string
+      imageDataTransparent:
+        description: |-
+          ImageDataTransparent contains the base64-encoded NFT PNG image
+          with a transparent background, for use in the app. For compatibility
+          with older versions it is not required.
+        type: string
+      signature:
+        description: Signature is the hex encoding of the EIP-712 signature result.
+        type: string
+    required:
+    - imageData
+    - signature
     type: object
   internal_controllers.VehicleNFTData:
     properties:
@@ -1420,7 +1420,7 @@ paths:
         name: mintRequest
         required: true
         schema:
-          $ref: '#/definitions/internal_controllers.MintRequest'
+          $ref: '#/definitions/internal_controllers.VehicleMintRequest'
       responses:
         "200":
           description: OK
