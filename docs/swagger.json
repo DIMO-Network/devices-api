@@ -2622,7 +2622,8 @@
                         "Unsubmitted",
                         "Submitted",
                         "Mined",
-                        "Confirmed"
+                        "Confirmed",
+                        "Failed"
                     ],
                     "example": "Mined"
                 },
@@ -3265,7 +3266,8 @@
                         "Unstarted",
                         "Submitted",
                         "Mined",
-                        "Confirmed"
+                        "Confirmed",
+                        "Failed"
                     ],
                     "example": "Confirmed"
                 },
@@ -3446,7 +3448,8 @@
                         "Unstarted",
                         "Submitted",
                         "Mined",
-                        "Confirmed"
+                        "Confirmed",
+                        "Failed"
                     ],
                     "example": "Confirmed"
                 },

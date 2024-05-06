@@ -2294,7 +2294,7 @@ type AutoPiDeviceInfo struct {
 // operation: pairing, claiming, or unpairing.
 type AftermarketDeviceTransactionStatus struct {
 	// Status is the state of the transaction performing this operation. There are only four options.
-	Status string `json:"status" enums:"Unsubmitted,Submitted,Mined,Confirmed" example:"Mined"`
+	Status string `json:"status" enums:"Unsubmitted,Submitted,Mined,Confirmed,Failed" example:"Mined"`
 	// Hash is the hexidecimal transaction hash, available for any transaction at the Submitted stage or greater.
 	Hash *string `json:"hash,omitempty" example:"0x28b4662f1e1b15083261a4a5077664f4003d58cb528826b7aab7fad466c28e70"`
 	// CreatedAt is the timestamp of the creation of the meta-transaction.

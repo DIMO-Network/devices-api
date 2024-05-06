@@ -231,75 +231,80 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 		var nft *VehicleNFTData
 		var credential *VINCredentialData
 		pu := []PrivilegeUser{}
-		if !d.TokenID.IsZero() {
-			nftStatus := d.R.MintRequest
-			nft = &VehicleNFTData{
-				Status: nftStatus.Status,
-			}
-			if nftStatus.Hash.Valid {
-				hash := hexutil.Encode(nftStatus.Hash.Bytes)
-				nft.TxHash = &hash
-			}
 
-			nft.TokenID = d.TokenID.Int(nil)
-			nft.TokenURI = fmt.Sprintf("%s/v1/vehicle/%s", udc.Settings.DeploymentBaseURL, nft.TokenID)
-			if d.OwnerAddress.Valid {
+		if !d.TokenID.IsZero() || d.R.MintRequest != nil {
+			nft = &VehicleNFTData{}
+
+			if !d.TokenID.IsZero() {
+				nft.TokenID = d.TokenID.Int(nil)
+
+				nft.TokenURI = fmt.Sprintf("%s/v1/vehicle/%s", udc.Settings.DeploymentBaseURL, nft.TokenID)
+
 				addr := common.BytesToAddress(d.OwnerAddress.Bytes)
 				nft.OwnerAddress = &addr
-			}
 
-			// NFT Privileges
-			udp, err := models.NFTPrivileges(
-				models.NFTPrivilegeWhere.TokenID.EQ(types.Decimal(d.TokenID)),
-				models.NFTPrivilegeWhere.Expiry.GT(time.Now()),
-				models.NFTPrivilegeWhere.ContractAddress.EQ(common.FromHex(udc.Settings.VehicleNFTAddress)),
-			).All(ctx, udc.DBS().Reader)
-			if err != nil {
-				return nil, err
-			}
-
-			privByAddr := make(map[string][]Privilege)
-			for _, v := range udp {
-				ua := common.BytesToAddress(v.UserAddress).Hex()
-				privByAddr[ua] = append(privByAddr[ua], Privilege{
-					ID:        v.Privilege,
-					ExpiresAt: v.Expiry,
-					UpdatedAt: v.UpdatedAt,
-				})
-			}
-
-			for k, v := range privByAddr {
-				pu = append(pu, PrivilegeUser{
-					Address:    k,
-					Privileges: v,
-				})
-			}
-
-			if sd := d.R.VehicleTokenSyntheticDevice; sd != nil {
-				ii, _ := sd.IntegrationTokenID.Uint64()
-				mtr := sd.R.MintRequest
-				sdStat = &SyntheticDeviceStatus{
-					IntegrationID: ii,
-					Status:        mtr.Status,
+				// NFT Privileges
+				udp, err := models.NFTPrivileges(
+					models.NFTPrivilegeWhere.TokenID.EQ(types.Decimal(d.TokenID)),
+					models.NFTPrivilegeWhere.Expiry.GT(time.Now()),
+					models.NFTPrivilegeWhere.ContractAddress.EQ(common.FromHex(udc.Settings.VehicleNFTAddress)),
+				).All(ctx, udc.DBS().Reader)
+				if err != nil {
+					return nil, err
 				}
+
+				privByAddr := make(map[string][]Privilege)
+				for _, v := range udp {
+					ua := common.BytesToAddress(v.UserAddress).Hex()
+					privByAddr[ua] = append(privByAddr[ua], Privilege{
+						ID:        v.Privilege,
+						ExpiresAt: v.Expiry,
+						UpdatedAt: v.UpdatedAt,
+					})
+				}
+
+				for k, v := range privByAddr {
+					pu = append(pu, PrivilegeUser{
+						Address:    k,
+						Privileges: v,
+					})
+				}
+			}
+
+			if mtr := d.R.MintRequest; mtr != nil {
+				nft.Status = d.R.MintRequest.Status
+
 				if mtr.Hash.Valid {
-					h := hexutil.Encode(mtr.Hash.Bytes)
-					sdStat.TxHash = &h
-				}
-				if !sd.TokenID.IsZero() {
-					sdStat.TokenID = sd.TokenID.Int(nil)
-					a := common.BytesToAddress(sd.WalletAddress)
-					sdStat.Address = &a
+					hash := hexutil.Encode(mtr.Hash.Bytes)
+					nft.TxHash = &hash
 				}
 			}
+		}
 
-			if cred := d.R.Claim; cred != nil {
-				credential = &VINCredentialData{
-					VIN:       d.VinIdentifier.String,
-					ExpiresAt: cred.ExpirationDate,
-					IssuedAt:  cred.IssuanceDate,
-					Valid:     time.Now().Before(cred.ExpirationDate),
-				}
+		if sd := d.R.VehicleTokenSyntheticDevice; sd != nil {
+			ii, _ := sd.IntegrationTokenID.Uint64()
+			mtr := sd.R.MintRequest
+			sdStat = &SyntheticDeviceStatus{
+				IntegrationID: ii,
+				Status:        mtr.Status,
+			}
+			if mtr.Hash.Valid {
+				h := hexutil.Encode(mtr.Hash.Bytes)
+				sdStat.TxHash = &h
+			}
+			if !sd.TokenID.IsZero() {
+				sdStat.TokenID = sd.TokenID.Int(nil)
+				a := common.BytesToAddress(sd.WalletAddress)
+				sdStat.Address = &a
+			}
+		}
+
+		if cred := d.R.Claim; cred != nil {
+			credential = &VINCredentialData{
+				VIN:       d.VinIdentifier.String,
+				ExpiresAt: cred.ExpirationDate,
+				IssuedAt:  cred.IssuanceDate,
+				Valid:     time.Now().Before(cred.ExpirationDate),
 			}
 		}
 
@@ -1778,7 +1783,7 @@ type VehicleNFTData struct {
 	// TxHash is the hash of the minting transaction.
 	TxHash *string `json:"txHash,omitempty" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
 	// Status is the minting status of the NFT.
-	Status string `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed" example:"Confirmed"`
+	Status string `json:"status,omitempty" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
 }
 
 type SyntheticDeviceStatus struct {
@@ -1786,7 +1791,7 @@ type SyntheticDeviceStatus struct {
 	TokenID       *big.Int        `json:"tokenId,omitempty" swaggertype:"number" example:"15"`
 	Address       *common.Address `json:"address,omitempty" swaggertype:"string" example:"0xAED7EA8035eEc47E657B34eF5D020c7005487443"`
 	TxHash        *string         `json:"txHash,omitempty" swaggertype:"string" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
-	Status        string          `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed" example:"Confirmed"`
+	Status        string          `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
 }
 
 type VINCredentialData struct {

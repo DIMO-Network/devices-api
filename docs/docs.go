@@ -2630,7 +2630,8 @@ const docTemplate = `{
                         "Unsubmitted",
                         "Submitted",
                         "Mined",
-                        "Confirmed"
+                        "Confirmed",
+                        "Failed"
                     ],
                     "example": "Mined"
                 },
@@ -3273,7 +3274,8 @@ const docTemplate = `{
                         "Unstarted",
                         "Submitted",
                         "Mined",
-                        "Confirmed"
+                        "Confirmed",
+                        "Failed"
                     ],
                     "example": "Confirmed"
                 },
@@ -3454,7 +3456,8 @@ const docTemplate = `{
                         "Unstarted",
                         "Submitted",
                         "Mined",
-                        "Confirmed"
+                        "Confirmed",
+                        "Failed"
                     ],
                     "example": "Confirmed"
                 },
