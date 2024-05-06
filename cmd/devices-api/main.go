@@ -103,8 +103,6 @@ func main() {
 
 		subcommands.Register(&syncDeviceTemplatesCmd{logger: logger, settings: settings, pdb: pdb}, "user devices")
 
-		subcommands.Register(&fixSignalTimestamps{logger: logger, settings: settings, pdb: pdb}, "data-fixes")
-
 		flag.Parse()
 		os.Exit(int(subcommands.Execute(ctx)))
 	}

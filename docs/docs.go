@@ -893,7 +893,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Return the EIP-712 payload to be signed for Aftermarket device unpairing.",
+                "description": "Return the EIP-712 payload to be signed for aftermarket device unpairing.",
                 "produces": [
                     "application/json"
                 ],
@@ -921,7 +921,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Submit the signature for unpairing this device from its attached Aftermarket.",
+                "description": "Submit the signature for unpairing this user device from its attached aftermarket device.",
                 "produces": [
                     "application/json"
                 ],
@@ -1555,6 +1555,38 @@ const docTemplate = `{
                 }
             }
         },
+        "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/telemetry/subscribe": {
+            "post": {
+                "description": "Subscribe vehicle for Telemetry Data. Currently, this only works for Teslas connected through Tesla.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "device",
+                    "integration",
+                    "command"
+                ],
+                "summary": "Subscribe vehicle for Telemetry Data",
+                "operationId": "telemetry-subscribe",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "userDeviceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Integration ID",
+                        "name": "integrationID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/trunk/open": {
             "post": {
                 "description": "Open the device's front trunk. Currently, this only works for Teslas connected through Tesla.",
@@ -1678,39 +1710,6 @@ const docTemplate = `{
                 "responses": {
                     "204": {
                         "description": "No Content"
-                    }
-                }
-            }
-        },
-        "/user/devices/{userDeviceID}/status": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns the latest status update for the device. May return 404 if the\nuser does not have a device with the ID, or if no status updates have come. Note this endpoint also exists under nft_controllers",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "user device ID",
-                        "name": "user_device_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.DeviceSnapshot"
-                        }
                     }
                 }
             }
@@ -2182,37 +2181,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/vehicle/{tokenId}/status": {
-            "get": {
-                "description": "Returns the latest status update for the vehicle with a given token id.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permission"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.DeviceSnapshot"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    }
-                }
-            }
-        },
         "/vehicle/{tokenId}/vin-credential": {
             "get": {
                 "description": "Returns the vin credential for the vehicle with a given token id.",
@@ -2642,6 +2610,38 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_controllers.AftermarketDeviceTransactionStatus": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "CreatedAt is the timestamp of the creation of the meta-transaction.",
+                    "type": "string",
+                    "example": "2022-10-01T09:22:21.002Z"
+                },
+                "hash": {
+                    "description": "Hash is the hexidecimal transaction hash, available for any transaction at the Submitted stage or greater.",
+                    "type": "string",
+                    "example": "0x28b4662f1e1b15083261a4a5077664f4003d58cb528826b7aab7fad466c28e70"
+                },
+                "status": {
+                    "description": "Status is the state of the transaction performing this operation. There are only four options.",
+                    "type": "string",
+                    "enum": [
+                        "Unsubmitted",
+                        "Submitted",
+                        "Mined",
+                        "Confirmed",
+                        "Failed"
+                    ],
+                    "example": "Mined"
+                },
+                "updatedAt": {
+                    "description": "UpdatedAt is the last time we updated the status of the transaction.",
+                    "type": "string",
+                    "example": "2022-10-01T09:22:26.337Z"
+                }
+            }
+        },
         "internal_controllers.AutoPiDeviceInfo": {
             "type": "object",
             "properties": {
@@ -2655,7 +2655,7 @@ const docTemplate = `{
                     "description": "Claim contains the status of the on-chain claiming meta-transaction.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_controllers.AutoPiTransactionStatus"
+                            "$ref": "#/definitions/internal_controllers.AftermarketDeviceTransactionStatus"
                         }
                     ]
                 },
@@ -2693,7 +2693,7 @@ const docTemplate = `{
                     "description": "Pair contains the status of the on-chain pairing meta-transaction.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_controllers.AutoPiTransactionStatus"
+                            "$ref": "#/definitions/internal_controllers.AftermarketDeviceTransactionStatus"
                         }
                     ]
                 },
@@ -2716,40 +2716,9 @@ const docTemplate = `{
                     "description": "Unpair contains the status of the on-chain unpairing meta-transaction.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_controllers.AutoPiTransactionStatus"
+                            "$ref": "#/definitions/internal_controllers.AftermarketDeviceTransactionStatus"
                         }
                     ]
-                }
-            }
-        },
-        "internal_controllers.AutoPiTransactionStatus": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "description": "CreatedAt is the timestamp of the creation of the meta-transaction.",
-                    "type": "string",
-                    "example": "2022-10-01T09:22:21.002Z"
-                },
-                "hash": {
-                    "description": "Hash is the hexidecimal transaction hash, available for any transaction at the Submitted stage or greater.",
-                    "type": "string",
-                    "example": "0x28b4662f1e1b15083261a4a5077664f4003d58cb528826b7aab7fad466c28e70"
-                },
-                "status": {
-                    "description": "Status is the state of the transaction performing this operation. There are only four options.",
-                    "type": "string",
-                    "enum": [
-                        "Unsubmitted",
-                        "Submitted",
-                        "Mined",
-                        "Confirmed"
-                    ],
-                    "example": "Mined"
-                },
-                "updatedAt": {
-                    "description": "UpdatedAt is the last time we updated the status of the transaction.",
-                    "type": "string",
-                    "example": "2022-10-01T09:22:26.337Z"
                 }
             }
         },
@@ -2894,56 +2863,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers.DeviceSnapshot": {
-            "type": "object",
-            "properties": {
-                "ambientTemp": {
-                    "type": "number"
-                },
-                "batteryCapacity": {
-                    "type": "integer"
-                },
-                "batteryVoltage": {
-                    "type": "number"
-                },
-                "chargeLimit": {
-                    "type": "number"
-                },
-                "charging": {
-                    "type": "boolean"
-                },
-                "fuelPercentRemaining": {
-                    "type": "number"
-                },
-                "latitude": {
-                    "type": "number"
-                },
-                "longitude": {
-                    "type": "number"
-                },
-                "odometer": {
-                    "type": "number"
-                },
-                "oil": {
-                    "type": "number"
-                },
-                "range": {
-                    "type": "number"
-                },
-                "recordCreatedAt": {
-                    "type": "string"
-                },
-                "recordUpdatedAt": {
-                    "type": "string"
-                },
-                "soc": {
-                    "type": "number"
-                },
-                "tirePressure": {
-                    "$ref": "#/definitions/smartcar.TirePressure"
-                }
-            }
-        },
         "internal_controllers.DocumentResponse": {
             "type": "object",
             "properties": {
@@ -3082,6 +3001,14 @@ const docTemplate = `{
                 "status": {
                     "description": "Status is one of \"Pending\", \"PendingFirstData\", \"Active\", \"Failed\", \"DuplicateIntegration\".",
                     "type": "string"
+                },
+                "tesla": {
+                    "description": "Contains further details about tesla integration status",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/internal_controllers.TeslaIntegrationInfo"
+                        }
+                    ]
                 }
             }
         },
@@ -3130,42 +3057,6 @@ const docTemplate = `{
                 },
                 "value": {
                     "type": "string"
-                }
-            }
-        },
-        "internal_controllers.NFTData": {
-            "type": "object",
-            "properties": {
-                "ownerAddress": {
-                    "description": "OwnerAddress is the Ethereum address of the NFT owner.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "status": {
-                    "description": "Status is the minting status of the NFT.",
-                    "type": "string",
-                    "enum": [
-                        "Unstarted",
-                        "Submitted",
-                        "Mined",
-                        "Confirmed"
-                    ],
-                    "example": "Confirmed"
-                },
-                "tokenId": {
-                    "type": "number",
-                    "example": 37
-                },
-                "tokenUri": {
-                    "type": "string",
-                    "example": "https://nft.dimo.zone/37"
-                },
-                "txHash": {
-                    "description": "TxHash is the hash of the minting transaction.",
-                    "type": "string",
-                    "example": "0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"
                 }
             }
         },
@@ -3362,7 +3253,8 @@ const docTemplate = `{
                         "Unstarted",
                         "Submitted",
                         "Mined",
-                        "Confirmed"
+                        "Confirmed",
+                        "Failed"
                     ],
                     "example": "Confirmed"
                 },
@@ -3373,6 +3265,23 @@ const docTemplate = `{
                 "txHash": {
                     "type": "string",
                     "example": "0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"
+                }
+            }
+        },
+        "internal_controllers.TeslaIntegrationInfo": {
+            "type": "object",
+            "properties": {
+                "apiVersion": {
+                    "description": "APIVersion is the version of the Tesla API being used. There are currently two valid values:\n1 is the old \"Owner API\", 2 is the new \"Fleet API\".",
+                    "type": "integer"
+                },
+                "telemetrySubscribed": {
+                    "description": "TelemetrySubscribed is true if DIMO has subscribed to the vehicle's telemetry stream.",
+                    "type": "boolean"
+                },
+                "virtualKeyAdded": {
+                    "description": "VirtualKeyAdded is true if the DIMO virtual key has been added to the vehicle.",
+                    "type": "boolean"
                 }
             }
         },
@@ -3438,7 +3347,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "nft": {
-                    "$ref": "#/definitions/internal_controllers.NFTData"
+                    "$ref": "#/definitions/internal_controllers.VehicleNFTData"
                 },
                 "optedInAt": {
                     "type": "string"
@@ -3530,49 +3439,45 @@ const docTemplate = `{
                 }
             }
         },
-        "math.HexOrDecimal256": {
-            "type": "object"
-        },
-        "smartcar.TirePressure": {
+        "internal_controllers.VehicleNFTData": {
             "type": "object",
             "properties": {
-                "age": {
-                    "description": "Deprecated: Should use DataAge instead of Age",
-                    "type": "string"
+                "ownerAddress": {
+                    "description": "OwnerAddress is the Ethereum address of the NFT owner.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
-                "backLeft": {
-                    "type": "number"
+                "status": {
+                    "description": "Status is the minting status of the NFT.",
+                    "type": "string",
+                    "enum": [
+                        "Unstarted",
+                        "Submitted",
+                        "Mined",
+                        "Confirmed",
+                        "Failed"
+                    ],
+                    "example": "Confirmed"
                 },
-                "backRight": {
-                    "type": "number"
+                "tokenId": {
+                    "type": "number",
+                    "example": 37
                 },
-                "dataAge": {
-                    "type": "string"
+                "tokenUri": {
+                    "type": "string",
+                    "example": "https://nft.dimo.zone/37"
                 },
-                "frontLeft": {
-                    "type": "number"
-                },
-                "frontRight": {
-                    "type": "number"
-                },
-                "requestId": {
-                    "type": "string"
-                },
-                "unitSystem": {
-                    "$ref": "#/definitions/smartcar.UnitSystem"
+                "txHash": {
+                    "description": "TxHash is the hash of the minting transaction.",
+                    "type": "string",
+                    "example": "0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"
                 }
             }
         },
-        "smartcar.UnitSystem": {
-            "type": "string",
-            "enum": [
-                "metric",
-                "imperial"
-            ],
-            "x-enum-varnames": [
-                "Metric",
-                "Imperial"
-            ]
+        "math.HexOrDecimal256": {
+            "type": "object"
         }
     },
     "securityDefinitions": {

@@ -49,3 +49,12 @@ const (
 func (r AutoPiSubStatusEnum) String() string {
 	return string(r)
 }
+
+const (
+	ChargeLimit        string = "charge/limit"
+	FrunkOpen          string = "frunk/open"
+	TrunkOpen          string = "trunk/open"
+	DoorsLock          string = "doors/lock"
+	DoorsUnlock        string = "doors/unlock"
+	TelemetrySubscribe string = "telemetry/subscribe"
+)

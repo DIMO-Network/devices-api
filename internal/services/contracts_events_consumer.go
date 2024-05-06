@@ -229,47 +229,33 @@ func (c *ContractsEventsConsumer) handleVehicleTransfer(e *ContractEventData) er
 
 	c.log.Info().Str("tokenId", tkID.String()).Msgf("Cleared %d privileges upon vehicle transfer.", rowsAff)
 
-	nft, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(tkID),
-		qm.Load(models.VehicleNFTRels.UserDevice),
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(tkID),
 	).One(ctx, tx)
 	if err != nil {
 		return err
 	}
 
 	if IsZeroAddress(args.To) {
-		_, err = nft.Delete(ctx, tx)
+		_, err = ud.Delete(ctx, tx)
+		if err != nil {
+			return err
+		}
+	} else {
+		s := dex.IDTokenSubject{
+			UserId: args.To.Hex(),
+			ConnId: "web3",
+		}
+		b, err := proto.Marshal(&s)
 		if err != nil {
 			return err
 		}
 
-		if nft.R.UserDevice != nil {
-			_, err = nft.R.UserDevice.Delete(ctx, tx)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
+		ud.UserID = base64.RawURLEncoding.EncodeToString(b)
+		ud.OwnerAddress = null.BytesFrom(args.To.Bytes())
 
-		nft.OwnerAddress = null.BytesFrom(args.To.Bytes())
-		if _, err := nft.Update(ctx, tx, boil.Whitelist(models.VehicleNFTColumns.OwnerAddress)); err != nil {
+		if _, err := ud.Update(ctx, tx, boil.Whitelist(models.UserDeviceColumns.OwnerAddress, models.UserDeviceColumns.UserID)); err != nil {
 			return err
-		}
-
-		if ud := nft.R.UserDevice; ud != nil {
-			s := dex.IDTokenSubject{
-				UserId: args.To.Hex(),
-				ConnId: "web3",
-			}
-			b, err := proto.Marshal(&s)
-			if err != nil {
-				return err
-			}
-
-			ud.UserID = base64.RawURLEncoding.EncodeToString(b)
-			if _, err := ud.Update(ctx, tx, boil.Whitelist(models.UserDeviceColumns.UserID)); err != nil {
-				return err
-			}
 		}
 	}
 
@@ -708,27 +694,20 @@ func (c *ContractsEventsConsumer) vehicleNodeBurned(e *ContractEventData) error 
 	}
 	defer tx.Rollback() //nolint
 
-	vnft, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(
 			types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.VehicleNode, 0))),
-		qm.Load(models.VehicleNFTRels.UserDevice),
-		qm.Load(models.VehicleNFTRels.BurnRequest),
+		qm.Load(models.UserDeviceRels.BurnRequest),
 	).One(ctx, tx)
 	if err != nil {
 		return err
 	}
 
-	if _, err := vnft.Delete(ctx, tx); err != nil {
+	if _, err := ud.Delete(ctx, tx); err != nil {
 		return err
 	}
 
-	if ud := vnft.R.UserDevice; ud != nil {
-		if _, err := ud.Delete(ctx, tx); err != nil {
-			return err
-		}
-	}
-
-	if mtr := vnft.R.BurnRequest; mtr != nil {
+	if mtr := ud.R.BurnRequest; mtr != nil {
 		mtr.Hash = null.BytesFrom(e.TransactionHash.Bytes())
 		mtr.Status = models.MetaTransactionRequestStatusConfirmed
 		if _, err := mtr.Update(ctx, tx, boil.Infer()); err != nil {

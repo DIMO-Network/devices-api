@@ -8,11 +8,6 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/DIMO-Network/shared/privileges"
-
-	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	"github.com/DIMO-Network/shared"
 
 	"github.com/DIMO-Network/devices-api/internal/services"
@@ -74,87 +69,6 @@ func calculateRange(ctx context.Context, ddSvc services.DeviceDefinitionService,
 	}
 
 	return nil, nil
-}
-
-// GetUserDeviceStatus godoc
-// @Description Returns the latest status update for the device. May return 404 if the
-// @Description user does not have a device with the ID, or if no status updates have come. Note this endpoint also exists under nft_controllers
-// @Tags        user-devices
-// @Produce     json
-// @Param       user_device_id path     string true "user device ID"
-// @Success     200            {object} controllers.DeviceSnapshot
-// @Security    BearerAuth
-// @Router      /user/devices/{userDeviceID}/status [get]
-func (udc *UserDevicesController) GetUserDeviceStatus(c *fiber.Ctx) error {
-	userDeviceID := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
-
-	userDevice, err := models.FindUserDevice(c.Context(), udc.DBS().Reader, userDeviceID)
-	if err != nil {
-		return err
-	}
-	if userDevice.UserID != userID {
-		return fiber.NewError(fiber.StatusForbidden)
-	}
-
-	udd, err := udc.deviceDataSvc.GetDeviceData(c.Context(),
-		userDeviceID,
-		userDevice.DeviceDefinitionID,
-		userDevice.DeviceStyleID.String,
-		[]privileges.Privilege{privileges.VehicleNonLocationData, privileges.VehicleCurrentLocation, privileges.VehicleAllTimeLocation}, // assume all privileges when called from here
-	)
-	if err != nil {
-		err := shared.GrpcErrorToFiber(err, "failed to get user device data grpc")
-		if err, ok := err.(*fiber.Error); ok && err.Code == 404 {
-			helpers.SkipErrorLog(c)
-		}
-		return err
-	}
-
-	ds := grpcDeviceDataToSnapshot(udd)
-
-	return c.JSON(ds)
-}
-
-func grpcDeviceDataToSnapshot(udd *dagrpc.UserDeviceDataResponse) DeviceSnapshot {
-	ds := DeviceSnapshot{
-		Charging:             udd.Charging,
-		FuelPercentRemaining: udd.FuelPercentRemaining,
-		BatteryCapacity:      udd.BatteryCapacity,
-		OilLevel:             udd.OilLevel,
-		Odometer:             udd.Odometer,
-		Latitude:             udd.Latitude,
-		Longitude:            udd.Longitude,
-		Range:                udd.Range,
-		StateOfCharge:        udd.StateOfCharge,
-		ChargeLimit:          udd.ChargeLimit,
-		RecordUpdatedAt:      convertTimestamp(udd.RecordUpdatedAt),
-		RecordCreatedAt:      convertTimestamp(udd.RecordCreatedAt),
-		TirePressure:         convertTirePressure(udd.TirePressure),
-		BatteryVoltage:       udd.BatteryVoltage,
-		AmbientTemp:          udd.AmbientTemp,
-	}
-	return ds
-}
-
-func convertTimestamp(ts *timestamppb.Timestamp) *time.Time {
-	if ts == nil {
-		return nil
-	}
-	t := ts.AsTime()
-	return &t
-}
-
-func convertTirePressure(tp *dagrpc.TirePressureResponse) *smartcar.TirePressure {
-	if tp == nil {
-		return nil
-	}
-	return &smartcar.TirePressure{
-		FrontLeft:  tp.FrontLeft,
-		FrontRight: tp.FrontRight,
-		BackLeft:   tp.BackLeft,
-		BackRight:  tp.BackRight,
-	}
 }
 
 // RefreshUserDeviceStatus godoc

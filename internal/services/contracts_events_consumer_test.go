@@ -505,8 +505,14 @@ func TestVehicleTransfer(t *testing.T) {
 	mtr := models.MetaTransactionRequest{ID: "xdd"}
 	_ = mtr.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
-	nft := models.VehicleNFT{MintRequestID: "xdd", OwnerAddress: null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")), TokenID: types.NewNullDecimal(decimal.New(5, 0))}
-	_ = nft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		MintRequestID:      null.StringFrom(mtr.ID),
+		OwnerAddress:       null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")),
+		TokenID:            types.NewNullDecimal(decimal.New(5, 0)),
+		DeviceDefinitionID: ksuid.New().String(),
+	}
+	_ = ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
 	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil)
 	event, err := marshalMockPayload(`
@@ -531,13 +537,13 @@ func TestVehicleTransfer(t *testing.T) {
 		t.Errorf("failed to process event: %v", err)
 	}
 
-	_ = nft.Reload(ctx, pdb.DBS().Reader)
-	if !nft.OwnerAddress.Valid {
+	_ = ud.Reload(ctx, pdb.DBS().Reader)
+	if !ud.OwnerAddress.Valid {
 		t.Fatal("token owner became null")
 	}
 
-	if common.BytesToAddress(nft.OwnerAddress.Bytes) != common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263") {
-		t.Errorf("expected owner to become %s, but was %s", common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263"), common.BytesToAddress(nft.OwnerAddress.Bytes))
+	if common.BytesToAddress(ud.OwnerAddress.Bytes) != common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263") {
+		t.Errorf("expected owner to become %s, but was %s", common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263"), common.BytesToAddress(ud.OwnerAddress.Bytes))
 	}
 }
 
@@ -564,8 +570,14 @@ func Test_NFTPrivileges_Cleared_On_Vehicle_Transfer(t *testing.T) {
 	}
 	_ = nftPriv.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
-	nft := models.VehicleNFT{MintRequestID: "xdd", OwnerAddress: ownerAddress, TokenID: tkID}
-	_ = nft.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		MintRequestID:      null.StringFrom(mtr.ID),
+		OwnerAddress:       null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")),
+		TokenID:            types.NewNullDecimal(decimal.New(5, 0)),
+		DeviceDefinitionID: ksuid.New().String(),
+	}
+	_ = ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
 	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil)
 	event, err := marshalMockPayload(`
@@ -590,13 +602,13 @@ func Test_NFTPrivileges_Cleared_On_Vehicle_Transfer(t *testing.T) {
 		t.Errorf("failed to process event: %v", err)
 	}
 
-	_ = nft.Reload(ctx, pdb.DBS().Reader)
-	if !nft.OwnerAddress.Valid {
+	_ = ud.Reload(ctx, pdb.DBS().Reader)
+	if !ud.OwnerAddress.Valid {
 		t.Fatal("token owner became null")
 	}
 
-	if common.BytesToAddress(nft.OwnerAddress.Bytes) != common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263") {
-		t.Errorf("expected owner to become %s, but was %s", common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263"), common.BytesToAddress(nft.OwnerAddress.Bytes))
+	if common.BytesToAddress(ud.OwnerAddress.Bytes) != common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263") {
+		t.Errorf("expected owner to become %s, but was %s", common.HexToAddress("0x4675c7e5baafbffbca748158becba61ef3b0a263"), common.BytesToAddress(ud.OwnerAddress.Bytes))
 	}
 
 	nftPrivileges, err := models.NFTPrivileges().All(ctx, pdb.DBS().Reader)
@@ -767,13 +779,6 @@ func Test_VehicleNodeBurn_MetaTxID(t *testing.T) {
 	logger := zerolog.Nop()
 	settings := &config.Settings{DIMORegistryChainID: 1, DIMORegistryAddr: "0x881d40237659c251811cec9c364ef91dc08d300c"}
 
-	ud := models.UserDevice{
-		ID:                 ksuid.New().String(),
-		UserID:             ksuid.New().String(),
-		DeviceDefinitionID: ksuid.New().String(),
-	}
-	assert.NoError(t, ud.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
-
 	mintReq := models.MetaTransactionRequest{
 		ID:     ksuid.New().String(),
 		Status: models.MetaTransactionRequestStatusConfirmed,
@@ -786,14 +791,16 @@ func Test_VehicleNodeBurn_MetaTxID(t *testing.T) {
 	}
 	assert.NoError(t, burnReq.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
 
-	vnft := models.VehicleNFT{
-		MintRequestID: mintReq.ID,
-		BurnRequestID: null.StringFrom(burnReq.ID),
-		UserDeviceID:  null.StringFrom(ud.ID),
-		TokenID:       types.NewNullDecimal(decimal.New(13, 0)),
-		Vin:           "vin",
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		UserID:             ksuid.New().String(),
+		DeviceDefinitionID: ksuid.New().String(),
+		MintRequestID:      null.StringFrom(mintReq.ID),
+		OwnerAddress:       null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")),
+		TokenID:            types.NewNullDecimal(decimal.New(5, 0)),
+		BurnRequestID:      null.StringFrom(burnReq.ID),
 	}
-	assert.NoError(t, vnft.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
+	_ = ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
 	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil)
 
@@ -805,7 +812,7 @@ func Test_VehicleNodeBurn_MetaTxID(t *testing.T) {
 			"eventName": "%s",
 			"chainId": %d,
 			"arguments": {
-			"vehicleNode": 13,
+			"vehicleNode": %s,
 			"owner": "%s"
 			}
 		}
@@ -813,7 +820,9 @@ func Test_VehicleNodeBurn_MetaTxID(t *testing.T) {
 		settings.DIMORegistryChainID,
 		settings.DIMORegistryAddr,
 		VehicleNodeBurned.String(),
-		settings.DIMORegistryChainID, common.BigToAddress(big.NewInt(1))))
+		settings.DIMORegistryChainID,
+		ud.TokenID.String(),
+		common.BytesToAddress(ud.OwnerAddress.Bytes)))
 	assert.NoError(t, err)
 
 	err = consumer.processEvent(ctx, event)
@@ -825,7 +834,7 @@ func Test_VehicleNodeBurn_MetaTxID(t *testing.T) {
 	assert.Equal(t, models.MetaTransactionRequestStatusConfirmed, burnReq.Status)
 	assert.NotNil(t, burnReq.Hash)
 
-	assert.ErrorIs(t, vnft.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
+	assert.ErrorIs(t, ud.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
 	assert.ErrorIs(t, ud.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
 }
 
@@ -837,26 +846,21 @@ func Test_VehicleNodeBurn_NoMetaTxID(t *testing.T) {
 	logger := zerolog.Nop()
 	settings := &config.Settings{DIMORegistryChainID: 1, DIMORegistryAddr: "0x881d40237659c251811cec9c364ef91dc08d300c"}
 
-	ud := models.UserDevice{
-		ID:                 ksuid.New().String(),
-		UserID:             ksuid.New().String(),
-		DeviceDefinitionID: ksuid.New().String(),
-	}
-	assert.NoError(t, ud.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
-
 	mintReq := models.MetaTransactionRequest{
 		ID:     ksuid.New().String(),
 		Status: models.MetaTransactionRequestStatusConfirmed,
 	}
 	assert.NoError(t, mintReq.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
 
-	vnft := models.VehicleNFT{
-		MintRequestID: mintReq.ID,
-		UserDeviceID:  null.StringFrom(ud.ID),
-		TokenID:       types.NewNullDecimal(decimal.New(13, 0)),
-		Vin:           "vin",
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		UserID:             ksuid.New().String(),
+		DeviceDefinitionID: ksuid.New().String(),
+		MintRequestID:      null.StringFrom(mintReq.ID),
+		OwnerAddress:       null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")),
+		TokenID:            types.NewNullDecimal(decimal.New(13, 0)),
 	}
-	assert.NoError(t, vnft.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
+	_ = ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
 	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil)
 
@@ -868,7 +872,7 @@ func Test_VehicleNodeBurn_NoMetaTxID(t *testing.T) {
 			"eventName": "%s",
 			"chainId": %d,
 			"arguments": {
-			"vehicleNode": 13,
+			"vehicleNode": %s,
 			"owner": "%s"
 			}
 		}
@@ -876,7 +880,9 @@ func Test_VehicleNodeBurn_NoMetaTxID(t *testing.T) {
 		settings.DIMORegistryChainID,
 		settings.DIMORegistryAddr,
 		VehicleNodeBurned.String(),
-		settings.DIMORegistryChainID, common.BigToAddress(big.NewInt(1))))
+		settings.DIMORegistryChainID,
+		ud.TokenID.String(),
+		common.BytesToAddress(ud.OwnerAddress.Bytes)))
 	assert.NoError(t, err)
 
 	err = consumer.processEvent(ctx, event)
@@ -884,7 +890,7 @@ func Test_VehicleNodeBurn_NoMetaTxID(t *testing.T) {
 		t.Errorf("failed to process event: %v", err)
 	}
 
-	assert.ErrorIs(t, vnft.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
+	assert.ErrorIs(t, ud.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
 	assert.ErrorIs(t, ud.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
 }
 

@@ -34,7 +34,6 @@ type IntegrationTestSuite struct {
 
 	deviceDefSvc            *mock_services.MockDeviceDefinitionService
 	ap                      *mock_services.MockAutoPiAPIService
-	apTask                  *mock_services.MockAutoPiTaskService
 	apReg                   *mock_services.MockIngestRegistrar
 	eventer                 *mock_services.MockEventService
 	ddRegistrar             *mock_services.MockDeviceDefinitionRegistrar
@@ -47,7 +46,6 @@ const migrationsDirRelPath = "../../../migrations"
 // SetupSuite starts container db
 func (s *IntegrationTestSuite) SetupSuite() {
 	mockCtrl := gomock.NewController(s.T())
-	defer mockCtrl.Finish()
 	logger := test.Logger()
 
 	s.ctx = context.Background()
@@ -55,13 +53,12 @@ func (s *IntegrationTestSuite) SetupSuite() {
 
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(mockCtrl)
 	s.ap = mock_services.NewMockAutoPiAPIService(mockCtrl)
-	s.apTask = mock_services.NewMockAutoPiTaskService(mockCtrl)
 	s.apReg = mock_services.NewMockIngestRegistrar(mockCtrl)
 	s.eventer = mock_services.NewMockEventService(mockCtrl)
 	s.ddRegistrar = mock_services.NewMockDeviceDefinitionRegistrar(mockCtrl)
 	s.hardwareTemplateService = NewHardwareTemplateService(s.ap, s.pdb.DBS, logger)
 
-	s.integration = NewIntegration(s.pdb.DBS, s.deviceDefSvc, s.ap, s.apTask, s.apReg, s.eventer, s.ddRegistrar, s.hardwareTemplateService, logger)
+	s.integration = NewIntegration(s.pdb.DBS, s.deviceDefSvc, s.ap, s.apReg, s.eventer, s.ddRegistrar, s.hardwareTemplateService, logger)
 }
 
 // TearDownTest after each test truncate tables
@@ -100,7 +97,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_HardwareTemplate_Success() {
 	_, apAddr, _ := test.GenerateWallet()
 
 	autoPIUnit := test.SetupCreateMintedAftermarketDevice(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
-	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
+	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(deviceDefinitionID, "Ford", "F150", 2020, integration)
@@ -143,9 +140,6 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_HardwareTemplate_Success() {
 		},
 	}).Times(1).Return(nil)
 
-	taskID := ksuid.New().String()
-
-	s.apTask.EXPECT().StartQueryAndUpdateVIN(autoPiMock.ID, autoPiMock.UnitID, ud.ID).Times(1).Return(taskID, nil)
 	s.eventer.EXPECT().Emit(gomock.Any()).Times(1).Return(nil)
 
 	s.ddRegistrar.EXPECT().Register(gomock.Any()).Times(1).Return(nil)
@@ -155,7 +149,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_HardwareTemplate_Success() {
 	require.NoError(s.T(), err)
 	assert.Equal(s.T(), testUserID, ud.UserID)
 	assert.Equal(s.T(), unitID, autoPIUnit.Serial)
-	assert.Equal(s.T(), vin, vehicleNFT.Vin)
+	assert.Equal(s.T(), vin, vehicleNFT.VinIdentifier.String)
 	udai, err := models.UserDeviceAPIIntegrations(models.UserDeviceAPIIntegrationWhere.Serial.EQ(null.StringFrom(autoPIUnit.Serial))).
 		One(s.ctx, s.pdb.DBS().Reader)
 	require.NoError(s.T(), err)
@@ -178,7 +172,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_Make_HardwareTemplate_Success() {
 	_, apAddr, _ := test.GenerateWallet()
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
 	autoPIUnit := test.SetupCreateMintedAftermarketDevice(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
-	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
+	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(deviceDefinitionID, "Ford", "F150", 2020, integration)
@@ -221,9 +215,6 @@ func (s *IntegrationTestSuite) Test_Pair_With_Make_HardwareTemplate_Success() {
 		},
 	}).Times(1).Return(nil)
 
-	taskID := ksuid.New().String()
-
-	s.apTask.EXPECT().StartQueryAndUpdateVIN(autoPiMock.ID, autoPiMock.UnitID, ud.ID).Times(1).Return(taskID, nil)
 	s.eventer.EXPECT().Emit(gomock.Any()).Times(1).Return(nil)
 
 	s.ddRegistrar.EXPECT().Register(gomock.Any()).Times(1).Return(nil)
@@ -233,7 +224,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_Make_HardwareTemplate_Success() {
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), testUserID, ud.UserID)
 	assert.Equal(s.T(), unitID, autoPIUnit.Serial)
-	assert.Equal(s.T(), vin, vehicleNFT.Vin)
+	assert.Equal(s.T(), vin, vehicleNFT.VinIdentifier.String)
 
 }
 
@@ -254,7 +245,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_DeviceStyle_HardwareTemplate_Su
 
 	_, apAddr, _ := test.GenerateWallet()
 	autoPIUnit := test.SetupCreateMintedAftermarketDevice(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
-	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
+	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(deviceDefinitionID, "Ford", "F150", 2020, integration)
@@ -306,9 +297,6 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_DeviceStyle_HardwareTemplate_Su
 		},
 	}).Times(1).Return(nil)
 
-	taskID := ksuid.New().String()
-
-	s.apTask.EXPECT().StartQueryAndUpdateVIN(autoPiMock.ID, autoPiMock.UnitID, ud.ID).Times(1).Return(taskID, nil)
 	s.eventer.EXPECT().Emit(gomock.Any()).Times(1).Return(nil)
 
 	s.ddRegistrar.EXPECT().Register(gomock.Any()).Times(1).Return(nil)
@@ -318,7 +306,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_DeviceStyle_HardwareTemplate_Su
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), testUserID, ud.UserID)
 	assert.Equal(s.T(), unitID, autoPIUnit.Serial)
-	assert.Equal(s.T(), vin, vehicleNFT.Vin)
+	assert.Equal(s.T(), vin, vehicleNFT.VinIdentifier.String)
 
 }
 
@@ -337,7 +325,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_UserDeviceStyle_HardwareTemplate_S
 	_, apAddr, _ := test.GenerateWallet()
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
 	autoPIUnit := test.SetupCreateMintedAftermarketDevice(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
-	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
+	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(deviceDefinitionID, "Ford", "F150", 2020, integration)
@@ -380,9 +368,6 @@ func (s *IntegrationTestSuite) Test_Pair_With_UserDeviceStyle_HardwareTemplate_S
 		},
 	}).Times(1).Return(nil)
 
-	taskID := ksuid.New().String()
-
-	s.apTask.EXPECT().StartQueryAndUpdateVIN(autoPiMock.ID, autoPiMock.UnitID, ud.ID).Times(1).Return(taskID, nil)
 	s.eventer.EXPECT().Emit(gomock.Any()).Times(1).Return(nil)
 
 	s.ddRegistrar.EXPECT().Register(gomock.Any()).Times(1).Return(nil)
@@ -392,7 +377,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_UserDeviceStyle_HardwareTemplate_S
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), testUserID, ud.UserID)
 	assert.Equal(s.T(), unitID, autoPIUnit.Serial)
-	assert.Equal(s.T(), vin, vehicleNFT.Vin)
+	assert.Equal(s.T(), vin, vehicleNFT.VinIdentifier.String)
 
 }
 

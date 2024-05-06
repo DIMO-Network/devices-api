@@ -568,8 +568,8 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
 
 	addr := "67B94473D81D0cd00849D563C94d0432Ac988B49"
-	_ = test.SetupCreateUserDeviceWithDeviceID(s.T(), userID2, deviceID2, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	_ = test.SetupCreateVehicleNFT(s.T(), deviceID2, "vin", big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
+	ud2 := test.SetupCreateUserDeviceWithDeviceID(s.T(), userID2, deviceID2, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	_ = test.SetupCreateVehicleNFT(s.T(), ud2, big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
@@ -613,7 +613,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
 
 	addr := "67B94473D81D0cd00849D563C94d0432Ac988B49"
 
-	_ = test.SetupCreateVehicleNFT(s.T(), deviceID, "vin", big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
+	_ = test.SetupCreateVehicleNFT(s.T(), ud, big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
@@ -896,7 +896,7 @@ func (s *UserDevicesControllerTestSuite) TestDeleteUserDevice_ErrNFTNotBurned() 
 
 	err = ud.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())
 	s.Require().NoError(err)
-	test.SetupCreateVehicleNFT(s.T(), ud.ID, ud.VinIdentifier.String, big.NewInt(1), null.BytesFrom(addr.Bytes()), s.pdb)
+	test.SetupCreateVehicleNFT(s.T(), ud, big.NewInt(1), null.BytesFrom(addr.Bytes()), s.pdb)
 
 	request := test.BuildRequest("DELETE", "/user/devices/"+ud.ID, "")
 	response, err := s.app.Test(request)

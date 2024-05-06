@@ -8,7 +8,6 @@ import (
 	"github.com/DIMO-Network/shared/db"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
-	es "github.com/DIMO-Network/devices-api/internal/elasticsearch"
 	"github.com/Shopify/sarama"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -116,7 +115,7 @@ func (dc *dependencyContainer) getDeviceDefinitionService() services.DeviceDefin
 }
 
 func (dc *dependencyContainer) getElasticSearchService() elasticsearch.ElasticSearch {
-	esInstance, err := es.NewElasticSearch(*dc.settings, dc.logger)
+	esInstance, err := elasticsearch.NewElasticSearch(*dc.settings, dc.logger)
 	if err != nil {
 		dc.logger.Fatal().Err(err).Msgf("Couldn't instantiate Elasticsearch client.")
 	}

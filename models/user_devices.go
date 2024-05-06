@@ -19,24 +19,30 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/queries/qmhelper"
+	"github.com/volatiletech/sqlboiler/v4/types"
 	"github.com/volatiletech/strmangle"
 )
 
 // UserDevice is an object representing the database table.
 type UserDevice struct {
-	ID                 string      `boil:"id" json:"id" toml:"id" yaml:"id"`
-	UserID             string      `boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
-	DeviceDefinitionID string      `boil:"device_definition_id" json:"device_definition_id" toml:"device_definition_id" yaml:"device_definition_id"`
-	VinIdentifier      null.String `boil:"vin_identifier" json:"vin_identifier,omitempty" toml:"vin_identifier" yaml:"vin_identifier,omitempty"`
-	Name               null.String `boil:"name" json:"name,omitempty" toml:"name" yaml:"name,omitempty"`
-	CustomImageURL     null.String `boil:"custom_image_url" json:"custom_image_url,omitempty" toml:"custom_image_url" yaml:"custom_image_url,omitempty"`
-	CountryCode        null.String `boil:"country_code" json:"country_code,omitempty" toml:"country_code" yaml:"country_code,omitempty"`
-	CreatedAt          time.Time   `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt          time.Time   `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	VinConfirmed       bool        `boil:"vin_confirmed" json:"vin_confirmed" toml:"vin_confirmed" yaml:"vin_confirmed"`
-	Metadata           null.JSON   `boil:"metadata" json:"metadata,omitempty" toml:"metadata" yaml:"metadata,omitempty"`
-	DeviceStyleID      null.String `boil:"device_style_id" json:"device_style_id,omitempty" toml:"device_style_id" yaml:"device_style_id,omitempty"`
-	OptedInAt          null.Time   `boil:"opted_in_at" json:"opted_in_at,omitempty" toml:"opted_in_at" yaml:"opted_in_at,omitempty"`
+	ID                 string            `boil:"id" json:"id" toml:"id" yaml:"id"`
+	UserID             string            `boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
+	DeviceDefinitionID string            `boil:"device_definition_id" json:"device_definition_id" toml:"device_definition_id" yaml:"device_definition_id"`
+	VinIdentifier      null.String       `boil:"vin_identifier" json:"vin_identifier,omitempty" toml:"vin_identifier" yaml:"vin_identifier,omitempty"`
+	Name               null.String       `boil:"name" json:"name,omitempty" toml:"name" yaml:"name,omitempty"`
+	CustomImageURL     null.String       `boil:"custom_image_url" json:"custom_image_url,omitempty" toml:"custom_image_url" yaml:"custom_image_url,omitempty"`
+	CountryCode        null.String       `boil:"country_code" json:"country_code,omitempty" toml:"country_code" yaml:"country_code,omitempty"`
+	CreatedAt          time.Time         `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt          time.Time         `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	VinConfirmed       bool              `boil:"vin_confirmed" json:"vin_confirmed" toml:"vin_confirmed" yaml:"vin_confirmed"`
+	Metadata           null.JSON         `boil:"metadata" json:"metadata,omitempty" toml:"metadata" yaml:"metadata,omitempty"`
+	DeviceStyleID      null.String       `boil:"device_style_id" json:"device_style_id,omitempty" toml:"device_style_id" yaml:"device_style_id,omitempty"`
+	OptedInAt          null.Time         `boil:"opted_in_at" json:"opted_in_at,omitempty" toml:"opted_in_at" yaml:"opted_in_at,omitempty"`
+	MintRequestID      null.String       `boil:"mint_request_id" json:"mint_request_id,omitempty" toml:"mint_request_id" yaml:"mint_request_id,omitempty"`
+	BurnRequestID      null.String       `boil:"burn_request_id" json:"burn_request_id,omitempty" toml:"burn_request_id" yaml:"burn_request_id,omitempty"`
+	TokenID            types.NullDecimal `boil:"token_id" json:"token_id,omitempty" toml:"token_id" yaml:"token_id,omitempty"`
+	ClaimID            null.String       `boil:"claim_id" json:"claim_id,omitempty" toml:"claim_id" yaml:"claim_id,omitempty"`
+	OwnerAddress       null.Bytes        `boil:"owner_address" json:"owner_address,omitempty" toml:"owner_address" yaml:"owner_address,omitempty"`
 
 	R *userDeviceR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userDeviceL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -56,6 +62,11 @@ var UserDeviceColumns = struct {
 	Metadata           string
 	DeviceStyleID      string
 	OptedInAt          string
+	MintRequestID      string
+	BurnRequestID      string
+	TokenID            string
+	ClaimID            string
+	OwnerAddress       string
 }{
 	ID:                 "id",
 	UserID:             "user_id",
@@ -70,6 +81,11 @@ var UserDeviceColumns = struct {
 	Metadata:           "metadata",
 	DeviceStyleID:      "device_style_id",
 	OptedInAt:          "opted_in_at",
+	MintRequestID:      "mint_request_id",
+	BurnRequestID:      "burn_request_id",
+	TokenID:            "token_id",
+	ClaimID:            "claim_id",
+	OwnerAddress:       "owner_address",
 }
 
 var UserDeviceTableColumns = struct {
@@ -86,6 +102,11 @@ var UserDeviceTableColumns = struct {
 	Metadata           string
 	DeviceStyleID      string
 	OptedInAt          string
+	MintRequestID      string
+	BurnRequestID      string
+	TokenID            string
+	ClaimID            string
+	OwnerAddress       string
 }{
 	ID:                 "user_devices.id",
 	UserID:             "user_devices.user_id",
@@ -100,6 +121,11 @@ var UserDeviceTableColumns = struct {
 	Metadata:           "user_devices.metadata",
 	DeviceStyleID:      "user_devices.device_style_id",
 	OptedInAt:          "user_devices.opted_in_at",
+	MintRequestID:      "user_devices.mint_request_id",
+	BurnRequestID:      "user_devices.burn_request_id",
+	TokenID:            "user_devices.token_id",
+	ClaimID:            "user_devices.claim_id",
+	OwnerAddress:       "user_devices.owner_address",
 }
 
 // Generated where
@@ -127,6 +153,11 @@ var UserDeviceWhere = struct {
 	Metadata           whereHelpernull_JSON
 	DeviceStyleID      whereHelpernull_String
 	OptedInAt          whereHelpernull_Time
+	MintRequestID      whereHelpernull_String
+	BurnRequestID      whereHelpernull_String
+	TokenID            whereHelpertypes_NullDecimal
+	ClaimID            whereHelpernull_String
+	OwnerAddress       whereHelpernull_Bytes
 }{
 	ID:                 whereHelperstring{field: "\"devices_api\".\"user_devices\".\"id\""},
 	UserID:             whereHelperstring{field: "\"devices_api\".\"user_devices\".\"user_id\""},
@@ -141,36 +172,50 @@ var UserDeviceWhere = struct {
 	Metadata:           whereHelpernull_JSON{field: "\"devices_api\".\"user_devices\".\"metadata\""},
 	DeviceStyleID:      whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"device_style_id\""},
 	OptedInAt:          whereHelpernull_Time{field: "\"devices_api\".\"user_devices\".\"opted_in_at\""},
+	MintRequestID:      whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"mint_request_id\""},
+	BurnRequestID:      whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"burn_request_id\""},
+	TokenID:            whereHelpertypes_NullDecimal{field: "\"devices_api\".\"user_devices\".\"token_id\""},
+	ClaimID:            whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"claim_id\""},
+	OwnerAddress:       whereHelpernull_Bytes{field: "\"devices_api\".\"user_devices\".\"owner_address\""},
 }
 
 // UserDeviceRels is where relationship names are stored.
 var UserDeviceRels = struct {
-	VehicleNFT                string
-	AutopiJobs                string
-	DeviceCommandRequests     string
-	ErrorCodeQueries          string
-	UserDeviceAPIIntegrations string
-	UserDeviceData            string
-	UserDeviceToGeofences     string
+	BurnRequest                   string
+	Claim                         string
+	MintRequest                   string
+	VehicleTokenAftermarketDevice string
+	VehicleTokenSyntheticDevice   string
+	AutopiJobs                    string
+	DeviceCommandRequests         string
+	ErrorCodeQueries              string
+	UserDeviceAPIIntegrations     string
+	UserDeviceToGeofences         string
 }{
-	VehicleNFT:                "VehicleNFT",
-	AutopiJobs:                "AutopiJobs",
-	DeviceCommandRequests:     "DeviceCommandRequests",
-	ErrorCodeQueries:          "ErrorCodeQueries",
-	UserDeviceAPIIntegrations: "UserDeviceAPIIntegrations",
-	UserDeviceData:            "UserDeviceData",
-	UserDeviceToGeofences:     "UserDeviceToGeofences",
+	BurnRequest:                   "BurnRequest",
+	Claim:                         "Claim",
+	MintRequest:                   "MintRequest",
+	VehicleTokenAftermarketDevice: "VehicleTokenAftermarketDevice",
+	VehicleTokenSyntheticDevice:   "VehicleTokenSyntheticDevice",
+	AutopiJobs:                    "AutopiJobs",
+	DeviceCommandRequests:         "DeviceCommandRequests",
+	ErrorCodeQueries:              "ErrorCodeQueries",
+	UserDeviceAPIIntegrations:     "UserDeviceAPIIntegrations",
+	UserDeviceToGeofences:         "UserDeviceToGeofences",
 }
 
 // userDeviceR is where relationships are stored.
 type userDeviceR struct {
-	VehicleNFT                *VehicleNFT                   `boil:"VehicleNFT" json:"VehicleNFT" toml:"VehicleNFT" yaml:"VehicleNFT"`
-	AutopiJobs                AutopiJobSlice                `boil:"AutopiJobs" json:"AutopiJobs" toml:"AutopiJobs" yaml:"AutopiJobs"`
-	DeviceCommandRequests     DeviceCommandRequestSlice     `boil:"DeviceCommandRequests" json:"DeviceCommandRequests" toml:"DeviceCommandRequests" yaml:"DeviceCommandRequests"`
-	ErrorCodeQueries          ErrorCodeQuerySlice           `boil:"ErrorCodeQueries" json:"ErrorCodeQueries" toml:"ErrorCodeQueries" yaml:"ErrorCodeQueries"`
-	UserDeviceAPIIntegrations UserDeviceAPIIntegrationSlice `boil:"UserDeviceAPIIntegrations" json:"UserDeviceAPIIntegrations" toml:"UserDeviceAPIIntegrations" yaml:"UserDeviceAPIIntegrations"`
-	UserDeviceData            UserDeviceDatumSlice          `boil:"UserDeviceData" json:"UserDeviceData" toml:"UserDeviceData" yaml:"UserDeviceData"`
-	UserDeviceToGeofences     UserDeviceToGeofenceSlice     `boil:"UserDeviceToGeofences" json:"UserDeviceToGeofences" toml:"UserDeviceToGeofences" yaml:"UserDeviceToGeofences"`
+	BurnRequest                   *MetaTransactionRequest       `boil:"BurnRequest" json:"BurnRequest" toml:"BurnRequest" yaml:"BurnRequest"`
+	Claim                         *VerifiableCredential         `boil:"Claim" json:"Claim" toml:"Claim" yaml:"Claim"`
+	MintRequest                   *MetaTransactionRequest       `boil:"MintRequest" json:"MintRequest" toml:"MintRequest" yaml:"MintRequest"`
+	VehicleTokenAftermarketDevice *AftermarketDevice            `boil:"VehicleTokenAftermarketDevice" json:"VehicleTokenAftermarketDevice" toml:"VehicleTokenAftermarketDevice" yaml:"VehicleTokenAftermarketDevice"`
+	VehicleTokenSyntheticDevice   *SyntheticDevice              `boil:"VehicleTokenSyntheticDevice" json:"VehicleTokenSyntheticDevice" toml:"VehicleTokenSyntheticDevice" yaml:"VehicleTokenSyntheticDevice"`
+	AutopiJobs                    AutopiJobSlice                `boil:"AutopiJobs" json:"AutopiJobs" toml:"AutopiJobs" yaml:"AutopiJobs"`
+	DeviceCommandRequests         DeviceCommandRequestSlice     `boil:"DeviceCommandRequests" json:"DeviceCommandRequests" toml:"DeviceCommandRequests" yaml:"DeviceCommandRequests"`
+	ErrorCodeQueries              ErrorCodeQuerySlice           `boil:"ErrorCodeQueries" json:"ErrorCodeQueries" toml:"ErrorCodeQueries" yaml:"ErrorCodeQueries"`
+	UserDeviceAPIIntegrations     UserDeviceAPIIntegrationSlice `boil:"UserDeviceAPIIntegrations" json:"UserDeviceAPIIntegrations" toml:"UserDeviceAPIIntegrations" yaml:"UserDeviceAPIIntegrations"`
+	UserDeviceToGeofences         UserDeviceToGeofenceSlice     `boil:"UserDeviceToGeofences" json:"UserDeviceToGeofences" toml:"UserDeviceToGeofences" yaml:"UserDeviceToGeofences"`
 }
 
 // NewStruct creates a new relationship struct
@@ -178,11 +223,39 @@ func (*userDeviceR) NewStruct() *userDeviceR {
 	return &userDeviceR{}
 }
 
-func (r *userDeviceR) GetVehicleNFT() *VehicleNFT {
+func (r *userDeviceR) GetBurnRequest() *MetaTransactionRequest {
 	if r == nil {
 		return nil
 	}
-	return r.VehicleNFT
+	return r.BurnRequest
+}
+
+func (r *userDeviceR) GetClaim() *VerifiableCredential {
+	if r == nil {
+		return nil
+	}
+	return r.Claim
+}
+
+func (r *userDeviceR) GetMintRequest() *MetaTransactionRequest {
+	if r == nil {
+		return nil
+	}
+	return r.MintRequest
+}
+
+func (r *userDeviceR) GetVehicleTokenAftermarketDevice() *AftermarketDevice {
+	if r == nil {
+		return nil
+	}
+	return r.VehicleTokenAftermarketDevice
+}
+
+func (r *userDeviceR) GetVehicleTokenSyntheticDevice() *SyntheticDevice {
+	if r == nil {
+		return nil
+	}
+	return r.VehicleTokenSyntheticDevice
 }
 
 func (r *userDeviceR) GetAutopiJobs() AutopiJobSlice {
@@ -213,13 +286,6 @@ func (r *userDeviceR) GetUserDeviceAPIIntegrations() UserDeviceAPIIntegrationSli
 	return r.UserDeviceAPIIntegrations
 }
 
-func (r *userDeviceR) GetUserDeviceData() UserDeviceDatumSlice {
-	if r == nil {
-		return nil
-	}
-	return r.UserDeviceData
-}
-
 func (r *userDeviceR) GetUserDeviceToGeofences() UserDeviceToGeofenceSlice {
 	if r == nil {
 		return nil
@@ -231,9 +297,9 @@ func (r *userDeviceR) GetUserDeviceToGeofences() UserDeviceToGeofenceSlice {
 type userDeviceL struct{}
 
 var (
-	userDeviceAllColumns            = []string{"id", "user_id", "device_definition_id", "vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at"}
+	userDeviceAllColumns            = []string{"id", "user_id", "device_definition_id", "vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at", "mint_request_id", "burn_request_id", "token_id", "claim_id", "owner_address"}
 	userDeviceColumnsWithoutDefault = []string{"id", "user_id", "device_definition_id"}
-	userDeviceColumnsWithDefault    = []string{"vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at"}
+	userDeviceColumnsWithDefault    = []string{"vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at", "mint_request_id", "burn_request_id", "token_id", "claim_id", "owner_address"}
 	userDevicePrimaryKeyColumns     = []string{"id"}
 	userDeviceGeneratedColumns      = []string{}
 )
@@ -543,15 +609,59 @@ func (q userDeviceQuery) Exists(ctx context.Context, exec boil.ContextExecutor) 
 	return count > 0, nil
 }
 
-// VehicleNFT pointed to by the foreign key.
-func (o *UserDevice) VehicleNFT(mods ...qm.QueryMod) vehicleNFTQuery {
+// BurnRequest pointed to by the foreign key.
+func (o *UserDevice) BurnRequest(mods ...qm.QueryMod) metaTransactionRequestQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"user_device_id\" = ?", o.ID),
+		qm.Where("\"id\" = ?", o.BurnRequestID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	return VehicleNFTS(queryMods...)
+	return MetaTransactionRequests(queryMods...)
+}
+
+// Claim pointed to by the foreign key.
+func (o *UserDevice) Claim(mods ...qm.QueryMod) verifiableCredentialQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"claim_id\" = ?", o.ClaimID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	return VerifiableCredentials(queryMods...)
+}
+
+// MintRequest pointed to by the foreign key.
+func (o *UserDevice) MintRequest(mods ...qm.QueryMod) metaTransactionRequestQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.MintRequestID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	return MetaTransactionRequests(queryMods...)
+}
+
+// VehicleTokenAftermarketDevice pointed to by the foreign key.
+func (o *UserDevice) VehicleTokenAftermarketDevice(mods ...qm.QueryMod) aftermarketDeviceQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"vehicle_token_id\" = ?", o.TokenID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	return AftermarketDevices(queryMods...)
+}
+
+// VehicleTokenSyntheticDevice pointed to by the foreign key.
+func (o *UserDevice) VehicleTokenSyntheticDevice(mods ...qm.QueryMod) syntheticDeviceQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"vehicle_token_id\" = ?", o.TokenID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	return SyntheticDevices(queryMods...)
 }
 
 // AutopiJobs retrieves all the autopi_job's AutopiJobs with an executor.
@@ -610,20 +720,6 @@ func (o *UserDevice) UserDeviceAPIIntegrations(mods ...qm.QueryMod) userDeviceAP
 	return UserDeviceAPIIntegrations(queryMods...)
 }
 
-// UserDeviceData retrieves all the user_device_datum's UserDeviceData with an executor.
-func (o *UserDevice) UserDeviceData(mods ...qm.QueryMod) userDeviceDatumQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"devices_api\".\"user_device_data\".\"user_device_id\"=?", o.ID),
-	)
-
-	return UserDeviceData(queryMods...)
-}
-
 // UserDeviceToGeofences retrieves all the user_device_to_geofence's UserDeviceToGeofences with an executor.
 func (o *UserDevice) UserDeviceToGeofences(mods ...qm.QueryMod) userDeviceToGeofenceQuery {
 	var queryMods []qm.QueryMod
@@ -638,9 +734,9 @@ func (o *UserDevice) UserDeviceToGeofences(mods ...qm.QueryMod) userDeviceToGeof
 	return UserDeviceToGeofences(queryMods...)
 }
 
-// LoadVehicleNFT allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-1 relationship.
-func (userDeviceL) LoadVehicleNFT(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUserDevice interface{}, mods queries.Applicator) error {
+// LoadBurnRequest allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (userDeviceL) LoadBurnRequest(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUserDevice interface{}, mods queries.Applicator) error {
 	var slice []*UserDevice
 	var object *UserDevice
 
@@ -671,14 +767,20 @@ func (userDeviceL) LoadVehicleNFT(ctx context.Context, e boil.ContextExecutor, s
 		if object.R == nil {
 			object.R = &userDeviceR{}
 		}
-		args[object.ID] = struct{}{}
+		if !queries.IsNil(object.BurnRequestID) {
+			args[object.BurnRequestID] = struct{}{}
+		}
+
 	} else {
 		for _, obj := range slice {
 			if obj.R == nil {
 				obj.R = &userDeviceR{}
 			}
 
-			args[obj.ID] = struct{}{}
+			if !queries.IsNil(obj.BurnRequestID) {
+				args[obj.BurnRequestID] = struct{}{}
+			}
+
 		}
 	}
 
@@ -694,8 +796,8 @@ func (userDeviceL) LoadVehicleNFT(ctx context.Context, e boil.ContextExecutor, s
 	}
 
 	query := NewQuery(
-		qm.From(`devices_api.vehicle_nfts`),
-		qm.WhereIn(`devices_api.vehicle_nfts.user_device_id in ?`, argsSlice...),
+		qm.From(`devices_api.meta_transaction_requests`),
+		qm.WhereIn(`devices_api.meta_transaction_requests.id in ?`, argsSlice...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -703,22 +805,22 @@ func (userDeviceL) LoadVehicleNFT(ctx context.Context, e boil.ContextExecutor, s
 
 	results, err := query.QueryContext(ctx, e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load VehicleNFT")
+		return errors.Wrap(err, "failed to eager load MetaTransactionRequest")
 	}
 
-	var resultSlice []*VehicleNFT
+	var resultSlice []*MetaTransactionRequest
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice VehicleNFT")
+		return errors.Wrap(err, "failed to bind eager loaded slice MetaTransactionRequest")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for vehicle_nfts")
+		return errors.Wrap(err, "failed to close results of eager load for meta_transaction_requests")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for vehicle_nfts")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for meta_transaction_requests")
 	}
 
-	if len(vehicleNFTAfterSelectHooks) != 0 {
+	if len(metaTransactionRequestAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
 				return err
@@ -732,21 +834,504 @@ func (userDeviceL) LoadVehicleNFT(ctx context.Context, e boil.ContextExecutor, s
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.VehicleNFT = foreign
+		object.R.BurnRequest = foreign
 		if foreign.R == nil {
-			foreign.R = &vehicleNFTR{}
+			foreign.R = &metaTransactionRequestR{}
 		}
-		foreign.R.UserDevice = object
+		foreign.R.BurnRequestUserDevice = object
+		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.ID, foreign.UserDeviceID) {
-				local.R.VehicleNFT = foreign
+			if queries.Equal(local.BurnRequestID, foreign.ID) {
+				local.R.BurnRequest = foreign
 				if foreign.R == nil {
-					foreign.R = &vehicleNFTR{}
+					foreign.R = &metaTransactionRequestR{}
 				}
-				foreign.R.UserDevice = local
+				foreign.R.BurnRequestUserDevice = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadClaim allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (userDeviceL) LoadClaim(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUserDevice interface{}, mods queries.Applicator) error {
+	var slice []*UserDevice
+	var object *UserDevice
+
+	if singular {
+		var ok bool
+		object, ok = maybeUserDevice.(*UserDevice)
+		if !ok {
+			object = new(UserDevice)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeUserDevice)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeUserDevice))
+			}
+		}
+	} else {
+		s, ok := maybeUserDevice.(*[]*UserDevice)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeUserDevice)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeUserDevice))
+			}
+		}
+	}
+
+	args := make(map[interface{}]struct{})
+	if singular {
+		if object.R == nil {
+			object.R = &userDeviceR{}
+		}
+		if !queries.IsNil(object.ClaimID) {
+			args[object.ClaimID] = struct{}{}
+		}
+
+	} else {
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userDeviceR{}
+			}
+
+			if !queries.IsNil(obj.ClaimID) {
+				args[obj.ClaimID] = struct{}{}
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	argsSlice := make([]interface{}, len(args))
+	i := 0
+	for arg := range args {
+		argsSlice[i] = arg
+		i++
+	}
+
+	query := NewQuery(
+		qm.From(`devices_api.verifiable_credentials`),
+		qm.WhereIn(`devices_api.verifiable_credentials.claim_id in ?`, argsSlice...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load VerifiableCredential")
+	}
+
+	var resultSlice []*VerifiableCredential
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice VerifiableCredential")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for verifiable_credentials")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for verifiable_credentials")
+	}
+
+	if len(verifiableCredentialAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Claim = foreign
+		if foreign.R == nil {
+			foreign.R = &verifiableCredentialR{}
+		}
+		foreign.R.ClaimUserDevice = object
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.ClaimID, foreign.ClaimID) {
+				local.R.Claim = foreign
+				if foreign.R == nil {
+					foreign.R = &verifiableCredentialR{}
+				}
+				foreign.R.ClaimUserDevice = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadMintRequest allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (userDeviceL) LoadMintRequest(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUserDevice interface{}, mods queries.Applicator) error {
+	var slice []*UserDevice
+	var object *UserDevice
+
+	if singular {
+		var ok bool
+		object, ok = maybeUserDevice.(*UserDevice)
+		if !ok {
+			object = new(UserDevice)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeUserDevice)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeUserDevice))
+			}
+		}
+	} else {
+		s, ok := maybeUserDevice.(*[]*UserDevice)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeUserDevice)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeUserDevice))
+			}
+		}
+	}
+
+	args := make(map[interface{}]struct{})
+	if singular {
+		if object.R == nil {
+			object.R = &userDeviceR{}
+		}
+		if !queries.IsNil(object.MintRequestID) {
+			args[object.MintRequestID] = struct{}{}
+		}
+
+	} else {
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userDeviceR{}
+			}
+
+			if !queries.IsNil(obj.MintRequestID) {
+				args[obj.MintRequestID] = struct{}{}
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	argsSlice := make([]interface{}, len(args))
+	i := 0
+	for arg := range args {
+		argsSlice[i] = arg
+		i++
+	}
+
+	query := NewQuery(
+		qm.From(`devices_api.meta_transaction_requests`),
+		qm.WhereIn(`devices_api.meta_transaction_requests.id in ?`, argsSlice...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load MetaTransactionRequest")
+	}
+
+	var resultSlice []*MetaTransactionRequest
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice MetaTransactionRequest")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for meta_transaction_requests")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for meta_transaction_requests")
+	}
+
+	if len(metaTransactionRequestAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.MintRequest = foreign
+		if foreign.R == nil {
+			foreign.R = &metaTransactionRequestR{}
+		}
+		foreign.R.MintRequestUserDevice = object
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.MintRequestID, foreign.ID) {
+				local.R.MintRequest = foreign
+				if foreign.R == nil {
+					foreign.R = &metaTransactionRequestR{}
+				}
+				foreign.R.MintRequestUserDevice = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadVehicleTokenAftermarketDevice allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (userDeviceL) LoadVehicleTokenAftermarketDevice(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUserDevice interface{}, mods queries.Applicator) error {
+	var slice []*UserDevice
+	var object *UserDevice
+
+	if singular {
+		var ok bool
+		object, ok = maybeUserDevice.(*UserDevice)
+		if !ok {
+			object = new(UserDevice)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeUserDevice)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeUserDevice))
+			}
+		}
+	} else {
+		s, ok := maybeUserDevice.(*[]*UserDevice)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeUserDevice)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeUserDevice))
+			}
+		}
+	}
+
+	args := make(map[interface{}]struct{})
+	if singular {
+		if object.R == nil {
+			object.R = &userDeviceR{}
+		}
+		args[object.TokenID] = struct{}{}
+	} else {
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userDeviceR{}
+			}
+
+			args[obj.TokenID] = struct{}{}
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	argsSlice := make([]interface{}, len(args))
+	i := 0
+	for arg := range args {
+		argsSlice[i] = arg
+		i++
+	}
+
+	query := NewQuery(
+		qm.From(`devices_api.aftermarket_devices`),
+		qm.WhereIn(`devices_api.aftermarket_devices.vehicle_token_id in ?`, argsSlice...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load AftermarketDevice")
+	}
+
+	var resultSlice []*AftermarketDevice
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice AftermarketDevice")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for aftermarket_devices")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for aftermarket_devices")
+	}
+
+	if len(aftermarketDeviceAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.VehicleTokenAftermarketDevice = foreign
+		if foreign.R == nil {
+			foreign.R = &aftermarketDeviceR{}
+		}
+		foreign.R.VehicleToken = object
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.TokenID, foreign.VehicleTokenID) {
+				local.R.VehicleTokenAftermarketDevice = foreign
+				if foreign.R == nil {
+					foreign.R = &aftermarketDeviceR{}
+				}
+				foreign.R.VehicleToken = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadVehicleTokenSyntheticDevice allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (userDeviceL) LoadVehicleTokenSyntheticDevice(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUserDevice interface{}, mods queries.Applicator) error {
+	var slice []*UserDevice
+	var object *UserDevice
+
+	if singular {
+		var ok bool
+		object, ok = maybeUserDevice.(*UserDevice)
+		if !ok {
+			object = new(UserDevice)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeUserDevice)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeUserDevice))
+			}
+		}
+	} else {
+		s, ok := maybeUserDevice.(*[]*UserDevice)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeUserDevice)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeUserDevice))
+			}
+		}
+	}
+
+	args := make(map[interface{}]struct{})
+	if singular {
+		if object.R == nil {
+			object.R = &userDeviceR{}
+		}
+		args[object.TokenID] = struct{}{}
+	} else {
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userDeviceR{}
+			}
+
+			args[obj.TokenID] = struct{}{}
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	argsSlice := make([]interface{}, len(args))
+	i := 0
+	for arg := range args {
+		argsSlice[i] = arg
+		i++
+	}
+
+	query := NewQuery(
+		qm.From(`devices_api.synthetic_devices`),
+		qm.WhereIn(`devices_api.synthetic_devices.vehicle_token_id in ?`, argsSlice...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load SyntheticDevice")
+	}
+
+	var resultSlice []*SyntheticDevice
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice SyntheticDevice")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for synthetic_devices")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for synthetic_devices")
+	}
+
+	if len(syntheticDeviceAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.VehicleTokenSyntheticDevice = foreign
+		if foreign.R == nil {
+			foreign.R = &syntheticDeviceR{}
+		}
+		foreign.R.VehicleToken = object
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.TokenID, foreign.VehicleTokenID) {
+				local.R.VehicleTokenSyntheticDevice = foreign
+				if foreign.R == nil {
+					foreign.R = &syntheticDeviceR{}
+				}
+				foreign.R.VehicleToken = local
 				break
 			}
 		}
@@ -1207,119 +1792,6 @@ func (userDeviceL) LoadUserDeviceAPIIntegrations(ctx context.Context, e boil.Con
 	return nil
 }
 
-// LoadUserDeviceData allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userDeviceL) LoadUserDeviceData(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUserDevice interface{}, mods queries.Applicator) error {
-	var slice []*UserDevice
-	var object *UserDevice
-
-	if singular {
-		var ok bool
-		object, ok = maybeUserDevice.(*UserDevice)
-		if !ok {
-			object = new(UserDevice)
-			ok = queries.SetFromEmbeddedStruct(&object, &maybeUserDevice)
-			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeUserDevice))
-			}
-		}
-	} else {
-		s, ok := maybeUserDevice.(*[]*UserDevice)
-		if ok {
-			slice = *s
-		} else {
-			ok = queries.SetFromEmbeddedStruct(&slice, maybeUserDevice)
-			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeUserDevice))
-			}
-		}
-	}
-
-	args := make(map[interface{}]struct{})
-	if singular {
-		if object.R == nil {
-			object.R = &userDeviceR{}
-		}
-		args[object.ID] = struct{}{}
-	} else {
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &userDeviceR{}
-			}
-			args[obj.ID] = struct{}{}
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	argsSlice := make([]interface{}, len(args))
-	i := 0
-	for arg := range args {
-		argsSlice[i] = arg
-		i++
-	}
-
-	query := NewQuery(
-		qm.From(`devices_api.user_device_data`),
-		qm.WhereIn(`devices_api.user_device_data.user_device_id in ?`, argsSlice...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.QueryContext(ctx, e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load user_device_data")
-	}
-
-	var resultSlice []*UserDeviceDatum
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice user_device_data")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on user_device_data")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for user_device_data")
-	}
-
-	if len(userDeviceDatumAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.UserDeviceData = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &userDeviceDatumR{}
-			}
-			foreign.R.UserDevice = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.UserDeviceID {
-				local.R.UserDeviceData = append(local.R.UserDeviceData, foreign)
-				if foreign.R == nil {
-					foreign.R = &userDeviceDatumR{}
-				}
-				foreign.R.UserDevice = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // LoadUserDeviceToGeofences allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (userDeviceL) LoadUserDeviceToGeofences(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUserDevice interface{}, mods queries.Applicator) error {
@@ -1433,25 +1905,232 @@ func (userDeviceL) LoadUserDeviceToGeofences(ctx context.Context, e boil.Context
 	return nil
 }
 
-// SetVehicleNFT of the userDevice to the related item.
-// Sets o.R.VehicleNFT to related.
-// Adds o to related.R.UserDevice.
-func (o *UserDevice) SetVehicleNFT(ctx context.Context, exec boil.ContextExecutor, insert bool, related *VehicleNFT) error {
+// SetBurnRequest of the userDevice to the related item.
+// Sets o.R.BurnRequest to related.
+// Adds o to related.R.BurnRequestUserDevice.
+func (o *UserDevice) SetBurnRequest(ctx context.Context, exec boil.ContextExecutor, insert bool, related *MetaTransactionRequest) error {
+	var err error
+	if insert {
+		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"devices_api\".\"user_devices\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"burn_request_id"}),
+		strmangle.WhereClause("\"", "\"", 2, userDevicePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.IsDebug(ctx) {
+		writer := boil.DebugWriterFrom(ctx)
+		fmt.Fprintln(writer, updateQuery)
+		fmt.Fprintln(writer, values)
+	}
+	if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.BurnRequestID, related.ID)
+	if o.R == nil {
+		o.R = &userDeviceR{
+			BurnRequest: related,
+		}
+	} else {
+		o.R.BurnRequest = related
+	}
+
+	if related.R == nil {
+		related.R = &metaTransactionRequestR{
+			BurnRequestUserDevice: o,
+		}
+	} else {
+		related.R.BurnRequestUserDevice = o
+	}
+
+	return nil
+}
+
+// RemoveBurnRequest relationship.
+// Sets o.R.BurnRequest to nil.
+// Removes o from all passed in related items' relationships struct.
+func (o *UserDevice) RemoveBurnRequest(ctx context.Context, exec boil.ContextExecutor, related *MetaTransactionRequest) error {
+	var err error
+
+	queries.SetScanner(&o.BurnRequestID, nil)
+	if _, err = o.Update(ctx, exec, boil.Whitelist("burn_request_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.BurnRequest = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	related.R.BurnRequestUserDevice = nil
+	return nil
+}
+
+// SetClaim of the userDevice to the related item.
+// Sets o.R.Claim to related.
+// Adds o to related.R.ClaimUserDevice.
+func (o *UserDevice) SetClaim(ctx context.Context, exec boil.ContextExecutor, insert bool, related *VerifiableCredential) error {
+	var err error
+	if insert {
+		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"devices_api\".\"user_devices\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"claim_id"}),
+		strmangle.WhereClause("\"", "\"", 2, userDevicePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ClaimID, o.ID}
+
+	if boil.IsDebug(ctx) {
+		writer := boil.DebugWriterFrom(ctx)
+		fmt.Fprintln(writer, updateQuery)
+		fmt.Fprintln(writer, values)
+	}
+	if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.ClaimID, related.ClaimID)
+	if o.R == nil {
+		o.R = &userDeviceR{
+			Claim: related,
+		}
+	} else {
+		o.R.Claim = related
+	}
+
+	if related.R == nil {
+		related.R = &verifiableCredentialR{
+			ClaimUserDevice: o,
+		}
+	} else {
+		related.R.ClaimUserDevice = o
+	}
+
+	return nil
+}
+
+// RemoveClaim relationship.
+// Sets o.R.Claim to nil.
+// Removes o from all passed in related items' relationships struct.
+func (o *UserDevice) RemoveClaim(ctx context.Context, exec boil.ContextExecutor, related *VerifiableCredential) error {
+	var err error
+
+	queries.SetScanner(&o.ClaimID, nil)
+	if _, err = o.Update(ctx, exec, boil.Whitelist("claim_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Claim = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	related.R.ClaimUserDevice = nil
+	return nil
+}
+
+// SetMintRequest of the userDevice to the related item.
+// Sets o.R.MintRequest to related.
+// Adds o to related.R.MintRequestUserDevice.
+func (o *UserDevice) SetMintRequest(ctx context.Context, exec boil.ContextExecutor, insert bool, related *MetaTransactionRequest) error {
+	var err error
+	if insert {
+		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"devices_api\".\"user_devices\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"mint_request_id"}),
+		strmangle.WhereClause("\"", "\"", 2, userDevicePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.IsDebug(ctx) {
+		writer := boil.DebugWriterFrom(ctx)
+		fmt.Fprintln(writer, updateQuery)
+		fmt.Fprintln(writer, values)
+	}
+	if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.MintRequestID, related.ID)
+	if o.R == nil {
+		o.R = &userDeviceR{
+			MintRequest: related,
+		}
+	} else {
+		o.R.MintRequest = related
+	}
+
+	if related.R == nil {
+		related.R = &metaTransactionRequestR{
+			MintRequestUserDevice: o,
+		}
+	} else {
+		related.R.MintRequestUserDevice = o
+	}
+
+	return nil
+}
+
+// RemoveMintRequest relationship.
+// Sets o.R.MintRequest to nil.
+// Removes o from all passed in related items' relationships struct.
+func (o *UserDevice) RemoveMintRequest(ctx context.Context, exec boil.ContextExecutor, related *MetaTransactionRequest) error {
+	var err error
+
+	queries.SetScanner(&o.MintRequestID, nil)
+	if _, err = o.Update(ctx, exec, boil.Whitelist("mint_request_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.MintRequest = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	related.R.MintRequestUserDevice = nil
+	return nil
+}
+
+// SetVehicleTokenAftermarketDevice of the userDevice to the related item.
+// Sets o.R.VehicleTokenAftermarketDevice to related.
+// Adds o to related.R.VehicleToken.
+func (o *UserDevice) SetVehicleTokenAftermarketDevice(ctx context.Context, exec boil.ContextExecutor, insert bool, related *AftermarketDevice) error {
 	var err error
 
 	if insert {
-		queries.Assign(&related.UserDeviceID, o.ID)
+		queries.Assign(&related.VehicleTokenID, o.TokenID)
 
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
 			return errors.Wrap(err, "failed to insert into foreign table")
 		}
 	} else {
 		updateQuery := fmt.Sprintf(
-			"UPDATE \"devices_api\".\"vehicle_nfts\" SET %s WHERE %s",
-			strmangle.SetParamNames("\"", "\"", 1, []string{"user_device_id"}),
-			strmangle.WhereClause("\"", "\"", 2, vehicleNFTPrimaryKeyColumns),
+			"UPDATE \"devices_api\".\"aftermarket_devices\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 1, []string{"vehicle_token_id"}),
+			strmangle.WhereClause("\"", "\"", 2, aftermarketDevicePrimaryKeyColumns),
 		)
-		values := []interface{}{o.ID, related.MintRequestID}
+		values := []interface{}{o.TokenID, related.EthereumAddress}
 
 		if boil.IsDebug(ctx) {
 			writer := boil.DebugWriterFrom(ctx)
@@ -1462,47 +2141,121 @@ func (o *UserDevice) SetVehicleNFT(ctx context.Context, exec boil.ContextExecuto
 			return errors.Wrap(err, "failed to update foreign table")
 		}
 
-		queries.Assign(&related.UserDeviceID, o.ID)
+		queries.Assign(&related.VehicleTokenID, o.TokenID)
 	}
 
 	if o.R == nil {
 		o.R = &userDeviceR{
-			VehicleNFT: related,
+			VehicleTokenAftermarketDevice: related,
 		}
 	} else {
-		o.R.VehicleNFT = related
+		o.R.VehicleTokenAftermarketDevice = related
 	}
 
 	if related.R == nil {
-		related.R = &vehicleNFTR{
-			UserDevice: o,
+		related.R = &aftermarketDeviceR{
+			VehicleToken: o,
 		}
 	} else {
-		related.R.UserDevice = o
+		related.R.VehicleToken = o
 	}
 	return nil
 }
 
-// RemoveVehicleNFT relationship.
-// Sets o.R.VehicleNFT to nil.
+// RemoveVehicleTokenAftermarketDevice relationship.
+// Sets o.R.VehicleTokenAftermarketDevice to nil.
 // Removes o from all passed in related items' relationships struct.
-func (o *UserDevice) RemoveVehicleNFT(ctx context.Context, exec boil.ContextExecutor, related *VehicleNFT) error {
+func (o *UserDevice) RemoveVehicleTokenAftermarketDevice(ctx context.Context, exec boil.ContextExecutor, related *AftermarketDevice) error {
 	var err error
 
-	queries.SetScanner(&related.UserDeviceID, nil)
-	if _, err = related.Update(ctx, exec, boil.Whitelist("user_device_id")); err != nil {
+	queries.SetScanner(&related.VehicleTokenID, nil)
+	if _, err = related.Update(ctx, exec, boil.Whitelist("vehicle_token_id")); err != nil {
 		return errors.Wrap(err, "failed to update local table")
 	}
 
 	if o.R != nil {
-		o.R.VehicleNFT = nil
+		o.R.VehicleTokenAftermarketDevice = nil
 	}
 
 	if related == nil || related.R == nil {
 		return nil
 	}
 
-	related.R.UserDevice = nil
+	related.R.VehicleToken = nil
+
+	return nil
+}
+
+// SetVehicleTokenSyntheticDevice of the userDevice to the related item.
+// Sets o.R.VehicleTokenSyntheticDevice to related.
+// Adds o to related.R.VehicleToken.
+func (o *UserDevice) SetVehicleTokenSyntheticDevice(ctx context.Context, exec boil.ContextExecutor, insert bool, related *SyntheticDevice) error {
+	var err error
+
+	if insert {
+		queries.Assign(&related.VehicleTokenID, o.TokenID)
+
+		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	} else {
+		updateQuery := fmt.Sprintf(
+			"UPDATE \"devices_api\".\"synthetic_devices\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 1, []string{"vehicle_token_id"}),
+			strmangle.WhereClause("\"", "\"", 2, syntheticDevicePrimaryKeyColumns),
+		)
+		values := []interface{}{o.TokenID, related.MintRequestID}
+
+		if boil.IsDebug(ctx) {
+			writer := boil.DebugWriterFrom(ctx)
+			fmt.Fprintln(writer, updateQuery)
+			fmt.Fprintln(writer, values)
+		}
+		if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+			return errors.Wrap(err, "failed to update foreign table")
+		}
+
+		queries.Assign(&related.VehicleTokenID, o.TokenID)
+	}
+
+	if o.R == nil {
+		o.R = &userDeviceR{
+			VehicleTokenSyntheticDevice: related,
+		}
+	} else {
+		o.R.VehicleTokenSyntheticDevice = related
+	}
+
+	if related.R == nil {
+		related.R = &syntheticDeviceR{
+			VehicleToken: o,
+		}
+	} else {
+		related.R.VehicleToken = o
+	}
+	return nil
+}
+
+// RemoveVehicleTokenSyntheticDevice relationship.
+// Sets o.R.VehicleTokenSyntheticDevice to nil.
+// Removes o from all passed in related items' relationships struct.
+func (o *UserDevice) RemoveVehicleTokenSyntheticDevice(ctx context.Context, exec boil.ContextExecutor, related *SyntheticDevice) error {
+	var err error
+
+	queries.SetScanner(&related.VehicleTokenID, nil)
+	if _, err = related.Update(ctx, exec, boil.Whitelist("vehicle_token_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.VehicleTokenSyntheticDevice = nil
+	}
+
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	related.R.VehicleToken = nil
 
 	return nil
 }
@@ -1784,59 +2537,6 @@ func (o *UserDevice) AddUserDeviceAPIIntegrations(ctx context.Context, exec boil
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &userDeviceAPIIntegrationR{
-				UserDevice: o,
-			}
-		} else {
-			rel.R.UserDevice = o
-		}
-	}
-	return nil
-}
-
-// AddUserDeviceData adds the given related objects to the existing relationships
-// of the user_device, optionally inserting them as new records.
-// Appends related to o.R.UserDeviceData.
-// Sets related.R.UserDevice appropriately.
-func (o *UserDevice) AddUserDeviceData(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*UserDeviceDatum) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.UserDeviceID = o.ID
-			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"devices_api\".\"user_device_data\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"user_device_id"}),
-				strmangle.WhereClause("\"", "\"", 2, userDeviceDatumPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.UserDeviceID, rel.IntegrationID}
-
-			if boil.IsDebug(ctx) {
-				writer := boil.DebugWriterFrom(ctx)
-				fmt.Fprintln(writer, updateQuery)
-				fmt.Fprintln(writer, values)
-			}
-			if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.UserDeviceID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &userDeviceR{
-			UserDeviceData: related,
-		}
-	} else {
-		o.R.UserDeviceData = append(o.R.UserDeviceData, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &userDeviceDatumR{
 				UserDevice: o,
 			}
 		} else {
