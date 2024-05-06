@@ -1280,7 +1280,7 @@ func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.C
 	}
 
 	if !ad.VehicleTokenID.IsZero() {
-		fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Aftermarket device already paired to vehicle %d.", ad.VehicleTokenID))
+		return nil, nil, fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Aftermarket device already paired to vehicle %d.", ad.VehicleTokenID))
 	}
 
 	if ad.R.PairRequest != nil && ad.R.PairRequest.Status != models.MetaTransactionRequestStatusFailed {
