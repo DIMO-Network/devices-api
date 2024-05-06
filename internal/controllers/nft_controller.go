@@ -671,7 +671,6 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 		qm.Load(models.UserDeviceRels.BurnRequest),
 		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
 		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
-		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 	).One(c.Context(), tx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
