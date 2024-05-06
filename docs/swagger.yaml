@@ -293,6 +293,7 @@ definitions:
         - Submitted
         - Mined
         - Confirmed
+        - Failed
         example: Mined
         type: string
       updatedAt:
@@ -740,6 +741,7 @@ definitions:
         - Submitted
         - Mined
         - Confirmed
+        - Failed
         example: Confirmed
         type: string
       tokenId:
@@ -871,6 +873,7 @@ definitions:
         - Submitted
         - Mined
         - Confirmed
+        - Failed
         example: Confirmed
         type: string
       tokenId:

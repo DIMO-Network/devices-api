@@ -17,7 +17,6 @@ var TableNames = struct {
 	UserDeviceAPIIntegrations string
 	UserDeviceToGeofence      string
 	UserDevices               string
-	VehicleNFTS               string
 	VerifiableCredentials     string
 }{
 	AftermarketDevices:        "aftermarket_devices",
@@ -33,6 +32,5 @@ var TableNames = struct {
 	UserDeviceAPIIntegrations: "user_device_api_integrations",
 	UserDeviceToGeofence:      "user_device_to_geofence",
 	UserDevices:               "user_devices",
-	VehicleNFTS:               "vehicle_nfts",
 	VerifiableCredentials:     "verifiable_credentials",
 }

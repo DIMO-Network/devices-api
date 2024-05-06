@@ -97,7 +97,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_HardwareTemplate_Success() {
 	_, apAddr, _ := test.GenerateWallet()
 
 	autoPIUnit := test.SetupCreateMintedAftermarketDevice(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
-	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
+	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(deviceDefinitionID, "Ford", "F150", 2020, integration)
@@ -149,7 +149,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_HardwareTemplate_Success() {
 	require.NoError(s.T(), err)
 	assert.Equal(s.T(), testUserID, ud.UserID)
 	assert.Equal(s.T(), unitID, autoPIUnit.Serial)
-	assert.Equal(s.T(), vin, vehicleNFT.Vin)
+	assert.Equal(s.T(), vin, vehicleNFT.VinIdentifier.String)
 	udai, err := models.UserDeviceAPIIntegrations(models.UserDeviceAPIIntegrationWhere.Serial.EQ(null.StringFrom(autoPIUnit.Serial))).
 		One(s.ctx, s.pdb.DBS().Reader)
 	require.NoError(s.T(), err)
@@ -172,7 +172,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_Make_HardwareTemplate_Success() {
 	_, apAddr, _ := test.GenerateWallet()
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
 	autoPIUnit := test.SetupCreateMintedAftermarketDevice(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
-	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
+	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(deviceDefinitionID, "Ford", "F150", 2020, integration)
@@ -224,7 +224,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_Make_HardwareTemplate_Success() {
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), testUserID, ud.UserID)
 	assert.Equal(s.T(), unitID, autoPIUnit.Serial)
-	assert.Equal(s.T(), vin, vehicleNFT.Vin)
+	assert.Equal(s.T(), vin, vehicleNFT.VinIdentifier.String)
 
 }
 
@@ -245,7 +245,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_DeviceStyle_HardwareTemplate_Su
 
 	_, apAddr, _ := test.GenerateWallet()
 	autoPIUnit := test.SetupCreateMintedAftermarketDevice(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
-	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
+	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(deviceDefinitionID, "Ford", "F150", 2020, integration)
@@ -306,7 +306,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_DD_DeviceStyle_HardwareTemplate_Su
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), testUserID, ud.UserID)
 	assert.Equal(s.T(), unitID, autoPIUnit.Serial)
-	assert.Equal(s.T(), vin, vehicleNFT.Vin)
+	assert.Equal(s.T(), vin, vehicleNFT.VinIdentifier.String)
 
 }
 
@@ -325,7 +325,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_UserDeviceStyle_HardwareTemplate_S
 	_, apAddr, _ := test.GenerateWallet()
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, deviceDefinitionID, nil, "", s.pdb)
 	autoPIUnit := test.SetupCreateMintedAftermarketDevice(s.T(), testUserID, unitID, autoPiTokenID, *apAddr, &ud.ID, s.pdb)
-	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud.ID, vin, vehicleTokenID, null.Bytes{}, s.pdb)
+	vehicleNFT := test.SetupCreateVehicleNFT(s.T(), ud, vehicleTokenID, null.Bytes{}, s.pdb)
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(deviceDefinitionID, "Ford", "F150", 2020, integration)
@@ -377,7 +377,7 @@ func (s *IntegrationTestSuite) Test_Pair_With_UserDeviceStyle_HardwareTemplate_S
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), testUserID, ud.UserID)
 	assert.Equal(s.T(), unitID, autoPIUnit.Serial)
-	assert.Equal(s.T(), vin, vehicleNFT.Vin)
+	assert.Equal(s.T(), vin, vehicleNFT.VinIdentifier.String)
 
 }
 

@@ -263,7 +263,7 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	device, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(c.Context(), tx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -276,15 +276,15 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 		return fiber.NewError(fiber.StatusNotFound, "Device does not have that integration.")
 	}
 
-	if device.R.VehicleNFT != nil && device.R.VehicleNFT.R.VehicleTokenSyntheticDevice != nil {
-		sd := device.R.VehicleNFT.R.VehicleTokenSyntheticDevice
+	if device.R.VehicleTokenSyntheticDevice != nil {
+		sd := device.R.VehicleTokenSyntheticDevice
 
 		integr, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
 		if err != nil {
 			return err
 		}
 
-		integrTokenID, _ := device.R.VehicleNFT.R.VehicleTokenSyntheticDevice.IntegrationTokenID.Uint64()
+		integrTokenID, _ := device.R.VehicleTokenSyntheticDevice.IntegrationTokenID.Uint64()
 		if integr.TokenId == integrTokenID {
 			if sd.BurnRequestID.Valid {
 				return fiber.NewError(fiber.StatusConflict, "Synthetic device burn in progress.")
@@ -1235,20 +1235,18 @@ func (udc *UserDevicesController) PostAftermarketDevicePair(c *fiber.Ctx) error 
 	return client.PairAftermarketDeviceSignSameOwner(requestID, apToken, vehicleToken, vehicleOwnerSig)
 }
 
-func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.ContextExecutor, userDeviceID, serial string) (*models.VehicleNFT, *models.AftermarketDevice, error) {
+func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.ContextExecutor, userDeviceID, serial string) (*models.UserDevice, *models.AftermarketDevice, error) {
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAftermarketDevice)),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
 	).One(ctx, exec)
 	if err != nil {
 		// Access middleware will catch "not found".
 		return nil, nil, err
 	}
 
-	vnft := ud.R.VehicleNFT
-
 	// Vehicle must be minted.
-	if vnft == nil || vnft.TokenID.IsZero() {
+	if ud.TokenID.IsZero() {
 		return nil, nil, fiber.NewError(fiber.StatusConflict, "Vehicle not yet minted.")
 	}
 
@@ -1274,7 +1272,7 @@ func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.C
 	}
 
 	// TODO(elffjs): It's difficult to tell if the vehicle is in the process of being paired.
-	if vad := ud.R.VehicleNFT.R.VehicleTokenAftermarketDevice; vad != nil {
+	if vad := ud.R.VehicleTokenAftermarketDevice; vad != nil {
 		if vad.TokenID.Cmp(vad.TokenID.Big) == 0 {
 			return nil, nil, fiber.NewError(fiber.StatusConflict, "Specified vehicle and aftermarket device are already paired.")
 		}
@@ -1288,13 +1286,13 @@ func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.C
 		return nil, nil, fiber.NewError(fiber.StatusConflict, "Aftermarket device already in the pairing process.")
 	}
 
-	return vnft, ad, nil
+	return ud, ad, nil
 }
 
-func (udc *UserDevicesController) checkUnpairable(ctx context.Context, exec boil.ContextExecutor, userDeviceID string) (*models.VehicleNFT, *models.AftermarketDevice, error) {
+func (udc *UserDevicesController) checkUnpairable(ctx context.Context, exec boil.ContextExecutor, userDeviceID string) (*models.UserDevice, *models.AftermarketDevice, error) {
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAftermarketDevice)),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
 	).One(ctx, exec)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1303,23 +1301,21 @@ func (udc *UserDevicesController) checkUnpairable(ctx context.Context, exec boil
 		return nil, nil, err
 	}
 
-	vnft := ud.R.VehicleNFT
-
-	if vnft == nil || vnft.TokenID.IsZero() {
+	if ud.TokenID.IsZero() {
 		return nil, nil, fiber.NewError(fiber.StatusConflict, "Vehicle not yet minted.")
 	}
 
-	if vnft.R.VehicleTokenAftermarketDevice == nil {
+	if ud.R.VehicleTokenAftermarketDevice == nil {
 		return nil, nil, fiber.NewError(fiber.StatusConflict, "Vehicle not paired with an aftermarket device.")
 	}
 
-	ad := vnft.R.VehicleTokenAftermarketDevice
+	ad := ud.R.VehicleTokenAftermarketDevice
 
 	if ad.UnpairRequestID.Valid {
 		return nil, nil, fiber.NewError(fiber.StatusConflict, "Unpairing already in progress.")
 	}
 
-	return vnft, ad, nil
+	return ud, ad, nil
 }
 
 // CloudRepairAutoPi godoc
@@ -1337,7 +1333,7 @@ func (udc *UserDevicesController) CloudRepairAutoPi(c *fiber.Ctx) error {
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAftermarketDevice)),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1347,16 +1343,16 @@ func (udc *UserDevicesController) CloudRepairAutoPi(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
-	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
+	if ud.TokenID.IsZero() {
 		return fiber.NewError(fiber.StatusConflict, "Vehicle not yet minted.")
 	}
 
-	if ud.R.VehicleNFT.R.VehicleTokenAftermarketDevice == nil {
+	if ud.R.VehicleTokenAftermarketDevice == nil {
 		return fiber.NewError(fiber.StatusConflict, "Vehicle not paired on-chain with an aftermarket device.")
 	}
 
-	vehicleID := ud.R.VehicleNFT.TokenID.Int(nil)
-	autoPiID := ud.R.VehicleNFT.R.VehicleTokenAftermarketDevice.TokenID.Int(nil)
+	vehicleID := ud.TokenID.Int(nil)
+	autoPiID := ud.R.VehicleTokenAftermarketDevice.TokenID.Int(nil)
 
 	err = udc.autoPiIntegration.Pair(c.Context(), autoPiID, vehicleID)
 	if err != nil {
@@ -2101,9 +2097,9 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	}
 
 	if udc.Settings.IsProduction() {
-		tokenID := int64(0)
-		if ud.R != nil && ud.R.VehicleNFT != nil {
-			tokenID, _ = ud.R.VehicleNFT.TokenID.Int64()
+		tokenID, ok := ud.TokenID.Int64()
+		if !ok {
+			return errors.New("failed to parse vehicle token id")
 		}
 		udc.requestValuation(v.VIN, userDeviceID, tokenID)
 		udc.requestInstantOffer(userDeviceID, tokenID)
@@ -2298,7 +2294,7 @@ type AutoPiDeviceInfo struct {
 // operation: pairing, claiming, or unpairing.
 type AftermarketDeviceTransactionStatus struct {
 	// Status is the state of the transaction performing this operation. There are only four options.
-	Status string `json:"status" enums:"Unsubmitted,Submitted,Mined,Confirmed" example:"Mined"`
+	Status string `json:"status" enums:"Unsubmitted,Submitted,Mined,Confirmed,Failed" example:"Mined"`
 	// Hash is the hexidecimal transaction hash, available for any transaction at the Submitted stage or greater.
 	Hash *string `json:"hash,omitempty" example:"0x28b4662f1e1b15083261a4a5077664f4003d58cb528826b7aab7fad466c28e70"`
 	// CreatedAt is the timestamp of the creation of the meta-transaction.

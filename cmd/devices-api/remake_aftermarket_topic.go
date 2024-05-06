@@ -67,7 +67,7 @@ func remakeAftermarketTopic(ctx context.Context, pdb db.Store, producer sarama.S
 	}
 
 	for _, amd := range aps {
-		if !amd.R.VehicleToken.UserDeviceID.Valid {
+		if amd.R.VehicleToken == nil {
 			continue
 		}
 
@@ -80,7 +80,7 @@ func remakeAftermarketTopic(ctx context.Context, pdb db.Store, producer sarama.S
 			},
 			Vehicle: services.AftermarketDeviceVehicleMappingVehicle{
 				Token:        amd.VehicleTokenID.Int(nil),
-				UserDeviceID: amd.R.VehicleToken.UserDeviceID.String,
+				UserDeviceID: amd.R.VehicleToken.ID,
 			},
 		}); err != nil {
 			return err

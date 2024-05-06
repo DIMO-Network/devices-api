@@ -130,7 +130,7 @@ var SyntheticDeviceRels = struct {
 // syntheticDeviceR is where relationships are stored.
 type syntheticDeviceR struct {
 	MintRequest  *MetaTransactionRequest `boil:"MintRequest" json:"MintRequest" toml:"MintRequest" yaml:"MintRequest"`
-	VehicleToken *VehicleNFT             `boil:"VehicleToken" json:"VehicleToken" toml:"VehicleToken" yaml:"VehicleToken"`
+	VehicleToken *UserDevice             `boil:"VehicleToken" json:"VehicleToken" toml:"VehicleToken" yaml:"VehicleToken"`
 	BurnRequest  *MetaTransactionRequest `boil:"BurnRequest" json:"BurnRequest" toml:"BurnRequest" yaml:"BurnRequest"`
 }
 
@@ -146,7 +146,7 @@ func (r *syntheticDeviceR) GetMintRequest() *MetaTransactionRequest {
 	return r.MintRequest
 }
 
-func (r *syntheticDeviceR) GetVehicleToken() *VehicleNFT {
+func (r *syntheticDeviceR) GetVehicleToken() *UserDevice {
 	if r == nil {
 		return nil
 	}
@@ -488,14 +488,14 @@ func (o *SyntheticDevice) MintRequest(mods ...qm.QueryMod) metaTransactionReques
 }
 
 // VehicleToken pointed to by the foreign key.
-func (o *SyntheticDevice) VehicleToken(mods ...qm.QueryMod) vehicleNFTQuery {
+func (o *SyntheticDevice) VehicleToken(mods ...qm.QueryMod) userDeviceQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"token_id\" = ?", o.VehicleTokenID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	return VehicleNFTS(queryMods...)
+	return UserDevices(queryMods...)
 }
 
 // BurnRequest pointed to by the foreign key.
@@ -691,8 +691,8 @@ func (syntheticDeviceL) LoadVehicleToken(ctx context.Context, e boil.ContextExec
 	}
 
 	query := NewQuery(
-		qm.From(`devices_api.vehicle_nfts`),
-		qm.WhereIn(`devices_api.vehicle_nfts.token_id in ?`, argsSlice...),
+		qm.From(`devices_api.user_devices`),
+		qm.WhereIn(`devices_api.user_devices.token_id in ?`, argsSlice...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -700,22 +700,22 @@ func (syntheticDeviceL) LoadVehicleToken(ctx context.Context, e boil.ContextExec
 
 	results, err := query.QueryContext(ctx, e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load VehicleNFT")
+		return errors.Wrap(err, "failed to eager load UserDevice")
 	}
 
-	var resultSlice []*VehicleNFT
+	var resultSlice []*UserDevice
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice VehicleNFT")
+		return errors.Wrap(err, "failed to bind eager loaded slice UserDevice")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for vehicle_nfts")
+		return errors.Wrap(err, "failed to close results of eager load for user_devices")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for vehicle_nfts")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for user_devices")
 	}
 
-	if len(vehicleNFTAfterSelectHooks) != 0 {
+	if len(userDeviceAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
 				return err
@@ -731,7 +731,7 @@ func (syntheticDeviceL) LoadVehicleToken(ctx context.Context, e boil.ContextExec
 		foreign := resultSlice[0]
 		object.R.VehicleToken = foreign
 		if foreign.R == nil {
-			foreign.R = &vehicleNFTR{}
+			foreign.R = &userDeviceR{}
 		}
 		foreign.R.VehicleTokenSyntheticDevice = object
 		return nil
@@ -742,7 +742,7 @@ func (syntheticDeviceL) LoadVehicleToken(ctx context.Context, e boil.ContextExec
 			if queries.Equal(local.VehicleTokenID, foreign.TokenID) {
 				local.R.VehicleToken = foreign
 				if foreign.R == nil {
-					foreign.R = &vehicleNFTR{}
+					foreign.R = &userDeviceR{}
 				}
 				foreign.R.VehicleTokenSyntheticDevice = local
 				break
@@ -927,7 +927,7 @@ func (o *SyntheticDevice) SetMintRequest(ctx context.Context, exec boil.ContextE
 // SetVehicleToken of the syntheticDevice to the related item.
 // Sets o.R.VehicleToken to related.
 // Adds o to related.R.VehicleTokenSyntheticDevice.
-func (o *SyntheticDevice) SetVehicleToken(ctx context.Context, exec boil.ContextExecutor, insert bool, related *VehicleNFT) error {
+func (o *SyntheticDevice) SetVehicleToken(ctx context.Context, exec boil.ContextExecutor, insert bool, related *UserDevice) error {
 	var err error
 	if insert {
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
@@ -961,7 +961,7 @@ func (o *SyntheticDevice) SetVehicleToken(ctx context.Context, exec boil.Context
 	}
 
 	if related.R == nil {
-		related.R = &vehicleNFTR{
+		related.R = &userDeviceR{
 			VehicleTokenSyntheticDevice: o,
 		}
 	} else {
@@ -974,7 +974,7 @@ func (o *SyntheticDevice) SetVehicleToken(ctx context.Context, exec boil.Context
 // RemoveVehicleToken relationship.
 // Sets o.R.VehicleToken to nil.
 // Removes o from all passed in related items' relationships struct.
-func (o *SyntheticDevice) RemoveVehicleToken(ctx context.Context, exec boil.ContextExecutor, related *VehicleNFT) error {
+func (o *SyntheticDevice) RemoveVehicleToken(ctx context.Context, exec boil.ContextExecutor, related *UserDevice) error {
 	var err error
 
 	queries.SetScanner(&o.VehicleTokenID, nil)
