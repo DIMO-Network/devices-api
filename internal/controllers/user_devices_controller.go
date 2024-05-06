@@ -1387,8 +1387,8 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		Infos:            []string{deviceMake, deviceModel, deviceYear},
 	}
 
-	mr := new(VehicleMintRequest)
-	if err := c.BodyParser(mr); err != nil {
+	var mr VehicleMintRequest
+	if err := c.BodyParser(&mr); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
 	}
 
@@ -1643,8 +1643,8 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 	return err
 }
 
-// VehicleMintRequest contains the user's signature for the vehicle mint request
-// as well as the NFT image.
+// VehicleMintRequest contains the user's signature for the mint request as well as the
+// NFT image.
 type VehicleMintRequest struct {
 	NFTImageData
 	// Signature is the hex encoding of the EIP-712 signature result.
