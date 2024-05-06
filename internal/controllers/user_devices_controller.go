@@ -1182,6 +1182,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
+		qm.Load(models.UserDeviceRels.MintRequest),
 		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationRels.SerialAftermarketDevice)),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
@@ -1192,7 +1193,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 	}
 
 	// if vehicle minted, user must delete by burning
-	if !userDevice.TokenID.IsZero() {
+	if !userDevice.TokenID.IsZero() || userDevice.R.MintRequest != nil && userDevice.R.MintRequest.Status != models.MetaTransactionRequestStatusFailed {
 		return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("vehicle token: %d; must burn minted vehicle to delete", userDevice.TokenID))
 	}
 
@@ -1333,12 +1334,11 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}
 
 	if !userDevice.TokenID.IsZero() {
-		switch userDevice.R.MintRequest.Status {
-		case "Confirmed":
-			return fiber.NewError(fiber.StatusConflict, "Vehicle already minted.")
-		default:
-			return fiber.NewError(fiber.StatusConflict, "Minting in process.")
-		}
+		return fiber.NewError(fiber.StatusConflict, "Vehicle already minted.")
+	}
+
+	if mr := userDevice.R.MintRequest; mr != nil && mr.Status != models.MetaTransactionRequestStatusFailed {
+		return fiber.NewError(fiber.StatusConflict, "Minting in process.")
 	}
 
 	if !userDevice.VinConfirmed {
@@ -1585,6 +1585,11 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 
 	if userDevice.TokenID.IsZero() {
 		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
+	}
+
+	// This would only happen if it's a "permissionless mint".
+	if !userDevice.MintRequestID.Valid {
+		return fiber.NewError(fiber.StatusInternalServerError, "Can't edit this vehicle's NFT image.")
 	}
 
 	mr := new(MintRequest)
