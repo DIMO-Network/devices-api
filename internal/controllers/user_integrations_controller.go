@@ -1279,15 +1279,12 @@ func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.C
 		return nil, nil, fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle already paired with aftermarket device %s.", vad.TokenID))
 	}
 
-	if ad.R.PairRequest != nil {
-		switch ad.R.PairRequest.Status {
-		case models.MetaTransactionRequestStatusConfirmed:
-			return nil, nil, fiber.NewError(fiber.StatusConflict, "Aftermarket device already paired.")
-		case models.MetaTransactionRequestStatusUnsubmitted, models.MetaTransactionRequestStatusSubmitted, models.MetaTransactionRequestStatusMined:
-			return nil, nil, fiber.NewError(fiber.StatusConflict, "Aftermarket device already in the pairing process.")
-		default:
-			// Pairing request failed. Okay to try again.
-		}
+	if !ad.VehicleTokenID.IsZero() {
+		fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Aftermarket device already paired to vehicle %d.", ad.VehicleTokenID))
+	}
+
+	if ad.R.PairRequest != nil && ad.R.PairRequest.Status != models.MetaTransactionRequestStatusFailed {
+		return nil, nil, fiber.NewError(fiber.StatusConflict, "Aftermarket device already in the pairing process.")
 	}
 
 	return ud, ad, nil
