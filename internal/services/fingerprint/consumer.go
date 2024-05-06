@@ -107,7 +107,7 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 
 	ad, err := models.AftermarketDevices(
 		models.AftermarketDeviceWhere.EthereumAddress.EQ(addr.Bytes()),
-		qm.Load(models.AftermarketDeviceRels.VehicleToken),
+		qm.Load(qm.Rels(models.AftermarketDeviceRels.VehicleToken, models.UserDeviceRels.Claim)),
 	).One(ctx, c.DBS.DBS().Reader)
 	if err != nil {
 		return fmt.Errorf("failed querying for device: %w", err)
