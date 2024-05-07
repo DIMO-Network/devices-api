@@ -52,13 +52,13 @@ func (d *DimoRegistryErrorDecoder) Decode(data []byte) (string, error) {
 			argMap := make(map[string]any, len(abiErr.Inputs))
 			err := abiErr.Inputs.UnpackIntoMap(argMap, argsData)
 			if err != nil {
-				return "", fmt.Errorf("error unpacking arguments for event %s: %w", abiErr.Name, err)
+				return "", fmt.Errorf("error unpacking arguments for error %s: %w", abiErr.Name, err)
 			}
 
 			var b bytes.Buffer
 			err = message.Execute(&b, argMap)
 			if err != nil {
-				return "", fmt.Errorf("error executing template for event %s: %w", abiErr.Name, err)
+				return "", fmt.Errorf("error executing template for error %s: %w", abiErr.Name, err)
 			}
 
 			return b.String(), nil
