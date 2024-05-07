@@ -30,14 +30,11 @@ import (
 
 type StorageTestSuite struct {
 	suite.Suite
-	ctx              context.Context
-	dbs              db.Store
-	container        testcontainers.Container
-	mockCtrl         *gomock.Controller
-	scTaskSvc        *mock_services.MockSmartcarTaskService
-	teslaTaskService *mock_services.MockTeslaTaskService
-	deviceDefSvc     *mock_services.MockDeviceDefinitionService
-	eventSvc         *mock_services.MockEventService
+	ctx       context.Context
+	dbs       db.Store
+	container testcontainers.Container
+	mockCtrl  *gomock.Controller
+	eventSvc  *mock_services.MockEventService
 
 	proc StatusProcessor
 }
@@ -50,9 +47,6 @@ func (s *StorageTestSuite) SetupSuite() {
 	logger := test.Logger()
 	s.mockCtrl = gomock.NewController(s.T())
 
-	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(s.mockCtrl)
-	s.scTaskSvc = mock_services.NewMockSmartcarTaskService(s.mockCtrl)
-	s.teslaTaskService = mock_services.NewMockTeslaTaskService(s.mockCtrl)
 	s.eventSvc = mock_services.NewMockEventService(s.mockCtrl)
 	proc, err := NewProcessor(s.dbs.DBS, logger, &config.Settings{Environment: "prod"}, s.eventSvc)
 	if err != nil {
