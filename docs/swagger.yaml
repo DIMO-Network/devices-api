@@ -280,6 +280,8 @@ definitions:
         description: CreatedAt is the timestamp of the creation of the meta-transaction.
         example: "2022-10-01T09:22:21.002Z"
         type: string
+      failureReason:
+        type: string
       hash:
         description: Hash is the hexidecimal transaction hash, available for any transaction
           at the Submitted stage or greater.
@@ -717,6 +719,8 @@ definitions:
       address:
         example: 0xAED7EA8035eEc47E657B34eF5D020c7005487443
         type: string
+      failureReason:
+        type: string
       status:
         enum:
         - Unstarted
@@ -861,6 +865,8 @@ definitions:
     type: object
   internal_controllers.VehicleNFTData:
     properties:
+      failureReason:
+        type: string
       ownerAddress:
         description: OwnerAddress is the Ethereum address of the NFT owner.
         items:

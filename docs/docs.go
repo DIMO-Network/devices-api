@@ -2618,6 +2618,9 @@ const docTemplate = `{
                     "type": "string",
                     "example": "2022-10-01T09:22:21.002Z"
                 },
+                "failureReason": {
+                    "type": "string"
+                },
                 "hash": {
                     "description": "Hash is the hexidecimal transaction hash, available for any transaction at the Submitted stage or greater.",
                     "type": "string",
@@ -3247,6 +3250,9 @@ const docTemplate = `{
                     "type": "string",
                     "example": "0xAED7EA8035eEc47E657B34eF5D020c7005487443"
                 },
+                "failureReason": {
+                    "type": "string"
+                },
                 "status": {
                     "type": "string",
                     "enum": [
@@ -3442,6 +3448,9 @@ const docTemplate = `{
         "internal_controllers.VehicleNFTData": {
             "type": "object",
             "properties": {
+                "failureReason": {
+                    "type": "string"
+                },
                 "ownerAddress": {
                     "description": "OwnerAddress is the Ethereum address of the NFT owner.",
                     "type": "array",
