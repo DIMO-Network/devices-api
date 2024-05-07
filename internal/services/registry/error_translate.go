@@ -28,6 +28,29 @@ func NewDimoRegistryErrorDecoder() (*DimoRegistryErrorDecoder, error) {
 	return &DimoRegistryErrorDecoder{abi: &a}, nil
 }
 
+type pair struct {
+	Name    string
+	Message string
+}
+
+var DimoRegistryTranslations = map[uint32]pair{
+	0x15bdaac1: {"AdNotClaimed", "Aftermarket device %[1]s not claimed."},                           // AdNotClaimed(id uint256)
+	0xd11e35b4: {"AdNotPaired", "Aftermarket device %[1]s is not paired."},                          // AdNotPaired(id uint256)
+	0x762116ae: {"AdPaired", "Aftermarket device %[1]s is paired."},                                 // AdPaired(id uint256)
+	0x1c48d49e: {"AttributeNotWhitelisted", "Attribute %[1]s not whitelisted."},                     // AttributeNotWhitelisted(attr string)
+	0x4dec88eb: {"DeviceAlreadyClaimed", "Aftermarket device %[1]s already claimed."},               // DeviceAlreadyClaimed(id uint256)
+	0xcd76e845: {"DeviceAlreadyRegistered", "There is already a minted device with address %[1]s."}, // DeviceAlreadyRegistered(addr address)
+	0xdbe5383b: {"InvalidAdSignature", "Invalid aftermarket device signature."},                     // InvalidAdSignature()
+	0xe3ca9639: {"InvalidNode", "Token %[2]s does not exist at address %[1]s."},                     // InvalidNode(proxy address, id uint256)
+	0x38a85a8d: {"InvalidOwnerSignature", "Invalid owner signature."},                               // InvalidOwnerSignature()
+	0x5299bab7: {"InvalidParentNode", "Parent node %[1]s does not exist."},                          // InvalidParentNode(id uint256)
+	0xf8e95d55: {"InvalidSdSignature", "Invalid synthetic device signature."},                       // InvalidSdSignature()
+	0x815e1d64: {"InvalidSigner", "Signer is owner of neither the vehicle nor the device."},         // InvalidSigner()
+	0x4fc280ab: {"OwnersDoNotMatch", "Vehicle and aftermarket device owners are not the same."},     // OwnersDoNotMatch()
+	0x2d91fcb5: {"VehicleNotPaired", "Vehicle %[1]s is not paired."},                                // VehicleNotPaired(id uint256)
+	0xc46a5168: {"VehiclePaired", "Vehicle %[1]s is paired."},                                       // VehiclePaired(id uint256)
+}
+
 func (d *DimoRegistryErrorDecoder) Decode(data []byte) (string, error) {
 	if len(data) < 4 {
 		return "", fmt.Errorf("length %d is too short, must have length at least 4", len(data))
@@ -36,123 +59,15 @@ func (d *DimoRegistryErrorDecoder) Decode(data []byte) (string, error) {
 	numSelector := binary.BigEndian.Uint32(data[:4])
 	argsData := data[4:]
 
-	switch numSelector {
-	// DeviceAlreadyRegistered(addr address)
-	case 0xcd76e845:
-		values, err := d.abi.Errors["DeviceAlreadyRegistered"].Inputs.Unpack(argsData)
-		if err != nil {
-			return "", err
-		}
-		if l := len(values); l != 1 {
-			return "", fmt.Errorf("unpacked into %d args instead of the expected 1", l)
-		}
-		return fmt.Sprintf("There is already a minted device with address %[1]s.", values[0]), nil
-	// InvalidAdSignature()
-	case 0xdbe5383b:
-		return "Invalid aftermarket device signature.", nil
-	// AttributeNotWhitelisted(attr string)
-	case 0x1c48d49e:
-		values, err := d.abi.Errors["AttributeNotWhitelisted"].Inputs.Unpack(argsData)
-		if err != nil {
-			return "", err
-		}
-		if l := len(values); l != 1 {
-			return "", fmt.Errorf("unpacked into %d args instead of the expected 1", l)
-		}
-		return fmt.Sprintf("Attribute %[1]s not whitelisted.", values[0]), nil
-	// InvalidOwnerSignature()
-	case 0x38a85a8d:
-		return "Invalid owner signature.", nil
-	// OwnersDoNotMatch()
-	case 0x4fc280ab:
-		return "Vehicle and aftermarket device owners are not the same.", nil
-	// VehicleNotPaired(id uint256)
-	case 0x2d91fcb5:
-		values, err := d.abi.Errors["VehicleNotPaired"].Inputs.Unpack(argsData)
-		if err != nil {
-			return "", err
-		}
-		if l := len(values); l != 1 {
-			return "", fmt.Errorf("unpacked into %d args instead of the expected 1", l)
-		}
-		return fmt.Sprintf("Vehicle %[1]s is not paired.", values[0]), nil
-	// AdNotPaired(id uint256)
-	case 0xd11e35b4:
-		values, err := d.abi.Errors["AdNotPaired"].Inputs.Unpack(argsData)
-		if err != nil {
-			return "", err
-		}
-		if l := len(values); l != 1 {
-			return "", fmt.Errorf("unpacked into %d args instead of the expected 1", l)
-		}
-		return fmt.Sprintf("Aftermarket device %[1]s is not paired.", values[0]), nil
-	// AdPaired(id uint256)
-	case 0x762116ae:
-		values, err := d.abi.Errors["AdPaired"].Inputs.Unpack(argsData)
-		if err != nil {
-			return "", err
-		}
-		if l := len(values); l != 1 {
-			return "", fmt.Errorf("unpacked into %d args instead of the expected 1", l)
-		}
-		return fmt.Sprintf("Aftermarket device %[1]s is paired.", values[0]), nil
-	// InvalidSigner()
-	case 0x815e1d64:
-		return "Signer is owner of neither the vehicle nor the device.", nil
-	// DeviceAlreadyClaimed(id uint256)
-	case 0x4dec88eb:
-		values, err := d.abi.Errors["DeviceAlreadyClaimed"].Inputs.Unpack(argsData)
-		if err != nil {
-			return "", err
-		}
-		if l := len(values); l != 1 {
-			return "", fmt.Errorf("unpacked into %d args instead of the expected 1", l)
-		}
-		return fmt.Sprintf("Aftermarket device %[1]s already claimed.", values[0]), nil
-	// InvalidNode(proxy address, id uint256)
-	case 0xe3ca9639:
-		values, err := d.abi.Errors["InvalidNode"].Inputs.Unpack(argsData)
-		if err != nil {
-			return "", err
-		}
-		if l := len(values); l != 2 {
-			return "", fmt.Errorf("unpacked into %d args instead of the expected 2", l)
-		}
-		return fmt.Sprintf("Token %[2]s does not exist at address %[1]s.", values[0], values[1]), nil
-	// InvalidSdSignature()
-	case 0xf8e95d55:
-		return "Invalid synthetic device signature.", nil
-	// VehiclePaired(id uint256)
-	case 0xc46a5168:
-		values, err := d.abi.Errors["VehiclePaired"].Inputs.Unpack(argsData)
-		if err != nil {
-			return "", err
-		}
-		if l := len(values); l != 1 {
-			return "", fmt.Errorf("unpacked into %d args instead of the expected 1", l)
-		}
-		return fmt.Sprintf("Vehicle %[1]s is paired.", values[0]), nil
-	// AdNotClaimed(id uint256)
-	case 0x15bdaac1:
-		values, err := d.abi.Errors["AdNotClaimed"].Inputs.Unpack(argsData)
-		if err != nil {
-			return "", err
-		}
-		if l := len(values); l != 1 {
-			return "", fmt.Errorf("unpacked into %d args instead of the expected 1", l)
-		}
-		return fmt.Sprintf("Aftermarket device %[1]s not claimed.", values[0]), nil
-	// InvalidParentNode(id uint256)
-	case 0x5299bab7:
-		values, err := d.abi.Errors["InvalidParentNode"].Inputs.Unpack(argsData)
-		if err != nil {
-			return "", err
-		}
-		if l := len(values); l != 1 {
-			return "", fmt.Errorf("unpacked into %d args instead of the expected 1", l)
-		}
-		return fmt.Sprintf("Parent node %[1]s does not exist.", values[0]), nil
-	default:
-		return "", fmt.Errorf("unrecognized error selector %s", hexutil.Encode(data[:4]))
+	p, ok := DimoRegistryTranslations[numSelector]
+	if !ok {
+		return "", fmt.Errorf("unrecognized error with selector %s", hexutil.Encode(data[:4]))
 	}
+
+	values, err := d.abi.Errors[p.Name].Inputs.Unpack(argsData)
+	if err != nil {
+		return "", fmt.Errorf("error decoding event %s: %w", p.Name, err)
+	}
+
+	return fmt.Sprintf(p.Message, values...), nil
 }

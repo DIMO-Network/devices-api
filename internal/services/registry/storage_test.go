@@ -207,7 +207,7 @@ func (s *StorageTestSuite) TestMintVehicle() {
 	s.Equal(ud.ID, emEv.Subject)
 }
 
-func (s *StorageTestSuite) TestErrorTranslation() {
+func (s *StorageTestSuite) TestErrorTranslationWithArgs() {
 	mtr := models.MetaTransactionRequest{
 		ID:     ksuid.New().String(),
 		Status: models.MetaTransactionRequestStatusUnsubmitted,
@@ -226,6 +226,69 @@ func (s *StorageTestSuite) TestErrorTranslation() {
 
 	s.Equal("Failed", mtr.Status)
 	s.Equal("Token 81945 does not exist at address 0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF.", mtr.FailureReason.String)
+}
+
+func (s *StorageTestSuite) TestErrorTranslationNoArgs() {
+	mtr := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusUnsubmitted,
+	}
+	s.MustInsert(&mtr)
+
+	s.Require().NoError(s.proc.Handle(s.ctx, &ceData{
+		RequestID: mtr.ID,
+		Type:      "Failed",
+		Reason: ceReason{
+			Data: "0x38a85a8d",
+		},
+	}))
+
+	s.Require().NoError(mtr.Reload(s.ctx, s.dbs.DBS().Reader))
+
+	s.Equal("Failed", mtr.Status)
+	s.Equal("Invalid owner signature.", mtr.FailureReason.String)
+}
+
+func (s *StorageTestSuite) TestFailedErrorParsing() {
+	mtr := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusUnsubmitted,
+	}
+	s.MustInsert(&mtr)
+
+	s.Require().NoError(s.proc.Handle(s.ctx, &ceData{
+		RequestID: mtr.ID,
+		Type:      "Failed",
+		Reason: ceReason{
+			Data: "0x4dec88eb00ff",
+		},
+	}))
+
+	s.Require().NoError(mtr.Reload(s.ctx, s.dbs.DBS().Reader))
+
+	s.Equal("Failed", mtr.Status)
+	s.False(mtr.FailureReason.Valid)
+}
+
+func (s *StorageTestSuite) TestUnrecognizedError() {
+	mtr := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusUnsubmitted,
+	}
+	s.MustInsert(&mtr)
+
+	s.Require().NoError(s.proc.Handle(s.ctx, &ceData{
+		RequestID: mtr.ID,
+		Type:      "Failed",
+		Reason: ceReason{
+			Data: "0x00ff00ff",
+		},
+	}))
+
+	s.Require().NoError(mtr.Reload(s.ctx, s.dbs.DBS().Reader))
+
+	s.Equal("Failed", mtr.Status)
+	s.False(mtr.FailureReason.Valid)
 }
 
 func (s *StorageTestSuite) MustInsert(o boilInsertable) {
