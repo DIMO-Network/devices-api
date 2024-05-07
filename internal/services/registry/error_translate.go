@@ -9,12 +9,12 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
-type DimoRegistryErrorDecoder struct {
+type ABIErrorTranslator struct {
 	abi         *abi.ABI
 	translation map[string]*template.Template
 }
 
-func NewDimoRegistryErrorDecoder(abi *abi.ABI, translation map[string]string) (*DimoRegistryErrorDecoder, error) {
+func NewABIErrorTranslator(abi *abi.ABI, translation map[string]string) (*ABIErrorTranslator, error) {
 	m := make(map[string]*template.Template)
 
 	for errName, message := range translation {
@@ -31,10 +31,10 @@ func NewDimoRegistryErrorDecoder(abi *abi.ABI, translation map[string]string) (*
 		m[errName] = t
 	}
 
-	return &DimoRegistryErrorDecoder{abi: abi, translation: m}, nil
+	return &ABIErrorTranslator{abi: abi, translation: m}, nil
 }
 
-func (d *DimoRegistryErrorDecoder) Decode(data []byte) (string, error) {
+func (d *ABIErrorTranslator) Decode(data []byte) (string, error) {
 	if len(data) < 4 {
 		return "", fmt.Errorf("length %d is too short, must have length at least 4", len(data))
 	}

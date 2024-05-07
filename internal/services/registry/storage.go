@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	_ "embed"
+	"fmt"
 	"time"
 
 	"github.com/DIMO-Network/shared"
@@ -36,7 +37,7 @@ type proc struct {
 	Logger       *zerolog.Logger
 	settings     *config.Settings
 	Eventer      services.EventService
-	ErrorDecoder *DimoRegistryErrorDecoder
+	ErrorDecoder *ABIErrorTranslator
 }
 
 func (p *proc) Handle(ctx context.Context, data *ceData) error {
@@ -230,12 +231,12 @@ func NewProcessor(
 	var errorTranslationMap map[string]string
 	err = yaml.Unmarshal(dimoRegistryErrorTranslationsRaw, &errorTranslationMap)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error parsing error translation file: %w", err)
 	}
 
-	errDec, err := NewDimoRegistryErrorDecoder(regABI, errorTranslationMap)
+	errDec, err := NewABIErrorTranslator(regABI, errorTranslationMap)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error constructing error translater: %w", err)
 	}
 
 	return &proc{
