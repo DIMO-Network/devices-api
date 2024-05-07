@@ -19,8 +19,9 @@ type ABIErrorTranslator struct {
 // are Go templates using variables named after the arguments of the corresponding
 // error.
 //
-// For example, if our ABI had an error TooPoor(address addr), then our translation
-// map could have the key "TooPoor" with value "Account {{ .addr }} is too poor.".
+// For example, if our ABI had an error InsufficientFunds(address addr), then our
+// translation map could have the key "TooPoor" with value
+// "Account {{ .addr }} does not have enough tokens.".
 func NewABIErrorTranslator(abi *abi.ABI, translation map[string]string) (*ABIErrorTranslator, error) {
 	m := make(map[string]*template.Template)
 
