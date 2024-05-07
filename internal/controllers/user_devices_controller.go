@@ -1791,17 +1791,26 @@ type VehicleNFTData struct {
 	// TxHash is the hash of the minting transaction.
 	TxHash *string `json:"txHash,omitempty" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
 	// Status is the minting status of the NFT.
-	Status        string  `json:"status,omitempty" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
+	Status string `json:"status,omitempty" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
+	// FailureReason is populated if the status is "Failed" because of an on-chain revert and
+	// we were able to decode the reason.
 	FailureReason *string `json:"failureReason,omitempty"`
 }
 
 type SyntheticDeviceStatus struct {
-	IntegrationID uint64          `json:"-"`
-	TokenID       *big.Int        `json:"tokenId,omitempty" swaggertype:"number" example:"15"`
-	Address       *common.Address `json:"address,omitempty" swaggertype:"string" example:"0xAED7EA8035eEc47E657B34eF5D020c7005487443"`
-	TxHash        *string         `json:"txHash,omitempty" swaggertype:"string" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
-	Status        string          `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
-	FailureReason *string         `json:"failureReason"`
+	// IntegrationID is the token id of the parent integration for this device.
+	IntegrationID uint64 `json:"-"`
+	// TokenID is the token id of the minted device.
+	TokenID *big.Int `json:"tokenId,omitempty" swaggertype:"number" example:"15"`
+	// Address is the Ethereum address of the synthetic device.
+	Address *common.Address `json:"address,omitempty" swaggertype:"string" example:"0xAED7EA8035eEc47E657B34eF5D020c7005487443"`
+	// TxHash is the hash of the submitted transaction.
+	TxHash *string `json:"txHash,omitempty" swaggertype:"string" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
+	// Status is the status of the minting meta-transaction.
+	Status string `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
+	// FailureReason is populated if the status is "Failed" because of an on-chain revert and
+	// we were able to decode the reason.
+	FailureReason *string `json:"failureReason"`
 }
 
 type VINCredentialData struct {

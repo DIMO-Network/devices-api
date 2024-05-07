@@ -2619,6 +2619,7 @@ const docTemplate = `{
                     "example": "2022-10-01T09:22:21.002Z"
                 },
                 "failureReason": {
+                    "description": "FailureReason is populated if the status is \"Failed\" because of an on-chain revert and\nwe were able to decode the reason.",
                     "type": "string"
                 },
                 "hash": {
@@ -3247,13 +3248,16 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "address": {
+                    "description": "Address is the Ethereum address of the synthetic device.",
                     "type": "string",
                     "example": "0xAED7EA8035eEc47E657B34eF5D020c7005487443"
                 },
                 "failureReason": {
+                    "description": "FailureReason is populated if the status is \"Failed\" because of an on-chain revert and\nwe were able to decode the reason.",
                     "type": "string"
                 },
                 "status": {
+                    "description": "Status is the status of the minting meta-transaction.",
                     "type": "string",
                     "enum": [
                         "Unstarted",
@@ -3265,10 +3269,12 @@ const docTemplate = `{
                     "example": "Confirmed"
                 },
                 "tokenId": {
+                    "description": "TokenID is the token id of the minted device.",
                     "type": "number",
                     "example": 15
                 },
                 "txHash": {
+                    "description": "TxHash is the hash of the submitted transaction.",
                     "type": "string",
                     "example": "0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"
                 }
@@ -3449,6 +3455,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "failureReason": {
+                    "description": "FailureReason is populated if the status is \"Failed\" because of an on-chain revert and\nwe were able to decode the reason.",
                     "type": "string"
                 },
                 "ownerAddress": {
