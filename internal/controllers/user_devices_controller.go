@@ -278,6 +278,8 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 					hash := hexutil.Encode(mtr.Hash.Bytes)
 					nft.TxHash = &hash
 				}
+
+				nft.FailureReason = mtr.FailureReason.Ptr()
 			}
 		}
 
@@ -287,11 +289,13 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			sdStat = &SyntheticDeviceStatus{
 				IntegrationID: ii,
 				Status:        mtr.Status,
+				FailureReason: mtr.FailureReason.Ptr(),
 			}
 			if mtr.Hash.Valid {
 				h := hexutil.Encode(mtr.Hash.Bytes)
 				sdStat.TxHash = &h
 			}
+
 			if !sd.TokenID.IsZero() {
 				sdStat.TokenID = sd.TokenID.Int(nil)
 				a := common.BytesToAddress(sd.WalletAddress)
@@ -1788,7 +1792,8 @@ type VehicleNFTData struct {
 	// TxHash is the hash of the minting transaction.
 	TxHash *string `json:"txHash,omitempty" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
 	// Status is the minting status of the NFT.
-	Status string `json:"status,omitempty" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
+	Status        string  `json:"status,omitempty" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
+	FailureReason *string `json:"failureReason,omitempty"`
 }
 
 type SyntheticDeviceStatus struct {
@@ -1797,6 +1802,7 @@ type SyntheticDeviceStatus struct {
 	Address       *common.Address `json:"address,omitempty" swaggertype:"string" example:"0xAED7EA8035eEc47E657B34eF5D020c7005487443"`
 	TxHash        *string         `json:"txHash,omitempty" swaggertype:"string" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
 	Status        string          `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
+	FailureReason *string         `json:"failureReason"`
 }
 
 type VINCredentialData struct {

@@ -24,58 +24,65 @@ import (
 
 // MetaTransactionRequest is an object representing the database table.
 type MetaTransactionRequest struct {
-	ID        string     `boil:"id" json:"id" toml:"id" yaml:"id"`
-	Status    string     `boil:"status" json:"status" toml:"status" yaml:"status"`
-	Hash      null.Bytes `boil:"hash" json:"hash,omitempty" toml:"hash" yaml:"hash,omitempty"`
-	CreatedAt time.Time  `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt time.Time  `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	ID            string      `boil:"id" json:"id" toml:"id" yaml:"id"`
+	Status        string      `boil:"status" json:"status" toml:"status" yaml:"status"`
+	Hash          null.Bytes  `boil:"hash" json:"hash,omitempty" toml:"hash" yaml:"hash,omitempty"`
+	CreatedAt     time.Time   `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt     time.Time   `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	FailureReason null.String `boil:"failure_reason" json:"failure_reason,omitempty" toml:"failure_reason" yaml:"failure_reason,omitempty"`
 
 	R *metaTransactionRequestR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L metaTransactionRequestL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var MetaTransactionRequestColumns = struct {
-	ID        string
-	Status    string
-	Hash      string
-	CreatedAt string
-	UpdatedAt string
+	ID            string
+	Status        string
+	Hash          string
+	CreatedAt     string
+	UpdatedAt     string
+	FailureReason string
 }{
-	ID:        "id",
-	Status:    "status",
-	Hash:      "hash",
-	CreatedAt: "created_at",
-	UpdatedAt: "updated_at",
+	ID:            "id",
+	Status:        "status",
+	Hash:          "hash",
+	CreatedAt:     "created_at",
+	UpdatedAt:     "updated_at",
+	FailureReason: "failure_reason",
 }
 
 var MetaTransactionRequestTableColumns = struct {
-	ID        string
-	Status    string
-	Hash      string
-	CreatedAt string
-	UpdatedAt string
+	ID            string
+	Status        string
+	Hash          string
+	CreatedAt     string
+	UpdatedAt     string
+	FailureReason string
 }{
-	ID:        "meta_transaction_requests.id",
-	Status:    "meta_transaction_requests.status",
-	Hash:      "meta_transaction_requests.hash",
-	CreatedAt: "meta_transaction_requests.created_at",
-	UpdatedAt: "meta_transaction_requests.updated_at",
+	ID:            "meta_transaction_requests.id",
+	Status:        "meta_transaction_requests.status",
+	Hash:          "meta_transaction_requests.hash",
+	CreatedAt:     "meta_transaction_requests.created_at",
+	UpdatedAt:     "meta_transaction_requests.updated_at",
+	FailureReason: "meta_transaction_requests.failure_reason",
 }
 
 // Generated where
 
 var MetaTransactionRequestWhere = struct {
-	ID        whereHelperstring
-	Status    whereHelperstring
-	Hash      whereHelpernull_Bytes
-	CreatedAt whereHelpertime_Time
-	UpdatedAt whereHelpertime_Time
+	ID            whereHelperstring
+	Status        whereHelperstring
+	Hash          whereHelpernull_Bytes
+	CreatedAt     whereHelpertime_Time
+	UpdatedAt     whereHelpertime_Time
+	FailureReason whereHelpernull_String
 }{
-	ID:        whereHelperstring{field: "\"devices_api\".\"meta_transaction_requests\".\"id\""},
-	Status:    whereHelperstring{field: "\"devices_api\".\"meta_transaction_requests\".\"status\""},
-	Hash:      whereHelpernull_Bytes{field: "\"devices_api\".\"meta_transaction_requests\".\"hash\""},
-	CreatedAt: whereHelpertime_Time{field: "\"devices_api\".\"meta_transaction_requests\".\"created_at\""},
-	UpdatedAt: whereHelpertime_Time{field: "\"devices_api\".\"meta_transaction_requests\".\"updated_at\""},
+	ID:            whereHelperstring{field: "\"devices_api\".\"meta_transaction_requests\".\"id\""},
+	Status:        whereHelperstring{field: "\"devices_api\".\"meta_transaction_requests\".\"status\""},
+	Hash:          whereHelpernull_Bytes{field: "\"devices_api\".\"meta_transaction_requests\".\"hash\""},
+	CreatedAt:     whereHelpertime_Time{field: "\"devices_api\".\"meta_transaction_requests\".\"created_at\""},
+	UpdatedAt:     whereHelpertime_Time{field: "\"devices_api\".\"meta_transaction_requests\".\"updated_at\""},
+	FailureReason: whereHelpernull_String{field: "\"devices_api\".\"meta_transaction_requests\".\"failure_reason\""},
 }
 
 // MetaTransactionRequestRels is where relationship names are stored.
@@ -166,9 +173,9 @@ func (r *metaTransactionRequestR) GetMintRequestUserDevice() *UserDevice {
 type metaTransactionRequestL struct{}
 
 var (
-	metaTransactionRequestAllColumns            = []string{"id", "status", "hash", "created_at", "updated_at"}
+	metaTransactionRequestAllColumns            = []string{"id", "status", "hash", "created_at", "updated_at", "failure_reason"}
 	metaTransactionRequestColumnsWithoutDefault = []string{"id"}
-	metaTransactionRequestColumnsWithDefault    = []string{"status", "hash", "created_at", "updated_at"}
+	metaTransactionRequestColumnsWithDefault    = []string{"status", "hash", "created_at", "updated_at", "failure_reason"}
 	metaTransactionRequestPrimaryKeyColumns     = []string{"id"}
 	metaTransactionRequestGeneratedColumns      = []string{}
 )

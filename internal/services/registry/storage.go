@@ -26,11 +26,12 @@ type StatusProcessor interface {
 }
 
 type proc struct {
-	ABI      *abi.ABI
-	DB       func() *db.ReaderWriter
-	Logger   *zerolog.Logger
-	settings *config.Settings
-	Eventer  services.EventService
+	ABI          *abi.ABI
+	DB           func() *db.ReaderWriter
+	Logger       *zerolog.Logger
+	settings     *config.Settings
+	Eventer      services.EventService
+	ErrorDecoder *DimoRegistryErrorDecoder
 }
 
 func (p *proc) Handle(ctx context.Context, data *ceData) error {
@@ -59,7 +60,17 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 	mtr.Status = data.Type
 
-	if data.Type != models.MetaTransactionRequestStatusFailed {
+	if data.Type == models.MetaTransactionRequestStatusFailed {
+		errData := common.FromHex(data.Reason.Data)
+		if len(errData) != 0 {
+			friendlyError, err := p.ErrorDecoder.Decode(errData)
+			if err != nil {
+				logger.Err(err).Msg("Error decoding revert data.")
+			} else {
+				mtr.FailureReason = null.StringFrom(friendlyError)
+			}
+		}
+	} else {
 		mtr.Hash = null.BytesFrom(common.FromHex(data.Transaction.Hash))
 	}
 
@@ -211,11 +222,17 @@ func NewProcessor(
 		return nil, err
 	}
 
+	errDec, err := NewDimoRegistryErrorDecoder()
+	if err != nil {
+		return nil, err
+	}
+
 	return &proc{
-		ABI:      regABI,
-		DB:       db,
-		Logger:   logger,
-		settings: settings,
-		Eventer:  eventer,
+		ABI:          regABI,
+		DB:           db,
+		Logger:       logger,
+		settings:     settings,
+		Eventer:      eventer,
+		ErrorDecoder: errDec,
 	}, nil
 }
