@@ -272,14 +272,13 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			}
 
 			if mtr := d.R.MintRequest; mtr != nil {
-				nft.Status = d.R.MintRequest.Status
+				nft.Status = mtr.Status
+				nft.FailureReason = mtr.FailureReason.Ptr()
 
 				if mtr.Hash.Valid {
 					hash := hexutil.Encode(mtr.Hash.Bytes)
 					nft.TxHash = &hash
 				}
-
-				nft.FailureReason = mtr.FailureReason.Ptr()
 			}
 		}
 
