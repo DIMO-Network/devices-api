@@ -218,6 +218,7 @@ func (s *StorageTestSuite) TestErrorTranslationWithArgs() {
 		RequestID: mtr.ID,
 		Type:      "Failed",
 		Reason: ceReason{
+			// InvalidNode(0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF, 81945)
 			Data: "0xe3ca9639000000000000000000000000ba5738a18d83d41847dffbdc6101d37c69c9b0cf0000000000000000000000000000000000000000000000000000000000014019",
 		},
 	}))
@@ -239,6 +240,7 @@ func (s *StorageTestSuite) TestErrorTranslationNoArgs() {
 		RequestID: mtr.ID,
 		Type:      "Failed",
 		Reason: ceReason{
+			// InvalidOwnerSignature()
 			Data: "0x38a85a8d",
 		},
 	}))
@@ -260,6 +262,7 @@ func (s *StorageTestSuite) TestFailedErrorParsing() {
 		RequestID: mtr.ID,
 		Type:      "Failed",
 		Reason: ceReason{
+			// Selector for DeviceAlreadyClaimed followed by garbage.
 			Data: "0x4dec88eb00ff",
 		},
 	}))
@@ -281,6 +284,7 @@ func (s *StorageTestSuite) TestUnrecognizedError() {
 		RequestID: mtr.ID,
 		Type:      "Failed",
 		Reason: ceReason{
+			// Garbage selector.
 			Data: "0x00ff00ff",
 		},
 	}))
