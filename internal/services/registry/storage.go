@@ -2,9 +2,11 @@ package registry
 
 import (
 	"context"
+	_ "embed"
 	"time"
 
 	"github.com/DIMO-Network/shared"
+	"gopkg.in/yaml.v3"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
@@ -20,6 +22,9 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
+
+//go:embed dimo_registry_error_translations.yaml
+var dimoRegistryErrorTranslationsRaw []byte
 
 type StatusProcessor interface {
 	Handle(ctx context.Context, data *ceData) error
@@ -222,7 +227,13 @@ func NewProcessor(
 		return nil, err
 	}
 
-	errDec, err := NewDimoRegistryErrorDecoder()
+	var errorTranslationMap map[string]string
+	err = yaml.Unmarshal(dimoRegistryErrorTranslationsRaw, &errorTranslationMap)
+	if err != nil {
+		return nil, err
+	}
+
+	errDec, err := NewDimoRegistryErrorDecoder(regABI, errorTranslationMap)
 	if err != nil {
 		return nil, err
 	}
