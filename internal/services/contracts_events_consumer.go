@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/shared/kafka"
+	"github.com/segmentio/ksuid"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -50,19 +51,20 @@ type ContractsEventsConsumer struct {
 type EventName string
 
 const (
-	PrivilegeSet                  EventName = "PrivilegeSet"
-	AftermarketDeviceNodeMinted   EventName = "AftermarketDeviceNodeMinted"
-	Transfer                      EventName = "Transfer"
-	BeneficiarySet                EventName = "BeneficiarySet"
-	DCNNameChanged                EventName = "NameChanged"
-	DCNNewNode                    EventName = "NewNode"
-	DCNNewExpiration              EventName = "NewExpiration"
-	AftermarketDeviceClaimed      EventName = "AftermarketDeviceClaimed"
-	AftermarketDevicePaired       EventName = "AftermarketDevicePaired"
-	AftermarketDeviceUnpaired     EventName = "AftermarketDeviceUnpaired"
-	AftermarketDeviceAttributeSet EventName = "AftermarketDeviceAttributeSet"
-	AftermarketDeviceAddressReset EventName = "AftermarketDeviceAddressReset"
-	VehicleNodeBurned             EventName = "VehicleNodeBurned"
+	PrivilegeSet                          EventName = "PrivilegeSet"
+	AftermarketDeviceNodeMinted           EventName = "AftermarketDeviceNodeMinted"
+	Transfer                              EventName = "Transfer"
+	BeneficiarySet                        EventName = "BeneficiarySet"
+	DCNNameChanged                        EventName = "NameChanged"
+	DCNNewNode                            EventName = "NewNode"
+	DCNNewExpiration                      EventName = "NewExpiration"
+	AftermarketDeviceClaimed              EventName = "AftermarketDeviceClaimed"
+	AftermarketDevicePaired               EventName = "AftermarketDevicePaired"
+	AftermarketDeviceUnpaired             EventName = "AftermarketDeviceUnpaired"
+	AftermarketDeviceAttributeSet         EventName = "AftermarketDeviceAttributeSet"
+	AftermarketDeviceAddressReset         EventName = "AftermarketDeviceAddressReset"
+	VehicleNodeBurned                     EventName = "VehicleNodeBurned"
+	VehicleNodeMintedWithDeviceDefinition EventName = "VehicleNodeMintedWithDeviceDefinition"
 )
 
 func (r EventName) String() string {
@@ -168,6 +170,8 @@ func (c *ContractsEventsConsumer) processEvent(_ context.Context, event *shared.
 		return c.aftermarketDeviceAddressReset(&data)
 	case VehicleNodeBurned.String():
 		return c.vehicleNodeBurned(&data)
+	case VehicleNodeMintedWithDeviceDefinition.String():
+		return c.vehicleNodeMintedWithDeviceDefinition(&data)
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -717,6 +721,61 @@ func (c *ContractsEventsConsumer) vehicleNodeBurned(e *ContractEventData) error 
 
 	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Msg("vehicle node burned")
 	return tx.Commit()
+}
+
+func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *ContractEventData) error {
+	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
+		return fmt.Errorf("vehicle mint from unexpected source %d/%s", e.ChainID, e.Contract)
+	}
+
+	ctx := context.Background()
+	var args contracts.RegistryVehicleNodeMintedWithDeviceDefinition
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return fmt.Errorf("failed to unmarshal arguments from mint event: %w", err)
+	}
+
+	log := c.log.With().Int64("vehicleNode", args.VehicleId.Int64()).Int64("manufacturerId", args.ManufacturerId.Int64()).Str("deviceDefinitionId", args.DeviceDefinitionId).Logger()
+	log.Info().Msg("Minting vehicle with device definition")
+
+	tx, err := c.db.DBS().Writer.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback() //nolint
+
+	// TODO (AE): how to avoid a potential race here?
+	if check, err := models.MetaTransactionRequests(
+		models.MetaTransactionRequestWhere.Hash.EQ(null.BytesFrom(e.TransactionHash.Bytes())),
+	).Exists(ctx, tx); err != nil {
+		return fmt.Errorf("failed to check if vehicle mint event has already been handled: %w", err)
+	} else if check {
+		return fmt.Errorf("vehicle mint event has already been handled. tx hash: %s", e.TransactionHash.String())
+	}
+
+	userIDArgs := dex.IDTokenSubject{
+		UserId: args.Owner.Hex(),
+		ConnId: "web3",
+	}
+	userID, err := proto.Marshal(&userIDArgs)
+	if err != nil {
+		return fmt.Errorf("failed to marshal user id: %w", err)
+	}
+
+	// TODO (AE): query tableland for device style id?
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		UserID:             base64.RawURLEncoding.EncodeToString(userID),
+		DeviceDefinitionID: args.DeviceDefinitionId,
+		OwnerAddress:       null.BytesFrom(args.Owner.Bytes()),
+		TokenID:            types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.VehicleId, 0)),
+	}
+
+	if err := ud.Insert(ctx, tx, boil.Infer()); err != nil {
+		return fmt.Errorf("failed to insert new user device: %w", err)
+	}
+
+	return tx.Commit()
+
 }
 
 // DCNNameChangedContract represents a NameChanged event raised by the FullAbi contract.
