@@ -20,7 +20,7 @@ type ABIErrorTranslator struct {
 // error.
 //
 // For example, if our ABI had an error InsufficientFunds(address addr), then our
-// translation map could have the key "TooPoor" with value
+// translation map could have the key "InsufficientFunds" with value
 // "Account {{ .addr }} does not have enough tokens.".
 func NewABIErrorTranslator(abi *abi.ABI, translation map[string]string) (*ABIErrorTranslator, error) {
 	m := make(map[string]*template.Template)
