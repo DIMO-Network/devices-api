@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/volatiletech/sqlboiler/v4/types"
+	// mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 )
 
 type mockTestEntity struct {
@@ -860,7 +861,9 @@ func Test_VehicleNodeBurn_NoMetaTxID(t *testing.T) {
 		OwnerAddress:       null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")),
 		TokenID:            types.NewNullDecimal(decimal.New(13, 0)),
 	}
-	_ = ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+	if err := ud.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
 
 	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil)
 
@@ -893,6 +896,75 @@ func Test_VehicleNodeBurn_NoMetaTxID(t *testing.T) {
 	assert.ErrorIs(t, ud.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
 	assert.ErrorIs(t, ud.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
 }
+
+// func Test_VehicleNodeMintedWithDeviceDefinition_NoMtx(t *testing.T) {
+// 	ctx := context.Background()
+// 	logger := zerolog.Nop()
+
+// 	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+// 	defer container.Terminate(ctx) //nolint
+
+// 	mockCtrl := gomock.NewController(t)
+// 	defer mockCtrl.Finish()
+
+// 	settings := &config.Settings{DIMORegistryChainID: 1, DIMORegistryAddr: "0x881d40237659c251811cec9c364ef91dc08d300c"}
+// 	deviceDefSvc := mock_services.NewMockDeviceDefinitionService(mockCtrl)
+// 	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, deviceDefSvc)
+
+// 	owner := common.HexToAddress("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")
+// 	ddSlug := "jeep_wrangler_2013"
+// 	deviceDefId := ksuid.New().String()
+
+// 	event, err := marshalMockPayload(fmt.Sprintf(`{
+// 			"type": "zone.dimo.contract.event",
+// 			"source": "chain/%d",
+// 			"data": {
+// 				"contract": "%s",
+// 				"eventName": "%s",
+// 				"chainId": %d,
+// 				"arguments": {
+// 				"manufacturerId": %d,
+// 				"vehicleId": %d,
+// 				"owner": "%s",
+// 				"deviceDefinitionId": "%s"
+// 				}
+// 			}
+// 		}`,
+// 		settings.DIMORegistryChainID,
+// 		settings.DIMORegistryAddr,
+// 		VehicleNodeMintedWithDeviceDefinition.String(),
+// 		settings.DIMORegistryChainID,
+// 		7,           // manufacturerId
+// 		13,          // vehicleId
+// 		owner.Hex(), // owner
+// 		ddSlug,      // device definition id
+// 	))
+// 	assert.NoError(t, err)
+
+// 	deviceDefSvc.EXPECT().GetDeviceDefinitionBySlugName(gomock.Any(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+// 		Slug: ddSlug,
+// 	}).Return(&ddgrpc.GetDeviceDefinitionItemResponse{
+// 		DeviceDefinitionId: deviceDefId,
+// 	}, nil)
+
+// 	err = consumer.processEvent(ctx, event)
+// 	assert.NoError(t, err)
+
+// 	ud, err := models.UserDevices(
+// 		models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(13, 0))),
+// 	).One(ctx, pdb.DBS().Reader)
+// 	assert.NoError(t, err)
+
+// 	assert.Equal(t, deviceDefId, ud.DeviceDefinitionID)
+// 	assert.Equal(t, owner.Hex(), common.BytesToAddress(ud.OwnerAddress.Bytes).Hex())
+
+// 	userID, err := proto.Marshal(&dex.IDTokenSubject{
+// 		UserId: owner.Hex(),
+// 		ConnId: "web3",
+// 	})
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, base64.RawURLEncoding.EncodeToString(userID), ud.UserID)
+// }
 
 func initCEventsTestHelper(t *testing.T) cEventsTestHelper {
 	ctx := context.Background()

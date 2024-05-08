@@ -34,6 +34,7 @@ type DeviceDefinitionService interface {
 	DecodeVIN(ctx context.Context, vin string, model string, year int, countryCode string) (*ddgrpc.DecodeVinResponse, error)
 	GetIntegrationByTokenID(ctx context.Context, tokenID uint64) (*ddgrpc.Integration, error)
 	GetDeviceStyleByID(ctx context.Context, id string) (*ddgrpc.DeviceStyle, error)
+	GetDeviceDefinitionBySlugName(ctx context.Context, in *ddgrpc.GetDeviceDefinitionBySlugNameRequest) (*ddgrpc.GetDeviceDefinitionItemResponse, error)
 }
 
 type deviceDefinitionService struct {
@@ -232,6 +233,18 @@ func (d *deviceDefinitionService) GetIntegrationByVendor(ctx context.Context, ve
 	}
 
 	return integration, nil
+}
+
+func (d *deviceDefinitionService) GetDeviceDefinitionBySlugName(ctx context.Context, in *ddgrpc.GetDeviceDefinitionBySlugNameRequest) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
+	definitionsClient, conn, err := d.getDeviceDefsGrpcClient()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	return definitionsClient.GetDeviceDefinitionBySlugName(ctx, &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+		Slug: in.Slug,
+	})
 }
 
 // FindDeviceDefinitionByMMY builds and execs query to find device definition for MMY, calling out via gRPC. Includes compatible integrations.

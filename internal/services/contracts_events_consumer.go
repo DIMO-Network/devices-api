@@ -31,6 +31,8 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
+
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 )
 
 type Integration interface {
@@ -743,7 +745,6 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 	}
 	defer tx.Rollback() //nolint
 
-	// TODO (AE): how to avoid a potential race here?
 	if check, err := models.MetaTransactionRequests(
 		models.MetaTransactionRequestWhere.Hash.EQ(null.BytesFrom(e.TransactionHash.Bytes())),
 	).Exists(ctx, tx); err != nil {
@@ -761,11 +762,15 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 		return fmt.Errorf("failed to marshal user id: %w", err)
 	}
 
-	// TODO (AE): query tableland for device style id?
+	dDef, err := c.ddSvc.GetDeviceDefinitionBySlugName(ctx, &ddgrpc.GetDeviceDefinitionBySlugNameRequest{Slug: args.DeviceDefinitionId})
+	if err != nil {
+		return fmt.Errorf("failed to get device definition: %w", err)
+	}
+
 	ud := models.UserDevice{
 		ID:                 ksuid.New().String(),
 		UserID:             base64.RawURLEncoding.EncodeToString(userID),
-		DeviceDefinitionID: args.DeviceDefinitionId,
+		DeviceDefinitionID: dDef.DeviceDefinitionId,
 		OwnerAddress:       null.BytesFrom(args.Owner.Bytes()),
 		TokenID:            types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.VehicleId, 0)),
 	}
