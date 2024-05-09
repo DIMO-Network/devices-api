@@ -47,6 +47,7 @@ type ContractsEventsConsumer struct {
 	apInt        Integration
 	mcInt        Integration
 	ddSvc        DeviceDefinitionService
+	evtSvc       EventService
 }
 
 type EventName string
@@ -91,7 +92,7 @@ type Block struct {
 	Time   time.Time   `json:"time,omitempty"`
 }
 
-func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration, mcInt Integration, ddSvc DeviceDefinitionService) *ContractsEventsConsumer {
+func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration, mcInt Integration, ddSvc DeviceDefinitionService, evtSvc EventService) *ContractsEventsConsumer {
 	return &ContractsEventsConsumer{
 		db:           pdb,
 		log:          log,
@@ -100,6 +101,7 @@ func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *con
 		apInt:        apInt,
 		mcInt:        mcInt,
 		ddSvc:        ddSvc,
+		evtSvc:       evtSvc,
 	}
 }
 
@@ -795,6 +797,14 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 		return fmt.Errorf("failed to get device definition: %w", err)
 	}
 
+	if dDef.Make.TokenId == 0 {
+		return fmt.Errorf("vehicle make not yet minted: %s", dDef.Make.Name)
+	}
+
+	if args.ManufacturerId != big.NewInt(int64(dDef.Make.TokenId)) {
+		return fmt.Errorf("passed manufacturer id %d does not match manufacturer associated with device definition %s", args.ManufacturerId, dDef.DeviceDefinitionId)
+	}
+
 	ud := models.UserDevice{
 		ID:                 ksuid.New().String(),
 		UserID:             base64.RawURLEncoding.EncodeToString(userID),
@@ -806,6 +816,26 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 	if err := ud.Insert(ctx, tx, boil.Infer()); err != nil {
 		return fmt.Errorf("failed to insert new user device: %w", err)
 	}
+
+	c.evtSvc.Emit(&shared.CloudEvent[any]{ //nolint
+		Type:    "com.dimo.zone.device.mint",
+		Subject: ud.ID,
+		Source:  "devices-api",
+		Data: UserDeviceMintEvent{
+			Timestamp: time.Now(),
+			UserID:    ud.UserID,
+			Device: UserDeviceEventDevice{
+				ID:                 ud.ID,
+				VIN:                ud.VinIdentifier.String,
+				DeviceDefinitionID: ud.DeviceDefinitionID,
+			},
+			NFT: UserDeviceEventNFT{
+				TokenID: args.VehicleId,
+				Owner:   args.Owner,
+				TxHash:  e.TransactionHash,
+			},
+		},
+	})
 
 	return tx.Commit()
 

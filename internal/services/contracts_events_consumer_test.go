@@ -82,7 +82,7 @@ func TestProcessContractsEventsMessages(t *testing.T) {
 	e := privilegeEventsPayloadFactory(1, 1, "", 0, s.settings.DIMORegistryChainID)
 	factoryResp := e[0]
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil)
 
 	event, err := marshalMockPayload(factoryResp.payload)
 	assert.NoError(t, err)
@@ -125,7 +125,7 @@ func TestIgnoreWrongEventNames(t *testing.T) {
 	e := privilegeEventsPayloadFactory(2, 2, "SomeEvent", 0, s.settings.DIMORegistryChainID)
 	factoryResp := e[0]
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil)
 
 	event, err := marshalMockPayload(factoryResp.payload)
 	assert.NoError(t, err)
@@ -152,7 +152,7 @@ func TestUpdatedTimestamp(t *testing.T) {
 	e := privilegeEventsPayloadFactory(3, 3, "", 0, s.settings.DIMORegistryChainID)
 	factoryResp := e[0]
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil)
 
 	event, err := marshalMockPayload(factoryResp.payload)
 	assert.NoError(t, err)
@@ -227,7 +227,7 @@ func Test_Transfer_Event_Handled_Correctly(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.assert.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil)
 	event, err := marshalMockPayload(factoryResp.payload)
 	assert.NoError(t, err)
 
@@ -266,7 +266,7 @@ func Test_Ignore_Transfer_Mint_Event(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.assert.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil)
 
 	event, err := marshalMockPayload(factoryResp.payload)
 	assert.NoError(t, err)
@@ -301,7 +301,7 @@ func Test_Ignore_Transfer_Claims_Event(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.assert.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil)
 	event, err := marshalMockPayload(factoryResp.payload)
 	assert.NoError(t, err)
 
@@ -335,7 +335,7 @@ func Test_Ignore_Transfer_Wrong_Contract(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.assert.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil)
 
 	event, err := marshalMockPayload(factoryResp.payload)
 	assert.NoError(t, err)
@@ -368,7 +368,7 @@ func Test_Ignore_Transfer_Unit_Not_Found(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.assert.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil)
 	event, err := marshalMockPayload(factoryResp.payload)
 	assert.NoError(t, err)
 
@@ -478,7 +478,7 @@ func TestSetBeneficiary(t *testing.T) {
 		"source": "chain/%d"
 		}`, c.Address.Hex(), abi.Events["BeneficiarySet"].ID, c.Event.NodeId, c.Event.Beneficiary.Hex(), c.Event.IdProxyAddress.Hex(), s.settings.DIMORegistryChainID)
 
-		consumer := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil)
+		consumer := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil)
 
 		event, err := marshalMockPayload(payload)
 		assert.NoError(t, err)
@@ -515,7 +515,7 @@ func TestVehicleTransfer(t *testing.T) {
 	}
 	_ = ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
-	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil)
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil, nil)
 	event, err := marshalMockPayload(`
 	{
 		"type": "zone.dimo.contract.event",
@@ -580,7 +580,7 @@ func Test_NFTPrivileges_Cleared_On_Vehicle_Transfer(t *testing.T) {
 	}
 	_ = ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
-	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil)
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil, nil)
 	event, err := marshalMockPayload(`
 	{
 		"type": "zone.dimo.contract.event",
@@ -659,7 +659,7 @@ func Test_RegistryAftermarketDeviceAddressReset(t *testing.T) {
 	err := amd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.assert.NoError(err)
 
-	consumer := NewContractsEventsConsumer(s.pdb, &logger, s.settings, nil, nil, nil)
+	consumer := NewContractsEventsConsumer(s.pdb, &logger, s.settings, nil, nil, nil, nil)
 	event, err := marshalMockPayload(payload)
 	assert.NoError(t, err)
 
@@ -803,7 +803,7 @@ func Test_VehicleNodeBurn_MetaTxID(t *testing.T) {
 	}
 	_ = ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
-	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil)
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil, nil)
 
 	event, err := marshalMockPayload(fmt.Sprintf(`{
 		"type": "zone.dimo.contract.event",
@@ -865,7 +865,7 @@ func Test_VehicleNodeBurn_NoMetaTxID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil)
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil, nil)
 
 	event, err := marshalMockPayload(fmt.Sprintf(`{
 		"type": "zone.dimo.contract.event",
