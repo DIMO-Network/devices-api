@@ -256,7 +256,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	if in.TokenId == 0 {
-		return fiber.NewError(fiber.StatusConflict, "Connection type not yet minted.")
+		return fiber.NewError(fiber.StatusConflict, "Integration not yet minted.")
 	}
 
 	vid, ok := ud.TokenID.Int64()

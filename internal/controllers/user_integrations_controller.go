@@ -1239,15 +1239,19 @@ func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.C
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
+		qm.Load(models.UserDeviceRels.BurnRequest),
 	).One(ctx, exec)
 	if err != nil {
 		// Access middleware will catch "not found".
 		return nil, nil, err
 	}
 
-	// Vehicle must be minted.
 	if ud.TokenID.IsZero() {
 		return nil, nil, fiber.NewError(fiber.StatusConflict, "Vehicle not yet minted.")
+	}
+
+	if burn := ud.R.BurnRequest; burn != nil && burn.Status != models.MetaTransactionRequestStatusFailed {
+		return nil, nil, fiber.NewError(fiber.StatusConflict, "Vehicle is being burned.")
 	}
 
 	if serial == "" {
