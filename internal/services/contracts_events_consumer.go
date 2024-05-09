@@ -115,7 +115,7 @@ func (c *ContractsEventsConsumer) RunConsumer() error {
 	return nil
 }
 
-func (c *ContractsEventsConsumer) processEvent(_ context.Context, event *shared.CloudEvent[json.RawMessage]) error {
+func (c *ContractsEventsConsumer) processEvent(ctx context.Context, event *shared.CloudEvent[json.RawMessage]) error {
 	if event == nil || event.Type != contractEventCEType {
 		return nil
 	}
@@ -134,7 +134,7 @@ func (c *ContractsEventsConsumer) processEvent(_ context.Context, event *shared.
 		c.log.Info().Str("event", data.EventName).Msg("Event received")
 		return c.setPrivilegeHandler(&data)
 	case Transfer.String():
-		return c.routeTransferEvent(&data)
+		return c.routeTransferEvent(ctx, &data)
 	case AftermarketDeviceNodeMinted.String():
 		if data.Contract == c.registryAddr {
 			c.log.Info().Str("event", data.EventName).Msg("Event received")
@@ -179,17 +179,17 @@ type PrivilegeArgs struct {
 	ExpiresAt   string `mapstructure:"expires"`
 }
 
-func (c *ContractsEventsConsumer) routeTransferEvent(e *ContractEventData) error {
+func (c *ContractsEventsConsumer) routeTransferEvent(ctx context.Context, e *ContractEventData) error {
 	switch e.Contract {
 	case common.HexToAddress(c.settings.AftermarketDeviceContractAddress):
 		c.log.Info().Str("event", e.EventName).Msg("Event received")
 		return c.handleAfterMarketTransferEvent(e)
 	case common.HexToAddress(c.settings.VehicleNFTAddress):
 		c.log.Info().Str("event", e.EventName).Msg("Event received")
-		return c.handleVehicleTransfer(e)
+		return c.handleVehicleTransfer(ctx, e)
 	case common.HexToAddress(c.settings.SyntheticDeviceNFTAddress):
 		c.log.Info().Str("event", e.EventName).Msg("Event received")
-		return c.handleSyntheticTransfer(e)
+		return c.handleSyntheticTransfer(ctx, e)
 	default:
 		c.log.Debug().Str("event", e.EventName).Interface("fullEventData", e).Msg("Handler not provided for contract")
 	}
@@ -197,15 +197,15 @@ func (c *ContractsEventsConsumer) routeTransferEvent(e *ContractEventData) error
 	return nil
 }
 
-func (c *ContractsEventsConsumer) handleSyntheticTransfer(e *ContractEventData) error {
-	ctx := context.Background()
+func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e *ContractEventData) error {
 	var args contracts.MultiPrivilegeTransfer
 	err := json.Unmarshal(e.Arguments, &args)
 	if err != nil {
 		return err
 	}
 
-	// Only interested in burns.
+	// Only interested in burns. For other transfers, synthetics transfer together with the
+	// vehicle, so no need to track ownership.
 	if !IsZeroAddress(args.To) {
 		return nil
 	}
@@ -227,15 +227,14 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(e *ContractEventData) 
 	return nil
 }
 
-func (c *ContractsEventsConsumer) handleVehicleTransfer(e *ContractEventData) error {
-	ctx := context.Background()
+func (c *ContractsEventsConsumer) handleVehicleTransfer(ctx context.Context, e *ContractEventData) error {
 	var args contracts.MultiPrivilegeTransfer
 	err := json.Unmarshal(e.Arguments, &args)
 	if err != nil {
 		return err
 	}
 
-	// Handled mints in the meta-transaction handler.
+	// Handle mints in the meta-transaction handler.
 	if IsZeroAddress(args.From) {
 		return nil
 	}
@@ -289,6 +288,8 @@ func (c *ContractsEventsConsumer) handleVehicleTransfer(e *ContractEventData) er
 		if _, err := ud.Update(ctx, tx, boil.Whitelist(cols.UserID, cols.OwnerAddress)); err != nil {
 			return err
 		}
+
+		c.log.Info().Int64("vehicleTokenId", args.TokenId.Int64()).Str("ownerAddress", args.To.Hex()).Msg("Transferred vehicle.")
 	}
 
 	return tx.Commit()
