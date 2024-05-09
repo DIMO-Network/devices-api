@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/DIMO-Network/shared"
@@ -11,14 +12,13 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
-	"github.com/ericlagergren/decimal"
+	"github.com/DIMO-Network/shared/dbtypes"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 type StatusProcessor interface {
@@ -46,12 +46,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		models.MetaTransactionRequestWhere.ID.EQ(data.RequestID),
 		// This is really ugly. We should probably link back to the type instead of doing this.
 		qm.Load(models.MetaTransactionRequestRels.MintRequestUserDevice),
-		qm.Load(models.MetaTransactionRequestRels.BurnRequestUserDevice),
-		qm.Load(models.MetaTransactionRequestRels.ClaimMetaTransactionRequestAftermarketDevice),
-		qm.Load(models.MetaTransactionRequestRels.PairRequestAftermarketDevice),
-		qm.Load(models.MetaTransactionRequestRels.UnpairRequestAftermarketDevice),
 		qm.Load(models.MetaTransactionRequestRels.MintRequestSyntheticDevice),
-		qm.Load(models.MetaTransactionRequestRels.BurnRequestSyntheticDevice),
 	).One(context.Background(), p.DB().Reader)
 	if err != nil {
 		return err
@@ -74,25 +69,25 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 	vehicleMintedEvent := p.ABI.Events["VehicleNodeMinted"]
 	syntheticDeviceMintedEvent := p.ABI.Events["SyntheticDeviceNodeMinted"]
-	sdBurnEvent := p.ABI.Events["SyntheticDeviceNodeBurned"]
 
 	switch {
 	case mtr.R.MintRequestUserDevice != nil:
-		for _, l1 := range data.Transaction.Logs {
-			if l1.Topics[0] == vehicleMintedEvent.ID {
-				out := new(contracts.RegistryVehicleNodeMinted)
-				err := p.parseLog(out, vehicleMintedEvent, l1)
+		for _, logs := range data.Transaction.Logs {
+			if logs.Topics[0] == vehicleMintedEvent.ID {
+				var event contracts.RegistryVehicleNodeMinted
+				err := p.parseLog(&event, vehicleMintedEvent, logs)
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to parse VehicleNodeMinted event: %w", err)
 				}
 
 				ud := mtr.R.MintRequestUserDevice
+				cols := models.UserDeviceColumns
 
-				ud.TokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.TokenId, 0))
-				ud.OwnerAddress = null.BytesFrom(out.Owner.Bytes())
-				_, err = ud.Update(ctx, p.DB().Writer, boil.Whitelist(models.UserDeviceColumns.TokenID, models.UserDeviceColumns.OwnerAddress))
+				ud.TokenID = dbtypes.NullIntToDecimal(event.TokenId)
+				ud.OwnerAddress = null.BytesFrom(event.Owner.Bytes())
+				_, err = ud.Update(ctx, p.DB().Writer, boil.Whitelist(cols.TokenID, cols.OwnerAddress))
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to update vehicle record: %w", err)
 				}
 
 				p.Eventer.Emit(&shared.CloudEvent[any]{ //nolint
@@ -107,75 +102,67 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 							VIN: ud.VinIdentifier.String,
 						},
 						NFT: services.UserDeviceEventNFT{
-							TokenID: out.TokenId,
-							Owner:   out.Owner,
+							TokenID: event.TokenId,
+							Owner:   event.Owner,
 							TxHash:  common.HexToHash(data.Transaction.Hash),
 						},
 					},
 				})
 
-				logger.Info().Str("userDeviceId", mtr.R.MintRequestUserDevice.ID).Msg("Vehicle minted.")
-			} else if l1.Topics[0] == syntheticDeviceMintedEvent.ID {
+				logger.Info().
+					Str("userDeviceId", mtr.R.MintRequestUserDevice.ID).
+					Int64("vehicleTokenId", event.TokenId.Int64()).
+					Str("owner", event.Owner.Hex()).
+					Msg("Vehicle minted.")
+			} else if logs.Topics[0] == syntheticDeviceMintedEvent.ID {
 				// We must be doing a combined vehicle and SD mint. This always comes second.
-				out := new(contracts.RegistrySyntheticDeviceNodeMinted)
-
-				sd := mtr.R.MintRequestSyntheticDevice
-				if sd == nil {
-					logger.Err(err).Msg("Impossible")
-					return nil
+				var event contracts.RegistrySyntheticDeviceNodeMinted
+				err := p.parseLog(&event, syntheticDeviceMintedEvent, logs)
+				if err != nil {
+					return fmt.Errorf("failed to parse SyntheticDeviceNodeMinted event: %w", err)
 				}
 
-				err := p.parseLog(out, syntheticDeviceMintedEvent, l1)
-				if err != nil {
-					return err
+				cols := models.SyntheticDeviceColumns
+				sd := mtr.R.MintRequestSyntheticDevice
+				if sd == nil {
+					return fmt.Errorf("vehicle mint has a SyntheticDeviceNodeMinted log but there's no synthetic device attached to the meta-transaction")
 				}
 
 				sd.VehicleTokenID = mtr.R.MintRequestUserDevice.TokenID
-				sd.TokenID = types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.SyntheticDeviceNode, 0))
-				_, err = sd.Update(ctx, p.DB().Writer, boil.Infer())
+				sd.TokenID = dbtypes.NullIntToDecimal(event.SyntheticDeviceNode)
+				_, err = sd.Update(ctx, p.DB().Writer, boil.Whitelist(cols.VehicleTokenID, cols.TokenID))
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to update synthetic device record: %w", err)
 				}
+
+				logger.Info().
+					Int64("vehicleTokenId", event.VehicleNode.Int64()).
+					Int64("syntheticDeviceTokenId", event.SyntheticDeviceNode.Int64()).
+					Str("owner", event.Owner.Hex()).
+					Msg("Synthetic device minted.")
 			}
 		}
-	case mtr.R.BurnRequestUserDevice != nil:
-		// Handled in contract event consumer.
-	case mtr.R.ClaimMetaTransactionRequestAftermarketDevice != nil:
-		// Handled in the contract event consumer.
-	case mtr.R.PairRequestAftermarketDevice != nil:
-		// Handled in the contract event consumer.
-	case mtr.R.UnpairRequestAftermarketDevice != nil:
-		// Handled in the contract event consumer.
+	// It's very important that this be after the case for VehicleNodeMinted.
 	case mtr.R.MintRequestSyntheticDevice != nil:
-		// It's very important that this be after the case for VehicleNodeMinted.
-		for _, l1 := range data.Transaction.Logs {
-			if l1.Topics[0] == syntheticDeviceMintedEvent.ID {
-				out := new(contracts.RegistrySyntheticDeviceNodeMinted)
-				err := p.parseLog(out, syntheticDeviceMintedEvent, l1)
+		for _, log := range data.Transaction.Logs {
+			if log.Topics[0] == syntheticDeviceMintedEvent.ID {
+				var event contracts.RegistrySyntheticDeviceNodeMinted
+				err := p.parseLog(&event, syntheticDeviceMintedEvent, log)
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to parse SyntheticDeviceNodeMinted event: %w", err)
 				}
 
 				sd := mtr.R.MintRequestSyntheticDevice
-				tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(out.SyntheticDeviceNode, 0))
-				sd.TokenID = tkID
-				if _, err := sd.Update(ctx, p.DB().Writer, boil.Infer()); err != nil {
-					return err
-				}
-			}
-		}
-	case mtr.R.BurnRequestSyntheticDevice != nil:
-		for _, l1 := range data.Transaction.Logs {
-			if l1.Topics[0] == sdBurnEvent.ID {
-				out := new(contracts.RegistrySyntheticDeviceNodeBurned)
-				err := p.parseLog(out, sdBurnEvent, l1)
-				if err != nil {
-					return err
+				sd.TokenID = dbtypes.NullIntToDecimal(event.SyntheticDeviceNode)
+				if _, err := sd.Update(ctx, p.DB().Writer, boil.Whitelist(models.SyntheticDeviceColumns.TokenID)); err != nil {
+					return fmt.Errorf("failed to update synthetic device record: %w", err)
 				}
 
-				if _, err := mtr.R.BurnRequestSyntheticDevice.Delete(ctx, p.DB().Writer); err != nil {
-					return err
-				}
+				logger.Info().
+					Int64("vehicleTokenId", event.VehicleNode.Int64()).
+					Int64("syntheticDeviceTokenId", event.SyntheticDeviceNode.Int64()).
+					Str("owner", event.Owner.Hex()).
+					Msg("Synthetic device minted.")
 			}
 		}
 	}

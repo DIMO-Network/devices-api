@@ -55,6 +55,7 @@ type Settings struct {
 	TokenExchangeJWTKeySetURL         string `yaml:"TOKEN_EXCHANGE_JWK_KEY_SET_URL"`
 	GoogleMapsAPIKey                  string `yaml:"GOOGLE_MAPS_API_KEY"`
 	VehicleNFTAddress                 string `yaml:"VEHICLE_NFT_ADDRESS"`
+	SyntheticDeviceNFTAddress         string `yaml:"SYNTHETIC_DEVICE_NFT_ADDRESS"`
 	ContractsEventTopic               string `yaml:"CONTRACT_EVENT_TOPIC"`
 	AutoPiNFTImage                    string `yaml:"AUTOPI_NFT_IMAGE"`
 	MacaronNFTImage                   string `yaml:"MACARON_NFT_IMAGE"`
