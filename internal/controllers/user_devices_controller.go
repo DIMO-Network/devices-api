@@ -398,7 +398,7 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
-	var sharedDev []*models.UserDevice
+	var sharedVehicles []*models.UserDevice
 
 	if user.EthereumAddress != nil {
 		// This is N+1 hell.
@@ -413,49 +413,38 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 			return err
 		}
 
-		var toks []types.Decimal
+		var processedIDs []types.Decimal
 
 	PrivLoop:
 		for _, priv := range privs {
-			for _, tok := range toks {
+			for _, tok := range processedIDs {
 				if tok.Cmp(priv.TokenID.Big) == 0 {
 					continue PrivLoop
 				}
 			}
 
-			toks = append(toks, priv.TokenID)
-
-			nft, err := models.VehicleNFTS(
-				models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(priv.TokenID.Big)),
-			).One(c.Context(), udc.DBS().Reader)
-			if err != nil {
-				if err == sql.ErrNoRows {
-					continue
-				}
-				return err
-			}
-
-			if !nft.UserDeviceID.Valid {
-				continue
-			}
+			processedIDs = append(processedIDs, priv.TokenID)
 
 			ud, err := models.UserDevices(
-				models.UserDeviceWhere.ID.EQ(nft.UserDeviceID.String),
+				models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(priv.TokenID.Big)),
 				qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-				// Would we get this backreference for free?
 				qm.Load(models.UserDeviceRels.MintRequest),
 				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
 				qm.Load(models.UserDeviceRels.Claim),
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
+				if err == sql.ErrNoRows {
+					udc.log.Warn().Msgf("User %s has privileges on a vehicle %d of which we have no record.", userAddr, priv.TokenID)
+					continue
+				}
 				return err
 			}
 
-			sharedDev = append(sharedDev, ud)
+			sharedVehicles = append(sharedVehicles, ud)
 		}
 	}
 
-	apiSharedDevices, err := udc.dbDevicesToDisplay(c.Context(), sharedDev)
+	apiSharedDevices, err := udc.dbDevicesToDisplay(c.Context(), sharedVehicles)
 	if err != nil {
 		return err
 	}
