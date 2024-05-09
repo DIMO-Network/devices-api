@@ -1843,8 +1843,8 @@ type VehicleNFTData struct {
 	// FailureReason is populated if the status is "Failed" because of an on-chain revert and
 	// we were able to decode the reason.
 	FailureReason *string `json:"failureReason,omitempty"`
-	// BurnTransaction contains the status of the burning meta-transaction, if one is in-flight
-	// or has failed.
+	// BurnTransaction contains the status of the vehicle burning meta-transaction, if one
+	// is in flight or has failed.
 	BurnTransaction *TransactionStatus `json:"burnTransaction,omitempty"`
 }
 
@@ -1862,8 +1862,8 @@ type SyntheticDeviceStatus struct {
 	// FailureReason is populated with a human-readable error message if the status
 	// is "Failed" because of an on-chain revert and we were able to decode the reason.
 	FailureReason *string `json:"failureReason"`
-	// BurnTransaction contains the status of the burning meta-transaction, if one is in-flight
-	// or has failed.
+	// BurnTransaction contains the status of the synthetic device burning meta-transaction,
+	// if one is in flight or has failed.
 	BurnTransaction *TransactionStatus `json:"burnTransaction,omitempty"`
 }
 

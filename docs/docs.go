@@ -3217,7 +3217,7 @@ const docTemplate = `{
                     "example": "0xAED7EA8035eEc47E657B34eF5D020c7005487443"
                 },
                 "burnTransaction": {
-                    "description": "BurnTransaction contains the status of the burning meta-transaction, if one is in-flight\nor has failed.",
+                    "description": "BurnTransaction contains the status of the synthetic device burning meta-transaction,\nif one is in flight or has failed.",
                     "allOf": [
                         {
                             "$ref": "#/definitions/internal_controllers.TransactionStatus"
@@ -3278,7 +3278,7 @@ const docTemplate = `{
                     "example": "2022-10-01T09:22:21.002Z"
                 },
                 "failureReason": {
-                    "description": "FailureReason is populated with a human-readable message if the status is \"Failed\"\nbecause of an on-chain revert and we were able to decode the reason.",
+                    "description": "FailureReason is populated with a human-readable error message if the status\nis \"Failed\" because of an on-chain revert and we were able to decode the reason.",
                     "type": "string"
                 },
                 "hash": {
@@ -3463,7 +3463,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "burnTransaction": {
-                    "description": "BurnTransaction contains the status of the burning meta-transaction, if one is in-flight\nor has failed.",
+                    "description": "BurnTransaction contains the status of the vehicle burning meta-transaction, if one\nis in flight or has failed.",
                     "allOf": [
                         {
                             "$ref": "#/definitions/internal_controllers.TransactionStatus"

@@ -695,8 +695,8 @@ definitions:
         allOf:
         - $ref: '#/definitions/internal_controllers.TransactionStatus'
         description: |-
-          BurnTransaction contains the status of the burning meta-transaction, if one is in-flight
-          or has failed.
+          BurnTransaction contains the status of the synthetic device burning meta-transaction,
+          if one is in flight or has failed.
       failureReason:
         description: |-
           FailureReason is populated with a human-readable error message if the status
@@ -745,8 +745,8 @@ definitions:
         type: string
       failureReason:
         description: |-
-          FailureReason is populated with a human-readable message if the status is "Failed"
-          because of an on-chain revert and we were able to decode the reason.
+          FailureReason is populated with a human-readable error message if the status
+          is "Failed" because of an on-chain revert and we were able to decode the reason.
         type: string
       hash:
         description: Hash is the hexidecimal transaction hash, available for any transaction
@@ -884,8 +884,8 @@ definitions:
         allOf:
         - $ref: '#/definitions/internal_controllers.TransactionStatus'
         description: |-
-          BurnTransaction contains the status of the burning meta-transaction, if one is in-flight
-          or has failed.
+          BurnTransaction contains the status of the vehicle burning meta-transaction, if one
+          is in flight or has failed.
       failureReason:
         description: |-
           FailureReason is populated if the status is "Failed" because of an on-chain revert and
