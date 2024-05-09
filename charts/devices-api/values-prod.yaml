@@ -2,7 +2,7 @@ replicaCount: 3
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 1.25.21
+  tag: 1.26.0
 cronJob:
   enabled: false
   schedule: 0 0 1 * *
@@ -50,6 +50,7 @@ env:
   TESLA_TOKEN_URL: https://auth.tesla.com/oauth2/v3/token
   TESLA_FLEET_URL: https://fleet-api.prd.%s.vn.cloud.tesla.com
   META_TRANSACTION_PROCESSOR_GRPC_ADDR: meta-transaction-processor-prod:8086
+  SYNTHETIC_DEVICE_NFT_ADDRESS: '0x4804e8D1661cd1a1e5dDdE1ff458A7f878c0aC6D'
 ingress:
   enabled: true
   className: nginx

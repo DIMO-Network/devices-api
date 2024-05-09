@@ -1260,9 +1260,20 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 	userDeviceID := c.Params("userDeviceID")
 
-	userDevice, err := models.FindUserDevice(c.Context(), udc.DBS().Reader, userDeviceID)
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(models.UserDeviceRels.MintRequest),
+	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "No vehicle with that id found.")
+	}
+
+	if !userDevice.TokenID.IsZero() {
+		return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle already minted with token id %d.", userDevice.TokenID.Big))
+	}
+
+	if mr := userDevice.R.MintRequest; mr != nil && mr.Status != models.MetaTransactionRequestStatusFailed {
+		return fiber.NewError(fiber.StatusConflict, "Vehicle minting already in process.")
 	}
 
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
