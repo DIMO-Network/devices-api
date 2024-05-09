@@ -2610,38 +2610,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers.AftermarketDeviceTransactionStatus": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "description": "CreatedAt is the timestamp of the creation of the meta-transaction.",
-                    "type": "string",
-                    "example": "2022-10-01T09:22:21.002Z"
-                },
-                "hash": {
-                    "description": "Hash is the hexidecimal transaction hash, available for any transaction at the Submitted stage or greater.",
-                    "type": "string",
-                    "example": "0x28b4662f1e1b15083261a4a5077664f4003d58cb528826b7aab7fad466c28e70"
-                },
-                "status": {
-                    "description": "Status is the state of the transaction performing this operation. There are only four options.",
-                    "type": "string",
-                    "enum": [
-                        "Unsubmitted",
-                        "Submitted",
-                        "Mined",
-                        "Confirmed",
-                        "Failed"
-                    ],
-                    "example": "Mined"
-                },
-                "updatedAt": {
-                    "description": "UpdatedAt is the last time we updated the status of the transaction.",
-                    "type": "string",
-                    "example": "2022-10-01T09:22:26.337Z"
-                }
-            }
-        },
         "internal_controllers.AutoPiDeviceInfo": {
             "type": "object",
             "properties": {
@@ -2655,7 +2623,7 @@ const docTemplate = `{
                     "description": "Claim contains the status of the on-chain claiming meta-transaction.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_controllers.AftermarketDeviceTransactionStatus"
+                            "$ref": "#/definitions/internal_controllers.TransactionStatus"
                         }
                     ]
                 },
@@ -2693,7 +2661,7 @@ const docTemplate = `{
                     "description": "Pair contains the status of the on-chain pairing meta-transaction.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_controllers.AftermarketDeviceTransactionStatus"
+                            "$ref": "#/definitions/internal_controllers.TransactionStatus"
                         }
                     ]
                 },
@@ -2716,7 +2684,7 @@ const docTemplate = `{
                     "description": "Unpair contains the status of the on-chain unpairing meta-transaction.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_controllers.AftermarketDeviceTransactionStatus"
+                            "$ref": "#/definitions/internal_controllers.TransactionStatus"
                         }
                     ]
                 }
@@ -3247,6 +3215,9 @@ const docTemplate = `{
                     "type": "string",
                     "example": "0xAED7EA8035eEc47E657B34eF5D020c7005487443"
                 },
+                "burnTransaction": {
+                    "$ref": "#/definitions/internal_controllers.TransactionStatus"
+                },
                 "status": {
                     "type": "string",
                     "enum": [
@@ -3282,6 +3253,38 @@ const docTemplate = `{
                 "virtualKeyAdded": {
                     "description": "VirtualKeyAdded is true if the DIMO virtual key has been added to the vehicle.",
                     "type": "boolean"
+                }
+            }
+        },
+        "internal_controllers.TransactionStatus": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "CreatedAt is the timestamp of the creation of the meta-transaction.",
+                    "type": "string",
+                    "example": "2022-10-01T09:22:21.002Z"
+                },
+                "hash": {
+                    "description": "Hash is the hexidecimal transaction hash, available for any transaction at the Submitted stage or greater.",
+                    "type": "string",
+                    "example": "0x28b4662f1e1b15083261a4a5077664f4003d58cb528826b7aab7fad466c28e70"
+                },
+                "status": {
+                    "description": "Status is the state of the transaction performing this operation.",
+                    "type": "string",
+                    "enum": [
+                        "Unsubmitted",
+                        "Submitted",
+                        "Mined",
+                        "Confirmed",
+                        "Failed"
+                    ],
+                    "example": "Mined"
+                },
+                "updatedAt": {
+                    "description": "UpdatedAt is the last time we updated the status of the transaction.",
+                    "type": "string",
+                    "example": "2022-10-01T09:22:26.337Z"
                 }
             }
         },
@@ -3442,6 +3445,9 @@ const docTemplate = `{
         "internal_controllers.VehicleNFTData": {
             "type": "object",
             "properties": {
+                "burnTransaction": {
+                    "$ref": "#/definitions/internal_controllers.TransactionStatus"
+                },
                 "ownerAddress": {
                     "description": "OwnerAddress is the Ethereum address of the NFT owner.",
                     "type": "array",

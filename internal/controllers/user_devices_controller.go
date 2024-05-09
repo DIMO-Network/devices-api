@@ -279,6 +279,22 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 					nft.TxHash = &hash
 				}
 			}
+
+			if mtr := d.R.BurnRequest; mtr != nil {
+				var maybeHash *string
+
+				if mtr.Hash.Valid {
+					hash := common.BytesToHash(mtr.Hash.Bytes).Hex()
+					maybeHash = &hash
+				}
+
+				nft.BurnTransaction = &TransactionStatus{
+					Status:    mtr.Status,
+					Hash:      maybeHash,
+					CreatedAt: mtr.CreatedAt,
+					UpdatedAt: mtr.UpdatedAt,
+				}
+			}
 		}
 
 		if sd := d.R.VehicleTokenSyntheticDevice; sd != nil {
@@ -296,6 +312,22 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 				sdStat.TokenID = sd.TokenID.Int(nil)
 				a := common.BytesToAddress(sd.WalletAddress)
 				sdStat.Address = &a
+			}
+
+			if mtr := sd.R.BurnRequest; mtr != nil {
+				var maybeHash *string
+
+				if mtr.Hash.Valid {
+					hash := common.BytesToHash(mtr.Hash.Bytes).Hex()
+					maybeHash = &hash
+				}
+
+				sdStat.BurnTransaction = &TransactionStatus{
+					Status:    mtr.Status,
+					Hash:      maybeHash,
+					CreatedAt: mtr.CreatedAt,
+					UpdatedAt: mtr.UpdatedAt,
+				}
 			}
 		}
 
@@ -360,7 +392,9 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	query = append(query,
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 		qm.Load(models.UserDeviceRels.MintRequest),
+		qm.Load(models.UserDeviceRels.BurnRequest),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
 		qm.Load(models.UserDeviceRels.Claim),
 		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" DESC"))
 
@@ -439,9 +473,10 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 			ud, err := models.UserDevices(
 				models.UserDeviceWhere.ID.EQ(nft.UserDeviceID.String),
 				qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-				// Would we get this backreference for free?
 				qm.Load(models.UserDeviceRels.MintRequest),
+				qm.Load(models.UserDeviceRels.BurnRequest),
 				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
+				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
 				qm.Load(models.UserDeviceRels.Claim),
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
@@ -1799,15 +1834,17 @@ type VehicleNFTData struct {
 	// TxHash is the hash of the minting transaction.
 	TxHash *string `json:"txHash,omitempty" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
 	// Status is the minting status of the NFT.
-	Status string `json:"status,omitempty" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
+	Status          string             `json:"status,omitempty" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
+	BurnTransaction *TransactionStatus `json:"burnTransaction,omitempty"`
 }
 
 type SyntheticDeviceStatus struct {
-	IntegrationID uint64          `json:"-"`
-	TokenID       *big.Int        `json:"tokenId,omitempty" swaggertype:"number" example:"15"`
-	Address       *common.Address `json:"address,omitempty" swaggertype:"string" example:"0xAED7EA8035eEc47E657B34eF5D020c7005487443"`
-	TxHash        *string         `json:"txHash,omitempty" swaggertype:"string" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
-	Status        string          `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
+	IntegrationID   uint64             `json:"-"`
+	TokenID         *big.Int           `json:"tokenId,omitempty" swaggertype:"number" example:"15"`
+	Address         *common.Address    `json:"address,omitempty" swaggertype:"string" example:"0xAED7EA8035eEc47E657B34eF5D020c7005487443"`
+	TxHash          *string            `json:"txHash,omitempty" swaggertype:"string" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
+	Status          string             `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
+	BurnTransaction *TransactionStatus `json:"burnTransaction,omitempty"`
 }
 
 type VINCredentialData struct {
