@@ -10,25 +10,23 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DIMO-Network/shared/dbtypes"
-	"github.com/DIMO-Network/shared/kafka"
-
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/services/dex"
 	"github.com/DIMO-Network/devices-api/internal/utils"
-	"google.golang.org/protobuf/proto"
-
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/dbtypes"
+	"github.com/DIMO-Network/shared/kafka"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
+	"google.golang.org/protobuf/proto"
 )
 
 type Integration interface {
@@ -222,7 +220,7 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 		return err
 	}
 
-	c.log.Info().Int64("syntheticDeviceTokenId", args.TokenId.Int64()).Msg("Burned synthetic device.")
+	c.log.Info().Int64("syntheticDeviceTokenId", args.TokenId.Int64()).Str("owner", args.From.Hex()).Msg("Burned synthetic device.")
 
 	return nil
 }
@@ -269,7 +267,7 @@ func (c *ContractsEventsConsumer) handleVehicleTransfer(ctx context.Context, e *
 			return err
 		}
 
-		c.log.Info().Int64("vehicleTokenId", args.TokenId.Int64()).Msg("Burned vehicle.")
+		c.log.Info().Int64("vehicleTokenId", args.TokenId.Int64()).Str("owner", args.From.Hex()).Msg("Burned vehicle.")
 	} else {
 		// Faking a user id for a web3 user with the new owner address.
 		s := dex.IDTokenSubject{
@@ -289,7 +287,7 @@ func (c *ContractsEventsConsumer) handleVehicleTransfer(ctx context.Context, e *
 			return err
 		}
 
-		c.log.Info().Int64("vehicleTokenId", args.TokenId.Int64()).Str("ownerAddress", args.To.Hex()).Msg("Transferred vehicle.")
+		c.log.Info().Int64("vehicleTokenId", args.TokenId.Int64()).Msgf("Transferred vehicle from %s to %s.", args.From, args.To)
 	}
 
 	return tx.Commit()

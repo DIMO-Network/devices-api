@@ -109,7 +109,11 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					},
 				})
 
-				logger.Info().Str("userDeviceId", mtr.R.MintRequestUserDevice.ID).Int64("vehicleTokenId", event.TokenId.Int64()).Msg("Vehicle minted.")
+				logger.Info().
+					Str("userDeviceId", mtr.R.MintRequestUserDevice.ID).
+					Int64("vehicleTokenId", event.TokenId.Int64()).
+					Str("owner", event.Owner.Hex()).
+					Msg("Vehicle minted.")
 			} else if logs.Topics[0] == syntheticDeviceMintedEvent.ID {
 				// We must be doing a combined vehicle and SD mint. This always comes second.
 				var event contracts.RegistrySyntheticDeviceNodeMinted
@@ -130,6 +134,12 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				if err != nil {
 					return fmt.Errorf("failed to update synthetic device record: %w", err)
 				}
+
+				logger.Info().
+					Int64("vehicleTokenId", event.VehicleNode.Int64()).
+					Int64("syntheticDeviceTokenId", event.SyntheticDeviceNode.Int64()).
+					Str("owner", event.Owner.Hex()).
+					Msg("Synthetic device minted.")
 			}
 		}
 	// It's very important that this be after the case for VehicleNodeMinted.
@@ -147,6 +157,12 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				if _, err := sd.Update(ctx, p.DB().Writer, boil.Whitelist(models.SyntheticDeviceColumns.TokenID)); err != nil {
 					return fmt.Errorf("failed to update synthetic device record: %w", err)
 				}
+
+				logger.Info().
+					Int64("vehicleTokenId", event.VehicleNode.Int64()).
+					Int64("syntheticDeviceTokenId", event.SyntheticDeviceNode.Int64()).
+					Str("owner", event.Owner.Hex()).
+					Msg("Synthetic device minted.")
 			}
 		}
 	}
