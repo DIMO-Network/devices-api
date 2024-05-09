@@ -169,14 +169,6 @@ func (c *ContractsEventsConsumer) processEvent(ctx context.Context, event *share
 	return nil
 }
 
-type PrivilegeArgs struct {
-	TokenID     string
-	Version     int64
-	PrivilegeID int64  `mapstructure:"privId"`
-	UserAddress string `mapstructure:"user"`
-	ExpiresAt   string `mapstructure:"expires"`
-}
-
 func (c *ContractsEventsConsumer) routeTransferEvent(ctx context.Context, e *ContractEventData) error {
 	switch e.Contract {
 	case common.HexToAddress(c.settings.AftermarketDeviceContractAddress):
