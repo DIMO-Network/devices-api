@@ -47,7 +47,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		// This is really ugly. We should probably link back to the type instead of doing this.
 		qm.Load(models.MetaTransactionRequestRels.MintRequestUserDevice),
 		qm.Load(models.MetaTransactionRequestRels.MintRequestSyntheticDevice),
-		qm.Load(models.MetaTransactionRequestRels.BurnRequestSyntheticDevice),
 	).One(context.Background(), p.DB().Reader)
 	if err != nil {
 		return err
@@ -70,7 +69,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 	vehicleMintedEvent := p.ABI.Events["VehicleNodeMinted"]
 	syntheticDeviceMintedEvent := p.ABI.Events["SyntheticDeviceNodeMinted"]
-	sdBurnEvent := p.ABI.Events["SyntheticDeviceNodeBurned"]
 
 	switch {
 	case mtr.R.MintRequestUserDevice != nil:
@@ -148,20 +146,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				sd.TokenID = dbtypes.NullIntToDecimal(event.SyntheticDeviceNode)
 				if _, err := sd.Update(ctx, p.DB().Writer, boil.Whitelist(models.SyntheticDeviceColumns.TokenID)); err != nil {
 					return fmt.Errorf("failed to update synthetic device record: %w", err)
-				}
-			}
-		}
-	case mtr.R.BurnRequestSyntheticDevice != nil:
-		for _, l1 := range data.Transaction.Logs {
-			if l1.Topics[0] == sdBurnEvent.ID {
-				var event contracts.RegistrySyntheticDeviceNodeBurned
-				err := p.parseLog(&event, sdBurnEvent, l1)
-				if err != nil {
-					return fmt.Errorf("failed to parse SyntheticDeviceNodeBurned event: %w", err)
-				}
-
-				if _, err := mtr.R.BurnRequestSyntheticDevice.Delete(ctx, p.DB().Writer); err != nil {
-					return fmt.Errorf("failed to delete synthetic device record: %w", err)
 				}
 			}
 		}

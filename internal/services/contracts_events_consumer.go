@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DIMO-Network/shared/dbtypes"
 	"github.com/DIMO-Network/shared/kafka"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -22,13 +23,11 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
-	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
@@ -62,7 +61,6 @@ const (
 	AftermarketDeviceUnpaired     EventName = "AftermarketDeviceUnpaired"
 	AftermarketDeviceAttributeSet EventName = "AftermarketDeviceAttributeSet"
 	AftermarketDeviceAddressReset EventName = "AftermarketDeviceAddressReset"
-	VehicleNodeBurned             EventName = "VehicleNodeBurned"
 )
 
 func (r EventName) String() string {
@@ -166,8 +164,6 @@ func (c *ContractsEventsConsumer) processEvent(_ context.Context, event *shared.
 		return c.aftermarketDeviceAttributeSet(&data)
 	case AftermarketDeviceAddressReset.String():
 		return c.aftermarketDeviceAddressReset(&data)
-	case VehicleNodeBurned.String():
-		return c.vehicleNodeBurned(&data)
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -191,9 +187,42 @@ func (c *ContractsEventsConsumer) routeTransferEvent(e *ContractEventData) error
 	case common.HexToAddress(c.settings.VehicleNFTAddress):
 		c.log.Info().Str("event", e.EventName).Msg("Event received")
 		return c.handleVehicleTransfer(e)
+	case common.HexToAddress(c.settings.SyntheticDeviceNFTAddress):
+		c.log.Info().Str("event", e.EventName).Msg("Event received")
+		return c.handleSyntheticTransfer(e)
 	default:
 		c.log.Debug().Str("event", e.EventName).Interface("fullEventData", e).Msg("Handler not provided for contract")
 	}
+
+	return nil
+}
+
+func (c *ContractsEventsConsumer) handleSyntheticTransfer(e *ContractEventData) error {
+	ctx := context.Background()
+	var args contracts.MultiPrivilegeTransfer
+	err := json.Unmarshal(e.Arguments, &args)
+	if err != nil {
+		return err
+	}
+
+	// Only interested in burns.
+	if !IsZeroAddress(args.To) {
+		return nil
+	}
+
+	sd, err := models.SyntheticDevices(
+		models.SyntheticDeviceWhere.TokenID.EQ(dbtypes.NullIntToDecimal(args.TokenId)),
+	).One(ctx, c.db.DBS().Writer)
+	if err != nil {
+		return err
+	}
+
+	_, err = sd.Delete(ctx, c.db.DBS().Writer)
+	if err != nil {
+		return err
+	}
+
+	c.log.Info().Int64("syntheticDeviceTokenId", args.TokenId.Int64()).Msg("Burned synthetic device.")
 
 	return nil
 }
@@ -206,10 +235,8 @@ func (c *ContractsEventsConsumer) handleVehicleTransfer(e *ContractEventData) er
 		return err
 	}
 
-	tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0))
-
+	// Handled mints in the meta-transaction handler.
 	if IsZeroAddress(args.From) {
-		c.log.Debug().Str("tokenID", tkID.String()).Msg("Ignoring mint event")
 		return nil
 	}
 
@@ -217,20 +244,21 @@ func (c *ContractsEventsConsumer) handleVehicleTransfer(e *ContractEventData) er
 	if err != nil {
 		return err
 	}
-
 	defer tx.Rollback() //nolint
 
 	rowsAff, err := models.NFTPrivileges(
-		models.NFTPrivilegeWhere.TokenID.EQ(types.Decimal(tkID)),
+		models.NFTPrivilegeWhere.TokenID.EQ(dbtypes.IntToDecimal(args.TokenId)),
 	).DeleteAll(ctx, tx)
 	if err != nil {
 		return err
 	}
 
-	c.log.Info().Str("tokenId", tkID.String()).Msgf("Cleared %d privileges upon vehicle transfer.", rowsAff)
+	if rowsAff != 0 {
+		c.log.Info().Int64("vehicleTokenId", args.TokenId.Int64()).Msgf("Cleared %d privileges upon vehicle transfer.", rowsAff)
+	}
 
 	ud, err := models.UserDevices(
-		models.UserDeviceWhere.TokenID.EQ(tkID),
+		models.UserDeviceWhere.TokenID.EQ(dbtypes.NullIntToDecimal(args.TokenId)),
 	).One(ctx, tx)
 	if err != nil {
 		return err
@@ -241,7 +269,10 @@ func (c *ContractsEventsConsumer) handleVehicleTransfer(e *ContractEventData) er
 		if err != nil {
 			return err
 		}
+
+		c.log.Info().Int64("vehicleTokenId", args.TokenId.Int64()).Msg("Burned vehicle.")
 	} else {
+		// Faking a user id for a web3 user with the new owner address.
 		s := dex.IDTokenSubject{
 			UserId: args.To.Hex(),
 			ConnId: "web3",
@@ -251,10 +282,11 @@ func (c *ContractsEventsConsumer) handleVehicleTransfer(e *ContractEventData) er
 			return err
 		}
 
+		cols := models.UserDeviceColumns
 		ud.UserID = base64.RawURLEncoding.EncodeToString(b)
 		ud.OwnerAddress = null.BytesFrom(args.To.Bytes())
 
-		if _, err := ud.Update(ctx, tx, boil.Whitelist(models.UserDeviceColumns.OwnerAddress, models.UserDeviceColumns.UserID)); err != nil {
+		if _, err := ud.Update(ctx, tx, boil.Whitelist(cols.UserID, cols.OwnerAddress)); err != nil {
 			return err
 		}
 	}
@@ -673,50 +705,6 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAddressReset(e *ContractEvent
 		strings.TrimPrefix(args.AftermarketDeviceAddress.String(), "0x"),
 		args.TokenId.Int64())
 	return err
-}
-
-// vehicleNodeBurned handles the event of the same name from the registry contract.
-func (c *ContractsEventsConsumer) vehicleNodeBurned(e *ContractEventData) error {
-	ctx := context.Background()
-	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
-		return fmt.Errorf("vehicle burn from unexpected source %d/%s", e.ChainID, e.Contract)
-	}
-
-	var args contracts.RegistryVehicleNodeBurned
-	if err := json.Unmarshal(e.Arguments, &args); err != nil {
-		return err
-	}
-
-	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Msg("burning vehicle node")
-	tx, err := c.db.DBS().Reader.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback() //nolint
-
-	ud, err := models.UserDevices(
-		models.UserDeviceWhere.TokenID.EQ(
-			types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.VehicleNode, 0))),
-		qm.Load(models.UserDeviceRels.BurnRequest),
-	).One(ctx, tx)
-	if err != nil {
-		return err
-	}
-
-	if _, err := ud.Delete(ctx, tx); err != nil {
-		return err
-	}
-
-	if mtr := ud.R.BurnRequest; mtr != nil {
-		mtr.Hash = null.BytesFrom(e.TransactionHash.Bytes())
-		mtr.Status = models.MetaTransactionRequestStatusConfirmed
-		if _, err := mtr.Update(ctx, tx, boil.Infer()); err != nil {
-			return err
-		}
-	}
-
-	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Msg("vehicle node burned")
-	return tx.Commit()
 }
 
 // DCNNameChangedContract represents a NameChanged event raised by the FullAbi contract.
