@@ -126,8 +126,9 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 	integrationID := c.Params("integrationID")
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
+		qm.Load(models.UserDeviceRels.BurnRequest),
 	).One(c.Context(), sdc.DBS().Reader)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -140,12 +141,21 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 		return fiber.NewError(fiber.StatusConflict, "Vehicle not minted.")
 	}
 
-	if userAddr != common.BytesToAddress(ud.OwnerAddress.Bytes) {
-		return fiber.NewError(fiber.StatusUnauthorized, "User's address does not control this device.")
+	if burn := ud.R.BurnRequest; burn != nil && burn.Status != models.MetaTransactionRequestStatusFailed {
+		return fiber.NewError(fiber.StatusConflict, "Vehicle is being burned.")
 	}
 
-	if ud.R.VehicleTokenSyntheticDevice != nil {
-		return fiber.NewError(fiber.StatusConflict, "Vehicle already paired with a synthetic device.")
+	if ownerAddr := common.BytesToAddress(ud.OwnerAddress.Bytes); userAddr != ownerAddr {
+		return fiber.NewError(fiber.StatusUnauthorized, fmt.Sprintf("User's address %s does not match vehicle owner %s.", userAddr, ownerAddr))
+	}
+
+	if sd := ud.R.VehicleTokenSyntheticDevice; sd != nil {
+		if !sd.TokenID.IsZero() {
+			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle already paired with synthetic device %d.", sd.TokenID.Big))
+		}
+		if sd.R.MintRequest.Status != models.MetaTransactionRequestStatusFailed {
+			return fiber.NewError(fiber.StatusConflict, "There is already a synthetic device mint in progress for this vehicle.")
+		}
 	}
 
 	if len(ud.R.UserDeviceAPIIntegrations) == 0 {
@@ -157,8 +167,8 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 		return shared.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
-	if in.Vendor != constants.SmartCarVendor && in.Vendor != constants.TeslaVendor {
-		return fiber.NewError(fiber.StatusConflict, "This is not a software connection.")
+	if in.ManufacturerTokenId != 0 {
+		return fiber.NewError(fiber.StatusConflict, "This is not a software integration.")
 	}
 
 	if in.Vendor == constants.SmartCarVendor {
@@ -175,7 +185,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 	}
 
 	if in.TokenId == 0 {
-		return fiber.NewError(fiber.StatusConflict, "Connection type not yet minted.")
+		return fiber.NewError(fiber.StatusConflict, "Integration not yet minted.")
 	}
 
 	vid, ok := ud.TokenID.Int64()
@@ -205,6 +215,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
+		qm.Load(models.UserDeviceRels.BurnRequest),
 	).One(c.Context(), sdc.DBS().Reader)
 	if err != nil {
 		return err
@@ -214,11 +225,17 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "Vehicle not minted.")
 	}
 
-	if ud.R.VehicleTokenSyntheticDevice != nil {
-		if ud.R.VehicleTokenSyntheticDevice.R.MintRequest.Status != models.MetaTransactionRequestStatusFailed {
-			return fiber.NewError(fiber.StatusConflict, "Vehicle already paired with a synthetic device.")
-		}
+	if burn := ud.R.BurnRequest; burn != nil && burn.Status != models.MetaTransactionRequestStatusFailed {
+		return fiber.NewError(fiber.StatusConflict, "Vehicle is being burned.")
+	}
 
+	if sd := ud.R.VehicleTokenSyntheticDevice; sd != nil {
+		if !sd.TokenID.IsZero() {
+			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle already paired with synthetic device %d.", sd.TokenID.Big))
+		}
+		if sd.R.MintRequest.Status != models.MetaTransactionRequestStatusFailed {
+			return fiber.NewError(fiber.StatusConflict, "There is already a synthetic device mint in progress for this vehicle.")
+		}
 		_, err := ud.R.VehicleTokenSyntheticDevice.Delete(c.Context(), sdc.DBS().Writer)
 		if err != nil {
 			return fmt.Errorf("failed to delete failed synthetic minting: %v", err)
@@ -234,8 +251,8 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return shared.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
-	if in.Vendor != constants.SmartCarVendor && in.Vendor != constants.TeslaVendor {
-		return fiber.NewError(fiber.StatusConflict, "This is not a software connection.")
+	if in.ManufacturerTokenId != 0 {
+		return fiber.NewError(fiber.StatusConflict, "This is not a software integration.")
 	}
 
 	if in.TokenId == 0 {
