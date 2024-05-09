@@ -3225,7 +3225,7 @@ const docTemplate = `{
                     ]
                 },
                 "failureReason": {
-                    "description": "FailureReason is populated if the status is \"Failed\" because of an on-chain revert and\nwe were able to decode the reason.",
+                    "description": "FailureReason is populated with a human-readable error message if the status\nis \"Failed\" because of an on-chain revert and we were able to decode the reason.",
                     "type": "string"
                 },
                 "status": {
@@ -3278,7 +3278,7 @@ const docTemplate = `{
                     "example": "2022-10-01T09:22:21.002Z"
                 },
                 "failureReason": {
-                    "description": "FailureReason is populated if the status is \"Failed\" because of an on-chain revert and\nwe were able to decode the reason.",
+                    "description": "FailureReason is populated with a human-readable message if the status is \"Failed\"\nbecause of an on-chain revert and we were able to decode the reason.",
                     "type": "string"
                 },
                 "hash": {

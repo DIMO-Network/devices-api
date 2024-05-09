@@ -1859,8 +1859,8 @@ type SyntheticDeviceStatus struct {
 	TxHash *string `json:"txHash,omitempty" swaggertype:"string" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
 	// Status is the status of the minting meta-transaction.
 	Status string `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
-	// FailureReason is populated if the status is "Failed" because of an on-chain revert and
-	// we were able to decode the reason.
+	// FailureReason is populated with a human-readable error message if the status
+	// is "Failed" because of an on-chain revert and we were able to decode the reason.
 	FailureReason *string `json:"failureReason"`
 	// BurnTransaction contains the status of the burning meta-transaction, if one is in-flight
 	// or has failed.

@@ -2310,7 +2310,7 @@ type TransactionStatus struct {
 	CreatedAt time.Time `json:"createdAt" example:"2022-10-01T09:22:21.002Z"`
 	// UpdatedAt is the last time we updated the status of the transaction.
 	UpdatedAt time.Time `json:"updatedAt" example:"2022-10-01T09:22:26.337Z"`
-	// FailureReason is populated if the status is "Failed" because of an on-chain revert and
-	// we were able to decode the reason.
+	// FailureReason is populated with a human-readable message if the status is "Failed"
+	// because of an on-chain revert and we were able to decode the reason.
 	FailureReason *string `json:"failureReason,omitempty"`
 }
