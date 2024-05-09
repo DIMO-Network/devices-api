@@ -194,8 +194,8 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 		return err
 	}
 
-	// Only interested in burns. For other transfers, synthetics transfer together with the
-	// vehicle, so no need to track ownership.
+	// Only interested in burns. Mints are handled as meta-transcations and for all other
+	// transfers, synthetics transfer together with the vehicle, so no need to track ownership.
 	if !IsZeroAddress(args.To) {
 		return nil
 	}
