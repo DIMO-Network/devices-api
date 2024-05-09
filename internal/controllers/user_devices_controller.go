@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"math/big"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -1293,15 +1292,10 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		},
 	}
 
-	deviceMake := dd.Make.Name
-	deviceModel := dd.Type.Model
-	deviceYear := strconv.Itoa(int(dd.Type.Year))
-
-	mvs := registry.MintVehicleSign{
-		ManufacturerNode: makeTokenID,
-		Owner:            common.HexToAddress(*user.EthereumAddress),
-		Attributes:       []string{"Make", "Model", "Year"},
-		Infos:            []string{deviceMake, deviceModel, deviceYear},
+	mvs := registry.MintVehicleWithDeviceDefinitionSign{
+		ManufacturerNode:   makeTokenID,
+		Owner:              common.HexToAddress(*user.EthereumAddress),
+		DeviceDefinitionID: userDevice.DeviceDefinitionID,
 	}
 
 	return c.JSON(client.GetPayload(&mvs))
@@ -1376,15 +1370,10 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		},
 	}
 
-	deviceMake := dd.Make.Name
-	deviceModel := dd.Type.Model
-	deviceYear := strconv.Itoa(int(dd.Type.Year))
-
-	mvs := registry.MintVehicleSign{
-		ManufacturerNode: makeTokenID,
-		Owner:            common.HexToAddress(*user.EthereumAddress),
-		Attributes:       []string{"Make", "Model", "Year"},
-		Infos:            []string{deviceMake, deviceModel, deviceYear},
+	mvs := registry.MintVehicleWithDeviceDefinitionSign{
+		ManufacturerNode:   makeTokenID,
+		Owner:              common.HexToAddress(*user.EthereumAddress),
+		DeviceDefinitionID: userDevice.DeviceDefinitionID,
 	}
 
 	var mr VehicleMintRequest
@@ -1409,7 +1398,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	logger.Info().
 		Interface("httpRequestBody", mr).
 		Interface("client", client).
-		Interface("mintVehicleSign", mvs).
+		Interface("mintVehicleWithDeviceDefinitionSign", mvs).
 		Interface("typedData", client.GetPayload(&mvs)).
 		Msg("Got request.")
 
@@ -1539,14 +1528,10 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
-			return client.MintVehicleAndSDign(requestID, contracts.MintVehicleAndSdInput{
-				ManufacturerNode: makeTokenID,
-				Owner:            realAddr,
-				AttrInfoPairsVehicle: []contracts.AttributeInfoPair{
-					{Attribute: "Make", Info: deviceMake},
-					{Attribute: "Model", Info: deviceModel},
-					{Attribute: "Year", Info: deviceYear},
-				},
+			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
+				ManufacturerNode:    makeTokenID,
+				Owner:               realAddr,
+				DeviceDefinitionId:  userDevice.DeviceDefinitionID,
 				IntegrationNode:     new(big.Int).SetUint64(intID),
 				VehicleOwnerSig:     sigBytes,
 				SyntheticDeviceSig:  sign,
@@ -1558,11 +1543,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	logger.Info().Msgf("Submitted metatransaction request %s", requestID)
 
-	return client.MintVehicleSign(requestID, makeTokenID, realAddr, []contracts.AttributeInfoPair{
-		{Attribute: "Make", Info: deviceMake},
-		{Attribute: "Model", Info: deviceModel},
-		{Attribute: "Year", Info: deviceYear},
-	}, sigBytes)
+	return client.MintVehicleWithDeviceDefinitionSign(requestID, makeTokenID, realAddr, userDevice.DeviceDefinitionID, sigBytes)
 }
 
 // UpdateNFTImage godoc

@@ -34,44 +34,30 @@ type RequestData struct {
 	Data hexutil.Bytes  `json:"data"`
 }
 
-// MintVehicleSign(uint256 manufacturerNode,address owner,string[] attributes,string[] infos)
-type MintVehicleSign struct {
-	ManufacturerNode *big.Int
-	Owner            common.Address
-	Attributes       []string
-	Infos            []string
+// MintVehicleWithDeviceDefinitionSign(uint256 manufacturerNode,address owner, string deviceDefinitionId)
+type MintVehicleWithDeviceDefinitionSign struct {
+	ManufacturerNode   *big.Int
+	Owner              common.Address
+	DeviceDefinitionID string
 }
 
-func anySlice[A any](v []A) []any {
-	n := len(v)
-	out := make([]any, n)
-
-	for i := 0; i < n; i++ {
-		out[i] = v[i]
-	}
-
-	return out
+func (m *MintVehicleWithDeviceDefinitionSign) Name() string {
+	return "MintVehicleWithDeviceDefinitionSign"
 }
 
-func (m *MintVehicleSign) Name() string {
-	return "MintVehicleSign"
-}
-
-func (m *MintVehicleSign) Type() []signer.Type {
+func (m *MintVehicleWithDeviceDefinitionSign) Type() []signer.Type {
 	return []signer.Type{
 		{Name: "manufacturerNode", Type: "uint256"},
 		{Name: "owner", Type: "address"},
-		{Name: "attributes", Type: "string[]"},
-		{Name: "infos", Type: "string[]"},
+		{Name: "deviceDefinitionId", Type: "string"},
 	}
 }
 
-func (m *MintVehicleSign) Message() signer.TypedDataMessage {
+func (m *MintVehicleWithDeviceDefinitionSign) Message() signer.TypedDataMessage {
 	return signer.TypedDataMessage{
-		"manufacturerNode": hexutil.EncodeBig(m.ManufacturerNode),
-		"owner":            m.Owner.Hex(),
-		"attributes":       anySlice(m.Attributes),
-		"infos":            anySlice(m.Infos),
+		"manufacturerNode":   hexutil.EncodeBig(m.ManufacturerNode),
+		"owner":              m.Owner.Hex(),
+		"deviceDefinitionId": m.DeviceDefinitionID,
 	}
 }
 
@@ -197,14 +183,14 @@ type Message interface {
 	Message() signer.TypedDataMessage
 }
 
-// mintVehicleSign(uint256 manufacturerNode, address owner,	string[] calldata attributes, string[] calldata infos, bytes calldata signature)
-func (c *Client) MintVehicleSign(requestID string, manufacturerNode *big.Int, owner common.Address, attrInfo []contracts.AttributeInfoPair, signature []byte) error {
+// mintVehicleWithDeviceDefinitionSign(uint256 manufacturerNode, address owner,	string deviceDefinitionId, bytes calldata signature)
+func (c *Client) MintVehicleWithDeviceDefinitionSign(requestID string, manufacturerNode *big.Int, owner common.Address, deviceDefinitionID string, signature []byte) error {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
 	}
 
-	data, err := abi.Pack("mintVehicleSign", manufacturerNode, owner, attrInfo, signature)
+	data, err := abi.Pack("mintVehicleWithDeviceDefinitionSign", manufacturerNode, owner, deviceDefinitionID, signature)
 	if err != nil {
 		return err
 	}
@@ -317,14 +303,14 @@ func (c *Client) BurnSyntheticDeviceSign(requestID string, vehicleNode, syntheti
 	return c.sendRequest(requestID, data)
 }
 
-// function mintVehicleAndSdSign(MintVehicleAndSdInput calldata data)
-func (c *Client) MintVehicleAndSDign(requestID string, data contracts.MintVehicleAndSdInput) error {
+// function mintVehicleAndSdWithDeviceDefinitionSign(MintVehicleAndSdWithDdInput calldata data)
+func (c *Client) MintVehicleAndSdWithDeviceDefinitionSign(requestID string, data contracts.MintVehicleAndSdWithDdInput) error {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
 	}
 
-	callData, err := abi.Pack("mintVehicleAndSdSign", data)
+	callData, err := abi.Pack("mintVehicleAndSdWithDeviceDefinitionSign", data)
 	if err != nil {
 		return err
 	}

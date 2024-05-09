@@ -42,12 +42,18 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 	logger.Info().Msg("Got transaction status.")
 
+	tx, err := p.DB().Writer.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback() //nolint
+
 	mtr, err := models.MetaTransactionRequests(
 		models.MetaTransactionRequestWhere.ID.EQ(data.RequestID),
 		// This is really ugly. We should probably link back to the type instead of doing this.
 		qm.Load(models.MetaTransactionRequestRels.MintRequestUserDevice),
 		qm.Load(models.MetaTransactionRequestRels.MintRequestSyntheticDevice),
-	).One(context.Background(), p.DB().Reader)
+	).One(context.Background(), tx)
 	if err != nil {
 		return err
 	}
@@ -64,28 +70,28 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	}
 
 	if mtr.Status != models.MetaTransactionRequestStatusConfirmed {
-		return nil
+		return tx.Commit()
 	}
 
-	vehicleMintedEvent := p.ABI.Events["VehicleNodeMinted"]
+	vehicleNodeMintedWithDeviceDefinition := p.ABI.Events["VehicleNodeMintedWithDeviceDefinition"]
 	syntheticDeviceMintedEvent := p.ABI.Events["SyntheticDeviceNodeMinted"]
 
 	switch {
 	case mtr.R.MintRequestUserDevice != nil:
 		for _, logs := range data.Transaction.Logs {
-			if logs.Topics[0] == vehicleMintedEvent.ID {
-				var event contracts.RegistryVehicleNodeMinted
-				err := p.parseLog(&event, vehicleMintedEvent, logs)
+			if logs.Topics[0] == vehicleNodeMintedWithDeviceDefinition.ID {
+				var event contracts.RegistryVehicleNodeMintedWithDeviceDefinition
+				err := p.parseLog(&event, vehicleNodeMintedWithDeviceDefinition, logs)
 				if err != nil {
-					return fmt.Errorf("failed to parse VehicleNodeMinted event: %w", err)
+					return fmt.Errorf("failed to parse VehicleNodeMintedWithDeviceDefinition event: %w", err)
 				}
 
 				ud := mtr.R.MintRequestUserDevice
 				cols := models.UserDeviceColumns
 
-				ud.TokenID = dbtypes.NullIntToDecimal(event.TokenId)
+				ud.TokenID = dbtypes.NullIntToDecimal(event.VehicleId)
 				ud.OwnerAddress = null.BytesFrom(event.Owner.Bytes())
-				_, err = ud.Update(ctx, p.DB().Writer, boil.Whitelist(cols.TokenID, cols.OwnerAddress))
+				_, err = ud.Update(ctx, tx, boil.Whitelist(cols.TokenID, cols.OwnerAddress))
 				if err != nil {
 					return fmt.Errorf("failed to update vehicle record: %w", err)
 				}
@@ -98,11 +104,12 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 						Timestamp: time.Now(),
 						UserID:    ud.UserID,
 						Device: services.UserDeviceEventDevice{
-							ID:  ud.ID,
-							VIN: ud.VinIdentifier.String,
+							ID:                 ud.ID,
+							VIN:                ud.VinIdentifier.String,
+							DeviceDefinitionID: ud.DeviceDefinitionID,
 						},
 						NFT: services.UserDeviceEventNFT{
-							TokenID: event.TokenId,
+							TokenID: event.VehicleId,
 							Owner:   event.Owner,
 							TxHash:  common.HexToHash(data.Transaction.Hash),
 						},
@@ -111,7 +118,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 				logger.Info().
 					Str("userDeviceId", mtr.R.MintRequestUserDevice.ID).
-					Int64("vehicleTokenId", event.TokenId.Int64()).
+					Int64("vehicleTokenId", event.VehicleId.Int64()).
 					Str("owner", event.Owner.Hex()).
 					Msg("Vehicle minted.")
 			} else if logs.Topics[0] == syntheticDeviceMintedEvent.ID {
@@ -130,7 +137,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 				sd.VehicleTokenID = mtr.R.MintRequestUserDevice.TokenID
 				sd.TokenID = dbtypes.NullIntToDecimal(event.SyntheticDeviceNode)
-				_, err = sd.Update(ctx, p.DB().Writer, boil.Whitelist(cols.VehicleTokenID, cols.TokenID))
+				_, err = sd.Update(ctx, tx, boil.Whitelist(cols.VehicleTokenID, cols.TokenID))
 				if err != nil {
 					return fmt.Errorf("failed to update synthetic device record: %w", err)
 				}
@@ -167,7 +174,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		}
 	}
 
-	return nil
+	return tx.Commit()
 }
 
 func (p *proc) parseLog(out any, event abi.Event, log ceLog) error {
