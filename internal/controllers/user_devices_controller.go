@@ -280,6 +280,23 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 					nft.TxHash = &hash
 				}
 			}
+
+			if mtr := d.R.BurnRequest; mtr != nil {
+				var maybeHash *string
+
+				if mtr.Hash.Valid {
+					hash := common.BytesToHash(mtr.Hash.Bytes).Hex()
+					maybeHash = &hash
+				}
+
+				nft.BurnTransaction = &TransactionStatus{
+					Status:        mtr.Status,
+					Hash:          maybeHash,
+					CreatedAt:     mtr.CreatedAt,
+					UpdatedAt:     mtr.UpdatedAt,
+					FailureReason: mtr.FailureReason.Ptr(),
+				}
+			}
 		}
 
 		if sd := d.R.VehicleTokenSyntheticDevice; sd != nil {
@@ -299,6 +316,23 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 				sdStat.TokenID = sd.TokenID.Int(nil)
 				a := common.BytesToAddress(sd.WalletAddress)
 				sdStat.Address = &a
+			}
+
+			if mtr := sd.R.BurnRequest; mtr != nil {
+				var maybeHash *string
+
+				if mtr.Hash.Valid {
+					hash := common.BytesToHash(mtr.Hash.Bytes).Hex()
+					maybeHash = &hash
+				}
+
+				sdStat.BurnTransaction = &TransactionStatus{
+					Status:        mtr.Status,
+					Hash:          maybeHash,
+					CreatedAt:     mtr.CreatedAt,
+					UpdatedAt:     mtr.UpdatedAt,
+					FailureReason: mtr.FailureReason.Ptr(),
+				}
 			}
 		}
 
@@ -363,7 +397,9 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	query = append(query,
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 		qm.Load(models.UserDeviceRels.MintRequest),
+		qm.Load(models.UserDeviceRels.BurnRequest),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
 		qm.Load(models.UserDeviceRels.Claim),
 		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" DESC"))
 
@@ -429,7 +465,9 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 				models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(priv.TokenID.Big)),
 				qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 				qm.Load(models.UserDeviceRels.MintRequest),
+				qm.Load(models.UserDeviceRels.BurnRequest),
 				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
+				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
 				qm.Load(models.UserDeviceRels.Claim),
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
@@ -1795,6 +1833,9 @@ type VehicleNFTData struct {
 	// FailureReason is populated if the status is "Failed" because of an on-chain revert and
 	// we were able to decode the reason.
 	FailureReason *string `json:"failureReason,omitempty"`
+	// BurnTransaction contains the status of the vehicle burning meta-transaction, if one
+	// is in flight or has failed.
+	BurnTransaction *TransactionStatus `json:"burnTransaction,omitempty"`
 }
 
 type SyntheticDeviceStatus struct {
@@ -1808,9 +1849,12 @@ type SyntheticDeviceStatus struct {
 	TxHash *string `json:"txHash,omitempty" swaggertype:"string" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
 	// Status is the status of the minting meta-transaction.
 	Status string `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
-	// FailureReason is populated if the status is "Failed" because of an on-chain revert and
-	// we were able to decode the reason.
+	// FailureReason is populated with a human-readable error message if the status
+	// is "Failed" because of an on-chain revert and we were able to decode the reason.
 	FailureReason *string `json:"failureReason"`
+	// BurnTransaction contains the status of the synthetic device burning meta-transaction,
+	// if one is in flight or has failed.
+	BurnTransaction *TransactionStatus `json:"burnTransaction,omitempty"`
 }
 
 type VINCredentialData struct {
