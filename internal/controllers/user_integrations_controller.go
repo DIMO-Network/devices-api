@@ -653,6 +653,8 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 			addrStr := addr.Hex()
 			ownerAddress = &addrStr
 			beneficiaryAddress = &addr
+			// We do this because we're worried the claim originated in the chain and not our
+			// backend.
 			claim = &AftermarketDeviceTransactionStatus{
 				Status: models.MetaTransactionRequestStatusConfirmed,
 			}
@@ -665,11 +667,12 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 
 		if req := dbUnit.R.ClaimMetaTransactionRequest; req != nil {
 			claim = &AftermarketDeviceTransactionStatus{
-				Status:    req.Status,
-				CreatedAt: req.CreatedAt,
-				UpdatedAt: req.UpdatedAt,
+				Status:        req.Status,
+				CreatedAt:     req.CreatedAt,
+				UpdatedAt:     req.UpdatedAt,
+				FailureReason: req.FailureReason.Ptr(),
 			}
-			if req.Status != models.MetaTransactionRequestStatusUnsubmitted {
+			if req.Hash.Valid {
 				hash := hexutil.Encode(req.Hash.Bytes)
 				claim.Hash = &hash
 			}
@@ -678,9 +681,10 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 		// Check for pair.
 		if req := dbUnit.R.PairRequest; req != nil {
 			pair = &AftermarketDeviceTransactionStatus{
-				Status:    req.Status,
-				CreatedAt: req.CreatedAt,
-				UpdatedAt: req.UpdatedAt,
+				Status:        req.Status,
+				CreatedAt:     req.CreatedAt,
+				UpdatedAt:     req.UpdatedAt,
+				FailureReason: req.FailureReason.Ptr(),
 			}
 			if req.Status != models.MetaTransactionRequestStatusUnsubmitted {
 				hash := hexutil.Encode(req.Hash.Bytes)
@@ -691,9 +695,10 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 		// Check for unpair.
 		if req := dbUnit.R.UnpairRequest; req != nil {
 			unpair = &AftermarketDeviceTransactionStatus{
-				Status:    req.Status,
-				CreatedAt: req.CreatedAt,
-				UpdatedAt: req.UpdatedAt,
+				Status:        req.Status,
+				CreatedAt:     req.CreatedAt,
+				UpdatedAt:     req.UpdatedAt,
+				FailureReason: req.FailureReason.Ptr(),
 			}
 			if req.Status != models.MetaTransactionRequestStatusUnsubmitted {
 				hash := hexutil.Encode(req.Hash.Bytes)
@@ -2306,4 +2311,7 @@ type AftermarketDeviceTransactionStatus struct {
 	CreatedAt time.Time `json:"createdAt" example:"2022-10-01T09:22:21.002Z"`
 	// UpdatedAt is the last time we updated the status of the transaction.
 	UpdatedAt time.Time `json:"updatedAt" example:"2022-10-01T09:22:26.337Z"`
+	// FailureReason is populated if the status is "Failed" because of an on-chain revert and
+	// we were able to decode the reason.
+	FailureReason *string `json:"failureReason,omitempty"`
 }
