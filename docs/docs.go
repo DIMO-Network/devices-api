@@ -3212,13 +3212,24 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "address": {
+                    "description": "Address is the Ethereum address of the synthetic device.",
                     "type": "string",
                     "example": "0xAED7EA8035eEc47E657B34eF5D020c7005487443"
                 },
                 "burnTransaction": {
-                    "$ref": "#/definitions/internal_controllers.TransactionStatus"
+                    "description": "BurnTransaction contains the status of the burning meta-transaction, if one is in-flight\nor has failed.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/internal_controllers.TransactionStatus"
+                        }
+                    ]
+                },
+                "failureReason": {
+                    "description": "FailureReason is populated if the status is \"Failed\" because of an on-chain revert and\nwe were able to decode the reason.",
+                    "type": "string"
                 },
                 "status": {
+                    "description": "Status is the status of the minting meta-transaction.",
                     "type": "string",
                     "enum": [
                         "Unstarted",
@@ -3230,10 +3241,12 @@ const docTemplate = `{
                     "example": "Confirmed"
                 },
                 "tokenId": {
+                    "description": "TokenID is the token id of the minted device.",
                     "type": "number",
                     "example": 15
                 },
                 "txHash": {
+                    "description": "TxHash is the hash of the submitted transaction.",
                     "type": "string",
                     "example": "0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"
                 }
@@ -3263,6 +3276,10 @@ const docTemplate = `{
                     "description": "CreatedAt is the timestamp of the creation of the meta-transaction.",
                     "type": "string",
                     "example": "2022-10-01T09:22:21.002Z"
+                },
+                "failureReason": {
+                    "description": "FailureReason is populated if the status is \"Failed\" because of an on-chain revert and\nwe were able to decode the reason.",
+                    "type": "string"
                 },
                 "hash": {
                     "description": "Hash is the hexidecimal transaction hash, available for any transaction at the Submitted stage or greater.",
@@ -3446,7 +3463,16 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "burnTransaction": {
-                    "$ref": "#/definitions/internal_controllers.TransactionStatus"
+                    "description": "BurnTransaction contains the status of the burning meta-transaction, if one is in-flight\nor has failed.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/internal_controllers.TransactionStatus"
+                        }
+                    ]
+                },
+                "failureReason": {
+                    "description": "FailureReason is populated if the status is \"Failed\" because of an on-chain revert and\nwe were able to decode the reason.",
+                    "type": "string"
                 },
                 "ownerAddress": {
                     "description": "OwnerAddress is the Ethereum address of the NFT owner.",
