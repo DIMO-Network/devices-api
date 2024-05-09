@@ -1239,15 +1239,19 @@ func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.C
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
+		qm.Load(models.UserDeviceRels.BurnRequest),
 	).One(ctx, exec)
 	if err != nil {
 		// Access middleware will catch "not found".
 		return nil, nil, err
 	}
 
-	// Vehicle must be minted.
 	if ud.TokenID.IsZero() {
 		return nil, nil, fiber.NewError(fiber.StatusConflict, "Vehicle not yet minted.")
+	}
+
+	if burn := ud.R.BurnRequest; burn != nil && burn.Status != models.MetaTransactionRequestStatusFailed {
+		return nil, nil, fiber.NewError(fiber.StatusConflict, "Vehicle is being burned.")
 	}
 
 	if serial == "" {
@@ -1279,10 +1283,11 @@ func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.C
 		return nil, nil, fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle already paired with aftermarket device %s.", vad.TokenID))
 	}
 
-	if ad.R.PairRequest != nil {
-		if ad.R.PairRequest.Status == models.MetaTransactionRequestStatusConfirmed {
-			return nil, nil, fiber.NewError(fiber.StatusConflict, "Aftermarket device already paired.")
-		}
+	if !ad.VehicleTokenID.IsZero() {
+		return nil, nil, fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Aftermarket device already paired to vehicle %d.", ad.VehicleTokenID))
+	}
+
+	if ad.R.PairRequest != nil && ad.R.PairRequest.Status != models.MetaTransactionRequestStatusFailed {
 		return nil, nil, fiber.NewError(fiber.StatusConflict, "Aftermarket device already in the pairing process.")
 	}
 
@@ -1292,7 +1297,7 @@ func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.C
 func (udc *UserDevicesController) checkUnpairable(ctx context.Context, exec boil.ContextExecutor, userDeviceID string) (*models.UserDevice, *models.AftermarketDevice, error) {
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenAftermarketDevice, models.AftermarketDeviceRels.UnpairRequest)),
 	).One(ctx, exec)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1311,7 +1316,7 @@ func (udc *UserDevicesController) checkUnpairable(ctx context.Context, exec boil
 
 	ad := ud.R.VehicleTokenAftermarketDevice
 
-	if ad.UnpairRequestID.Valid {
+	if ad.R.UnpairRequest != nil && ad.R.UnpairRequest.Status != models.MetaTransactionRequestStatusFailed {
 		return nil, nil, fiber.NewError(fiber.StatusConflict, "Unpairing already in progress.")
 	}
 
