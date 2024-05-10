@@ -16,8 +16,10 @@ import (
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
+	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
@@ -102,10 +104,25 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 		s.T().Fatal(err)
 	}
 
+	abi, err := contracts.RegistryMetaData.GetAbi()
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Couldn't load DIMO registry ABI.")
+	}
+
+	registryClient := registry.Client{
+		Producer:     nil,
+		RequestTopic: "topic.transaction.request.send",
+		Contract: registry.Contract{
+			ChainID: big.NewInt(1337),
+			Address: common.BigToAddress(big.NewInt(4)),
+		},
+		ABI: abi,
+	}
+
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
-	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
-		autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, nil, s.redisClient, nil, s.usersClient, s.deviceDataSvc, s.natsService, nil, s.userDeviceSvc, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod", DIMORegistryChainID: 1337, DIMORegistryAddr: common.BigToAddress(big.NewInt(4)).Hex()}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
+		autoPiIngest, deviceDefinitionIngest, autoPiTaskSvc, nil, nil, nil, s.redisClient, nil, s.usersClient, s.deviceDataSvc, s.natsService, nil, s.userDeviceSvc, nil, &registryClient)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUser)
 	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUserFromVIN)

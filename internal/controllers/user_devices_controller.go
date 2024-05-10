@@ -133,21 +133,8 @@ func NewUserDevicesController(settings *config.Settings,
 	wallet services.SyntheticWalletInstanceService,
 	userDeviceSvc services.UserDeviceService,
 	teslaFleetAPISvc services.TeslaFleetAPIService,
+	registryClient *registry.Client,
 ) UserDevicesController {
-	abi, err := contracts.RegistryMetaData.GetAbi()
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Couldn't load DIMO registry ABI.")
-	}
-	rc := &registry.Client{
-		Producer:     producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(settings.DIMORegistryChainID),
-			Address: common.HexToAddress(settings.DIMORegistryAddr),
-		},
-		ABI: abi,
-	}
-
 	return UserDevicesController{
 		Settings:                  settings,
 		DBS:                       dbs,
@@ -175,7 +162,7 @@ func NewUserDevicesController(settings *config.Settings,
 		wallet:                    wallet,
 		userDeviceSvc:             userDeviceSvc,
 		teslaFleetAPISvc:          teslaFleetAPISvc,
-		registryClient:            rc,
+		registryClient:            registryClient,
 	}
 }
 

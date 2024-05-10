@@ -13,6 +13,7 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/controllers"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/middleware"
@@ -71,6 +72,11 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		cipher = new(shared.ROT13Cipher)
 	}
 
+	abi, err := contracts.RegistryMetaData.GetAbi()
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Couldn't load DIMO registry ABI.")
+	}
+
 	registryClient := registry.Client{
 		Producer:     producer,
 		RequestTopic: "topic.transaction.request.send",
@@ -78,6 +84,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 			ChainID: big.NewInt(settings.DIMORegistryChainID),
 			Address: common.HexToAddress(settings.DIMORegistryAddr),
 		},
+		ABI: abi,
 	}
 
 	gcon, err := grpc.Dial(settings.UsersAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -128,7 +135,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService,
 		smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, autoPiIngest,
 		deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient,
-		ddaSvc, natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc)
+		ddaSvc, natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc, &registryClient)
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)

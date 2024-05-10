@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/big"
 
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
@@ -71,12 +72,11 @@ func (s *UserDevicesControllerTestSuite) TestPostBurn() {
 
 	vnft := test.SetupCreateVehicleNFT(s.T(), ud, big.NewInt(1), null.BytesFrom(addr.Bytes()), s.pdb)
 	user := test.BuildGetUserGRPC(ud.UserID, &email, &eth, &pb.UserReferrer{})
-	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: ud.UserID}).Return(user, nil)
-	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: ud.UserID}).Return(user, nil)
+	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: ud.UserID}).Times(2).Return(user, nil)
 
 	sp := smock.NewSyncProducer(s.T(), nil)
 	sp.ExpectSendMessageAndSucceed()
-	s.controller.producer = sp
+	s.controller.registryClient.Producer = sp
 
 	getRequest := test.BuildRequest("GET", fmt.Sprintf("/vehicle/%s/commands/burn", "1"), "")
 	getResp, err := s.app.Test(getRequest)
@@ -120,6 +120,9 @@ func (s *UserDevicesControllerTestSuite) TestPostBurn() {
 	response, err := s.app.Test(request)
 	s.Require().NoError(err)
 	s.Equal(fiber.StatusOK, response.StatusCode)
+
+	b, err := io.ReadAll(response.Body)
+	fmt.Println(string(b))
 
 	if err := ud.Reload(context.Background(), s.pdb.DBS().Reader); err != nil {
 		s.T().Fatal(err)
