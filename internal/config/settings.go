@@ -91,6 +91,7 @@ type Settings struct {
 	TeslaTelemetryHostName            string `yaml:"TESLA_TELEMETRY_HOST_NAME"`
 	TeslaTelemetryPort                int    `yaml:"TESLA_TELEMETRY_PORT"`
 	TeslaTelemetryCACertificate       string `yaml:"TESLA_TELEMETRY_CA_CERTIFICATE"`
+	IPFSURL                           string `yaml:"IPFS_URL"`
 }
 
 func (s *Settings) IsProduction() bool {

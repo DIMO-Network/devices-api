@@ -19,6 +19,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
+	"github.com/DIMO-Network/devices-api/internal/services/ipfs"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
@@ -75,6 +76,7 @@ type UserDevicesController struct {
 	wallet                    services.SyntheticWalletInstanceService
 	userDeviceSvc             services.UserDeviceService
 	teslaFleetAPISvc          services.TeslaFleetAPIService
+	ipfsSvc                   *ipfs.IPFS
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -131,6 +133,7 @@ func NewUserDevicesController(settings *config.Settings,
 	wallet services.SyntheticWalletInstanceService,
 	userDeviceSvc services.UserDeviceService,
 	teslaFleetAPISvc services.TeslaFleetAPIService,
+	ipfsSvc *ipfs.IPFS,
 ) UserDevicesController {
 	return UserDevicesController{
 		Settings:                  settings,
@@ -159,6 +162,7 @@ func NewUserDevicesController(settings *config.Settings,
 		wallet:                    wallet,
 		userDeviceSvc:             userDeviceSvc,
 		teslaFleetAPISvc:          teslaFleetAPISvc,
+		ipfsSvc:                   ipfsSvc,
 	}
 }
 
@@ -1576,6 +1580,15 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 	var nid NFTImageData
 	if err := c.BodyParser(&nid); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
+	}
+
+	cid, err := udc.ipfsSvc.UploadImage(nid.ImageData)
+	if err != nil {
+		udc.log.Err(err).Msg("failed to upload NFT image to IPFS")
+	}
+	userDevice.IpfsCid = null.StringFrom(cid)
+	if _, err := userDevice.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.IpfsCid)); err != nil {
+		udc.log.Err(err).Str("userDeviceID", userDeviceID).Str("cid", cid).Msg("failed to store IPFS CID for vehicle")
 	}
 
 	// This may not be there, but if it is we should delete it.

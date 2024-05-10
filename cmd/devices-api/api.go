@@ -22,6 +22,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
 	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
+	"github.com/DIMO-Network/devices-api/internal/services/ipfs"
 	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/internal/services/macaron"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
@@ -92,7 +93,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	ddIntSvc := services.NewDeviceDefinitionIntegrationService(pdb.DBS, settings)
 	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, settings)
 	ddaSvc := services.NewDeviceDataService(settings.DeviceDataGRPCAddr, &logger)
-
+	ipfsSvc := ipfs.NewIPFSLoader(settings)
 	scTaskSvc := services.NewSmartcarTaskService(settings, producer)
 	smartcarClient := services.NewSmartcarClient(settings)
 	teslaTaskService := services.NewTeslaTaskService(settings, producer)
@@ -130,7 +131,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService,
 		smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, autoPiIngest,
 		deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient,
-		ddaSvc, natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc)
+		ddaSvc, natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc, ipfsSvc)
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
