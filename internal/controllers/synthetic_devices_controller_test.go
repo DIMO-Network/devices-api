@@ -78,8 +78,6 @@ func (s *SyntheticDevicesControllerTestSuite) SetupTest() {
 		Contract: registry.Contract{
 			ChainID: big.NewInt(mockSettings.DIMORegistryChainID),
 			Address: common.HexToAddress(mockSettings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
 		},
 	}
 

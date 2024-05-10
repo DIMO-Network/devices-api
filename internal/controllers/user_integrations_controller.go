@@ -872,23 +872,12 @@ func (udc *UserDevicesController) GetAftermarketDeviceClaimMessage(c *fiber.Ctx)
 		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
 	}
 
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
 	cads := &registry.ClaimAftermarketDeviceSign{
 		AftermarketDeviceNode: apToken,
 		Owner:                 common.HexToAddress(*user.EthereumAddress),
 	}
 
-	var out *signer.TypedData = client.GetPayload(cads)
+	var out *signer.TypedData = udc.registryClient.GetPayload(cads)
 
 	return c.JSON(out)
 }
@@ -952,17 +941,6 @@ func (udc *UserDevicesController) PostAftermarketDeviceClaim(c *fiber.Ctx) error
 		return fiber.NewError(fiber.StatusBadRequest, "User does not have an Ethereum address.")
 	}
 
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
 	realUserAddr := common.HexToAddress(*user.EthereumAddress)
 
 	cads := &registry.ClaimAftermarketDeviceSign{
@@ -970,7 +948,7 @@ func (udc *UserDevicesController) PostAftermarketDeviceClaim(c *fiber.Ctx) error
 		Owner:                 realUserAddr,
 	}
 
-	hash, err := client.Hash(cads)
+	hash, err := udc.registryClient.Hash(cads)
 	if err != nil {
 		return err
 	}
@@ -1032,7 +1010,7 @@ func (udc *UserDevicesController) PostAftermarketDeviceClaim(c *fiber.Ctx) error
 		return err
 	}
 
-	return client.ClaimAftermarketDeviceSign(requestID, apToken, realUserAddr, userSig, amSig)
+	return udc.registryClient.ClaimAftermarketDeviceSign(requestID, apToken, realUserAddr, userSig, amSig)
 }
 
 // GetAftermarketDevicePairMessage godoc
@@ -1075,23 +1053,12 @@ func (udc *UserDevicesController) GetAftermarketDevicePairMessage(c *fiber.Ctx) 
 		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
 	}
 
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
 	pads := &registry.PairAftermarketDeviceSign{
 		AftermarketDeviceNode: apToken,
 		VehicleNode:           vehicleToken,
 	}
 
-	return c.JSON(client.GetPayload(pads))
+	return c.JSON(udc.registryClient.GetPayload(pads))
 }
 
 // PostAftermarketDevicePair godoc
@@ -1141,24 +1108,12 @@ func (udc *UserDevicesController) PostAftermarketDevicePair(c *fiber.Ctx) error 
 
 	apToken := ad.TokenID.Int(nil)
 	vehicleToken := vnft.TokenID.Int(nil)
-
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
 	pads := registry.PairAftermarketDeviceSign{
 		AftermarketDeviceNode: apToken,
 		VehicleNode:           vehicleToken,
 	}
 
-	hash, err := client.Hash(&pads)
+	hash, err := udc.registryClient.Hash(&pads)
 	if err != nil {
 		return err
 	}
@@ -1211,7 +1166,7 @@ func (udc *UserDevicesController) PostAftermarketDevicePair(c *fiber.Ctx) error 
 			return err
 		}
 
-		return client.PairAftermarketDeviceSignTwoOwners(requestID, apToken, vehicleToken, aftermarketDeviceSig, vehicleOwnerSig)
+		return udc.registryClient.PairAftermarketDeviceSignTwoOwners(requestID, apToken, vehicleToken, aftermarketDeviceSig, vehicleOwnerSig)
 	}
 
 	// Yes, this is ugly, we'll fix it.
@@ -1237,7 +1192,7 @@ func (udc *UserDevicesController) PostAftermarketDevicePair(c *fiber.Ctx) error 
 		return err
 	}
 
-	return client.PairAftermarketDeviceSignSameOwner(requestID, apToken, vehicleToken, vehicleOwnerSig)
+	return udc.registryClient.PairAftermarketDeviceSignSameOwner(requestID, apToken, vehicleToken, vehicleOwnerSig)
 }
 
 func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.ContextExecutor, userDeviceID, serial string) (*models.UserDevice, *models.AftermarketDevice, error) {
@@ -1404,25 +1359,12 @@ func (udc *UserDevicesController) GetAftermarketDeviceUnpairMessage(c *fiber.Ctx
 		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
 	}
 
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
 	uads := &registry.UnPairAftermarketDeviceSign{
 		AftermarketDeviceNode: apToken,
 		VehicleNode:           vehicleToken,
 	}
 
-	var out *signer.TypedData = client.GetPayload(uads)
-
-	return c.JSON(out)
+	return c.JSON(udc.registryClient.GetPayload(uads))
 }
 
 // PostAftermarketDeviceUnpair godoc
@@ -1467,17 +1409,6 @@ func (udc *UserDevicesController) PostAftermarketDeviceUnpair(c *fiber.Ctx) erro
 	vehicleToken := vnft.TokenID.Int(nil)
 	apToken := apnft.TokenID.Int(nil)
 
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
 	uads := registry.UnPairAftermarketDeviceSign{
 		AftermarketDeviceNode: apToken,
 		VehicleNode:           vehicleToken,
@@ -1490,7 +1421,7 @@ func (udc *UserDevicesController) PostAftermarketDeviceUnpair(c *fiber.Ctx) erro
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
 	}
 
-	hash, err := client.Hash(&uads)
+	hash, err := udc.registryClient.Hash(&uads)
 	if err != nil {
 		return err
 	}
@@ -1533,7 +1464,7 @@ func (udc *UserDevicesController) PostAftermarketDeviceUnpair(c *fiber.Ctx) erro
 		return err
 	}
 
-	return client.UnPairAftermarketDeviceSign(requestID, apToken, vehicleToken, sigBytes)
+	return udc.registryClient.UnPairAftermarketDeviceSign(requestID, apToken, vehicleToken, sigBytes)
 }
 
 type AftermarketDeviceClaimRequest struct {
@@ -1581,17 +1512,6 @@ func (udc *UserDevicesController) PostUnclaimAutoPi(c *fiber.Ctx) error {
 
 	apToken := unit.TokenID.Int(nil)
 
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
 	requestID := ksuid.New().String()
 
 	unit.OwnerAddress = null.Bytes{}
@@ -1602,7 +1522,7 @@ func (udc *UserDevicesController) PostUnclaimAutoPi(c *fiber.Ctx) error {
 		return err
 	}
 
-	return client.UnclaimAftermarketDeviceNode(requestID, []*big.Int{apToken})
+	return udc.registryClient.UnclaimAftermarketDeviceNode(requestID, []*big.Int{apToken})
 }
 
 func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, userID, userDeviceID, integrationID string) error {

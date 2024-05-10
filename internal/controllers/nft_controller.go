@@ -596,17 +596,6 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 	}
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
 
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
 	tx, err := udc.DBS().Reader.BeginTx(c.Context(), nil)
 	if err != nil {
 		return err
@@ -631,7 +620,7 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	return c.JSON(client.GetPayload(&bvs))
+	return c.JSON(udc.registryClient.GetPayload(&bvs))
 }
 
 // PostBurnDevice godoc
@@ -648,17 +637,6 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("failed to parse token id %q", tis))
 	}
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
-
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
 
 	tx, err := udc.DBS().Reader.BeginTx(c.Context(), nil)
 	if err != nil {
@@ -691,12 +669,10 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 
 	udc.log.Info().
 		Interface("httpRequestBody", br).
-		Interface("client", client).
 		Interface("burnVehicleSign", bvs).
-		Interface("typedData", client.GetPayload(&bvs)).
 		Msg("Got request.")
 
-	hash, err := client.Hash(&bvs)
+	hash, err := udc.registryClient.Hash(&bvs)
 	if err != nil {
 		return fmt.Errorf("could not hash bvs: %w", err)
 	}
@@ -733,7 +709,7 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	}
 
 	udc.log.Info().Msgf("submitted metatransaction request %s", requestID)
-	return client.BurnVehicleSign(requestID, bvs.TokenID, sigBytes)
+	return udc.registryClient.BurnVehicleSign(requestID, bvs.TokenID, sigBytes)
 }
 
 func (udc *UserDevicesController) checkDeviceBurn(ctx context.Context, userDevice *models.UserDevice) (registry.BurnVehicleSign, *pb.User, error) {

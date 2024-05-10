@@ -99,8 +99,6 @@ func (s *UserDevicesControllerTestSuite) TestPostBurn() {
 		Contract: registry.Contract{
 			ChainID: big.NewInt(s.controller.Settings.DIMORegistryChainID),
 			Address: common.HexToAddress(s.controller.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
 		},
 	}
 

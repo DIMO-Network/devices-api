@@ -8,6 +8,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/shared"
 	"github.com/Shopify/sarama"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -19,13 +20,12 @@ type Client struct {
 	Producer     sarama.SyncProducer
 	RequestTopic string
 	Contract     Contract
+	ABI          *abi.ABI
 }
 
 type Contract struct {
 	ChainID *big.Int
 	Address common.Address
-	Name    string
-	Version string
 }
 
 type RequestData struct {
@@ -391,8 +391,8 @@ func (c *Client) GetPayload(msg Message) *signer.TypedData {
 		},
 		PrimaryType: msg.Name(),
 		Domain: signer.TypedDataDomain{
-			Name:              c.Contract.Name,
-			Version:           c.Contract.Version,
+			Name:              "DIMO",
+			Version:           "1",
 			ChainId:           (*math.HexOrDecimal256)(c.Contract.ChainID),
 			VerifyingContract: c.Contract.Address.Hex(),
 		},

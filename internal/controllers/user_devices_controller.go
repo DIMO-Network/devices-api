@@ -76,6 +76,7 @@ type UserDevicesController struct {
 	wallet                    services.SyntheticWalletInstanceService
 	userDeviceSvc             services.UserDeviceService
 	teslaFleetAPISvc          services.TeslaFleetAPIService
+	registryClient            *registry.Client
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -133,6 +134,20 @@ func NewUserDevicesController(settings *config.Settings,
 	userDeviceSvc services.UserDeviceService,
 	teslaFleetAPISvc services.TeslaFleetAPIService,
 ) UserDevicesController {
+	abi, err := contracts.RegistryMetaData.GetAbi()
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Couldn't load DIMO registry ABI.")
+	}
+	rc := &registry.Client{
+		Producer:     producer,
+		RequestTopic: "topic.transaction.request.send",
+		Contract: registry.Contract{
+			ChainID: big.NewInt(settings.DIMORegistryChainID),
+			Address: common.HexToAddress(settings.DIMORegistryAddr),
+		},
+		ABI: abi,
+	}
+
 	return UserDevicesController{
 		Settings:                  settings,
 		DBS:                       dbs,
@@ -160,6 +175,7 @@ func NewUserDevicesController(settings *config.Settings,
 		wallet:                    wallet,
 		userDeviceSvc:             userDeviceSvc,
 		teslaFleetAPISvc:          teslaFleetAPISvc,
+		registryClient:            rc,
 	}
 }
 
@@ -1323,17 +1339,6 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "User does not have an Ethereum address on file.")
 	}
 
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
 	deviceMake := dd.Make.Name
 	deviceModel := dd.Type.Model
 	deviceYear := strconv.Itoa(int(dd.Type.Year))
@@ -1345,7 +1350,7 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		Infos:            []string{deviceMake, deviceModel, deviceYear},
 	}
 
-	return c.JSON(client.GetPayload(&mvs))
+	return c.JSON(udc.registryClient.GetPayload(&mvs))
 }
 
 // PostMintDevice godoc
@@ -1406,17 +1411,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "User does not have an Ethereum address on file.")
 	}
 
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
 	deviceMake := dd.Make.Name
 	deviceModel := dd.Type.Model
 	deviceYear := strconv.Itoa(int(dd.Type.Year))
@@ -1449,9 +1443,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	logger.Info().
 		Interface("httpRequestBody", mr).
-		Interface("client", client).
 		Interface("mintVehicleSign", mvs).
-		Interface("typedData", client.GetPayload(&mvs)).
 		Msg("Got request.")
 
 	_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
@@ -1484,7 +1476,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		}
 	}
 
-	hash, err := client.Hash(&mvs)
+	hash, err := udc.registryClient.Hash(&mvs)
 	if err != nil {
 		return opaqueInternalError
 	}
@@ -1559,7 +1551,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				IntegrationNode: new(big.Int).SetUint64(intID),
 			}
 
-			hash, err := client.Hash(&mvss)
+			hash, err := udc.registryClient.Hash(&mvss)
 			if err != nil {
 				return err
 			}
@@ -1580,7 +1572,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
-			return client.MintVehicleAndSDign(requestID, contracts.MintVehicleAndSdInput{
+			return udc.registryClient.MintVehicleAndSDign(requestID, contracts.MintVehicleAndSdInput{
 				ManufacturerNode: makeTokenID,
 				Owner:            realAddr,
 				AttrInfoPairsVehicle: []contracts.AttributeInfoPair{
@@ -1599,7 +1591,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	logger.Info().Msgf("Submitted metatransaction request %s", requestID)
 
-	return client.MintVehicleSign(requestID, makeTokenID, realAddr, []contracts.AttributeInfoPair{
+	return udc.registryClient.MintVehicleSign(requestID, makeTokenID, realAddr, []contracts.AttributeInfoPair{
 		{Attribute: "Make", Info: deviceMake},
 		{Attribute: "Model", Info: deviceModel},
 		{Attribute: "Year", Info: deviceYear},

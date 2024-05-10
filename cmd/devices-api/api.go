@@ -77,8 +77,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		Contract: registry.Contract{
 			ChainID: big.NewInt(settings.DIMORegistryChainID),
 			Address: common.HexToAddress(settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
 		},
 	}
 
