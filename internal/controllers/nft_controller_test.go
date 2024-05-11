@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"math/big"
 
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
@@ -120,9 +119,6 @@ func (s *UserDevicesControllerTestSuite) TestPostBurn() {
 	response, err := s.app.Test(request)
 	s.Require().NoError(err)
 	s.Equal(fiber.StatusOK, response.StatusCode)
-
-	b, err := io.ReadAll(response.Body)
-	fmt.Println(string(b))
 
 	if err := ud.Reload(context.Background(), s.pdb.DBS().Reader); err != nil {
 		s.T().Fatal(err)
