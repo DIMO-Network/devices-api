@@ -388,9 +388,8 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceBurnPayload(c *fiber.Ct
 	if sd.TokenID.IsZero() {
 		if sd.R.MintRequest.Status == models.MetaTransactionRequestStatusFailed {
 			return fiber.NewError(fiber.StatusConflict, "Synthetic device previously failed to mint; there is nothing to burn.")
-		} else {
-			return fiber.NewError(fiber.StatusConflict, "Synthetic device is currently minting; wait for this to complete.")
 		}
+		return fiber.NewError(fiber.StatusConflict, "Synthetic device is currently minting; wait for this to complete.")
 	}
 
 	if br := sd.R.BurnRequest; br != nil && br.Status != models.MetaTransactionRequestStatusFailed {
@@ -454,9 +453,8 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 	if sd.TokenID.IsZero() {
 		if sd.R.MintRequest.Status == models.MetaTransactionRequestStatusFailed {
 			return fiber.NewError(fiber.StatusConflict, "Synthetic device previously failed to mint; there is nothing to burn.")
-		} else {
-			return fiber.NewError(fiber.StatusConflict, "Synthetic device is currently minting; wait for this to complete.")
 		}
+		return fiber.NewError(fiber.StatusConflict, "Synthetic device is currently minting; wait for this to complete.")
 	}
 
 	if br := sd.R.BurnRequest; br != nil && br.Status != models.MetaTransactionRequestStatusFailed {

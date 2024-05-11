@@ -1282,7 +1282,7 @@ func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.C
 
 	// TODO(elffjs): It's difficult to tell if the vehicle is in the process of being paired.
 	if vad := ud.R.VehicleTokenAftermarketDevice; vad != nil {
-		if vad.TokenID.Cmp(vad.TokenID.Big) == 0 {
+		if ad.TokenID.Cmp(vad.TokenID.Big) == 0 {
 			return nil, nil, fiber.NewError(fiber.StatusConflict, "Specified vehicle and aftermarket device are already paired.")
 		}
 		return nil, nil, fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle already paired with aftermarket device %s.", vad.TokenID))
