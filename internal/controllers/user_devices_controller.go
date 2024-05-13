@@ -271,11 +271,29 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			}
 
 			if mtr := d.R.MintRequest; mtr != nil {
-				nft.Status = d.R.MintRequest.Status
+				nft.Status = mtr.Status
+				nft.FailureReason = mtr.FailureReason.Ptr()
 
 				if mtr.Hash.Valid {
 					hash := hexutil.Encode(mtr.Hash.Bytes)
 					nft.TxHash = &hash
+				}
+			}
+
+			if mtr := d.R.BurnRequest; mtr != nil {
+				var maybeHash *string
+
+				if mtr.Hash.Valid {
+					hash := common.BytesToHash(mtr.Hash.Bytes).Hex()
+					maybeHash = &hash
+				}
+
+				nft.BurnTransaction = &TransactionStatus{
+					Status:        mtr.Status,
+					Hash:          maybeHash,
+					CreatedAt:     mtr.CreatedAt,
+					UpdatedAt:     mtr.UpdatedAt,
+					FailureReason: mtr.FailureReason.Ptr(),
 				}
 			}
 		}
@@ -286,15 +304,34 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			sdStat = &SyntheticDeviceStatus{
 				IntegrationID: ii,
 				Status:        mtr.Status,
+				FailureReason: mtr.FailureReason.Ptr(),
 			}
 			if mtr.Hash.Valid {
 				h := hexutil.Encode(mtr.Hash.Bytes)
 				sdStat.TxHash = &h
 			}
+
 			if !sd.TokenID.IsZero() {
 				sdStat.TokenID = sd.TokenID.Int(nil)
 				a := common.BytesToAddress(sd.WalletAddress)
 				sdStat.Address = &a
+			}
+
+			if mtr := sd.R.BurnRequest; mtr != nil {
+				var maybeHash *string
+
+				if mtr.Hash.Valid {
+					hash := common.BytesToHash(mtr.Hash.Bytes).Hex()
+					maybeHash = &hash
+				}
+
+				sdStat.BurnTransaction = &TransactionStatus{
+					Status:        mtr.Status,
+					Hash:          maybeHash,
+					CreatedAt:     mtr.CreatedAt,
+					UpdatedAt:     mtr.UpdatedAt,
+					FailureReason: mtr.FailureReason.Ptr(),
+				}
 			}
 		}
 
@@ -359,7 +396,9 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	query = append(query,
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 		qm.Load(models.UserDeviceRels.MintRequest),
+		qm.Load(models.UserDeviceRels.BurnRequest),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
 		qm.Load(models.UserDeviceRels.Claim),
 		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" DESC"))
 
@@ -394,7 +433,7 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
-	var sharedDev []*models.UserDevice
+	var sharedVehicles []*models.UserDevice
 
 	if user.EthereumAddress != nil {
 		// This is N+1 hell.
@@ -409,49 +448,40 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 			return err
 		}
 
-		var toks []types.Decimal
+		var processedIDs []types.Decimal
 
 	PrivLoop:
 		for _, priv := range privs {
-			for _, tok := range toks {
+			for _, tok := range processedIDs {
 				if tok.Cmp(priv.TokenID.Big) == 0 {
 					continue PrivLoop
 				}
 			}
 
-			toks = append(toks, priv.TokenID)
+			processedIDs = append(processedIDs, priv.TokenID)
 
-			nft, err := models.VehicleNFTS(
-				models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(priv.TokenID.Big)),
+			ud, err := models.UserDevices(
+				models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(priv.TokenID.Big)),
+				qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
+				qm.Load(models.UserDeviceRels.MintRequest),
+				qm.Load(models.UserDeviceRels.BurnRequest),
+				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
+				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
+				qm.Load(models.UserDeviceRels.Claim),
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
 				if err == sql.ErrNoRows {
+					udc.log.Warn().Msgf("User %s has privileges on a vehicle %d of which we have no record.", userAddr, priv.TokenID)
 					continue
 				}
 				return err
 			}
 
-			if !nft.UserDeviceID.Valid {
-				continue
-			}
-
-			ud, err := models.UserDevices(
-				models.UserDeviceWhere.ID.EQ(nft.UserDeviceID.String),
-				qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-				// Would we get this backreference for free?
-				qm.Load(models.UserDeviceRels.MintRequest),
-				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
-				qm.Load(models.UserDeviceRels.Claim),
-			).One(c.Context(), udc.DBS().Reader)
-			if err != nil {
-				return err
-			}
-
-			sharedDev = append(sharedDev, ud)
+			sharedVehicles = append(sharedVehicles, ud)
 		}
 	}
 
-	apiSharedDevices, err := udc.dbDevicesToDisplay(c.Context(), sharedDev)
+	apiSharedDevices, err := udc.dbDevicesToDisplay(c.Context(), sharedVehicles)
 	if err != nil {
 		return err
 	}
@@ -1256,9 +1286,20 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 	userDeviceID := c.Params("userDeviceID")
 
-	userDevice, err := models.FindUserDevice(c.Context(), udc.DBS().Reader, userDeviceID)
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(models.UserDeviceRels.MintRequest),
+	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "No vehicle with that id found.")
+	}
+
+	if !userDevice.TokenID.IsZero() {
+		return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle already minted with token id %d.", userDevice.TokenID.Big))
+	}
+
+	if mr := userDevice.R.MintRequest; mr != nil && mr.Status != models.MetaTransactionRequestStatusFailed {
+		return fiber.NewError(fiber.StatusConflict, "Vehicle minting already in process.")
 	}
 
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
@@ -1770,14 +1811,31 @@ type VehicleNFTData struct {
 	TxHash *string `json:"txHash,omitempty" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
 	// Status is the minting status of the NFT.
 	Status string `json:"status,omitempty" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
+	// FailureReason is populated if the status is "Failed" because of an on-chain revert and
+	// we were able to decode the reason.
+	FailureReason *string `json:"failureReason,omitempty"`
+	// BurnTransaction contains the status of the vehicle burning meta-transaction, if one
+	// is in flight or has failed.
+	BurnTransaction *TransactionStatus `json:"burnTransaction,omitempty"`
 }
 
 type SyntheticDeviceStatus struct {
-	IntegrationID uint64          `json:"-"`
-	TokenID       *big.Int        `json:"tokenId,omitempty" swaggertype:"number" example:"15"`
-	Address       *common.Address `json:"address,omitempty" swaggertype:"string" example:"0xAED7EA8035eEc47E657B34eF5D020c7005487443"`
-	TxHash        *string         `json:"txHash,omitempty" swaggertype:"string" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
-	Status        string          `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
+	// IntegrationID is the token id of the parent integration for this device.
+	IntegrationID uint64 `json:"-"`
+	// TokenID is the token id of the minted device.
+	TokenID *big.Int `json:"tokenId,omitempty" swaggertype:"number" example:"15"`
+	// Address is the Ethereum address of the synthetic device.
+	Address *common.Address `json:"address,omitempty" swaggertype:"string" example:"0xAED7EA8035eEc47E657B34eF5D020c7005487443"`
+	// TxHash is the hash of the submitted transaction.
+	TxHash *string `json:"txHash,omitempty" swaggertype:"string" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
+	// Status is the status of the minting meta-transaction.
+	Status string `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
+	// FailureReason is populated with a human-readable error message if the status
+	// is "Failed" because of an on-chain revert and we were able to decode the reason.
+	FailureReason *string `json:"failureReason"`
+	// BurnTransaction contains the status of the synthetic device burning meta-transaction,
+	// if one is in flight or has failed.
+	BurnTransaction *TransactionStatus `json:"burnTransaction,omitempty"`
 }
 
 type VINCredentialData struct {

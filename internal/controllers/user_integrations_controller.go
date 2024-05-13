@@ -624,7 +624,7 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 
 	serial := c.Locals("serial").(string)
 
-	var claim, pair, unpair *AftermarketDeviceTransactionStatus
+	var claim, pair, unpair *TransactionStatus
 
 	var tokenID *big.Int
 	var ethereumAddress, beneficiaryAddress *common.Address
@@ -653,7 +653,9 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 			addrStr := addr.Hex()
 			ownerAddress = &addrStr
 			beneficiaryAddress = &addr
-			claim = &AftermarketDeviceTransactionStatus{
+			// We do this because we're worried the claim originated in the chain and not our
+			// backend.
+			claim = &TransactionStatus{
 				Status: models.MetaTransactionRequestStatusConfirmed,
 			}
 		}
@@ -664,12 +666,13 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 		}
 
 		if req := dbUnit.R.ClaimMetaTransactionRequest; req != nil {
-			claim = &AftermarketDeviceTransactionStatus{
-				Status:    req.Status,
-				CreatedAt: req.CreatedAt,
-				UpdatedAt: req.UpdatedAt,
+			claim = &TransactionStatus{
+				Status:        req.Status,
+				CreatedAt:     req.CreatedAt,
+				UpdatedAt:     req.UpdatedAt,
+				FailureReason: req.FailureReason.Ptr(),
 			}
-			if req.Status != models.MetaTransactionRequestStatusUnsubmitted {
+			if req.Hash.Valid {
 				hash := hexutil.Encode(req.Hash.Bytes)
 				claim.Hash = &hash
 			}
@@ -677,10 +680,11 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 
 		// Check for pair.
 		if req := dbUnit.R.PairRequest; req != nil {
-			pair = &AftermarketDeviceTransactionStatus{
-				Status:    req.Status,
-				CreatedAt: req.CreatedAt,
-				UpdatedAt: req.UpdatedAt,
+			pair = &TransactionStatus{
+				Status:        req.Status,
+				CreatedAt:     req.CreatedAt,
+				UpdatedAt:     req.UpdatedAt,
+				FailureReason: req.FailureReason.Ptr(),
 			}
 			if req.Status != models.MetaTransactionRequestStatusUnsubmitted {
 				hash := hexutil.Encode(req.Hash.Bytes)
@@ -690,10 +694,11 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 
 		// Check for unpair.
 		if req := dbUnit.R.UnpairRequest; req != nil {
-			unpair = &AftermarketDeviceTransactionStatus{
-				Status:    req.Status,
-				CreatedAt: req.CreatedAt,
-				UpdatedAt: req.UpdatedAt,
+			unpair = &TransactionStatus{
+				Status:        req.Status,
+				CreatedAt:     req.CreatedAt,
+				UpdatedAt:     req.UpdatedAt,
+				FailureReason: req.FailureReason.Ptr(),
 			}
 			if req.Status != models.MetaTransactionRequestStatusUnsubmitted {
 				hash := hexutil.Encode(req.Hash.Bytes)
@@ -1277,7 +1282,7 @@ func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.C
 
 	// TODO(elffjs): It's difficult to tell if the vehicle is in the process of being paired.
 	if vad := ud.R.VehicleTokenAftermarketDevice; vad != nil {
-		if vad.TokenID.Cmp(vad.TokenID.Big) == 0 {
+		if ad.TokenID.Cmp(vad.TokenID.Big) == 0 {
 			return nil, nil, fiber.NewError(fiber.StatusConflict, "Specified vehicle and aftermarket device are already paired.")
 		}
 		return nil, nil, fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle already paired with aftermarket device %s.", vad.TokenID))
@@ -2101,7 +2106,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		logger.Err(err).Msg("Couldn't wake up Tesla.")
 	}
 
-	if udc.Settings.IsProduction() {
+	if udc.Settings.IsProduction() && !ud.TokenID.IsZero() {
 		tokenID, ok := ud.TokenID.Int64()
 		if !ok {
 			return errors.New("failed to parse vehicle token id")
@@ -2286,19 +2291,18 @@ type AutoPiDeviceInfo struct {
 	BeneficiaryAddress *common.Address `json:"beneficiaryAddress,omitempty"`
 
 	// Claim contains the status of the on-chain claiming meta-transaction.
-	Claim *AftermarketDeviceTransactionStatus `json:"claim,omitempty"`
+	Claim *TransactionStatus `json:"claim,omitempty"`
 	// Pair contains the status of the on-chain pairing meta-transaction.
-	Pair *AftermarketDeviceTransactionStatus `json:"pair,omitempty"`
+	Pair *TransactionStatus `json:"pair,omitempty"`
 	// Unpair contains the status of the on-chain unpairing meta-transaction.
-	Unpair *AftermarketDeviceTransactionStatus `json:"unpair,omitempty"`
+	Unpair *TransactionStatus `json:"unpair,omitempty"`
 
 	Manufacturer *ManufacturerInfo `json:"manufacturer,omitempty"`
 }
 
-// AftermarketDeviceTransactionStatus summarizes the state of an on-chain aftermarket device
-// operation: pairing, claiming, or unpairing.
-type AftermarketDeviceTransactionStatus struct {
-	// Status is the state of the transaction performing this operation. There are only four options.
+// TransactionStatus summarizes the state of an on-chain operation.
+type TransactionStatus struct {
+	// Status is the state of the transaction performing this operation.
 	Status string `json:"status" enums:"Unsubmitted,Submitted,Mined,Confirmed,Failed" example:"Mined"`
 	// Hash is the hexidecimal transaction hash, available for any transaction at the Submitted stage or greater.
 	Hash *string `json:"hash,omitempty" example:"0x28b4662f1e1b15083261a4a5077664f4003d58cb528826b7aab7fad466c28e70"`
@@ -2306,4 +2310,7 @@ type AftermarketDeviceTransactionStatus struct {
 	CreatedAt time.Time `json:"createdAt" example:"2022-10-01T09:22:21.002Z"`
 	// UpdatedAt is the last time we updated the status of the transaction.
 	UpdatedAt time.Time `json:"updatedAt" example:"2022-10-01T09:22:26.337Z"`
+	// FailureReason is populated with a human-readable error message if the status
+	// is "Failed" because of an on-chain revert and we were able to decode the reason.
+	FailureReason *string `json:"failureReason,omitempty"`
 }

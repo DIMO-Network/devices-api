@@ -2,12 +2,9 @@ package registry
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"testing"
 	"time"
-
-	"github.com/rs/zerolog"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
@@ -30,14 +27,11 @@ import (
 
 type StorageTestSuite struct {
 	suite.Suite
-	ctx              context.Context
-	dbs              db.Store
-	container        testcontainers.Container
-	mockCtrl         *gomock.Controller
-	scTaskSvc        *mock_services.MockSmartcarTaskService
-	teslaTaskService *mock_services.MockTeslaTaskService
-	deviceDefSvc     *mock_services.MockDeviceDefinitionService
-	eventSvc         *mock_services.MockEventService
+	ctx       context.Context
+	dbs       db.Store
+	container testcontainers.Container
+	mockCtrl  *gomock.Controller
+	eventSvc  *mock_services.MockEventService
 
 	proc StatusProcessor
 }
@@ -47,35 +41,32 @@ const migrationsDirRelPath = "../../../migrations"
 func (s *StorageTestSuite) SetupSuite() {
 	s.ctx = context.Background()
 	s.dbs, s.container = test.StartContainerDatabase(s.ctx, s.T(), migrationsDirRelPath)
-	logger := test.Logger()
-	s.mockCtrl = gomock.NewController(s.T())
+}
 
-	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(s.mockCtrl)
-	s.scTaskSvc = mock_services.NewMockSmartcarTaskService(s.mockCtrl)
-	s.teslaTaskService = mock_services.NewMockTeslaTaskService(s.mockCtrl)
+func (s *StorageTestSuite) TearDownSuite() {
+	if err := s.container.Terminate(s.ctx); err != nil {
+		s.T().Fatal(err)
+	}
+}
+
+func (s *StorageTestSuite) SetupTest() {
+	logger := test.Logger()
+	s.mockCtrl, s.ctx = gomock.WithContext(context.Background(), s.T())
+
 	s.eventSvc = mock_services.NewMockEventService(s.mockCtrl)
+
 	proc, err := NewProcessor(s.dbs.DBS, logger, &config.Settings{Environment: "prod"}, s.eventSvc)
 	if err != nil {
 		s.T().Fatal(err)
 	}
+
 	s.proc = proc
-}
-
-func (s *StorageTestSuite) TearDownSuite() {
-	fmt.Printf("shutting down postgres at with session: %s \n", s.container.SessionID())
-
-	if err := s.container.Terminate(s.ctx); err != nil {
-		s.T().Fatal(err)
-	}
-	s.mockCtrl.Finish()
 }
 
 func (s *StorageTestSuite) TearDownTest() {
 	test.TruncateTables(s.dbs.DBS().Writer.DB, s.T())
 }
 
-// In order for 'go test' to run this suite, we need to create
-// a normal test function and pass our suite to suite.Run
 func TestStorageTestSuite(t *testing.T) {
 	suite.Run(t, new(StorageTestSuite))
 }
@@ -170,14 +161,6 @@ func (s *StorageTestSuite) Test_SyntheticMintSetsID() {
 }
 
 func (s *StorageTestSuite) TestMintVehicle() {
-	ctx := context.TODO()
-
-	logger := zerolog.Nop()
-	s.mockCtrl = gomock.NewController(s.T())
-
-	proc, err := NewProcessor(s.dbs.DBS, &logger, &config.Settings{Environment: "prod"}, s.eventSvc)
-	s.Require().NoError(err)
-
 	mtr := models.MetaTransactionRequest{
 		ID:     ksuid.New().String(),
 		Status: models.MetaTransactionRequestStatusMined,
@@ -195,7 +178,7 @@ func (s *StorageTestSuite) TestMintVehicle() {
 	}
 	s.MustInsert(&ud)
 
-	s.Require().NoError(proc.Handle(context.TODO(), &ceData{
+	s.Require().NoError(s.proc.Handle(context.TODO(), &ceData{
 		RequestID: mtr.ID,
 		Type:      "Confirmed",
 		Transaction: ceTx{
@@ -216,12 +199,100 @@ func (s *StorageTestSuite) TestMintVehicle() {
 		},
 	}))
 
-	s.Require().NoError(ud.Reload(ctx, s.dbs.DBS().Writer))
+	s.Require().NoError(ud.Reload(s.ctx, s.dbs.DBS().Writer))
 
 	s.Zero(ud.TokenID.Int(nil).Cmp(big.NewInt(14443)))
 	s.Equal(common.HexToAddress("7e74d0f663d58d12817b8bef762bcde3af1f63d6"), common.BytesToAddress(ud.OwnerAddress.Bytes))
 
 	s.Equal(ud.ID, emEv.Subject)
+}
+
+func (s *StorageTestSuite) TestErrorTranslationWithArgs() {
+	mtr := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusUnsubmitted,
+	}
+	s.MustInsert(&mtr)
+
+	s.Require().NoError(s.proc.Handle(s.ctx, &ceData{
+		RequestID: mtr.ID,
+		Type:      "Failed",
+		Reason: ceReason{
+			// InvalidNode(0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF, 81945)
+			Data: "0xe3ca9639000000000000000000000000ba5738a18d83d41847dffbdc6101d37c69c9b0cf0000000000000000000000000000000000000000000000000000000000014019",
+		},
+	}))
+
+	s.Require().NoError(mtr.Reload(s.ctx, s.dbs.DBS().Reader))
+
+	s.Equal("Failed", mtr.Status)
+	s.Equal("Token 81945 does not exist at address 0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF.", mtr.FailureReason.String)
+}
+
+func (s *StorageTestSuite) TestErrorTranslationNoArgs() {
+	mtr := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusUnsubmitted,
+	}
+	s.MustInsert(&mtr)
+
+	s.Require().NoError(s.proc.Handle(s.ctx, &ceData{
+		RequestID: mtr.ID,
+		Type:      "Failed",
+		Reason: ceReason{
+			// InvalidOwnerSignature()
+			Data: "0x38a85a8d",
+		},
+	}))
+
+	s.Require().NoError(mtr.Reload(s.ctx, s.dbs.DBS().Reader))
+
+	s.Equal("Failed", mtr.Status)
+	s.Equal("Invalid owner signature.", mtr.FailureReason.String)
+}
+
+func (s *StorageTestSuite) TestFailedErrorParsing() {
+	mtr := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusUnsubmitted,
+	}
+	s.MustInsert(&mtr)
+
+	s.Require().NoError(s.proc.Handle(s.ctx, &ceData{
+		RequestID: mtr.ID,
+		Type:      "Failed",
+		Reason: ceReason{
+			// Selector for DeviceAlreadyClaimed followed by garbage.
+			Data: "0x4dec88eb00ff",
+		},
+	}))
+
+	s.Require().NoError(mtr.Reload(s.ctx, s.dbs.DBS().Reader))
+
+	s.Equal("Failed", mtr.Status)
+	s.False(mtr.FailureReason.Valid)
+}
+
+func (s *StorageTestSuite) TestUnrecognizedError() {
+	mtr := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusUnsubmitted,
+	}
+	s.MustInsert(&mtr)
+
+	s.Require().NoError(s.proc.Handle(s.ctx, &ceData{
+		RequestID: mtr.ID,
+		Type:      "Failed",
+		Reason: ceReason{
+			// Garbage selector.
+			Data: "0x00ff00ff",
+		},
+	}))
+
+	s.Require().NoError(mtr.Reload(s.ctx, s.dbs.DBS().Reader))
+
+	s.Equal("Failed", mtr.Status)
+	s.False(mtr.FailureReason.Valid)
 }
 
 func (s *StorageTestSuite) MustInsert(o boilInsertable) {

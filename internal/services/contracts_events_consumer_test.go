@@ -2,7 +2,7 @@ package services
 
 import (
 	"context"
-	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -10,10 +10,14 @@ import (
 	"testing"
 	"time"
 
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
+	"github.com/DIMO-Network/devices-api/internal/services/dex"
 	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"go.uber.org/mock/gomock"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/test"
@@ -26,7 +30,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/volatiletech/sqlboiler/v4/types"
+
 	// mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
+
+	smock "github.com/Shopify/sarama/mocks"
 )
 
 type mockTestEntity struct {
@@ -772,199 +779,80 @@ func privilegeEventsPayloadFactory(from, to int, eventName string, exp int64, dI
 	return res
 }
 
-func Test_VehicleNodeBurn_MetaTxID(t *testing.T) {
+func Test_VehicleNodeMintedWithDeviceDefinition_NoMtx(t *testing.T) {
 	ctx := context.Background()
+	logger := zerolog.Nop()
+
 	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
 	defer container.Terminate(ctx) //nolint
 
-	logger := zerolog.Nop()
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
 	settings := &config.Settings{DIMORegistryChainID: 1, DIMORegistryAddr: "0x881d40237659c251811cec9c364ef91dc08d300c"}
+	deviceDefSvc := NewMockDeviceDefinitionService(mockCtrl)
 
-	mintReq := models.MetaTransactionRequest{
-		ID:     ksuid.New().String(),
-		Status: models.MetaTransactionRequestStatusConfirmed,
-	}
-	assert.NoError(t, mintReq.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
+	kprod := smock.NewSyncProducer(t, nil)
+	evt := NewEventService(&logger, settings, kprod)
+	kprod.ExpectSendMessageAndSucceed()
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, deviceDefSvc, evt)
 
-	burnReq := models.MetaTransactionRequest{
-		ID:     ksuid.New().String(),
-		Status: models.MetaTransactionRequestStatusMined,
-	}
-	assert.NoError(t, burnReq.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
-
-	ud := models.UserDevice{
-		ID:                 ksuid.New().String(),
-		UserID:             ksuid.New().String(),
-		DeviceDefinitionID: ksuid.New().String(),
-		MintRequestID:      null.StringFrom(mintReq.ID),
-		OwnerAddress:       null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")),
-		TokenID:            types.NewNullDecimal(decimal.New(5, 0)),
-		BurnRequestID:      null.StringFrom(burnReq.ID),
-	}
-	_ = ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
-
-	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil, nil)
-
+	owner := common.HexToAddress("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")
+	ddSlug := "jeep_wrangler_2013"
+	deviceDefID := ksuid.New().String()
 	event, err := marshalMockPayload(fmt.Sprintf(`{
-		"type": "zone.dimo.contract.event",
-		"source": "chain/%d",
-		"data": {
-			"contract": "%s",
-			"eventName": "%s",
-			"chainId": %d,
-			"arguments": {
-			"vehicleNode": %s,
-			"owner": "%s"
+			"type": "zone.dimo.contract.event",
+			"source": "chain/%d",
+			"data": {
+				"contract": "%s",
+				"eventName": "%s",
+				"chainId": %d,
+				"arguments": {
+				"manufacturerId": %d,
+				"vehicleId": %d,
+				"owner": "%s",
+				"deviceDefinitionId": "%s"
+				}
 			}
-		}
-	}`,
+		}`,
 		settings.DIMORegistryChainID,
 		settings.DIMORegistryAddr,
-		VehicleNodeBurned.String(),
+		VehicleNodeMintedWithDeviceDefinition.String(),
 		settings.DIMORegistryChainID,
-		ud.TokenID.String(),
-		common.BytesToAddress(ud.OwnerAddress.Bytes)))
+		7,           // manufacturerId
+		13,          // vehicleId
+		owner.Hex(), // owner
+		ddSlug,      // device definition id
+	))
 	assert.NoError(t, err)
 
+	deviceDefSvc.EXPECT().GetDeviceDefinitionBySlugName(gomock.Any(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+		Slug: ddSlug,
+	}).Return(&ddgrpc.GetDeviceDefinitionItemResponse{
+		DeviceDefinitionId: deviceDefID,
+		Make: &ddgrpc.DeviceMake{
+			TokenId: 7,
+		},
+	}, nil)
+
 	err = consumer.processEvent(ctx, event)
-	if err != nil {
-		t.Errorf("failed to process event: %v", err)
-	}
-
-	assert.NoError(t, burnReq.Reload(ctx, pdb.DBS().Reader))
-	assert.Equal(t, models.MetaTransactionRequestStatusConfirmed, burnReq.Status)
-	assert.NotNil(t, burnReq.Hash)
-
-	assert.ErrorIs(t, ud.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
-	assert.ErrorIs(t, ud.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
-}
-
-func Test_VehicleNodeBurn_NoMetaTxID(t *testing.T) {
-	ctx := context.Background()
-	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
-	defer container.Terminate(ctx) //nolint
-
-	logger := zerolog.Nop()
-	settings := &config.Settings{DIMORegistryChainID: 1, DIMORegistryAddr: "0x881d40237659c251811cec9c364ef91dc08d300c"}
-
-	mintReq := models.MetaTransactionRequest{
-		ID:     ksuid.New().String(),
-		Status: models.MetaTransactionRequestStatusConfirmed,
-	}
-	assert.NoError(t, mintReq.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
-
-	ud := models.UserDevice{
-		ID:                 ksuid.New().String(),
-		UserID:             ksuid.New().String(),
-		DeviceDefinitionID: ksuid.New().String(),
-		MintRequestID:      null.StringFrom(mintReq.ID),
-		OwnerAddress:       null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")),
-		TokenID:            types.NewNullDecimal(decimal.New(13, 0)),
-	}
-	if err := ud.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil, nil)
-
-	event, err := marshalMockPayload(fmt.Sprintf(`{
-		"type": "zone.dimo.contract.event",
-		"source": "chain/%d",
-		"data": {
-			"contract": "%s",
-			"eventName": "%s",
-			"chainId": %d,
-			"arguments": {
-			"vehicleNode": %s,
-			"owner": "%s"
-			}
-		}
-	}`,
-		settings.DIMORegistryChainID,
-		settings.DIMORegistryAddr,
-		VehicleNodeBurned.String(),
-		settings.DIMORegistryChainID,
-		ud.TokenID.String(),
-		common.BytesToAddress(ud.OwnerAddress.Bytes)))
 	assert.NoError(t, err)
 
-	err = consumer.processEvent(ctx, event)
-	if err != nil {
-		t.Errorf("failed to process event: %v", err)
-	}
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(13, 0))),
+	).One(ctx, pdb.DBS().Reader)
+	assert.NoError(t, err)
 
-	assert.ErrorIs(t, ud.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
-	assert.ErrorIs(t, ud.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
+	assert.Equal(t, deviceDefID, ud.DeviceDefinitionID)
+	assert.Equal(t, owner.Hex(), common.BytesToAddress(ud.OwnerAddress.Bytes).Hex())
+
+	userID, err := proto.Marshal(&dex.IDTokenSubject{
+		UserId: owner.Hex(),
+		ConnId: "web3",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, base64.RawURLEncoding.EncodeToString(userID), ud.UserID)
 }
-
-// func Test_VehicleNodeMintedWithDeviceDefinition_NoMtx(t *testing.T) {
-// 	ctx := context.Background()
-// 	logger := zerolog.Nop()
-
-// 	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
-// 	defer container.Terminate(ctx) //nolint
-
-// 	mockCtrl := gomock.NewController(t)
-// 	defer mockCtrl.Finish()
-
-// 	settings := &config.Settings{DIMORegistryChainID: 1, DIMORegistryAddr: "0x881d40237659c251811cec9c364ef91dc08d300c"}
-// 	deviceDefSvc := mock_services.NewMockDeviceDefinitionService(mockCtrl)
-// 	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, deviceDefSvc)
-
-// 	owner := common.HexToAddress("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")
-// 	ddSlug := "jeep_wrangler_2013"
-// 	deviceDefId := ksuid.New().String()
-
-// 	event, err := marshalMockPayload(fmt.Sprintf(`{
-// 			"type": "zone.dimo.contract.event",
-// 			"source": "chain/%d",
-// 			"data": {
-// 				"contract": "%s",
-// 				"eventName": "%s",
-// 				"chainId": %d,
-// 				"arguments": {
-// 				"manufacturerId": %d,
-// 				"vehicleId": %d,
-// 				"owner": "%s",
-// 				"deviceDefinitionId": "%s"
-// 				}
-// 			}
-// 		}`,
-// 		settings.DIMORegistryChainID,
-// 		settings.DIMORegistryAddr,
-// 		VehicleNodeMintedWithDeviceDefinition.String(),
-// 		settings.DIMORegistryChainID,
-// 		7,           // manufacturerId
-// 		13,          // vehicleId
-// 		owner.Hex(), // owner
-// 		ddSlug,      // device definition id
-// 	))
-// 	assert.NoError(t, err)
-
-// 	deviceDefSvc.EXPECT().GetDeviceDefinitionBySlugName(gomock.Any(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
-// 		Slug: ddSlug,
-// 	}).Return(&ddgrpc.GetDeviceDefinitionItemResponse{
-// 		DeviceDefinitionId: deviceDefId,
-// 	}, nil)
-
-// 	err = consumer.processEvent(ctx, event)
-// 	assert.NoError(t, err)
-
-// 	ud, err := models.UserDevices(
-// 		models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(13, 0))),
-// 	).One(ctx, pdb.DBS().Reader)
-// 	assert.NoError(t, err)
-
-// 	assert.Equal(t, deviceDefId, ud.DeviceDefinitionID)
-// 	assert.Equal(t, owner.Hex(), common.BytesToAddress(ud.OwnerAddress.Bytes).Hex())
-
-// 	userID, err := proto.Marshal(&dex.IDTokenSubject{
-// 		UserId: owner.Hex(),
-// 		ConnId: "web3",
-// 	})
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, base64.RawURLEncoding.EncodeToString(userID), ud.UserID)
-// }
 
 func initCEventsTestHelper(t *testing.T) cEventsTestHelper {
 	ctx := context.Background()

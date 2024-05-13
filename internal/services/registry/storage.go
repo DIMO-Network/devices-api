@@ -2,10 +2,12 @@ package registry
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"time"
 
 	"github.com/DIMO-Network/shared"
+	"gopkg.in/yaml.v3"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
@@ -21,16 +23,20 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
+//go:embed dimo_registry_error_translations.yaml
+var dimoRegistryErrorTranslationsRaw []byte
+
 type StatusProcessor interface {
 	Handle(ctx context.Context, data *ceData) error
 }
 
 type proc struct {
-	ABI      *abi.ABI
-	DB       func() *db.ReaderWriter
-	Logger   *zerolog.Logger
-	settings *config.Settings
-	Eventer  services.EventService
+	ABI             *abi.ABI
+	DB              func() *db.ReaderWriter
+	Logger          *zerolog.Logger
+	settings        *config.Settings
+	Eventer         services.EventService
+	ErrorTranslator *ABIErrorTranslator
 }
 
 func (p *proc) Handle(ctx context.Context, data *ceData) error {
@@ -60,7 +66,17 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 	mtr.Status = data.Type
 
-	if data.Type != models.MetaTransactionRequestStatusFailed {
+	if data.Type == models.MetaTransactionRequestStatusFailed {
+		errData := common.FromHex(data.Reason.Data)
+		if len(errData) != 0 {
+			friendlyError, err := p.ErrorTranslator.Decode(errData)
+			if err != nil {
+				logger.Err(err).Msg("Error decoding revert data.")
+			} else {
+				mtr.FailureReason = null.StringFrom(friendlyError)
+			}
+		}
+	} else {
 		mtr.Hash = null.BytesFrom(common.FromHex(data.Transaction.Hash))
 	}
 
@@ -205,11 +221,23 @@ func NewProcessor(
 		return nil, err
 	}
 
+	var errorTranslationMap map[string]string
+	err = yaml.Unmarshal(dimoRegistryErrorTranslationsRaw, &errorTranslationMap)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing error translation file: %w", err)
+	}
+
+	errorTranslator, err := NewABIErrorTranslator(regABI, errorTranslationMap)
+	if err != nil {
+		return nil, fmt.Errorf("error constructing error translater: %w", err)
+	}
+
 	return &proc{
-		ABI:      regABI,
-		DB:       db,
-		Logger:   logger,
-		settings: settings,
-		Eventer:  eventer,
+		ABI:             regABI,
+		DB:              db,
+		Logger:          logger,
+		settings:        settings,
+		Eventer:         eventer,
+		ErrorTranslator: errorTranslator,
 	}, nil
 }
