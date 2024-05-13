@@ -2106,7 +2106,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		logger.Err(err).Msg("Couldn't wake up Tesla.")
 	}
 
-	if udc.Settings.IsProduction() {
+	if udc.Settings.IsProduction() && !ud.TokenID.IsZero() {
 		tokenID, ok := ud.TokenID.Int64()
 		if !ok {
 			return errors.New("failed to parse vehicle token id")
