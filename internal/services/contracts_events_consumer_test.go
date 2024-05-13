@@ -799,7 +799,7 @@ func Test_VehicleNodeMintedWithDeviceDefinition_NoMtx(t *testing.T) {
 
 	owner := common.HexToAddress("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")
 	ddSlug := "jeep_wrangler_2013"
-	deviceDefId := ksuid.New().String()
+	deviceDefID := ksuid.New().String()
 	event, err := marshalMockPayload(fmt.Sprintf(`{
 			"type": "zone.dimo.contract.event",
 			"source": "chain/%d",
@@ -829,7 +829,7 @@ func Test_VehicleNodeMintedWithDeviceDefinition_NoMtx(t *testing.T) {
 	deviceDefSvc.EXPECT().GetDeviceDefinitionBySlugName(gomock.Any(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
 		Slug: ddSlug,
 	}).Return(&ddgrpc.GetDeviceDefinitionItemResponse{
-		DeviceDefinitionId: deviceDefId,
+		DeviceDefinitionId: deviceDefID,
 		Make: &ddgrpc.DeviceMake{
 			TokenId: 7,
 		},
@@ -843,7 +843,7 @@ func Test_VehicleNodeMintedWithDeviceDefinition_NoMtx(t *testing.T) {
 	).One(ctx, pdb.DBS().Reader)
 	assert.NoError(t, err)
 
-	assert.Equal(t, deviceDefId, ud.DeviceDefinitionID)
+	assert.Equal(t, deviceDefID, ud.DeviceDefinitionID)
 	assert.Equal(t, owner.Hex(), common.BytesToAddress(ud.OwnerAddress.Bytes).Hex())
 
 	userID, err := proto.Marshal(&dex.IDTokenSubject{
