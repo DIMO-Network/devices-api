@@ -746,7 +746,7 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 		return fmt.Errorf("vehicle make not yet minted: %s", dDef.Make.Name)
 	}
 
-	if args.ManufacturerId != big.NewInt(int64(dDef.Make.TokenId)) {
+	if args.ManufacturerId.Cmp(big.NewInt(int64(dDef.Make.TokenId))) != 0 {
 		return fmt.Errorf("passed manufacturer id %d does not match manufacturer associated with device definition %s", args.ManufacturerId, dDef.DeviceDefinitionId)
 	}
 

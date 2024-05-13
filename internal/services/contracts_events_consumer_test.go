@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -9,10 +10,14 @@ import (
 	"testing"
 	"time"
 
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
+	"github.com/DIMO-Network/devices-api/internal/services/dex"
 	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"go.uber.org/mock/gomock"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/test"
@@ -25,7 +30,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/volatiletech/sqlboiler/v4/types"
+
 	// mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
+
+	smock "github.com/Shopify/sarama/mocks"
 )
 
 type mockTestEntity struct {
@@ -771,74 +779,80 @@ func privilegeEventsPayloadFactory(from, to int, eventName string, exp int64, dI
 	return res
 }
 
-// func Test_VehicleNodeMintedWithDeviceDefinition_NoMtx(t *testing.T) {
-// 	ctx := context.Background()
-// 	logger := zerolog.Nop()
+func Test_VehicleNodeMintedWithDeviceDefinition_NoMtx(t *testing.T) {
+	ctx := context.Background()
+	logger := zerolog.Nop()
 
-// 	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
-// 	defer container.Terminate(ctx) //nolint
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer container.Terminate(ctx) //nolint
 
-// 	mockCtrl := gomock.NewController(t)
-// 	defer mockCtrl.Finish()
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
 
-// 	settings := &config.Settings{DIMORegistryChainID: 1, DIMORegistryAddr: "0x881d40237659c251811cec9c364ef91dc08d300c"}
-// 	deviceDefSvc := mock_services.NewMockDeviceDefinitionService(mockCtrl)
-// 	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, deviceDefSvc)
+	settings := &config.Settings{DIMORegistryChainID: 1, DIMORegistryAddr: "0x881d40237659c251811cec9c364ef91dc08d300c"}
+	deviceDefSvc := NewMockDeviceDefinitionService(mockCtrl)
 
-// 	owner := common.HexToAddress("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")
-// 	ddSlug := "jeep_wrangler_2013"
-// 	deviceDefId := ksuid.New().String()
+	kprod := smock.NewSyncProducer(t, nil)
+	evt := NewEventService(&logger, settings, kprod)
+	kprod.ExpectSendMessageAndSucceed()
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, deviceDefSvc, evt)
 
-// 	event, err := marshalMockPayload(fmt.Sprintf(`{
-// 			"type": "zone.dimo.contract.event",
-// 			"source": "chain/%d",
-// 			"data": {
-// 				"contract": "%s",
-// 				"eventName": "%s",
-// 				"chainId": %d,
-// 				"arguments": {
-// 				"manufacturerId": %d,
-// 				"vehicleId": %d,
-// 				"owner": "%s",
-// 				"deviceDefinitionId": "%s"
-// 				}
-// 			}
-// 		}`,
-// 		settings.DIMORegistryChainID,
-// 		settings.DIMORegistryAddr,
-// 		VehicleNodeMintedWithDeviceDefinition.String(),
-// 		settings.DIMORegistryChainID,
-// 		7,           // manufacturerId
-// 		13,          // vehicleId
-// 		owner.Hex(), // owner
-// 		ddSlug,      // device definition id
-// 	))
-// 	assert.NoError(t, err)
+	owner := common.HexToAddress("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")
+	ddSlug := "jeep_wrangler_2013"
+	deviceDefId := ksuid.New().String()
+	event, err := marshalMockPayload(fmt.Sprintf(`{
+			"type": "zone.dimo.contract.event",
+			"source": "chain/%d",
+			"data": {
+				"contract": "%s",
+				"eventName": "%s",
+				"chainId": %d,
+				"arguments": {
+				"manufacturerId": %d,
+				"vehicleId": %d,
+				"owner": "%s",
+				"deviceDefinitionId": "%s"
+				}
+			}
+		}`,
+		settings.DIMORegistryChainID,
+		settings.DIMORegistryAddr,
+		VehicleNodeMintedWithDeviceDefinition.String(),
+		settings.DIMORegistryChainID,
+		7,           // manufacturerId
+		13,          // vehicleId
+		owner.Hex(), // owner
+		ddSlug,      // device definition id
+	))
+	assert.NoError(t, err)
 
-// 	deviceDefSvc.EXPECT().GetDeviceDefinitionBySlugName(gomock.Any(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
-// 		Slug: ddSlug,
-// 	}).Return(&ddgrpc.GetDeviceDefinitionItemResponse{
-// 		DeviceDefinitionId: deviceDefId,
-// 	}, nil)
+	deviceDefSvc.EXPECT().GetDeviceDefinitionBySlugName(gomock.Any(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+		Slug: ddSlug,
+	}).Return(&ddgrpc.GetDeviceDefinitionItemResponse{
+		DeviceDefinitionId: deviceDefId,
+		Make: &ddgrpc.DeviceMake{
+			TokenId: 7,
+		},
+	}, nil)
 
-// 	err = consumer.processEvent(ctx, event)
-// 	assert.NoError(t, err)
+	err = consumer.processEvent(ctx, event)
+	assert.NoError(t, err)
 
-// 	ud, err := models.UserDevices(
-// 		models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(13, 0))),
-// 	).One(ctx, pdb.DBS().Reader)
-// 	assert.NoError(t, err)
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(13, 0))),
+	).One(ctx, pdb.DBS().Reader)
+	assert.NoError(t, err)
 
-// 	assert.Equal(t, deviceDefId, ud.DeviceDefinitionID)
-// 	assert.Equal(t, owner.Hex(), common.BytesToAddress(ud.OwnerAddress.Bytes).Hex())
+	assert.Equal(t, deviceDefId, ud.DeviceDefinitionID)
+	assert.Equal(t, owner.Hex(), common.BytesToAddress(ud.OwnerAddress.Bytes).Hex())
 
-// 	userID, err := proto.Marshal(&dex.IDTokenSubject{
-// 		UserId: owner.Hex(),
-// 		ConnId: "web3",
-// 	})
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, base64.RawURLEncoding.EncodeToString(userID), ud.UserID)
-// }
+	userID, err := proto.Marshal(&dex.IDTokenSubject{
+		UserId: owner.Hex(),
+		ConnId: "web3",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, base64.RawURLEncoding.EncodeToString(userID), ud.UserID)
+}
 
 func initCEventsTestHelper(t *testing.T) cEventsTestHelper {
 	ctx := context.Background()
