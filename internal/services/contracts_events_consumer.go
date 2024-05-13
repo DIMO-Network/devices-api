@@ -20,14 +20,12 @@ import (
 	"github.com/DIMO-Network/shared/db"
 	"github.com/DIMO-Network/shared/dbtypes"
 	"github.com/DIMO-Network/shared/kafka"
-	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
@@ -65,7 +63,6 @@ const (
 	AftermarketDeviceUnpaired             EventName = "AftermarketDeviceUnpaired"
 	AftermarketDeviceAttributeSet         EventName = "AftermarketDeviceAttributeSet"
 	AftermarketDeviceAddressReset         EventName = "AftermarketDeviceAddressReset"
-	VehicleNodeBurned                     EventName = "VehicleNodeBurned"
 	VehicleNodeMintedWithDeviceDefinition EventName = "VehicleNodeMintedWithDeviceDefinition"
 )
 
@@ -171,8 +168,6 @@ func (c *ContractsEventsConsumer) processEvent(ctx context.Context, event *share
 		return c.aftermarketDeviceAttributeSet(&data)
 	case AftermarketDeviceAddressReset.String():
 		return c.aftermarketDeviceAddressReset(&data)
-	case VehicleNodeBurned.String():
-		return c.vehicleNodeBurned(&data)
 	case VehicleNodeMintedWithDeviceDefinition.String():
 		return c.vehicleNodeMintedWithDeviceDefinition(&data)
 	default:
@@ -275,17 +270,13 @@ func (c *ContractsEventsConsumer) handleVehicleTransfer(ctx context.Context, e *
 		c.log.Info().Int64("vehicleTokenId", args.TokenId.Int64()).Str("owner", args.From.Hex()).Msg("Burned vehicle.")
 	} else {
 		// Faking a user id for a web3 user with the new owner address.
-		s := dex.IDTokenSubject{
-			UserId: args.To.Hex(),
-			ConnId: "web3",
-		}
-		b, err := proto.Marshal(&s)
+		userID, err := addressToUserID(args.To)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to convert address to user id: %w", err)
 		}
 
 		cols := models.UserDeviceColumns
-		ud.UserID = base64.RawURLEncoding.EncodeToString(b)
+		ud.UserID = userID
 		ud.OwnerAddress = null.BytesFrom(args.To.Bytes())
 
 		if _, err := ud.Update(ctx, tx, boil.Whitelist(cols.UserID, cols.OwnerAddress)); err != nil {
@@ -711,50 +702,6 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAddressReset(e *ContractEvent
 	return err
 }
 
-// vehicleNodeBurned handles the event of the same name from the registry contract.
-func (c *ContractsEventsConsumer) vehicleNodeBurned(e *ContractEventData) error {
-	ctx := context.Background()
-	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
-		return fmt.Errorf("vehicle burn from unexpected source %d/%s", e.ChainID, e.Contract)
-	}
-
-	var args contracts.RegistryVehicleNodeBurned
-	if err := json.Unmarshal(e.Arguments, &args); err != nil {
-		return err
-	}
-
-	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Msg("burning vehicle node")
-	tx, err := c.db.DBS().Reader.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback() //nolint
-
-	ud, err := models.UserDevices(
-		models.UserDeviceWhere.TokenID.EQ(
-			types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.VehicleNode, 0))),
-		qm.Load(models.UserDeviceRels.BurnRequest),
-	).One(ctx, tx)
-	if err != nil {
-		return err
-	}
-
-	if _, err := ud.Delete(ctx, tx); err != nil {
-		return err
-	}
-
-	if mtr := ud.R.BurnRequest; mtr != nil {
-		mtr.Hash = null.BytesFrom(e.TransactionHash.Bytes())
-		mtr.Status = models.MetaTransactionRequestStatusConfirmed
-		if _, err := mtr.Update(ctx, tx, boil.Infer()); err != nil {
-			return err
-		}
-	}
-
-	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Msg("vehicle node burned")
-	return tx.Commit()
-}
-
 func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *ContractEventData) error {
 	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
 		return fmt.Errorf("vehicle mint from unexpected source %d/%s", e.ChainID, e.Contract)
@@ -778,18 +725,16 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 	if check, err := models.MetaTransactionRequests(
 		models.MetaTransactionRequestWhere.Hash.EQ(null.BytesFrom(e.TransactionHash.Bytes())),
 	).Exists(ctx, tx); err != nil {
-		return fmt.Errorf("failed to check if vehicle mint event has already been handled: %w", err)
+		// if we cannot confirm whether event has been handled, log error and then create vehicle
+		log.Err(err).Msg("failed to check if vehicle mint event has already been handled")
 	} else if check {
-		return fmt.Errorf("vehicle mint event has already been handled. tx hash: %s", e.TransactionHash.String())
+		log.Info().Msgf("vehicle mint event has already been handled. tx hash: %s", e.TransactionHash.String())
+		return nil
 	}
 
-	userIDArgs := dex.IDTokenSubject{
-		UserId: args.Owner.Hex(),
-		ConnId: "web3",
-	}
-	userID, err := proto.Marshal(&userIDArgs)
+	userID, err := addressToUserID(args.Owner)
 	if err != nil {
-		return fmt.Errorf("failed to marshal user id: %w", err)
+		return fmt.Errorf("failed to convert address to user id: %w", err)
 	}
 
 	dDef, err := c.ddSvc.GetDeviceDefinitionBySlugName(ctx, &ddgrpc.GetDeviceDefinitionBySlugNameRequest{Slug: args.DeviceDefinitionId})
@@ -807,10 +752,10 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 
 	ud := models.UserDevice{
 		ID:                 ksuid.New().String(),
-		UserID:             base64.RawURLEncoding.EncodeToString(userID),
+		UserID:             userID,
 		DeviceDefinitionID: dDef.DeviceDefinitionId,
 		OwnerAddress:       null.BytesFrom(args.Owner.Bytes()),
-		TokenID:            types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.VehicleId, 0)),
+		TokenID:            dbtypes.NullIntToDecimal(args.VehicleId),
 	}
 
 	if err := ud.Insert(ctx, tx, boil.Infer()); err != nil {
@@ -847,4 +792,14 @@ type DCNNameChangedContract struct {
 	Node [32]byte
 	Name string `json:"name_"`
 	//Raw  types.Log // Blockchain specific contextual infos
+}
+
+func addressToUserID(addr common.Address) (string, error) {
+	userIDArgs := dex.IDTokenSubject{
+		UserId: addr.Hex(),
+		ConnId: "web3",
+	}
+
+	ub, err := proto.Marshal(&userIDArgs)
+	return base64.RawURLEncoding.EncodeToString(ub), err
 }

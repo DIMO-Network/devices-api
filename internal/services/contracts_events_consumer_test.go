@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -770,131 +769,6 @@ func privilegeEventsPayloadFactory(from, to int, eventName string, exp int64, dI
 		})
 	}
 	return res
-}
-
-func Test_VehicleNodeBurn_MetaTxID(t *testing.T) {
-	ctx := context.Background()
-	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
-	defer container.Terminate(ctx) //nolint
-
-	logger := zerolog.Nop()
-	settings := &config.Settings{DIMORegistryChainID: 1, DIMORegistryAddr: "0x881d40237659c251811cec9c364ef91dc08d300c"}
-
-	mintReq := models.MetaTransactionRequest{
-		ID:     ksuid.New().String(),
-		Status: models.MetaTransactionRequestStatusConfirmed,
-	}
-	assert.NoError(t, mintReq.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
-
-	burnReq := models.MetaTransactionRequest{
-		ID:     ksuid.New().String(),
-		Status: models.MetaTransactionRequestStatusMined,
-	}
-	assert.NoError(t, burnReq.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
-
-	ud := models.UserDevice{
-		ID:                 ksuid.New().String(),
-		UserID:             ksuid.New().String(),
-		DeviceDefinitionID: ksuid.New().String(),
-		MintRequestID:      null.StringFrom(mintReq.ID),
-		OwnerAddress:       null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")),
-		TokenID:            types.NewNullDecimal(decimal.New(5, 0)),
-		BurnRequestID:      null.StringFrom(burnReq.ID),
-	}
-	_ = ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
-
-	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil, nil)
-
-	event, err := marshalMockPayload(fmt.Sprintf(`{
-		"type": "zone.dimo.contract.event",
-		"source": "chain/%d",
-		"data": {
-			"contract": "%s",
-			"eventName": "%s",
-			"chainId": %d,
-			"arguments": {
-			"vehicleNode": %s,
-			"owner": "%s"
-			}
-		}
-	}`,
-		settings.DIMORegistryChainID,
-		settings.DIMORegistryAddr,
-		VehicleNodeBurned.String(),
-		settings.DIMORegistryChainID,
-		ud.TokenID.String(),
-		common.BytesToAddress(ud.OwnerAddress.Bytes)))
-	assert.NoError(t, err)
-
-	err = consumer.processEvent(ctx, event)
-	if err != nil {
-		t.Errorf("failed to process event: %v", err)
-	}
-
-	assert.NoError(t, burnReq.Reload(ctx, pdb.DBS().Reader))
-	assert.Equal(t, models.MetaTransactionRequestStatusConfirmed, burnReq.Status)
-	assert.NotNil(t, burnReq.Hash)
-
-	assert.ErrorIs(t, ud.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
-	assert.ErrorIs(t, ud.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
-}
-
-func Test_VehicleNodeBurn_NoMetaTxID(t *testing.T) {
-	ctx := context.Background()
-	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
-	defer container.Terminate(ctx) //nolint
-
-	logger := zerolog.Nop()
-	settings := &config.Settings{DIMORegistryChainID: 1, DIMORegistryAddr: "0x881d40237659c251811cec9c364ef91dc08d300c"}
-
-	mintReq := models.MetaTransactionRequest{
-		ID:     ksuid.New().String(),
-		Status: models.MetaTransactionRequestStatusConfirmed,
-	}
-	assert.NoError(t, mintReq.Insert(context.TODO(), pdb.DBS().Writer, boil.Infer()))
-
-	ud := models.UserDevice{
-		ID:                 ksuid.New().String(),
-		UserID:             ksuid.New().String(),
-		DeviceDefinitionID: ksuid.New().String(),
-		MintRequestID:      null.StringFrom(mintReq.ID),
-		OwnerAddress:       null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")),
-		TokenID:            types.NewNullDecimal(decimal.New(13, 0)),
-	}
-	if err := ud.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil, nil)
-
-	event, err := marshalMockPayload(fmt.Sprintf(`{
-		"type": "zone.dimo.contract.event",
-		"source": "chain/%d",
-		"data": {
-			"contract": "%s",
-			"eventName": "%s",
-			"chainId": %d,
-			"arguments": {
-			"vehicleNode": %s,
-			"owner": "%s"
-			}
-		}
-	}`,
-		settings.DIMORegistryChainID,
-		settings.DIMORegistryAddr,
-		VehicleNodeBurned.String(),
-		settings.DIMORegistryChainID,
-		ud.TokenID.String(),
-		common.BytesToAddress(ud.OwnerAddress.Bytes)))
-	assert.NoError(t, err)
-
-	err = consumer.processEvent(ctx, event)
-	if err != nil {
-		t.Errorf("failed to process event: %v", err)
-	}
-
-	assert.ErrorIs(t, ud.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
-	assert.ErrorIs(t, ud.Reload(ctx, pdb.DBS().Reader), sql.ErrNoRows)
 }
 
 // func Test_VehicleNodeMintedWithDeviceDefinition_NoMtx(t *testing.T) {
