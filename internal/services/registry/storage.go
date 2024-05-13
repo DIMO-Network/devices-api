@@ -90,6 +90,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	}
 
 	vehicleNodeMintedWithDeviceDefinition := p.ABI.Events["VehicleNodeMintedWithDeviceDefinition"]
+	vehicleNodeMinted := p.ABI.Events["VehicleNodeMinted"]
 	syntheticDeviceMintedEvent := p.ABI.Events["SyntheticDeviceNodeMinted"]
 
 	switch {
@@ -104,7 +105,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 				ud := mtr.R.MintRequestUserDevice
 				cols := models.UserDeviceColumns
-
 				ud.TokenID = dbtypes.NullIntToDecimal(event.VehicleId)
 				ud.OwnerAddress = null.BytesFrom(event.Owner.Bytes())
 				_, err = ud.Update(ctx, tx, boil.Whitelist(cols.TokenID, cols.OwnerAddress))
@@ -137,6 +137,46 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					Int64("vehicleTokenId", event.VehicleId.Int64()).
 					Str("owner", event.Owner.Hex()).
 					Msg("Vehicle minted.")
+			} else if logs.Topics[0] == vehicleNodeMinted.ID {
+				var event contracts.RegistryVehicleNodeMinted
+				err := p.parseLog(&event, vehicleNodeMinted, logs)
+				if err != nil {
+					return fmt.Errorf("failed to parse VehicleNodeMinted event: %w", err)
+				}
+
+				ud := mtr.R.MintRequestUserDevice
+				cols := models.UserDeviceColumns
+
+				ud.TokenID = dbtypes.NullIntToDecimal(event.TokenId)
+				ud.OwnerAddress = null.BytesFrom(event.Owner.Bytes())
+				_, err = ud.Update(ctx, p.DB().Writer, boil.Whitelist(cols.TokenID, cols.OwnerAddress))
+				if err != nil {
+					return fmt.Errorf("failed to update vehicle record: %w", err)
+				}
+				p.Eventer.Emit(&shared.CloudEvent[any]{ //nolint
+					Type:    "com.dimo.zone.device.mint",
+					Subject: ud.ID,
+					Source:  "devices-api",
+					Data: services.UserDeviceMintEvent{
+						Timestamp: time.Now(),
+						UserID:    ud.UserID,
+						Device: services.UserDeviceEventDevice{
+							ID:  ud.ID,
+							VIN: ud.VinIdentifier.String,
+						},
+						NFT: services.UserDeviceEventNFT{
+							TokenID: event.TokenId,
+							Owner:   event.Owner,
+							TxHash:  common.HexToHash(data.Transaction.Hash),
+						},
+					},
+				})
+
+				logger.Info().
+					Str("userDeviceId", mtr.R.MintRequestUserDevice.ID).
+					Int64("vehicleTokenId", event.TokenId.Int64()).
+					Str("owner", event.Owner.Hex()).
+					Msg("Vehicle minted.")
 			} else if logs.Topics[0] == syntheticDeviceMintedEvent.ID {
 				// We must be doing a combined vehicle and SD mint. This always comes second.
 				var event contracts.RegistrySyntheticDeviceNodeMinted
@@ -164,6 +204,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					Str("owner", event.Owner.Hex()).
 					Msg("Synthetic device minted.")
 			}
+
 		}
 	// It's very important that this be after the case for VehicleNodeMinted.
 	case mtr.R.MintRequestSyntheticDevice != nil:
