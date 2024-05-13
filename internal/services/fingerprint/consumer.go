@@ -163,7 +163,9 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 		return err
 	}
 
-	appmetrics.FingerprintRequestCount.With(prometheus.Labels{"protocol": *protocol, "status": "Success"}).Inc()
+	if protocol != nil {
+		appmetrics.FingerprintRequestCount.With(prometheus.Labels{"protocol": *protocol, "status": "Success"}).Inc()
+	}
 
 	c.logger.Info().Str("device-addr", event.Subject).Msg("issued vin credential")
 
