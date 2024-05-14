@@ -159,11 +159,15 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 	err = ad.R.VehicleToken.Metadata.Marshal(&md)
 	if err != nil {
 		c.logger.Error().Msgf("could not marshal userdevice metadata for device: %s", ad.R.VehicleToken.ID)
-		appmetrics.FingerprintRequestCount.With(prometheus.Labels{"protocol": *protocol, "status": "Failed"}).Inc()
+		if protocol != nil {
+			appmetrics.FingerprintRequestCount.With(prometheus.Labels{"protocol": *protocol, "status": "Failed"}).Inc()
+		}
 		return err
 	}
 
-	appmetrics.FingerprintRequestCount.With(prometheus.Labels{"protocol": *protocol, "status": "Success"}).Inc()
+	if protocol != nil {
+		appmetrics.FingerprintRequestCount.With(prometheus.Labels{"protocol": *protocol, "status": "Success"}).Inc()
+	}
 
 	c.logger.Info().Str("device-addr", event.Subject).Msg("issued vin credential")
 
