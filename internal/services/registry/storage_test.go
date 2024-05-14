@@ -295,6 +295,58 @@ func (s *StorageTestSuite) TestUnrecognizedError() {
 	s.False(mtr.FailureReason.Valid)
 }
 
+func (s *StorageTestSuite) TestVehicleNodeMintedWithDeviceDefinition() {
+	mtr := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusMined,
+	}
+	s.MustInsert(&mtr)
+
+	var emEv *shared.CloudEvent[any]
+	s.eventSvc.EXPECT().Emit(gomock.Any()).Do(func(event *shared.CloudEvent[any]) {
+		emEv = event
+	})
+
+	ud := models.UserDevice{
+		ID:            ksuid.New().String(),
+		MintRequestID: null.StringFrom(mtr.ID),
+	}
+	s.MustInsert(&ud)
+
+	a, _ := contracts.RegistryMetaData.GetAbi()
+	var event contracts.RegistryVehicleNodeMintedWithDeviceDefinition
+	event.DeviceDefinitionId = "jeep_wrangler_2013"
+	event.ManufacturerId = big.NewInt(3)
+	event.VehicleId = big.NewInt(7)
+	event.Owner = common.HexToAddress("7e74d0f663d58d12817b8bef762bcde3af1f63d6")
+
+	s.Require().NoError(s.proc.Handle(context.TODO(), &ceData{
+		RequestID: mtr.ID,
+		Type:      "Confirmed",
+		Transaction: ceTx{
+			Hash: "0x45556dbb377e6287c939d565aa785385d80a2945f2075225980b63d1488ff85b",
+			Logs: []ceLog{
+				{
+					Topics: []common.Hash{
+						// non indexed arguments should go here
+						a.Events["VehicleNodeMintedWithDeviceDefinition"].ID,
+						common.BigToHash(event.ManufacturerId),  // manuf id
+						common.BigToHash(event.VehicleId),       // vehicle token id
+						common.BytesToHash(event.Owner.Bytes()), // owner addr
+					},
+					// indexed args
+					Data: []byte(""),
+				},
+			},
+		},
+	}))
+	s.Require().NoError(ud.Reload(s.ctx, s.dbs.DBS().Writer))
+	s.Zero(ud.TokenID.Int(nil).Cmp(big.NewInt(7)))
+	s.Equal(common.HexToAddress("7e74d0f663d58d12817b8bef762bcde3af1f63d6"), common.BytesToAddress(ud.OwnerAddress.Bytes))
+
+	s.Equal(ud.ID, emEv.Subject)
+}
+
 func (s *StorageTestSuite) MustInsert(o boilInsertable) {
 	s.Require().NoError(o.Insert(context.TODO(), s.dbs.DBS().Writer, boil.Infer()))
 }
