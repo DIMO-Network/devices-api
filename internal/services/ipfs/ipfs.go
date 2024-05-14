@@ -2,15 +2,21 @@ package ipfs
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+)
+
+const (
+	imagePrefix       = "data:image/png;base64,"
+	contentTypeHeader = "image/png"
 )
 
 type IPFS struct {
@@ -32,48 +38,42 @@ func NewIPFSLoader(settings *config.Settings) *IPFS {
 	}
 }
 
-func (i *IPFS) UploadImage(img string) (string, error) {
-	var respb ipfsResponse
-	imageData := strings.TrimPrefix(img, "data:image/png;base64,")
+func (i *IPFS) UploadImage(ctx context.Context, img string) (string, error) {
+	imageData := strings.TrimPrefix(img, imagePrefix)
 	image, err := base64.StdEncoding.DecodeString(imageData)
 	if err != nil {
-		return respb.CID, err
+		return "", err
 	}
 
 	if len(image) == 0 {
-		return respb.CID, fmt.Errorf("Empty image field.")
+		return "", errors.New("empty image field")
 	}
+
 	reader := bytes.NewReader(image)
-	resp, err := i.client.Post(i.url, "image/png", reader)
+	req, err := http.NewRequest(http.MethodPost, i.url, reader)
 	if err != nil {
-		return respb.CID, err
+		return "", fmt.Errorf("failed to create image upload req: %v", err)
+	}
+
+	req.Header.Set("Content-Type", contentTypeHeader)
+	resp, err := i.client.Do(req.WithContext(ctx))
+	if err != nil {
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	if code := resp.StatusCode; code != http.StatusOK {
-		return respb.CID, fmt.Errorf("status code %d", code)
+		return "", fmt.Errorf("status code %d", code)
 	}
 
+	var respb ipfsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&respb); err != nil {
-		return respb.CID, err
+		return "", err
 	}
 
 	if !respb.Success {
-		return respb.CID, fmt.Errorf("failed to upload image to IPFS")
+		return "", errors.New("failed to upload image to IPFS")
 	}
 
 	return respb.CID, nil
-}
-
-func (i *IPFS) EncodeImage(path string) (string, error) {
-	var base64Encoding string
-	img, err := os.ReadFile(path)
-	if err != nil {
-		return base64Encoding, err
-	}
-
-	base64Encoding += "data:image/png;base64,"
-	base64Encoding += base64.StdEncoding.EncodeToString(img)
-
-	return base64Encoding, nil
 }
