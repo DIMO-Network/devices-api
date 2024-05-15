@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
@@ -27,8 +28,6 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
-
-	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"google.golang.org/protobuf/proto"
 )
 
