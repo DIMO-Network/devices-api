@@ -8,7 +8,12 @@ import (
 	"testing"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/test"
+	"github.com/DIMO-Network/devices-api/models"
+	"github.com/segmentio/ksuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 const (
@@ -20,6 +25,8 @@ func TestIPFSUpload_Success(t *testing.T) {
 	ipfs := NewIPFSLoader(&config.Settings{
 		IPFSURL: "https://assets.dev.dimo.xyz/ipfs",
 	})
+
+	pdb, _ := test.StartContainerDatabase(context.Background(), t, "../../../migrations")
 
 	cid, err := ipfs.UploadImage(ctx, img)
 	assert.NoError(t, err)
@@ -37,4 +44,16 @@ func TestIPFSUpload_Success(t *testing.T) {
 	base64Encoding += base64.StdEncoding.EncodeToString(bdy)
 
 	assert.Equal(t, base64Encoding, img)
+
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		UserID:             ksuid.New().String(),
+		DeviceDefinitionID: ksuid.New().String(),
+		IpfsImageCid:       null.StringFrom(cid),
+	}
+
+	if err := ud.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
 }

@@ -4,7 +4,7 @@ SELECT 'up SQL query';
 -- +goose StatementEnd
 
 SET search_path = devices_api, public;
-ALTER TABLE user_devices ADD COLUMN ipfs_image_cid VARCHAR;
+ALTER TABLE user_devices ADD COLUMN ipfs_image_cid varchar;
 
 -- +goose Down
 -- +goose StatementBegin
