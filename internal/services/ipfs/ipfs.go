@@ -29,7 +29,7 @@ type ipfsResponse struct {
 	CID     string `json:"cid"`
 }
 
-func NewIPFSLoader(settings *config.Settings) *IPFS {
+func NewLoader(settings *config.Settings) *IPFS {
 	return &IPFS{
 		client: &http.Client{
 			Timeout: 5 * time.Second,
@@ -42,7 +42,7 @@ func (i *IPFS) UploadImage(ctx context.Context, img string) (string, error) {
 	imageData := strings.TrimPrefix(img, imagePrefix)
 	image, err := base64.StdEncoding.DecodeString(imageData)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to decode image: %v", err)
 	}
 
 	if len(image) == 0 {
@@ -58,7 +58,7 @@ func (i *IPFS) UploadImage(ctx context.Context, img string) (string, error) {
 	req.Header.Set("Content-Type", contentTypeHeader)
 	resp, err := i.client.Do(req.WithContext(ctx))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("IPFS request failed: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -68,7 +68,7 @@ func (i *IPFS) UploadImage(ctx context.Context, img string) (string, error) {
 
 	var respb ipfsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&respb); err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to decode IPFS response: %v", err)
 	}
 
 	if !respb.Success {
