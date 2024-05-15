@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/big"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1569,6 +1570,32 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
+			if udc.Settings.IsProduction() {
+
+				return client.MintVehicleAndSDign(requestID, contracts.MintVehicleAndSdInput{
+					ManufacturerNode:    makeTokenID,
+					Owner:               realAddr,
+					IntegrationNode:     new(big.Int).SetUint64(intID),
+					VehicleOwnerSig:     sigBytes,
+					SyntheticDeviceSig:  sign,
+					SyntheticDeviceAddr: common.BytesToAddress(addr),
+					AttrInfoPairsDevice: []contracts.AttributeInfoPair{
+						{
+							Attribute: "Make",
+							Info:      dd.Make.Name,
+						},
+						{
+							Attribute: "Model",
+							Info:      dd.Type.Model,
+						},
+						{
+							Attribute: "Year",
+							Info:      strconv.Itoa(int(dd.Type.Year)),
+						},
+					},
+				})
+			}
+
 			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
 				ManufacturerNode:    makeTokenID,
 				Owner:               realAddr,
@@ -1577,12 +1604,33 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				VehicleOwnerSig:     sigBytes,
 				SyntheticDeviceSig:  sign,
 				SyntheticDeviceAddr: common.BytesToAddress(addr),
-				AttrInfoPairsDevice: []contracts.AttributeInfoPair{},
+				AttrInfoPairsDevice: []contracts.AttributeInfoPair{
+					{
+						Attribute: "Make",
+						Info:      dd.Make.Name,
+					},
+					{
+						Attribute: "Model",
+						Info:      dd.Type.Model,
+					},
+					{
+						Attribute: "Year",
+						Info:      strconv.Itoa(int(dd.Type.Year)),
+					},
+				},
 			})
 		}
 	}
 
 	logger.Info().Msgf("Submitted metatransaction request %s", requestID)
+
+	if udc.Settings.IsProduction() {
+		return client.MintVehicleSign(requestID, makeTokenID, realAddr, []contracts.AttributeInfoPair{
+			{Attribute: "Make", Info: dd.Make.Name},
+			{Attribute: "Model", Info: dd.Type.Model},
+			{Attribute: "Year", Info: strconv.Itoa(int(dd.Type.Year))},
+		}, sigBytes)
+	}
 
 	return client.MintVehicleWithDeviceDefinitionSign(requestID, makeTokenID, realAddr, userDevice.DeviceDefinitionID, sigBytes)
 }
