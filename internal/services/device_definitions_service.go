@@ -35,6 +35,7 @@ type DeviceDefinitionService interface {
 	GetIntegrationByTokenID(ctx context.Context, tokenID uint64) (*ddgrpc.Integration, error)
 	GetDeviceStyleByID(ctx context.Context, id string) (*ddgrpc.DeviceStyle, error)
 	GetDeviceDefinitionBySlugName(ctx context.Context, in *ddgrpc.GetDeviceDefinitionBySlugNameRequest) (*ddgrpc.GetDeviceDefinitionItemResponse, error)
+	//go:generate mockgen -source device_definitions_service.go -destination ./device_definition_service_mock_test.go -package=services
 }
 
 type deviceDefinitionService struct {
