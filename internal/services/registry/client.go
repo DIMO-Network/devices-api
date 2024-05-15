@@ -75,33 +75,6 @@ func (m *MintVehicleSign) Message() signer.TypedDataMessage {
 	}
 }
 
-// MintVehicleWithDeviceDefinitionSign(uint256 manufacturerNode,address owner, string deviceDefinitionId)
-type MintVehicleWithDeviceDefinitionSign struct {
-	ManufacturerNode   *big.Int
-	Owner              common.Address
-	DeviceDefinitionID string
-}
-
-func (m *MintVehicleWithDeviceDefinitionSign) Name() string {
-	return "MintVehicleWithDeviceDefinitionSign"
-}
-
-func (m *MintVehicleWithDeviceDefinitionSign) Type() []signer.Type {
-	return []signer.Type{
-		{Name: "manufacturerNode", Type: "uint256"},
-		{Name: "owner", Type: "address"},
-		{Name: "deviceDefinitionId", Type: "string"},
-	}
-}
-
-func (m *MintVehicleWithDeviceDefinitionSign) Message() signer.TypedDataMessage {
-	return signer.TypedDataMessage{
-		"manufacturerNode":   hexutil.EncodeBig(m.ManufacturerNode),
-		"owner":              m.Owner.Hex(),
-		"deviceDefinitionId": m.DeviceDefinitionID,
-	}
-}
-
 // BurnVehicleSign(uint256 tokenID)
 type BurnVehicleSign struct {
 	TokenID *big.Int
@@ -218,20 +191,47 @@ func (m *MintVehicleAndSdSign) Message() signer.TypedDataMessage {
 	}
 }
 
+// MintVehicleWithDeviceDefinitionSign(uint256 manufacturerNode,address owner, string deviceDefinitionId)
+type MintVehicleWithDeviceDefinitionSign struct {
+	ManufacturerNode   *big.Int
+	Owner              common.Address
+	DeviceDefinitionID string
+}
+
+func (m *MintVehicleWithDeviceDefinitionSign) Name() string {
+	return "MintVehicleWithDeviceDefinitionSign"
+}
+
+func (m *MintVehicleWithDeviceDefinitionSign) Type() []signer.Type {
+	return []signer.Type{
+		{Name: "manufacturerNode", Type: "uint256"},
+		{Name: "owner", Type: "address"},
+		{Name: "deviceDefinitionId", Type: "string"},
+	}
+}
+
+func (m *MintVehicleWithDeviceDefinitionSign) Message() signer.TypedDataMessage {
+	return signer.TypedDataMessage{
+		"manufacturerNode":   hexutil.EncodeBig(m.ManufacturerNode),
+		"owner":              m.Owner.Hex(),
+		"deviceDefinitionId": m.DeviceDefinitionID,
+	}
+}
+
 type Message interface {
 	Name() string
 	Type() []signer.Type
 	Message() signer.TypedDataMessage
 }
 
-// mintVehicleWithDeviceDefinitionSign(uint256 manufacturerNode, address owner,	string deviceDefinitionId, bytes calldata signature)
-func (c *Client) MintVehicleWithDeviceDefinitionSign(requestID string, manufacturerNode *big.Int, owner common.Address, deviceDefinitionID string, signature []byte) error {
+// mintVehicleSign(uint256 manufacturerNode, address owner,	string[] calldata attributes, string[] calldata infos, bytes calldata signature)
+func (c *Client) MintVehicleSign(requestID string, manufacturerNode *big.Int, owner common.Address, attrInfo []contracts.AttributeInfoPair, signature []byte) error {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
 	}
 
-	data, err := abi.Pack("mintVehicleWithDeviceDefinitionSign", manufacturerNode, owner, deviceDefinitionID, signature)
+	data, err := abi.Pack("mintVehicleSign", manufacturerNode, owner, attrInfo, signature)
 	if err != nil {
 		return err
 	}
@@ -329,36 +329,6 @@ func (c *Client) MintSyntheticDeviceSign(requestID string, mintSyntheticDeviceIn
 	return c.sendRequest(requestID, data)
 }
 
-// mintVehicleSign(uint256 manufacturerNode, address owner,	string[] calldata attributes, string[] calldata infos, bytes calldata signature)
-func (c *Client) MintVehicleSign(requestID string, manufacturerNode *big.Int, owner common.Address, attrInfo []contracts.AttributeInfoPair, signature []byte) error {
-	abi, err := contracts.RegistryMetaData.GetAbi()
-	if err != nil {
-		return err
-	}
-
-	data, err := abi.Pack("mintVehicleSign", manufacturerNode, owner, attrInfo, signature)
-	if err != nil {
-		return err
-	}
-
-	return c.sendRequest(requestID, data)
-}
-
-// function mintVehicleAndSdSign(MintVehicleAndSdInput calldata data)
-func (c *Client) MintVehicleAndSDign(requestID string, data contracts.MintVehicleAndSdInput) error {
-	abi, err := contracts.RegistryMetaData.GetAbi()
-	if err != nil {
-		return err
-	}
-
-	callData, err := abi.Pack("mintVehicleAndSdSign", data)
-	if err != nil {
-		return err
-	}
-
-	return c.sendRequest(requestID, callData)
-}
-
 // function burnSyntheticDeviceSign(uint256 vehicleNode, uint256 syntheticDeviceNode, bytes calldata ownerSig)
 func (c *Client) BurnSyntheticDeviceSign(requestID string, vehicleNode, syntheticDeviceNode *big.Int, ownerSig []byte) error {
 	abi, err := contracts.RegistryMetaData.GetAbi()
@@ -374,14 +344,14 @@ func (c *Client) BurnSyntheticDeviceSign(requestID string, vehicleNode, syntheti
 	return c.sendRequest(requestID, data)
 }
 
-// function mintVehicleAndSdWithDeviceDefinitionSign(MintVehicleAndSdWithDdInput calldata data)
-func (c *Client) MintVehicleAndSdWithDeviceDefinitionSign(requestID string, data contracts.MintVehicleAndSdWithDdInput) error {
+// function mintVehicleAndSdSign(MintVehicleAndSdInput calldata data)
+func (c *Client) MintVehicleAndSdSign(requestID string, data contracts.MintVehicleAndSdInput) error {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
 	}
 
-	callData, err := abi.Pack("mintVehicleAndSdWithDeviceDefinitionSign", data)
+	callData, err := abi.Pack("mintVehicleAndSdSign", data)
 	if err != nil {
 		return err
 	}
@@ -401,6 +371,35 @@ func (c *Client) BurnVehicleSign(requestID string, tokenID *big.Int, signature [
 		return err
 	}
 
+	return c.sendRequest(requestID, data)
+}
+
+// function MintVehicleAndSdWithDeviceDefinitionSign(MintVehicleAndSdWithDdInput calldata data)
+func (c *Client) MintVehicleAndSdWithDeviceDefinitionSign(requestID string, data contracts.MintVehicleAndSdWithDdInput) error {
+	abi, err := contracts.RegistryMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
+
+	callData, err := abi.Pack("mintVehicleAndSdWithDeviceDefinitionSign", data)
+	if err != nil {
+		return err
+	}
+
+	return c.sendRequest(requestID, callData)
+}
+
+// function MintVehicleWithDeviceDefinitionSign(uint256 manufacturerNode, address owner, string deviceDefinitionId, (string,string)[] attrInfo, bytes signature) returns()
+func (c *Client) MintVehicleWithDeviceDefinitionSign(requestID string, manufacturerNode *big.Int, owner common.Address, deviceDefinitionID string, signature []byte) error {
+	abi, err := contracts.RegistryMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
+
+	data, err := abi.Pack("mintVehicleWithDeviceDefinitionSign", manufacturerNode, owner, deviceDefinitionID, signature)
+	if err != nil {
+		return err
+	}
 	return c.sendRequest(requestID, data)
 }
 

@@ -1572,7 +1572,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 			if udc.Settings.IsProduction() {
 
-				return client.MintVehicleAndSDign(requestID, contracts.MintVehicleAndSdInput{
+				return client.MintVehicleAndSdSign(requestID, contracts.MintVehicleAndSdInput{
 					ManufacturerNode:    makeTokenID,
 					Owner:               realAddr,
 					IntegrationNode:     new(big.Int).SetUint64(intID),
