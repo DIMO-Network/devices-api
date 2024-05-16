@@ -93,7 +93,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	ddIntSvc := services.NewDeviceDefinitionIntegrationService(pdb.DBS, settings)
 	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, settings)
 	ddaSvc := services.NewDeviceDataService(settings.DeviceDataGRPCAddr, &logger)
-	ipfsSvc := ipfs.NewLoader(settings)
+	ipfsSvc := ipfs.NewGateway(settings)
 	scTaskSvc := services.NewSmartcarTaskService(settings, producer)
 	smartcarClient := services.NewSmartcarClient(settings)
 	teslaTaskService := services.NewTeslaTaskService(settings, producer)

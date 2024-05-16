@@ -29,7 +29,7 @@ type ipfsResponse struct {
 	CID     string `json:"cid"`
 }
 
-func NewLoader(settings *config.Settings) *IPFS {
+func NewGateway(settings *config.Settings) *IPFS {
 	return &IPFS{
 		client: &http.Client{
 			Timeout: 5 * time.Second,

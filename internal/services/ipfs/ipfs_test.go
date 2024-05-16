@@ -22,7 +22,7 @@ const (
 
 func TestIPFSUpload_Success(t *testing.T) {
 	ctx := context.Background()
-	ipfs := NewLoader(&config.Settings{
+	ipfs := NewGateway(&config.Settings{
 		IPFSURL: "https://assets.dev.dimo.xyz/ipfs",
 	})
 
