@@ -58,6 +58,17 @@ type DevAdminIdManufacturerName struct {
 	Name    string
 }
 
+// DeviceDefinitionInput is an auto generated low-level Go binding around an user-defined struct.
+type DeviceDefinitionInput struct {
+	Id         string
+	Model      string
+	Year       *big.Int
+	Metadata   string
+	Ksuid      string
+	DeviceType string
+	ImageURI   string
+}
+
 // MintSyntheticDeviceBatchInput is an auto generated low-level Go binding around an user-defined struct.
 type MintSyntheticDeviceBatchInput struct {
 	VehicleNode         *big.Int
@@ -87,9 +98,32 @@ type MintVehicleAndSdInput struct {
 	AttrInfoPairsDevice  []AttributeInfoPair
 }
 
+// MintVehicleAndSdWithDdInput is an auto generated low-level Go binding around an user-defined struct.
+type MintVehicleAndSdWithDdInput struct {
+	ManufacturerNode     *big.Int
+	Owner                common.Address
+	DeviceDefinitionId   string
+	AttrInfoPairsVehicle []AttributeInfoPair
+	IntegrationNode      *big.Int
+	VehicleOwnerSig      []byte
+	SyntheticDeviceSig   []byte
+	SyntheticDeviceAddr  common.Address
+	AttrInfoPairsDevice  []AttributeInfoPair
+}
+
+// TablelandPolicy is an auto generated low-level Go binding around an user-defined struct.
+type TablelandPolicy struct {
+	AllowInsert      bool
+	AllowUpdate      bool
+	AllowDelete      bool
+	WhereClause      string
+	WithCheck        string
+	UpdatableColumns []string
+}
+
 // RegistryMetaData contains all meta data concerning the Registry contract.
 var RegistryMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"UintUtils__InsufficientHexLength\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"moduleAddr\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bytes4[]\",\"name\":\"selectors\",\"type\":\"bytes4[]\"}],\"name\":\"ModuleAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"moduleAddr\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bytes4[]\",\"name\":\"selectors\",\"type\":\"bytes4[]\"}],\"name\":\"ModuleRemoved\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"oldImplementation\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newImplementation\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bytes4[]\",\"name\":\"oldSelectors\",\"type\":\"bytes4[]\"},{\"indexed\":false,\"internalType\":\"bytes4[]\",\"name\":\"newSelectors\",\"type\":\"bytes4[]\"}],\"name\":\"ModuleUpdated\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"previousAdminRole\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"newAdminRole\",\"type\":\"bytes32\"}],\"name\":\"RoleAdminChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleGranted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleRevoked\",\"type\":\"event\"},{\"stateMutability\":\"nonpayable\",\"type\":\"fallback\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"implementation\",\"type\":\"address\"},{\"internalType\":\"bytes4[]\",\"name\":\"selectors\",\"type\":\"bytes4[]\"}],\"name\":\"addModule\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"implementation\",\"type\":\"address\"},{\"internalType\":\"bytes4[]\",\"name\":\"selectors\",\"type\":\"bytes4[]\"}],\"name\":\"removeModule\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"oldImplementation\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"newImplementation\",\"type\":\"address\"},{\"internalType\":\"bytes4[]\",\"name\":\"oldSelectors\",\"type\":\"bytes4[]\"},{\"internalType\":\"bytes4[]\",\"name\":\"newSelectors\",\"type\":\"bytes4[]\"}],\"name\":\"updateModule\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"AdNotClaimed\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"AdPaired\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"proxy\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"InvalidNode\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"VehiclePaired\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"name\":\"AftermarketDeviceAttributeSetDevAdmin\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"adNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"AftermarketDeviceNodeBurnedDevAdmin\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"AftermarketDevicePaired\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"oldOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"AftermarketDeviceTransferredDevAdmin\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"}],\"name\":\"AftermarketDeviceUnclaimedDevAdmin\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"AftermarketDeviceUnpairedDevAdmin\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"name\":\"SyntheticDeviceAttributeSetDevAdmin\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"syntheticDeviceNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"SyntheticDeviceNodeBurnedDevAdmin\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"name\":\"VehicleAttributeSetDevAdmin\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"VehicleNodeBurnedDevAdmin\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"tokenIds\",\"type\":\"uint256[]\"}],\"name\":\"adminBurnAftermarketDevices\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"tokenIds\",\"type\":\"uint256[]\"}],\"name\":\"adminBurnAftermarketDevicesAndDeletePairings\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"tokenIds\",\"type\":\"uint256[]\"}],\"name\":\"adminBurnSyntheticDevicesAndDeletePairings\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"tokenIds\",\"type\":\"uint256[]\"}],\"name\":\"adminBurnVehicles\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"tokenIds\",\"type\":\"uint256[]\"}],\"name\":\"adminBurnVehiclesAndDeletePairings\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"newParentNode\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"idProxyAddress\",\"type\":\"address\"},{\"internalType\":\"uint256[]\",\"name\":\"nodeIdList\",\"type\":\"uint256[]\"}],\"name\":\"adminChangeParentNode\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"}],\"name\":\"adminPairAftermarketDevice\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"}],\"internalType\":\"structDevAdmin.IdManufacturerName[]\",\"name\":\"idManufacturerNames\",\"type\":\"tuple[]\"}],\"name\":\"renameManufacturers\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferAftermarketDeviceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"aftermarketDeviceNodes\",\"type\":\"uint256[]\"}],\"name\":\"unclaimAftermarketDeviceNode\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"aftermarketDeviceNodes\",\"type\":\"uint256[]\"}],\"name\":\"unpairAftermarketDeviceByDeviceNode\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"vehicleNodes\",\"type\":\"uint256[]\"}],\"name\":\"unpairAftermarketDeviceByVehicleNode\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"}],\"name\":\"getRoleAdmin\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"grantRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"hasRole\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"}],\"name\":\"renounceRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"revokeRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"version\",\"type\":\"string\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes[]\",\"name\":\"data\",\"type\":\"bytes[]\"}],\"name\":\"multiDelegateCall\",\"outputs\":[{\"internalType\":\"bytes[]\",\"name\":\"results\",\"type\":\"bytes[]\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes[]\",\"name\":\"data\",\"type\":\"bytes[]\"}],\"name\":\"multiStaticCall\",\"outputs\":[{\"internalType\":\"bytes[]\",\"name\":\"results\",\"type\":\"bytes[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getAdMintCost\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"adMintCost\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_adMintCost\",\"type\":\"uint256\"}],\"name\":\"setAdMintCost\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_dimoToken\",\"type\":\"address\"}],\"name\":\"setDimoToken\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_foundation\",\"type\":\"address\"}],\"name\":\"setFoundationAddress\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_license\",\"type\":\"address\"}],\"name\":\"setLicense\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"AdNotPaired\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"attr\",\"type\":\"string\"}],\"name\":\"AttributeExists\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"attr\",\"type\":\"string\"}],\"name\":\"AttributeNotWhitelisted\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"DeviceAlreadyClaimed\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"DeviceAlreadyRegistered\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidAdSignature\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidLicense\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidOwnerSignature\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"InvalidParentNode\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidSigner\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"OwnersDoNotMatch\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"Unauthorized\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"VehicleNotPaired\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ZeroAddress\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"manufacturerId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"aftermarketDeviceAddress\",\"type\":\"address\"}],\"name\":\"AftermarketDeviceAddressReset\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"AftermarketDeviceAttributeAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"name\":\"AftermarketDeviceAttributeSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"AftermarketDeviceClaimed\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"proxy\",\"type\":\"address\"}],\"name\":\"AftermarketDeviceIdProxySet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"manufacturerId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"aftermarketDeviceAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"AftermarketDeviceNodeMinted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"AftermarketDeviceUnpaired\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"addAftermarketDeviceAttribute\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerNode\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNodeId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"internalType\":\"structAftermarketDeviceOwnerPair[]\",\"name\":\"adOwnerPair\",\"type\":\"tuple[]\"}],\"name\":\"claimAftermarketDeviceBatch\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"ownerSig\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"aftermarketDeviceSig\",\"type\":\"bytes\"}],\"name\":\"claimAftermarketDeviceSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"}],\"name\":\"getAftermarketDeviceAddressById\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getAftermarketDeviceIdByAddress\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"}],\"name\":\"isAftermarketDeviceClaimed\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"isClaimed\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerNode\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoPairs\",\"type\":\"tuple[]\"}],\"internalType\":\"structAftermarketDeviceInfos[]\",\"name\":\"adInfos\",\"type\":\"tuple[]\"}],\"name\":\"mintAftermarketDeviceByManufacturerBatch\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"aftermarketDeviceSig\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"vehicleOwnerSig\",\"type\":\"bytes\"}],\"name\":\"pairAftermarketDeviceSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"pairAftermarketDeviceSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNodeId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"deviceAddress\",\"type\":\"address\"}],\"internalType\":\"structAftermarketDeviceIdAddressPair[]\",\"name\":\"adIdAddrs\",\"type\":\"tuple[]\"}],\"name\":\"resetAftermarketDeviceAddressByManufacturerBatch\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"setAftermarketDeviceIdProxyAddress\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfo\",\"type\":\"tuple[]\"}],\"name\":\"setAftermarketDeviceInfo\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"}],\"name\":\"unpairAftermarketDevice\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"unpairAftermarketDeviceSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"controller\",\"type\":\"address\"}],\"name\":\"ControllerSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"ManufacturerAttributeAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"name\":\"ManufacturerAttributeSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"proxy\",\"type\":\"address\"}],\"name\":\"ManufacturerIdProxySet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"ManufacturerNodeMinted\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"addManufacturerAttribute\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"}],\"name\":\"getManufacturerIdByName\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"getManufacturerNameById\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isAllowedToOwnManufacturerNode\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"_isAllowed\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isController\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"_isController\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isManufacturerMinted\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"_isManufacturerMinted\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoPairList\",\"type\":\"tuple[]\"}],\"name\":\"mintManufacturer\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"string[]\",\"name\":\"names\",\"type\":\"string[]\"}],\"name\":\"mintManufacturerBatch\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_controller\",\"type\":\"address\"}],\"name\":\"setController\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"setManufacturerIdProxyAddress\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoList\",\"type\":\"tuple[]\"}],\"name\":\"setManufacturerInfo\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"}],\"name\":\"updateManufacturerMinted\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"AlreadyController\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"}],\"name\":\"IntegrationNameRegisterd\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"MustBeAdmin\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"NotAllowed\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"OnlyNftProxy\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"IntegrationAttributeAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"name\":\"IntegrationAttributeSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"proxy\",\"type\":\"address\"}],\"name\":\"IntegrationIdProxySet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"IntegrationNodeMinted\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"addIntegrationAttribute\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"}],\"name\":\"getIntegrationIdByName\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"getIntegrationNameById\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isAllowedToOwnIntegrationNode\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"_isAllowed\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isIntegrationController\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"_isController\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isIntegrationMinted\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"_isIntegrationMinted\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoPairList\",\"type\":\"tuple[]\"}],\"name\":\"mintIntegration\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"string[]\",\"name\":\"names\",\"type\":\"string[]\"}],\"name\":\"mintIntegrationBatch\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_controller\",\"type\":\"address\"}],\"name\":\"setIntegrationController\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"setIntegrationIdProxyAddress\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoList\",\"type\":\"tuple[]\"}],\"name\":\"setIntegrationInfo\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"}],\"name\":\"updateIntegrationMinted\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"InvalidSdSignature\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"SyntheticDeviceAttributeAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"name\":\"SyntheticDeviceAttributeSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"proxy\",\"type\":\"address\"}],\"name\":\"SyntheticDeviceIdProxySet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"syntheticDeviceNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"SyntheticDeviceNodeBurned\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"integrationNode\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"syntheticDeviceNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"syntheticDeviceAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"SyntheticDeviceNodeMinted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"name\":\"VehicleAttributeSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"manufacturerNode\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"VehicleNodeMinted\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"addSyntheticDeviceAttribute\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"syntheticDeviceNode\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"ownerSig\",\"type\":\"bytes\"}],\"name\":\"burnSyntheticDeviceSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"}],\"name\":\"getSyntheticDeviceAddressById\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getSyntheticDeviceIdByAddress\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"integrationNode\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"syntheticDeviceAddr\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoPairs\",\"type\":\"tuple[]\"}],\"internalType\":\"structMintSyntheticDeviceBatchInput[]\",\"name\":\"data\",\"type\":\"tuple[]\"}],\"name\":\"mintSyntheticDeviceBatch\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"integrationNode\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"syntheticDeviceSig\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"vehicleOwnerSig\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"syntheticDeviceAddr\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoPairs\",\"type\":\"tuple[]\"}],\"internalType\":\"structMintSyntheticDeviceInput\",\"name\":\"data\",\"type\":\"tuple\"}],\"name\":\"mintSyntheticDeviceSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"setSyntheticDeviceIdProxyAddress\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfo\",\"type\":\"tuple[]\"}],\"name\":\"setSyntheticDeviceInfo\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"VehicleAttributeAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"proxy\",\"type\":\"address\"}],\"name\":\"VehicleIdProxySet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"VehicleNodeBurned\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"addVehicleAttribute\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"ownerSig\",\"type\":\"bytes\"}],\"name\":\"burnVehicleSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerNode\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfo\",\"type\":\"tuple[]\"}],\"name\":\"mintVehicle\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerNode\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfo\",\"type\":\"tuple[]\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"mintVehicleSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"setVehicleIdProxyAddress\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfo\",\"type\":\"tuple[]\"}],\"name\":\"setVehicleInfo\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"validateBurnAndResetNode\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"idProxyAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"getDataURI\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"data\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"idProxyAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"getInfo\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"idProxyAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"getParentNode\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"parentNode\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"idProxyAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"beneficiary\",\"type\":\"address\"}],\"name\":\"BeneficiarySet\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"idProxyAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"}],\"name\":\"getBeneficiary\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"beneficiary\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"idProxyAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"sourceNode\",\"type\":\"uint256\"}],\"name\":\"getLink\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"targetNode\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"idProxyAddressSource\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"idProxyAddressTarget\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"sourceNode\",\"type\":\"uint256\"}],\"name\":\"getNodeLink\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"targetNode\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"beneficiary\",\"type\":\"address\"}],\"name\":\"setAftermarketDeviceBeneficiary\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerNode\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoPairsVehicle\",\"type\":\"tuple[]\"},{\"internalType\":\"uint256\",\"name\":\"integrationNode\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"vehicleOwnerSig\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"syntheticDeviceSig\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"syntheticDeviceAddr\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoPairsDevice\",\"type\":\"tuple[]\"}],\"internalType\":\"structMintVehicleAndSdInput\",\"name\":\"data\",\"type\":\"tuple\"}],\"name\":\"mintVehicleAndSdSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"idProxyAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"dataUri\",\"type\":\"string\"}],\"name\":\"BaseDataURISet\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"idProxyAddress\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"_baseDataURI\",\"type\":\"string\"}],\"name\":\"setBaseDataURI\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"UintUtils__InsufficientHexLength\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"moduleAddr\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bytes4[]\",\"name\":\"selectors\",\"type\":\"bytes4[]\"}],\"name\":\"ModuleAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"moduleAddr\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bytes4[]\",\"name\":\"selectors\",\"type\":\"bytes4[]\"}],\"name\":\"ModuleRemoved\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"oldImplementation\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newImplementation\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bytes4[]\",\"name\":\"oldSelectors\",\"type\":\"bytes4[]\"},{\"indexed\":false,\"internalType\":\"bytes4[]\",\"name\":\"newSelectors\",\"type\":\"bytes4[]\"}],\"name\":\"ModuleUpdated\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"previousAdminRole\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"newAdminRole\",\"type\":\"bytes32\"}],\"name\":\"RoleAdminChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleGranted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleRevoked\",\"type\":\"event\"},{\"stateMutability\":\"nonpayable\",\"type\":\"fallback\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"implementation\",\"type\":\"address\"},{\"internalType\":\"bytes4[]\",\"name\":\"selectors\",\"type\":\"bytes4[]\"}],\"name\":\"addModule\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"implementation\",\"type\":\"address\"},{\"internalType\":\"bytes4[]\",\"name\":\"selectors\",\"type\":\"bytes4[]\"}],\"name\":\"removeModule\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"oldImplementation\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"newImplementation\",\"type\":\"address\"},{\"internalType\":\"bytes4[]\",\"name\":\"oldSelectors\",\"type\":\"bytes4[]\"},{\"internalType\":\"bytes4[]\",\"name\":\"newSelectors\",\"type\":\"bytes4[]\"}],\"name\":\"updateModule\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"AdNotClaimed\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"AdPaired\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"proxy\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"InvalidNode\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"VehiclePaired\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"name\":\"AftermarketDeviceAttributeSetDevAdmin\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"adNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"AftermarketDeviceNodeBurnedDevAdmin\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"AftermarketDevicePaired\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"oldOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"AftermarketDeviceTransferredDevAdmin\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"}],\"name\":\"AftermarketDeviceUnclaimedDevAdmin\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"AftermarketDeviceUnpairedDevAdmin\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"name\":\"SyntheticDeviceAttributeSetDevAdmin\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"syntheticDeviceNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"SyntheticDeviceNodeBurnedDevAdmin\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"name\":\"VehicleAttributeSetDevAdmin\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"VehicleNodeBurnedDevAdmin\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"tokenIds\",\"type\":\"uint256[]\"}],\"name\":\"adminBurnAftermarketDevices\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"tokenIds\",\"type\":\"uint256[]\"}],\"name\":\"adminBurnAftermarketDevicesAndDeletePairings\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"tokenIds\",\"type\":\"uint256[]\"}],\"name\":\"adminBurnSyntheticDevicesAndDeletePairings\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"tokenIds\",\"type\":\"uint256[]\"}],\"name\":\"adminBurnVehicles\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"tokenIds\",\"type\":\"uint256[]\"}],\"name\":\"adminBurnVehiclesAndDeletePairings\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"adminCacheDimoStreamrEns\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"newParentNode\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"idProxyAddress\",\"type\":\"address\"},{\"internalType\":\"uint256[]\",\"name\":\"nodeIdList\",\"type\":\"uint256[]\"}],\"name\":\"adminChangeParentNode\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"}],\"name\":\"adminPairAftermarketDevice\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"}],\"internalType\":\"structDevAdmin.IdManufacturerName[]\",\"name\":\"idManufacturerNames\",\"type\":\"tuple[]\"}],\"name\":\"renameManufacturers\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferAftermarketDeviceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"aftermarketDeviceNodes\",\"type\":\"uint256[]\"}],\"name\":\"unclaimAftermarketDeviceNode\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"aftermarketDeviceNodes\",\"type\":\"uint256[]\"}],\"name\":\"unpairAftermarketDeviceByDeviceNode\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"vehicleNodes\",\"type\":\"uint256[]\"}],\"name\":\"unpairAftermarketDeviceByVehicleNode\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"}],\"name\":\"getRoleAdmin\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"grantRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"hasRole\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"}],\"name\":\"renounceRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"revokeRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"version\",\"type\":\"string\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes[]\",\"name\":\"data\",\"type\":\"bytes[]\"}],\"name\":\"multiDelegateCall\",\"outputs\":[{\"internalType\":\"bytes[]\",\"name\":\"results\",\"type\":\"bytes[]\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes[]\",\"name\":\"data\",\"type\":\"bytes[]\"}],\"name\":\"multiStaticCall\",\"outputs\":[{\"internalType\":\"bytes[]\",\"name\":\"results\",\"type\":\"bytes[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"name\":\"onERC721Received\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"\",\"type\":\"bytes4\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getAdMintCost\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"adMintCost\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_adMintCost\",\"type\":\"uint256\"}],\"name\":\"setAdMintCost\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_dimoToken\",\"type\":\"address\"}],\"name\":\"setDimoToken\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_foundation\",\"type\":\"address\"}],\"name\":\"setFoundationAddress\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_license\",\"type\":\"address\"}],\"name\":\"setLicense\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"AdNotPaired\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"attr\",\"type\":\"string\"}],\"name\":\"AttributeExists\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"attr\",\"type\":\"string\"}],\"name\":\"AttributeNotWhitelisted\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"DeviceAlreadyClaimed\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"DeviceAlreadyRegistered\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidAdSignature\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidLicense\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidOwnerSignature\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"InvalidParentNode\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidSigner\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"OwnersDoNotMatch\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"Unauthorized\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"VehicleNotPaired\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ZeroAddress\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"manufacturerId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"aftermarketDeviceAddress\",\"type\":\"address\"}],\"name\":\"AftermarketDeviceAddressReset\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"AftermarketDeviceAttributeAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"name\":\"AftermarketDeviceAttributeSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"AftermarketDeviceClaimed\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"proxy\",\"type\":\"address\"}],\"name\":\"AftermarketDeviceIdProxySet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"AftermarketDeviceNodeBurned\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"manufacturerId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"aftermarketDeviceAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"AftermarketDeviceNodeMinted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"AftermarketDeviceUnpaired\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"addAftermarketDeviceAttribute\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerNode\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNodeId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"internalType\":\"structAftermarketDeviceOwnerPair[]\",\"name\":\"adOwnerPair\",\"type\":\"tuple[]\"}],\"name\":\"claimAftermarketDeviceBatch\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"ownerSig\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"aftermarketDeviceSig\",\"type\":\"bytes\"}],\"name\":\"claimAftermarketDeviceSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"}],\"name\":\"getAftermarketDeviceAddressById\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getAftermarketDeviceIdByAddress\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"}],\"name\":\"isAftermarketDeviceClaimed\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"isClaimed\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerNode\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoPairs\",\"type\":\"tuple[]\"}],\"internalType\":\"structAftermarketDeviceInfos[]\",\"name\":\"adInfos\",\"type\":\"tuple[]\"}],\"name\":\"mintAftermarketDeviceByManufacturerBatch\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"aftermarketDeviceSig\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"vehicleOwnerSig\",\"type\":\"bytes\"}],\"name\":\"pairAftermarketDeviceSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"pairAftermarketDeviceSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"aftermarketDeviceNodeList\",\"type\":\"uint256[]\"}],\"name\":\"reprovisionAftermarketDeviceByManufacturerBatch\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNodeId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"deviceAddress\",\"type\":\"address\"}],\"internalType\":\"structAftermarketDeviceIdAddressPair[]\",\"name\":\"adIdAddrs\",\"type\":\"tuple[]\"}],\"name\":\"resetAftermarketDeviceAddressByManufacturerBatch\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"setAftermarketDeviceIdProxyAddress\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfo\",\"type\":\"tuple[]\"}],\"name\":\"setAftermarketDeviceInfo\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"}],\"name\":\"unpairAftermarketDevice\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"aftermarketDeviceNode\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"unpairAftermarketDeviceSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"controller\",\"type\":\"address\"}],\"name\":\"ControllerSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"ManufacturerAttributeAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"name\":\"ManufacturerAttributeSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"proxy\",\"type\":\"address\"}],\"name\":\"ManufacturerIdProxySet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"ManufacturerNodeMinted\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"addManufacturerAttribute\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"}],\"name\":\"getManufacturerIdByName\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"getManufacturerNameById\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isAllowedToOwnManufacturerNode\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"_isAllowed\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isController\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"_isController\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isManufacturerMinted\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"_isManufacturerMinted\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoPairList\",\"type\":\"tuple[]\"}],\"name\":\"mintManufacturer\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"string[]\",\"name\":\"names\",\"type\":\"string[]\"}],\"name\":\"mintManufacturerBatch\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_controller\",\"type\":\"address\"}],\"name\":\"setController\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"setManufacturerIdProxyAddress\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoList\",\"type\":\"tuple[]\"}],\"name\":\"setManufacturerInfo\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"}],\"name\":\"updateManufacturerMinted\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"AlreadyController\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"}],\"name\":\"IntegrationNameRegisterd\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"MustBeAdmin\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"NotAllowed\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"OnlyNftProxy\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"IntegrationAttributeAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"name\":\"IntegrationAttributeSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"proxy\",\"type\":\"address\"}],\"name\":\"IntegrationIdProxySet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"IntegrationNodeMinted\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"addIntegrationAttribute\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"}],\"name\":\"getIntegrationIdByName\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"getIntegrationNameById\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isAllowedToOwnIntegrationNode\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"_isAllowed\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isIntegrationController\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"_isController\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isIntegrationMinted\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"_isIntegrationMinted\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoPairList\",\"type\":\"tuple[]\"}],\"name\":\"mintIntegration\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"string[]\",\"name\":\"names\",\"type\":\"string[]\"}],\"name\":\"mintIntegrationBatch\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_controller\",\"type\":\"address\"}],\"name\":\"setIntegrationController\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"setIntegrationIdProxyAddress\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoList\",\"type\":\"tuple[]\"}],\"name\":\"setIntegrationInfo\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"}],\"name\":\"updateIntegrationMinted\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"InvalidSdSignature\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"SyntheticDeviceAttributeAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"name\":\"SyntheticDeviceAttributeSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"proxy\",\"type\":\"address\"}],\"name\":\"SyntheticDeviceIdProxySet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"syntheticDeviceNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"SyntheticDeviceNodeBurned\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"integrationNode\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"syntheticDeviceNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"syntheticDeviceAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"SyntheticDeviceNodeMinted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"name\":\"VehicleAttributeSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"manufacturerNode\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"VehicleNodeMinted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"manufacturerId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"vehicleId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"deviceDefinitionId\",\"type\":\"string\"}],\"name\":\"VehicleNodeMintedWithDeviceDefinition\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"addSyntheticDeviceAttribute\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"syntheticDeviceNode\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"ownerSig\",\"type\":\"bytes\"}],\"name\":\"burnSyntheticDeviceSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"}],\"name\":\"getSyntheticDeviceAddressById\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getSyntheticDeviceIdByAddress\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"integrationNode\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"syntheticDeviceAddr\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoPairs\",\"type\":\"tuple[]\"}],\"internalType\":\"structMintSyntheticDeviceBatchInput[]\",\"name\":\"data\",\"type\":\"tuple[]\"}],\"name\":\"mintSyntheticDeviceBatch\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"integrationNode\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"syntheticDeviceSig\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"vehicleOwnerSig\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"syntheticDeviceAddr\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoPairs\",\"type\":\"tuple[]\"}],\"internalType\":\"structMintSyntheticDeviceInput\",\"name\":\"data\",\"type\":\"tuple\"}],\"name\":\"mintSyntheticDeviceSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"setSyntheticDeviceIdProxyAddress\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfo\",\"type\":\"tuple[]\"}],\"name\":\"setSyntheticDeviceInfo\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"VehicleAttributeAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"proxy\",\"type\":\"address\"}],\"name\":\"VehicleIdProxySet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"vehicleNode\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"VehicleNodeBurned\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"addVehicleAttribute\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"ownerSig\",\"type\":\"bytes\"}],\"name\":\"burnVehicleSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"vehicleId\",\"type\":\"uint256\"}],\"name\":\"getDeviceDefinitionIdByVehicleId\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"ddId\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerNode\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfo\",\"type\":\"tuple[]\"}],\"name\":\"mintVehicle\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerNode\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfo\",\"type\":\"tuple[]\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"mintVehicleSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerNode\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"deviceDefinitionId\",\"type\":\"string\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfo\",\"type\":\"tuple[]\"}],\"name\":\"mintVehicleWithDeviceDefinition\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerNode\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"deviceDefinitionId\",\"type\":\"string\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfo\",\"type\":\"tuple[]\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"mintVehicleWithDeviceDefinitionSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"setVehicleIdProxyAddress\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfo\",\"type\":\"tuple[]\"}],\"name\":\"setVehicleInfo\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"validateBurnAndResetNode\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"idProxyAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"getDataURI\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"data\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"idProxyAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"}],\"name\":\"getInfo\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"idProxyAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"getParentNode\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"parentNode\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"idProxyAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"beneficiary\",\"type\":\"address\"}],\"name\":\"BeneficiarySet\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"idProxyAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"}],\"name\":\"getBeneficiary\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"beneficiary\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"idProxyAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"sourceNode\",\"type\":\"uint256\"}],\"name\":\"getLink\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"targetNode\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"idProxyAddressSource\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"idProxyAddressTarget\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"sourceNode\",\"type\":\"uint256\"}],\"name\":\"getNodeLink\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"targetNode\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"nodeId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"beneficiary\",\"type\":\"address\"}],\"name\":\"setAftermarketDeviceBeneficiary\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerNode\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoPairsVehicle\",\"type\":\"tuple[]\"},{\"internalType\":\"uint256\",\"name\":\"integrationNode\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"vehicleOwnerSig\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"syntheticDeviceSig\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"syntheticDeviceAddr\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoPairsDevice\",\"type\":\"tuple[]\"}],\"internalType\":\"structMintVehicleAndSdInput\",\"name\":\"data\",\"type\":\"tuple\"}],\"name\":\"mintVehicleAndSdSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerNode\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"deviceDefinitionId\",\"type\":\"string\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoPairsVehicle\",\"type\":\"tuple[]\"},{\"internalType\":\"uint256\",\"name\":\"integrationNode\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"vehicleOwnerSig\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"syntheticDeviceSig\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"syntheticDeviceAddr\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"attribute\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"info\",\"type\":\"string\"}],\"internalType\":\"structAttributeInfoPair[]\",\"name\":\"attrInfoPairsDevice\",\"type\":\"tuple[]\"}],\"internalType\":\"structMintVehicleAndSdWithDdInput\",\"name\":\"data\",\"type\":\"tuple\"}],\"name\":\"mintVehicleAndSdWithDeviceDefinitionSign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"idProxyAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"dataUri\",\"type\":\"string\"}],\"name\":\"BaseDataURISet\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"idProxyAddress\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"_baseDataURI\",\"type\":\"string\"}],\"name\":\"setBaseDataURI\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"dimoStreamrEns\",\"type\":\"string\"}],\"name\":\"DimoStreamrEnsSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dimoStreamrNode\",\"type\":\"address\"}],\"name\":\"DimoStreamrNodeSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"streamRegistry\",\"type\":\"address\"}],\"name\":\"StreamRegistrySet\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"dimoStreamrEns\",\"type\":\"string\"}],\"name\":\"setDimoBaseStreamId\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"dimoStreamrNode\",\"type\":\"address\"}],\"name\":\"setDimoStreamrNode\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"streamRegistry\",\"type\":\"address\"}],\"name\":\"setStreamRegistry\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"user\",\"type\":\"address\"},{\"internalType\":\"enumIStreamRegistry.PermissionType\",\"name\":\"permissionType\",\"type\":\"uint8\"}],\"name\":\"NoStreamrPermission\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"streamId\",\"type\":\"string\"}],\"name\":\"StreamDoesNotExist\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"vehicleId\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"streamId\",\"type\":\"string\"}],\"name\":\"VehicleStreamAlreadySet\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"vehicleId\",\"type\":\"uint256\"}],\"name\":\"VehicleStreamNotSet\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"streamId\",\"type\":\"string\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"subscriber\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"expirationTime\",\"type\":\"uint256\"}],\"name\":\"SubscribedToVehicleStream\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"vehicleId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"streamId\",\"type\":\"string\"}],\"name\":\"VehicleStreamSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"vehicleId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"streamId\",\"type\":\"string\"}],\"name\":\"VehicleStreamUnset\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"vehicleId\",\"type\":\"uint256\"}],\"name\":\"createVehicleStream\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"vehicleId\",\"type\":\"uint256\"}],\"name\":\"getVehicleStream\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"streamId\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"vehicleId\",\"type\":\"uint256\"}],\"name\":\"onBurnVehicleStream\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"vehicleId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"subscriber\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"expirationTime\",\"type\":\"uint256\"}],\"name\":\"onSetSubscribePrivilege\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"vehicleId\",\"type\":\"uint256\"}],\"name\":\"onTransferVehicleStream\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"vehicleId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"subscriber\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"expirationTime\",\"type\":\"uint256\"}],\"name\":\"setSubscriptionToVehicleStream\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"vehicleId\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"streamId\",\"type\":\"string\"}],\"name\":\"setVehicleStream\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"vehicleId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"expirationTime\",\"type\":\"uint256\"}],\"name\":\"subscribeToVehicleStream\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"vehicleId\",\"type\":\"uint256\"}],\"name\":\"unsetVehicleStream\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"chainid\",\"type\":\"uint256\"}],\"name\":\"ChainNotSupported\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"InvalidManufacturerId\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerId\",\"type\":\"uint256\"}],\"name\":\"TableAlreadyExists\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tableId\",\"type\":\"uint256\"}],\"name\":\"TableDoesNotExist\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"caller\",\"type\":\"address\"}],\"name\":\"Unauthorized\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tableId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"id\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"model\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"year\",\"type\":\"uint256\"}],\"name\":\"DeviceDefinitionInserted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"tableOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"manufacturerId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tableId\",\"type\":\"uint256\"}],\"name\":\"DeviceDefinitionTableCreated\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"manufacturerId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tableId\",\"type\":\"uint256\"}],\"name\":\"ManufacturerTableSet\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"tableOwner\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"manufacturerId\",\"type\":\"uint256\"}],\"name\":\"createDeviceDefinitionTable\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"tableOwner\",\"type\":\"address\"},{\"internalType\":\"uint256[]\",\"name\":\"manufacturerIds\",\"type\":\"uint256[]\"}],\"name\":\"createDeviceDefinitionTableBatch\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerId\",\"type\":\"uint256\"}],\"name\":\"getDeviceDefinitionTableId\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"tableId\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerId\",\"type\":\"uint256\"}],\"name\":\"getDeviceDefinitionTableName\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"tableName\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerId\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"id\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"model\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"year\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"metadata\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"ksuid\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"deviceType\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"imageURI\",\"type\":\"string\"}],\"internalType\":\"structDeviceDefinitionInput\",\"name\":\"data\",\"type\":\"tuple\"}],\"name\":\"insertDeviceDefinition\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerId\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"id\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"model\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"year\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"metadata\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"ksuid\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"deviceType\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"imageURI\",\"type\":\"string\"}],\"internalType\":\"structDeviceDefinitionInput[]\",\"name\":\"data\",\"type\":\"tuple[]\"}],\"name\":\"insertDeviceDefinitionBatch\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"manufacturerId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"tableId\",\"type\":\"uint256\"}],\"name\":\"setDeviceDefinitionTable\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"caller\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"getPolicy\",\"outputs\":[{\"components\":[{\"internalType\":\"bool\",\"name\":\"allowInsert\",\"type\":\"bool\"},{\"internalType\":\"bool\",\"name\":\"allowUpdate\",\"type\":\"bool\"},{\"internalType\":\"bool\",\"name\":\"allowDelete\",\"type\":\"bool\"},{\"internalType\":\"string\",\"name\":\"whereClause\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"withCheck\",\"type\":\"string\"},{\"internalType\":\"string[]\",\"name\":\"updatableColumns\",\"type\":\"string[]\"}],\"internalType\":\"structTablelandPolicy\",\"name\":\"policy\",\"type\":\"tuple\"}],\"stateMutability\":\"payable\",\"type\":\"function\"}]",
 }
 
 // RegistryABI is the input ABI used to generate the binding from.
@@ -391,6 +425,99 @@ func (_Registry *RegistrySession) GetDataURI(idProxyAddress common.Address, toke
 // Solidity: function getDataURI(address idProxyAddress, uint256 tokenId) view returns(string data)
 func (_Registry *RegistryCallerSession) GetDataURI(idProxyAddress common.Address, tokenId *big.Int) (string, error) {
 	return _Registry.Contract.GetDataURI(&_Registry.CallOpts, idProxyAddress, tokenId)
+}
+
+// GetDeviceDefinitionIdByVehicleId is a free data retrieval call binding the contract method 0xb7bded95.
+//
+// Solidity: function getDeviceDefinitionIdByVehicleId(uint256 vehicleId) view returns(string ddId)
+func (_Registry *RegistryCaller) GetDeviceDefinitionIdByVehicleId(opts *bind.CallOpts, vehicleId *big.Int) (string, error) {
+	var out []interface{}
+	err := _Registry.contract.Call(opts, &out, "getDeviceDefinitionIdByVehicleId", vehicleId)
+
+	if err != nil {
+		return *new(string), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(string)).(*string)
+
+	return out0, err
+
+}
+
+// GetDeviceDefinitionIdByVehicleId is a free data retrieval call binding the contract method 0xb7bded95.
+//
+// Solidity: function getDeviceDefinitionIdByVehicleId(uint256 vehicleId) view returns(string ddId)
+func (_Registry *RegistrySession) GetDeviceDefinitionIdByVehicleId(vehicleId *big.Int) (string, error) {
+	return _Registry.Contract.GetDeviceDefinitionIdByVehicleId(&_Registry.CallOpts, vehicleId)
+}
+
+// GetDeviceDefinitionIdByVehicleId is a free data retrieval call binding the contract method 0xb7bded95.
+//
+// Solidity: function getDeviceDefinitionIdByVehicleId(uint256 vehicleId) view returns(string ddId)
+func (_Registry *RegistryCallerSession) GetDeviceDefinitionIdByVehicleId(vehicleId *big.Int) (string, error) {
+	return _Registry.Contract.GetDeviceDefinitionIdByVehicleId(&_Registry.CallOpts, vehicleId)
+}
+
+// GetDeviceDefinitionTableId is a free data retrieval call binding the contract method 0x396e5987.
+//
+// Solidity: function getDeviceDefinitionTableId(uint256 manufacturerId) view returns(uint256 tableId)
+func (_Registry *RegistryCaller) GetDeviceDefinitionTableId(opts *bind.CallOpts, manufacturerId *big.Int) (*big.Int, error) {
+	var out []interface{}
+	err := _Registry.contract.Call(opts, &out, "getDeviceDefinitionTableId", manufacturerId)
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// GetDeviceDefinitionTableId is a free data retrieval call binding the contract method 0x396e5987.
+//
+// Solidity: function getDeviceDefinitionTableId(uint256 manufacturerId) view returns(uint256 tableId)
+func (_Registry *RegistrySession) GetDeviceDefinitionTableId(manufacturerId *big.Int) (*big.Int, error) {
+	return _Registry.Contract.GetDeviceDefinitionTableId(&_Registry.CallOpts, manufacturerId)
+}
+
+// GetDeviceDefinitionTableId is a free data retrieval call binding the contract method 0x396e5987.
+//
+// Solidity: function getDeviceDefinitionTableId(uint256 manufacturerId) view returns(uint256 tableId)
+func (_Registry *RegistryCallerSession) GetDeviceDefinitionTableId(manufacturerId *big.Int) (*big.Int, error) {
+	return _Registry.Contract.GetDeviceDefinitionTableId(&_Registry.CallOpts, manufacturerId)
+}
+
+// GetDeviceDefinitionTableName is a free data retrieval call binding the contract method 0xa1d17941.
+//
+// Solidity: function getDeviceDefinitionTableName(uint256 manufacturerId) view returns(string tableName)
+func (_Registry *RegistryCaller) GetDeviceDefinitionTableName(opts *bind.CallOpts, manufacturerId *big.Int) (string, error) {
+	var out []interface{}
+	err := _Registry.contract.Call(opts, &out, "getDeviceDefinitionTableName", manufacturerId)
+
+	if err != nil {
+		return *new(string), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(string)).(*string)
+
+	return out0, err
+
+}
+
+// GetDeviceDefinitionTableName is a free data retrieval call binding the contract method 0xa1d17941.
+//
+// Solidity: function getDeviceDefinitionTableName(uint256 manufacturerId) view returns(string tableName)
+func (_Registry *RegistrySession) GetDeviceDefinitionTableName(manufacturerId *big.Int) (string, error) {
+	return _Registry.Contract.GetDeviceDefinitionTableName(&_Registry.CallOpts, manufacturerId)
+}
+
+// GetDeviceDefinitionTableName is a free data retrieval call binding the contract method 0xa1d17941.
+//
+// Solidity: function getDeviceDefinitionTableName(uint256 manufacturerId) view returns(string tableName)
+func (_Registry *RegistryCallerSession) GetDeviceDefinitionTableName(manufacturerId *big.Int) (string, error) {
+	return _Registry.Contract.GetDeviceDefinitionTableName(&_Registry.CallOpts, manufacturerId)
 }
 
 // GetInfo is a free data retrieval call binding the contract method 0xdce2f860.
@@ -734,6 +861,37 @@ func (_Registry *RegistryCallerSession) GetSyntheticDeviceIdByAddress(addr commo
 	return _Registry.Contract.GetSyntheticDeviceIdByAddress(&_Registry.CallOpts, addr)
 }
 
+// GetVehicleStream is a free data retrieval call binding the contract method 0x180e469a.
+//
+// Solidity: function getVehicleStream(uint256 vehicleId) view returns(string streamId)
+func (_Registry *RegistryCaller) GetVehicleStream(opts *bind.CallOpts, vehicleId *big.Int) (string, error) {
+	var out []interface{}
+	err := _Registry.contract.Call(opts, &out, "getVehicleStream", vehicleId)
+
+	if err != nil {
+		return *new(string), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(string)).(*string)
+
+	return out0, err
+
+}
+
+// GetVehicleStream is a free data retrieval call binding the contract method 0x180e469a.
+//
+// Solidity: function getVehicleStream(uint256 vehicleId) view returns(string streamId)
+func (_Registry *RegistrySession) GetVehicleStream(vehicleId *big.Int) (string, error) {
+	return _Registry.Contract.GetVehicleStream(&_Registry.CallOpts, vehicleId)
+}
+
+// GetVehicleStream is a free data retrieval call binding the contract method 0x180e469a.
+//
+// Solidity: function getVehicleStream(uint256 vehicleId) view returns(string streamId)
+func (_Registry *RegistryCallerSession) GetVehicleStream(vehicleId *big.Int) (string, error) {
+	return _Registry.Contract.GetVehicleStream(&_Registry.CallOpts, vehicleId)
+}
+
 // HasRole is a free data retrieval call binding the contract method 0x91d14854.
 //
 // Solidity: function hasRole(bytes32 role, address account) view returns(bool)
@@ -1013,6 +1171,37 @@ func (_Registry *RegistryCallerSession) MultiStaticCall(data [][]byte) ([][]byte
 	return _Registry.Contract.MultiStaticCall(&_Registry.CallOpts, data)
 }
 
+// OnERC721Received is a free data retrieval call binding the contract method 0x150b7a02.
+//
+// Solidity: function onERC721Received(address , address , uint256 , bytes ) pure returns(bytes4)
+func (_Registry *RegistryCaller) OnERC721Received(opts *bind.CallOpts, arg0 common.Address, arg1 common.Address, arg2 *big.Int, arg3 []byte) ([4]byte, error) {
+	var out []interface{}
+	err := _Registry.contract.Call(opts, &out, "onERC721Received", arg0, arg1, arg2, arg3)
+
+	if err != nil {
+		return *new([4]byte), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([4]byte)).(*[4]byte)
+
+	return out0, err
+
+}
+
+// OnERC721Received is a free data retrieval call binding the contract method 0x150b7a02.
+//
+// Solidity: function onERC721Received(address , address , uint256 , bytes ) pure returns(bytes4)
+func (_Registry *RegistrySession) OnERC721Received(arg0 common.Address, arg1 common.Address, arg2 *big.Int, arg3 []byte) ([4]byte, error) {
+	return _Registry.Contract.OnERC721Received(&_Registry.CallOpts, arg0, arg1, arg2, arg3)
+}
+
+// OnERC721Received is a free data retrieval call binding the contract method 0x150b7a02.
+//
+// Solidity: function onERC721Received(address , address , uint256 , bytes ) pure returns(bytes4)
+func (_Registry *RegistryCallerSession) OnERC721Received(arg0 common.Address, arg1 common.Address, arg2 *big.Int, arg3 []byte) ([4]byte, error) {
+	return _Registry.Contract.OnERC721Received(&_Registry.CallOpts, arg0, arg1, arg2, arg3)
+}
+
 // AddAftermarketDeviceAttribute is a paid mutator transaction binding the contract method 0x6111afa3.
 //
 // Solidity: function addAftermarketDeviceAttribute(string attribute) returns()
@@ -1244,6 +1433,27 @@ func (_Registry *RegistryTransactorSession) AdminBurnVehiclesAndDeletePairings(t
 	return _Registry.Contract.AdminBurnVehiclesAndDeletePairings(&_Registry.TransactOpts, tokenIds)
 }
 
+// AdminCacheDimoStreamrEns is a paid mutator transaction binding the contract method 0xb17b974b.
+//
+// Solidity: function adminCacheDimoStreamrEns() returns()
+func (_Registry *RegistryTransactor) AdminCacheDimoStreamrEns(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "adminCacheDimoStreamrEns")
+}
+
+// AdminCacheDimoStreamrEns is a paid mutator transaction binding the contract method 0xb17b974b.
+//
+// Solidity: function adminCacheDimoStreamrEns() returns()
+func (_Registry *RegistrySession) AdminCacheDimoStreamrEns() (*types.Transaction, error) {
+	return _Registry.Contract.AdminCacheDimoStreamrEns(&_Registry.TransactOpts)
+}
+
+// AdminCacheDimoStreamrEns is a paid mutator transaction binding the contract method 0xb17b974b.
+//
+// Solidity: function adminCacheDimoStreamrEns() returns()
+func (_Registry *RegistryTransactorSession) AdminCacheDimoStreamrEns() (*types.Transaction, error) {
+	return _Registry.Contract.AdminCacheDimoStreamrEns(&_Registry.TransactOpts)
+}
+
 // AdminChangeParentNode is a paid mutator transaction binding the contract method 0x56936962.
 //
 // Solidity: function adminChangeParentNode(uint256 newParentNode, address idProxyAddress, uint256[] nodeIdList) returns()
@@ -1370,6 +1580,90 @@ func (_Registry *RegistryTransactorSession) ClaimAftermarketDeviceSign(aftermark
 	return _Registry.Contract.ClaimAftermarketDeviceSign(&_Registry.TransactOpts, aftermarketDeviceNode, owner, ownerSig, aftermarketDeviceSig)
 }
 
+// CreateDeviceDefinitionTable is a paid mutator transaction binding the contract method 0x20954d21.
+//
+// Solidity: function createDeviceDefinitionTable(address tableOwner, uint256 manufacturerId) returns()
+func (_Registry *RegistryTransactor) CreateDeviceDefinitionTable(opts *bind.TransactOpts, tableOwner common.Address, manufacturerId *big.Int) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "createDeviceDefinitionTable", tableOwner, manufacturerId)
+}
+
+// CreateDeviceDefinitionTable is a paid mutator transaction binding the contract method 0x20954d21.
+//
+// Solidity: function createDeviceDefinitionTable(address tableOwner, uint256 manufacturerId) returns()
+func (_Registry *RegistrySession) CreateDeviceDefinitionTable(tableOwner common.Address, manufacturerId *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.CreateDeviceDefinitionTable(&_Registry.TransactOpts, tableOwner, manufacturerId)
+}
+
+// CreateDeviceDefinitionTable is a paid mutator transaction binding the contract method 0x20954d21.
+//
+// Solidity: function createDeviceDefinitionTable(address tableOwner, uint256 manufacturerId) returns()
+func (_Registry *RegistryTransactorSession) CreateDeviceDefinitionTable(tableOwner common.Address, manufacturerId *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.CreateDeviceDefinitionTable(&_Registry.TransactOpts, tableOwner, manufacturerId)
+}
+
+// CreateDeviceDefinitionTableBatch is a paid mutator transaction binding the contract method 0x794c6790.
+//
+// Solidity: function createDeviceDefinitionTableBatch(address tableOwner, uint256[] manufacturerIds) returns()
+func (_Registry *RegistryTransactor) CreateDeviceDefinitionTableBatch(opts *bind.TransactOpts, tableOwner common.Address, manufacturerIds []*big.Int) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "createDeviceDefinitionTableBatch", tableOwner, manufacturerIds)
+}
+
+// CreateDeviceDefinitionTableBatch is a paid mutator transaction binding the contract method 0x794c6790.
+//
+// Solidity: function createDeviceDefinitionTableBatch(address tableOwner, uint256[] manufacturerIds) returns()
+func (_Registry *RegistrySession) CreateDeviceDefinitionTableBatch(tableOwner common.Address, manufacturerIds []*big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.CreateDeviceDefinitionTableBatch(&_Registry.TransactOpts, tableOwner, manufacturerIds)
+}
+
+// CreateDeviceDefinitionTableBatch is a paid mutator transaction binding the contract method 0x794c6790.
+//
+// Solidity: function createDeviceDefinitionTableBatch(address tableOwner, uint256[] manufacturerIds) returns()
+func (_Registry *RegistryTransactorSession) CreateDeviceDefinitionTableBatch(tableOwner common.Address, manufacturerIds []*big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.CreateDeviceDefinitionTableBatch(&_Registry.TransactOpts, tableOwner, manufacturerIds)
+}
+
+// CreateVehicleStream is a paid mutator transaction binding the contract method 0x497323c8.
+//
+// Solidity: function createVehicleStream(uint256 vehicleId) returns()
+func (_Registry *RegistryTransactor) CreateVehicleStream(opts *bind.TransactOpts, vehicleId *big.Int) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "createVehicleStream", vehicleId)
+}
+
+// CreateVehicleStream is a paid mutator transaction binding the contract method 0x497323c8.
+//
+// Solidity: function createVehicleStream(uint256 vehicleId) returns()
+func (_Registry *RegistrySession) CreateVehicleStream(vehicleId *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.CreateVehicleStream(&_Registry.TransactOpts, vehicleId)
+}
+
+// CreateVehicleStream is a paid mutator transaction binding the contract method 0x497323c8.
+//
+// Solidity: function createVehicleStream(uint256 vehicleId) returns()
+func (_Registry *RegistryTransactorSession) CreateVehicleStream(vehicleId *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.CreateVehicleStream(&_Registry.TransactOpts, vehicleId)
+}
+
+// GetPolicy is a paid mutator transaction binding the contract method 0x66df322e.
+//
+// Solidity: function getPolicy(address caller, uint256 ) payable returns((bool,bool,bool,string,string,string[]) policy)
+func (_Registry *RegistryTransactor) GetPolicy(opts *bind.TransactOpts, caller common.Address, arg1 *big.Int) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "getPolicy", caller, arg1)
+}
+
+// GetPolicy is a paid mutator transaction binding the contract method 0x66df322e.
+//
+// Solidity: function getPolicy(address caller, uint256 ) payable returns((bool,bool,bool,string,string,string[]) policy)
+func (_Registry *RegistrySession) GetPolicy(caller common.Address, arg1 *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.GetPolicy(&_Registry.TransactOpts, caller, arg1)
+}
+
+// GetPolicy is a paid mutator transaction binding the contract method 0x66df322e.
+//
+// Solidity: function getPolicy(address caller, uint256 ) payable returns((bool,bool,bool,string,string,string[]) policy)
+func (_Registry *RegistryTransactorSession) GetPolicy(caller common.Address, arg1 *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.GetPolicy(&_Registry.TransactOpts, caller, arg1)
+}
+
 // GrantRole is a paid mutator transaction binding the contract method 0x2f2ff15d.
 //
 // Solidity: function grantRole(bytes32 role, address account) returns()
@@ -1410,6 +1704,48 @@ func (_Registry *RegistrySession) Initialize(name string, version string) (*type
 // Solidity: function initialize(string name, string version) returns()
 func (_Registry *RegistryTransactorSession) Initialize(name string, version string) (*types.Transaction, error) {
 	return _Registry.Contract.Initialize(&_Registry.TransactOpts, name, version)
+}
+
+// InsertDeviceDefinition is a paid mutator transaction binding the contract method 0x23536c5f.
+//
+// Solidity: function insertDeviceDefinition(uint256 manufacturerId, (string,string,uint256,string,string,string,string) data) returns()
+func (_Registry *RegistryTransactor) InsertDeviceDefinition(opts *bind.TransactOpts, manufacturerId *big.Int, data DeviceDefinitionInput) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "insertDeviceDefinition", manufacturerId, data)
+}
+
+// InsertDeviceDefinition is a paid mutator transaction binding the contract method 0x23536c5f.
+//
+// Solidity: function insertDeviceDefinition(uint256 manufacturerId, (string,string,uint256,string,string,string,string) data) returns()
+func (_Registry *RegistrySession) InsertDeviceDefinition(manufacturerId *big.Int, data DeviceDefinitionInput) (*types.Transaction, error) {
+	return _Registry.Contract.InsertDeviceDefinition(&_Registry.TransactOpts, manufacturerId, data)
+}
+
+// InsertDeviceDefinition is a paid mutator transaction binding the contract method 0x23536c5f.
+//
+// Solidity: function insertDeviceDefinition(uint256 manufacturerId, (string,string,uint256,string,string,string,string) data) returns()
+func (_Registry *RegistryTransactorSession) InsertDeviceDefinition(manufacturerId *big.Int, data DeviceDefinitionInput) (*types.Transaction, error) {
+	return _Registry.Contract.InsertDeviceDefinition(&_Registry.TransactOpts, manufacturerId, data)
+}
+
+// InsertDeviceDefinitionBatch is a paid mutator transaction binding the contract method 0x80d50451.
+//
+// Solidity: function insertDeviceDefinitionBatch(uint256 manufacturerId, (string,string,uint256,string,string,string,string)[] data) returns()
+func (_Registry *RegistryTransactor) InsertDeviceDefinitionBatch(opts *bind.TransactOpts, manufacturerId *big.Int, data []DeviceDefinitionInput) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "insertDeviceDefinitionBatch", manufacturerId, data)
+}
+
+// InsertDeviceDefinitionBatch is a paid mutator transaction binding the contract method 0x80d50451.
+//
+// Solidity: function insertDeviceDefinitionBatch(uint256 manufacturerId, (string,string,uint256,string,string,string,string)[] data) returns()
+func (_Registry *RegistrySession) InsertDeviceDefinitionBatch(manufacturerId *big.Int, data []DeviceDefinitionInput) (*types.Transaction, error) {
+	return _Registry.Contract.InsertDeviceDefinitionBatch(&_Registry.TransactOpts, manufacturerId, data)
+}
+
+// InsertDeviceDefinitionBatch is a paid mutator transaction binding the contract method 0x80d50451.
+//
+// Solidity: function insertDeviceDefinitionBatch(uint256 manufacturerId, (string,string,uint256,string,string,string,string)[] data) returns()
+func (_Registry *RegistryTransactorSession) InsertDeviceDefinitionBatch(manufacturerId *big.Int, data []DeviceDefinitionInput) (*types.Transaction, error) {
+	return _Registry.Contract.InsertDeviceDefinitionBatch(&_Registry.TransactOpts, manufacturerId, data)
 }
 
 // MintAftermarketDeviceByManufacturerBatch is a paid mutator transaction binding the contract method 0x7ba79a39.
@@ -1601,6 +1937,27 @@ func (_Registry *RegistryTransactorSession) MintVehicleAndSdSign(data MintVehicl
 	return _Registry.Contract.MintVehicleAndSdSign(&_Registry.TransactOpts, data)
 }
 
+// MintVehicleAndSdWithDeviceDefinitionSign is a paid mutator transaction binding the contract method 0xd23965e3.
+//
+// Solidity: function mintVehicleAndSdWithDeviceDefinitionSign((uint256,address,string,(string,string)[],uint256,bytes,bytes,address,(string,string)[]) data) returns()
+func (_Registry *RegistryTransactor) MintVehicleAndSdWithDeviceDefinitionSign(opts *bind.TransactOpts, data MintVehicleAndSdWithDdInput) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "mintVehicleAndSdWithDeviceDefinitionSign", data)
+}
+
+// MintVehicleAndSdWithDeviceDefinitionSign is a paid mutator transaction binding the contract method 0xd23965e3.
+//
+// Solidity: function mintVehicleAndSdWithDeviceDefinitionSign((uint256,address,string,(string,string)[],uint256,bytes,bytes,address,(string,string)[]) data) returns()
+func (_Registry *RegistrySession) MintVehicleAndSdWithDeviceDefinitionSign(data MintVehicleAndSdWithDdInput) (*types.Transaction, error) {
+	return _Registry.Contract.MintVehicleAndSdWithDeviceDefinitionSign(&_Registry.TransactOpts, data)
+}
+
+// MintVehicleAndSdWithDeviceDefinitionSign is a paid mutator transaction binding the contract method 0xd23965e3.
+//
+// Solidity: function mintVehicleAndSdWithDeviceDefinitionSign((uint256,address,string,(string,string)[],uint256,bytes,bytes,address,(string,string)[]) data) returns()
+func (_Registry *RegistryTransactorSession) MintVehicleAndSdWithDeviceDefinitionSign(data MintVehicleAndSdWithDdInput) (*types.Transaction, error) {
+	return _Registry.Contract.MintVehicleAndSdWithDeviceDefinitionSign(&_Registry.TransactOpts, data)
+}
+
 // MintVehicleSign is a paid mutator transaction binding the contract method 0x1b1a82c8.
 //
 // Solidity: function mintVehicleSign(uint256 manufacturerNode, address owner, (string,string)[] attrInfo, bytes signature) returns()
@@ -1622,6 +1979,48 @@ func (_Registry *RegistryTransactorSession) MintVehicleSign(manufacturerNode *bi
 	return _Registry.Contract.MintVehicleSign(&_Registry.TransactOpts, manufacturerNode, owner, attrInfo, signature)
 }
 
+// MintVehicleWithDeviceDefinition is a paid mutator transaction binding the contract method 0xd84baff1.
+//
+// Solidity: function mintVehicleWithDeviceDefinition(uint256 manufacturerNode, address owner, string deviceDefinitionId, (string,string)[] attrInfo) returns()
+func (_Registry *RegistryTransactor) MintVehicleWithDeviceDefinition(opts *bind.TransactOpts, manufacturerNode *big.Int, owner common.Address, deviceDefinitionId string, attrInfo []AttributeInfoPair) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "mintVehicleWithDeviceDefinition", manufacturerNode, owner, deviceDefinitionId, attrInfo)
+}
+
+// MintVehicleWithDeviceDefinition is a paid mutator transaction binding the contract method 0xd84baff1.
+//
+// Solidity: function mintVehicleWithDeviceDefinition(uint256 manufacturerNode, address owner, string deviceDefinitionId, (string,string)[] attrInfo) returns()
+func (_Registry *RegistrySession) MintVehicleWithDeviceDefinition(manufacturerNode *big.Int, owner common.Address, deviceDefinitionId string, attrInfo []AttributeInfoPair) (*types.Transaction, error) {
+	return _Registry.Contract.MintVehicleWithDeviceDefinition(&_Registry.TransactOpts, manufacturerNode, owner, deviceDefinitionId, attrInfo)
+}
+
+// MintVehicleWithDeviceDefinition is a paid mutator transaction binding the contract method 0xd84baff1.
+//
+// Solidity: function mintVehicleWithDeviceDefinition(uint256 manufacturerNode, address owner, string deviceDefinitionId, (string,string)[] attrInfo) returns()
+func (_Registry *RegistryTransactorSession) MintVehicleWithDeviceDefinition(manufacturerNode *big.Int, owner common.Address, deviceDefinitionId string, attrInfo []AttributeInfoPair) (*types.Transaction, error) {
+	return _Registry.Contract.MintVehicleWithDeviceDefinition(&_Registry.TransactOpts, manufacturerNode, owner, deviceDefinitionId, attrInfo)
+}
+
+// MintVehicleWithDeviceDefinitionSign is a paid mutator transaction binding the contract method 0x8dca2b8e.
+//
+// Solidity: function mintVehicleWithDeviceDefinitionSign(uint256 manufacturerNode, address owner, string deviceDefinitionId, (string,string)[] attrInfo, bytes signature) returns()
+func (_Registry *RegistryTransactor) MintVehicleWithDeviceDefinitionSign(opts *bind.TransactOpts, manufacturerNode *big.Int, owner common.Address, deviceDefinitionId string, attrInfo []AttributeInfoPair, signature []byte) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "mintVehicleWithDeviceDefinitionSign", manufacturerNode, owner, deviceDefinitionId, attrInfo, signature)
+}
+
+// MintVehicleWithDeviceDefinitionSign is a paid mutator transaction binding the contract method 0x8dca2b8e.
+//
+// Solidity: function mintVehicleWithDeviceDefinitionSign(uint256 manufacturerNode, address owner, string deviceDefinitionId, (string,string)[] attrInfo, bytes signature) returns()
+func (_Registry *RegistrySession) MintVehicleWithDeviceDefinitionSign(manufacturerNode *big.Int, owner common.Address, deviceDefinitionId string, attrInfo []AttributeInfoPair, signature []byte) (*types.Transaction, error) {
+	return _Registry.Contract.MintVehicleWithDeviceDefinitionSign(&_Registry.TransactOpts, manufacturerNode, owner, deviceDefinitionId, attrInfo, signature)
+}
+
+// MintVehicleWithDeviceDefinitionSign is a paid mutator transaction binding the contract method 0x8dca2b8e.
+//
+// Solidity: function mintVehicleWithDeviceDefinitionSign(uint256 manufacturerNode, address owner, string deviceDefinitionId, (string,string)[] attrInfo, bytes signature) returns()
+func (_Registry *RegistryTransactorSession) MintVehicleWithDeviceDefinitionSign(manufacturerNode *big.Int, owner common.Address, deviceDefinitionId string, attrInfo []AttributeInfoPair, signature []byte) (*types.Transaction, error) {
+	return _Registry.Contract.MintVehicleWithDeviceDefinitionSign(&_Registry.TransactOpts, manufacturerNode, owner, deviceDefinitionId, attrInfo, signature)
+}
+
 // MultiDelegateCall is a paid mutator transaction binding the contract method 0x415c2d96.
 //
 // Solidity: function multiDelegateCall(bytes[] data) returns(bytes[] results)
@@ -1641,6 +2040,69 @@ func (_Registry *RegistrySession) MultiDelegateCall(data [][]byte) (*types.Trans
 // Solidity: function multiDelegateCall(bytes[] data) returns(bytes[] results)
 func (_Registry *RegistryTransactorSession) MultiDelegateCall(data [][]byte) (*types.Transaction, error) {
 	return _Registry.Contract.MultiDelegateCall(&_Registry.TransactOpts, data)
+}
+
+// OnBurnVehicleStream is a paid mutator transaction binding the contract method 0xa91ec798.
+//
+// Solidity: function onBurnVehicleStream(uint256 vehicleId) returns()
+func (_Registry *RegistryTransactor) OnBurnVehicleStream(opts *bind.TransactOpts, vehicleId *big.Int) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "onBurnVehicleStream", vehicleId)
+}
+
+// OnBurnVehicleStream is a paid mutator transaction binding the contract method 0xa91ec798.
+//
+// Solidity: function onBurnVehicleStream(uint256 vehicleId) returns()
+func (_Registry *RegistrySession) OnBurnVehicleStream(vehicleId *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.OnBurnVehicleStream(&_Registry.TransactOpts, vehicleId)
+}
+
+// OnBurnVehicleStream is a paid mutator transaction binding the contract method 0xa91ec798.
+//
+// Solidity: function onBurnVehicleStream(uint256 vehicleId) returns()
+func (_Registry *RegistryTransactorSession) OnBurnVehicleStream(vehicleId *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.OnBurnVehicleStream(&_Registry.TransactOpts, vehicleId)
+}
+
+// OnSetSubscribePrivilege is a paid mutator transaction binding the contract method 0xc8f11a06.
+//
+// Solidity: function onSetSubscribePrivilege(uint256 vehicleId, address subscriber, uint256 expirationTime) returns()
+func (_Registry *RegistryTransactor) OnSetSubscribePrivilege(opts *bind.TransactOpts, vehicleId *big.Int, subscriber common.Address, expirationTime *big.Int) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "onSetSubscribePrivilege", vehicleId, subscriber, expirationTime)
+}
+
+// OnSetSubscribePrivilege is a paid mutator transaction binding the contract method 0xc8f11a06.
+//
+// Solidity: function onSetSubscribePrivilege(uint256 vehicleId, address subscriber, uint256 expirationTime) returns()
+func (_Registry *RegistrySession) OnSetSubscribePrivilege(vehicleId *big.Int, subscriber common.Address, expirationTime *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.OnSetSubscribePrivilege(&_Registry.TransactOpts, vehicleId, subscriber, expirationTime)
+}
+
+// OnSetSubscribePrivilege is a paid mutator transaction binding the contract method 0xc8f11a06.
+//
+// Solidity: function onSetSubscribePrivilege(uint256 vehicleId, address subscriber, uint256 expirationTime) returns()
+func (_Registry *RegistryTransactorSession) OnSetSubscribePrivilege(vehicleId *big.Int, subscriber common.Address, expirationTime *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.OnSetSubscribePrivilege(&_Registry.TransactOpts, vehicleId, subscriber, expirationTime)
+}
+
+// OnTransferVehicleStream is a paid mutator transaction binding the contract method 0x1882b263.
+//
+// Solidity: function onTransferVehicleStream(address to, uint256 vehicleId) returns()
+func (_Registry *RegistryTransactor) OnTransferVehicleStream(opts *bind.TransactOpts, to common.Address, vehicleId *big.Int) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "onTransferVehicleStream", to, vehicleId)
+}
+
+// OnTransferVehicleStream is a paid mutator transaction binding the contract method 0x1882b263.
+//
+// Solidity: function onTransferVehicleStream(address to, uint256 vehicleId) returns()
+func (_Registry *RegistrySession) OnTransferVehicleStream(to common.Address, vehicleId *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.OnTransferVehicleStream(&_Registry.TransactOpts, to, vehicleId)
+}
+
+// OnTransferVehicleStream is a paid mutator transaction binding the contract method 0x1882b263.
+//
+// Solidity: function onTransferVehicleStream(address to, uint256 vehicleId) returns()
+func (_Registry *RegistryTransactorSession) OnTransferVehicleStream(to common.Address, vehicleId *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.OnTransferVehicleStream(&_Registry.TransactOpts, to, vehicleId)
 }
 
 // PairAftermarketDeviceSign is a paid mutator transaction binding the contract method 0xb50df2f7.
@@ -1746,6 +2208,27 @@ func (_Registry *RegistrySession) RenounceRole(role [32]byte) (*types.Transactio
 // Solidity: function renounceRole(bytes32 role) returns()
 func (_Registry *RegistryTransactorSession) RenounceRole(role [32]byte) (*types.Transaction, error) {
 	return _Registry.Contract.RenounceRole(&_Registry.TransactOpts, role)
+}
+
+// ReprovisionAftermarketDeviceByManufacturerBatch is a paid mutator transaction binding the contract method 0x9b3abd48.
+//
+// Solidity: function reprovisionAftermarketDeviceByManufacturerBatch(uint256[] aftermarketDeviceNodeList) returns()
+func (_Registry *RegistryTransactor) ReprovisionAftermarketDeviceByManufacturerBatch(opts *bind.TransactOpts, aftermarketDeviceNodeList []*big.Int) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "reprovisionAftermarketDeviceByManufacturerBatch", aftermarketDeviceNodeList)
+}
+
+// ReprovisionAftermarketDeviceByManufacturerBatch is a paid mutator transaction binding the contract method 0x9b3abd48.
+//
+// Solidity: function reprovisionAftermarketDeviceByManufacturerBatch(uint256[] aftermarketDeviceNodeList) returns()
+func (_Registry *RegistrySession) ReprovisionAftermarketDeviceByManufacturerBatch(aftermarketDeviceNodeList []*big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.ReprovisionAftermarketDeviceByManufacturerBatch(&_Registry.TransactOpts, aftermarketDeviceNodeList)
+}
+
+// ReprovisionAftermarketDeviceByManufacturerBatch is a paid mutator transaction binding the contract method 0x9b3abd48.
+//
+// Solidity: function reprovisionAftermarketDeviceByManufacturerBatch(uint256[] aftermarketDeviceNodeList) returns()
+func (_Registry *RegistryTransactorSession) ReprovisionAftermarketDeviceByManufacturerBatch(aftermarketDeviceNodeList []*big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.ReprovisionAftermarketDeviceByManufacturerBatch(&_Registry.TransactOpts, aftermarketDeviceNodeList)
 }
 
 // ResetAftermarketDeviceAddressByManufacturerBatch is a paid mutator transaction binding the contract method 0x9d0b139b.
@@ -1916,6 +2399,69 @@ func (_Registry *RegistryTransactorSession) SetController(_controller common.Add
 	return _Registry.Contract.SetController(&_Registry.TransactOpts, _controller)
 }
 
+// SetDeviceDefinitionTable is a paid mutator transaction binding the contract method 0x088fafdb.
+//
+// Solidity: function setDeviceDefinitionTable(uint256 manufacturerId, uint256 tableId) returns()
+func (_Registry *RegistryTransactor) SetDeviceDefinitionTable(opts *bind.TransactOpts, manufacturerId *big.Int, tableId *big.Int) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "setDeviceDefinitionTable", manufacturerId, tableId)
+}
+
+// SetDeviceDefinitionTable is a paid mutator transaction binding the contract method 0x088fafdb.
+//
+// Solidity: function setDeviceDefinitionTable(uint256 manufacturerId, uint256 tableId) returns()
+func (_Registry *RegistrySession) SetDeviceDefinitionTable(manufacturerId *big.Int, tableId *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.SetDeviceDefinitionTable(&_Registry.TransactOpts, manufacturerId, tableId)
+}
+
+// SetDeviceDefinitionTable is a paid mutator transaction binding the contract method 0x088fafdb.
+//
+// Solidity: function setDeviceDefinitionTable(uint256 manufacturerId, uint256 tableId) returns()
+func (_Registry *RegistryTransactorSession) SetDeviceDefinitionTable(manufacturerId *big.Int, tableId *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.SetDeviceDefinitionTable(&_Registry.TransactOpts, manufacturerId, tableId)
+}
+
+// SetDimoBaseStreamId is a paid mutator transaction binding the contract method 0x9e594424.
+//
+// Solidity: function setDimoBaseStreamId(string dimoStreamrEns) returns()
+func (_Registry *RegistryTransactor) SetDimoBaseStreamId(opts *bind.TransactOpts, dimoStreamrEns string) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "setDimoBaseStreamId", dimoStreamrEns)
+}
+
+// SetDimoBaseStreamId is a paid mutator transaction binding the contract method 0x9e594424.
+//
+// Solidity: function setDimoBaseStreamId(string dimoStreamrEns) returns()
+func (_Registry *RegistrySession) SetDimoBaseStreamId(dimoStreamrEns string) (*types.Transaction, error) {
+	return _Registry.Contract.SetDimoBaseStreamId(&_Registry.TransactOpts, dimoStreamrEns)
+}
+
+// SetDimoBaseStreamId is a paid mutator transaction binding the contract method 0x9e594424.
+//
+// Solidity: function setDimoBaseStreamId(string dimoStreamrEns) returns()
+func (_Registry *RegistryTransactorSession) SetDimoBaseStreamId(dimoStreamrEns string) (*types.Transaction, error) {
+	return _Registry.Contract.SetDimoBaseStreamId(&_Registry.TransactOpts, dimoStreamrEns)
+}
+
+// SetDimoStreamrNode is a paid mutator transaction binding the contract method 0x5f450e29.
+//
+// Solidity: function setDimoStreamrNode(address dimoStreamrNode) returns()
+func (_Registry *RegistryTransactor) SetDimoStreamrNode(opts *bind.TransactOpts, dimoStreamrNode common.Address) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "setDimoStreamrNode", dimoStreamrNode)
+}
+
+// SetDimoStreamrNode is a paid mutator transaction binding the contract method 0x5f450e29.
+//
+// Solidity: function setDimoStreamrNode(address dimoStreamrNode) returns()
+func (_Registry *RegistrySession) SetDimoStreamrNode(dimoStreamrNode common.Address) (*types.Transaction, error) {
+	return _Registry.Contract.SetDimoStreamrNode(&_Registry.TransactOpts, dimoStreamrNode)
+}
+
+// SetDimoStreamrNode is a paid mutator transaction binding the contract method 0x5f450e29.
+//
+// Solidity: function setDimoStreamrNode(address dimoStreamrNode) returns()
+func (_Registry *RegistryTransactorSession) SetDimoStreamrNode(dimoStreamrNode common.Address) (*types.Transaction, error) {
+	return _Registry.Contract.SetDimoStreamrNode(&_Registry.TransactOpts, dimoStreamrNode)
+}
+
 // SetDimoToken is a paid mutator transaction binding the contract method 0x5b6c1979.
 //
 // Solidity: function setDimoToken(address _dimoToken) returns()
@@ -2084,6 +2630,48 @@ func (_Registry *RegistryTransactorSession) SetManufacturerInfo(tokenId *big.Int
 	return _Registry.Contract.SetManufacturerInfo(&_Registry.TransactOpts, tokenId, attrInfoList)
 }
 
+// SetStreamRegistry is a paid mutator transaction binding the contract method 0x0c3cac3b.
+//
+// Solidity: function setStreamRegistry(address streamRegistry) returns()
+func (_Registry *RegistryTransactor) SetStreamRegistry(opts *bind.TransactOpts, streamRegistry common.Address) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "setStreamRegistry", streamRegistry)
+}
+
+// SetStreamRegistry is a paid mutator transaction binding the contract method 0x0c3cac3b.
+//
+// Solidity: function setStreamRegistry(address streamRegistry) returns()
+func (_Registry *RegistrySession) SetStreamRegistry(streamRegistry common.Address) (*types.Transaction, error) {
+	return _Registry.Contract.SetStreamRegistry(&_Registry.TransactOpts, streamRegistry)
+}
+
+// SetStreamRegistry is a paid mutator transaction binding the contract method 0x0c3cac3b.
+//
+// Solidity: function setStreamRegistry(address streamRegistry) returns()
+func (_Registry *RegistryTransactorSession) SetStreamRegistry(streamRegistry common.Address) (*types.Transaction, error) {
+	return _Registry.Contract.SetStreamRegistry(&_Registry.TransactOpts, streamRegistry)
+}
+
+// SetSubscriptionToVehicleStream is a paid mutator transaction binding the contract method 0xbb44bb75.
+//
+// Solidity: function setSubscriptionToVehicleStream(uint256 vehicleId, address subscriber, uint256 expirationTime) returns()
+func (_Registry *RegistryTransactor) SetSubscriptionToVehicleStream(opts *bind.TransactOpts, vehicleId *big.Int, subscriber common.Address, expirationTime *big.Int) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "setSubscriptionToVehicleStream", vehicleId, subscriber, expirationTime)
+}
+
+// SetSubscriptionToVehicleStream is a paid mutator transaction binding the contract method 0xbb44bb75.
+//
+// Solidity: function setSubscriptionToVehicleStream(uint256 vehicleId, address subscriber, uint256 expirationTime) returns()
+func (_Registry *RegistrySession) SetSubscriptionToVehicleStream(vehicleId *big.Int, subscriber common.Address, expirationTime *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.SetSubscriptionToVehicleStream(&_Registry.TransactOpts, vehicleId, subscriber, expirationTime)
+}
+
+// SetSubscriptionToVehicleStream is a paid mutator transaction binding the contract method 0xbb44bb75.
+//
+// Solidity: function setSubscriptionToVehicleStream(uint256 vehicleId, address subscriber, uint256 expirationTime) returns()
+func (_Registry *RegistryTransactorSession) SetSubscriptionToVehicleStream(vehicleId *big.Int, subscriber common.Address, expirationTime *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.SetSubscriptionToVehicleStream(&_Registry.TransactOpts, vehicleId, subscriber, expirationTime)
+}
+
 // SetSyntheticDeviceIdProxyAddress is a paid mutator transaction binding the contract method 0xecf452d7.
 //
 // Solidity: function setSyntheticDeviceIdProxyAddress(address addr) returns()
@@ -2166,6 +2754,48 @@ func (_Registry *RegistrySession) SetVehicleInfo(tokenId *big.Int, attrInfo []At
 // Solidity: function setVehicleInfo(uint256 tokenId, (string,string)[] attrInfo) returns()
 func (_Registry *RegistryTransactorSession) SetVehicleInfo(tokenId *big.Int, attrInfo []AttributeInfoPair) (*types.Transaction, error) {
 	return _Registry.Contract.SetVehicleInfo(&_Registry.TransactOpts, tokenId, attrInfo)
+}
+
+// SetVehicleStream is a paid mutator transaction binding the contract method 0x6f58f093.
+//
+// Solidity: function setVehicleStream(uint256 vehicleId, string streamId) returns()
+func (_Registry *RegistryTransactor) SetVehicleStream(opts *bind.TransactOpts, vehicleId *big.Int, streamId string) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "setVehicleStream", vehicleId, streamId)
+}
+
+// SetVehicleStream is a paid mutator transaction binding the contract method 0x6f58f093.
+//
+// Solidity: function setVehicleStream(uint256 vehicleId, string streamId) returns()
+func (_Registry *RegistrySession) SetVehicleStream(vehicleId *big.Int, streamId string) (*types.Transaction, error) {
+	return _Registry.Contract.SetVehicleStream(&_Registry.TransactOpts, vehicleId, streamId)
+}
+
+// SetVehicleStream is a paid mutator transaction binding the contract method 0x6f58f093.
+//
+// Solidity: function setVehicleStream(uint256 vehicleId, string streamId) returns()
+func (_Registry *RegistryTransactorSession) SetVehicleStream(vehicleId *big.Int, streamId string) (*types.Transaction, error) {
+	return _Registry.Contract.SetVehicleStream(&_Registry.TransactOpts, vehicleId, streamId)
+}
+
+// SubscribeToVehicleStream is a paid mutator transaction binding the contract method 0x37479f7e.
+//
+// Solidity: function subscribeToVehicleStream(uint256 vehicleId, uint256 expirationTime) returns()
+func (_Registry *RegistryTransactor) SubscribeToVehicleStream(opts *bind.TransactOpts, vehicleId *big.Int, expirationTime *big.Int) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "subscribeToVehicleStream", vehicleId, expirationTime)
+}
+
+// SubscribeToVehicleStream is a paid mutator transaction binding the contract method 0x37479f7e.
+//
+// Solidity: function subscribeToVehicleStream(uint256 vehicleId, uint256 expirationTime) returns()
+func (_Registry *RegistrySession) SubscribeToVehicleStream(vehicleId *big.Int, expirationTime *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.SubscribeToVehicleStream(&_Registry.TransactOpts, vehicleId, expirationTime)
+}
+
+// SubscribeToVehicleStream is a paid mutator transaction binding the contract method 0x37479f7e.
+//
+// Solidity: function subscribeToVehicleStream(uint256 vehicleId, uint256 expirationTime) returns()
+func (_Registry *RegistryTransactorSession) SubscribeToVehicleStream(vehicleId *big.Int, expirationTime *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.SubscribeToVehicleStream(&_Registry.TransactOpts, vehicleId, expirationTime)
 }
 
 // TransferAftermarketDeviceOwnership is a paid mutator transaction binding the contract method 0xff96b761.
@@ -2292,6 +2922,27 @@ func (_Registry *RegistrySession) UnpairAftermarketDeviceSign(aftermarketDeviceN
 // Solidity: function unpairAftermarketDeviceSign(uint256 aftermarketDeviceNode, uint256 vehicleNode, bytes signature) returns()
 func (_Registry *RegistryTransactorSession) UnpairAftermarketDeviceSign(aftermarketDeviceNode *big.Int, vehicleNode *big.Int, signature []byte) (*types.Transaction, error) {
 	return _Registry.Contract.UnpairAftermarketDeviceSign(&_Registry.TransactOpts, aftermarketDeviceNode, vehicleNode, signature)
+}
+
+// UnsetVehicleStream is a paid mutator transaction binding the contract method 0xcd90df7e.
+//
+// Solidity: function unsetVehicleStream(uint256 vehicleId) returns()
+func (_Registry *RegistryTransactor) UnsetVehicleStream(opts *bind.TransactOpts, vehicleId *big.Int) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "unsetVehicleStream", vehicleId)
+}
+
+// UnsetVehicleStream is a paid mutator transaction binding the contract method 0xcd90df7e.
+//
+// Solidity: function unsetVehicleStream(uint256 vehicleId) returns()
+func (_Registry *RegistrySession) UnsetVehicleStream(vehicleId *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.UnsetVehicleStream(&_Registry.TransactOpts, vehicleId)
+}
+
+// UnsetVehicleStream is a paid mutator transaction binding the contract method 0xcd90df7e.
+//
+// Solidity: function unsetVehicleStream(uint256 vehicleId) returns()
+func (_Registry *RegistryTransactorSession) UnsetVehicleStream(vehicleId *big.Int) (*types.Transaction, error) {
+	return _Registry.Contract.UnsetVehicleStream(&_Registry.TransactOpts, vehicleId)
 }
 
 // UpdateIntegrationMinted is a paid mutator transaction binding the contract method 0x440707b5.
@@ -3260,6 +3911,159 @@ func (_Registry *RegistryFilterer) WatchAftermarketDeviceIdProxySet(opts *bind.W
 func (_Registry *RegistryFilterer) ParseAftermarketDeviceIdProxySet(log types.Log) (*RegistryAftermarketDeviceIdProxySet, error) {
 	event := new(RegistryAftermarketDeviceIdProxySet)
 	if err := _Registry.contract.UnpackLog(event, "AftermarketDeviceIdProxySet", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// RegistryAftermarketDeviceNodeBurnedIterator is returned from FilterAftermarketDeviceNodeBurned and is used to iterate over the raw logs and unpacked data for AftermarketDeviceNodeBurned events raised by the Registry contract.
+type RegistryAftermarketDeviceNodeBurnedIterator struct {
+	Event *RegistryAftermarketDeviceNodeBurned // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *RegistryAftermarketDeviceNodeBurnedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(RegistryAftermarketDeviceNodeBurned)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(RegistryAftermarketDeviceNodeBurned)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *RegistryAftermarketDeviceNodeBurnedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *RegistryAftermarketDeviceNodeBurnedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// RegistryAftermarketDeviceNodeBurned represents a AftermarketDeviceNodeBurned event raised by the Registry contract.
+type RegistryAftermarketDeviceNodeBurned struct {
+	TokenId *big.Int
+	Owner   common.Address
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterAftermarketDeviceNodeBurned is a free log retrieval operation binding the contract event 0xc4d38c0a034bc1693db3b9a33125831c3d2e1f11e5b69be183ff9ac991384d95.
+//
+// Solidity: event AftermarketDeviceNodeBurned(uint256 indexed tokenId, address indexed owner)
+func (_Registry *RegistryFilterer) FilterAftermarketDeviceNodeBurned(opts *bind.FilterOpts, tokenId []*big.Int, owner []common.Address) (*RegistryAftermarketDeviceNodeBurnedIterator, error) {
+
+	var tokenIdRule []interface{}
+	for _, tokenIdItem := range tokenId {
+		tokenIdRule = append(tokenIdRule, tokenIdItem)
+	}
+	var ownerRule []interface{}
+	for _, ownerItem := range owner {
+		ownerRule = append(ownerRule, ownerItem)
+	}
+
+	logs, sub, err := _Registry.contract.FilterLogs(opts, "AftermarketDeviceNodeBurned", tokenIdRule, ownerRule)
+	if err != nil {
+		return nil, err
+	}
+	return &RegistryAftermarketDeviceNodeBurnedIterator{contract: _Registry.contract, event: "AftermarketDeviceNodeBurned", logs: logs, sub: sub}, nil
+}
+
+// WatchAftermarketDeviceNodeBurned is a free log subscription operation binding the contract event 0xc4d38c0a034bc1693db3b9a33125831c3d2e1f11e5b69be183ff9ac991384d95.
+//
+// Solidity: event AftermarketDeviceNodeBurned(uint256 indexed tokenId, address indexed owner)
+func (_Registry *RegistryFilterer) WatchAftermarketDeviceNodeBurned(opts *bind.WatchOpts, sink chan<- *RegistryAftermarketDeviceNodeBurned, tokenId []*big.Int, owner []common.Address) (event.Subscription, error) {
+
+	var tokenIdRule []interface{}
+	for _, tokenIdItem := range tokenId {
+		tokenIdRule = append(tokenIdRule, tokenIdItem)
+	}
+	var ownerRule []interface{}
+	for _, ownerItem := range owner {
+		ownerRule = append(ownerRule, ownerItem)
+	}
+
+	logs, sub, err := _Registry.contract.WatchLogs(opts, "AftermarketDeviceNodeBurned", tokenIdRule, ownerRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(RegistryAftermarketDeviceNodeBurned)
+				if err := _Registry.contract.UnpackLog(event, "AftermarketDeviceNodeBurned", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseAftermarketDeviceNodeBurned is a log parse operation binding the contract event 0xc4d38c0a034bc1693db3b9a33125831c3d2e1f11e5b69be183ff9ac991384d95.
+//
+// Solidity: event AftermarketDeviceNodeBurned(uint256 indexed tokenId, address indexed owner)
+func (_Registry *RegistryFilterer) ParseAftermarketDeviceNodeBurned(log types.Log) (*RegistryAftermarketDeviceNodeBurned, error) {
+	event := new(RegistryAftermarketDeviceNodeBurned)
+	if err := _Registry.contract.UnpackLog(event, "AftermarketDeviceNodeBurned", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log
@@ -4785,6 +5589,583 @@ func (_Registry *RegistryFilterer) ParseControllerSet(log types.Log) (*RegistryC
 	return event, nil
 }
 
+// RegistryDeviceDefinitionInsertedIterator is returned from FilterDeviceDefinitionInserted and is used to iterate over the raw logs and unpacked data for DeviceDefinitionInserted events raised by the Registry contract.
+type RegistryDeviceDefinitionInsertedIterator struct {
+	Event *RegistryDeviceDefinitionInserted // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *RegistryDeviceDefinitionInsertedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(RegistryDeviceDefinitionInserted)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(RegistryDeviceDefinitionInserted)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *RegistryDeviceDefinitionInsertedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *RegistryDeviceDefinitionInsertedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// RegistryDeviceDefinitionInserted represents a DeviceDefinitionInserted event raised by the Registry contract.
+type RegistryDeviceDefinitionInserted struct {
+	TableId *big.Int
+	Id      string
+	Model   string
+	Year    *big.Int
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterDeviceDefinitionInserted is a free log retrieval operation binding the contract event 0x462ef08cd7ac75ba02b3d84fe43ba15ae23f90a51484c6536057e951c2b629bb.
+//
+// Solidity: event DeviceDefinitionInserted(uint256 indexed tableId, string id, string model, uint256 year)
+func (_Registry *RegistryFilterer) FilterDeviceDefinitionInserted(opts *bind.FilterOpts, tableId []*big.Int) (*RegistryDeviceDefinitionInsertedIterator, error) {
+
+	var tableIdRule []interface{}
+	for _, tableIdItem := range tableId {
+		tableIdRule = append(tableIdRule, tableIdItem)
+	}
+
+	logs, sub, err := _Registry.contract.FilterLogs(opts, "DeviceDefinitionInserted", tableIdRule)
+	if err != nil {
+		return nil, err
+	}
+	return &RegistryDeviceDefinitionInsertedIterator{contract: _Registry.contract, event: "DeviceDefinitionInserted", logs: logs, sub: sub}, nil
+}
+
+// WatchDeviceDefinitionInserted is a free log subscription operation binding the contract event 0x462ef08cd7ac75ba02b3d84fe43ba15ae23f90a51484c6536057e951c2b629bb.
+//
+// Solidity: event DeviceDefinitionInserted(uint256 indexed tableId, string id, string model, uint256 year)
+func (_Registry *RegistryFilterer) WatchDeviceDefinitionInserted(opts *bind.WatchOpts, sink chan<- *RegistryDeviceDefinitionInserted, tableId []*big.Int) (event.Subscription, error) {
+
+	var tableIdRule []interface{}
+	for _, tableIdItem := range tableId {
+		tableIdRule = append(tableIdRule, tableIdItem)
+	}
+
+	logs, sub, err := _Registry.contract.WatchLogs(opts, "DeviceDefinitionInserted", tableIdRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(RegistryDeviceDefinitionInserted)
+				if err := _Registry.contract.UnpackLog(event, "DeviceDefinitionInserted", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseDeviceDefinitionInserted is a log parse operation binding the contract event 0x462ef08cd7ac75ba02b3d84fe43ba15ae23f90a51484c6536057e951c2b629bb.
+//
+// Solidity: event DeviceDefinitionInserted(uint256 indexed tableId, string id, string model, uint256 year)
+func (_Registry *RegistryFilterer) ParseDeviceDefinitionInserted(log types.Log) (*RegistryDeviceDefinitionInserted, error) {
+	event := new(RegistryDeviceDefinitionInserted)
+	if err := _Registry.contract.UnpackLog(event, "DeviceDefinitionInserted", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// RegistryDeviceDefinitionTableCreatedIterator is returned from FilterDeviceDefinitionTableCreated and is used to iterate over the raw logs and unpacked data for DeviceDefinitionTableCreated events raised by the Registry contract.
+type RegistryDeviceDefinitionTableCreatedIterator struct {
+	Event *RegistryDeviceDefinitionTableCreated // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *RegistryDeviceDefinitionTableCreatedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(RegistryDeviceDefinitionTableCreated)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(RegistryDeviceDefinitionTableCreated)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *RegistryDeviceDefinitionTableCreatedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *RegistryDeviceDefinitionTableCreatedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// RegistryDeviceDefinitionTableCreated represents a DeviceDefinitionTableCreated event raised by the Registry contract.
+type RegistryDeviceDefinitionTableCreated struct {
+	TableOwner     common.Address
+	ManufacturerId *big.Int
+	TableId        *big.Int
+	Raw            types.Log // Blockchain specific contextual infos
+}
+
+// FilterDeviceDefinitionTableCreated is a free log retrieval operation binding the contract event 0x34045c03bca909729abb696ffeefc454874a5b7967ee473daeafa7b45c91999e.
+//
+// Solidity: event DeviceDefinitionTableCreated(address indexed tableOwner, uint256 indexed manufacturerId, uint256 indexed tableId)
+func (_Registry *RegistryFilterer) FilterDeviceDefinitionTableCreated(opts *bind.FilterOpts, tableOwner []common.Address, manufacturerId []*big.Int, tableId []*big.Int) (*RegistryDeviceDefinitionTableCreatedIterator, error) {
+
+	var tableOwnerRule []interface{}
+	for _, tableOwnerItem := range tableOwner {
+		tableOwnerRule = append(tableOwnerRule, tableOwnerItem)
+	}
+	var manufacturerIdRule []interface{}
+	for _, manufacturerIdItem := range manufacturerId {
+		manufacturerIdRule = append(manufacturerIdRule, manufacturerIdItem)
+	}
+	var tableIdRule []interface{}
+	for _, tableIdItem := range tableId {
+		tableIdRule = append(tableIdRule, tableIdItem)
+	}
+
+	logs, sub, err := _Registry.contract.FilterLogs(opts, "DeviceDefinitionTableCreated", tableOwnerRule, manufacturerIdRule, tableIdRule)
+	if err != nil {
+		return nil, err
+	}
+	return &RegistryDeviceDefinitionTableCreatedIterator{contract: _Registry.contract, event: "DeviceDefinitionTableCreated", logs: logs, sub: sub}, nil
+}
+
+// WatchDeviceDefinitionTableCreated is a free log subscription operation binding the contract event 0x34045c03bca909729abb696ffeefc454874a5b7967ee473daeafa7b45c91999e.
+//
+// Solidity: event DeviceDefinitionTableCreated(address indexed tableOwner, uint256 indexed manufacturerId, uint256 indexed tableId)
+func (_Registry *RegistryFilterer) WatchDeviceDefinitionTableCreated(opts *bind.WatchOpts, sink chan<- *RegistryDeviceDefinitionTableCreated, tableOwner []common.Address, manufacturerId []*big.Int, tableId []*big.Int) (event.Subscription, error) {
+
+	var tableOwnerRule []interface{}
+	for _, tableOwnerItem := range tableOwner {
+		tableOwnerRule = append(tableOwnerRule, tableOwnerItem)
+	}
+	var manufacturerIdRule []interface{}
+	for _, manufacturerIdItem := range manufacturerId {
+		manufacturerIdRule = append(manufacturerIdRule, manufacturerIdItem)
+	}
+	var tableIdRule []interface{}
+	for _, tableIdItem := range tableId {
+		tableIdRule = append(tableIdRule, tableIdItem)
+	}
+
+	logs, sub, err := _Registry.contract.WatchLogs(opts, "DeviceDefinitionTableCreated", tableOwnerRule, manufacturerIdRule, tableIdRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(RegistryDeviceDefinitionTableCreated)
+				if err := _Registry.contract.UnpackLog(event, "DeviceDefinitionTableCreated", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseDeviceDefinitionTableCreated is a log parse operation binding the contract event 0x34045c03bca909729abb696ffeefc454874a5b7967ee473daeafa7b45c91999e.
+//
+// Solidity: event DeviceDefinitionTableCreated(address indexed tableOwner, uint256 indexed manufacturerId, uint256 indexed tableId)
+func (_Registry *RegistryFilterer) ParseDeviceDefinitionTableCreated(log types.Log) (*RegistryDeviceDefinitionTableCreated, error) {
+	event := new(RegistryDeviceDefinitionTableCreated)
+	if err := _Registry.contract.UnpackLog(event, "DeviceDefinitionTableCreated", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// RegistryDimoStreamrEnsSetIterator is returned from FilterDimoStreamrEnsSet and is used to iterate over the raw logs and unpacked data for DimoStreamrEnsSet events raised by the Registry contract.
+type RegistryDimoStreamrEnsSetIterator struct {
+	Event *RegistryDimoStreamrEnsSet // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *RegistryDimoStreamrEnsSetIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(RegistryDimoStreamrEnsSet)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(RegistryDimoStreamrEnsSet)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *RegistryDimoStreamrEnsSetIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *RegistryDimoStreamrEnsSetIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// RegistryDimoStreamrEnsSet represents a DimoStreamrEnsSet event raised by the Registry contract.
+type RegistryDimoStreamrEnsSet struct {
+	DimoStreamrEns string
+	Raw            types.Log // Blockchain specific contextual infos
+}
+
+// FilterDimoStreamrEnsSet is a free log retrieval operation binding the contract event 0x5c6e4ce43bdb4e1b32c15a4e01073b36c28f6f16a024609785a545634d83ba69.
+//
+// Solidity: event DimoStreamrEnsSet(string dimoStreamrEns)
+func (_Registry *RegistryFilterer) FilterDimoStreamrEnsSet(opts *bind.FilterOpts) (*RegistryDimoStreamrEnsSetIterator, error) {
+
+	logs, sub, err := _Registry.contract.FilterLogs(opts, "DimoStreamrEnsSet")
+	if err != nil {
+		return nil, err
+	}
+	return &RegistryDimoStreamrEnsSetIterator{contract: _Registry.contract, event: "DimoStreamrEnsSet", logs: logs, sub: sub}, nil
+}
+
+// WatchDimoStreamrEnsSet is a free log subscription operation binding the contract event 0x5c6e4ce43bdb4e1b32c15a4e01073b36c28f6f16a024609785a545634d83ba69.
+//
+// Solidity: event DimoStreamrEnsSet(string dimoStreamrEns)
+func (_Registry *RegistryFilterer) WatchDimoStreamrEnsSet(opts *bind.WatchOpts, sink chan<- *RegistryDimoStreamrEnsSet) (event.Subscription, error) {
+
+	logs, sub, err := _Registry.contract.WatchLogs(opts, "DimoStreamrEnsSet")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(RegistryDimoStreamrEnsSet)
+				if err := _Registry.contract.UnpackLog(event, "DimoStreamrEnsSet", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseDimoStreamrEnsSet is a log parse operation binding the contract event 0x5c6e4ce43bdb4e1b32c15a4e01073b36c28f6f16a024609785a545634d83ba69.
+//
+// Solidity: event DimoStreamrEnsSet(string dimoStreamrEns)
+func (_Registry *RegistryFilterer) ParseDimoStreamrEnsSet(log types.Log) (*RegistryDimoStreamrEnsSet, error) {
+	event := new(RegistryDimoStreamrEnsSet)
+	if err := _Registry.contract.UnpackLog(event, "DimoStreamrEnsSet", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// RegistryDimoStreamrNodeSetIterator is returned from FilterDimoStreamrNodeSet and is used to iterate over the raw logs and unpacked data for DimoStreamrNodeSet events raised by the Registry contract.
+type RegistryDimoStreamrNodeSetIterator struct {
+	Event *RegistryDimoStreamrNodeSet // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *RegistryDimoStreamrNodeSetIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(RegistryDimoStreamrNodeSet)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(RegistryDimoStreamrNodeSet)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *RegistryDimoStreamrNodeSetIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *RegistryDimoStreamrNodeSetIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// RegistryDimoStreamrNodeSet represents a DimoStreamrNodeSet event raised by the Registry contract.
+type RegistryDimoStreamrNodeSet struct {
+	DimoStreamrNode common.Address
+	Raw             types.Log // Blockchain specific contextual infos
+}
+
+// FilterDimoStreamrNodeSet is a free log retrieval operation binding the contract event 0x49a3b2d583fcf868092d6cb62f348da2ae9e03698d56a5104a9dd5ea5cafbae7.
+//
+// Solidity: event DimoStreamrNodeSet(address dimoStreamrNode)
+func (_Registry *RegistryFilterer) FilterDimoStreamrNodeSet(opts *bind.FilterOpts) (*RegistryDimoStreamrNodeSetIterator, error) {
+
+	logs, sub, err := _Registry.contract.FilterLogs(opts, "DimoStreamrNodeSet")
+	if err != nil {
+		return nil, err
+	}
+	return &RegistryDimoStreamrNodeSetIterator{contract: _Registry.contract, event: "DimoStreamrNodeSet", logs: logs, sub: sub}, nil
+}
+
+// WatchDimoStreamrNodeSet is a free log subscription operation binding the contract event 0x49a3b2d583fcf868092d6cb62f348da2ae9e03698d56a5104a9dd5ea5cafbae7.
+//
+// Solidity: event DimoStreamrNodeSet(address dimoStreamrNode)
+func (_Registry *RegistryFilterer) WatchDimoStreamrNodeSet(opts *bind.WatchOpts, sink chan<- *RegistryDimoStreamrNodeSet) (event.Subscription, error) {
+
+	logs, sub, err := _Registry.contract.WatchLogs(opts, "DimoStreamrNodeSet")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(RegistryDimoStreamrNodeSet)
+				if err := _Registry.contract.UnpackLog(event, "DimoStreamrNodeSet", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseDimoStreamrNodeSet is a log parse operation binding the contract event 0x49a3b2d583fcf868092d6cb62f348da2ae9e03698d56a5104a9dd5ea5cafbae7.
+//
+// Solidity: event DimoStreamrNodeSet(address dimoStreamrNode)
+func (_Registry *RegistryFilterer) ParseDimoStreamrNodeSet(log types.Log) (*RegistryDimoStreamrNodeSet, error) {
+	event := new(RegistryDimoStreamrNodeSet)
+	if err := _Registry.contract.UnpackLog(event, "DimoStreamrNodeSet", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
 // RegistryIntegrationAttributeAddedIterator is returned from FilterIntegrationAttributeAdded and is used to iterate over the raw logs and unpacked data for IntegrationAttributeAdded events raised by the Registry contract.
 type RegistryIntegrationAttributeAddedIterator struct {
 	Event *RegistryIntegrationAttributeAdded // Event containing the contract specifics and raw log
@@ -5912,6 +7293,159 @@ func (_Registry *RegistryFilterer) ParseManufacturerNodeMinted(log types.Log) (*
 	return event, nil
 }
 
+// RegistryManufacturerTableSetIterator is returned from FilterManufacturerTableSet and is used to iterate over the raw logs and unpacked data for ManufacturerTableSet events raised by the Registry contract.
+type RegistryManufacturerTableSetIterator struct {
+	Event *RegistryManufacturerTableSet // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *RegistryManufacturerTableSetIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(RegistryManufacturerTableSet)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(RegistryManufacturerTableSet)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *RegistryManufacturerTableSetIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *RegistryManufacturerTableSetIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// RegistryManufacturerTableSet represents a ManufacturerTableSet event raised by the Registry contract.
+type RegistryManufacturerTableSet struct {
+	ManufacturerId *big.Int
+	TableId        *big.Int
+	Raw            types.Log // Blockchain specific contextual infos
+}
+
+// FilterManufacturerTableSet is a free log retrieval operation binding the contract event 0x753affc1c97f48f4eb21cf9ca5906ba280ab310171483c29e73826d74505b3cf.
+//
+// Solidity: event ManufacturerTableSet(uint256 indexed manufacturerId, uint256 indexed tableId)
+func (_Registry *RegistryFilterer) FilterManufacturerTableSet(opts *bind.FilterOpts, manufacturerId []*big.Int, tableId []*big.Int) (*RegistryManufacturerTableSetIterator, error) {
+
+	var manufacturerIdRule []interface{}
+	for _, manufacturerIdItem := range manufacturerId {
+		manufacturerIdRule = append(manufacturerIdRule, manufacturerIdItem)
+	}
+	var tableIdRule []interface{}
+	for _, tableIdItem := range tableId {
+		tableIdRule = append(tableIdRule, tableIdItem)
+	}
+
+	logs, sub, err := _Registry.contract.FilterLogs(opts, "ManufacturerTableSet", manufacturerIdRule, tableIdRule)
+	if err != nil {
+		return nil, err
+	}
+	return &RegistryManufacturerTableSetIterator{contract: _Registry.contract, event: "ManufacturerTableSet", logs: logs, sub: sub}, nil
+}
+
+// WatchManufacturerTableSet is a free log subscription operation binding the contract event 0x753affc1c97f48f4eb21cf9ca5906ba280ab310171483c29e73826d74505b3cf.
+//
+// Solidity: event ManufacturerTableSet(uint256 indexed manufacturerId, uint256 indexed tableId)
+func (_Registry *RegistryFilterer) WatchManufacturerTableSet(opts *bind.WatchOpts, sink chan<- *RegistryManufacturerTableSet, manufacturerId []*big.Int, tableId []*big.Int) (event.Subscription, error) {
+
+	var manufacturerIdRule []interface{}
+	for _, manufacturerIdItem := range manufacturerId {
+		manufacturerIdRule = append(manufacturerIdRule, manufacturerIdItem)
+	}
+	var tableIdRule []interface{}
+	for _, tableIdItem := range tableId {
+		tableIdRule = append(tableIdRule, tableIdItem)
+	}
+
+	logs, sub, err := _Registry.contract.WatchLogs(opts, "ManufacturerTableSet", manufacturerIdRule, tableIdRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(RegistryManufacturerTableSet)
+				if err := _Registry.contract.UnpackLog(event, "ManufacturerTableSet", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseManufacturerTableSet is a log parse operation binding the contract event 0x753affc1c97f48f4eb21cf9ca5906ba280ab310171483c29e73826d74505b3cf.
+//
+// Solidity: event ManufacturerTableSet(uint256 indexed manufacturerId, uint256 indexed tableId)
+func (_Registry *RegistryFilterer) ParseManufacturerTableSet(log types.Log) (*RegistryManufacturerTableSet, error) {
+	event := new(RegistryManufacturerTableSet)
+	if err := _Registry.contract.UnpackLog(event, "ManufacturerTableSet", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
 // RegistryModuleAddedIterator is returned from FilterModuleAdded and is used to iterate over the raw logs and unpacked data for ModuleAdded events raised by the Registry contract.
 type RegistryModuleAddedIterator struct {
 	Event *RegistryModuleAdded // Event containing the contract specifics and raw log
@@ -6837,6 +8371,286 @@ func (_Registry *RegistryFilterer) WatchRoleRevoked(opts *bind.WatchOpts, sink c
 func (_Registry *RegistryFilterer) ParseRoleRevoked(log types.Log) (*RegistryRoleRevoked, error) {
 	event := new(RegistryRoleRevoked)
 	if err := _Registry.contract.UnpackLog(event, "RoleRevoked", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// RegistryStreamRegistrySetIterator is returned from FilterStreamRegistrySet and is used to iterate over the raw logs and unpacked data for StreamRegistrySet events raised by the Registry contract.
+type RegistryStreamRegistrySetIterator struct {
+	Event *RegistryStreamRegistrySet // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *RegistryStreamRegistrySetIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(RegistryStreamRegistrySet)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(RegistryStreamRegistrySet)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *RegistryStreamRegistrySetIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *RegistryStreamRegistrySetIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// RegistryStreamRegistrySet represents a StreamRegistrySet event raised by the Registry contract.
+type RegistryStreamRegistrySet struct {
+	StreamRegistry common.Address
+	Raw            types.Log // Blockchain specific contextual infos
+}
+
+// FilterStreamRegistrySet is a free log retrieval operation binding the contract event 0x42d068f44efba28cc4aa260e8fd67e7d93abf8215c8a61b4dbbc3eaf0ab39f56.
+//
+// Solidity: event StreamRegistrySet(address streamRegistry)
+func (_Registry *RegistryFilterer) FilterStreamRegistrySet(opts *bind.FilterOpts) (*RegistryStreamRegistrySetIterator, error) {
+
+	logs, sub, err := _Registry.contract.FilterLogs(opts, "StreamRegistrySet")
+	if err != nil {
+		return nil, err
+	}
+	return &RegistryStreamRegistrySetIterator{contract: _Registry.contract, event: "StreamRegistrySet", logs: logs, sub: sub}, nil
+}
+
+// WatchStreamRegistrySet is a free log subscription operation binding the contract event 0x42d068f44efba28cc4aa260e8fd67e7d93abf8215c8a61b4dbbc3eaf0ab39f56.
+//
+// Solidity: event StreamRegistrySet(address streamRegistry)
+func (_Registry *RegistryFilterer) WatchStreamRegistrySet(opts *bind.WatchOpts, sink chan<- *RegistryStreamRegistrySet) (event.Subscription, error) {
+
+	logs, sub, err := _Registry.contract.WatchLogs(opts, "StreamRegistrySet")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(RegistryStreamRegistrySet)
+				if err := _Registry.contract.UnpackLog(event, "StreamRegistrySet", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseStreamRegistrySet is a log parse operation binding the contract event 0x42d068f44efba28cc4aa260e8fd67e7d93abf8215c8a61b4dbbc3eaf0ab39f56.
+//
+// Solidity: event StreamRegistrySet(address streamRegistry)
+func (_Registry *RegistryFilterer) ParseStreamRegistrySet(log types.Log) (*RegistryStreamRegistrySet, error) {
+	event := new(RegistryStreamRegistrySet)
+	if err := _Registry.contract.UnpackLog(event, "StreamRegistrySet", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// RegistrySubscribedToVehicleStreamIterator is returned from FilterSubscribedToVehicleStream and is used to iterate over the raw logs and unpacked data for SubscribedToVehicleStream events raised by the Registry contract.
+type RegistrySubscribedToVehicleStreamIterator struct {
+	Event *RegistrySubscribedToVehicleStream // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *RegistrySubscribedToVehicleStreamIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(RegistrySubscribedToVehicleStream)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(RegistrySubscribedToVehicleStream)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *RegistrySubscribedToVehicleStreamIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *RegistrySubscribedToVehicleStreamIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// RegistrySubscribedToVehicleStream represents a SubscribedToVehicleStream event raised by the Registry contract.
+type RegistrySubscribedToVehicleStream struct {
+	StreamId       string
+	Subscriber     common.Address
+	ExpirationTime *big.Int
+	Raw            types.Log // Blockchain specific contextual infos
+}
+
+// FilterSubscribedToVehicleStream is a free log retrieval operation binding the contract event 0x316c96770fe2528453ad15ac8843953cbc659399f006200f7d61fe124720d607.
+//
+// Solidity: event SubscribedToVehicleStream(string streamId, address indexed subscriber, uint256 expirationTime)
+func (_Registry *RegistryFilterer) FilterSubscribedToVehicleStream(opts *bind.FilterOpts, subscriber []common.Address) (*RegistrySubscribedToVehicleStreamIterator, error) {
+
+	var subscriberRule []interface{}
+	for _, subscriberItem := range subscriber {
+		subscriberRule = append(subscriberRule, subscriberItem)
+	}
+
+	logs, sub, err := _Registry.contract.FilterLogs(opts, "SubscribedToVehicleStream", subscriberRule)
+	if err != nil {
+		return nil, err
+	}
+	return &RegistrySubscribedToVehicleStreamIterator{contract: _Registry.contract, event: "SubscribedToVehicleStream", logs: logs, sub: sub}, nil
+}
+
+// WatchSubscribedToVehicleStream is a free log subscription operation binding the contract event 0x316c96770fe2528453ad15ac8843953cbc659399f006200f7d61fe124720d607.
+//
+// Solidity: event SubscribedToVehicleStream(string streamId, address indexed subscriber, uint256 expirationTime)
+func (_Registry *RegistryFilterer) WatchSubscribedToVehicleStream(opts *bind.WatchOpts, sink chan<- *RegistrySubscribedToVehicleStream, subscriber []common.Address) (event.Subscription, error) {
+
+	var subscriberRule []interface{}
+	for _, subscriberItem := range subscriber {
+		subscriberRule = append(subscriberRule, subscriberItem)
+	}
+
+	logs, sub, err := _Registry.contract.WatchLogs(opts, "SubscribedToVehicleStream", subscriberRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(RegistrySubscribedToVehicleStream)
+				if err := _Registry.contract.UnpackLog(event, "SubscribedToVehicleStream", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseSubscribedToVehicleStream is a log parse operation binding the contract event 0x316c96770fe2528453ad15ac8843953cbc659399f006200f7d61fe124720d607.
+//
+// Solidity: event SubscribedToVehicleStream(string streamId, address indexed subscriber, uint256 expirationTime)
+func (_Registry *RegistryFilterer) ParseSubscribedToVehicleStream(log types.Log) (*RegistrySubscribedToVehicleStream, error) {
+	event := new(RegistrySubscribedToVehicleStream)
+	if err := _Registry.contract.UnpackLog(event, "SubscribedToVehicleStream", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log
@@ -8887,6 +10701,459 @@ func (_Registry *RegistryFilterer) WatchVehicleNodeMinted(opts *bind.WatchOpts, 
 func (_Registry *RegistryFilterer) ParseVehicleNodeMinted(log types.Log) (*RegistryVehicleNodeMinted, error) {
 	event := new(RegistryVehicleNodeMinted)
 	if err := _Registry.contract.UnpackLog(event, "VehicleNodeMinted", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// RegistryVehicleNodeMintedWithDeviceDefinitionIterator is returned from FilterVehicleNodeMintedWithDeviceDefinition and is used to iterate over the raw logs and unpacked data for VehicleNodeMintedWithDeviceDefinition events raised by the Registry contract.
+type RegistryVehicleNodeMintedWithDeviceDefinitionIterator struct {
+	Event *RegistryVehicleNodeMintedWithDeviceDefinition // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *RegistryVehicleNodeMintedWithDeviceDefinitionIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(RegistryVehicleNodeMintedWithDeviceDefinition)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(RegistryVehicleNodeMintedWithDeviceDefinition)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *RegistryVehicleNodeMintedWithDeviceDefinitionIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *RegistryVehicleNodeMintedWithDeviceDefinitionIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// RegistryVehicleNodeMintedWithDeviceDefinition represents a VehicleNodeMintedWithDeviceDefinition event raised by the Registry contract.
+type RegistryVehicleNodeMintedWithDeviceDefinition struct {
+	ManufacturerId     *big.Int
+	VehicleId          *big.Int
+	Owner              common.Address
+	DeviceDefinitionId string
+	Raw                types.Log // Blockchain specific contextual infos
+}
+
+// FilterVehicleNodeMintedWithDeviceDefinition is a free log retrieval operation binding the contract event 0xc7c7d9ac150ee7eff1ae17be6e6c250d9f574d019d47cd741f693feb1929496c.
+//
+// Solidity: event VehicleNodeMintedWithDeviceDefinition(uint256 indexed manufacturerId, uint256 indexed vehicleId, address indexed owner, string deviceDefinitionId)
+func (_Registry *RegistryFilterer) FilterVehicleNodeMintedWithDeviceDefinition(opts *bind.FilterOpts, manufacturerId []*big.Int, vehicleId []*big.Int, owner []common.Address) (*RegistryVehicleNodeMintedWithDeviceDefinitionIterator, error) {
+
+	var manufacturerIdRule []interface{}
+	for _, manufacturerIdItem := range manufacturerId {
+		manufacturerIdRule = append(manufacturerIdRule, manufacturerIdItem)
+	}
+	var vehicleIdRule []interface{}
+	for _, vehicleIdItem := range vehicleId {
+		vehicleIdRule = append(vehicleIdRule, vehicleIdItem)
+	}
+	var ownerRule []interface{}
+	for _, ownerItem := range owner {
+		ownerRule = append(ownerRule, ownerItem)
+	}
+
+	logs, sub, err := _Registry.contract.FilterLogs(opts, "VehicleNodeMintedWithDeviceDefinition", manufacturerIdRule, vehicleIdRule, ownerRule)
+	if err != nil {
+		return nil, err
+	}
+	return &RegistryVehicleNodeMintedWithDeviceDefinitionIterator{contract: _Registry.contract, event: "VehicleNodeMintedWithDeviceDefinition", logs: logs, sub: sub}, nil
+}
+
+// WatchVehicleNodeMintedWithDeviceDefinition is a free log subscription operation binding the contract event 0xc7c7d9ac150ee7eff1ae17be6e6c250d9f574d019d47cd741f693feb1929496c.
+//
+// Solidity: event VehicleNodeMintedWithDeviceDefinition(uint256 indexed manufacturerId, uint256 indexed vehicleId, address indexed owner, string deviceDefinitionId)
+func (_Registry *RegistryFilterer) WatchVehicleNodeMintedWithDeviceDefinition(opts *bind.WatchOpts, sink chan<- *RegistryVehicleNodeMintedWithDeviceDefinition, manufacturerId []*big.Int, vehicleId []*big.Int, owner []common.Address) (event.Subscription, error) {
+
+	var manufacturerIdRule []interface{}
+	for _, manufacturerIdItem := range manufacturerId {
+		manufacturerIdRule = append(manufacturerIdRule, manufacturerIdItem)
+	}
+	var vehicleIdRule []interface{}
+	for _, vehicleIdItem := range vehicleId {
+		vehicleIdRule = append(vehicleIdRule, vehicleIdItem)
+	}
+	var ownerRule []interface{}
+	for _, ownerItem := range owner {
+		ownerRule = append(ownerRule, ownerItem)
+	}
+
+	logs, sub, err := _Registry.contract.WatchLogs(opts, "VehicleNodeMintedWithDeviceDefinition", manufacturerIdRule, vehicleIdRule, ownerRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(RegistryVehicleNodeMintedWithDeviceDefinition)
+				if err := _Registry.contract.UnpackLog(event, "VehicleNodeMintedWithDeviceDefinition", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseVehicleNodeMintedWithDeviceDefinition is a log parse operation binding the contract event 0xc7c7d9ac150ee7eff1ae17be6e6c250d9f574d019d47cd741f693feb1929496c.
+//
+// Solidity: event VehicleNodeMintedWithDeviceDefinition(uint256 indexed manufacturerId, uint256 indexed vehicleId, address indexed owner, string deviceDefinitionId)
+func (_Registry *RegistryFilterer) ParseVehicleNodeMintedWithDeviceDefinition(log types.Log) (*RegistryVehicleNodeMintedWithDeviceDefinition, error) {
+	event := new(RegistryVehicleNodeMintedWithDeviceDefinition)
+	if err := _Registry.contract.UnpackLog(event, "VehicleNodeMintedWithDeviceDefinition", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// RegistryVehicleStreamSetIterator is returned from FilterVehicleStreamSet and is used to iterate over the raw logs and unpacked data for VehicleStreamSet events raised by the Registry contract.
+type RegistryVehicleStreamSetIterator struct {
+	Event *RegistryVehicleStreamSet // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *RegistryVehicleStreamSetIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(RegistryVehicleStreamSet)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(RegistryVehicleStreamSet)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *RegistryVehicleStreamSetIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *RegistryVehicleStreamSetIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// RegistryVehicleStreamSet represents a VehicleStreamSet event raised by the Registry contract.
+type RegistryVehicleStreamSet struct {
+	VehicleId *big.Int
+	StreamId  string
+	Raw       types.Log // Blockchain specific contextual infos
+}
+
+// FilterVehicleStreamSet is a free log retrieval operation binding the contract event 0x09d0a7809cb7d90906448d57618581b65ca306d116e2b991721b9ef877d890de.
+//
+// Solidity: event VehicleStreamSet(uint256 indexed vehicleId, string streamId)
+func (_Registry *RegistryFilterer) FilterVehicleStreamSet(opts *bind.FilterOpts, vehicleId []*big.Int) (*RegistryVehicleStreamSetIterator, error) {
+
+	var vehicleIdRule []interface{}
+	for _, vehicleIdItem := range vehicleId {
+		vehicleIdRule = append(vehicleIdRule, vehicleIdItem)
+	}
+
+	logs, sub, err := _Registry.contract.FilterLogs(opts, "VehicleStreamSet", vehicleIdRule)
+	if err != nil {
+		return nil, err
+	}
+	return &RegistryVehicleStreamSetIterator{contract: _Registry.contract, event: "VehicleStreamSet", logs: logs, sub: sub}, nil
+}
+
+// WatchVehicleStreamSet is a free log subscription operation binding the contract event 0x09d0a7809cb7d90906448d57618581b65ca306d116e2b991721b9ef877d890de.
+//
+// Solidity: event VehicleStreamSet(uint256 indexed vehicleId, string streamId)
+func (_Registry *RegistryFilterer) WatchVehicleStreamSet(opts *bind.WatchOpts, sink chan<- *RegistryVehicleStreamSet, vehicleId []*big.Int) (event.Subscription, error) {
+
+	var vehicleIdRule []interface{}
+	for _, vehicleIdItem := range vehicleId {
+		vehicleIdRule = append(vehicleIdRule, vehicleIdItem)
+	}
+
+	logs, sub, err := _Registry.contract.WatchLogs(opts, "VehicleStreamSet", vehicleIdRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(RegistryVehicleStreamSet)
+				if err := _Registry.contract.UnpackLog(event, "VehicleStreamSet", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseVehicleStreamSet is a log parse operation binding the contract event 0x09d0a7809cb7d90906448d57618581b65ca306d116e2b991721b9ef877d890de.
+//
+// Solidity: event VehicleStreamSet(uint256 indexed vehicleId, string streamId)
+func (_Registry *RegistryFilterer) ParseVehicleStreamSet(log types.Log) (*RegistryVehicleStreamSet, error) {
+	event := new(RegistryVehicleStreamSet)
+	if err := _Registry.contract.UnpackLog(event, "VehicleStreamSet", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// RegistryVehicleStreamUnsetIterator is returned from FilterVehicleStreamUnset and is used to iterate over the raw logs and unpacked data for VehicleStreamUnset events raised by the Registry contract.
+type RegistryVehicleStreamUnsetIterator struct {
+	Event *RegistryVehicleStreamUnset // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *RegistryVehicleStreamUnsetIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(RegistryVehicleStreamUnset)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(RegistryVehicleStreamUnset)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *RegistryVehicleStreamUnsetIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *RegistryVehicleStreamUnsetIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// RegistryVehicleStreamUnset represents a VehicleStreamUnset event raised by the Registry contract.
+type RegistryVehicleStreamUnset struct {
+	VehicleId *big.Int
+	StreamId  string
+	Raw       types.Log // Blockchain specific contextual infos
+}
+
+// FilterVehicleStreamUnset is a free log retrieval operation binding the contract event 0x14692607635062a59787a92503915f7eca22e88b9bb3474438d0b393ad0ecf0d.
+//
+// Solidity: event VehicleStreamUnset(uint256 indexed vehicleId, string streamId)
+func (_Registry *RegistryFilterer) FilterVehicleStreamUnset(opts *bind.FilterOpts, vehicleId []*big.Int) (*RegistryVehicleStreamUnsetIterator, error) {
+
+	var vehicleIdRule []interface{}
+	for _, vehicleIdItem := range vehicleId {
+		vehicleIdRule = append(vehicleIdRule, vehicleIdItem)
+	}
+
+	logs, sub, err := _Registry.contract.FilterLogs(opts, "VehicleStreamUnset", vehicleIdRule)
+	if err != nil {
+		return nil, err
+	}
+	return &RegistryVehicleStreamUnsetIterator{contract: _Registry.contract, event: "VehicleStreamUnset", logs: logs, sub: sub}, nil
+}
+
+// WatchVehicleStreamUnset is a free log subscription operation binding the contract event 0x14692607635062a59787a92503915f7eca22e88b9bb3474438d0b393ad0ecf0d.
+//
+// Solidity: event VehicleStreamUnset(uint256 indexed vehicleId, string streamId)
+func (_Registry *RegistryFilterer) WatchVehicleStreamUnset(opts *bind.WatchOpts, sink chan<- *RegistryVehicleStreamUnset, vehicleId []*big.Int) (event.Subscription, error) {
+
+	var vehicleIdRule []interface{}
+	for _, vehicleIdItem := range vehicleId {
+		vehicleIdRule = append(vehicleIdRule, vehicleIdItem)
+	}
+
+	logs, sub, err := _Registry.contract.WatchLogs(opts, "VehicleStreamUnset", vehicleIdRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(RegistryVehicleStreamUnset)
+				if err := _Registry.contract.UnpackLog(event, "VehicleStreamUnset", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseVehicleStreamUnset is a log parse operation binding the contract event 0x14692607635062a59787a92503915f7eca22e88b9bb3474438d0b393ad0ecf0d.
+//
+// Solidity: event VehicleStreamUnset(uint256 indexed vehicleId, string streamId)
+func (_Registry *RegistryFilterer) ParseVehicleStreamUnset(log types.Log) (*RegistryVehicleStreamUnset, error) {
+	event := new(RegistryVehicleStreamUnset)
+	if err := _Registry.contract.UnpackLog(event, "VehicleStreamUnset", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log

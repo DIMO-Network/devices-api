@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
@@ -23,6 +24,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
@@ -42,23 +44,25 @@ type ContractsEventsConsumer struct {
 	apInt        Integration
 	mcInt        Integration
 	ddSvc        DeviceDefinitionService
+	evtSvc       EventService
 }
 
 type EventName string
 
 const (
-	PrivilegeSet                  EventName = "PrivilegeSet"
-	AftermarketDeviceNodeMinted   EventName = "AftermarketDeviceNodeMinted"
-	Transfer                      EventName = "Transfer"
-	BeneficiarySet                EventName = "BeneficiarySet"
-	DCNNameChanged                EventName = "NameChanged"
-	DCNNewNode                    EventName = "NewNode"
-	DCNNewExpiration              EventName = "NewExpiration"
-	AftermarketDeviceClaimed      EventName = "AftermarketDeviceClaimed"
-	AftermarketDevicePaired       EventName = "AftermarketDevicePaired"
-	AftermarketDeviceUnpaired     EventName = "AftermarketDeviceUnpaired"
-	AftermarketDeviceAttributeSet EventName = "AftermarketDeviceAttributeSet"
-	AftermarketDeviceAddressReset EventName = "AftermarketDeviceAddressReset"
+	PrivilegeSet                          EventName = "PrivilegeSet"
+	AftermarketDeviceNodeMinted           EventName = "AftermarketDeviceNodeMinted"
+	Transfer                              EventName = "Transfer"
+	BeneficiarySet                        EventName = "BeneficiarySet"
+	DCNNameChanged                        EventName = "NameChanged"
+	DCNNewNode                            EventName = "NewNode"
+	DCNNewExpiration                      EventName = "NewExpiration"
+	AftermarketDeviceClaimed              EventName = "AftermarketDeviceClaimed"
+	AftermarketDevicePaired               EventName = "AftermarketDevicePaired"
+	AftermarketDeviceUnpaired             EventName = "AftermarketDeviceUnpaired"
+	AftermarketDeviceAttributeSet         EventName = "AftermarketDeviceAttributeSet"
+	AftermarketDeviceAddressReset         EventName = "AftermarketDeviceAddressReset"
+	VehicleNodeMintedWithDeviceDefinition EventName = "VehicleNodeMintedWithDeviceDefinition"
 )
 
 func (r EventName) String() string {
@@ -84,7 +88,7 @@ type Block struct {
 	Time   time.Time   `json:"time,omitempty"`
 }
 
-func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration, mcInt Integration, ddSvc DeviceDefinitionService) *ContractsEventsConsumer {
+func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration, mcInt Integration, ddSvc DeviceDefinitionService, evtSvc EventService) *ContractsEventsConsumer {
 	return &ContractsEventsConsumer{
 		db:           pdb,
 		log:          log,
@@ -93,6 +97,7 @@ func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *con
 		apInt:        apInt,
 		mcInt:        mcInt,
 		ddSvc:        ddSvc,
+		evtSvc:       evtSvc,
 	}
 }
 
@@ -162,6 +167,8 @@ func (c *ContractsEventsConsumer) processEvent(ctx context.Context, event *share
 		return c.aftermarketDeviceAttributeSet(&data)
 	case AftermarketDeviceAddressReset.String():
 		return c.aftermarketDeviceAddressReset(&data)
+	case VehicleNodeMintedWithDeviceDefinition.String():
+		return c.vehicleNodeMintedWithDeviceDefinition(&data)
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -262,17 +269,13 @@ func (c *ContractsEventsConsumer) handleVehicleTransfer(ctx context.Context, e *
 		c.log.Info().Int64("vehicleTokenId", args.TokenId.Int64()).Str("owner", args.From.Hex()).Msg("Burned vehicle.")
 	} else {
 		// Faking a user id for a web3 user with the new owner address.
-		s := dex.IDTokenSubject{
-			UserId: args.To.Hex(),
-			ConnId: "web3",
-		}
-		b, err := proto.Marshal(&s)
+		userID, err := addressToUserID(args.To)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to convert address to user id: %w", err)
 		}
 
 		cols := models.UserDeviceColumns
-		ud.UserID = base64.RawURLEncoding.EncodeToString(b)
+		ud.UserID = userID
 		ud.OwnerAddress = null.BytesFrom(args.To.Bytes())
 
 		if _, err := ud.Update(ctx, tx, boil.Whitelist(cols.UserID, cols.OwnerAddress)); err != nil {
@@ -698,10 +701,104 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAddressReset(e *ContractEvent
 	return err
 }
 
+func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *ContractEventData) error {
+	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
+		return fmt.Errorf("vehicle mint from unexpected source %d/%s", e.ChainID, e.Contract)
+	}
+
+	ctx := context.Background()
+	var args contracts.RegistryVehicleNodeMintedWithDeviceDefinition
+	if err := json.Unmarshal(e.Arguments, &args); err != nil {
+		return fmt.Errorf("failed to unmarshal arguments from mint event: %w", err)
+	}
+
+	log := c.log.With().Int64("vehicleNode", args.VehicleId.Int64()).Int64("manufacturerId", args.ManufacturerId.Int64()).Str("deviceDefinitionId", args.DeviceDefinitionId).Logger()
+	log.Info().Msg("Minting vehicle with device definition")
+
+	tx, err := c.db.DBS().Writer.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback() //nolint
+
+	if check, err := models.MetaTransactionRequests(
+		models.MetaTransactionRequestWhere.Hash.EQ(null.BytesFrom(e.TransactionHash.Bytes())),
+	).Exists(ctx, tx); err != nil {
+		// if we cannot confirm whether event has been handled, log error and then create vehicle
+		log.Err(err).Msg("failed to check if vehicle mint event has already been handled")
+	} else if check {
+		log.Info().Msgf("vehicle mint event has already been handled. tx hash: %s", e.TransactionHash.String())
+		return nil
+	}
+
+	userID, err := addressToUserID(args.Owner)
+	if err != nil {
+		return fmt.Errorf("failed to convert address to user id: %w", err)
+	}
+
+	dDef, err := c.ddSvc.GetDeviceDefinitionBySlugName(ctx, &ddgrpc.GetDeviceDefinitionBySlugNameRequest{Slug: args.DeviceDefinitionId})
+	if err != nil {
+		return fmt.Errorf("failed to get device definition: %w", err)
+	}
+
+	if dDef.Make.TokenId == 0 {
+		return fmt.Errorf("vehicle make not yet minted: %s", dDef.Make.Name)
+	}
+
+	if args.ManufacturerId.Cmp(big.NewInt(int64(dDef.Make.TokenId))) != 0 {
+		return fmt.Errorf("passed manufacturer id %d does not match manufacturer associated with device definition %s", args.ManufacturerId, dDef.DeviceDefinitionId)
+	}
+
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		UserID:             userID,
+		DeviceDefinitionID: dDef.DeviceDefinitionId,
+		OwnerAddress:       null.BytesFrom(args.Owner.Bytes()),
+		TokenID:            dbtypes.NullIntToDecimal(args.VehicleId),
+	}
+
+	if err := ud.Insert(ctx, tx, boil.Infer()); err != nil {
+		return fmt.Errorf("failed to insert new user device: %w", err)
+	}
+
+	c.evtSvc.Emit(&shared.CloudEvent[any]{ //nolint
+		Type:    "com.dimo.zone.device.mint",
+		Subject: ud.ID,
+		Source:  "devices-api",
+		Data: UserDeviceMintEvent{
+			Timestamp: time.Now(),
+			UserID:    ud.UserID,
+			Device: UserDeviceEventDevice{
+				ID:                 ud.ID,
+				VIN:                ud.VinIdentifier.String,
+				DeviceDefinitionID: ud.DeviceDefinitionID,
+			},
+			NFT: UserDeviceEventNFT{
+				TokenID: args.VehicleId,
+				Owner:   args.Owner,
+				TxHash:  e.TransactionHash,
+			},
+		},
+	})
+
+	return tx.Commit()
+
+}
+
 // DCNNameChangedContract represents a NameChanged event raised by the FullAbi contract.
 // Could not use abigen struct because it did not consider the underscore in the name property for serialization
 type DCNNameChangedContract struct {
 	Node [32]byte
 	Name string `json:"name_"`
 	//Raw  types.Log // Blockchain specific contextual infos
+}
+
+func addressToUserID(addr common.Address) (string, error) {
+	userIDArgs := dex.IDTokenSubject{
+		UserId: addr.Hex(),
+		ConnId: "web3",
+	}
+
+	ub, err := proto.Marshal(&userIDArgs)
+	return base64.RawURLEncoding.EncodeToString(ub), err
 }
