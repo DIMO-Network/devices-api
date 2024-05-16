@@ -1631,7 +1631,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
 				ManufacturerNode:    makeTokenID,
 				Owner:               realAddr,
-				DeviceDefinitionId:  userDevice.DeviceDefinitionID,
+				DeviceDefinitionId:  onChainDD,
 				IntegrationNode:     new(big.Int).SetUint64(intID),
 				VehicleOwnerSig:     sigBytes,
 				SyntheticDeviceSig:  sign,
