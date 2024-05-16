@@ -3,8 +3,6 @@ package ipfs
 import (
 	"context"
 	"encoding/base64"
-	"io"
-	"net/http"
 	"testing"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -32,17 +30,10 @@ func TestIPFSUpload_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "Qme23PqtDXmeyETzG3W3sy3ZWTjF2ZQGJWrCG5svtFq8aB", cid)
 
-	resp, err := http.Get(ipfs.url + "/" + cid)
-	assert.NoError(t, err)
-	defer resp.Body.Close()
-
-	bdy, err := io.ReadAll(resp.Body)
+	imgB, err := ipfs.FetchImage(ctx, cid)
 	assert.NoError(t, err)
 
-	var base64Encoding string
-	base64Encoding += "data:image/png;base64,"
-	base64Encoding += base64.StdEncoding.EncodeToString(bdy)
-
+	base64Encoding := imagePrefix + base64.StdEncoding.EncodeToString(imgB)
 	assert.Equal(t, base64Encoding, img)
 
 	ud := models.UserDevice{

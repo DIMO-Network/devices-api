@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/DIMO-Network/devices-api/internal/services/ipfs"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/shared"
@@ -47,6 +48,7 @@ type NFTController struct {
 	smartcarTaskSvc  services.SmartcarTaskService
 	teslaTaskService services.TeslaTaskService
 	deviceDataSvc    services.DeviceDataService
+	ipfsSvc          *ipfs.IPFS
 }
 
 // NewNFTController constructor
@@ -56,8 +58,8 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 	teslaTaskService services.TeslaTaskService,
 	integSvc services.DeviceDefinitionIntegrationService,
 	deviceDataSvc services.DeviceDataService,
+	ipfsSvc *ipfs.IPFS,
 ) NFTController {
-
 	return NFTController{
 		Settings:         settings,
 		DBS:              dbs,
@@ -68,6 +70,7 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 		teslaTaskService: teslaTaskService,
 		integSvc:         integSvc,
 		deviceDataSvc:    deviceDataSvc,
+		ipfsSvc:          ipfsSvc,
 	}
 }
 
@@ -209,6 +212,15 @@ func (nc *NFTController) GetNFTImage(c *fiber.Ctx) error {
 
 	if transparent {
 		suffix = "_transparent.png"
+	} else {
+		// if not transparent and IPFS CID is valid
+		// return image from IPFS instead of s3
+		if nft.IpfsImageCid.Valid {
+			if imgB, err := nc.ipfsSvc.FetchImage(c.Context(), nft.IpfsImageCid.String); err == nil {
+				c.Set("Content-Type", "image/png")
+				return c.Send(imgB)
+			}
+		}
 	}
 
 	s3o, err := nc.s3.GetObject(c.Context(), &s3.GetObjectInput{

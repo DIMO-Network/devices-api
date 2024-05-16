@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -58,7 +59,7 @@ func (i *IPFS) UploadImage(ctx context.Context, img string) (string, error) {
 	req.Header.Set("Content-Type", contentTypeHeader)
 	resp, err := i.client.Do(req.WithContext(ctx))
 	if err != nil {
-		return "", fmt.Errorf("IPFS request failed: %v", err)
+		return "", fmt.Errorf("IPFS post request failed: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -76,4 +77,28 @@ func (i *IPFS) UploadImage(ctx context.Context, img string) (string, error) {
 	}
 
 	return respb.CID, nil
+}
+
+func (i *IPFS) FetchImage(ctx context.Context, cid string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodGet, i.url+"/"+cid, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create fetch image req: %v", err)
+	}
+
+	resp, err := i.client.Do(req.WithContext(ctx))
+	if err != nil {
+		return nil, fmt.Errorf("IPFS get request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if code := resp.StatusCode; code != http.StatusOK {
+		return nil, fmt.Errorf("status code %d", code)
+	}
+
+	bdy, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read IPFS response: %v", err)
+	}
+
+	return bdy, nil
 }
