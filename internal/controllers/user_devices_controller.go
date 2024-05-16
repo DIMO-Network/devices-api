@@ -1348,7 +1348,7 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 	mvs := registry.MintVehicleWithDeviceDefinitionSign{
 		ManufacturerNode:   makeTokenID,
 		Owner:              common.HexToAddress(*user.EthereumAddress),
-		DeviceDefinitionID: userDevice.DeviceDefinitionID,
+		DeviceDefinitionID: fmt.Sprintf("%s_%s_%d", dd.Make.Name, dd.Type.Model, dd.Type.Year),
 	}
 
 	return c.JSON(client.GetPayload(&mvs))
@@ -1441,6 +1441,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}
 
 	var hash []byte
+	var onChainDD string
 	if udc.Settings.IsProduction() {
 		mvs := registry.MintVehicleSign{
 			ManufacturerNode: makeTokenID,
@@ -1460,10 +1461,11 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			return opaqueInternalError
 		}
 	} else {
+		onChainDD = fmt.Sprintf("%s_%s_%d", dd.Make.Name, dd.Type.Model, dd.Type.Year)
 		mvs := registry.MintVehicleWithDeviceDefinitionSign{
 			ManufacturerNode:   makeTokenID,
 			Owner:              common.HexToAddress(*user.EthereumAddress),
-			DeviceDefinitionID: userDevice.DeviceDefinitionID,
+			DeviceDefinitionID: onChainDD,
 		}
 
 		logger.Info().
@@ -1662,7 +1664,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		}, sigBytes)
 	}
 
-	return client.MintVehicleWithDeviceDefinitionSign(requestID, makeTokenID, realAddr, userDevice.DeviceDefinitionID, sigBytes)
+	return client.MintVehicleWithDeviceDefinitionSign(requestID, makeTokenID, realAddr, onChainDD, sigBytes)
 }
 
 // UpdateNFTImage godoc
