@@ -239,6 +239,20 @@ func (c *Client) MintVehicleSign(requestID string, manufacturerNode *big.Int, ow
 	return c.sendRequest(requestID, data)
 }
 
+// mintVehicleWithDeviceDefinitionSign(uint256 manufacturerNode, address owner, string deviceDefinitionId, (string,string)[] attrInfo, bytes signature) returns()
+func (c *Client) MintVehicleWithDeviceDefinitionSign(requestID string, manufacturerNode *big.Int, owner common.Address, deviceDefinitionID string, signature []byte) error {
+	abi, err := contracts.RegistryMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
+
+	data, err := abi.Pack("mintVehicleWithDeviceDefinitionSign", manufacturerNode, owner, deviceDefinitionID, signature)
+	if err != nil {
+		return err
+	}
+	return c.sendRequest(requestID, data)
+}
+
 // claimAftermarketDeviceSign(uint256 aftermarketDeviceNode, address owner,	bytes calldata ownerSig, bytes calldata aftermarketDeviceSig)
 func (c *Client) ClaimAftermarketDeviceSign(requestID string, aftermarketDeviceNode *big.Int, owner common.Address, ownerSig []byte, aftermarketDeviceSig []byte) error {
 	abi, err := contracts.RegistryMetaData.GetAbi()
@@ -387,20 +401,6 @@ func (c *Client) MintVehicleAndSdWithDeviceDefinitionSign(requestID string, data
 	}
 
 	return c.sendRequest(requestID, callData)
-}
-
-// function MintVehicleWithDeviceDefinitionSign(uint256 manufacturerNode, address owner, string deviceDefinitionId, (string,string)[] attrInfo, bytes signature) returns()
-func (c *Client) MintVehicleWithDeviceDefinitionSign(requestID string, manufacturerNode *big.Int, owner common.Address, deviceDefinitionID string, signature []byte) error {
-	abi, err := contracts.RegistryMetaData.GetAbi()
-	if err != nil {
-		return err
-	}
-
-	data, err := abi.Pack("mintVehicleWithDeviceDefinitionSign", manufacturerNode, owner, deviceDefinitionID, signature)
-	if err != nil {
-		return err
-	}
-	return c.sendRequest(requestID, data)
 }
 
 func (c *Client) sendRequest(requestID string, data []byte) error {

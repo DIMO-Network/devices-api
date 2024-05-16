@@ -1334,6 +1334,17 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		},
 	}
 
+	if udc.Settings.IsProduction() {
+		mvs := registry.MintVehicleSign{
+			ManufacturerNode: makeTokenID,
+			Owner:            common.HexToAddress(*user.EthereumAddress),
+			Attributes:       []string{"Make", "Model", "Year"},
+			Infos:            []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year))},
+		}
+
+		return c.JSON(client.GetPayload(&mvs))
+	}
+
 	mvs := registry.MintVehicleWithDeviceDefinitionSign{
 		ManufacturerNode:   makeTokenID,
 		Owner:              common.HexToAddress(*user.EthereumAddress),
@@ -1412,12 +1423,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		},
 	}
 
-	mvs := registry.MintVehicleWithDeviceDefinitionSign{
-		ManufacturerNode:   makeTokenID,
-		Owner:              common.HexToAddress(*user.EthereumAddress),
-		DeviceDefinitionID: userDevice.DeviceDefinitionID,
-	}
-
 	var mr VehicleMintRequest
 	if err := c.BodyParser(&mr); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
@@ -1435,15 +1440,45 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Empty image field.")
 	}
 
+	var hash []byte
+	if udc.Settings.IsProduction() {
+		mvs := registry.MintVehicleSign{
+			ManufacturerNode: makeTokenID,
+			Owner:            common.HexToAddress(*user.EthereumAddress),
+			Attributes:       []string{"Make", "Model", "Year"},
+			Infos:            []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year))},
+		}
+
+		logger.Info().
+			Interface("httpRequestBody", mr).
+			Interface("client", client).Interface("mintVehicleSign", mvs).
+			Interface("typedData", client.GetPayload(&mvs)).
+			Msg("Got request.")
+
+		hash, err = client.Hash(&mvs)
+		if err != nil {
+			return opaqueInternalError
+		}
+	} else {
+		mvs := registry.MintVehicleWithDeviceDefinitionSign{
+			ManufacturerNode:   makeTokenID,
+			Owner:              common.HexToAddress(*user.EthereumAddress),
+			DeviceDefinitionID: userDevice.DeviceDefinitionID,
+		}
+
+		logger.Info().
+			Interface("httpRequestBody", mr).
+			Interface("client", client).Interface("mintVehicleWithDeviceDefinitionSign", mvs).
+			Interface("typedData", client.GetPayload(&mvs)).
+			Msg("Got request.")
+
+		hash, err = client.Hash(&mvs)
+		if err != nil {
+			return opaqueInternalError
+		}
+	}
+
 	requestID := ksuid.New().String()
-
-	logger.Info().
-		Interface("httpRequestBody", mr).
-		Interface("client", client).
-		Interface("mintVehicleWithDeviceDefinitionSign", mvs).
-		Interface("typedData", client.GetPayload(&mvs)).
-		Msg("Got request.")
-
 	_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
 		Bucket: &udc.Settings.NFTS3Bucket,
 		Key:    aws.String(requestID + ".png"),
@@ -1472,11 +1507,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			logger.Err(err).Msg("Failed to save transparent image to S3.")
 			return opaqueInternalError
 		}
-	}
-
-	hash, err := client.Hash(&mvs)
-	if err != nil {
-		return opaqueInternalError
 	}
 
 	sigBytes := common.FromHex(mr.Signature)
