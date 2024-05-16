@@ -43,7 +43,7 @@ func (i *IPFS) UploadImage(ctx context.Context, img string) (string, error) {
 	imageData := strings.TrimPrefix(img, imagePrefix)
 	image, err := base64.StdEncoding.DecodeString(imageData)
 	if err != nil {
-		return "", fmt.Errorf("failed to decode image: %v", err)
+		return "", fmt.Errorf("failed to decode image: %w", err)
 	}
 
 	if len(image) == 0 {
@@ -53,13 +53,13 @@ func (i *IPFS) UploadImage(ctx context.Context, img string) (string, error) {
 	reader := bytes.NewReader(image)
 	req, err := http.NewRequest(http.MethodPost, i.url, reader)
 	if err != nil {
-		return "", fmt.Errorf("failed to create image upload req: %v", err)
+		return "", fmt.Errorf("failed to create image upload req: %w", err)
 	}
 
 	req.Header.Set("Content-Type", contentTypeHeader)
 	resp, err := i.client.Do(req.WithContext(ctx))
 	if err != nil {
-		return "", fmt.Errorf("IPFS post request failed: %v", err)
+		return "", fmt.Errorf("IPFS post request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -69,7 +69,7 @@ func (i *IPFS) UploadImage(ctx context.Context, img string) (string, error) {
 
 	var respb ipfsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&respb); err != nil {
-		return "", fmt.Errorf("failed to decode IPFS response: %v", err)
+		return "", fmt.Errorf("failed to decode IPFS response: %w", err)
 	}
 
 	if !respb.Success {
@@ -82,12 +82,12 @@ func (i *IPFS) UploadImage(ctx context.Context, img string) (string, error) {
 func (i *IPFS) FetchImage(ctx context.Context, cid string) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodGet, i.url+"/"+cid, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create fetch image req: %v", err)
+		return nil, fmt.Errorf("failed to create fetch image req: %w", err)
 	}
 
 	resp, err := i.client.Do(req.WithContext(ctx))
 	if err != nil {
-		return nil, fmt.Errorf("IPFS get request failed: %v", err)
+		return nil, fmt.Errorf("IPFS get request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -97,7 +97,7 @@ func (i *IPFS) FetchImage(ctx context.Context, cid string) ([]byte, error) {
 
 	bdy, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read IPFS response: %v", err)
+		return nil, fmt.Errorf("failed to read IPFS response: %w", err)
 	}
 
 	return bdy, nil
