@@ -1313,6 +1313,10 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 	}
 	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
 
+	if dd.NameSlug == "" {
+		return fiber.NewError(fiber.StatusConflict, "invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
+	}
+
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		udc.log.Err(err).Msg("Couldn't retrieve user record.")
@@ -1348,7 +1352,7 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 	mvs := registry.MintVehicleWithDeviceDefinitionSign{
 		ManufacturerNode:   makeTokenID,
 		Owner:              common.HexToAddress(*user.EthereumAddress),
-		DeviceDefinitionID: fmt.Sprintf("%s_%s_%d", dd.Make.Name, dd.Type.Model, dd.Type.Year),
+		DeviceDefinitionID: dd.NameSlug,
 	}
 
 	return c.JSON(client.GetPayload(&mvs))
@@ -1400,8 +1404,11 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	if dd.Make.TokenId == 0 {
 		return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle make %q not yet minted.", dd.Make.Name))
 	}
-
 	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
+
+	if dd.NameSlug == "" {
+		return fiber.NewError(fiber.StatusConflict, "invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
+	}
 
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
@@ -1441,7 +1448,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}
 
 	var hash []byte
-	var onChainDD string
 	if udc.Settings.IsProduction() {
 		mvs := registry.MintVehicleSign{
 			ManufacturerNode: makeTokenID,
@@ -1461,11 +1467,10 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			return opaqueInternalError
 		}
 	} else {
-		onChainDD = fmt.Sprintf("%s_%s_%d", dd.Make.Name, dd.Type.Model, dd.Type.Year)
 		mvs := registry.MintVehicleWithDeviceDefinitionSign{
 			ManufacturerNode:   makeTokenID,
 			Owner:              common.HexToAddress(*user.EthereumAddress),
-			DeviceDefinitionID: onChainDD,
+			DeviceDefinitionID: dd.NameSlug,
 		}
 
 		logger.Info().
@@ -1631,7 +1636,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
 				ManufacturerNode:    makeTokenID,
 				Owner:               realAddr,
-				DeviceDefinitionId:  onChainDD,
+				DeviceDefinitionId:  dd.NameSlug,
 				IntegrationNode:     new(big.Int).SetUint64(intID),
 				VehicleOwnerSig:     sigBytes,
 				SyntheticDeviceSig:  sign,
@@ -1664,7 +1669,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		}, sigBytes)
 	}
 
-	return client.MintVehicleWithDeviceDefinitionSign(requestID, makeTokenID, realAddr, onChainDD, sigBytes)
+	return client.MintVehicleWithDeviceDefinitionSign(requestID, makeTokenID, realAddr, dd.NameSlug, sigBytes)
 }
 
 // UpdateNFTImage godoc
