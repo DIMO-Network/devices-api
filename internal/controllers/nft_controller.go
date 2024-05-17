@@ -212,15 +212,6 @@ func (nc *NFTController) GetNFTImage(c *fiber.Ctx) error {
 
 	if transparent {
 		suffix = "_transparent.png"
-	} else {
-		// if not transparent and IPFS CID is valid
-		// return image from IPFS instead of s3
-		if nft.IpfsImageCid.Valid {
-			if imgB, err := nc.ipfsSvc.FetchImage(c.Context(), nft.IpfsImageCid.String); err == nil {
-				c.Set("Content-Type", "image/png")
-				return c.Send(imgB)
-			}
-		}
 	}
 
 	s3o, err := nc.s3.GetObject(c.Context(), &s3.GetObjectInput{

@@ -4,12 +4,12 @@ image:
   pullPolicy: IfNotPresent
   tag: c2d1df9
 imagePullSecrets: []
-nameOverride: ''
-fullnameOverride: ''
+nameOverride: ""
+fullnameOverride: ""
 serviceAccount:
   create: true
   annotations: {}
-  name: ''
+  name: ""
 podAnnotations: {}
 podSecurityContext:
   runAsNonRoot: true
@@ -27,17 +27,17 @@ deployJob:
   enabled: false
 env:
   ENVIRONMENT: dev
-  PORT: '8080'
+  PORT: "8080"
   LOG_LEVEL: info
-  DB_PORT: '5432'
+  DB_PORT: "5432"
   DB_NAME: devices_api
-  DB_MAX_OPEN_CONNECTIONS: '10'
-  DB_MAX_IDLE_CONNECTIONS: '3'
+  DB_MAX_OPEN_CONNECTIONS: "10"
+  DB_MAX_IDLE_CONNECTIONS: "3"
   SERVICE_NAME: devices-api
   JWT_KEY_SET_URL: https://auth.dev.dimo.zone/keys
   DEPLOYMENT_BASE_URL: https://devices-api.dev.dimo.zone
   REDIS_USER: default
-  REDIS_PORT: '6379'
+  REDIS_PORT: "6379"
   REDIS_TLS: true
   NFT_INPUT_TOPIC: topic.device.nft.mint
   NFT_OUTPUT_TOPIC: topic.device.nft.mint.result
@@ -63,16 +63,16 @@ env:
   DEVICE_DEFINITION_TOPIC: table.device.definition
   DEVICE_DEFINITION_METADATA_TOPIC: table.device.definition.metadata
   ELASTIC_DEVICE_STATUS_INDEX: device-status-dev-*
-  DIMO_REGISTRY_ADDR: '0x5eAA326fB2fc97fAcCe6A79A304876daD0F2e96c'
+  DIMO_REGISTRY_ADDR: "0x5eAA326fB2fc97fAcCe6A79A304876daD0F2e96c"
   MONITORING_SERVER_PORT: 8888
   TOKEN_EXCHANGE_JWK_KEY_SET_URL: http://dex-roles-rights.dev.svc.cluster.local:5556/keys
   CONTRACT_EVENT_TOPIC: topic.contract.event
-  VEHICLE_NFT_ADDRESS: '0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8'
+  VEHICLE_NFT_ADDRESS: "0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8"
   AUTOPI_NFT_IMAGE: autopi.png
   MACARON_NFT_IMAGE: macaron.png
   VINCARIO_API_URL: https://api.vindecoder.eu/3.2
   CHATGPT_URL: https://api.openai.com/v1/chat/completions
-  AFTERMARKET_DEVICE_CONTRACT_ADDRESS: '0x325b45949C833986bC98e98a49F3CA5C5c4643B5'
+  AFTERMARKET_DEVICE_CONTRACT_ADDRESS: "0x325b45949C833986bC98e98a49F3CA5C5c4643B5"
   DIMO_CONTRACT_APIURL: https://contracts-api.dev.dimo.zone/
   NATS_URL: nats-dev:4222
   NATS_STREAM_NAME: DD_VALUATION_TASKS
@@ -91,7 +91,7 @@ env:
   TESLA_FLEET_URL: https://fleet-api.prd.%s.vn.cloud.tesla.com
   META_TRANSACTION_PROCESSOR_GRPC_ADDR: meta-transaction-processor-dev:8086
   TESLA_TELEMETRY_HOST_NAME: ingest-tesla.dev.dimo.zone
-  SYNTHETIC_DEVICE_NFT_ADDRESS: '0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f'
+  SYNTHETIC_DEVICE_NFT_ADDRESS: "0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f"
   TESLA_TELEMETRY_PORT: 443
   TESLA_TELEMETRY_CA_CERTIFICATE: |
     -----BEGIN CERTIFICATE-----
@@ -118,6 +118,7 @@ env:
     OUCdaWovmF+28PyAi4wCIQDXRKpYK+VMFyUR1GJVoV3gWezQcJmFswuWq+7M+XPb
     GQ==
     -----END CERTIFICATE-----
+  IPFS_URL: https://assets.dev.dimo.xyz/ipfs
 service:
   type: ClusterIP
   ports:
@@ -148,10 +149,10 @@ ingress:
   className: nginx
   annotations:
     nginx.ingress.kubernetes.io/auth-tls-secret: ingress/cf-origin-ca
-    nginx.ingress.kubernetes.io/auth-tls-verify-client: 'on'
-    nginx.ingress.kubernetes.io/enable-cors: 'true'
+    nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
     nginx.ingress.kubernetes.io/cors-allow-origin: https://app.dev.dimo.zone
-    nginx.ingress.kubernetes.io/limit-rps: '3'
+    nginx.ingress.kubernetes.io/limit-rps: "3"
     external-dns.alpha.kubernetes.io/hostname: devices-api.dev.dimo.zone
   hosts:
     - host: devices-api.dev.dimo.zone
@@ -181,56 +182,56 @@ kafka:
   topics:
     - name: topic.device.status
       config:
-        segment.ms: '3600000'
+        segment.ms: "3600000"
         compression.type: producer
         cleanup.policy: compact,delete
-        min.compaction.lag.ms: '3600000'
+        min.compaction.lag.ms: "3600000"
     - name: topic.device.status.private
       config:
-        segment.ms: '3600000'
+        segment.ms: "3600000"
         compression.type: producer
         cleanup.policy: compact,delete
-        min.compaction.lag.ms: '3600000'
+        min.compaction.lag.ms: "3600000"
     - name: table.device.integration.smartcar
       config:
-        segment.ms: '3600000'
+        segment.ms: "3600000"
         compression.type: producer
         cleanup.policy: compact
-        min.compaction.lag.ms: '3600000'
-        min.cleanable.dirty.ratio: '0.01'
-        delete.retention.ms: '3600000'
+        min.compaction.lag.ms: "3600000"
+        min.cleanable.dirty.ratio: "0.01"
+        delete.retention.ms: "3600000"
     - name: table.device.integration.autopi
       config:
-        segment.ms: '3600000'
+        segment.ms: "3600000"
         compression.type: producer
         cleanup.policy: compact
-        min.compaction.lag.ms: '3600000'
-        min.cleanable.dirty.ratio: '0.01'
-        delete.retention.ms: '3600000'
+        min.compaction.lag.ms: "3600000"
+        min.cleanable.dirty.ratio: "0.01"
+        delete.retention.ms: "3600000"
     - name: table.aftermarket.device.integration
       config:
-        segment.ms: '3600000'
+        segment.ms: "3600000"
         compression.type: producer
         cleanup.policy: compact
-        min.compaction.lag.ms: '3600000'
-        min.cleanable.dirty.ratio: '0.01'
-        delete.retention.ms: '3600000'
+        min.compaction.lag.ms: "3600000"
+        min.cleanable.dirty.ratio: "0.01"
+        delete.retention.ms: "3600000"
     - name: table.device.privacyfence
       config:
-        segment.ms: '3600000'
+        segment.ms: "3600000"
         compression.type: producer
         cleanup.policy: compact
-        min.compaction.lag.ms: '3600000'
-        min.cleanable.dirty.ratio: '0.01'
-        delete.retention.ms: '3600000'
+        min.compaction.lag.ms: "3600000"
+        min.cleanable.dirty.ratio: "0.01"
+        delete.retention.ms: "3600000"
     - name: devices-vin-fraud-table
       config:
-        segment.ms: '3600000'
+        segment.ms: "3600000"
         compression.type: producer
         cleanup.policy: compact
-        min.compaction.lag.ms: '3600000'
-        min.cleanable.dirty.ratio: '0.01'
-        delete.retention.ms: '3600000'
+        min.compaction.lag.ms: "3600000"
+        min.cleanable.dirty.ratio: "0.01"
+        delete.retention.ms: "3600000"
 serviceMonitor:
   enabled: true
   path: /metrics
