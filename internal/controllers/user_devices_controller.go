@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/big"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1337,10 +1338,21 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		},
 	}
 
+	if udc.Settings.IsProduction() {
+		mvs := registry.MintVehicleSign{
+			ManufacturerNode: makeTokenID,
+			Owner:            common.HexToAddress(*user.EthereumAddress),
+			Attributes:       []string{"Make", "Model", "Year"},
+			Infos:            []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year))},
+		}
+
+		return c.JSON(client.GetPayload(&mvs))
+	}
+
 	mvs := registry.MintVehicleWithDeviceDefinitionSign{
 		ManufacturerNode:   makeTokenID,
 		Owner:              common.HexToAddress(*user.EthereumAddress),
-		DeviceDefinitionID: userDevice.DeviceDefinitionID,
+		DeviceDefinitionID: fmt.Sprintf("%s_%s_%d", dd.Make.Name, dd.Type.Model, dd.Type.Year),
 	}
 
 	return c.JSON(client.GetPayload(&mvs))
@@ -1415,12 +1427,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		},
 	}
 
-	mvs := registry.MintVehicleWithDeviceDefinitionSign{
-		ManufacturerNode:   makeTokenID,
-		Owner:              common.HexToAddress(*user.EthereumAddress),
-		DeviceDefinitionID: userDevice.DeviceDefinitionID,
-	}
-
 	var mr VehicleMintRequest
 	if err := c.BodyParser(&mr); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
@@ -1438,15 +1444,47 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Empty image field.")
 	}
 
+	var hash []byte
+	var onChainDD string
+	if udc.Settings.IsProduction() {
+		mvs := registry.MintVehicleSign{
+			ManufacturerNode: makeTokenID,
+			Owner:            common.HexToAddress(*user.EthereumAddress),
+			Attributes:       []string{"Make", "Model", "Year"},
+			Infos:            []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year))},
+		}
+
+		logger.Info().
+			Interface("httpRequestBody", mr).
+			Interface("client", client).Interface("mintVehicleSign", mvs).
+			Interface("typedData", client.GetPayload(&mvs)).
+			Msg("Got request.")
+
+		hash, err = client.Hash(&mvs)
+		if err != nil {
+			return opaqueInternalError
+		}
+	} else {
+		onChainDD = fmt.Sprintf("%s_%s_%d", dd.Make.Name, dd.Type.Model, dd.Type.Year)
+		mvs := registry.MintVehicleWithDeviceDefinitionSign{
+			ManufacturerNode:   makeTokenID,
+			Owner:              common.HexToAddress(*user.EthereumAddress),
+			DeviceDefinitionID: onChainDD,
+		}
+
+		logger.Info().
+			Interface("httpRequestBody", mr).
+			Interface("client", client).Interface("mintVehicleWithDeviceDefinitionSign", mvs).
+			Interface("typedData", client.GetPayload(&mvs)).
+			Msg("Got request.")
+
+		hash, err = client.Hash(&mvs)
+		if err != nil {
+			return opaqueInternalError
+		}
+	}
+
 	requestID := ksuid.New().String()
-
-	logger.Info().
-		Interface("httpRequestBody", mr).
-		Interface("client", client).
-		Interface("mintVehicleWithDeviceDefinitionSign", mvs).
-		Interface("typedData", client.GetPayload(&mvs)).
-		Msg("Got request.")
-
 	_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
 		Bucket: &udc.Settings.NFTS3Bucket,
 		Key:    aws.String(requestID + ".png"),
@@ -1482,11 +1520,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			logger.Err(err).Msg("Failed to save transparent image to S3.")
 			return opaqueInternalError
 		}
-	}
-
-	hash, err := client.Hash(&mvs)
-	if err != nil {
-		return opaqueInternalError
 	}
 
 	sigBytes := common.FromHex(mr.Signature)
@@ -1580,22 +1613,69 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
+			if udc.Settings.IsProduction() {
+
+				return client.MintVehicleAndSdSign(requestID, contracts.MintVehicleAndSdInput{
+					ManufacturerNode:    makeTokenID,
+					Owner:               realAddr,
+					IntegrationNode:     new(big.Int).SetUint64(intID),
+					VehicleOwnerSig:     sigBytes,
+					SyntheticDeviceSig:  sign,
+					SyntheticDeviceAddr: common.BytesToAddress(addr),
+					AttrInfoPairsDevice: []contracts.AttributeInfoPair{
+						{
+							Attribute: "Make",
+							Info:      dd.Make.Name,
+						},
+						{
+							Attribute: "Model",
+							Info:      dd.Type.Model,
+						},
+						{
+							Attribute: "Year",
+							Info:      strconv.Itoa(int(dd.Type.Year)),
+						},
+					},
+				})
+			}
+
 			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
 				ManufacturerNode:    makeTokenID,
 				Owner:               realAddr,
-				DeviceDefinitionId:  userDevice.DeviceDefinitionID,
+				DeviceDefinitionId:  onChainDD,
 				IntegrationNode:     new(big.Int).SetUint64(intID),
 				VehicleOwnerSig:     sigBytes,
 				SyntheticDeviceSig:  sign,
 				SyntheticDeviceAddr: common.BytesToAddress(addr),
-				AttrInfoPairsDevice: []contracts.AttributeInfoPair{},
+				AttrInfoPairsDevice: []contracts.AttributeInfoPair{
+					{
+						Attribute: "Make",
+						Info:      dd.Make.Name,
+					},
+					{
+						Attribute: "Model",
+						Info:      dd.Type.Model,
+					},
+					{
+						Attribute: "Year",
+						Info:      strconv.Itoa(int(dd.Type.Year)),
+					},
+				},
 			})
 		}
 	}
 
 	logger.Info().Msgf("Submitted metatransaction request %s", requestID)
 
-	return client.MintVehicleWithDeviceDefinitionSign(requestID, makeTokenID, realAddr, userDevice.DeviceDefinitionID, sigBytes)
+	if udc.Settings.IsProduction() {
+		return client.MintVehicleSign(requestID, makeTokenID, realAddr, []contracts.AttributeInfoPair{
+			{Attribute: "Make", Info: dd.Make.Name},
+			{Attribute: "Model", Info: dd.Type.Model},
+			{Attribute: "Year", Info: strconv.Itoa(int(dd.Type.Year))},
+		}, sigBytes)
+	}
+
+	return client.MintVehicleWithDeviceDefinitionSign(requestID, makeTokenID, realAddr, onChainDD, sigBytes)
 }
 
 // UpdateNFTImage godoc
