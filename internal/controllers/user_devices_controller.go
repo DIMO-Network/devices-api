@@ -1313,10 +1313,6 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 	}
 	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
 
-	if dd.NameSlug == "" {
-		return fiber.NewError(fiber.StatusConflict, "invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
-	}
-
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		udc.log.Err(err).Msg("Couldn't retrieve user record.")
@@ -1347,6 +1343,10 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		}
 
 		return c.JSON(client.GetPayload(&mvs))
+	}
+
+	if dd.NameSlug == "" {
+		return fiber.NewError(fiber.StatusConflict, "invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
 	}
 
 	mvs := registry.MintVehicleWithDeviceDefinitionSign{
@@ -1406,10 +1406,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}
 	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
 
-	if dd.NameSlug == "" {
-		return fiber.NewError(fiber.StatusConflict, "invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
-	}
-
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
 	if err != nil {
 		return err
@@ -1467,6 +1463,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			return opaqueInternalError
 		}
 	} else {
+
 		mvs := registry.MintVehicleWithDeviceDefinitionSign{
 			ManufacturerNode:   makeTokenID,
 			Owner:              common.HexToAddress(*user.EthereumAddress),
@@ -1633,6 +1630,10 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				})
 			}
 
+			if dd.NameSlug == "" {
+				return fiber.NewError(fiber.StatusConflict, "invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
+			}
+
 			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
 				ManufacturerNode:    makeTokenID,
 				Owner:               realAddr,
@@ -1667,6 +1668,10 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			{Attribute: "Model", Info: dd.Type.Model},
 			{Attribute: "Year", Info: strconv.Itoa(int(dd.Type.Year))},
 		}, sigBytes)
+	}
+
+	if dd.NameSlug == "" {
+		return fiber.NewError(fiber.StatusConflict, "invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
 	}
 
 	return client.MintVehicleWithDeviceDefinitionSign(requestID, makeTokenID, realAddr, dd.NameSlug, sigBytes)
