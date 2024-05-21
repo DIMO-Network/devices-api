@@ -1352,6 +1352,8 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 	mvs := registry.MintVehicleWithDeviceDefinitionSign{
 		ManufacturerNode:   makeTokenID,
 		Owner:              common.HexToAddress(*user.EthereumAddress),
+		Attributes:         []string{"Make", "Model", "Year"},
+		Infos:              []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year))},
 		DeviceDefinitionID: dd.NameSlug,
 	}
 
@@ -1467,6 +1469,8 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		mvs := registry.MintVehicleWithDeviceDefinitionSign{
 			ManufacturerNode:   makeTokenID,
 			Owner:              common.HexToAddress(*user.EthereumAddress),
+			Attributes:         []string{"Make", "Model", "Year"},
+			Infos:              []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year))},
 			DeviceDefinitionID: dd.NameSlug,
 		}
 
