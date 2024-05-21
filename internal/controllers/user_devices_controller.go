@@ -1349,10 +1349,16 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		return c.JSON(client.GetPayload(&mvs))
 	}
 
+	if dd.NameSlug == "" {
+		return fiber.NewError(fiber.StatusConflict, "invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
+	}
+
 	mvs := registry.MintVehicleWithDeviceDefinitionSign{
 		ManufacturerNode:   makeTokenID,
 		Owner:              common.HexToAddress(*user.EthereumAddress),
-		DeviceDefinitionID: fmt.Sprintf("%s_%s_%d", dd.Make.Name, dd.Type.Model, dd.Type.Year),
+		Attributes:         []string{"Make", "Model", "Year"},
+		Infos:              []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year))},
+		DeviceDefinitionID: dd.NameSlug,
 	}
 
 	return c.JSON(client.GetPayload(&mvs))
@@ -1404,7 +1410,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	if dd.Make.TokenId == 0 {
 		return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle make %q not yet minted.", dd.Make.Name))
 	}
-
 	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
 
 	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
@@ -1445,7 +1450,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}
 
 	var hash []byte
-	var onChainDD string
 	if udc.Settings.IsProduction() {
 		mvs := registry.MintVehicleSign{
 			ManufacturerNode: makeTokenID,
@@ -1465,11 +1469,13 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			return opaqueInternalError
 		}
 	} else {
-		onChainDD = fmt.Sprintf("%s_%s_%d", dd.Make.Name, dd.Type.Model, dd.Type.Year)
+
 		mvs := registry.MintVehicleWithDeviceDefinitionSign{
 			ManufacturerNode:   makeTokenID,
 			Owner:              common.HexToAddress(*user.EthereumAddress),
-			DeviceDefinitionID: onChainDD,
+			Attributes:         []string{"Make", "Model", "Year"},
+			Infos:              []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year))},
+			DeviceDefinitionID: dd.NameSlug,
 		}
 
 		logger.Info().
@@ -1588,20 +1594,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
-			mvss := registry.MintVehicleAndSdSign{
-				IntegrationNode: new(big.Int).SetUint64(intID),
-			}
-
-			hash, err := client.Hash(&mvss)
-			if err != nil {
-				return err
-			}
-
-			sign, err := udc.wallet.SignHash(c.Context(), uint32(childNum), hash)
-			if err != nil {
-				return err
-			}
-
 			sd := models.SyntheticDevice{
 				IntegrationTokenID: types.NewDecimal(decimal.New(int64(intID), 0)),
 				MintRequestID:      requestID,
@@ -1614,6 +1606,19 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			}
 
 			if udc.Settings.IsProduction() {
+				mvss := registry.MintVehicleAndSdSign{
+					IntegrationNode: new(big.Int).SetUint64(intID),
+				}
+
+				hash, err := client.Hash(&mvss)
+				if err != nil {
+					return err
+				}
+
+				sign, err := udc.wallet.SignHash(c.Context(), uint32(childNum), hash)
+				if err != nil {
+					return err
+				}
 
 				return client.MintVehicleAndSdSign(requestID, contracts.MintVehicleAndSdInput{
 					ManufacturerNode:    makeTokenID,
@@ -1639,10 +1644,29 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				})
 			}
 
+			mvss := registry.MintVehicleAndSdWithDeviceDefinitionSign{
+				IntegrationNode:    new(big.Int).SetUint64(intID),
+				DeviceDefinitionID: dd.NameSlug,
+			}
+
+			hash, err := client.Hash(&mvss)
+			if err != nil {
+				return err
+			}
+
+			sign, err := udc.wallet.SignHash(c.Context(), uint32(childNum), hash)
+			if err != nil {
+				return err
+			}
+
+			if dd.NameSlug == "" {
+				return fiber.NewError(fiber.StatusConflict, "invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
+			}
+
 			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
 				ManufacturerNode:    makeTokenID,
 				Owner:               realAddr,
-				DeviceDefinitionId:  onChainDD,
+				DeviceDefinitionId:  dd.NameSlug,
 				IntegrationNode:     new(big.Int).SetUint64(intID),
 				VehicleOwnerSig:     sigBytes,
 				SyntheticDeviceSig:  sign,
@@ -1675,7 +1699,15 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		}, sigBytes)
 	}
 
-	return client.MintVehicleWithDeviceDefinitionSign(requestID, makeTokenID, realAddr, onChainDD, sigBytes)
+	if dd.NameSlug == "" {
+		return fiber.NewError(fiber.StatusConflict, "invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
+	}
+
+	return client.MintVehicleWithDeviceDefinitionSign(requestID, makeTokenID, realAddr, dd.NameSlug, []contracts.AttributeInfoPair{
+		{Attribute: "Make", Info: dd.Make.Name},
+		{Attribute: "Model", Info: dd.Type.Model},
+		{Attribute: "Year", Info: strconv.Itoa(int(dd.Type.Year))},
+	}, sigBytes)
 }
 
 // UpdateNFTImage godoc
