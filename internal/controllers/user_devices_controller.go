@@ -1501,11 +1501,13 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
-	cid, err := udc.ipfsSvc.UploadImage(c.Context(), imageData)
-	if err != nil {
-		udc.log.Err(err).Msg("failed to upload NFT image to IPFS while minting")
-	} else {
-		userDevice.IpfsImageCid = null.StringFrom(cid)
+	if !udc.Settings.IsProduction() {
+		cid, err := udc.ipfsSvc.UploadImage(c.Context(), imageData)
+		if err != nil {
+			udc.log.Err(err).Msg("failed to upload NFT image to IPFS while minting")
+		} else {
+			userDevice.IpfsImageCid = null.StringFrom(cid)
+		}
 	}
 
 	// This may not be there, but if it is we should delete it.
@@ -1742,13 +1744,15 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
 	}
 
-	cid, err := udc.ipfsSvc.UploadImage(c.Context(), nid.ImageData)
-	if err != nil {
-		udc.log.Err(err).Msg("failed to upload NFT image to IPFS")
-	} else {
-		userDevice.IpfsImageCid = null.StringFrom(cid)
-		if _, err := userDevice.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.IpfsImageCid)); err != nil {
-			udc.log.Err(err).Str("userDeviceID", userDeviceID).Str("cid", cid).Msg("failed to store IPFS CID for vehicle")
+	if !udc.Settings.IsProduction() {
+		cid, err := udc.ipfsSvc.UploadImage(c.Context(), nid.ImageData)
+		if err != nil {
+			udc.log.Err(err).Msg("failed to upload NFT image to IPFS")
+		} else {
+			userDevice.IpfsImageCid = null.StringFrom(cid)
+			if _, err := userDevice.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.IpfsImageCid)); err != nil {
+				udc.log.Err(err).Str("userDeviceID", userDeviceID).Str("cid", cid).Msg("failed to store IPFS CID for vehicle")
+			}
 		}
 	}
 

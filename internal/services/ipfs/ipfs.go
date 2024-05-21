@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -16,12 +16,13 @@ import (
 )
 
 const (
-	imagePrefix       = "data:image/png;base64,"
-	contentTypeHeader = "image/png"
+	imagePrefix          = "data:image/png;base64,"
+	contentTypeHeaderKey = "Content-Type"
+	pngContentType       = "image/png"
 )
 
 type IPFS struct {
-	url    string
+	url    *url.URL
 	client *http.Client
 }
 
@@ -30,13 +31,18 @@ type ipfsResponse struct {
 	CID     string `json:"cid"`
 }
 
-func NewGateway(settings *config.Settings) *IPFS {
+func NewGateway(settings *config.Settings) (*IPFS, error) {
+	url, err := url.ParseRequestURI(settings.IPFSURL)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing IPFS URL %q: %w", settings.IPFSURL, err)
+	}
+
 	return &IPFS{
 		client: &http.Client{
 			Timeout: 5 * time.Second,
 		},
-		url: settings.IPFSURL,
-	}
+		url: url,
+	}, nil
 }
 
 func (i *IPFS) UploadImage(ctx context.Context, img string) (string, error) {
@@ -51,12 +57,12 @@ func (i *IPFS) UploadImage(ctx context.Context, img string) (string, error) {
 	}
 
 	reader := bytes.NewReader(image)
-	req, err := http.NewRequest(http.MethodPost, i.url, reader)
+	req, err := http.NewRequest(http.MethodPost, i.url.String(), reader)
 	if err != nil {
 		return "", fmt.Errorf("failed to create image upload req: %w", err)
 	}
 
-	req.Header.Set("Content-Type", contentTypeHeader)
+	req.Header.Set(contentTypeHeaderKey, pngContentType)
 	resp, err := i.client.Do(req.WithContext(ctx))
 	if err != nil {
 		return "", fmt.Errorf("IPFS post request failed: %w", err)
@@ -77,28 +83,4 @@ func (i *IPFS) UploadImage(ctx context.Context, img string) (string, error) {
 	}
 
 	return respb.CID, nil
-}
-
-func (i *IPFS) FetchImage(ctx context.Context, cid string) ([]byte, error) {
-	req, err := http.NewRequest(http.MethodGet, i.url+"/"+cid, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create fetch image req: %w", err)
-	}
-
-	resp, err := i.client.Do(req.WithContext(ctx))
-	if err != nil {
-		return nil, fmt.Errorf("IPFS get request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if code := resp.StatusCode; code != http.StatusOK {
-		return nil, fmt.Errorf("status code %d", code)
-	}
-
-	bdy, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read IPFS response: %w", err)
-	}
-
-	return bdy, nil
 }

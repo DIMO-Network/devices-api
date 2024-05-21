@@ -3,48 +3,56 @@ package ipfs
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/test"
-	"github.com/DIMO-Network/devices-api/models"
-	"github.com/segmentio/ksuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/stretchr/testify/require"
 )
 
 const (
-	img = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC"
+	imgBase64   = "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC"
+	fullImgData = "data:image/png;base64," + imgBase64
+	testCID     = "Qme23PqtDXmeyETzG3W3sy3ZWTjF2ZQGJWrCG5svtFq8aB"
 )
 
 func TestIPFSUpload_Success(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	imgBytes, err := base64.StdEncoding.DecodeString(imgBase64)
+	require.NoError(err)
+
+	serv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		assert.Equal("image/png", r.Header.Get("Content-Type"))
+		b, err := io.ReadAll(r.Body)
+		require.NoError(err)
+
+		assert.Equal(imgBytes, b)
+
+		outB, err := json.Marshal(struct {
+			Success bool
+			CID     string
+		}{Success: true, CID: testCID})
+		require.NoError(err)
+
+		w.WriteHeader(200)
+		w.Write(outB)
+	}))
+	defer serv.Close()
+
 	ctx := context.Background()
-	ipfs := NewGateway(&config.Settings{
-		IPFSURL: "https://assets.dev.dimo.xyz/ipfs",
+	ipfs, err := NewGateway(&config.Settings{
+		IPFSURL: serv.URL,
 	})
+	require.NoError(err)
 
-	pdb, _ := test.StartContainerDatabase(context.Background(), t, "../../../migrations")
-
-	cid, err := ipfs.UploadImage(ctx, img)
-	assert.NoError(t, err)
-	assert.Equal(t, "Qme23PqtDXmeyETzG3W3sy3ZWTjF2ZQGJWrCG5svtFq8aB", cid)
-
-	imgB, err := ipfs.FetchImage(ctx, cid)
-	assert.NoError(t, err)
-
-	base64Encoding := imagePrefix + base64.StdEncoding.EncodeToString(imgB)
-	assert.Equal(t, base64Encoding, img)
-
-	ud := models.UserDevice{
-		ID:                 ksuid.New().String(),
-		UserID:             ksuid.New().String(),
-		DeviceDefinitionID: ksuid.New().String(),
-		IpfsImageCid:       null.StringFrom(cid),
-	}
-
-	if err := ud.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
+	cid, err := ipfs.UploadImage(ctx, fullImgData)
+	require.NoError(err)
+	assert.Equal(testCID, cid)
 }
