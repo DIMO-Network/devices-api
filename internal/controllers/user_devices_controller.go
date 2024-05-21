@@ -1477,8 +1477,8 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		mvs := registry.MintVehicleWithDeviceDefinitionSign{
 			ManufacturerNode:   makeTokenID,
 			Owner:              common.HexToAddress(*user.EthereumAddress),
-			Attributes:         []string{"Make", "Model", "Year"},
-			Infos:              []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year))},
+			Attributes:         []string{"Make", "Model", "Year", "ImageURI"},
+			Infos:              []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year)), userDevice.IpfsImageCid.String},
 			DeviceDefinitionID: dd.NameSlug,
 		}
 
@@ -1506,6 +1506,8 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}
 
 	if !udc.Settings.IsProduction() {
+		// we shouldn't actually need to do this now bc we expect nft image to be set prior to minting
+		// remove?
 		cid, err := udc.ipfsSvc.UploadImage(c.Context(), imageData)
 		if err != nil {
 			udc.log.Err(err).Msg("failed to upload NFT image to IPFS while minting")

@@ -118,10 +118,15 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 		name = description
 	}
 
+	imageURI := fmt.Sprintf("%s/v1/vehicle/%s/image", nc.Settings.DeploymentBaseURL, ti)
+	if !nc.Settings.IsProduction() && ud.IpfsImageCid.Valid {
+		imageURI = fmt.Sprintf("%s/%s", nc.Settings.IPFSURL, ud.IpfsImageCid.String)
+	}
+
 	return c.JSON(NFTMetadataResp{
 		Name:        name,
 		Description: description + ", a DIMO vehicle.",
-		Image:       fmt.Sprintf("%s/v1/vehicle/%s/image", nc.Settings.DeploymentBaseURL, ti),
+		Image:       imageURI,
 		Attributes: []NFTAttribute{
 			{TraitType: "Make", Value: def.Make.Name},
 			{TraitType: "Model", Value: def.Type.Model},
@@ -212,6 +217,18 @@ func (nc *NFTController) GetNFTImage(c *fiber.Ctx) error {
 
 	if transparent {
 		suffix = "_transparent.png"
+	} else {
+		if !nc.Settings.IsProduction() {
+			if nft.IpfsImageCid.Valid {
+				imgB, err := nc.ipfsSvc.FetchImage(c.Context(), nft.IpfsImageCid.String)
+				if err != nil {
+					nc.log.Err(err).Msgf("failed to fetch image from IPFS: %s", nft.IpfsImageCid.String)
+				}
+				c.Set("Content-Type", "image/png")
+				return c.Send(imgB)
+			}
+			nc.log.Info().Str("userDeviceID", nft.ID).Str("vehicleTokenID", nft.TokenID.String()).Msg("IPFS cid not set for minted device; this should not happen")
+		}
 	}
 
 	s3o, err := nc.s3.GetObject(c.Context(), &s3.GetObjectInput{
