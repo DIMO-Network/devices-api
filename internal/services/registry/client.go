@@ -130,10 +130,9 @@ func (m *MintVehicleAndSdSign) Message() signer.TypedDataMessage {
 	}
 }
 
-// MintVehicleAndSdWithDeviceDefinitionSign(uint256 manufacturerNode,address owner, string deviceDefinitionId)
+// MintVehicleAndSdWithDeviceDefinitionSign(uint256 integrationNode)
 type MintVehicleAndSdWithDeviceDefinitionSign struct {
-	IntegrationNode    *big.Int
-	DeviceDefinitionID string
+	IntegrationNode *big.Int
 }
 
 func (m *MintVehicleAndSdWithDeviceDefinitionSign) Name() string {
@@ -143,14 +142,12 @@ func (m *MintVehicleAndSdWithDeviceDefinitionSign) Name() string {
 func (m *MintVehicleAndSdWithDeviceDefinitionSign) Type() []signer.Type {
 	return []signer.Type{
 		{Name: "integrationNode", Type: "uint256"},
-		{Name: "deviceDefinitionId", Type: "string"},
 	}
 }
 
 func (m *MintVehicleAndSdWithDeviceDefinitionSign) Message() signer.TypedDataMessage {
 	return signer.TypedDataMessage{
-		"integrationNode":    hexutil.EncodeBig(m.IntegrationNode),
-		"deviceDefinitionId": m.DeviceDefinitionID,
+		"integrationNode": hexutil.EncodeBig(m.IntegrationNode),
 	}
 }
 

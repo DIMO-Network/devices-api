@@ -1583,6 +1583,20 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
+			mvss := registry.MintVehicleAndSdWithDeviceDefinitionSign{
+				IntegrationNode: new(big.Int).SetUint64(intID),
+			}
+
+			hash, err := client.Hash(&mvss)
+			if err != nil {
+				return err
+			}
+
+			sign, err := udc.wallet.SignHash(c.Context(), uint32(childNum), hash)
+			if err != nil {
+				return err
+			}
+
 			sd := models.SyntheticDevice{
 				IntegrationTokenID: types.NewDecimal(decimal.New(int64(intID), 0)),
 				MintRequestID:      requestID,
@@ -1595,20 +1609,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			}
 
 			if udc.Settings.IsProduction() {
-				mvss := registry.MintVehicleAndSdSign{
-					IntegrationNode: new(big.Int).SetUint64(intID),
-				}
-
-				hash, err := client.Hash(&mvss)
-				if err != nil {
-					return err
-				}
-
-				sign, err := udc.wallet.SignHash(c.Context(), uint32(childNum), hash)
-				if err != nil {
-					return err
-				}
-
 				return client.MintVehicleAndSdSign(requestID, contracts.MintVehicleAndSdInput{
 					ManufacturerNode:    makeTokenID,
 					Owner:               realAddr,
@@ -1631,21 +1631,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 						},
 					},
 				})
-			}
-
-			mvss := registry.MintVehicleAndSdWithDeviceDefinitionSign{
-				IntegrationNode:    new(big.Int).SetUint64(intID),
-				DeviceDefinitionID: dd.NameSlug,
-			}
-
-			hash, err := client.Hash(&mvss)
-			if err != nil {
-				return err
-			}
-
-			sign, err := udc.wallet.SignHash(c.Context(), uint32(childNum), hash)
-			if err != nil {
-				return err
 			}
 
 			if dd.NameSlug == "" {
