@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -83,4 +84,28 @@ func (i *IPFS) UploadImage(ctx context.Context, img string) (string, error) {
 	}
 
 	return respb.CID, nil
+}
+
+func (i *IPFS) FetchImage(ctx context.Context, cid string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodGet, i.url.JoinPath(cid).String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create image upload req: %w", err)
+	}
+
+	resp, err := i.client.Do(req.WithContext(ctx))
+	if err != nil {
+		return nil, fmt.Errorf("IPFS post request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if code := resp.StatusCode; code != http.StatusOK {
+		return nil, fmt.Errorf("status code %d", code)
+	}
+
+	bdy, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read IPFS response: %w", err)
+	}
+
+	return bdy, nil
 }
