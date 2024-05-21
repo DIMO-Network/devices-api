@@ -1349,6 +1349,10 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		return c.JSON(client.GetPayload(&mvs))
 	}
 
+	if !userDevice.IpfsImageCid.Valid {
+		return fiber.NewError(fiber.StatusConflict, "NFT image must be set prior to minting")
+	}
+
 	if dd.NameSlug == "" {
 		return fiber.NewError(fiber.StatusConflict, "invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
 	}
@@ -1356,8 +1360,8 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 	mvs := registry.MintVehicleWithDeviceDefinitionSign{
 		ManufacturerNode:   makeTokenID,
 		Owner:              common.HexToAddress(*user.EthereumAddress),
-		Attributes:         []string{"Make", "Model", "Year"},
-		Infos:              []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year))},
+		Attributes:         []string{"Make", "Model", "Year", "ImageURI"},
+		Infos:              []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year)), userDevice.IpfsImageCid.String},
 		DeviceDefinitionID: dd.NameSlug,
 	}
 
@@ -1665,6 +1669,10 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return fiber.NewError(fiber.StatusConflict, "invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
 			}
 
+			if !userDevice.IpfsImageCid.Valid {
+				return fiber.NewError(fiber.StatusConflict, "NFT image must be set prior to minting")
+			}
+
 			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
 				ManufacturerNode:    makeTokenID,
 				Owner:               realAddr,
@@ -1686,6 +1694,10 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 						Attribute: "Year",
 						Info:      strconv.Itoa(int(dd.Type.Year)),
 					},
+					{
+						Attribute: "ImageURI",
+						Info:      userDevice.IpfsImageCid.String,
+					},
 				},
 			})
 		}
@@ -1705,10 +1717,15 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
 	}
 
+	if !userDevice.IpfsImageCid.Valid {
+		return fiber.NewError(fiber.StatusConflict, "NFT image must be set prior to minting")
+	}
+
 	return client.MintVehicleWithDeviceDefinitionSign(requestID, makeTokenID, realAddr, dd.NameSlug, []contracts.AttributeInfoPair{
 		{Attribute: "Make", Info: dd.Make.Name},
 		{Attribute: "Model", Info: dd.Type.Model},
 		{Attribute: "Year", Info: strconv.Itoa(int(dd.Type.Year))},
+		{Attribute: "ImageURI", Info: userDevice.IpfsImageCid.String},
 	}, sigBytes)
 }
 
