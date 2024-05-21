@@ -1674,7 +1674,11 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
 	}
 
-	return client.MintVehicleWithDeviceDefinitionSign(requestID, makeTokenID, realAddr, dd.NameSlug, sigBytes)
+	return client.MintVehicleWithDeviceDefinitionSign(requestID, makeTokenID, realAddr, dd.NameSlug, []contracts.AttributeInfoPair{
+		{Attribute: "Make", Info: dd.Make.Name},
+		{Attribute: "Model", Info: dd.Type.Model},
+		{Attribute: "Year", Info: strconv.Itoa(int(dd.Type.Year))},
+	}, sigBytes)
 }
 
 // UpdateNFTImage godoc
