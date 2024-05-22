@@ -79,9 +79,9 @@ func (m *MintVehicleSign) Message() signer.TypedDataMessage {
 type MintVehicleWithDeviceDefinitionSign struct {
 	ManufacturerNode   *big.Int
 	Owner              common.Address
+	DeviceDefinitionID string
 	Attributes         []string
 	Infos              []string
-	DeviceDefinitionID string
 }
 
 func (m *MintVehicleWithDeviceDefinitionSign) Name() string {
@@ -92,9 +92,9 @@ func (m *MintVehicleWithDeviceDefinitionSign) Type() []signer.Type {
 	return []signer.Type{
 		{Name: "manufacturerNode", Type: "uint256"},
 		{Name: "owner", Type: "address"},
+		{Name: "deviceDefinitionId", Type: "string"},
 		{Name: "attributes", Type: "string[]"},
 		{Name: "infos", Type: "string[]"},
-		{Name: "deviceDefinitionId", Type: "string"},
 	}
 }
 
@@ -102,9 +102,9 @@ func (m *MintVehicleWithDeviceDefinitionSign) Message() signer.TypedDataMessage 
 	return signer.TypedDataMessage{
 		"manufacturerNode":   hexutil.EncodeBig(m.ManufacturerNode),
 		"owner":              m.Owner.Hex(),
+		"deviceDefinitionId": m.DeviceDefinitionID,
 		"attributes":         anySlice(m.Attributes),
 		"infos":              anySlice(m.Infos),
-		"deviceDefinitionId": m.DeviceDefinitionID,
 	}
 }
 
