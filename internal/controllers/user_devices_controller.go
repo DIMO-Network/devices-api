@@ -1539,21 +1539,21 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
+			mvss := registry.MintVehicleAndSdSign{
+				IntegrationNode: new(big.Int).SetUint64(intID),
+			}
+
+			hash, err := client.Hash(&mvss)
+			if err != nil {
+				return err
+			}
+
+			sign, err := udc.wallet.SignHash(c.Context(), uint32(childNum), hash)
+			if err != nil {
+				return err
+			}
+
 			if udc.Settings.IsProduction() {
-				mvss := registry.MintVehicleAndSdSign{
-					IntegrationNode: new(big.Int).SetUint64(intID),
-				}
-
-				hash, err := client.Hash(&mvss)
-				if err != nil {
-					return err
-				}
-
-				sign, err := udc.wallet.SignHash(c.Context(), uint32(childNum), hash)
-				if err != nil {
-					return err
-				}
-
 				return client.MintVehicleAndSdSign(requestID, contracts.MintVehicleAndSdInput{
 					ManufacturerNode:    mvs.ManufacturerNode,
 					Owner:               mvs.Owner,
@@ -1576,20 +1576,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 						},
 					},
 				})
-			}
-
-			mvss := registry.MintVehicleAndSdWithDeviceDefinitionSign{
-				IntegrationNode: new(big.Int).SetUint64(intID),
-			}
-
-			hash, err := client.Hash(&mvss)
-			if err != nil {
-				return err
-			}
-
-			sign, err := udc.wallet.SignHash(c.Context(), uint32(childNum), hash)
-			if err != nil {
-				return err
 			}
 
 			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
