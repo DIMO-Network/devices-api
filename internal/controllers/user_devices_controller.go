@@ -1433,17 +1433,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
-	if !udc.Settings.IsProduction() {
-		// we shouldn't actually need to do this now bc we expect nft image to be set prior to minting
-		// remove?
-		cid, err := udc.ipfsSvc.UploadImage(c.Context(), imageData)
-		if err != nil {
-			udc.log.Err(err).Msg("failed to upload NFT image to IPFS while minting")
-		} else {
-			userDevice.IpfsImageCid = null.StringFrom(cid)
-		}
-	}
-
 	// This may not be there, but if it is we should delete it.
 	imageDataTransp := strings.TrimPrefix(mr.ImageDataTransparent, "data:image/png;base64,")
 
