@@ -1408,7 +1408,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 		logger.Info().
 			Interface("httpRequestBody", mr).
-			Interface("client", client).Interface("mintVehicleWithDeviceDefinitionSign", mvs).
+			Interface("client", client).Interface("mintVehicleWithDeviceDefinitionSign", mvdds).
 			Interface("typedData", client.GetPayload(&mvdds)).
 			Msg("Got request.")
 
