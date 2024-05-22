@@ -118,7 +118,7 @@ env:
     OUCdaWovmF+28PyAi4wCIQDXRKpYK+VMFyUR1GJVoV3gWezQcJmFswuWq+7M+XPb
     GQ==
     -----END CERTIFICATE-----
-  IPFS_URL: https://assets.dev.dimo.xyz/ipfs
+  IPFS_URL: https://assets.dimo.xyz/ipfs
 service:
   type: ClusterIP
   ports:

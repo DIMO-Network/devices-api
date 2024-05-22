@@ -208,54 +208,57 @@ func (nc *NFTController) GetNFTImage(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
-	if !nft.MintRequestID.Valid {
-		return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("No image available for vehicle %d.", ti))
-	}
-
-	imageName := nft.MintRequestID.String
-	suffix := ".png"
-
-	if transparent {
-		suffix = "_transparent.png"
-	} else {
-		if !nc.Settings.IsProduction() {
-			if nft.IpfsImageCid.Valid {
-				imgB, err := nc.ipfsSvc.FetchImage(c.Context(), nft.IpfsImageCid.String)
-				if err != nil {
-					nc.log.Err(err).Msgf("failed to fetch image from IPFS: %s", nft.IpfsImageCid.String)
-				}
-				c.Set("Content-Type", "image/png")
-				return c.Send(imgB)
-			}
-			nc.log.Info().Str("userDeviceID", nft.ID).Str("vehicleTokenID", nft.TokenID.String()).Msg("IPFS cid not set for minted device; this should not happen")
+	if nc.Settings.IsProduction() {
+		if !nft.MintRequestID.Valid {
+			return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("No image available for vehicle %d.", ti))
 		}
-	}
 
-	s3o, err := nc.s3.GetObject(c.Context(), &s3.GetObjectInput{
-		Bucket: aws.String(nc.Settings.NFTS3Bucket),
-		Key:    aws.String(imageName + suffix),
-	})
-	if err != nil {
+		imageName := nft.MintRequestID.String
+		suffix := ".png"
+
 		if transparent {
-			var nsk *s3types.NoSuchKey
-			if errors.As(err, &nsk) {
-				// todo: this error was getting hit a lot in production
-				helpers.SkipErrorLog(c)
-				return fiber.NewError(fiber.StatusNotFound, "Transparent version not set.")
-			}
+			suffix = "_transparent.png"
 		}
-		nc.log.Err(err).Msg("Failure communicating with S3.")
-		return opaqueInternalError
-	}
-	defer s3o.Body.Close()
 
-	b, err := io.ReadAll(s3o.Body)
+		s3o, err := nc.s3.GetObject(c.Context(), &s3.GetObjectInput{
+			Bucket: aws.String(nc.Settings.NFTS3Bucket),
+			Key:    aws.String(imageName + suffix),
+		})
+		if err != nil {
+			if transparent {
+				var nsk *s3types.NoSuchKey
+				if errors.As(err, &nsk) {
+					// todo: this error was getting hit a lot in production
+					helpers.SkipErrorLog(c)
+					return fiber.NewError(fiber.StatusNotFound, "Transparent version not set.")
+				}
+			}
+			nc.log.Err(err).Msg("Failure communicating with S3.")
+			return opaqueInternalError
+		}
+		defer s3o.Body.Close()
+
+		b, err := io.ReadAll(s3o.Body)
+		if err != nil {
+			return err
+		}
+
+		c.Set("Content-Type", "image/png")
+		return c.Send(b)
+	}
+
+	if !nft.IpfsImageCid.Valid {
+		return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("nft image not set for vehicle %d.", ti))
+	}
+
+	imgB, err := nc.ipfsSvc.FetchImage(c.Context(), nft.IpfsImageCid.String)
 	if err != nil {
-		return err
+		return fiber.NewError(fiber.StatusFailedDependency, "failed to fetch image from IPFS")
 	}
 
 	c.Set("Content-Type", "image/png")
-	return c.Send(b)
+	return c.Send(imgB)
+
 }
 
 // GetAftermarketDeviceNFTMetadataByAddress godoc

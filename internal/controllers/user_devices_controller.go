@@ -1644,30 +1644,9 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
 	}
 
-	if userDevice.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
-	}
-
-	// This would only happen if it's a "permissionless mint".
-	if !userDevice.MintRequestID.Valid {
-		return fiber.NewError(fiber.StatusInternalServerError, "Can't edit this vehicle's NFT image.")
-	}
-
 	var nid NFTImageData
 	if err := c.BodyParser(&nid); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
-	}
-
-	if !udc.Settings.IsProduction() {
-		cid, err := udc.ipfsSvc.UploadImage(c.Context(), nid.ImageData)
-		if err != nil {
-			udc.log.Err(err).Msg("failed to upload NFT image to IPFS")
-		} else {
-			userDevice.IpfsImageCid = null.StringFrom(cid)
-			if _, err := userDevice.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.IpfsImageCid)); err != nil {
-				udc.log.Err(err).Str("userDeviceID", userDeviceID).Str("cid", cid).Msg("failed to store IPFS CID for vehicle")
-			}
-		}
 	}
 
 	// This may not be there, but if it is we should delete it.
@@ -1682,38 +1661,57 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Empty image field.")
 	}
 
-	_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
-		Bucket: &udc.Settings.NFTS3Bucket,
-		Key:    aws.String(userDevice.MintRequestID.String + ".png"),
-		Body:   bytes.NewReader(image),
-	})
-	if err != nil {
-		udc.log.Err(err).Msg("Failed to save image to S3.")
-		return opaqueInternalError
-	}
+	if udc.Settings.IsProduction() {
+		if userDevice.TokenID.IsZero() {
+			return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
+		}
 
-	// This may not be there, but if it is we should delete it.
-	imageDataTransp := strings.TrimPrefix(nid.ImageDataTransparent, "data:image/png;base64,")
-
-	// Should be okay if empty or not provided.
-	imageTransp, err := base64.StdEncoding.DecodeString(imageDataTransp)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Transparent image not properly base64-encoded.")
-	}
-
-	if len(imageTransp) != 0 {
 		_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
 			Bucket: &udc.Settings.NFTS3Bucket,
-			Key:    aws.String(userDevice.MintRequestID.String + "_transparent.png"),
-			Body:   bytes.NewReader(imageTransp),
+			Key:    aws.String(userDevice.MintRequestID.String + ".png"),
+			Body:   bytes.NewReader(image),
 		})
 		if err != nil {
-			udc.log.Err(err).Msg("Failed to save transparent image to S3.")
+			udc.log.Err(err).Msg("Failed to save image to S3.")
 			return opaqueInternalError
 		}
+
+		// This may not be there, but if it is we should delete it.
+		imageDataTransp := strings.TrimPrefix(nid.ImageDataTransparent, "data:image/png;base64,")
+
+		// Should be okay if empty or not provided.
+		imageTransp, err := base64.StdEncoding.DecodeString(imageDataTransp)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "Transparent image not properly base64-encoded.")
+		}
+
+		if len(imageTransp) != 0 {
+			_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
+				Bucket: &udc.Settings.NFTS3Bucket,
+				Key:    aws.String(userDevice.MintRequestID.String + "_transparent.png"),
+				Body:   bytes.NewReader(imageTransp),
+			})
+			if err != nil {
+				udc.log.Err(err).Msg("Failed to save transparent image to S3.")
+				return opaqueInternalError
+			}
+		}
+
+		return c.SendStatus(fiber.StatusNoContent)
 	}
 
-	return err
+	cid, err := udc.ipfsSvc.UploadImage(c.Context(), nid.ImageData)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Failed to upload image to IPFS")
+	}
+
+	userDevice.IpfsImageCid = null.StringFrom(cid)
+	_, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.IpfsImageCid))
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "failed to store IPFS CID for vehicle")
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 // VehicleMintRequest contains the user's signature for the mint request as well as the
@@ -1930,6 +1928,10 @@ func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID s
 	}
 
 	if !udc.Settings.IsProduction() {
+		if !userDevice.IpfsImageCid.Valid {
+			return nil, nil, fmt.Errorf("vehicle image must be set before minting")
+		}
+
 		if dd.NameSlug == "" {
 			return nil, nil, fmt.Errorf("invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
 		}
