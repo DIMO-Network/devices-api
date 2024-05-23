@@ -1327,6 +1327,9 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		DeviceDefinitionID: dd.NameSlug,
 	}
 
+	mvdds.Attributes = append(mvdds.Attributes, "ImageURI")
+	mvdds.Infos = append(mvdds.Infos, userDevice.IpfsImageCid.String)
+
 	return c.JSON(client.GetPayload(&mvdds))
 }
 
@@ -1409,6 +1412,9 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			Infos:              mvs.Infos,
 			DeviceDefinitionID: dd.NameSlug,
 		}
+
+		mvdds.Attributes = append(mvdds.Attributes, "ImageURI")
+		mvdds.Infos = append(mvdds.Infos, userDevice.IpfsImageCid.String)
 
 		logger.Info().
 			Interface("httpRequestBody", mr).
