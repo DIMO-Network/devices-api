@@ -1376,12 +1376,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Primary image not properly base64-encoded.")
 	}
 
-	requestID := ksuid.New().String()
-
-	if len(image) == 0 && !userDevice.IpfsImageCid.Valid {
-		return fiber.NewError(fiber.StatusBadRequest, "Empty image field in request and no assigned image in IPFS.")
-	}
-
 	client := registry.Client{
 		Producer:     udc.producer,
 		RequestTopic: "topic.transaction.request.send",
@@ -1426,7 +1420,13 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		}
 	}
 
-	if len(image) != 0 {
+	requestID := ksuid.New().String()
+
+	if !userDevice.IpfsImageCid.Valid {
+		if len(image) == 0 {
+			return fiber.NewError(fiber.StatusBadRequest, "Empty image field in request and no assigned IPFS image.")
+		}
+
 		_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
 			Bucket: &udc.Settings.NFTS3Bucket,
 			Key:    aws.String(requestID + ".png"),
@@ -1629,21 +1629,18 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Empty image field.")
 	}
 
-	if udc.Settings.IsProduction() {
-		if userDevice.TokenID.IsZero() {
-			return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
-		}
+	cid, err := udc.ipfsSvc.UploadImage(c.Context(), nid.ImageData)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Failed to upload image to IPFS")
+	}
 
-		_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
-			Bucket: &udc.Settings.NFTS3Bucket,
-			Key:    aws.String(userDevice.MintRequestID.String + ".png"),
-			Body:   bytes.NewReader(image),
-		})
-		if err != nil {
-			udc.log.Err(err).Msg("Failed to save image to S3.")
-			return opaqueInternalError
-		}
+	userDevice.IpfsImageCid = null.StringFrom(cid)
+	_, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.IpfsImageCid))
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "failed to store IPFS CID for vehicle")
+	}
 
+	if !userDevice.TokenID.IsZero() {
 		// This may not be there, but if it is we should delete it.
 		imageDataTransp := strings.TrimPrefix(nid.ImageDataTransparent, "data:image/png;base64,")
 
@@ -1664,19 +1661,6 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 				return opaqueInternalError
 			}
 		}
-
-		return c.SendStatus(fiber.StatusNoContent)
-	}
-
-	cid, err := udc.ipfsSvc.UploadImage(c.Context(), nid.ImageData)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Failed to upload image to IPFS")
-	}
-
-	userDevice.IpfsImageCid = null.StringFrom(cid)
-	_, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.IpfsImageCid))
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "failed to store IPFS CID for vehicle")
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
