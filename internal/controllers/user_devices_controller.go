@@ -1901,7 +1901,7 @@ func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID s
 
 	if userDevice.IpfsImageCid.Valid {
 		mvs.Attributes = append(mvs.Attributes, imageURIattribute)
-		mvs.Infos = append(mvs.Attributes, ipfs.URL(userDevice.IpfsImageCid.String))
+		mvs.Infos = append(mvs.Infos, ipfs.URL(userDevice.IpfsImageCid.String))
 	}
 
 	return mvs, dd, nil
