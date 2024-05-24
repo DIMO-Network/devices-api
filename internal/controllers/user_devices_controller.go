@@ -1328,7 +1328,7 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 	}
 
 	mvdds.Attributes = append(mvdds.Attributes, "ImageURI")
-	mvdds.Infos = append(mvdds.Infos, userDevice.IpfsImageCid.String)
+	mvdds.Infos = append(mvdds.Infos, ipfs.Scheme+userDevice.IpfsImageCid.String)
 
 	return c.JSON(client.GetPayload(&mvdds))
 }
@@ -1414,7 +1414,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		}
 
 		mvdds.Attributes = append(mvdds.Attributes, "ImageURI")
-		mvdds.Infos = append(mvdds.Infos, userDevice.IpfsImageCid.String)
+		mvdds.Infos = append(mvdds.Infos, ipfs.Scheme+userDevice.IpfsImageCid.String)
 
 		logger.Info().
 			Interface("httpRequestBody", mr).
@@ -1596,7 +1596,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 					},
 					{
 						Attribute: "ImageURI",
-						Info:      userDevice.IpfsImageCid.String,
+						Info:      ipfs.Scheme + userDevice.IpfsImageCid.String,
 					},
 				},
 			})
@@ -1617,7 +1617,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		{Attribute: "Make", Info: dd.Make.Name},
 		{Attribute: "Model", Info: dd.Type.Model},
 		{Attribute: "Year", Info: strconv.Itoa(int(dd.Type.Year))},
-		{Attribute: "ImageURI", Info: userDevice.IpfsImageCid.String},
+		{Attribute: "ImageURI", Info: ipfs.Scheme + userDevice.IpfsImageCid.String},
 	}, sigBytes)
 }
 

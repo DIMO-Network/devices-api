@@ -20,6 +20,7 @@ const (
 	imagePrefix          = "data:image/png;base64,"
 	contentTypeHeaderKey = "Content-Type"
 	pngContentType       = "image/png"
+	Scheme               = "ipfs://"
 )
 
 type IPFS struct {
