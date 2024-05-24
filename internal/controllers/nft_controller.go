@@ -120,7 +120,7 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 
 	imageURI := fmt.Sprintf("%s/v1/vehicle/%s/image", nc.Settings.DeploymentBaseURL, ti)
 	if !nc.Settings.IsProduction() && ud.IpfsImageCid.Valid {
-		imageURI = fmt.Sprintf("%s/%s", nc.Settings.IPFSURL, ud.IpfsImageCid.String)
+		imageURI = fmt.Sprintf("%s/%s", ipfs.Scheme, ud.IpfsImageCid.String)
 	}
 
 	return c.JSON(NFTMetadataResp{
