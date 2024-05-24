@@ -20,12 +20,16 @@ const (
 	imagePrefix          = "data:image/png;base64,"
 	contentTypeHeaderKey = "Content-Type"
 	pngContentType       = "image/png"
-	Scheme               = "ipfs://"
+	scheme               = "ipfs"
 )
 
 type IPFS struct {
 	url    *url.URL
 	client *http.Client
+}
+
+func URL(cid string) string {
+	return fmt.Sprintf("%s://%s", scheme, cid)
 }
 
 type ipfsResponse struct {
