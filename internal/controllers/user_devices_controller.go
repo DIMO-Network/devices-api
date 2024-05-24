@@ -1556,7 +1556,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 					VehicleOwnerSig:     sigBytes,
 					SyntheticDeviceSig:  sign,
 					SyntheticDeviceAddr: common.BytesToAddress(addr),
-					AttrInfoPairsDevice: []contracts.AttributeInfoPair{
+					AttrInfoPairsVehicle: []contracts.AttributeInfoPair{
 						{
 							Attribute: "Make",
 							Info:      dd.Make.Name,
@@ -1570,6 +1570,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 							Info:      strconv.Itoa(int(dd.Type.Year)),
 						},
 					},
+					AttrInfoPairsDevice: []contracts.AttributeInfoPair{},
 				})
 			}
 
@@ -1581,7 +1582,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				VehicleOwnerSig:     sigBytes,
 				SyntheticDeviceSig:  sign,
 				SyntheticDeviceAddr: common.BytesToAddress(addr),
-				AttrInfoPairsDevice: []contracts.AttributeInfoPair{
+				AttrInfoPairsVehicle: []contracts.AttributeInfoPair{
 					{
 						Attribute: "Make",
 						Info:      dd.Make.Name,
@@ -1599,6 +1600,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 						Info:      ipfs.Scheme + userDevice.IpfsImageCid.String,
 					},
 				},
+				AttrInfoPairsDevice: []contracts.AttributeInfoPair{},
 			})
 		}
 	}

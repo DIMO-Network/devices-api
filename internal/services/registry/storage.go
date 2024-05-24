@@ -80,7 +80,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 		mtr.Hash = null.BytesFrom(common.FromHex(data.Transaction.Hash))
 	}
 
-	_, err = mtr.Update(ctx, p.DB().Writer, boil.Infer())
+	_, err = mtr.Update(ctx, tx, boil.Infer())
 	if err != nil {
 		return err
 	}
@@ -149,7 +149,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 				ud.TokenID = dbtypes.NullIntToDecimal(event.TokenId)
 				ud.OwnerAddress = null.BytesFrom(event.Owner.Bytes())
-				_, err = ud.Update(ctx, p.DB().Writer, boil.Whitelist(cols.TokenID, cols.OwnerAddress))
+				_, err = ud.Update(ctx, tx, boil.Whitelist(cols.TokenID, cols.OwnerAddress))
 				if err != nil {
 					return fmt.Errorf("failed to update vehicle record: %w", err)
 				}
@@ -218,7 +218,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 				sd := mtr.R.MintRequestSyntheticDevice
 				sd.TokenID = dbtypes.NullIntToDecimal(event.SyntheticDeviceNode)
-				if _, err := sd.Update(ctx, p.DB().Writer, boil.Whitelist(models.SyntheticDeviceColumns.TokenID)); err != nil {
+				if _, err := sd.Update(ctx, tx, boil.Whitelist(models.SyntheticDeviceColumns.TokenID)); err != nil {
 					return fmt.Errorf("failed to update synthetic device record: %w", err)
 				}
 
