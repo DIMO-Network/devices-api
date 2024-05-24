@@ -1422,19 +1422,24 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	requestID := ksuid.New().String()
 
-	if !userDevice.IpfsImageCid.Valid {
+	if userDevice.IpfsImageCid.Valid {
+		if len(image) != 0 {
+			return fiber.NewError(fiber.StatusBadRequest, "IPFS image already set for this vehicle; don't provide another.")
+		}
+	} else {
 		if len(image) == 0 {
 			return fiber.NewError(fiber.StatusBadRequest, "Empty image field in request and no assigned IPFS image.")
 		}
 
-		_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
-			Bucket: &udc.Settings.NFTS3Bucket,
-			Key:    aws.String(requestID + ".png"),
-			Body:   bytes.NewReader(image),
-		})
+		cid, err := udc.ipfsSvc.UploadImage(c.Context(), imageData)
 		if err != nil {
-			logger.Err(err).Msg("Failed to save image to S3.")
-			return opaqueInternalError
+			return fiber.NewError(fiber.StatusBadRequest, "Failed to upload image to IPFS")
+		}
+
+		userDevice.IpfsImageCid = null.StringFrom(cid)
+		_, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.IpfsImageCid))
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "failed to store IPFS CID for vehicle")
 		}
 	}
 
@@ -1640,26 +1645,28 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "failed to store IPFS CID for vehicle")
 	}
 
-	if !userDevice.TokenID.IsZero() {
-		// This may not be there, but if it is we should delete it.
-		imageDataTransp := strings.TrimPrefix(nid.ImageDataTransparent, "data:image/png;base64,")
+	// This may not be there, but if it is we should delete it.
+	imageDataTransp := strings.TrimPrefix(nid.ImageDataTransparent, "data:image/png;base64,")
 
-		// Should be okay if empty or not provided.
-		imageTransp, err := base64.StdEncoding.DecodeString(imageDataTransp)
-		if err != nil {
-			return fiber.NewError(fiber.StatusBadRequest, "Transparent image not properly base64-encoded.")
+	// Should be okay if empty or not provided.
+	imageTransp, err := base64.StdEncoding.DecodeString(imageDataTransp)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Transparent image not properly base64-encoded.")
+	}
+
+	if len(imageTransp) != 0 {
+		if userDevice.TokenID.IsZero() || !userDevice.MintRequestID.Valid {
+			return fiber.NewError(fiber.StatusBadRequest, "Can't set transparent image for this vehicle.")
 		}
 
-		if len(imageTransp) != 0 {
-			_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
-				Bucket: &udc.Settings.NFTS3Bucket,
-				Key:    aws.String(userDevice.MintRequestID.String + "_transparent.png"),
-				Body:   bytes.NewReader(imageTransp),
-			})
-			if err != nil {
-				udc.log.Err(err).Msg("Failed to save transparent image to S3.")
-				return opaqueInternalError
-			}
+		_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
+			Bucket: &udc.Settings.NFTS3Bucket,
+			Key:    aws.String(userDevice.MintRequestID.String + "_transparent.png"),
+			Body:   bytes.NewReader(imageTransp),
+		})
+		if err != nil {
+			udc.log.Err(err).Msg("Failed to save transparent image to S3.")
+			return opaqueInternalError
 		}
 	}
 
