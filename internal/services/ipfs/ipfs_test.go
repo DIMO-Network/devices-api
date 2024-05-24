@@ -42,7 +42,8 @@ func TestIPFSUpload_Success(t *testing.T) {
 		require.NoError(err)
 
 		w.WriteHeader(200)
-		w.Write(outB)
+		_, err = w.Write(outB)
+		require.NoError(err)
 	}))
 	defer serv.Close()
 
