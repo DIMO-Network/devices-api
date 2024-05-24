@@ -1295,32 +1295,9 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "No vehicle with that id found.")
 	}
 
-	if !userDevice.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle already minted with token id %d.", userDevice.TokenID.Big))
-	}
-
-	if mr := userDevice.R.MintRequest; mr != nil && mr.Status != models.MetaTransactionRequestStatusFailed {
-		return fiber.NewError(fiber.StatusConflict, "Vehicle minting already in process.")
-	}
-
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
+	mvs, dd, err := udc.checkVehicleMint(c.Context(), userID, userDevice)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, fmt.Sprintf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID))
-	}
-
-	if dd.Make.TokenId == 0 {
-		return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle make %q not yet minted.", dd.Make.Name))
-	}
-	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
-
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-	if err != nil {
-		udc.log.Err(err).Msg("Couldn't retrieve user record.")
-		return opaqueInternalError
-	}
-
-	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusBadRequest, "User does not have an Ethereum address on file.")
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
 	client := registry.Client{
@@ -1334,18 +1311,19 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		},
 	}
 
-	deviceMake := dd.Make.Name
-	deviceModel := dd.Type.Model
-	deviceYear := strconv.Itoa(int(dd.Type.Year))
-
-	mvs := registry.MintVehicleSign{
-		ManufacturerNode: makeTokenID,
-		Owner:            common.HexToAddress(*user.EthereumAddress),
-		Attributes:       []string{"Make", "Model", "Year"},
-		Infos:            []string{deviceMake, deviceModel, deviceYear},
+	if udc.Settings.IsProduction() {
+		return c.JSON(client.GetPayload(mvs))
 	}
 
-	return c.JSON(client.GetPayload(&mvs))
+	mvdds := registry.MintVehicleWithDeviceDefinitionSign{
+		ManufacturerNode:   mvs.ManufacturerNode,
+		Owner:              mvs.Owner,
+		Attributes:         mvs.Attributes,
+		Infos:              mvs.Infos,
+		DeviceDefinitionID: dd.NameSlug,
+	}
+
+	return c.JSON(client.GetPayload(&mvdds))
 }
 
 // PostMintDevice godoc
@@ -1374,58 +1352,9 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	if !userDevice.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusConflict, "Vehicle already minted.")
-	}
-
-	if mr := userDevice.R.MintRequest; mr != nil && mr.Status != models.MetaTransactionRequestStatusFailed {
-		return fiber.NewError(fiber.StatusConflict, "Minting in process.")
-	}
-
-	if !userDevice.VinConfirmed {
-		return fiber.NewError(fiber.StatusConflict, "VIN not confirmed.")
-	}
-
-	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
-	if err2 != nil {
-		return shared.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID))
-	}
-
-	if dd.Make.TokenId == 0 {
-		return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle make %q not yet minted.", dd.Make.Name))
-	}
-
-	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
-
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	mvs, dd, err := udc.checkVehicleMint(c.Context(), userID, userDevice)
 	if err != nil {
-		return err
-	}
-
-	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusBadRequest, "User does not have an Ethereum address on file.")
-	}
-
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
-	deviceMake := dd.Make.Name
-	deviceModel := dd.Type.Model
-	deviceYear := strconv.Itoa(int(dd.Type.Year))
-
-	mvs := registry.MintVehicleSign{
-		ManufacturerNode: makeTokenID,
-		Owner:            common.HexToAddress(*user.EthereumAddress),
-		Attributes:       []string{"Make", "Model", "Year"},
-		Infos:            []string{deviceMake, deviceModel, deviceYear},
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
 	var mr VehicleMintRequest
@@ -1445,15 +1374,51 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Empty image field.")
 	}
 
+	client := registry.Client{
+		Producer:     udc.producer,
+		RequestTopic: "topic.transaction.request.send",
+		Contract: registry.Contract{
+			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
+			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
+			Name:    "DIMO",
+			Version: "1",
+		},
+	}
+
+	var hash []byte
+	if udc.Settings.IsProduction() {
+		logger.Info().
+			Interface("httpRequestBody", mr).
+			Interface("client", client).Interface("mintVehicleSign", mvs).
+			Interface("typedData", client.GetPayload(mvs)).
+			Msg("Got request.")
+
+		hash, err = client.Hash(mvs)
+		if err != nil {
+			return opaqueInternalError
+		}
+	} else {
+		mvdds := registry.MintVehicleWithDeviceDefinitionSign{
+			ManufacturerNode:   mvs.ManufacturerNode,
+			Owner:              mvs.Owner,
+			Attributes:         mvs.Attributes,
+			Infos:              mvs.Infos,
+			DeviceDefinitionID: dd.NameSlug,
+		}
+
+		logger.Info().
+			Interface("httpRequestBody", mr).
+			Interface("client", client).Interface("mintVehicleWithDeviceDefinitionSign", mvdds).
+			Interface("typedData", client.GetPayload(&mvdds)).
+			Msg("Got request.")
+
+		hash, err = client.Hash(&mvdds)
+		if err != nil {
+			return opaqueInternalError
+		}
+	}
+
 	requestID := ksuid.New().String()
-
-	logger.Info().
-		Interface("httpRequestBody", mr).
-		Interface("client", client).
-		Interface("mintVehicleSign", mvs).
-		Interface("typedData", client.GetPayload(&mvs)).
-		Msg("Got request.")
-
 	_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
 		Bucket: &udc.Settings.NFTS3Bucket,
 		Key:    aws.String(requestID + ".png"),
@@ -1484,11 +1449,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		}
 	}
 
-	hash, err := client.Hash(&mvs)
-	if err != nil {
-		return opaqueInternalError
-	}
-
 	sigBytes := common.FromHex(mr.Signature)
 
 	recAddr, err := helpers.Ecrecover(hash, sigBytes)
@@ -1496,9 +1456,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	realAddr := common.HexToAddress(*user.EthereumAddress)
-
-	if recAddr != realAddr {
+	if recAddr != mvs.Owner {
 		return fiber.NewError(fiber.StatusBadRequest, "Signature incorrect.")
 	}
 
@@ -1555,6 +1513,17 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
+			sd := models.SyntheticDevice{
+				IntegrationTokenID: types.NewDecimal(decimal.New(int64(intID), 0)),
+				MintRequestID:      requestID,
+				WalletChildNumber:  seq.NextVal,
+				WalletAddress:      addr,
+			}
+
+			if err := sd.Insert(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
+				return err
+			}
+
 			mvss := registry.MintVehicleAndSdSign{
 				IntegrationNode: new(big.Int).SetUint64(intID),
 			}
@@ -1569,29 +1538,54 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
-			sd := models.SyntheticDevice{
-				IntegrationTokenID: types.NewDecimal(decimal.New(int64(intID), 0)),
-				MintRequestID:      requestID,
-				WalletChildNumber:  seq.NextVal,
-				WalletAddress:      addr,
+			if udc.Settings.IsProduction() {
+				return client.MintVehicleAndSdSign(requestID, contracts.MintVehicleAndSdInput{
+					ManufacturerNode:    mvs.ManufacturerNode,
+					Owner:               mvs.Owner,
+					IntegrationNode:     new(big.Int).SetUint64(intID),
+					VehicleOwnerSig:     sigBytes,
+					SyntheticDeviceSig:  sign,
+					SyntheticDeviceAddr: common.BytesToAddress(addr),
+					AttrInfoPairsVehicle: []contracts.AttributeInfoPair{
+						{
+							Attribute: "Make",
+							Info:      dd.Make.Name,
+						},
+						{
+							Attribute: "Model",
+							Info:      dd.Type.Model,
+						},
+						{
+							Attribute: "Year",
+							Info:      strconv.Itoa(int(dd.Type.Year)),
+						},
+					},
+					AttrInfoPairsDevice: []contracts.AttributeInfoPair{},
+				})
 			}
 
-			if err := sd.Insert(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
-				return err
-			}
-
-			return client.MintVehicleAndSDign(requestID, contracts.MintVehicleAndSdInput{
-				ManufacturerNode: makeTokenID,
-				Owner:            realAddr,
-				AttrInfoPairsVehicle: []contracts.AttributeInfoPair{
-					{Attribute: "Make", Info: deviceMake},
-					{Attribute: "Model", Info: deviceModel},
-					{Attribute: "Year", Info: deviceYear},
-				},
+			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
+				ManufacturerNode:    mvs.ManufacturerNode,
+				Owner:               mvs.Owner,
+				DeviceDefinitionId:  dd.NameSlug,
 				IntegrationNode:     new(big.Int).SetUint64(intID),
 				VehicleOwnerSig:     sigBytes,
 				SyntheticDeviceSig:  sign,
 				SyntheticDeviceAddr: common.BytesToAddress(addr),
+				AttrInfoPairsVehicle: []contracts.AttributeInfoPair{
+					{
+						Attribute: "Make",
+						Info:      dd.Make.Name,
+					},
+					{
+						Attribute: "Model",
+						Info:      dd.Type.Model,
+					},
+					{
+						Attribute: "Year",
+						Info:      strconv.Itoa(int(dd.Type.Year)),
+					},
+				},
 				AttrInfoPairsDevice: []contracts.AttributeInfoPair{},
 			})
 		}
@@ -1599,10 +1593,18 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	logger.Info().Msgf("Submitted metatransaction request %s", requestID)
 
-	return client.MintVehicleSign(requestID, makeTokenID, realAddr, []contracts.AttributeInfoPair{
-		{Attribute: "Make", Info: deviceMake},
-		{Attribute: "Model", Info: deviceModel},
-		{Attribute: "Year", Info: deviceYear},
+	if udc.Settings.IsProduction() {
+		return client.MintVehicleSign(requestID, mvs.ManufacturerNode, mvs.Owner, []contracts.AttributeInfoPair{
+			{Attribute: "Make", Info: dd.Make.Name},
+			{Attribute: "Model", Info: dd.Type.Model},
+			{Attribute: "Year", Info: strconv.Itoa(int(dd.Type.Year))},
+		}, sigBytes)
+	}
+
+	return client.MintVehicleWithDeviceDefinitionSign(requestID, mvs.ManufacturerNode, mvs.Owner, dd.NameSlug, []contracts.AttributeInfoPair{
+		{Attribute: "Make", Info: dd.Make.Name},
+		{Attribute: "Model", Info: dd.Type.Model},
+		{Attribute: "Year", Info: strconv.Itoa(int(dd.Type.Year))},
 	}, sigBytes)
 }
 
@@ -1862,4 +1864,51 @@ type VINCredentialData struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 	Valid     bool      `json:"valid"`
 	VIN       string    `json:"vin"`
+}
+
+func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID string, userDevice *models.UserDevice) (*registry.MintVehicleSign, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
+	if !userDevice.TokenID.IsZero() {
+		return nil, nil, fmt.Errorf("vehicle already minted with token id %d", userDevice.TokenID.Big)
+	}
+
+	if mr := userDevice.R.MintRequest; mr != nil && mr.Status != models.MetaTransactionRequestStatusFailed {
+		return nil, nil, fmt.Errorf("vehicle minting already in process")
+	}
+
+	if !userDevice.VinConfirmed {
+		return nil, nil, fmt.Errorf("VIN not confirmed")
+	}
+
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, userDevice.DeviceDefinitionID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID)
+	}
+
+	if dd.Make.TokenId == 0 {
+		return nil, nil, fmt.Errorf("vehicle make %q not yet minted", dd.Make.Name)
+	}
+	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
+
+	user, err := udc.usersClient.GetUser(ctx, &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		udc.log.Err(err).Msg("couldn't retrieve user record")
+		return nil, nil, opaqueInternalError
+	}
+
+	if user.EthereumAddress == nil {
+		return nil, nil, fmt.Errorf("user does not have an Ethereum address on file")
+	}
+
+	if !udc.Settings.IsProduction() {
+		if dd.NameSlug == "" {
+			return nil, nil, fmt.Errorf("invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
+		}
+	}
+
+	return &registry.MintVehicleSign{
+		ManufacturerNode: makeTokenID,
+		Owner:            common.HexToAddress(*user.EthereumAddress),
+		Attributes:       []string{"Make", "Model", "Year"},
+		Infos:            []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year))},
+	}, dd, nil
 }
