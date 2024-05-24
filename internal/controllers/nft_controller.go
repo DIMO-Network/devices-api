@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/DIMO-Network/devices-api/internal/services/ipfs"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/shared"
@@ -47,6 +48,7 @@ type NFTController struct {
 	smartcarTaskSvc  services.SmartcarTaskService
 	teslaTaskService services.TeslaTaskService
 	deviceDataSvc    services.DeviceDataService
+	ipfsSvc          *ipfs.IPFS
 }
 
 // NewNFTController constructor
@@ -56,8 +58,8 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 	teslaTaskService services.TeslaTaskService,
 	integSvc services.DeviceDefinitionIntegrationService,
 	deviceDataSvc services.DeviceDataService,
+	ipfsSvc *ipfs.IPFS,
 ) NFTController {
-
 	return NFTController{
 		Settings:         settings,
 		DBS:              dbs,
@@ -68,6 +70,7 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 		teslaTaskService: teslaTaskService,
 		integSvc:         integSvc,
 		deviceDataSvc:    deviceDataSvc,
+		ipfsSvc:          ipfsSvc,
 	}
 }
 
@@ -115,10 +118,15 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 		name = description
 	}
 
+	imageURI := fmt.Sprintf("%s/v1/vehicle/%s/image", nc.Settings.DeploymentBaseURL, ti)
+	if ud.IpfsImageCid.Valid {
+		imageURI = ipfs.URL(ud.IpfsImageCid.String)
+	}
+
 	return c.JSON(NFTMetadataResp{
 		Name:        name,
 		Description: description + ", a DIMO vehicle.",
-		Image:       fmt.Sprintf("%s/v1/vehicle/%s/image", nc.Settings.DeploymentBaseURL, ti),
+		Image:       imageURI,
 		Attributes: []NFTAttribute{
 			{TraitType: "Make", Value: def.Make.Name},
 			{TraitType: "Model", Value: def.Type.Model},
@@ -181,10 +189,7 @@ func (nc *NFTController) GetNFTImage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
 	}
 
-	var transparent bool
-	if c.Query("transparent") == "true" {
-		transparent = true
-	}
+	transparent := c.Query("transparent") == "true"
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
 
 	// todo: NFT not found errors here were getting hit a lot in prod - should we have a prometheus metric or we don't care?
@@ -198,6 +203,16 @@ func (nc *NFTController) GetNFTImage(c *fiber.Ctx) error {
 		}
 		nc.log.Err(err).Msg("Database error retrieving NFT metadata.")
 		return opaqueInternalError
+	}
+
+	if nft.IpfsImageCid.Valid && !transparent {
+		imgB, err := nc.ipfsSvc.FetchImage(c.Context(), nft.IpfsImageCid.String)
+		if err != nil {
+			return fmt.Errorf("error fetching %q from IPFS gateway", nft.IpfsImageCid.String)
+		}
+
+		c.Set("Content-Type", "image/png")
+		return c.Send(imgB)
 	}
 
 	if !nft.MintRequestID.Valid {
@@ -224,8 +239,7 @@ func (nc *NFTController) GetNFTImage(c *fiber.Ctx) error {
 				return fiber.NewError(fiber.StatusNotFound, "Transparent version not set.")
 			}
 		}
-		nc.log.Err(err).Msg("Failure communicating with S3.")
-		return opaqueInternalError
+		return fmt.Errorf("error retrieving image for vehicle %d from S3: %w", tid, err)
 	}
 	defer s3o.Body.Close()
 

@@ -43,6 +43,7 @@ type UserDevice struct {
 	TokenID            types.NullDecimal `boil:"token_id" json:"token_id,omitempty" toml:"token_id" yaml:"token_id,omitempty"`
 	ClaimID            null.String       `boil:"claim_id" json:"claim_id,omitempty" toml:"claim_id" yaml:"claim_id,omitempty"`
 	OwnerAddress       null.Bytes        `boil:"owner_address" json:"owner_address,omitempty" toml:"owner_address" yaml:"owner_address,omitempty"`
+	IpfsImageCid       null.String       `boil:"ipfs_image_cid" json:"ipfs_image_cid,omitempty" toml:"ipfs_image_cid" yaml:"ipfs_image_cid,omitempty"`
 
 	R *userDeviceR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userDeviceL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -67,6 +68,7 @@ var UserDeviceColumns = struct {
 	TokenID            string
 	ClaimID            string
 	OwnerAddress       string
+	IpfsImageCid       string
 }{
 	ID:                 "id",
 	UserID:             "user_id",
@@ -86,6 +88,7 @@ var UserDeviceColumns = struct {
 	TokenID:            "token_id",
 	ClaimID:            "claim_id",
 	OwnerAddress:       "owner_address",
+	IpfsImageCid:       "ipfs_image_cid",
 }
 
 var UserDeviceTableColumns = struct {
@@ -107,6 +110,7 @@ var UserDeviceTableColumns = struct {
 	TokenID            string
 	ClaimID            string
 	OwnerAddress       string
+	IpfsImageCid       string
 }{
 	ID:                 "user_devices.id",
 	UserID:             "user_devices.user_id",
@@ -126,6 +130,7 @@ var UserDeviceTableColumns = struct {
 	TokenID:            "user_devices.token_id",
 	ClaimID:            "user_devices.claim_id",
 	OwnerAddress:       "user_devices.owner_address",
+	IpfsImageCid:       "user_devices.ipfs_image_cid",
 }
 
 // Generated where
@@ -158,6 +163,7 @@ var UserDeviceWhere = struct {
 	TokenID            whereHelpertypes_NullDecimal
 	ClaimID            whereHelpernull_String
 	OwnerAddress       whereHelpernull_Bytes
+	IpfsImageCid       whereHelpernull_String
 }{
 	ID:                 whereHelperstring{field: "\"devices_api\".\"user_devices\".\"id\""},
 	UserID:             whereHelperstring{field: "\"devices_api\".\"user_devices\".\"user_id\""},
@@ -177,6 +183,7 @@ var UserDeviceWhere = struct {
 	TokenID:            whereHelpertypes_NullDecimal{field: "\"devices_api\".\"user_devices\".\"token_id\""},
 	ClaimID:            whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"claim_id\""},
 	OwnerAddress:       whereHelpernull_Bytes{field: "\"devices_api\".\"user_devices\".\"owner_address\""},
+	IpfsImageCid:       whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"ipfs_image_cid\""},
 }
 
 // UserDeviceRels is where relationship names are stored.
@@ -297,9 +304,9 @@ func (r *userDeviceR) GetUserDeviceToGeofences() UserDeviceToGeofenceSlice {
 type userDeviceL struct{}
 
 var (
-	userDeviceAllColumns            = []string{"id", "user_id", "device_definition_id", "vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at", "mint_request_id", "burn_request_id", "token_id", "claim_id", "owner_address"}
+	userDeviceAllColumns            = []string{"id", "user_id", "device_definition_id", "vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at", "mint_request_id", "burn_request_id", "token_id", "claim_id", "owner_address", "ipfs_image_cid"}
 	userDeviceColumnsWithoutDefault = []string{"id", "user_id", "device_definition_id"}
-	userDeviceColumnsWithDefault    = []string{"vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at", "mint_request_id", "burn_request_id", "token_id", "claim_id", "owner_address"}
+	userDeviceColumnsWithDefault    = []string{"vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at", "mint_request_id", "burn_request_id", "token_id", "claim_id", "owner_address", "ipfs_image_cid"}
 	userDevicePrimaryKeyColumns     = []string{"id"}
 	userDeviceGeneratedColumns      = []string{}
 )

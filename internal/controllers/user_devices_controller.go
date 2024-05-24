@@ -20,6 +20,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
+	"github.com/DIMO-Network/devices-api/internal/services/ipfs"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
@@ -76,6 +77,7 @@ type UserDevicesController struct {
 	wallet                    services.SyntheticWalletInstanceService
 	userDeviceSvc             services.UserDeviceService
 	teslaFleetAPISvc          services.TeslaFleetAPIService
+	ipfsSvc                   *ipfs.IPFS
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -132,6 +134,7 @@ func NewUserDevicesController(settings *config.Settings,
 	wallet services.SyntheticWalletInstanceService,
 	userDeviceSvc services.UserDeviceService,
 	teslaFleetAPISvc services.TeslaFleetAPIService,
+	ipfsSvc *ipfs.IPFS,
 ) UserDevicesController {
 	return UserDevicesController{
 		Settings:                  settings,
@@ -160,6 +163,7 @@ func NewUserDevicesController(settings *config.Settings,
 		wallet:                    wallet,
 		userDeviceSvc:             userDeviceSvc,
 		teslaFleetAPISvc:          teslaFleetAPISvc,
+		ipfsSvc:                   ipfsSvc,
 	}
 }
 
@@ -1276,6 +1280,8 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+const imageURIattribute = "ImageURI"
+
 // GetMintDevice godoc
 // @Description Returns the data the user must sign in order to mint this device.
 // @Tags        user-devices
@@ -1370,10 +1376,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Primary image not properly base64-encoded.")
 	}
 
-	if len(image) == 0 {
-		return fiber.NewError(fiber.StatusBadRequest, "Empty image field.")
-	}
-
 	client := registry.Client{
 		Producer:     udc.producer,
 		RequestTopic: "topic.transaction.request.send",
@@ -1419,14 +1421,26 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}
 
 	requestID := ksuid.New().String()
-	_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
-		Bucket: &udc.Settings.NFTS3Bucket,
-		Key:    aws.String(requestID + ".png"),
-		Body:   bytes.NewReader(image),
-	})
-	if err != nil {
-		logger.Err(err).Msg("Failed to save image to S3.")
-		return opaqueInternalError
+
+	if userDevice.IpfsImageCid.Valid {
+		if len(image) != 0 {
+			return fiber.NewError(fiber.StatusBadRequest, "IPFS image already set for this vehicle; don't provide another.")
+		}
+	} else {
+		if len(image) == 0 {
+			return fiber.NewError(fiber.StatusBadRequest, "Empty image field in request and no assigned IPFS image.")
+		}
+
+		cid, err := udc.ipfsSvc.UploadImage(c.Context(), imageData)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "Failed to upload image to IPFS")
+		}
+
+		userDevice.IpfsImageCid = null.StringFrom(cid)
+		_, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.IpfsImageCid))
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "failed to store IPFS CID for vehicle")
+		}
 	}
 
 	// This may not be there, but if it is we should delete it.
@@ -1540,53 +1554,27 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 			if udc.Settings.IsProduction() {
 				return client.MintVehicleAndSdSign(requestID, contracts.MintVehicleAndSdInput{
-					ManufacturerNode:    mvs.ManufacturerNode,
-					Owner:               mvs.Owner,
-					IntegrationNode:     new(big.Int).SetUint64(intID),
-					VehicleOwnerSig:     sigBytes,
-					SyntheticDeviceSig:  sign,
-					SyntheticDeviceAddr: common.BytesToAddress(addr),
-					AttrInfoPairsVehicle: []contracts.AttributeInfoPair{
-						{
-							Attribute: "Make",
-							Info:      dd.Make.Name,
-						},
-						{
-							Attribute: "Model",
-							Info:      dd.Type.Model,
-						},
-						{
-							Attribute: "Year",
-							Info:      strconv.Itoa(int(dd.Type.Year)),
-						},
-					},
-					AttrInfoPairsDevice: []contracts.AttributeInfoPair{},
+					ManufacturerNode:     mvs.ManufacturerNode,
+					Owner:                mvs.Owner,
+					IntegrationNode:      new(big.Int).SetUint64(intID),
+					VehicleOwnerSig:      sigBytes,
+					SyntheticDeviceSig:   sign,
+					SyntheticDeviceAddr:  common.BytesToAddress(addr),
+					AttrInfoPairsVehicle: attrListsToAttrPairs(mvs.Attributes, mvs.Infos),
+					AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
 				})
 			}
 
 			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
-				ManufacturerNode:    mvs.ManufacturerNode,
-				Owner:               mvs.Owner,
-				DeviceDefinitionId:  dd.NameSlug,
-				IntegrationNode:     new(big.Int).SetUint64(intID),
-				VehicleOwnerSig:     sigBytes,
-				SyntheticDeviceSig:  sign,
-				SyntheticDeviceAddr: common.BytesToAddress(addr),
-				AttrInfoPairsVehicle: []contracts.AttributeInfoPair{
-					{
-						Attribute: "Make",
-						Info:      dd.Make.Name,
-					},
-					{
-						Attribute: "Model",
-						Info:      dd.Type.Model,
-					},
-					{
-						Attribute: "Year",
-						Info:      strconv.Itoa(int(dd.Type.Year)),
-					},
-				},
-				AttrInfoPairsDevice: []contracts.AttributeInfoPair{},
+				ManufacturerNode:     mvs.ManufacturerNode,
+				Owner:                mvs.Owner,
+				DeviceDefinitionId:   dd.NameSlug,
+				IntegrationNode:      new(big.Int).SetUint64(intID),
+				VehicleOwnerSig:      sigBytes,
+				SyntheticDeviceSig:   sign,
+				SyntheticDeviceAddr:  common.BytesToAddress(addr),
+				AttrInfoPairsVehicle: attrListsToAttrPairs(mvs.Attributes, mvs.Infos),
+				AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
 			})
 		}
 	}
@@ -1594,18 +1582,21 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	logger.Info().Msgf("Submitted metatransaction request %s", requestID)
 
 	if udc.Settings.IsProduction() {
-		return client.MintVehicleSign(requestID, mvs.ManufacturerNode, mvs.Owner, []contracts.AttributeInfoPair{
-			{Attribute: "Make", Info: dd.Make.Name},
-			{Attribute: "Model", Info: dd.Type.Model},
-			{Attribute: "Year", Info: strconv.Itoa(int(dd.Type.Year))},
-		}, sigBytes)
+		return client.MintVehicleSign(requestID, mvs.ManufacturerNode, mvs.Owner, attrListsToAttrPairs(mvs.Attributes, mvs.Infos), sigBytes)
 	}
 
-	return client.MintVehicleWithDeviceDefinitionSign(requestID, mvs.ManufacturerNode, mvs.Owner, dd.NameSlug, []contracts.AttributeInfoPair{
-		{Attribute: "Make", Info: dd.Make.Name},
-		{Attribute: "Model", Info: dd.Type.Model},
-		{Attribute: "Year", Info: strconv.Itoa(int(dd.Type.Year))},
-	}, sigBytes)
+	return client.MintVehicleWithDeviceDefinitionSign(requestID, mvs.ManufacturerNode, mvs.Owner, dd.NameSlug, attrListsToAttrPairs(mvs.Attributes, mvs.Infos), sigBytes)
+}
+
+func attrListsToAttrPairs(attrs []string, infos []string) []contracts.AttributeInfoPair {
+	out := make([]contracts.AttributeInfoPair, len(attrs))
+	for i := range attrs {
+		out[i] = contracts.AttributeInfoPair{
+			Attribute: attrs[i],
+			Info:      infos[i],
+		}
+	}
+	return out
 }
 
 // UpdateNFTImage godoc
@@ -1626,15 +1617,6 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
 	}
 
-	if userDevice.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
-	}
-
-	// This would only happen if it's a "permissionless mint".
-	if !userDevice.MintRequestID.Valid {
-		return fiber.NewError(fiber.StatusInternalServerError, "Can't edit this vehicle's NFT image.")
-	}
-
 	var nid NFTImageData
 	if err := c.BodyParser(&nid); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
@@ -1652,14 +1634,15 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Empty image field.")
 	}
 
-	_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
-		Bucket: &udc.Settings.NFTS3Bucket,
-		Key:    aws.String(userDevice.MintRequestID.String + ".png"),
-		Body:   bytes.NewReader(image),
-	})
+	cid, err := udc.ipfsSvc.UploadImage(c.Context(), nid.ImageData)
 	if err != nil {
-		udc.log.Err(err).Msg("Failed to save image to S3.")
-		return opaqueInternalError
+		return fiber.NewError(fiber.StatusBadRequest, "Failed to upload image to IPFS")
+	}
+
+	userDevice.IpfsImageCid = null.StringFrom(cid)
+	_, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.IpfsImageCid))
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "failed to store IPFS CID for vehicle")
 	}
 
 	// This may not be there, but if it is we should delete it.
@@ -1672,6 +1655,10 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 	}
 
 	if len(imageTransp) != 0 {
+		if userDevice.TokenID.IsZero() || !userDevice.MintRequestID.Valid {
+			return fiber.NewError(fiber.StatusBadRequest, "Can't set transparent image for this vehicle.")
+		}
+
 		_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
 			Bucket: &udc.Settings.NFTS3Bucket,
 			Key:    aws.String(userDevice.MintRequestID.String + "_transparent.png"),
@@ -1683,7 +1670,7 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 		}
 	}
 
-	return err
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 // VehicleMintRequest contains the user's signature for the mint request as well as the
@@ -1905,10 +1892,17 @@ func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID s
 		}
 	}
 
-	return &registry.MintVehicleSign{
+	mvs := &registry.MintVehicleSign{
 		ManufacturerNode: makeTokenID,
 		Owner:            common.HexToAddress(*user.EthereumAddress),
 		Attributes:       []string{"Make", "Model", "Year"},
 		Infos:            []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year))},
-	}, dd, nil
+	}
+
+	if userDevice.IpfsImageCid.Valid {
+		mvs.Attributes = append(mvs.Attributes, imageURIattribute)
+		mvs.Infos = append(mvs.Attributes, ipfs.URL(userDevice.IpfsImageCid.String))
+	}
+
+	return mvs, dd, nil
 }
