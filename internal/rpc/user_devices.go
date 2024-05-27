@@ -451,9 +451,11 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 		if sd := ud.R.VehicleTokenSyntheticDevice; sd != nil && !sd.TokenID.IsZero() {
 			stk, _ := sd.TokenID.Uint64()
 			iTkID, _ := sd.IntegrationTokenID.Uint64()
+			wc := sd.WalletChildNumber
 			out.SyntheticDevice = &pb.SyntheticDevice{
-				TokenId:            stk,
-				IntegrationTokenId: iTkID,
+				TokenId:             stk,
+				IntegrationTokenId:  iTkID,
+				WalletChildNumberId: uint64(wc),
 			}
 		}
 	}
