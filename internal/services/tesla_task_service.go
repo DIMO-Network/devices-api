@@ -10,19 +10,19 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/Shopify/sarama"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
 )
 
 //go:generate mockgen -source tesla_task_service.go -destination mocks/tesla_task_service_mock.go
 
 type TeslaTaskService interface {
-	StartPoll(vehicle *TeslaVehicle, udai *models.UserDeviceAPIIntegration, apiVersion int, region string) error
+	StartPoll(udai *models.UserDeviceAPIIntegration, sd *models.SyntheticDevice) error
 	StopPoll(udai *models.UserDeviceAPIIntegration) error
 	UnlockDoors(udai *models.UserDeviceAPIIntegration) (string, error)
 	LockDoors(udai *models.UserDeviceAPIIntegration) (string, error)
 	OpenTrunk(udai *models.UserDeviceAPIIntegration) (string, error)
 	OpenFrunk(udai *models.UserDeviceAPIIntegration) (string, error)
-	UpdateCredentials(udai *models.UserDeviceAPIIntegration, version int, region string) error
 }
 
 func NewTeslaTaskService(settings *config.Settings, producer sarama.SyncProducer) TeslaTaskService {
@@ -46,14 +46,23 @@ type TeslaIdentifiers struct {
 }
 
 type TeslaCredentialsV2 struct {
-	TaskID        string    `json:"taskId"`
-	UserDeviceID  string    `json:"userDeviceId"`
-	IntegrationID string    `json:"integrationId"`
-	AccessToken   string    `json:"accessToken"`
-	Expiry        time.Time `json:"expiry"`
-	RefreshToken  string    `json:"refreshToken"`
-	Version       int       `json:"version"`
-	Region        string    `json:"region"`
+	TaskID          string          `json:"taskId"`
+	UserDeviceID    string          `json:"userDeviceId"`
+	IntegrationID   string          `json:"integrationId"`
+	AccessToken     string          `json:"accessToken"`
+	Expiry          time.Time       `json:"expiry"`
+	RefreshToken    string          `json:"refreshToken"`
+	Version         int             `json:"version"`
+	Region          string          `json:"region"`
+	SyntheticDevice *CredsSynthetic `json:"syntheticDevice"`
+}
+
+type CredsSynthetic struct {
+	TokenID            int            `json:"tokenId"`
+	Address            common.Address `json:"address"`
+	IntegrationTokenID int            `json:"integrationTokenId"`
+	WalletChildNumber  int            `json:"walletChildNumber"`
+	VehicleTokenID     int            `json:"vehicleTokenId"`
 }
 
 type TeslaTask struct {
@@ -84,7 +93,18 @@ type TeslaCredentialsCloudEventV2 struct {
 	Data TeslaCredentialsV2 `json:"data"`
 }
 
-func (t *teslaTaskService) StartPoll(vehicle *TeslaVehicle, udai *models.UserDeviceAPIIntegration, version int, region string) error {
+func (t *teslaTaskService) StartPoll(udai *models.UserDeviceAPIIntegration, sd *models.SyntheticDevice) error {
+	var meta UserDeviceAPIIntegrationsMetadata
+	err := udai.Metadata.Unmarshal(&meta)
+	if err != nil {
+		return fmt.Errorf("couldn't unmarshal metadata: %w", err)
+	}
+
+	id, err := strconv.Atoi(udai.ExternalID.String)
+	if err != nil {
+		return fmt.Errorf("couldn't parse Tesla id %q: %w", udai.ExternalID.String, err)
+	}
+
 	tt := TeslaTaskCloudEvent{
 		CloudEventHeaders: CloudEventHeaders{
 			ID:          ksuid.New().String(),
@@ -99,12 +119,16 @@ func (t *teslaTaskService) StartPoll(vehicle *TeslaVehicle, udai *models.UserDev
 			UserDeviceID:  udai.UserDeviceID,
 			IntegrationID: udai.IntegrationID,
 			Identifiers: TeslaIdentifiers{
-				ID:        vehicle.ID,
-				VehicleID: vehicle.VehicleID,
+				ID:        id,
+				VehicleID: meta.TeslaVehicleID,
 			},
 			OnlineIdleLastPoll: false,
 		},
 	}
+
+	tokenID, _ := sd.TokenID.Int64()
+	integrationTokenID, _ := sd.IntegrationTokenID.Int64()
+	vehicleTokenID, _ := sd.VehicleTokenID.Int64()
 
 	tc := TeslaCredentialsCloudEventV2{
 		CloudEventHeaders: CloudEventHeaders{
@@ -122,8 +146,15 @@ func (t *teslaTaskService) StartPoll(vehicle *TeslaVehicle, udai *models.UserDev
 			AccessToken:   udai.AccessToken.String,
 			Expiry:        udai.AccessExpiresAt.Time,
 			RefreshToken:  udai.RefreshToken.String,
-			Version:       version,
-			Region:        region,
+			Version:       meta.TeslaAPIVersion,
+			Region:        meta.TeslaRegion,
+			SyntheticDevice: &CredsSynthetic{
+				TokenID:            int(tokenID),
+				Address:            common.BytesToAddress(sd.WalletAddress),
+				IntegrationTokenID: int(integrationTokenID),
+				WalletChildNumber:  sd.WalletChildNumber,
+				VehicleTokenID:     int(vehicleTokenID),
+			},
 		},
 	}
 
@@ -151,42 +182,6 @@ func (t *teslaTaskService) StartPoll(vehicle *TeslaVehicle, udai *models.UserDev
 			},
 		},
 	)
-
-	return err
-}
-
-func (t *teslaTaskService) UpdateCredentials(udai *models.UserDeviceAPIIntegration, version int, region string) error {
-	tc := TeslaCredentialsCloudEventV2{
-		CloudEventHeaders: CloudEventHeaders{
-			ID:          ksuid.New().String(),
-			Source:      "dimo/integration/" + udai.IntegrationID,
-			SpecVersion: "1.0",
-			Subject:     udai.UserDeviceID,
-			Time:        time.Now(),
-			Type:        "zone.dimo.task.tesla.poll.credential.v2",
-		},
-		Data: TeslaCredentialsV2{
-			TaskID:        udai.TaskID.String,
-			UserDeviceID:  udai.UserDeviceID,
-			IntegrationID: udai.IntegrationID,
-			AccessToken:   udai.AccessToken.String,
-			Expiry:        udai.AccessExpiresAt.Time,
-			RefreshToken:  udai.RefreshToken.String,
-			Version:       version,
-			Region:        region,
-		},
-	}
-
-	tcb, err := json.Marshal(tc)
-	if err != nil {
-		return err
-	}
-
-	_, _, err = t.Producer.SendMessage(&sarama.ProducerMessage{
-		Topic: t.Settings.TaskCredentialTopic,
-		Key:   sarama.StringEncoder(udai.TaskID.String),
-		Value: sarama.ByteEncoder(tcb),
-	})
 
 	return err
 }

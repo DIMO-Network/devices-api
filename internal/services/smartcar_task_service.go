@@ -8,13 +8,14 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/Shopify/sarama"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
 )
 
 //go:generate mockgen -source smartcar_task_service.go -destination mocks/smartcar_task_service_mock.go
 
 type SmartcarTaskService interface {
-	StartPoll(udai *models.UserDeviceAPIIntegration) error
+	StartPoll(udai *models.UserDeviceAPIIntegration, sd *models.SyntheticDevice) error
 	StopPoll(udai *models.UserDeviceAPIIntegration) error
 	Refresh(udai *models.UserDeviceAPIIntegration) error
 	UnlockDoors(udai *models.UserDeviceAPIIntegration) (string, error)
@@ -64,7 +65,7 @@ type SmartcarCredentialsCloudEvent struct {
 	Data SmartcarCredentials `json:"data"`
 }
 
-func (t *smartcarTaskService) StartPoll(udai *models.UserDeviceAPIIntegration) error {
+func (t *smartcarTaskService) StartPoll(udai *models.UserDeviceAPIIntegration, sd *models.SyntheticDevice) error {
 	m := new(UserDeviceAPIIntegrationsMetadata)
 	if err := udai.Metadata.Unmarshal(m); err != nil {
 		return err
@@ -90,6 +91,10 @@ func (t *smartcarTaskService) StartPoll(udai *models.UserDeviceAPIIntegration) e
 		},
 	}
 
+	tokenID, _ := sd.TokenID.Int64()
+	integrationTokenID, _ := sd.IntegrationTokenID.Int64()
+	vehicleTokenID, _ := sd.VehicleTokenID.Int64()
+
 	tc := TeslaCredentialsCloudEventV2{
 		CloudEventHeaders: CloudEventHeaders{
 			ID:          ksuid.New().String(),
@@ -106,6 +111,13 @@ func (t *smartcarTaskService) StartPoll(udai *models.UserDeviceAPIIntegration) e
 			AccessToken:   udai.AccessToken.String,
 			Expiry:        udai.AccessExpiresAt.Time,
 			RefreshToken:  udai.RefreshToken.String,
+			SyntheticDevice: &CredsSynthetic{
+				TokenID:            int(tokenID),
+				Address:            common.BytesToAddress(sd.WalletAddress),
+				IntegrationTokenID: int(integrationTokenID),
+				WalletChildNumber:  sd.WalletChildNumber,
+				VehicleTokenID:     int(vehicleTokenID),
+			},
 		},
 	}
 

@@ -271,14 +271,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 	s.scClient.EXPECT().GetEndpoints(gomock.Any(), "myAccess", "smartcar-idx").Return([]string{"/", "/vin"}, nil)
 	s.scClient.EXPECT().HasDoorControl(gomock.Any(), "myAccess", "smartcar-idx").Return(false, nil)
 
-	oUdai := &models.UserDeviceAPIIntegration{}
-	s.scTaskSvc.EXPECT().StartPoll(gomock.AssignableToTypeOf(oUdai)).DoAndReturn(
-		func(udai *models.UserDeviceAPIIntegration) error {
-			oUdai = udai
-			return nil
-		},
-	)
-
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
@@ -405,13 +397,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 	s.scClient.EXPECT().GetEndpoints(gomock.Any(), token.Access, "smartcar-idx").Return([]string{"/", "/vin"}, nil)
 	s.scClient.EXPECT().HasDoorControl(gomock.Any(), token.Access, "smartcar-idx").Return(false, nil)
 
-	oUdai := &models.UserDeviceAPIIntegration{}
-	s.scTaskSvc.EXPECT().StartPoll(gomock.AssignableToTypeOf(oUdai)).DoAndReturn(
-		func(udai *models.UserDeviceAPIIntegration) error {
-			oUdai = udai
-			return nil
-		},
-	)
 	// original device def
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd[0], nil)
 
@@ -444,9 +429,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 
-	oV := &services.TeslaVehicle{}
-	oUdai := &models.UserDeviceAPIIntegration{}
-
 	s.eventSvc.EXPECT().Emit(gomock.Any()).Return(nil).Do(
 		func(event *shared.CloudEvent[any]) error {
 			assert.Equal(s.T(), ud.ID, event.Subject)
@@ -476,14 +458,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
 		Region:             "Americas",
 	}).Return(nil)
 
-	s.teslaTaskService.EXPECT().StartPoll(gomock.AssignableToTypeOf(oV), gomock.AssignableToTypeOf(oUdai), 1, "").DoAndReturn(
-		func(v *services.TeslaVehicle, udai *models.UserDeviceAPIIntegration, _ int, _ string) error {
-			oV = v
-			oUdai = udai
-			return nil
-		},
-	)
-
 	s.teslaSvc.EXPECT().GetVehicle("abc", 1145).Return(&services.TeslaVehicle{
 		ID:        1145,
 		VehicleID: 223,
@@ -506,9 +480,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
 	expectedExpiry := time.Now().Add(10 * time.Minute)
 	require.NoError(s.T(), err)
 	assert.Equal(s.T(), fiber.StatusNoContent, response.StatusCode, "should return success")
-
-	assert.Equal(s.T(), 1145, oV.ID)
-	assert.Equal(s.T(), 223, oV.VehicleID)
 
 	within := func(test, reference *time.Time, d time.Duration) bool {
 		return test.After(reference.Add(-d)) && test.Before(reference.Add(d))
@@ -884,9 +855,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 
-	oV := &services.TeslaVehicle{}
-	oUdai := &models.UserDeviceAPIIntegration{}
-
 	s.eventSvc.EXPECT().Emit(gomock.Any()).Return(nil).Do(
 		func(event *shared.CloudEvent[any]) error {
 			assert.Equal(s.T(), ud.ID, event.Subject)
@@ -915,14 +883,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 		Year:               int(dd[0].Type.Year),
 		Region:             "Americas",
 	}).Return(nil)
-
-	s.teslaTaskService.EXPECT().StartPoll(gomock.AssignableToTypeOf(oV), gomock.AssignableToTypeOf(oUdai), 2, "na").DoAndReturn(
-		func(v *services.TeslaVehicle, udai *models.UserDeviceAPIIntegration, _ int, _ string) error {
-			oV = v
-			oUdai = udai
-			return nil
-		},
-	)
 
 	s.teslaFleetAPISvc.EXPECT().GetVehicle(gomock.Any(), "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", "na", 1145).Return(&services.TeslaVehicle{
 		ID:        1145,
@@ -979,8 +939,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 
 	encRefreshToken, err := s.cipher.Encrypt(teslaResp.RefreshToken)
 	s.Assert().NoError(err)
-	s.Assert().Equal(1145, oV.ID)
-	s.Assert().Equal(223, oV.VehicleID)
 	s.Assert().Equal(null.StringFrom("1145"), intd.ExternalID)
 	s.Assert().Equal(encAccessToken, intd.AccessToken.String)
 	s.Assert().Equal(encRefreshToken, intd.RefreshToken.String)

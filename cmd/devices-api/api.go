@@ -345,7 +345,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	startContractEventsConsumer(logger, settings, pdb, autoPi, macaron, ddSvc, eventService)
 
-	store, err := registry.NewProcessor(pdb.DBS, &logger, settings, eventService)
+	store, err := registry.NewProcessor(pdb.DBS, &logger, settings, eventService, scTaskSvc, teslaTaskService, ddSvc)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to create registry storage client")
 	}

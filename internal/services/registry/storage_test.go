@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
@@ -32,6 +34,8 @@ type StorageTestSuite struct {
 	container testcontainers.Container
 	mockCtrl  *gomock.Controller
 	eventSvc  *mock_services.MockEventService
+	ddSvc     *mock_services.MockDeviceDefinitionService
+	scSvc     *mock_services.MockSmartcarTaskService
 
 	proc StatusProcessor
 }
@@ -54,8 +58,10 @@ func (s *StorageTestSuite) SetupTest() {
 	s.mockCtrl, s.ctx = gomock.WithContext(context.Background(), s.T())
 
 	s.eventSvc = mock_services.NewMockEventService(s.mockCtrl)
+	s.ddSvc = mock_services.NewMockDeviceDefinitionService(s.mockCtrl)
+	s.scSvc = mock_services.NewMockSmartcarTaskService(s.mockCtrl)
 
-	proc, err := NewProcessor(s.dbs.DBS, logger, &config.Settings{Environment: "prod"}, s.eventSvc)
+	proc, err := NewProcessor(s.dbs.DBS, logger, &config.Settings{Environment: "prod"}, s.eventSvc, s.scSvc, nil, s.ddSvc)
 	if err != nil {
 		s.T().Fatal(err)
 	}
@@ -124,6 +130,13 @@ func (s *StorageTestSuite) Test_SyntheticMintSetsID() {
 		RefreshToken:    null.StringFrom(refToken),
 	}
 	s.MustInsert(&udi)
+
+	s.ddSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(1)).Return(&grpc.Integration{
+		Id:     integrationID,
+		Vendor: constants.SmartCarVendor,
+	}, nil)
+
+	s.scSvc.EXPECT().StartPoll(gomock.Any(), gomock.Any())
 
 	a, _ := contracts.RegistryMetaData.GetAbi()
 

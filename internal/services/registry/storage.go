@@ -10,6 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
@@ -37,6 +38,9 @@ type proc struct {
 	settings        *config.Settings
 	Eventer         services.EventService
 	ErrorTranslator *ABIErrorTranslator
+	smartcarTask    services.SmartcarTaskService
+	teslaTask       services.TeslaTaskService
+	ddSvc           services.DeviceDefinitionService
 }
 
 func (p *proc) Handle(ctx context.Context, data *ceData) error {
@@ -93,8 +97,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 	vehicleNodeMinted := p.ABI.Events["VehicleNodeMinted"]
 	syntheticDeviceMintedEvent := p.ABI.Events["SyntheticDeviceNodeMinted"]
 
-	switch {
-	case mtr.R.MintRequestUserDevice != nil:
+	if ud := mtr.R.MintRequestUserDevice; ud != nil {
 		for _, logs := range data.Transaction.Logs {
 			if logs.Topics[0] == vehicleNodeMintedWithDeviceDefinition.ID {
 				var event contracts.RegistryVehicleNodeMintedWithDeviceDefinition
@@ -103,7 +106,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return fmt.Errorf("failed to parse VehicleNodeMintedWithDeviceDefinition event: %w", err)
 				}
 
-				ud := mtr.R.MintRequestUserDevice
 				cols := models.UserDeviceColumns
 				ud.TokenID = dbtypes.NullIntToDecimal(event.VehicleId)
 				ud.OwnerAddress = null.BytesFrom(event.Owner.Bytes())
@@ -177,37 +179,11 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					Int64("vehicleTokenId", event.TokenId.Int64()).
 					Str("owner", event.Owner.Hex()).
 					Msg("Vehicle minted.")
-			} else if logs.Topics[0] == syntheticDeviceMintedEvent.ID {
-				// We must be doing a combined vehicle and SD mint. This always comes second.
-				var event contracts.RegistrySyntheticDeviceNodeMinted
-				err := p.parseLog(&event, syntheticDeviceMintedEvent, logs)
-				if err != nil {
-					return fmt.Errorf("failed to parse SyntheticDeviceNodeMinted event: %w", err)
-				}
-
-				cols := models.SyntheticDeviceColumns
-				sd := mtr.R.MintRequestSyntheticDevice
-				if sd == nil {
-					return fmt.Errorf("vehicle mint has a SyntheticDeviceNodeMinted log but there's no synthetic device attached to the meta-transaction")
-				}
-
-				sd.VehicleTokenID = mtr.R.MintRequestUserDevice.TokenID
-				sd.TokenID = dbtypes.NullIntToDecimal(event.SyntheticDeviceNode)
-				_, err = sd.Update(ctx, tx, boil.Whitelist(cols.VehicleTokenID, cols.TokenID))
-				if err != nil {
-					return fmt.Errorf("failed to update synthetic device record: %w", err)
-				}
-
-				logger.Info().
-					Int64("vehicleTokenId", event.VehicleNode.Int64()).
-					Int64("syntheticDeviceTokenId", event.SyntheticDeviceNode.Int64()).
-					Str("owner", event.Owner.Hex()).
-					Msg("Synthetic device minted.")
 			}
-
 		}
-	// It's very important that this be after the case for VehicleNodeMinted.
-	case mtr.R.MintRequestSyntheticDevice != nil:
+	}
+
+	if sd := mtr.R.MintRequestSyntheticDevice; sd != nil {
 		for _, log := range data.Transaction.Logs {
 			if log.Topics[0] == syntheticDeviceMintedEvent.ID {
 				var event contracts.RegistrySyntheticDeviceNodeMinted
@@ -216,10 +192,45 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return fmt.Errorf("failed to parse SyntheticDeviceNodeMinted event: %w", err)
 				}
 
-				sd := mtr.R.MintRequestSyntheticDevice
+				integ, err := p.ddSvc.GetIntegrationByTokenID(ctx, event.IntegrationNode.Uint64())
+				if err != nil {
+					return fmt.Errorf("couldn't retrieve integration %d: %w", event.IntegrationNode, err)
+				}
+
+				cols := models.SyntheticDeviceColumns
+
+				fmt.Printf("%#+v\n", event)
+
 				sd.TokenID = dbtypes.NullIntToDecimal(event.SyntheticDeviceNode)
-				if _, err := sd.Update(ctx, tx, boil.Whitelist(models.SyntheticDeviceColumns.TokenID)); err != nil {
+				sd.VehicleTokenID = dbtypes.NullIntToDecimal(event.VehicleNode)
+
+				if _, err := sd.Update(ctx, tx, boil.Whitelist(cols.TokenID, cols.VehicleTokenID)); err != nil {
 					return fmt.Errorf("failed to update synthetic device record: %w", err)
+				}
+
+				ud, err := models.UserDevices(
+					models.UserDeviceWhere.TokenID.EQ(dbtypes.NullIntToDecimal(event.VehicleNode)),
+					qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integ.Id)),
+				).One(ctx, tx)
+				if err != nil {
+					return fmt.Errorf("couldn't retrieve vehicle %d: %w", event.VehicleNode, err)
+				}
+
+				if len(ud.R.UserDeviceAPIIntegrations) == 0 {
+					return fmt.Errorf("vehicle %d does not have integration %d being minted", event.VehicleNode, event.IntegrationNode)
+				}
+
+				switch integ.Vendor {
+				case constants.SmartCarVendor:
+					err := p.smartcarTask.StartPoll(ud.R.UserDeviceAPIIntegrations[0], sd)
+					if err != nil {
+						return err
+					}
+				case constants.TeslaVendor:
+					err := p.teslaTask.StartPoll(ud.R.UserDeviceAPIIntegrations[0], sd)
+					if err != nil {
+						return err
+					}
 				}
 
 				logger.Info().
@@ -256,6 +267,9 @@ func NewProcessor(
 	logger *zerolog.Logger,
 	settings *config.Settings,
 	eventer services.EventService,
+	smartcarTask services.SmartcarTaskService,
+	teslaTask services.TeslaTaskService,
+	ddSvc services.DeviceDefinitionService,
 ) (StatusProcessor, error) {
 	regABI, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
@@ -280,5 +294,8 @@ func NewProcessor(
 		settings:        settings,
 		Eventer:         eventer,
 		ErrorTranslator: errorTranslator,
+		smartcarTask:    smartcarTask,
+		teslaTask:       teslaTask,
+		ddSvc:           ddSvc,
 	}, nil
 }

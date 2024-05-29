@@ -12,7 +12,6 @@ package mock_services
 import (
 	reflect "reflect"
 
-	services "github.com/DIMO-Network/devices-api/internal/services"
 	models "github.com/DIMO-Network/devices-api/models"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -86,17 +85,17 @@ func (mr *MockTeslaTaskServiceMockRecorder) OpenTrunk(udai any) *gomock.Call {
 }
 
 // StartPoll mocks base method.
-func (m *MockTeslaTaskService) StartPoll(vehicle *services.TeslaVehicle, udai *models.UserDeviceAPIIntegration, apiVersion int, region string) error {
+func (m *MockTeslaTaskService) StartPoll(udai *models.UserDeviceAPIIntegration, sd *models.SyntheticDevice) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StartPoll", vehicle, udai, apiVersion, region)
+	ret := m.ctrl.Call(m, "StartPoll", udai, sd)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // StartPoll indicates an expected call of StartPoll.
-func (mr *MockTeslaTaskServiceMockRecorder) StartPoll(vehicle, udai, apiVersion, region any) *gomock.Call {
+func (mr *MockTeslaTaskServiceMockRecorder) StartPoll(udai, sd any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartPoll", reflect.TypeOf((*MockTeslaTaskService)(nil).StartPoll), vehicle, udai, apiVersion, region)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartPoll", reflect.TypeOf((*MockTeslaTaskService)(nil).StartPoll), udai, sd)
 }
 
 // StopPoll mocks base method.
@@ -126,18 +125,4 @@ func (m *MockTeslaTaskService) UnlockDoors(udai *models.UserDeviceAPIIntegration
 func (mr *MockTeslaTaskServiceMockRecorder) UnlockDoors(udai any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlockDoors", reflect.TypeOf((*MockTeslaTaskService)(nil).UnlockDoors), udai)
-}
-
-// UpdateCredentials mocks base method.
-func (m *MockTeslaTaskService) UpdateCredentials(udai *models.UserDeviceAPIIntegration, version int, region string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateCredentials", udai, version, region)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateCredentials indicates an expected call of UpdateCredentials.
-func (mr *MockTeslaTaskServiceMockRecorder) UpdateCredentials(udai, version, region any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateCredentials", reflect.TypeOf((*MockTeslaTaskService)(nil).UpdateCredentials), udai, version, region)
 }
