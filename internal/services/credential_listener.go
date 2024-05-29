@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
@@ -19,20 +20,6 @@ import (
 type CredentialListener struct {
 	db  func() *db.ReaderWriter
 	log *zerolog.Logger
-}
-
-type TeslaCredentialsCloudEventV1V2 struct {
-	CloudEventHeaders
-	Data TeslaCredentialsV1V2 `json:"data"`
-}
-
-type TeslaCredentialsV1V2 struct {
-	OwnerAccessToken          string    `json:"ownerAccessToken"`
-	OwnerAccessTokenExpiresAt time.Time `json:"ownerAccessTokenExpiresAt"`
-	AuthRefreshToken          string    `json:"authRefreshToken"`
-	AccessToken               string    `json:"accessToken"`
-	Expiry                    time.Time `json:"expiry"`
-	RefreshToken              string    `json:"refreshToken"`
 }
 
 func NewCredentialListener(db func() *db.ReaderWriter, log *zerolog.Logger) *CredentialListener {
@@ -57,7 +44,7 @@ func (i *CredentialListener) processMessage(msg *message.Message) error {
 		return nil
 	}
 
-	event := new(TeslaCredentialsCloudEventV1V2)
+	event := new(shared.CloudEvent[SyntheticTaskCredentialData])
 	if err := json.Unmarshal(msg.Payload, event); err != nil {
 		return errors.Wrap(err, "error parsing device event payload")
 	}
@@ -68,7 +55,7 @@ func (i *CredentialListener) processMessage(msg *message.Message) error {
 // Usual format of the source field in CloudEvents for anything related to an integration.
 const sourcePrefix = "dimo/integration/"
 
-func (i *CredentialListener) processEvent(event *TeslaCredentialsCloudEventV1V2) error {
+func (i *CredentialListener) processEvent(event *shared.CloudEvent[SyntheticTaskCredentialData]) error {
 	var (
 		ctx          = context.Background()
 		userDeviceID = event.Subject

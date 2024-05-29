@@ -11,7 +11,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/shared"
 	"github.com/Shopify/sarama"
 	"github.com/segmentio/ksuid"
 )
@@ -53,18 +53,13 @@ func (p *stopTaskByKeyCmd) Execute(_ context.Context, _ *flag.FlagSet, _ ...inte
 }
 
 func stopTaskByKey(settings *config.Settings, taskKey string, producer sarama.SyncProducer) error {
-	tt := struct {
-		services.CloudEventHeaders
-		Data interface{} `json:"data"`
-	}{
-		CloudEventHeaders: services.CloudEventHeaders{
-			ID:          ksuid.New().String(),
-			Source:      "dimo/integration/FAKE",
-			SpecVersion: "1.0",
-			Subject:     "FAKE",
-			Time:        time.Now(),
-			Type:        "zone.dimo.task.tesla.poll.stop",
-		},
+	tt := shared.CloudEvent[any]{
+		ID:          ksuid.New().String(),
+		Source:      "dimo/integration/FAKE",
+		SpecVersion: "1.0",
+		Subject:     "FAKE",
+		Time:        time.Now(),
+		Type:        "zone.dimo.task.tesla.poll.stop",
 		Data: struct {
 			TaskID        string `json:"taskId"`
 			UserDeviceID  string `json:"userDeviceId"`
