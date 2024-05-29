@@ -199,8 +199,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 				cols := models.SyntheticDeviceColumns
 
-				fmt.Printf("%#+v\n", event)
-
 				sd.TokenID = dbtypes.NullIntToDecimal(event.SyntheticDeviceNode)
 				sd.VehicleTokenID = dbtypes.NullIntToDecimal(event.VehicleNode)
 
@@ -231,6 +229,8 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					if err != nil {
 						return err
 					}
+				default:
+					return fmt.Errorf("unexpected integration vendor %s", integ.Vendor)
 				}
 
 				logger.Info().
