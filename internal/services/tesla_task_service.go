@@ -9,6 +9,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
+	"github.com/DIMO-Network/shared/sdtask"
 	"github.com/Shopify/sarama"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
@@ -43,26 +44,6 @@ type teslaTaskService struct {
 type TeslaIdentifiers struct {
 	ID        int `json:"id"`
 	VehicleID int `json:"vehicleId"`
-}
-
-type SyntheticTaskCredentialData struct {
-	TaskID          string          `json:"taskId"`
-	UserDeviceID    string          `json:"userDeviceId"`
-	IntegrationID   string          `json:"integrationId"`
-	AccessToken     string          `json:"accessToken"`
-	Expiry          time.Time       `json:"expiry"`
-	RefreshToken    string          `json:"refreshToken"`
-	Version         int             `json:"version"`
-	Region          string          `json:"region"`
-	SyntheticDevice *CredsSynthetic `json:"syntheticDevice"`
-}
-
-type CredsSynthetic struct {
-	TokenID            int            `json:"tokenId"`
-	Address            common.Address `json:"address"`
-	IntegrationTokenID int            `json:"integrationTokenId"`
-	WalletChildNumber  int            `json:"walletChildNumber"`
-	VehicleTokenID     int            `json:"vehicleTokenId"`
 }
 
 type TeslaTask struct {
@@ -108,14 +89,14 @@ func (t *teslaTaskService) StartPoll(udai *models.UserDeviceAPIIntegration, sd *
 	integrationTokenID, _ := sd.IntegrationTokenID.Int64()
 	vehicleTokenID, _ := sd.VehicleTokenID.Int64()
 
-	tc := shared.CloudEvent[SyntheticTaskCredentialData]{
+	tc := shared.CloudEvent[sdtask.CredentialData]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + udai.IntegrationID,
 		SpecVersion: "1.0",
 		Subject:     udai.UserDeviceID,
 		Time:        time.Now(),
 		Type:        "zone.dimo.task.tesla.poll.credential.v2",
-		Data: SyntheticTaskCredentialData{
+		Data: sdtask.CredentialData{
 			TaskID:        udai.TaskID.String,
 			UserDeviceID:  udai.UserDeviceID,
 			IntegrationID: udai.IntegrationID,
@@ -124,7 +105,7 @@ func (t *teslaTaskService) StartPoll(udai *models.UserDeviceAPIIntegration, sd *
 			RefreshToken:  udai.RefreshToken.String,
 			Version:       meta.TeslaAPIVersion,
 			Region:        meta.TeslaRegion,
-			SyntheticDevice: &CredsSynthetic{
+			SyntheticDevice: &sdtask.SyntheticDevice{
 				TokenID:            int(tokenID),
 				Address:            common.BytesToAddress(sd.WalletAddress),
 				IntegrationTokenID: int(integrationTokenID),

@@ -82,6 +82,8 @@ github.com/DIMO-Network/meta-transaction-processor v0.3.2 h1:eSf34mSmiRilMbQx+4I
 github.com/DIMO-Network/meta-transaction-processor v0.3.2/go.mod h1:qJW4pNqQ4kDeumuZJByjrfrCd8dlrCT3//5V4PVKRqA=
 github.com/DIMO-Network/shared v0.10.13 h1:alsc4mBmZ/PmR/wNOTjkqo8c0B3DT5NiHofmndDnzvA=
 github.com/DIMO-Network/shared v0.10.13/go.mod h1:hFb5dSuWhvgeAfE0H7Ia4Rtk5NDvB4FIjVZWOU2Cb5E=
+github.com/DIMO-Network/shared v0.10.16 h1:RD1kJDZVg5Vv6KxSWs1TL199c72oaZZfH8bEWGupap8=
+github.com/DIMO-Network/shared v0.10.16/go.mod h1:LDNCMzOGA+MqXtHbvRDFS/1kl8sHMQgxAS8fFh4GKJA=
 github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3 h1:XMU6rRN57hoh7IYyuVytsIKzDymrbAnnKECFeVf88Hg=
 github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3/go.mod h1:+8E6RVHd04ewjrSOohmLf82Grt0kfSaVTQlCnHCTLZU=
 github.com/DIMO-Network/taskq/v3 v3.2.9-0.20220518233332-179b5552605f h1:pHPu50/uAiENAiUTQkdThxr7GxzVFwO9STl/jzSaKXg=

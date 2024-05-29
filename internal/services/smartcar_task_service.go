@@ -7,6 +7,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
+	"github.com/DIMO-Network/shared/sdtask"
 	"github.com/Shopify/sarama"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
@@ -74,21 +75,21 @@ func (t *smartcarTaskService) StartPoll(udai *models.UserDeviceAPIIntegration, s
 	integrationTokenID, _ := sd.IntegrationTokenID.Int64()
 	vehicleTokenID, _ := sd.VehicleTokenID.Int64()
 
-	tc := shared.CloudEvent[SyntheticTaskCredentialData]{
+	tc := shared.CloudEvent[sdtask.CredentialData]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + udai.IntegrationID,
 		SpecVersion: "1.0",
 		Subject:     udai.UserDeviceID,
 		Time:        time.Now(),
 		Type:        "zone.dimo.task.smartcar.poll.credential",
-		Data: SyntheticTaskCredentialData{
+		Data: sdtask.CredentialData{
 			TaskID:        udai.TaskID.String,
 			UserDeviceID:  udai.UserDeviceID,
 			IntegrationID: udai.IntegrationID,
 			AccessToken:   udai.AccessToken.String,
 			Expiry:        udai.AccessExpiresAt.Time,
 			RefreshToken:  udai.RefreshToken.String,
-			SyntheticDevice: &CredsSynthetic{
+			SyntheticDevice: &sdtask.SyntheticDevice{
 				TokenID:            int(tokenID),
 				Address:            common.BytesToAddress(sd.WalletAddress),
 				IntegrationTokenID: int(integrationTokenID),

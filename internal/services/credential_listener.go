@@ -10,6 +10,7 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/sdtask"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -44,7 +45,7 @@ func (i *CredentialListener) processMessage(msg *message.Message) error {
 		return nil
 	}
 
-	event := new(shared.CloudEvent[SyntheticTaskCredentialData])
+	event := new(shared.CloudEvent[sdtask.CredentialData])
 	if err := json.Unmarshal(msg.Payload, event); err != nil {
 		return errors.Wrap(err, "error parsing device event payload")
 	}
@@ -55,7 +56,7 @@ func (i *CredentialListener) processMessage(msg *message.Message) error {
 // Usual format of the source field in CloudEvents for anything related to an integration.
 const sourcePrefix = "dimo/integration/"
 
-func (i *CredentialListener) processEvent(event *shared.CloudEvent[SyntheticTaskCredentialData]) error {
+func (i *CredentialListener) processEvent(event *shared.CloudEvent[sdtask.CredentialData]) error {
 	var (
 		ctx          = context.Background()
 		userDeviceID = event.Subject
