@@ -127,10 +127,10 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 	}, nil)
 
 	tokenStr, err := json.Marshal(mockAuthCodeResp)
-	s.Assert().NoError(err)
+	s.Require().NoError(err)
 
 	encToken, err := s.cipher.Encrypt(string(tokenStr))
-	s.Assert().NoError(err)
+	s.Require().NoError(err)
 
 	cacheKey := fmt.Sprintf(teslaFleetAuthCacheKey, mockUserEthAddr)
 	s.redisClient.EXPECT().Set(gomock.Any(), cacheKey, encToken, 5*time.Minute).Return(&redis.StatusCmd{})
@@ -154,8 +154,9 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 	}`, mockAuthCode, mockRedirectURI))
 	response, _ := s.app.Test(request)
 
-	s.Assert().Equal(fiber.StatusOK, response.StatusCode)
-	body, _ := io.ReadAll(response.Body)
+	s.Equal(fiber.StatusOK, response.StatusCode)
+	body, err := io.ReadAll(response.Body)
+	s.Require().NoError(err)
 
 	expResp := &CompleteOAuthExchangeResponseWrapper{
 		Vehicles: []CompleteOAuthExchangeResponse{
@@ -183,9 +184,9 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 	}
 
 	expected, err := json.Marshal(expResp)
-	s.Assert().NoError(err)
+	s.Require().NoError(err)
 
-	s.Assert().Equal(expected, body)
+	s.JSONEq(string(expected), string(body))
 }
 
 func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_InvalidRegion() {
