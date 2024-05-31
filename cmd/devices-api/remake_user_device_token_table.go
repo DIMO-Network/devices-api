@@ -56,9 +56,8 @@ func (p *remakeUserDeviceTokenTableCmd) Execute(ctx context.Context, _ *flag.Fla
 func remakeUserDeviceTokenTable(ctx context.Context, pdb db.Store, producer sarama.SyncProducer) error {
 	db := pdb.DBS().Reader
 
-	vns, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.IsNotNull(),
-		models.VehicleNFTWhere.UserDeviceID.IsNotNull(),
+	vns, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.IsNotNull(),
 	).All(ctx, db)
 	if err != nil {
 		return err
@@ -71,11 +70,11 @@ func remakeUserDeviceTokenTable(ctx context.Context, pdb db.Store, producer sara
 			ID:          ksuid.New().String(),
 			Source:      "user-device-token-mapping-processor",
 			SpecVersion: "1.0",
-			Subject:     vn.UserDeviceID.String,
+			Subject:     vn.ID,
 			Time:        time.Now(),
 			Type:        "zone.dimo.device.token",
 			Data: MapData{
-				UserDeviceID:   vn.UserDeviceID.String,
+				UserDeviceID:   vn.ID,
 				VehicleTokenID: int(tokenID),
 			},
 		}
@@ -84,7 +83,7 @@ func remakeUserDeviceTokenTable(ctx context.Context, pdb db.Store, producer sara
 
 		_, _, err := producer.SendMessage(&sarama.ProducerMessage{
 			Topic: "table.device.token.mapping",
-			Key:   sarama.StringEncoder(vn.UserDeviceID.String),
+			Key:   sarama.StringEncoder(vn.ID),
 			Value: sarama.ByteEncoder(b),
 		})
 		if err != nil {

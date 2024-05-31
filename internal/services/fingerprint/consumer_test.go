@@ -123,6 +123,10 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 		DeviceDefinitionID: deiceDefID,
 		VinConfirmed:       true,
 		VinIdentifier:      null.StringFrom(vin),
+		MintRequestID:      null.StringFrom(mtxReq),
+		TokenID:            types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+		OwnerAddress:       ownerAddress,
+		ClaimID:            null.StringFrom(claimID),
 	}
 
 	metaTx := models.MetaTransactionRequest{
@@ -137,16 +141,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 		ClaimID:        claimID,
 		ExpirationDate: eventTime.AddDate(0, 0, 7),
 	}
-
-	nft := models.VehicleNFT{
-		MintRequestID: mtxReq,
-		UserDeviceID:  null.StringFrom(deviceID),
-		Vin:           vin,
-		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
-		OwnerAddress:  ownerAddress,
-		ClaimID:       null.StringFrom(claimID),
-	}
-
 	msg :=
 		`{
 	"data": {"rpiUptimeSecs":39,"batteryVoltage":13.49,"timestamp":1688136702634,"vin":"W1N2539531F907299","protocol":"7"},
@@ -165,7 +159,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 		UserDeviceTable   models.UserDevice
 		MetaTxTable       models.MetaTransactionRequest
 		VCTable           models.VerifiableCredential
-		VehicleNFT        models.VehicleNFT
 		AftermarketDevice models.AftermarketDevice
 	}{
 		{
@@ -179,7 +172,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 			UserDeviceTable:   userDevice,
 			MetaTxTable:       metaTx,
 			VCTable:           credential,
-			VehicleNFT:        nft,
 			AftermarketDevice: aftermarketDevice,
 		},
 		{
@@ -191,7 +183,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 				ClaimID:        claimID,
 				ExpirationDate: eventTime.AddDate(0, 0, -10),
 			},
-			VehicleNFT:        nft,
 			AftermarketDevice: aftermarketDevice,
 		},
 		{
@@ -200,7 +191,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 			UserDeviceTable: userDevice,
 			MetaTxTable:     metaTx,
 			VCTable:         credential,
-			VehicleNFT:      nft,
 			AftermarketDevice: models.AftermarketDevice{
 				UserID:          null.StringFrom("SomeID"),
 				OwnerAddress:    ownerAddress,
@@ -223,9 +213,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
 			require.NoError(t, err)
 
 			err = c.VCTable.Insert(ctx, s.pdb.DBS().Reader, boil.Infer())
-			require.NoError(t, err)
-
-			err = c.VehicleNFT.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
 			require.NoError(t, err)
 
 			err = c.AftermarketDevice.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
@@ -269,6 +256,10 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 		DeviceDefinitionID: userID,
 		VinConfirmed:       true,
 		VinIdentifier:      null.StringFrom(vin),
+		MintRequestID:      null.StringFrom(mtxReq),
+		TokenID:            types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+		OwnerAddress:       ownerAddr,
+		ClaimID:            null.StringFrom(claimID),
 	}
 
 	eventTime, err := time.Parse(time.RFC3339Nano, "2023-07-04T00:00:00Z")
@@ -279,19 +270,10 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 		ExpirationDate: eventTime.AddDate(0, 0, 7),
 	}
 
-	nft := models.VehicleNFT{
-		MintRequestID: mtxReq,
-		UserDeviceID:  null.StringFrom(userDeviceID),
-		Vin:           vin,
-		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
-		OwnerAddress:  ownerAddr,
-		ClaimID:       null.StringFrom(claimID),
-	}
-
 	synthDevice := models.SyntheticDevice{
 		WalletAddress:  walletAddr.Bytes,
 		MintRequestID:  metaTx.ID,
-		VehicleTokenID: nft.TokenID,
+		VehicleTokenID: userDevice.TokenID,
 	}
 
 	msg := fmt.Sprintf(`{
@@ -311,7 +293,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 		SyntheticDeviceTable *models.SyntheticDevice
 		MetaTxTable          *models.MetaTransactionRequest
 		VCTable              *models.VerifiableCredential
-		VehicleNFT           *models.VehicleNFT
 		UserDeviceTable      *models.UserDevice
 		ExpiresAt            time.Time
 	}{
@@ -326,7 +307,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 			MetaTxTable:          &metaTx,
 			VCTable:              &credential,
 			UserDeviceTable:      &userDevice,
-			VehicleNFT:           &nft,
 			ExpiresAt:            credential.ExpirationDate,
 		},
 		{
@@ -339,7 +319,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 				ClaimID:        claimID,
 				ExpirationDate: eventTime.AddDate(0, 0, -10),
 			},
-			VehicleNFT: &nft,
 		},
 	}
 
@@ -362,11 +341,6 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 				require.NoError(t, err)
 			}
 
-			if c.VehicleNFT != nil {
-				err := c.VehicleNFT.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
-				require.NoError(t, err)
-			}
-
 			if c.SyntheticDeviceTable != nil {
 				err := c.SyntheticDeviceTable.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
 				require.NoError(t, err)
@@ -382,8 +356,8 @@ func (s *ConsumerTestSuite) TestVinCredentialerHandler_SyntheticFingerprint() {
 				assert.ErrorContains(t, err, c.ExpectedResponse)
 			} else {
 				require.NoError(t, err)
-				s.Require().NoError(c.VehicleNFT.Reload(s.ctx, s.pdb.DBS().Reader))
-				s.Require().True(c.VehicleNFT.ClaimID.Valid)
+				s.Require().NoError(c.UserDeviceTable.Reload(s.ctx, s.pdb.DBS().Reader))
+				s.Require().True(c.UserDeviceTable.ClaimID.Valid)
 			}
 		})
 	}

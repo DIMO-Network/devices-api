@@ -107,64 +107,65 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 
 	ad, err := models.AftermarketDevices(
 		models.AftermarketDeviceWhere.EthereumAddress.EQ(addr.Bytes()),
-		qm.Load(qm.Rels(models.AftermarketDeviceRels.VehicleToken, models.VehicleNFTRels.Claim)),
+		qm.Load(qm.Rels(models.AftermarketDeviceRels.VehicleToken, models.UserDeviceRels.Claim)),
 	).One(ctx, c.DBS.DBS().Reader)
 	if err != nil {
 		return fmt.Errorf("failed querying for device: %w", err)
 	}
 
-	vn := ad.R.VehicleToken
-	if vn == nil {
+	ud := ad.R.VehicleToken
+	if ud == nil {
 		return nil
 	}
 
-	if observedVIN != vn.Vin {
-		c.logger.Warn().Msgf("observed vin %s does not match verified vin %s for device %s", observedVIN, vn.Vin, vn.UserDeviceID.String)
+	if observedVIN != ud.VinIdentifier.String {
+		c.logger.Warn().Msgf("observed vin %s does not match verified vin %s for device %s", observedVIN, ud.VinIdentifier.String, ud.ID)
 		return nil
 	}
 
-	if vc := vn.R.Claim; vc != nil {
+	if vc := ud.R.Claim; vc != nil {
 		weekEnd := NumToWeekEnd(GetWeekNum(time.Now()))
 		if vc.ExpirationDate.After(weekEnd) {
 			return nil
 		}
 	}
 
-	if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), time.Now().Add(DefaultCredDuration)); err != nil {
+	if _, err := c.iss.VIN(observedVIN, ud.TokenID.Int(nil), time.Now().Add(DefaultCredDuration)); err != nil {
 		return err
 	}
 
-	// Save Protocol
-	if ad.R.VehicleToken.R.UserDevice != nil {
-		md := services.UserDeviceMetadata{}
-		if err = ad.R.VehicleToken.R.UserDevice.Metadata.Unmarshal(&md); err != nil {
-			c.logger.Error().Msgf("Could not unmarshal userdevice metadata for device: %s", ad.R.VehicleToken.R.UserDevice.ID)
-			return err
+	md := services.UserDeviceMetadata{}
+	if err = ad.R.VehicleToken.Metadata.Unmarshal(&md); err != nil {
+		c.logger.Error().Msgf("Could not unmarshal userdevice metadata for device: %s", ad.R.VehicleToken.ID)
+		return err
+	}
+
+	var protocol *string
+	if md.CANProtocol == nil {
+		if event.Source == "macaron/fingerprint" {
+			protocol, err = ExtractProtocolMacaronType1(string(event.Data))
+		} else {
+			protocol, err = ExtractProtocol(event.Data)
 		}
-
-		var protocol *string
-		if md.CANProtocol == nil {
-			if event.Source == "macaron/fingerprint" {
-				protocol, err = ExtractProtocolMacaronType1(string(event.Data))
-			} else {
-				protocol, err = ExtractProtocol(event.Data)
-			}
-			if err != nil {
-				c.logger.Error().Err(err)
-			}
-
-			if err == nil && protocol != nil {
-				md.CANProtocol = protocol
-			}
-		}
-
-		err = ad.R.VehicleToken.R.UserDevice.Metadata.Marshal(&md)
 		if err != nil {
-			c.logger.Error().Msgf("could not marshal userdevice metadata for device: %s", ad.R.VehicleToken.R.UserDevice.ID)
-			appmetrics.FingerprintRequestCount.With(prometheus.Labels{"protocol": *protocol, "status": "Failed"}).Inc()
-			return err
+			c.logger.Error().Err(err)
 		}
 
+		if err == nil && protocol != nil {
+			md.CANProtocol = protocol
+		}
+	}
+
+	err = ad.R.VehicleToken.Metadata.Marshal(&md)
+	if err != nil {
+		c.logger.Error().Msgf("could not marshal userdevice metadata for device: %s", ad.R.VehicleToken.ID)
+		if protocol != nil {
+			appmetrics.FingerprintRequestCount.With(prometheus.Labels{"protocol": *protocol, "status": "Failed"}).Inc()
+		}
+		return err
+	}
+
+	if protocol != nil {
 		appmetrics.FingerprintRequestCount.With(prometheus.Labels{"protocol": *protocol, "status": "Success"}).Inc()
 	}
 
@@ -176,7 +177,7 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 func (c *Consumer) HandleSyntheticFingerprint(ctx context.Context, event *Event) error {
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(event.Subject),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.Claim)),
+		qm.Load(models.UserDeviceRels.Claim),
 	).One(ctx, c.DBS.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -185,13 +186,7 @@ func (c *Consumer) HandleSyntheticFingerprint(ctx context.Context, event *Event)
 		return err
 	}
 
-	vn := ud.R.VehicleNFT
-
-	if vn == nil {
-		return nil
-	}
-
-	if vn.TokenID.IsZero() {
+	if ud.TokenID.IsZero() {
 		return fmt.Errorf("minting not complete for %s", ud.ID)
 	}
 
@@ -203,19 +198,19 @@ func (c *Consumer) HandleSyntheticFingerprint(ctx context.Context, event *Event)
 		return fmt.Errorf("couldn't extract VIN: %w", err)
 	}
 
-	if observedVIN != vn.Vin {
-		c.logger.Warn().Msgf("observed vin %s does not match verified vin %s for device %s", observedVIN, vn.Vin, vn.UserDeviceID.String)
+	if observedVIN != ud.VinIdentifier.String {
+		c.logger.Warn().Msgf("observed vin %s does not match verified vin %s for device %s", observedVIN, ud.VinIdentifier.String, ud.ID)
 		return nil
 	}
 
-	if vc := vn.R.Claim; vc != nil {
+	if vc := ud.R.Claim; vc != nil {
 		weekEnd := NumToWeekEnd(GetWeekNum(event.Time))
 		if vc.ExpirationDate.After(weekEnd) {
 			return nil
 		}
 	}
 
-	if _, err := c.iss.VIN(observedVIN, vn.TokenID.Int(nil), event.Time.Add(DefaultCredDuration)); err != nil {
+	if _, err := c.iss.VIN(observedVIN, ud.TokenID.Int(nil), event.Time.Add(DefaultCredDuration)); err != nil {
 		return err
 	}
 

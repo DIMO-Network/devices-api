@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: f503e1b
+  tag: 4bc3f17
 imagePullSecrets: []
 nameOverride: ''
 fullnameOverride: ''
@@ -91,6 +91,7 @@ env:
   TESLA_FLEET_URL: https://fleet-api.prd.%s.vn.cloud.tesla.com
   META_TRANSACTION_PROCESSOR_GRPC_ADDR: meta-transaction-processor-dev:8086
   TESLA_TELEMETRY_HOST_NAME: ingest-tesla.dev.dimo.zone
+  SYNTHETIC_DEVICE_NFT_ADDRESS: '0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f'
   TESLA_TELEMETRY_PORT: 443
   TESLA_TELEMETRY_CA_CERTIFICATE: |
     -----BEGIN CERTIFICATE-----
@@ -117,6 +118,7 @@ env:
     OUCdaWovmF+28PyAi4wCIQDXRKpYK+VMFyUR1GJVoV3gWezQcJmFswuWq+7M+XPb
     GQ==
     -----END CERTIFICATE-----
+  IPFS_URL: https://assets.dev.dimo.xyz/ipfs
 service:
   type: ClusterIP
   ports:

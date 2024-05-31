@@ -79,21 +79,10 @@ type userDeviceRPCServer struct {
 func (s *userDeviceRPCServer) GetUserDevice(ctx context.Context, req *pb.GetUserDeviceRequest) (*pb.UserDevice, error) {
 	dbDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(req.Id),
-		qm.Load(
-			qm.Rels(models.UserDeviceRels.VehicleNFT,
-				models.VehicleNFTRels.VehicleTokenAftermarketDevice),
-		),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-		qm.Load(
-			qm.Rels(
-				models.UserDeviceRels.VehicleNFT,
-				models.VehicleNFTRels.Claim,
-			),
-		),
-		qm.Load(
-			qm.Rels(models.UserDeviceRels.VehicleNFT,
-				models.VehicleNFTRels.VehicleTokenSyntheticDevice),
-		),
+		qm.Load(models.UserDeviceRels.Claim),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(ctx, s.dbs().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -110,21 +99,10 @@ func (s *userDeviceRPCServer) GetUserDeviceByVIN(ctx context.Context, req *pb.Ge
 	dbDevice, err := models.UserDevices(
 		models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(req.Vin)),
 		qm.OrderBy("vin_confirmed desc"),
-		qm.Load(
-			qm.Rels(models.UserDeviceRels.VehicleNFT,
-				models.VehicleNFTRels.VehicleTokenAftermarketDevice),
-		),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-		qm.Load(
-			qm.Rels(
-				models.UserDeviceRels.VehicleNFT,
-				models.VehicleNFTRels.Claim,
-			),
-		),
-		qm.Load(
-			qm.Rels(models.UserDeviceRels.VehicleNFT,
-				models.VehicleNFTRels.VehicleTokenSyntheticDevice),
-		),
+		qm.Load(models.UserDeviceRels.Claim),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(ctx, s.dbs().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -152,36 +130,24 @@ func (s *userDeviceRPCServer) GetUserDeviceByEthAddr(ctx context.Context, req *p
 		return nil, status.Error(codes.Internal, "Failed to fetch AftermarketDevice.")
 	}
 
-	if aftermarketDevice.R == nil || aftermarketDevice.R.VehicleToken == nil {
+	if aftermarketDevice.R.VehicleToken == nil {
 		return nil, status.Error(codes.NotFound, "No VehicleToken associated with the AftermarketDevice")
 	}
 
-	userDeviceID := aftermarketDevice.R.VehicleToken.UserDeviceID
-	if !userDeviceID.Valid {
-		return nil, status.Error(codes.NotFound, "No UserDeviceID found in VehicleNFT")
-	}
-
+	userDeviceID := aftermarketDevice.R.VehicleToken.ID
 	dbDevice, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(userDeviceID.String),
-		qm.Load(
-			qm.Rels(models.UserDeviceRels.VehicleNFT,
-				models.VehicleNFTRels.VehicleTokenAftermarketDevice),
-		),
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-		qm.Load(
-			qm.Rels(
-				models.UserDeviceRels.VehicleNFT,
-				models.VehicleNFTRels.Claim,
-			),
-		),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+		qm.Load(models.UserDeviceRels.Claim),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(ctx, s.dbs().Reader)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, status.Error(codes.NotFound, "No device with that ID found.")
 		}
-		s.logger.Err(err).Str("userDeviceId", userDeviceID.String).Msg("Database failure retrieving device.")
+		s.logger.Err(err).Str("userDeviceId", userDeviceID).Msg("Database failure retrieving device.")
 		return nil, status.Error(codes.Internal, "Internal error.")
 	}
 
@@ -192,8 +158,8 @@ func (s *userDeviceRPCServer) GetUserDeviceByTokenId(ctx context.Context, req *p
 
 	tknID := types.NewNullDecimal(decimal.New(req.TokenId, 0))
 
-	nft, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(tknID),
+	nft, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(tknID),
 	).One(ctx, s.dbs().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -204,7 +170,7 @@ func (s *userDeviceRPCServer) GetUserDeviceByTokenId(ctx context.Context, req *p
 	}
 
 	out := &pb.UserDevice{
-		Id:           nft.UserDeviceID.String,
+		Id:           nft.ID,
 		TokenId:      s.toUint64(nft.TokenID),
 		OwnerAddress: nft.OwnerAddress.Bytes,
 	}
@@ -225,15 +191,14 @@ func (s *userDeviceRPCServer) ListUserDevicesForUser(ctx context.Context, req *p
 		}
 	} else {
 		query = []qm.QueryMod{
-			qm.LeftOuterJoin("devices_api." + models.TableNames.VehicleNFTS + " ON " + models.VehicleNFTTableColumns.UserDeviceID + " = " + models.UserDeviceTableColumns.ID),
 			models.UserDeviceWhere.UserID.EQ(req.UserId),
-			qm.Or2(models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.HexToAddress(req.EthereumAddress).Bytes()))),
+			qm.Or2(models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(common.HexToAddress(req.EthereumAddress).Bytes()))),
 		}
 	}
 
 	query = append(query,
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenAftermarketDevice)),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 		qm.OrderBy(models.UserDeviceTableColumns.CreatedAt+" DESC"),
 	)
@@ -403,7 +368,7 @@ func (s *userDeviceRPCServer) GetAllUserDevice(req *pb.GetAllUserDeviceRequest, 
 	ctx := context.Background()
 	all, err := models.UserDevices(
 		models.UserDeviceWhere.VinConfirmed.EQ(true),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).All(ctx, s.dbs().Reader)
 	if err != nil {
 		s.logger.Err(err).Msg("Database failure retrieving all user devices.")
@@ -447,13 +412,13 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 		VinConfirmed:       ud.VinConfirmed,
 	}
 
-	if vnft := ud.R.VehicleNFT; vnft != nil {
-		out.TokenId = s.toUint64(vnft.TokenID)
-		if vnft.OwnerAddress.Valid {
-			out.OwnerAddress = vnft.OwnerAddress.Bytes
+	if !ud.TokenID.IsZero() {
+		out.TokenId = s.toUint64(ud.TokenID)
+		if ud.OwnerAddress.Valid {
+			out.OwnerAddress = ud.OwnerAddress.Bytes
 		}
 
-		if amnft := vnft.R.VehicleTokenAftermarketDevice; amnft != nil {
+		if amnft := ud.R.VehicleTokenAftermarketDevice; amnft != nil {
 			out.AftermarketDevice = &pb.AftermarketDevice{
 				Serial:              amnft.Serial,
 				UserId:              amnft.UserID.Ptr(),
@@ -476,19 +441,21 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 			out.AftermarketDeviceTokenId = &out.AftermarketDevice.TokenId               //nolint:staticcheck
 		}
 
-		if vc := vnft.R.Claim; vc != nil {
+		if vc := ud.R.Claim; vc != nil {
 			out.LatestVinCredential = &pb.VinCredential{
 				Id:         vc.ClaimID,
 				Expiration: timestamppb.New(vc.ExpirationDate),
 			}
 		}
 
-		if sd := vnft.R.VehicleTokenSyntheticDevice; sd != nil && !sd.TokenID.IsZero() {
+		if sd := ud.R.VehicleTokenSyntheticDevice; sd != nil && !sd.TokenID.IsZero() {
 			stk, _ := sd.TokenID.Uint64()
 			iTkID, _ := sd.IntegrationTokenID.Uint64()
+			wc := sd.WalletChildNumber
 			out.SyntheticDevice = &pb.SyntheticDevice{
-				TokenId:            stk,
-				IntegrationTokenId: iTkID,
+				TokenId:             stk,
+				IntegrationTokenId:  iTkID,
+				WalletChildNumberId: uint64(wc),
 			}
 		}
 	}
@@ -553,8 +520,8 @@ func (s *userDeviceRPCServer) GetClaimedVehiclesGrowth(ctx context.Context, _ *e
 		return nil, err
 	}
 
-	totalNFT, err := models.VehicleNFTS(models.VehicleNFTWhere.UserDeviceID.IsNotNull(),
-		models.VehicleNFTWhere.TokenID.IsNotNull()).Count(ctx, s.dbs().Reader)
+	totalNFT, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.IsNotNull()).Count(ctx, s.dbs().Reader)
 
 	growthPercentage := float32(0)
 
@@ -598,7 +565,9 @@ func nullTimeToPB(t null.Time) *timestamppb.Timestamp {
 }
 
 func (s *userDeviceRPCServer) IssueVinCredential(ctx context.Context, req *pb.IssueVinCredentialRequest) (*pb.IssueVinCredentialResponse, error) {
-	v, err := models.VehicleNFTS(models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(int64(req.TokenId), 0)))).One(ctx, s.dbs().Reader)
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(int64(req.TokenId), 0))),
+	).One(ctx, s.dbs().Reader)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, status.Error(codes.NotFound, "No vehicle with that id.")
@@ -606,7 +575,7 @@ func (s *userDeviceRPCServer) IssueVinCredential(ctx context.Context, req *pb.Is
 		return nil, err
 	}
 
-	if req.Vin != v.Vin {
+	if req.Vin != ud.VinIdentifier.String {
 		return nil, status.Error(codes.InvalidArgument, "Input and NFT VINs do not much.")
 	}
 
@@ -667,8 +636,8 @@ func (s *userDeviceRPCServer) ClearMetaTransactionRequests(ctx context.Context, 
 		models.MetaTransactionRequestWhere.ID.EQ(response.Id),
 		models.MetaTransactionRequestWhere.Status.NEQ("Confirmed"),
 		models.MetaTransactionRequestWhere.Hash.IsNull(),
-		qm.Load(models.MetaTransactionRequestRels.MintRequestVehicleNFT),
-		qm.Load(models.MetaTransactionRequestRels.BurnRequestVehicleNFT),
+		qm.Load(models.MetaTransactionRequestRels.MintRequestUserDevice),
+		qm.Load(models.MetaTransactionRequestRels.BurnRequestUserDevice),
 		qm.Load(models.MetaTransactionRequestRels.MintRequestSyntheticDevice),
 		qm.Load(models.MetaTransactionRequestRels.BurnRequestSyntheticDevice),
 		qm.Load(models.MetaTransactionRequestRels.ClaimMetaTransactionRequestAftermarketDevice),
@@ -685,18 +654,18 @@ func (s *userDeviceRPCServer) ClearMetaTransactionRequests(ctx context.Context, 
 
 	if metaTransaction.R != nil {
 
-		if metaTransaction.R.MintRequestVehicleNFT != nil {
-			vehicleNft := metaTransaction.R.MintRequestVehicleNFT
+		if metaTransaction.R.MintRequestUserDevice != nil {
+			vehicleNft := metaTransaction.R.MintRequestUserDevice
 
-			vehicleNft.MintRequestID = ""
+			vehicleNft.MintRequestID = null.StringFromPtr(nil)
 			_, err = vehicleNft.Update(ctx, s.dbs().Writer, boil.Infer())
 			if err != nil {
 				return nil, fmt.Errorf("failed to update vehicleNft %s: %w", vehicleNft.TokenID, err)
 			}
 		}
 
-		if metaTransaction.R.BurnRequestVehicleNFT != nil {
-			vehicleNft := metaTransaction.R.BurnRequestVehicleNFT
+		if metaTransaction.R.BurnRequestUserDevice != nil {
+			vehicleNft := metaTransaction.R.BurnRequestUserDevice
 
 			vehicleNft.BurnRequestID = null.StringFromPtr(nil)
 			_, err = vehicleNft.Update(ctx, s.dbs().Writer, boil.Infer())
