@@ -105,7 +105,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	autoPiSvc := services.NewAutoPiAPIService(settings, pdb.DBS)
 	autoPiIngest := services.NewIngestRegistrar(producer)
 	deviceDefinitionRegistrar := services.NewDeviceDefinitionRegistrar(producer, settings)
-	autoPiTaskService := services.NewAutoPiTaskService(settings, autoPiSvc, pdb.DBS, logger)
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, pdb.DBS, &logger)
 	autoPi := autopi.NewIntegration(pdb.DBS, ddSvc, autoPiSvc, autoPiIngest, eventService, deviceDefinitionRegistrar, hardwareTemplateService, &logger)
 	macaron := macaron.NewIntegration(pdb.DBS, ddSvc, autoPiIngest, eventService, deviceDefinitionRegistrar, &logger)
@@ -133,7 +132,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// controllers
 	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService,
 		smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, autoPiIngest,
-		deviceDefinitionRegistrar, autoPiTaskService, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient,
+		deviceDefinitionRegistrar, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient,
 		ddaSvc, natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc, ipfsSvc)
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
@@ -352,9 +351,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 
 	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService, iss, userDeviceSvc, teslaTaskService, scTaskSvc)
-
-	// start task consumer for autopi
-	autoPiTaskService.StartConsumer(ctx)
 
 	c := make(chan os.Signal, 1)                    // Create channel to signify a signal being sent with length of 1
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM) // When an interrupt or termination signal is sent, notify the channel
