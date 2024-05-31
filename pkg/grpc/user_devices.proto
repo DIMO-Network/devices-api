@@ -83,6 +83,7 @@ message UserDevice {
 message SyntheticDevice {
   uint64 token_id = 1;
   uint64 integration_token_id = 2;
+  uint64 wallet_child_number_id = 3;
 }
 
 message UserDeviceIntegration {

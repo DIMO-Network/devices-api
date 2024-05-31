@@ -24,58 +24,65 @@ import (
 
 // MetaTransactionRequest is an object representing the database table.
 type MetaTransactionRequest struct {
-	ID        string     `boil:"id" json:"id" toml:"id" yaml:"id"`
-	Status    string     `boil:"status" json:"status" toml:"status" yaml:"status"`
-	Hash      null.Bytes `boil:"hash" json:"hash,omitempty" toml:"hash" yaml:"hash,omitempty"`
-	CreatedAt time.Time  `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt time.Time  `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	ID            string      `boil:"id" json:"id" toml:"id" yaml:"id"`
+	Status        string      `boil:"status" json:"status" toml:"status" yaml:"status"`
+	Hash          null.Bytes  `boil:"hash" json:"hash,omitempty" toml:"hash" yaml:"hash,omitempty"`
+	CreatedAt     time.Time   `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt     time.Time   `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	FailureReason null.String `boil:"failure_reason" json:"failure_reason,omitempty" toml:"failure_reason" yaml:"failure_reason,omitempty"`
 
 	R *metaTransactionRequestR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L metaTransactionRequestL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var MetaTransactionRequestColumns = struct {
-	ID        string
-	Status    string
-	Hash      string
-	CreatedAt string
-	UpdatedAt string
+	ID            string
+	Status        string
+	Hash          string
+	CreatedAt     string
+	UpdatedAt     string
+	FailureReason string
 }{
-	ID:        "id",
-	Status:    "status",
-	Hash:      "hash",
-	CreatedAt: "created_at",
-	UpdatedAt: "updated_at",
+	ID:            "id",
+	Status:        "status",
+	Hash:          "hash",
+	CreatedAt:     "created_at",
+	UpdatedAt:     "updated_at",
+	FailureReason: "failure_reason",
 }
 
 var MetaTransactionRequestTableColumns = struct {
-	ID        string
-	Status    string
-	Hash      string
-	CreatedAt string
-	UpdatedAt string
+	ID            string
+	Status        string
+	Hash          string
+	CreatedAt     string
+	UpdatedAt     string
+	FailureReason string
 }{
-	ID:        "meta_transaction_requests.id",
-	Status:    "meta_transaction_requests.status",
-	Hash:      "meta_transaction_requests.hash",
-	CreatedAt: "meta_transaction_requests.created_at",
-	UpdatedAt: "meta_transaction_requests.updated_at",
+	ID:            "meta_transaction_requests.id",
+	Status:        "meta_transaction_requests.status",
+	Hash:          "meta_transaction_requests.hash",
+	CreatedAt:     "meta_transaction_requests.created_at",
+	UpdatedAt:     "meta_transaction_requests.updated_at",
+	FailureReason: "meta_transaction_requests.failure_reason",
 }
 
 // Generated where
 
 var MetaTransactionRequestWhere = struct {
-	ID        whereHelperstring
-	Status    whereHelperstring
-	Hash      whereHelpernull_Bytes
-	CreatedAt whereHelpertime_Time
-	UpdatedAt whereHelpertime_Time
+	ID            whereHelperstring
+	Status        whereHelperstring
+	Hash          whereHelpernull_Bytes
+	CreatedAt     whereHelpertime_Time
+	UpdatedAt     whereHelpertime_Time
+	FailureReason whereHelpernull_String
 }{
-	ID:        whereHelperstring{field: "\"devices_api\".\"meta_transaction_requests\".\"id\""},
-	Status:    whereHelperstring{field: "\"devices_api\".\"meta_transaction_requests\".\"status\""},
-	Hash:      whereHelpernull_Bytes{field: "\"devices_api\".\"meta_transaction_requests\".\"hash\""},
-	CreatedAt: whereHelpertime_Time{field: "\"devices_api\".\"meta_transaction_requests\".\"created_at\""},
-	UpdatedAt: whereHelpertime_Time{field: "\"devices_api\".\"meta_transaction_requests\".\"updated_at\""},
+	ID:            whereHelperstring{field: "\"devices_api\".\"meta_transaction_requests\".\"id\""},
+	Status:        whereHelperstring{field: "\"devices_api\".\"meta_transaction_requests\".\"status\""},
+	Hash:          whereHelpernull_Bytes{field: "\"devices_api\".\"meta_transaction_requests\".\"hash\""},
+	CreatedAt:     whereHelpertime_Time{field: "\"devices_api\".\"meta_transaction_requests\".\"created_at\""},
+	UpdatedAt:     whereHelpertime_Time{field: "\"devices_api\".\"meta_transaction_requests\".\"updated_at\""},
+	FailureReason: whereHelpernull_String{field: "\"devices_api\".\"meta_transaction_requests\".\"failure_reason\""},
 }
 
 // MetaTransactionRequestRels is where relationship names are stored.
@@ -85,16 +92,16 @@ var MetaTransactionRequestRels = struct {
 	UnpairRequestAftermarketDevice               string
 	MintRequestSyntheticDevice                   string
 	BurnRequestSyntheticDevice                   string
-	BurnRequestVehicleNFT                        string
-	MintRequestVehicleNFT                        string
+	BurnRequestUserDevice                        string
+	MintRequestUserDevice                        string
 }{
 	ClaimMetaTransactionRequestAftermarketDevice: "ClaimMetaTransactionRequestAftermarketDevice",
 	PairRequestAftermarketDevice:                 "PairRequestAftermarketDevice",
 	UnpairRequestAftermarketDevice:               "UnpairRequestAftermarketDevice",
 	MintRequestSyntheticDevice:                   "MintRequestSyntheticDevice",
 	BurnRequestSyntheticDevice:                   "BurnRequestSyntheticDevice",
-	BurnRequestVehicleNFT:                        "BurnRequestVehicleNFT",
-	MintRequestVehicleNFT:                        "MintRequestVehicleNFT",
+	BurnRequestUserDevice:                        "BurnRequestUserDevice",
+	MintRequestUserDevice:                        "MintRequestUserDevice",
 }
 
 // metaTransactionRequestR is where relationships are stored.
@@ -104,8 +111,8 @@ type metaTransactionRequestR struct {
 	UnpairRequestAftermarketDevice               *AftermarketDevice `boil:"UnpairRequestAftermarketDevice" json:"UnpairRequestAftermarketDevice" toml:"UnpairRequestAftermarketDevice" yaml:"UnpairRequestAftermarketDevice"`
 	MintRequestSyntheticDevice                   *SyntheticDevice   `boil:"MintRequestSyntheticDevice" json:"MintRequestSyntheticDevice" toml:"MintRequestSyntheticDevice" yaml:"MintRequestSyntheticDevice"`
 	BurnRequestSyntheticDevice                   *SyntheticDevice   `boil:"BurnRequestSyntheticDevice" json:"BurnRequestSyntheticDevice" toml:"BurnRequestSyntheticDevice" yaml:"BurnRequestSyntheticDevice"`
-	BurnRequestVehicleNFT                        *VehicleNFT        `boil:"BurnRequestVehicleNFT" json:"BurnRequestVehicleNFT" toml:"BurnRequestVehicleNFT" yaml:"BurnRequestVehicleNFT"`
-	MintRequestVehicleNFT                        *VehicleNFT        `boil:"MintRequestVehicleNFT" json:"MintRequestVehicleNFT" toml:"MintRequestVehicleNFT" yaml:"MintRequestVehicleNFT"`
+	BurnRequestUserDevice                        *UserDevice        `boil:"BurnRequestUserDevice" json:"BurnRequestUserDevice" toml:"BurnRequestUserDevice" yaml:"BurnRequestUserDevice"`
+	MintRequestUserDevice                        *UserDevice        `boil:"MintRequestUserDevice" json:"MintRequestUserDevice" toml:"MintRequestUserDevice" yaml:"MintRequestUserDevice"`
 }
 
 // NewStruct creates a new relationship struct
@@ -148,27 +155,27 @@ func (r *metaTransactionRequestR) GetBurnRequestSyntheticDevice() *SyntheticDevi
 	return r.BurnRequestSyntheticDevice
 }
 
-func (r *metaTransactionRequestR) GetBurnRequestVehicleNFT() *VehicleNFT {
+func (r *metaTransactionRequestR) GetBurnRequestUserDevice() *UserDevice {
 	if r == nil {
 		return nil
 	}
-	return r.BurnRequestVehicleNFT
+	return r.BurnRequestUserDevice
 }
 
-func (r *metaTransactionRequestR) GetMintRequestVehicleNFT() *VehicleNFT {
+func (r *metaTransactionRequestR) GetMintRequestUserDevice() *UserDevice {
 	if r == nil {
 		return nil
 	}
-	return r.MintRequestVehicleNFT
+	return r.MintRequestUserDevice
 }
 
 // metaTransactionRequestL is where Load methods for each relationship are stored.
 type metaTransactionRequestL struct{}
 
 var (
-	metaTransactionRequestAllColumns            = []string{"id", "status", "hash", "created_at", "updated_at"}
+	metaTransactionRequestAllColumns            = []string{"id", "status", "hash", "created_at", "updated_at", "failure_reason"}
 	metaTransactionRequestColumnsWithoutDefault = []string{"id"}
-	metaTransactionRequestColumnsWithDefault    = []string{"status", "hash", "created_at", "updated_at"}
+	metaTransactionRequestColumnsWithDefault    = []string{"status", "hash", "created_at", "updated_at", "failure_reason"}
 	metaTransactionRequestPrimaryKeyColumns     = []string{"id"}
 	metaTransactionRequestGeneratedColumns      = []string{}
 )
@@ -533,26 +540,26 @@ func (o *MetaTransactionRequest) BurnRequestSyntheticDevice(mods ...qm.QueryMod)
 	return SyntheticDevices(queryMods...)
 }
 
-// BurnRequestVehicleNFT pointed to by the foreign key.
-func (o *MetaTransactionRequest) BurnRequestVehicleNFT(mods ...qm.QueryMod) vehicleNFTQuery {
+// BurnRequestUserDevice pointed to by the foreign key.
+func (o *MetaTransactionRequest) BurnRequestUserDevice(mods ...qm.QueryMod) userDeviceQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"burn_request_id\" = ?", o.ID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	return VehicleNFTS(queryMods...)
+	return UserDevices(queryMods...)
 }
 
-// MintRequestVehicleNFT pointed to by the foreign key.
-func (o *MetaTransactionRequest) MintRequestVehicleNFT(mods ...qm.QueryMod) vehicleNFTQuery {
+// MintRequestUserDevice pointed to by the foreign key.
+func (o *MetaTransactionRequest) MintRequestUserDevice(mods ...qm.QueryMod) userDeviceQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"mint_request_id\" = ?", o.ID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	return VehicleNFTS(queryMods...)
+	return UserDevices(queryMods...)
 }
 
 // LoadClaimMetaTransactionRequestAftermarketDevice allows an eager lookup of values, cached into the
@@ -1140,9 +1147,9 @@ func (metaTransactionRequestL) LoadBurnRequestSyntheticDevice(ctx context.Contex
 	return nil
 }
 
-// LoadBurnRequestVehicleNFT allows an eager lookup of values, cached into the
+// LoadBurnRequestUserDevice allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-1 relationship.
-func (metaTransactionRequestL) LoadBurnRequestVehicleNFT(ctx context.Context, e boil.ContextExecutor, singular bool, maybeMetaTransactionRequest interface{}, mods queries.Applicator) error {
+func (metaTransactionRequestL) LoadBurnRequestUserDevice(ctx context.Context, e boil.ContextExecutor, singular bool, maybeMetaTransactionRequest interface{}, mods queries.Applicator) error {
 	var slice []*MetaTransactionRequest
 	var object *MetaTransactionRequest
 
@@ -1196,8 +1203,8 @@ func (metaTransactionRequestL) LoadBurnRequestVehicleNFT(ctx context.Context, e 
 	}
 
 	query := NewQuery(
-		qm.From(`devices_api.vehicle_nfts`),
-		qm.WhereIn(`devices_api.vehicle_nfts.burn_request_id in ?`, argsSlice...),
+		qm.From(`devices_api.user_devices`),
+		qm.WhereIn(`devices_api.user_devices.burn_request_id in ?`, argsSlice...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1205,22 +1212,22 @@ func (metaTransactionRequestL) LoadBurnRequestVehicleNFT(ctx context.Context, e 
 
 	results, err := query.QueryContext(ctx, e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load VehicleNFT")
+		return errors.Wrap(err, "failed to eager load UserDevice")
 	}
 
-	var resultSlice []*VehicleNFT
+	var resultSlice []*UserDevice
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice VehicleNFT")
+		return errors.Wrap(err, "failed to bind eager loaded slice UserDevice")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for vehicle_nfts")
+		return errors.Wrap(err, "failed to close results of eager load for user_devices")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for vehicle_nfts")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for user_devices")
 	}
 
-	if len(vehicleNFTAfterSelectHooks) != 0 {
+	if len(userDeviceAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
 				return err
@@ -1234,9 +1241,9 @@ func (metaTransactionRequestL) LoadBurnRequestVehicleNFT(ctx context.Context, e 
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.BurnRequestVehicleNFT = foreign
+		object.R.BurnRequestUserDevice = foreign
 		if foreign.R == nil {
-			foreign.R = &vehicleNFTR{}
+			foreign.R = &userDeviceR{}
 		}
 		foreign.R.BurnRequest = object
 	}
@@ -1244,9 +1251,9 @@ func (metaTransactionRequestL) LoadBurnRequestVehicleNFT(ctx context.Context, e 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
 			if queries.Equal(local.ID, foreign.BurnRequestID) {
-				local.R.BurnRequestVehicleNFT = foreign
+				local.R.BurnRequestUserDevice = foreign
 				if foreign.R == nil {
-					foreign.R = &vehicleNFTR{}
+					foreign.R = &userDeviceR{}
 				}
 				foreign.R.BurnRequest = local
 				break
@@ -1257,9 +1264,9 @@ func (metaTransactionRequestL) LoadBurnRequestVehicleNFT(ctx context.Context, e 
 	return nil
 }
 
-// LoadMintRequestVehicleNFT allows an eager lookup of values, cached into the
+// LoadMintRequestUserDevice allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-1 relationship.
-func (metaTransactionRequestL) LoadMintRequestVehicleNFT(ctx context.Context, e boil.ContextExecutor, singular bool, maybeMetaTransactionRequest interface{}, mods queries.Applicator) error {
+func (metaTransactionRequestL) LoadMintRequestUserDevice(ctx context.Context, e boil.ContextExecutor, singular bool, maybeMetaTransactionRequest interface{}, mods queries.Applicator) error {
 	var slice []*MetaTransactionRequest
 	var object *MetaTransactionRequest
 
@@ -1313,8 +1320,8 @@ func (metaTransactionRequestL) LoadMintRequestVehicleNFT(ctx context.Context, e 
 	}
 
 	query := NewQuery(
-		qm.From(`devices_api.vehicle_nfts`),
-		qm.WhereIn(`devices_api.vehicle_nfts.mint_request_id in ?`, argsSlice...),
+		qm.From(`devices_api.user_devices`),
+		qm.WhereIn(`devices_api.user_devices.mint_request_id in ?`, argsSlice...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1322,22 +1329,22 @@ func (metaTransactionRequestL) LoadMintRequestVehicleNFT(ctx context.Context, e 
 
 	results, err := query.QueryContext(ctx, e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load VehicleNFT")
+		return errors.Wrap(err, "failed to eager load UserDevice")
 	}
 
-	var resultSlice []*VehicleNFT
+	var resultSlice []*UserDevice
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice VehicleNFT")
+		return errors.Wrap(err, "failed to bind eager loaded slice UserDevice")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for vehicle_nfts")
+		return errors.Wrap(err, "failed to close results of eager load for user_devices")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for vehicle_nfts")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for user_devices")
 	}
 
-	if len(vehicleNFTAfterSelectHooks) != 0 {
+	if len(userDeviceAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
 				return err
@@ -1351,19 +1358,19 @@ func (metaTransactionRequestL) LoadMintRequestVehicleNFT(ctx context.Context, e 
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.MintRequestVehicleNFT = foreign
+		object.R.MintRequestUserDevice = foreign
 		if foreign.R == nil {
-			foreign.R = &vehicleNFTR{}
+			foreign.R = &userDeviceR{}
 		}
 		foreign.R.MintRequest = object
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.ID == foreign.MintRequestID {
-				local.R.MintRequestVehicleNFT = foreign
+			if queries.Equal(local.ID, foreign.MintRequestID) {
+				local.R.MintRequestUserDevice = foreign
 				if foreign.R == nil {
-					foreign.R = &vehicleNFTR{}
+					foreign.R = &userDeviceR{}
 				}
 				foreign.R.MintRequest = local
 				break
@@ -1720,10 +1727,10 @@ func (o *MetaTransactionRequest) RemoveBurnRequestSyntheticDevice(ctx context.Co
 	return nil
 }
 
-// SetBurnRequestVehicleNFT of the metaTransactionRequest to the related item.
-// Sets o.R.BurnRequestVehicleNFT to related.
+// SetBurnRequestUserDevice of the metaTransactionRequest to the related item.
+// Sets o.R.BurnRequestUserDevice to related.
 // Adds o to related.R.BurnRequest.
-func (o *MetaTransactionRequest) SetBurnRequestVehicleNFT(ctx context.Context, exec boil.ContextExecutor, insert bool, related *VehicleNFT) error {
+func (o *MetaTransactionRequest) SetBurnRequestUserDevice(ctx context.Context, exec boil.ContextExecutor, insert bool, related *UserDevice) error {
 	var err error
 
 	if insert {
@@ -1734,11 +1741,11 @@ func (o *MetaTransactionRequest) SetBurnRequestVehicleNFT(ctx context.Context, e
 		}
 	} else {
 		updateQuery := fmt.Sprintf(
-			"UPDATE \"devices_api\".\"vehicle_nfts\" SET %s WHERE %s",
+			"UPDATE \"devices_api\".\"user_devices\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, []string{"burn_request_id"}),
-			strmangle.WhereClause("\"", "\"", 2, vehicleNFTPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", 2, userDevicePrimaryKeyColumns),
 		)
-		values := []interface{}{o.ID, related.MintRequestID}
+		values := []interface{}{o.ID, related.ID}
 
 		if boil.IsDebug(ctx) {
 			writer := boil.DebugWriterFrom(ctx)
@@ -1754,14 +1761,14 @@ func (o *MetaTransactionRequest) SetBurnRequestVehicleNFT(ctx context.Context, e
 
 	if o.R == nil {
 		o.R = &metaTransactionRequestR{
-			BurnRequestVehicleNFT: related,
+			BurnRequestUserDevice: related,
 		}
 	} else {
-		o.R.BurnRequestVehicleNFT = related
+		o.R.BurnRequestUserDevice = related
 	}
 
 	if related.R == nil {
-		related.R = &vehicleNFTR{
+		related.R = &userDeviceR{
 			BurnRequest: o,
 		}
 	} else {
@@ -1770,10 +1777,10 @@ func (o *MetaTransactionRequest) SetBurnRequestVehicleNFT(ctx context.Context, e
 	return nil
 }
 
-// RemoveBurnRequestVehicleNFT relationship.
-// Sets o.R.BurnRequestVehicleNFT to nil.
+// RemoveBurnRequestUserDevice relationship.
+// Sets o.R.BurnRequestUserDevice to nil.
 // Removes o from all passed in related items' relationships struct.
-func (o *MetaTransactionRequest) RemoveBurnRequestVehicleNFT(ctx context.Context, exec boil.ContextExecutor, related *VehicleNFT) error {
+func (o *MetaTransactionRequest) RemoveBurnRequestUserDevice(ctx context.Context, exec boil.ContextExecutor, related *UserDevice) error {
 	var err error
 
 	queries.SetScanner(&related.BurnRequestID, nil)
@@ -1782,7 +1789,7 @@ func (o *MetaTransactionRequest) RemoveBurnRequestVehicleNFT(ctx context.Context
 	}
 
 	if o.R != nil {
-		o.R.BurnRequestVehicleNFT = nil
+		o.R.BurnRequestUserDevice = nil
 	}
 
 	if related == nil || related.R == nil {
@@ -1794,25 +1801,25 @@ func (o *MetaTransactionRequest) RemoveBurnRequestVehicleNFT(ctx context.Context
 	return nil
 }
 
-// SetMintRequestVehicleNFT of the metaTransactionRequest to the related item.
-// Sets o.R.MintRequestVehicleNFT to related.
+// SetMintRequestUserDevice of the metaTransactionRequest to the related item.
+// Sets o.R.MintRequestUserDevice to related.
 // Adds o to related.R.MintRequest.
-func (o *MetaTransactionRequest) SetMintRequestVehicleNFT(ctx context.Context, exec boil.ContextExecutor, insert bool, related *VehicleNFT) error {
+func (o *MetaTransactionRequest) SetMintRequestUserDevice(ctx context.Context, exec boil.ContextExecutor, insert bool, related *UserDevice) error {
 	var err error
 
 	if insert {
-		related.MintRequestID = o.ID
+		queries.Assign(&related.MintRequestID, o.ID)
 
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
 			return errors.Wrap(err, "failed to insert into foreign table")
 		}
 	} else {
 		updateQuery := fmt.Sprintf(
-			"UPDATE \"devices_api\".\"vehicle_nfts\" SET %s WHERE %s",
+			"UPDATE \"devices_api\".\"user_devices\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, []string{"mint_request_id"}),
-			strmangle.WhereClause("\"", "\"", 2, vehicleNFTPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", 2, userDevicePrimaryKeyColumns),
 		)
-		values := []interface{}{o.ID, related.MintRequestID}
+		values := []interface{}{o.ID, related.ID}
 
 		if boil.IsDebug(ctx) {
 			writer := boil.DebugWriterFrom(ctx)
@@ -1823,24 +1830,48 @@ func (o *MetaTransactionRequest) SetMintRequestVehicleNFT(ctx context.Context, e
 			return errors.Wrap(err, "failed to update foreign table")
 		}
 
-		related.MintRequestID = o.ID
+		queries.Assign(&related.MintRequestID, o.ID)
 	}
 
 	if o.R == nil {
 		o.R = &metaTransactionRequestR{
-			MintRequestVehicleNFT: related,
+			MintRequestUserDevice: related,
 		}
 	} else {
-		o.R.MintRequestVehicleNFT = related
+		o.R.MintRequestUserDevice = related
 	}
 
 	if related.R == nil {
-		related.R = &vehicleNFTR{
+		related.R = &userDeviceR{
 			MintRequest: o,
 		}
 	} else {
 		related.R.MintRequest = o
 	}
+	return nil
+}
+
+// RemoveMintRequestUserDevice relationship.
+// Sets o.R.MintRequestUserDevice to nil.
+// Removes o from all passed in related items' relationships struct.
+func (o *MetaTransactionRequest) RemoveMintRequestUserDevice(ctx context.Context, exec boil.ContextExecutor, related *UserDevice) error {
+	var err error
+
+	queries.SetScanner(&related.MintRequestID, nil)
+	if _, err = related.Update(ctx, exec, boil.Whitelist("mint_request_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.MintRequestUserDevice = nil
+	}
+
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	related.R.MintRequest = nil
+
 	return nil
 }
 

@@ -10,26 +10,25 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DIMO-Network/shared/kafka"
-
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/services/dex"
 	"github.com/DIMO-Network/devices-api/internal/utils"
-	"google.golang.org/protobuf/proto"
-
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
-	"github.com/ericlagergren/decimal"
+	"github.com/DIMO-Network/shared/dbtypes"
+	"github.com/DIMO-Network/shared/kafka"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
+	"google.golang.org/protobuf/proto"
 )
 
 type Integration interface {
@@ -45,24 +44,25 @@ type ContractsEventsConsumer struct {
 	apInt        Integration
 	mcInt        Integration
 	ddSvc        DeviceDefinitionService
+	evtSvc       EventService
 }
 
 type EventName string
 
 const (
-	PrivilegeSet                  EventName = "PrivilegeSet"
-	AftermarketDeviceNodeMinted   EventName = "AftermarketDeviceNodeMinted"
-	Transfer                      EventName = "Transfer"
-	BeneficiarySet                EventName = "BeneficiarySet"
-	DCNNameChanged                EventName = "NameChanged"
-	DCNNewNode                    EventName = "NewNode"
-	DCNNewExpiration              EventName = "NewExpiration"
-	AftermarketDeviceClaimed      EventName = "AftermarketDeviceClaimed"
-	AftermarketDevicePaired       EventName = "AftermarketDevicePaired"
-	AftermarketDeviceUnpaired     EventName = "AftermarketDeviceUnpaired"
-	AftermarketDeviceAttributeSet EventName = "AftermarketDeviceAttributeSet"
-	AftermarketDeviceAddressReset EventName = "AftermarketDeviceAddressReset"
-	VehicleNodeBurned             EventName = "VehicleNodeBurned"
+	PrivilegeSet                          EventName = "PrivilegeSet"
+	AftermarketDeviceNodeMinted           EventName = "AftermarketDeviceNodeMinted"
+	Transfer                              EventName = "Transfer"
+	BeneficiarySet                        EventName = "BeneficiarySet"
+	DCNNameChanged                        EventName = "NameChanged"
+	DCNNewNode                            EventName = "NewNode"
+	DCNNewExpiration                      EventName = "NewExpiration"
+	AftermarketDeviceClaimed              EventName = "AftermarketDeviceClaimed"
+	AftermarketDevicePaired               EventName = "AftermarketDevicePaired"
+	AftermarketDeviceUnpaired             EventName = "AftermarketDeviceUnpaired"
+	AftermarketDeviceAttributeSet         EventName = "AftermarketDeviceAttributeSet"
+	AftermarketDeviceAddressReset         EventName = "AftermarketDeviceAddressReset"
+	VehicleNodeMintedWithDeviceDefinition EventName = "VehicleNodeMintedWithDeviceDefinition"
 )
 
 func (r EventName) String() string {
@@ -88,7 +88,7 @@ type Block struct {
 	Time   time.Time   `json:"time,omitempty"`
 }
 
-func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration, mcInt Integration, ddSvc DeviceDefinitionService) *ContractsEventsConsumer {
+func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration, mcInt Integration, ddSvc DeviceDefinitionService, evtSvc EventService) *ContractsEventsConsumer {
 	return &ContractsEventsConsumer{
 		db:           pdb,
 		log:          log,
@@ -97,6 +97,7 @@ func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *con
 		apInt:        apInt,
 		mcInt:        mcInt,
 		ddSvc:        ddSvc,
+		evtSvc:       evtSvc,
 	}
 }
 
@@ -117,7 +118,7 @@ func (c *ContractsEventsConsumer) RunConsumer() error {
 	return nil
 }
 
-func (c *ContractsEventsConsumer) processEvent(_ context.Context, event *shared.CloudEvent[json.RawMessage]) error {
+func (c *ContractsEventsConsumer) processEvent(ctx context.Context, event *shared.CloudEvent[json.RawMessage]) error {
 	if event == nil || event.Type != contractEventCEType {
 		return nil
 	}
@@ -136,7 +137,7 @@ func (c *ContractsEventsConsumer) processEvent(_ context.Context, event *shared.
 		c.log.Info().Str("event", data.EventName).Msg("Event received")
 		return c.setPrivilegeHandler(&data)
 	case Transfer.String():
-		return c.routeTransferEvent(&data)
+		return c.routeTransferEvent(ctx, &data)
 	case AftermarketDeviceNodeMinted.String():
 		if data.Contract == c.registryAddr {
 			c.log.Info().Str("event", data.EventName).Msg("Event received")
@@ -166,8 +167,8 @@ func (c *ContractsEventsConsumer) processEvent(_ context.Context, event *shared.
 		return c.aftermarketDeviceAttributeSet(&data)
 	case AftermarketDeviceAddressReset.String():
 		return c.aftermarketDeviceAddressReset(&data)
-	case VehicleNodeBurned.String():
-		return c.vehicleNodeBurned(&data)
+	case VehicleNodeMintedWithDeviceDefinition.String():
+		return c.vehicleNodeMintedWithDeviceDefinition(&data)
 	default:
 		c.log.Debug().Str("event", data.EventName).Msg("Handler not provided for event.")
 	}
@@ -175,22 +176,17 @@ func (c *ContractsEventsConsumer) processEvent(_ context.Context, event *shared.
 	return nil
 }
 
-type PrivilegeArgs struct {
-	TokenID     string
-	Version     int64
-	PrivilegeID int64  `mapstructure:"privId"`
-	UserAddress string `mapstructure:"user"`
-	ExpiresAt   string `mapstructure:"expires"`
-}
-
-func (c *ContractsEventsConsumer) routeTransferEvent(e *ContractEventData) error {
+func (c *ContractsEventsConsumer) routeTransferEvent(ctx context.Context, e *ContractEventData) error {
 	switch e.Contract {
 	case common.HexToAddress(c.settings.AftermarketDeviceContractAddress):
 		c.log.Info().Str("event", e.EventName).Msg("Event received")
 		return c.handleAfterMarketTransferEvent(e)
 	case common.HexToAddress(c.settings.VehicleNFTAddress):
 		c.log.Info().Str("event", e.EventName).Msg("Event received")
-		return c.handleVehicleTransfer(e)
+		return c.handleVehicleTransfer(ctx, e)
+	case common.HexToAddress(c.settings.SyntheticDeviceNFTAddress):
+		c.log.Info().Str("event", e.EventName).Msg("Event received")
+		return c.handleSyntheticTransfer(ctx, e)
 	default:
 		c.log.Debug().Str("event", e.EventName).Interface("fullEventData", e).Msg("Handler not provided for contract")
 	}
@@ -198,18 +194,45 @@ func (c *ContractsEventsConsumer) routeTransferEvent(e *ContractEventData) error
 	return nil
 }
 
-func (c *ContractsEventsConsumer) handleVehicleTransfer(e *ContractEventData) error {
-	ctx := context.Background()
+func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e *ContractEventData) error {
 	var args contracts.MultiPrivilegeTransfer
 	err := json.Unmarshal(e.Arguments, &args)
 	if err != nil {
 		return err
 	}
 
-	tkID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.TokenId, 0))
+	// Only interested in burns. Mints are handled as meta-transcations and for all other
+	// transfers, synthetics transfer together with the vehicle, so no need to track ownership.
+	if !IsZeroAddress(args.To) {
+		return nil
+	}
 
+	sd, err := models.SyntheticDevices(
+		models.SyntheticDeviceWhere.TokenID.EQ(dbtypes.NullIntToDecimal(args.TokenId)),
+	).One(ctx, c.db.DBS().Writer)
+	if err != nil {
+		return err
+	}
+
+	_, err = sd.Delete(ctx, c.db.DBS().Writer)
+	if err != nil {
+		return err
+	}
+
+	c.log.Info().Int64("syntheticDeviceTokenId", args.TokenId.Int64()).Str("owner", args.From.Hex()).Msg("Burned synthetic device.")
+
+	return nil
+}
+
+func (c *ContractsEventsConsumer) handleVehicleTransfer(ctx context.Context, e *ContractEventData) error {
+	var args contracts.MultiPrivilegeTransfer
+	err := json.Unmarshal(e.Arguments, &args)
+	if err != nil {
+		return err
+	}
+
+	// Handle mints in the meta-transaction handler.
 	if IsZeroAddress(args.From) {
-		c.log.Debug().Str("tokenID", tkID.String()).Msg("Ignoring mint event")
 		return nil
 	}
 
@@ -217,60 +240,49 @@ func (c *ContractsEventsConsumer) handleVehicleTransfer(e *ContractEventData) er
 	if err != nil {
 		return err
 	}
-
 	defer tx.Rollback() //nolint
 
 	rowsAff, err := models.NFTPrivileges(
-		models.NFTPrivilegeWhere.TokenID.EQ(types.Decimal(tkID)),
+		models.NFTPrivilegeWhere.TokenID.EQ(dbtypes.IntToDecimal(args.TokenId)),
 	).DeleteAll(ctx, tx)
 	if err != nil {
 		return err
 	}
 
-	c.log.Info().Str("tokenId", tkID.String()).Msgf("Cleared %d privileges upon vehicle transfer.", rowsAff)
+	if rowsAff != 0 {
+		c.log.Info().Int64("vehicleTokenId", args.TokenId.Int64()).Msgf("Cleared %d privileges upon vehicle transfer.", rowsAff)
+	}
 
-	nft, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(tkID),
-		qm.Load(models.VehicleNFTRels.UserDevice),
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(dbtypes.NullIntToDecimal(args.TokenId)),
 	).One(ctx, tx)
 	if err != nil {
 		return err
 	}
 
 	if IsZeroAddress(args.To) {
-		_, err = nft.Delete(ctx, tx)
+		_, err = ud.Delete(ctx, tx)
 		if err != nil {
 			return err
 		}
 
-		if nft.R.UserDevice != nil {
-			_, err = nft.R.UserDevice.Delete(ctx, tx)
-			if err != nil {
-				return err
-			}
-		}
+		c.log.Info().Int64("vehicleTokenId", args.TokenId.Int64()).Str("owner", args.From.Hex()).Msg("Burned vehicle.")
 	} else {
+		// Faking a user id for a web3 user with the new owner address.
+		userID, err := addressToUserID(args.To)
+		if err != nil {
+			return fmt.Errorf("failed to convert address to user id: %w", err)
+		}
 
-		nft.OwnerAddress = null.BytesFrom(args.To.Bytes())
-		if _, err := nft.Update(ctx, tx, boil.Whitelist(models.VehicleNFTColumns.OwnerAddress)); err != nil {
+		cols := models.UserDeviceColumns
+		ud.UserID = userID
+		ud.OwnerAddress = null.BytesFrom(args.To.Bytes())
+
+		if _, err := ud.Update(ctx, tx, boil.Whitelist(cols.UserID, cols.OwnerAddress)); err != nil {
 			return err
 		}
 
-		if ud := nft.R.UserDevice; ud != nil {
-			s := dex.IDTokenSubject{
-				UserId: args.To.Hex(),
-				ConnId: "web3",
-			}
-			b, err := proto.Marshal(&s)
-			if err != nil {
-				return err
-			}
-
-			ud.UserID = base64.RawURLEncoding.EncodeToString(b)
-			if _, err := ud.Update(ctx, tx, boil.Whitelist(models.UserDeviceColumns.UserID)); err != nil {
-				return err
-			}
-		}
+		c.log.Info().Int64("vehicleTokenId", args.TokenId.Int64()).Msgf("Transferred vehicle from %s to %s.", args.From, args.To)
 	}
 
 	return tx.Commit()
@@ -689,55 +701,88 @@ func (c *ContractsEventsConsumer) aftermarketDeviceAddressReset(e *ContractEvent
 	return err
 }
 
-// vehicleNodeBurned handles the event of the same name from the registry contract.
-func (c *ContractsEventsConsumer) vehicleNodeBurned(e *ContractEventData) error {
-	ctx := context.Background()
+func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *ContractEventData) error {
 	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
-		return fmt.Errorf("vehicle burn from unexpected source %d/%s", e.ChainID, e.Contract)
+		return fmt.Errorf("vehicle mint from unexpected source %d/%s", e.ChainID, e.Contract)
 	}
 
-	var args contracts.RegistryVehicleNodeBurned
+	ctx := context.Background()
+	var args contracts.RegistryVehicleNodeMintedWithDeviceDefinition
 	if err := json.Unmarshal(e.Arguments, &args); err != nil {
-		return err
+		return fmt.Errorf("failed to unmarshal arguments from mint event: %w", err)
 	}
 
-	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Msg("burning vehicle node")
-	tx, err := c.db.DBS().Reader.BeginTx(ctx, nil)
+	log := c.log.With().Int64("vehicleNode", args.VehicleId.Int64()).Int64("manufacturerId", args.ManufacturerId.Int64()).Str("deviceDefinitionId", args.DeviceDefinitionId).Logger()
+	log.Info().Msg("Minting vehicle with device definition")
+
+	tx, err := c.db.DBS().Writer.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to start transaction: %w", err)
 	}
 	defer tx.Rollback() //nolint
 
-	vnft, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(
-			types.NewNullDecimal(new(decimal.Big).SetBigMantScale(args.VehicleNode, 0))),
-		qm.Load(models.VehicleNFTRels.UserDevice),
-		qm.Load(models.VehicleNFTRels.BurnRequest),
-	).One(ctx, tx)
+	if check, err := models.MetaTransactionRequests(
+		models.MetaTransactionRequestWhere.Hash.EQ(null.BytesFrom(e.TransactionHash.Bytes())),
+	).Exists(ctx, tx); err != nil {
+		// if we cannot confirm whether event has been handled, log error and then create vehicle
+		log.Err(err).Msg("failed to check if vehicle mint event has already been handled")
+	} else if check {
+		log.Info().Msgf("vehicle mint event has already been handled. tx hash: %s", e.TransactionHash.String())
+		return nil
+	}
+
+	userID, err := addressToUserID(args.Owner)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to convert address to user id: %w", err)
 	}
 
-	if _, err := vnft.Delete(ctx, tx); err != nil {
-		return err
+	dDef, err := c.ddSvc.GetDeviceDefinitionBySlugName(ctx, &ddgrpc.GetDeviceDefinitionBySlugNameRequest{Slug: args.DeviceDefinitionId})
+	if err != nil {
+		return fmt.Errorf("failed to get device definition: %w", err)
 	}
 
-	if ud := vnft.R.UserDevice; ud != nil {
-		if _, err := ud.Delete(ctx, tx); err != nil {
-			return err
-		}
+	if dDef.Make.TokenId == 0 {
+		return fmt.Errorf("vehicle make not yet minted: %s", dDef.Make.Name)
 	}
 
-	if mtr := vnft.R.BurnRequest; mtr != nil {
-		mtr.Hash = null.BytesFrom(e.TransactionHash.Bytes())
-		mtr.Status = models.MetaTransactionRequestStatusConfirmed
-		if _, err := mtr.Update(ctx, tx, boil.Infer()); err != nil {
-			return err
-		}
+	if args.ManufacturerId.Cmp(big.NewInt(int64(dDef.Make.TokenId))) != 0 {
+		return fmt.Errorf("passed manufacturer id %d does not match manufacturer associated with device definition %s", args.ManufacturerId, dDef.DeviceDefinitionId)
 	}
 
-	c.log.Info().Int64("vehicleNode", args.VehicleNode.Int64()).Msg("vehicle node burned")
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		UserID:             userID,
+		DeviceDefinitionID: dDef.DeviceDefinitionId,
+		OwnerAddress:       null.BytesFrom(args.Owner.Bytes()),
+		TokenID:            dbtypes.NullIntToDecimal(args.VehicleId),
+	}
+
+	if err := ud.Insert(ctx, tx, boil.Infer()); err != nil {
+		return fmt.Errorf("failed to insert new user device: %w", err)
+	}
+
+	c.evtSvc.Emit(&shared.CloudEvent[any]{ //nolint
+		Type:    "com.dimo.zone.device.mint",
+		Subject: ud.ID,
+		Source:  "devices-api",
+		Data: UserDeviceMintEvent{
+			Timestamp: time.Now(),
+			UserID:    ud.UserID,
+			Device: UserDeviceEventDevice{
+				ID:                 ud.ID,
+				VIN:                ud.VinIdentifier.String,
+				DeviceDefinitionID: ud.DeviceDefinitionID,
+			},
+			NFT: UserDeviceEventNFT{
+				TokenID: args.VehicleId,
+				Owner:   args.Owner,
+				TxHash:  e.TransactionHash,
+			},
+		},
+	})
+
 	return tx.Commit()
+
 }
 
 // DCNNameChangedContract represents a NameChanged event raised by the FullAbi contract.
@@ -746,4 +791,14 @@ type DCNNameChangedContract struct {
 	Node [32]byte
 	Name string `json:"name_"`
 	//Raw  types.Log // Blockchain specific contextual infos
+}
+
+func addressToUserID(addr common.Address) (string, error) {
+	userIDArgs := dex.IDTokenSubject{
+		UserId: addr.Hex(),
+		ConnId: "web3",
+	}
+
+	ub, err := proto.Marshal(&userIDArgs)
+	return base64.RawURLEncoding.EncodeToString(ub), err
 }

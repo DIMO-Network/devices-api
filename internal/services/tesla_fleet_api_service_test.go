@@ -81,7 +81,7 @@ func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForTelemetryData_Errror_Cas
 					},
 				},
 			},
-			expectedError: "vehicle has not approved virtual token connection",
+			expectedError: "virtual key not added to vehicle",
 		},
 		{
 			response: TeslaResponseWrapper[SubscribeForTelemetryDataResponse]{

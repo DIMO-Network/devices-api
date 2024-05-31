@@ -23,11 +23,16 @@ type ceTx struct {
 	Logs       []ceLog `json:"logs,omitempty"`
 }
 
+type ceReason struct {
+	Data string `json:"data"`
+}
+
 // Just using the same struct for all three event types. Lazy.
 type ceData struct {
-	RequestID   string `json:"requestId"`
-	Type        string `json:"type"`
-	Transaction ceTx   `json:"transaction"`
+	RequestID   string   `json:"requestId"`
+	Type        string   `json:"type"`
+	Transaction ceTx     `json:"transaction"`
+	Reason      ceReason `json:"reason"`
 }
 
 type Consumer struct {

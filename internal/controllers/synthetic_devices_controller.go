@@ -126,8 +126,9 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 	integrationID := c.Params("integrationID")
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
+		qm.Load(models.UserDeviceRels.BurnRequest),
 	).One(c.Context(), sdc.DBS().Reader)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -136,16 +137,25 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 		return err
 	}
 
-	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
+	if ud.TokenID.IsZero() {
 		return fiber.NewError(fiber.StatusConflict, "Vehicle not minted.")
 	}
 
-	if userAddr != common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes) {
-		return fiber.NewError(fiber.StatusUnauthorized, "User's address does not control this device.")
+	if burn := ud.R.BurnRequest; burn != nil && burn.Status != models.MetaTransactionRequestStatusFailed {
+		return fiber.NewError(fiber.StatusConflict, "Vehicle is being burned.")
 	}
 
-	if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice != nil {
-		return fiber.NewError(fiber.StatusConflict, "Vehicle already paired with a synthetic device.")
+	if ownerAddr := common.BytesToAddress(ud.OwnerAddress.Bytes); userAddr != ownerAddr {
+		return fiber.NewError(fiber.StatusUnauthorized, fmt.Sprintf("User's address %s does not match vehicle owner %s.", userAddr, ownerAddr))
+	}
+
+	if sd := ud.R.VehicleTokenSyntheticDevice; sd != nil {
+		if !sd.TokenID.IsZero() {
+			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle already paired with synthetic device %d.", sd.TokenID.Big))
+		}
+		if sd.R.MintRequest.Status != models.MetaTransactionRequestStatusFailed {
+			return fiber.NewError(fiber.StatusConflict, "There is already a synthetic device mint in progress for this vehicle.")
+		}
 	}
 
 	if len(ud.R.UserDeviceAPIIntegrations) == 0 {
@@ -157,8 +167,8 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 		return shared.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
-	if in.Vendor != constants.SmartCarVendor && in.Vendor != constants.TeslaVendor {
-		return fiber.NewError(fiber.StatusConflict, "This is not a software connection.")
+	if in.ManufacturerTokenId != 0 {
+		return fiber.NewError(fiber.StatusConflict, "This is not a software integration.")
 	}
 
 	if in.Vendor == constants.SmartCarVendor {
@@ -175,12 +185,12 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 	}
 
 	if in.TokenId == 0 {
-		return fiber.NewError(fiber.StatusConflict, "Connection type not yet minted.")
+		return fiber.NewError(fiber.StatusConflict, "Integration not yet minted.")
 	}
 
-	vid, ok := ud.R.VehicleNFT.TokenID.Int64()
+	vid, ok := ud.TokenID.Int64()
 	if !ok {
-		return fmt.Errorf("vehicle token id invalid, this should never happen %d", ud.R.VehicleNFT.TokenID)
+		return fmt.Errorf("vehicle token id invalid, this should never happen %d", ud.TokenID)
 	}
 
 	response := sdc.getEIP712Mint(int64(in.TokenId), vid)
@@ -203,19 +213,33 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
+		qm.Load(models.UserDeviceRels.BurnRequest),
 	).One(c.Context(), sdc.DBS().Reader)
 	if err != nil {
 		return err
 	}
 
-	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
+	if ud.TokenID.IsZero() {
 		return fiber.NewError(fiber.StatusConflict, "Vehicle not minted.")
 	}
 
-	if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice != nil {
-		return fiber.NewError(fiber.StatusConflict, "Vehicle already paired with a synthetic device.")
+	if burn := ud.R.BurnRequest; burn != nil && burn.Status != models.MetaTransactionRequestStatusFailed {
+		return fiber.NewError(fiber.StatusConflict, "Vehicle is being burned.")
+	}
+
+	if sd := ud.R.VehicleTokenSyntheticDevice; sd != nil {
+		if !sd.TokenID.IsZero() {
+			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle already paired with synthetic device %d.", sd.TokenID.Big))
+		}
+		if sd.R.MintRequest.Status != models.MetaTransactionRequestStatusFailed {
+			return fiber.NewError(fiber.StatusConflict, "There is already a synthetic device mint in progress for this vehicle.")
+		}
+		_, err := ud.R.VehicleTokenSyntheticDevice.Delete(c.Context(), sdc.DBS().Writer)
+		if err != nil {
+			return fmt.Errorf("failed to delete failed synthetic minting: %v", err)
+		}
 	}
 
 	if len(ud.R.UserDeviceAPIIntegrations) == 0 {
@@ -227,17 +251,17 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return shared.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
-	if in.Vendor != constants.SmartCarVendor && in.Vendor != constants.TeslaVendor {
-		return fiber.NewError(fiber.StatusConflict, "This is not a software connection.")
+	if in.ManufacturerTokenId != 0 {
+		return fiber.NewError(fiber.StatusConflict, "This is not a software integration.")
 	}
 
 	if in.TokenId == 0 {
-		return fiber.NewError(fiber.StatusConflict, "Connection type not yet minted.")
+		return fiber.NewError(fiber.StatusConflict, "Integration not yet minted.")
 	}
 
-	vid, ok := ud.R.VehicleNFT.TokenID.Int64()
+	vid, ok := ud.TokenID.Int64()
 	if !ok {
-		return fmt.Errorf("vehicle token id invalid, this should never happen %d", ud.R.VehicleNFT.TokenID)
+		return fmt.Errorf("vehicle token id invalid, this should never happen %d", ud.TokenID)
 	}
 
 	userID := helpers.GetUserID(c)
@@ -334,63 +358,45 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 func (sdc *SyntheticDevicesController) GetSyntheticDeviceBurnPayload(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
-	userID := helpers.GetUserID(c)
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
 	).One(c.Context(), sdc.DBS().Reader)
 	if err != nil {
 		return err
 	}
 
+	sd := ud.R.VehicleTokenSyntheticDevice
+
+	if sd == nil {
+		return fiber.NewError(fiber.StatusBadRequest, "No synthetic device associated with this vehicle.")
+	}
+
+	// Check that the integration id in the path matches the synthetic's integration.
 	in, err := sdc.deviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
-	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
+	if intNode, _ := sd.IntegrationTokenID.Uint64(); intNode != in.TokenId {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Associated synthetic device is not under integration %s.", integrationID))
 	}
 
-	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-	if err != nil {
-		sdc.log.Debug().Err(err).Msg("error occurred when fetching user")
-		return shared.GrpcErrorToFiber(err, "error occurred when fetching user")
-	}
-
-	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusForbidden, "No Ethereum address on file for user.")
-	}
-
-	vOwn := common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes)
-
-	addr := common.HexToAddress(*user.EthereumAddress)
-
-	if vOwn != addr {
-		return fiber.NewError(fiber.StatusForbidden, fmt.Sprintf("Vehicle is owned by %s, your address is %s.", vOwn, addr))
-	}
-
-	if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice == nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Integration not minted.")
-	}
-
-	sd := ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice
-
-	intNode, _ := sd.IntegrationTokenID.Uint64()
-	if intNode != in.TokenId {
-		return fiber.NewError(fiber.StatusBadRequest, "The vehicle is paired with a synthetic device of a different type.")
-	}
-
+	// Check if minting is in progress.
 	if sd.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusBadRequest, "Device minting in progress.")
+		if sd.R.MintRequest.Status == models.MetaTransactionRequestStatusFailed {
+			return fiber.NewError(fiber.StatusConflict, "Synthetic device previously failed to mint; there is nothing to burn.")
+		}
+		return fiber.NewError(fiber.StatusConflict, "Synthetic device is currently minting; wait for this to complete.")
 	}
 
-	if sd.BurnRequestID.Valid {
-		return fiber.NewError(fiber.StatusConflict, "Burning in progress.")
+	if br := sd.R.BurnRequest; br != nil && br.Status != models.MetaTransactionRequestStatusFailed {
+		return fiber.NewError(fiber.StatusConflict, "Burning already in progress.")
 	}
 
-	vehicleNode, _ := ud.R.VehicleNFT.TokenID.Int64()
+	vehicleNode, _ := ud.TokenID.Int64()
 	syntheticDeviceNode, _ := sd.TokenID.Int64()
 
 	return c.JSON(sdc.getEIP712Burn(vehicleNode, syntheticDeviceNode))
@@ -411,7 +417,6 @@ type BurnSyntheticDeviceRequest struct {
 func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
-	userID := helpers.GetUserID(c)
 
 	tx, err := sdc.DBS().Writer.BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
@@ -421,59 +426,44 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice)),
-	).One(c.Context(), tx)
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
+	).One(c.Context(), sdc.DBS().Reader)
 	if err != nil {
 		return err
 	}
 
+	sd := ud.R.VehicleTokenSyntheticDevice
+
+	if sd == nil {
+		return fiber.NewError(fiber.StatusBadRequest, "No synthetic device associated with this vehicle.")
+	}
+
+	// Check that the integration id in the path matches the synthetic's integration.
 	in, err := sdc.deviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
-	if ud.R.VehicleNFT == nil || ud.R.VehicleNFT.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
+	if intNode, _ := sd.IntegrationTokenID.Uint64(); intNode != in.TokenId {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Associated synthetic device is not under integration %s.", integrationID))
 	}
 
-	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-	if err != nil {
-		sdc.log.Debug().Err(err).Msg("error occurred when fetching user")
-		return shared.GrpcErrorToFiber(err, "error occurred when fetching user")
-	}
-
-	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusForbidden, "No Ethereum address on file for user.")
-	}
-
-	vOwn := common.BytesToAddress(ud.R.VehicleNFT.OwnerAddress.Bytes)
-
-	addr := common.HexToAddress(*user.EthereumAddress)
-
-	if vOwn != addr {
-		return fiber.NewError(fiber.StatusForbidden, fmt.Sprintf("Vehicle is owned by %s, your address is %s.", vOwn, addr))
-	}
-
-	if ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice == nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Integration not minted.")
-	}
-
-	sd := ud.R.VehicleNFT.R.VehicleTokenSyntheticDevice
-
-	intNode, _ := sd.IntegrationTokenID.Uint64()
-	if intNode != in.TokenId {
-		return fiber.NewError(fiber.StatusBadRequest, "The vehicle is paired with a synthetic device of a different type.")
-	}
-
+	// Check if minting is in progress.
 	if sd.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusBadRequest, "Device minting in progress.")
+		if sd.R.MintRequest.Status == models.MetaTransactionRequestStatusFailed {
+			return fiber.NewError(fiber.StatusConflict, "Synthetic device previously failed to mint; there is nothing to burn.")
+		}
+		return fiber.NewError(fiber.StatusConflict, "Synthetic device is currently minting; wait for this to complete.")
 	}
 
-	if sd.BurnRequestID.Valid {
-		return fiber.NewError(fiber.StatusConflict, "Burning in progress.")
+	if br := sd.R.BurnRequest; br != nil && br.Status != models.MetaTransactionRequestStatusFailed {
+		return fiber.NewError(fiber.StatusConflict, "Burning already in progress.")
 	}
 
-	vehicleNode, _ := ud.R.VehicleNFT.TokenID.Int64()
+	ownerAddr := common.BytesToAddress(ud.OwnerAddress.Bytes)
+
+	vehicleNode, _ := ud.TokenID.Int64()
 	syntheticDeviceNode, _ := sd.TokenID.Int64()
 
 	td := sdc.getEIP712Burn(vehicleNode, syntheticDeviceNode)
@@ -496,8 +486,8 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 
 	if recAddr, err := helpers.Ecrecover(hash, ownerSignature); err != nil {
 		return err
-	} else if recAddr != addr {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature.")
+	} else if recAddr != ownerAddr {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Signature not valid for vehicle owner %s.", ownerAddr))
 	}
 
 	reqID := ksuid.New().String()
@@ -512,7 +502,7 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	sd.BurnRequestID = null.StringFrom(reqID)
-	_, err = sd.Update(c.Context(), tx, boil.Infer())
+	_, err = sd.Update(c.Context(), tx, boil.Whitelist(models.SyntheticDeviceColumns.BurnRequestID))
 	if err != nil {
 		return err
 	}

@@ -20,6 +20,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
+	"github.com/DIMO-Network/devices-api/internal/services/ipfs"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
@@ -63,7 +64,6 @@ type UserDevicesController struct {
 	cipher                    shared.Cipher
 	autoPiSvc                 services.AutoPiAPIService
 	autoPiIngestRegistrar     services.IngestRegistrar
-	autoPiTaskService         services.AutoPiTaskService
 	s3                        *s3.Client
 	producer                  sarama.SyncProducer
 	deviceDefinitionRegistrar services.DeviceDefinitionRegistrar
@@ -76,6 +76,7 @@ type UserDevicesController struct {
 	wallet                    services.SyntheticWalletInstanceService
 	userDeviceSvc             services.UserDeviceService
 	teslaFleetAPISvc          services.TeslaFleetAPIService
+	ipfsSvc                   *ipfs.IPFS
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -120,7 +121,6 @@ func NewUserDevicesController(settings *config.Settings,
 	autoPiSvc services.AutoPiAPIService,
 	autoPiIngestRegistrar services.IngestRegistrar,
 	deviceDefinitionRegistrar services.DeviceDefinitionRegistrar,
-	autoPiTaskService services.AutoPiTaskService,
 	producer sarama.SyncProducer,
 	s3NFTClient *s3.Client,
 	autoPi *autopi.Integration,
@@ -132,6 +132,7 @@ func NewUserDevicesController(settings *config.Settings,
 	wallet services.SyntheticWalletInstanceService,
 	userDeviceSvc services.UserDeviceService,
 	teslaFleetAPISvc services.TeslaFleetAPIService,
+	ipfsSvc *ipfs.IPFS,
 ) UserDevicesController {
 	return UserDevicesController{
 		Settings:                  settings,
@@ -147,7 +148,6 @@ func NewUserDevicesController(settings *config.Settings,
 		cipher:                    cipher,
 		autoPiSvc:                 autoPiSvc,
 		autoPiIngestRegistrar:     autoPiIngestRegistrar,
-		autoPiTaskService:         autoPiTaskService,
 		s3:                        s3NFTClient,
 		producer:                  producer,
 		deviceDefinitionRegistrar: deviceDefinitionRegistrar,
@@ -160,6 +160,7 @@ func NewUserDevicesController(settings *config.Settings,
 		wallet:                    wallet,
 		userDeviceSvc:             userDeviceSvc,
 		teslaFleetAPISvc:          teslaFleetAPISvc,
+		ipfsSvc:                   ipfsSvc,
 	}
 }
 
@@ -232,76 +233,116 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 		var credential *VINCredentialData
 		pu := []PrivilegeUser{}
 
-		if vnft := d.R.VehicleNFT; vnft != nil {
-			nftStatus := vnft.R.MintRequest
-			nft = &VehicleNFTData{
-				Status: nftStatus.Status,
-			}
-			if nftStatus.Hash.Valid {
-				hash := hexutil.Encode(nftStatus.Hash.Bytes)
-				nft.TxHash = &hash
-			}
-			if !vnft.TokenID.IsZero() {
-				nft.TokenID = vnft.TokenID.Int(nil)
+		if !d.TokenID.IsZero() || d.R.MintRequest != nil {
+			nft = &VehicleNFTData{}
+
+			if !d.TokenID.IsZero() {
+				nft.TokenID = d.TokenID.Int(nil)
+
 				nft.TokenURI = fmt.Sprintf("%s/v1/vehicle/%s", udc.Settings.DeploymentBaseURL, nft.TokenID)
-			}
-			if vnft.OwnerAddress.Valid {
-				addr := common.BytesToAddress(vnft.OwnerAddress.Bytes)
+
+				addr := common.BytesToAddress(d.OwnerAddress.Bytes)
 				nft.OwnerAddress = &addr
-			}
 
-			// NFT Privileges
-			udp, err := models.NFTPrivileges(
-				models.NFTPrivilegeWhere.TokenID.EQ(types.Decimal(d.R.VehicleNFT.TokenID)),
-				models.NFTPrivilegeWhere.Expiry.GT(time.Now()),
-				models.NFTPrivilegeWhere.ContractAddress.EQ(common.FromHex(udc.Settings.VehicleNFTAddress)),
-			).All(ctx, udc.DBS().Reader)
-			if err != nil {
-				return nil, err
-			}
-
-			privByAddr := make(map[string][]Privilege)
-			for _, v := range udp {
-				ua := common.BytesToAddress(v.UserAddress).Hex()
-				privByAddr[ua] = append(privByAddr[ua], Privilege{
-					ID:        v.Privilege,
-					ExpiresAt: v.Expiry,
-					UpdatedAt: v.UpdatedAt,
-				})
-			}
-
-			for k, v := range privByAddr {
-				pu = append(pu, PrivilegeUser{
-					Address:    k,
-					Privileges: v,
-				})
-			}
-
-			if sd := vnft.R.VehicleTokenSyntheticDevice; sd != nil {
-				ii, _ := sd.IntegrationTokenID.Uint64()
-				mtr := sd.R.MintRequest
-				sdStat = &SyntheticDeviceStatus{
-					IntegrationID: ii,
-					Status:        mtr.Status,
+				// NFT Privileges
+				udp, err := models.NFTPrivileges(
+					models.NFTPrivilegeWhere.TokenID.EQ(types.Decimal(d.TokenID)),
+					models.NFTPrivilegeWhere.Expiry.GT(time.Now()),
+					models.NFTPrivilegeWhere.ContractAddress.EQ(common.FromHex(udc.Settings.VehicleNFTAddress)),
+				).All(ctx, udc.DBS().Reader)
+				if err != nil {
+					return nil, err
 				}
+
+				privByAddr := make(map[string][]Privilege)
+				for _, v := range udp {
+					ua := common.BytesToAddress(v.UserAddress).Hex()
+					privByAddr[ua] = append(privByAddr[ua], Privilege{
+						ID:        v.Privilege,
+						ExpiresAt: v.Expiry,
+						UpdatedAt: v.UpdatedAt,
+					})
+				}
+
+				for k, v := range privByAddr {
+					pu = append(pu, PrivilegeUser{
+						Address:    k,
+						Privileges: v,
+					})
+				}
+			}
+
+			if mtr := d.R.MintRequest; mtr != nil {
+				nft.Status = mtr.Status
+				nft.FailureReason = mtr.FailureReason.Ptr()
+
 				if mtr.Hash.Valid {
-					h := hexutil.Encode(mtr.Hash.Bytes)
-					sdStat.TxHash = &h
-				}
-				if !sd.TokenID.IsZero() {
-					sdStat.TokenID = sd.TokenID.Int(nil)
-					a := common.BytesToAddress(sd.WalletAddress)
-					sdStat.Address = &a
+					hash := hexutil.Encode(mtr.Hash.Bytes)
+					nft.TxHash = &hash
 				}
 			}
 
-			if cred := vnft.R.Claim; cred != nil {
-				credential = &VINCredentialData{
-					VIN:       vnft.Vin,
-					ExpiresAt: cred.ExpirationDate,
-					IssuedAt:  cred.IssuanceDate,
-					Valid:     time.Now().Before(cred.ExpirationDate),
+			if mtr := d.R.BurnRequest; mtr != nil {
+				var maybeHash *string
+
+				if mtr.Hash.Valid {
+					hash := common.BytesToHash(mtr.Hash.Bytes).Hex()
+					maybeHash = &hash
 				}
+
+				nft.BurnTransaction = &TransactionStatus{
+					Status:        mtr.Status,
+					Hash:          maybeHash,
+					CreatedAt:     mtr.CreatedAt,
+					UpdatedAt:     mtr.UpdatedAt,
+					FailureReason: mtr.FailureReason.Ptr(),
+				}
+			}
+		}
+
+		if sd := d.R.VehicleTokenSyntheticDevice; sd != nil {
+			ii, _ := sd.IntegrationTokenID.Uint64()
+			mtr := sd.R.MintRequest
+			sdStat = &SyntheticDeviceStatus{
+				IntegrationID: ii,
+				Status:        mtr.Status,
+				FailureReason: mtr.FailureReason.Ptr(),
+			}
+			if mtr.Hash.Valid {
+				h := hexutil.Encode(mtr.Hash.Bytes)
+				sdStat.TxHash = &h
+			}
+
+			if !sd.TokenID.IsZero() {
+				sdStat.TokenID = sd.TokenID.Int(nil)
+				a := common.BytesToAddress(sd.WalletAddress)
+				sdStat.Address = &a
+			}
+
+			if mtr := sd.R.BurnRequest; mtr != nil {
+				var maybeHash *string
+
+				if mtr.Hash.Valid {
+					hash := common.BytesToHash(mtr.Hash.Bytes).Hex()
+					maybeHash = &hash
+				}
+
+				sdStat.BurnTransaction = &TransactionStatus{
+					Status:        mtr.Status,
+					Hash:          maybeHash,
+					CreatedAt:     mtr.CreatedAt,
+					UpdatedAt:     mtr.UpdatedAt,
+					FailureReason: mtr.FailureReason.Ptr(),
+				}
+			}
+		}
+
+		if cred := d.R.Claim; cred != nil {
+			credential = &VINCredentialData{
+				VIN:       d.VinIdentifier.String,
+				ExpiresAt: cred.ExpirationDate,
+				IssuedAt:  cred.IssuanceDate,
+				Valid:     time.Now().Before(cred.ExpirationDate),
 			}
 		}
 
@@ -349,17 +390,18 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 		}
 	} else {
 		query = []qm.QueryMod{
-			qm.LeftOuterJoin("devices_api." + models.TableNames.VehicleNFTS + " ON " + models.VehicleNFTTableColumns.UserDeviceID + " = " + models.UserDeviceTableColumns.ID),
 			models.UserDeviceWhere.UserID.EQ(userID),
-			qm.Or2(models.VehicleNFTWhere.OwnerAddress.EQ(null.BytesFrom(common.HexToAddress(*user.EthereumAddress).Bytes()))),
+			qm.Or2(models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(common.HexToAddress(*user.EthereumAddress).Bytes()))),
 		}
 	}
 
 	query = append(query,
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.Claim)),
+		qm.Load(models.UserDeviceRels.MintRequest),
+		qm.Load(models.UserDeviceRels.BurnRequest),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
+		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
+		qm.Load(models.UserDeviceRels.Claim),
 		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" DESC"))
 
 	devices, err := models.UserDevices(query...).All(c.Context(), udc.DBS().Reader)
@@ -393,7 +435,7 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
-	var sharedDev []*models.UserDevice
+	var sharedVehicles []*models.UserDevice
 
 	if user.EthereumAddress != nil {
 		// This is N+1 hell.
@@ -408,49 +450,40 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 			return err
 		}
 
-		var toks []types.Decimal
+		var processedIDs []types.Decimal
 
 	PrivLoop:
 		for _, priv := range privs {
-			for _, tok := range toks {
+			for _, tok := range processedIDs {
 				if tok.Cmp(priv.TokenID.Big) == 0 {
 					continue PrivLoop
 				}
 			}
 
-			toks = append(toks, priv.TokenID)
+			processedIDs = append(processedIDs, priv.TokenID)
 
-			nft, err := models.VehicleNFTS(
-				models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(priv.TokenID.Big)),
+			ud, err := models.UserDevices(
+				models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(priv.TokenID.Big)),
+				qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
+				qm.Load(models.UserDeviceRels.MintRequest),
+				qm.Load(models.UserDeviceRels.BurnRequest),
+				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
+				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
+				qm.Load(models.UserDeviceRels.Claim),
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
 				if err == sql.ErrNoRows {
+					udc.log.Warn().Msgf("User %s has privileges on a vehicle %d of which we have no record.", userAddr, priv.TokenID)
 					continue
 				}
 				return err
 			}
 
-			if !nft.UserDeviceID.Valid {
-				continue
-			}
-
-			ud, err := models.UserDevices(
-				models.UserDeviceWhere.ID.EQ(nft.UserDeviceID.String),
-				qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-				// Would we get this backreference for free?
-				qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
-				qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
-				qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.Claim)),
-			).One(c.Context(), udc.DBS().Reader)
-			if err != nil {
-				return err
-			}
-
-			sharedDev = append(sharedDev, ud)
+			sharedVehicles = append(sharedVehicles, ud)
 		}
 	}
 
-	apiSharedDevices, err := udc.dbDevicesToDisplay(c.Context(), sharedDev)
+	apiSharedDevices, err := udc.dbDevicesToDisplay(c.Context(), sharedVehicles)
 	if err != nil {
 		return err
 	}
@@ -1180,7 +1213,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
-		qm.Load(models.UserDeviceRels.VehicleNFT),
+		qm.Load(models.UserDeviceRels.MintRequest),
 		qm.Load(qm.Rels(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationRels.SerialAftermarketDevice)),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
@@ -1191,8 +1224,8 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 	}
 
 	// if vehicle minted, user must delete by burning
-	if userDevice.R.VehicleNFT != nil {
-		return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("vehicle token: %d; must burn minted vehicle to delete", userDevice.R.VehicleNFT.TokenID))
+	if !userDevice.TokenID.IsZero() || userDevice.R.MintRequest != nil && userDevice.R.MintRequest.Status != models.MetaTransactionRequestStatusFailed {
+		return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("vehicle token: %d; must burn minted vehicle to delete", userDevice.TokenID))
 	}
 
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
@@ -1244,6 +1277,8 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+const imageURIattribute = "ImageURI"
+
 // GetMintDevice godoc
 // @Description Returns the data the user must sign in order to mint this device.
 // @Tags        user-devices
@@ -1255,29 +1290,17 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 	userDeviceID := c.Params("userDeviceID")
 
-	userDevice, err := models.FindUserDevice(c.Context(), udc.DBS().Reader, userDeviceID)
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(models.UserDeviceRels.MintRequest),
+	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "No vehicle with that id found.")
 	}
 
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
+	mvs, dd, err := udc.checkVehicleMint(c.Context(), userID, userDevice)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, fmt.Sprintf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID))
-	}
-
-	if dd.Make.TokenId == 0 {
-		return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle make %q not yet minted.", dd.Make.Name))
-	}
-	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
-
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-	if err != nil {
-		udc.log.Err(err).Msg("Couldn't retrieve user record.")
-		return opaqueInternalError
-	}
-
-	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusBadRequest, "User does not have an Ethereum address on file.")
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
 	client := registry.Client{
@@ -1291,25 +1314,26 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		},
 	}
 
-	deviceMake := dd.Make.Name
-	deviceModel := dd.Type.Model
-	deviceYear := strconv.Itoa(int(dd.Type.Year))
-
-	mvs := registry.MintVehicleSign{
-		ManufacturerNode: makeTokenID,
-		Owner:            common.HexToAddress(*user.EthereumAddress),
-		Attributes:       []string{"Make", "Model", "Year"},
-		Infos:            []string{deviceMake, deviceModel, deviceYear},
+	if udc.Settings.IsProduction() {
+		return c.JSON(client.GetPayload(mvs))
 	}
 
-	return c.JSON(client.GetPayload(&mvs))
+	mvdds := registry.MintVehicleWithDeviceDefinitionSign{
+		ManufacturerNode:   mvs.ManufacturerNode,
+		Owner:              mvs.Owner,
+		Attributes:         mvs.Attributes,
+		Infos:              mvs.Infos,
+		DeviceDefinitionID: dd.NameSlug,
+	}
+
+	return c.JSON(client.GetPayload(&mvdds))
 }
 
 // PostMintDevice godoc
 // @Description Sends a mint device request to the blockchain
 // @Tags        user-devices
 // @Param       userDeviceID path string                  true "user device ID"
-// @Param       mintRequest  body controllers.MintRequest true "Signature and NFT data"
+// @Param       mintRequest  body controllers.VehicleMintRequest true "Signature and NFT data"
 // @Success     200
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/commands/mint [post]
@@ -1321,7 +1345,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleNFT, models.VehicleNFTRels.MintRequest)),
+		qm.Load(models.UserDeviceRels.MintRequest),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 	).One(c.Context(), udc.DBS().Reader.DB)
 	if err != nil {
@@ -1331,37 +1355,22 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	if vnft := userDevice.R.VehicleNFT; vnft != nil {
-		switch vnft.R.MintRequest.Status {
-		case "Confirmed":
-			return fiber.NewError(fiber.StatusConflict, "Vehicle already minted.")
-		default:
-			return fiber.NewError(fiber.StatusConflict, "Minting in process.")
-		}
-	}
-
-	if !userDevice.VinConfirmed {
-		return fiber.NewError(fiber.StatusConflict, "VIN not confirmed.")
-	}
-
-	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
-	if err2 != nil {
-		return shared.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID))
-	}
-
-	if dd.Make.TokenId == 0 {
-		return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle make %q not yet minted.", dd.Make.Name))
-	}
-
-	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
-
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	mvs, dd, err := udc.checkVehicleMint(c.Context(), userID, userDevice)
 	if err != nil {
-		return err
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusBadRequest, "User does not have an Ethereum address on file.")
+	var mr VehicleMintRequest
+	if err := c.BodyParser(&mr); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
+	}
+
+	// This may not be there, but if it is we should delete it.
+	imageData := strings.TrimPrefix(mr.ImageData, "data:image/png;base64,")
+
+	image, err := base64.StdEncoding.DecodeString(imageData)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Primary image not properly base64-encoded.")
 	}
 
 	client := registry.Client{
@@ -1375,51 +1384,60 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		},
 	}
 
-	deviceMake := dd.Make.Name
-	deviceModel := dd.Type.Model
-	deviceYear := strconv.Itoa(int(dd.Type.Year))
+	var hash []byte
+	if udc.Settings.IsProduction() {
+		logger.Info().
+			Interface("httpRequestBody", mr).
+			Interface("client", client).Interface("mintVehicleSign", mvs).
+			Interface("typedData", client.GetPayload(mvs)).
+			Msg("Got request.")
 
-	mvs := registry.MintVehicleSign{
-		ManufacturerNode: makeTokenID,
-		Owner:            common.HexToAddress(*user.EthereumAddress),
-		Attributes:       []string{"Make", "Model", "Year"},
-		Infos:            []string{deviceMake, deviceModel, deviceYear},
-	}
+		hash, err = client.Hash(mvs)
+		if err != nil {
+			return opaqueInternalError
+		}
+	} else {
+		mvdds := registry.MintVehicleWithDeviceDefinitionSign{
+			ManufacturerNode:   mvs.ManufacturerNode,
+			Owner:              mvs.Owner,
+			Attributes:         mvs.Attributes,
+			Infos:              mvs.Infos,
+			DeviceDefinitionID: dd.NameSlug,
+		}
 
-	mr := new(MintRequest)
-	if err := c.BodyParser(mr); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
-	}
+		logger.Info().
+			Interface("httpRequestBody", mr).
+			Interface("client", client).Interface("mintVehicleWithDeviceDefinitionSign", mvdds).
+			Interface("typedData", client.GetPayload(&mvdds)).
+			Msg("Got request.")
 
-	// This may not be there, but if it is we should delete it.
-	imageData := strings.TrimPrefix(mr.ImageData, "data:image/png;base64,")
-
-	image, err := base64.StdEncoding.DecodeString(imageData)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Primary image not properly base64-encoded.")
-	}
-
-	if len(image) == 0 {
-		return fiber.NewError(fiber.StatusBadRequest, "Empty image field.")
+		hash, err = client.Hash(&mvdds)
+		if err != nil {
+			return opaqueInternalError
+		}
 	}
 
 	requestID := ksuid.New().String()
 
-	logger.Info().
-		Interface("httpRequestBody", mr).
-		Interface("client", client).
-		Interface("mintVehicleSign", mvs).
-		Interface("typedData", client.GetPayload(&mvs)).
-		Msg("Got request.")
+	if userDevice.IpfsImageCid.Valid {
+		if len(image) != 0 {
+			return fiber.NewError(fiber.StatusBadRequest, "IPFS image already set for this vehicle; don't provide another.")
+		}
+	} else {
+		if len(image) == 0 {
+			return fiber.NewError(fiber.StatusBadRequest, "Empty image field in request and no assigned IPFS image.")
+		}
 
-	_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
-		Bucket: &udc.Settings.NFTS3Bucket,
-		Key:    aws.String(requestID + ".png"),
-		Body:   bytes.NewReader(image),
-	})
-	if err != nil {
-		logger.Err(err).Msg("Failed to save image to S3.")
-		return opaqueInternalError
+		cid, err := udc.ipfsSvc.UploadImage(c.Context(), imageData)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "Failed to upload image to IPFS")
+		}
+
+		userDevice.IpfsImageCid = null.StringFrom(cid)
+		_, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.IpfsImageCid))
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "failed to store IPFS CID for vehicle")
+		}
 	}
 
 	// This may not be there, but if it is we should delete it.
@@ -1442,11 +1460,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		}
 	}
 
-	hash, err := client.Hash(&mvs)
-	if err != nil {
-		return opaqueInternalError
-	}
-
 	sigBytes := common.FromHex(mr.Signature)
 
 	recAddr, err := helpers.Ecrecover(hash, sigBytes)
@@ -1454,9 +1467,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	realAddr := common.HexToAddress(*user.EthereumAddress)
-
-	if recAddr != realAddr {
+	if recAddr != mvs.Owner {
 		return fiber.NewError(fiber.StatusBadRequest, "Signature incorrect.")
 	}
 
@@ -1464,19 +1475,12 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		ID:     requestID,
 		Status: "Unsubmitted",
 	}
-	err = mtr.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
-	if err != nil {
+	if err = mtr.Insert(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
 		return err
 	}
 
-	nft := models.VehicleNFT{
-		MintRequestID: requestID,
-		UserDeviceID:  null.StringFrom(userDevice.ID),
-		Vin:           userDevice.VinIdentifier.String,
-	}
-
-	err = nft.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
-	if err != nil {
+	userDevice.MintRequestID = null.StringFrom(requestID)
+	if _, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
 		return err
 	}
 
@@ -1520,6 +1524,17 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
+			sd := models.SyntheticDevice{
+				IntegrationTokenID: types.NewDecimal(decimal.New(int64(intID), 0)),
+				MintRequestID:      requestID,
+				WalletChildNumber:  seq.NextVal,
+				WalletAddress:      addr,
+			}
+
+			if err := sd.Insert(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
+				return err
+			}
+
 			mvss := registry.MintVehicleAndSdSign{
 				IntegrationNode: new(big.Int).SetUint64(intID),
 			}
@@ -1534,41 +1549,51 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
-			sd := models.SyntheticDevice{
-				IntegrationTokenID: types.NewDecimal(decimal.New(int64(intID), 0)),
-				MintRequestID:      requestID,
-				WalletChildNumber:  seq.NextVal,
-				WalletAddress:      addr,
+			if udc.Settings.IsProduction() {
+				return client.MintVehicleAndSdSign(requestID, contracts.MintVehicleAndSdInput{
+					ManufacturerNode:     mvs.ManufacturerNode,
+					Owner:                mvs.Owner,
+					IntegrationNode:      new(big.Int).SetUint64(intID),
+					VehicleOwnerSig:      sigBytes,
+					SyntheticDeviceSig:   sign,
+					SyntheticDeviceAddr:  common.BytesToAddress(addr),
+					AttrInfoPairsVehicle: attrListsToAttrPairs(mvs.Attributes, mvs.Infos),
+					AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
+				})
 			}
 
-			if err := sd.Insert(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
-				return err
-			}
-
-			return client.MintVehicleAndSDign(requestID, contracts.MintVehicleAndSdInput{
-				ManufacturerNode: makeTokenID,
-				Owner:            realAddr,
-				AttrInfoPairsVehicle: []contracts.AttributeInfoPair{
-					{Attribute: "Make", Info: deviceMake},
-					{Attribute: "Model", Info: deviceModel},
-					{Attribute: "Year", Info: deviceYear},
-				},
-				IntegrationNode:     new(big.Int).SetUint64(intID),
-				VehicleOwnerSig:     sigBytes,
-				SyntheticDeviceSig:  sign,
-				SyntheticDeviceAddr: common.BytesToAddress(addr),
-				AttrInfoPairsDevice: []contracts.AttributeInfoPair{},
+			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
+				ManufacturerNode:     mvs.ManufacturerNode,
+				Owner:                mvs.Owner,
+				DeviceDefinitionId:   dd.NameSlug,
+				IntegrationNode:      new(big.Int).SetUint64(intID),
+				VehicleOwnerSig:      sigBytes,
+				SyntheticDeviceSig:   sign,
+				SyntheticDeviceAddr:  common.BytesToAddress(addr),
+				AttrInfoPairsVehicle: attrListsToAttrPairs(mvs.Attributes, mvs.Infos),
+				AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
 			})
 		}
 	}
 
 	logger.Info().Msgf("Submitted metatransaction request %s", requestID)
 
-	return client.MintVehicleSign(requestID, makeTokenID, realAddr, []contracts.AttributeInfoPair{
-		{Attribute: "Make", Info: deviceMake},
-		{Attribute: "Model", Info: deviceModel},
-		{Attribute: "Year", Info: deviceYear},
-	}, sigBytes)
+	if udc.Settings.IsProduction() {
+		return client.MintVehicleSign(requestID, mvs.ManufacturerNode, mvs.Owner, attrListsToAttrPairs(mvs.Attributes, mvs.Infos), sigBytes)
+	}
+
+	return client.MintVehicleWithDeviceDefinitionSign(requestID, mvs.ManufacturerNode, mvs.Owner, dd.NameSlug, attrListsToAttrPairs(mvs.Attributes, mvs.Infos), sigBytes)
+}
+
+func attrListsToAttrPairs(attrs []string, infos []string) []contracts.AttributeInfoPair {
+	out := make([]contracts.AttributeInfoPair, len(attrs))
+	for i := range attrs {
+		out[i] = contracts.AttributeInfoPair{
+			Attribute: attrs[i],
+			Info:      infos[i],
+		}
+	}
+	return out
 }
 
 // UpdateNFTImage godoc
@@ -1584,23 +1609,18 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(models.UserDeviceRels.VehicleNFT),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
 	}
 
-	if userDevice.R.VehicleNFT == nil || userDevice.R.VehicleNFT.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusBadRequest, "Vehicle not minted.")
-	}
-
-	mr := new(MintRequest)
-	if err := c.BodyParser(mr); err != nil {
+	var nid NFTImageData
+	if err := c.BodyParser(&nid); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
 	}
 
 	// This may not be there, but if it is we should delete it.
-	imageData := strings.TrimPrefix(mr.ImageData, "data:image/png;base64,")
+	imageData := strings.TrimPrefix(nid.ImageData, "data:image/png;base64,")
 
 	image, err := base64.StdEncoding.DecodeString(imageData)
 	if err != nil {
@@ -1611,18 +1631,19 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Empty image field.")
 	}
 
-	_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
-		Bucket: &udc.Settings.NFTS3Bucket,
-		Key:    aws.String(userDevice.R.VehicleNFT.MintRequestID + ".png"),
-		Body:   bytes.NewReader(image),
-	})
+	cid, err := udc.ipfsSvc.UploadImage(c.Context(), nid.ImageData)
 	if err != nil {
-		udc.log.Err(err).Msg("Failed to save image to S3.")
-		return opaqueInternalError
+		return fiber.NewError(fiber.StatusBadRequest, "Failed to upload image to IPFS")
+	}
+
+	userDevice.IpfsImageCid = null.StringFrom(cid)
+	_, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.IpfsImageCid))
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "failed to store IPFS CID for vehicle")
 	}
 
 	// This may not be there, but if it is we should delete it.
-	imageDataTransp := strings.TrimPrefix(mr.ImageDataTransparent, "data:image/png;base64,")
+	imageDataTransp := strings.TrimPrefix(nid.ImageDataTransparent, "data:image/png;base64,")
 
 	// Should be okay if empty or not provided.
 	imageTransp, err := base64.StdEncoding.DecodeString(imageDataTransp)
@@ -1631,9 +1652,13 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 	}
 
 	if len(imageTransp) != 0 {
+		if userDevice.TokenID.IsZero() || !userDevice.MintRequestID.Valid {
+			return fiber.NewError(fiber.StatusBadRequest, "Can't set transparent image for this vehicle.")
+		}
+
 		_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
 			Bucket: &udc.Settings.NFTS3Bucket,
-			Key:    aws.String(userDevice.R.VehicleNFT.MintRequestID + "_transparent.png"),
+			Key:    aws.String(userDevice.MintRequestID.String + "_transparent.png"),
 			Body:   bytes.NewReader(imageTransp),
 		})
 		if err != nil {
@@ -1642,12 +1667,12 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 		}
 	}
 
-	return err
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
-// MintRequest contains the user's signature for the mint request as well as the
+// VehicleMintRequest contains the user's signature for the mint request as well as the
 // NFT image.
-type MintRequest struct {
+type VehicleMintRequest struct {
 	NFTImageData
 	// Signature is the hex encoding of the EIP-712 signature result.
 	Signature string `json:"signature" validate:"required"`
@@ -1790,15 +1815,32 @@ type VehicleNFTData struct {
 	// TxHash is the hash of the minting transaction.
 	TxHash *string `json:"txHash,omitempty" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
 	// Status is the minting status of the NFT.
-	Status string `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed" example:"Confirmed"`
+	Status string `json:"status,omitempty" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
+	// FailureReason is populated if the status is "Failed" because of an on-chain revert and
+	// we were able to decode the reason.
+	FailureReason *string `json:"failureReason,omitempty"`
+	// BurnTransaction contains the status of the vehicle burning meta-transaction, if one
+	// is in flight or has failed.
+	BurnTransaction *TransactionStatus `json:"burnTransaction,omitempty"`
 }
 
 type SyntheticDeviceStatus struct {
-	IntegrationID uint64          `json:"-"`
-	TokenID       *big.Int        `json:"tokenId,omitempty" swaggertype:"number" example:"15"`
-	Address       *common.Address `json:"address,omitempty" swaggertype:"string" example:"0xAED7EA8035eEc47E657B34eF5D020c7005487443"`
-	TxHash        *string         `json:"txHash,omitempty" swaggertype:"string" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
-	Status        string          `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed" example:"Confirmed"`
+	// IntegrationID is the token id of the parent integration for this device.
+	IntegrationID uint64 `json:"-"`
+	// TokenID is the token id of the minted device.
+	TokenID *big.Int `json:"tokenId,omitempty" swaggertype:"number" example:"15"`
+	// Address is the Ethereum address of the synthetic device.
+	Address *common.Address `json:"address,omitempty" swaggertype:"string" example:"0xAED7EA8035eEc47E657B34eF5D020c7005487443"`
+	// TxHash is the hash of the submitted transaction.
+	TxHash *string `json:"txHash,omitempty" swaggertype:"string" example:"0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"`
+	// Status is the status of the minting meta-transaction.
+	Status string `json:"status" enums:"Unstarted,Submitted,Mined,Confirmed,Failed" example:"Confirmed"`
+	// FailureReason is populated with a human-readable error message if the status
+	// is "Failed" because of an on-chain revert and we were able to decode the reason.
+	FailureReason *string `json:"failureReason"`
+	// BurnTransaction contains the status of the synthetic device burning meta-transaction,
+	// if one is in flight or has failed.
+	BurnTransaction *TransactionStatus `json:"burnTransaction,omitempty"`
 }
 
 type VINCredentialData struct {
@@ -1806,4 +1848,58 @@ type VINCredentialData struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 	Valid     bool      `json:"valid"`
 	VIN       string    `json:"vin"`
+}
+
+func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID string, userDevice *models.UserDevice) (*registry.MintVehicleSign, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
+	if !userDevice.TokenID.IsZero() {
+		return nil, nil, fmt.Errorf("vehicle already minted with token id %d", userDevice.TokenID.Big)
+	}
+
+	if mr := userDevice.R.MintRequest; mr != nil && mr.Status != models.MetaTransactionRequestStatusFailed {
+		return nil, nil, fmt.Errorf("vehicle minting already in process")
+	}
+
+	if !userDevice.VinConfirmed {
+		return nil, nil, fmt.Errorf("VIN not confirmed")
+	}
+
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, userDevice.DeviceDefinitionID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID)
+	}
+
+	if dd.Make.TokenId == 0 {
+		return nil, nil, fmt.Errorf("vehicle make %q not yet minted", dd.Make.Name)
+	}
+	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
+
+	user, err := udc.usersClient.GetUser(ctx, &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		udc.log.Err(err).Msg("couldn't retrieve user record")
+		return nil, nil, opaqueInternalError
+	}
+
+	if user.EthereumAddress == nil {
+		return nil, nil, fmt.Errorf("user does not have an Ethereum address on file")
+	}
+
+	if !udc.Settings.IsProduction() {
+		if dd.NameSlug == "" {
+			return nil, nil, fmt.Errorf("invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
+		}
+	}
+
+	mvs := &registry.MintVehicleSign{
+		ManufacturerNode: makeTokenID,
+		Owner:            common.HexToAddress(*user.EthereumAddress),
+		Attributes:       []string{"Make", "Model", "Year"},
+		Infos:            []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year))},
+	}
+
+	if userDevice.IpfsImageCid.Valid {
+		mvs.Attributes = append(mvs.Attributes, imageURIattribute)
+		mvs.Infos = append(mvs.Infos, ipfs.URL(userDevice.IpfsImageCid.String))
+	}
+
+	return mvs, dd, nil
 }

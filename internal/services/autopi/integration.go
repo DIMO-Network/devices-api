@@ -21,7 +21,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
@@ -106,19 +105,12 @@ func (i *Integration) Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *b
 		return err
 	}
 
-	nft, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(intToDec(vehicleTokenID)),
-		qm.Load(models.VehicleNFTRels.UserDevice),
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(intToDec(vehicleTokenID)),
 	).One(ctx, tx)
 	if err != nil {
 		return err
 	}
-
-	if nft.R.UserDevice == nil {
-		return errors.New("vehicle deleted")
-	}
-
-	ud := nft.R.UserDevice
 
 	oldInt, err := models.FindUserDeviceAPIIntegration(ctx, tx, ud.ID, integ.Id)
 	if err != nil {
@@ -324,19 +316,12 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 		return err
 	}
 
-	nft, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(intToDec(vehicleTokenID)),
-		qm.Load(models.VehicleNFTRels.UserDevice),
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(intToDec(vehicleTokenID)),
 	).One(ctx, tx)
 	if err != nil {
 		return err
 	}
-
-	if nft.R.UserDevice == nil {
-		return errors.New("vehicle deleted")
-	}
-
-	ud := nft.R.UserDevice
 
 	autoPiModel, err := models.AftermarketDevices(
 		models.AftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(autoPiTokenID)),

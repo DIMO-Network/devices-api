@@ -170,39 +170,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/aftermarket/device/by-serial/{serial}/update": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "checks to see if aftermarket device needs to be updated, and starts update process if so.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "integrations"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "autopi unit id",
-                        "name": "serial",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiTask"
-                        }
-                    }
-                }
-            }
-        },
         "/aftermarket/device/{tokenId}": {
             "get": {
                 "description": "Retrieves NFT metadata for a given aftermarket device.",
@@ -999,7 +966,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers.MintRequest"
+                            "$ref": "#/definitions/internal_controllers.VehicleMintRequest"
                         }
                     }
                 ],
@@ -2327,33 +2294,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_DIMO-Network_devices-api_internal_services.AutoPiTask": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "error": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "taskId": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "updates": {
-                    "description": "Updates increments every time the job was updated.",
-                    "type": "integer"
-                }
-            }
-        },
         "github_com_DIMO-Network_devices-api_internal_services.DeviceAttribute": {
             "type": "object",
             "properties": {
@@ -2610,37 +2550,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers.AftermarketDeviceTransactionStatus": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "description": "CreatedAt is the timestamp of the creation of the meta-transaction.",
-                    "type": "string",
-                    "example": "2022-10-01T09:22:21.002Z"
-                },
-                "hash": {
-                    "description": "Hash is the hexidecimal transaction hash, available for any transaction at the Submitted stage or greater.",
-                    "type": "string",
-                    "example": "0x28b4662f1e1b15083261a4a5077664f4003d58cb528826b7aab7fad466c28e70"
-                },
-                "status": {
-                    "description": "Status is the state of the transaction performing this operation. There are only four options.",
-                    "type": "string",
-                    "enum": [
-                        "Unsubmitted",
-                        "Submitted",
-                        "Mined",
-                        "Confirmed"
-                    ],
-                    "example": "Mined"
-                },
-                "updatedAt": {
-                    "description": "UpdatedAt is the last time we updated the status of the transaction.",
-                    "type": "string",
-                    "example": "2022-10-01T09:22:26.337Z"
-                }
-            }
-        },
         "internal_controllers.AutoPiDeviceInfo": {
             "type": "object",
             "properties": {
@@ -2654,7 +2563,7 @@ const docTemplate = `{
                     "description": "Claim contains the status of the on-chain claiming meta-transaction.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_controllers.AftermarketDeviceTransactionStatus"
+                            "$ref": "#/definitions/internal_controllers.TransactionStatus"
                         }
                     ]
                 },
@@ -2692,7 +2601,7 @@ const docTemplate = `{
                     "description": "Pair contains the status of the on-chain pairing meta-transaction.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_controllers.AftermarketDeviceTransactionStatus"
+                            "$ref": "#/definitions/internal_controllers.TransactionStatus"
                         }
                     ]
                 },
@@ -2715,7 +2624,7 @@ const docTemplate = `{
                     "description": "Unpair contains the status of the on-chain unpairing meta-transaction.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_controllers.AftermarketDeviceTransactionStatus"
+                            "$ref": "#/definitions/internal_controllers.TransactionStatus"
                         }
                     ]
                 }
@@ -3022,27 +2931,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers.MintRequest": {
-            "type": "object",
-            "required": [
-                "imageData",
-                "signature"
-            ],
-            "properties": {
-                "imageData": {
-                    "description": "ImageData contains the base64-encoded NFT PNG image.",
-                    "type": "string"
-                },
-                "imageDataTransparent": {
-                    "description": "ImageDataTransparent contains the base64-encoded NFT PNG image\nwith a transparent background, for use in the app. For compatibility\nwith older versions it is not required.",
-                    "type": "string"
-                },
-                "signature": {
-                    "description": "Signature is the hex encoding of the EIP-712 signature result.",
-                    "type": "string"
-                }
-            }
-        },
         "internal_controllers.MintSyntheticDeviceRequest": {
             "type": "object",
             "properties": {
@@ -3264,24 +3152,41 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "address": {
+                    "description": "Address is the Ethereum address of the synthetic device.",
                     "type": "string",
                     "example": "0xAED7EA8035eEc47E657B34eF5D020c7005487443"
                 },
+                "burnTransaction": {
+                    "description": "BurnTransaction contains the status of the synthetic device burning meta-transaction,\nif one is in flight or has failed.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/internal_controllers.TransactionStatus"
+                        }
+                    ]
+                },
+                "failureReason": {
+                    "description": "FailureReason is populated with a human-readable error message if the status\nis \"Failed\" because of an on-chain revert and we were able to decode the reason.",
+                    "type": "string"
+                },
                 "status": {
+                    "description": "Status is the status of the minting meta-transaction.",
                     "type": "string",
                     "enum": [
                         "Unstarted",
                         "Submitted",
                         "Mined",
-                        "Confirmed"
+                        "Confirmed",
+                        "Failed"
                     ],
                     "example": "Confirmed"
                 },
                 "tokenId": {
+                    "description": "TokenID is the token id of the minted device.",
                     "type": "number",
                     "example": 15
                 },
                 "txHash": {
+                    "description": "TxHash is the hash of the submitted transaction.",
                     "type": "string",
                     "example": "0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"
                 }
@@ -3301,6 +3206,42 @@ const docTemplate = `{
                 "virtualKeyAdded": {
                     "description": "VirtualKeyAdded is true if the DIMO virtual key has been added to the vehicle.",
                     "type": "boolean"
+                }
+            }
+        },
+        "internal_controllers.TransactionStatus": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "CreatedAt is the timestamp of the creation of the meta-transaction.",
+                    "type": "string",
+                    "example": "2022-10-01T09:22:21.002Z"
+                },
+                "failureReason": {
+                    "description": "FailureReason is populated with a human-readable error message if the status\nis \"Failed\" because of an on-chain revert and we were able to decode the reason.",
+                    "type": "string"
+                },
+                "hash": {
+                    "description": "Hash is the hexidecimal transaction hash, available for any transaction at the Submitted stage or greater.",
+                    "type": "string",
+                    "example": "0x28b4662f1e1b15083261a4a5077664f4003d58cb528826b7aab7fad466c28e70"
+                },
+                "status": {
+                    "description": "Status is the state of the transaction performing this operation.",
+                    "type": "string",
+                    "enum": [
+                        "Unsubmitted",
+                        "Submitted",
+                        "Mined",
+                        "Confirmed",
+                        "Failed"
+                    ],
+                    "example": "Mined"
+                },
+                "updatedAt": {
+                    "description": "UpdatedAt is the last time we updated the status of the transaction.",
+                    "type": "string",
+                    "example": "2022-10-01T09:22:26.337Z"
                 }
             }
         },
@@ -3437,9 +3378,42 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_controllers.VehicleMintRequest": {
+            "type": "object",
+            "required": [
+                "imageData",
+                "signature"
+            ],
+            "properties": {
+                "imageData": {
+                    "description": "ImageData contains the base64-encoded NFT PNG image.",
+                    "type": "string"
+                },
+                "imageDataTransparent": {
+                    "description": "ImageDataTransparent contains the base64-encoded NFT PNG image\nwith a transparent background, for use in the app. For compatibility\nwith older versions it is not required.",
+                    "type": "string"
+                },
+                "signature": {
+                    "description": "Signature is the hex encoding of the EIP-712 signature result.",
+                    "type": "string"
+                }
+            }
+        },
         "internal_controllers.VehicleNFTData": {
             "type": "object",
             "properties": {
+                "burnTransaction": {
+                    "description": "BurnTransaction contains the status of the vehicle burning meta-transaction, if one\nis in flight or has failed.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/internal_controllers.TransactionStatus"
+                        }
+                    ]
+                },
+                "failureReason": {
+                    "description": "FailureReason is populated if the status is \"Failed\" because of an on-chain revert and\nwe were able to decode the reason.",
+                    "type": "string"
+                },
                 "ownerAddress": {
                     "description": "OwnerAddress is the Ethereum address of the NFT owner.",
                     "type": "array",
@@ -3454,7 +3428,8 @@ const docTemplate = `{
                         "Unstarted",
                         "Submitted",
                         "Mined",
-                        "Confirmed"
+                        "Confirmed",
+                        "Failed"
                     ],
                     "example": "Confirmed"
                 },

@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/DIMO-Network/devices-api/internal/services/ipfs"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/shared"
@@ -47,6 +48,7 @@ type NFTController struct {
 	smartcarTaskSvc  services.SmartcarTaskService
 	teslaTaskService services.TeslaTaskService
 	deviceDataSvc    services.DeviceDataService
+	ipfsSvc          *ipfs.IPFS
 }
 
 // NewNFTController constructor
@@ -56,8 +58,8 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 	teslaTaskService services.TeslaTaskService,
 	integSvc services.DeviceDefinitionIntegrationService,
 	deviceDataSvc services.DeviceDataService,
+	ipfsSvc *ipfs.IPFS,
 ) NFTController {
-
 	return NFTController{
 		Settings:         settings,
 		DBS:              dbs,
@@ -68,6 +70,7 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 		teslaTaskService: teslaTaskService,
 		integSvc:         integSvc,
 		deviceDataSvc:    deviceDataSvc,
+		ipfsSvc:          ipfsSvc,
 	}
 }
 
@@ -85,15 +88,10 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 	if !ok {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
 	}
-
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
 
-	var maybeName null.String
-	var deviceDefinitionID string
-
-	nft, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(tid),
-		qm.Load(models.VehicleNFTRels.UserDevice),
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(tid),
 	).One(c.Context(), nc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -105,14 +103,7 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
-	if nft.R.UserDevice == nil {
-		helpers.SkipErrorLog(c)
-		return fiber.NewError(fiber.StatusNotFound, "NFT not found.")
-	}
-
-	maybeName = nft.R.UserDevice.Name
-	deviceDefinitionID = nft.R.UserDevice.DeviceDefinitionID
-
+	deviceDefinitionID := ud.DeviceDefinitionID
 	def, err := nc.deviceDefSvc.GetDeviceDefinitionByID(c.Context(), deviceDefinitionID)
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "failed to get device definition")
@@ -121,16 +112,21 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 	description := fmt.Sprintf("%s %s %d", def.Make.Name, def.Type.Model, def.Type.Year)
 
 	var name string
-	if maybeName.Valid {
-		name = maybeName.String
+	if ud.Name.Valid {
+		name = ud.Name.String
 	} else {
 		name = description
+	}
+
+	imageURI := fmt.Sprintf("%s/v1/vehicle/%s/image", nc.Settings.DeploymentBaseURL, ti)
+	if ud.IpfsImageCid.Valid {
+		imageURI = ipfs.URL(ud.IpfsImageCid.String)
 	}
 
 	return c.JSON(NFTMetadataResp{
 		Name:        name,
 		Description: description + ", a DIMO vehicle.",
-		Image:       fmt.Sprintf("%s/v1/vehicle/%s/image", nc.Settings.DeploymentBaseURL, ti),
+		Image:       imageURI,
 		Attributes: []NFTAttribute{
 			{TraitType: "Make", Value: def.Make.Name},
 			{TraitType: "Model", Value: def.Type.Model},
@@ -193,18 +189,12 @@ func (nc *NFTController) GetNFTImage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
 	}
 
-	var transparent bool
-	if c.Query("transparent") == "true" {
-		transparent = true
-	}
-
+	transparent := c.Query("transparent") == "true"
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
 
-	var imageName string
 	// todo: NFT not found errors here were getting hit a lot in prod - should we have a prometheus metric or we don't care?
-	nft, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(tid),
-		qm.Load(models.VehicleNFTRels.UserDevice),
+	nft, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(tid),
 	).One(c.Context(), nc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -215,12 +205,21 @@ func (nc *NFTController) GetNFTImage(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
-	if nft.R.UserDevice == nil {
-		helpers.SkipErrorLog(c)
-		return fiber.NewError(fiber.StatusNotFound, "NFT not found.")
+	if nft.IpfsImageCid.Valid && !transparent {
+		imgB, err := nc.ipfsSvc.FetchImage(c.Context(), nft.IpfsImageCid.String)
+		if err != nil {
+			return fmt.Errorf("error fetching %q from IPFS gateway", nft.IpfsImageCid.String)
+		}
+
+		c.Set("Content-Type", "image/png")
+		return c.Send(imgB)
 	}
 
-	imageName = nft.MintRequestID
+	if !nft.MintRequestID.Valid {
+		return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("No image available for vehicle %d.", ti))
+	}
+
+	imageName := nft.MintRequestID.String
 	suffix := ".png"
 
 	if transparent {
@@ -240,8 +239,7 @@ func (nc *NFTController) GetNFTImage(c *fiber.Ctx) error {
 				return fiber.NewError(fiber.StatusNotFound, "Transparent version not set.")
 			}
 		}
-		nc.log.Err(err).Msg("Failure communicating with S3.")
-		return opaqueInternalError
+		return fmt.Errorf("error retrieving image for vehicle %d from S3: %w", tid, err)
 	}
 	defer s3o.Body.Close()
 
@@ -468,8 +466,8 @@ func (nc *NFTController) handleEnqueueCommand(c *fiber.Ctx, commandPath string) 
 	}
 
 	// Checking both that the nft exists and is linked to a device.
-	nft, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(types.NewNullDecimal(tokenID)),
+	nft, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(tokenID)),
 	).One(c.Context(), nc.DBS().Reader)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -479,17 +477,13 @@ func (nc *NFTController) handleEnqueueCommand(c *fiber.Ctx, commandPath string) 
 		return opaqueInternalError
 	}
 
-	if !nft.UserDeviceID.Valid {
-		return fiber.NewError(fiber.StatusConflict, "NFT not attached to a user device.")
-	}
-
 	apInt, err := nc.integSvc.GetAutoPiIntegration(c.Context())
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Couldn't reach definitions server.")
 	}
 
 	udai, err := models.UserDeviceAPIIntegrations(
-		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(nft.UserDeviceID.String),
+		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(nft.ID),
 		models.UserDeviceAPIIntegrationWhere.Status.EQ(models.UserDeviceAPIIntegrationStatusActive),
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.NEQ(apInt.Id),
 	).One(c.Context(), nc.DBS().Reader)
@@ -551,7 +545,7 @@ func (nc *NFTController) handleEnqueueCommand(c *fiber.Ctx, commandPath string) 
 
 	comRow := &models.DeviceCommandRequest{
 		ID:            subTaskID,
-		UserDeviceID:  nft.UserDeviceID.String,
+		UserDeviceID:  nft.ID,
 		IntegrationID: udai.IntegrationID,
 		Command:       commandPath,
 		Status:        models.DeviceCommandRequestStatusPending,
@@ -581,11 +575,10 @@ func (nc *NFTController) GetVinCredential(c *fiber.Ctx) error {
 	if !ok {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
 	}
-
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
-	nft, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(tid),
-		qm.Load(models.VehicleNFTRels.Claim),
+
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(tid),
 	).One(c.Context(), nc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -595,12 +588,12 @@ func (nc *NFTController) GetVinCredential(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
-	if nft.R.Claim == nil {
+	if ud.R.Claim == nil {
 		return fiber.NewError(fiber.StatusNotFound, "Credential associated with NFT not found.")
 	}
 
 	c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
-	return c.Send(nft.R.Claim.Credential.JSON)
+	return c.Send(ud.R.Claim.Credential.JSON)
 }
 
 // GetBurnDevice godoc
@@ -634,11 +627,11 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 	}
 	defer tx.Rollback() //nolint
 
-	vehicleNFT, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(tid),
-		qm.Load(models.VehicleNFTRels.UserDevice),
-		qm.Load(models.VehicleNFTRels.VehicleTokenAftermarketDevice),
-		qm.Load(models.VehicleNFTRels.VehicleTokenSyntheticDevice),
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(tid),
+		qm.Load(models.UserDeviceRels.BurnRequest),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(c.Context(), tx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -647,12 +640,7 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	if vehicleNFT.R.UserDevice == nil {
-		udc.log.Warn().Msg("no user device associated with NFT") // this should never happen
-		return opaqueInternalError
-	}
-
-	bvs, _, err := udc.checkDeviceBurn(c.Context(), vehicleNFT, vehicleNFT.R.UserDevice.UserID)
+	bvs, _, err := udc.checkDeviceBurn(c.Context(), userDevice)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
@@ -692,12 +680,11 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	}
 	defer tx.Rollback() //nolint
 
-	vehicleNFT, err := models.VehicleNFTS(
-		models.VehicleNFTWhere.TokenID.EQ(tid),
-		qm.Load(models.VehicleNFTRels.UserDevice),
-		qm.Load(models.VehicleNFTRels.BurnRequest),
-		qm.Load(models.VehicleNFTRels.VehicleTokenAftermarketDevice),
-		qm.Load(models.VehicleNFTRels.VehicleTokenSyntheticDevice),
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(tid),
+		qm.Load(models.UserDeviceRels.BurnRequest),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(c.Context(), tx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -706,12 +693,7 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	if vehicleNFT.R.UserDevice == nil {
-		udc.log.Warn().Msg("no user device associated with NFT") // this should never happen
-		return opaqueInternalError
-	}
-
-	bvs, user, err := udc.checkDeviceBurn(c.Context(), vehicleNFT, vehicleNFT.R.UserDevice.UserID)
+	bvs, user, err := udc.checkDeviceBurn(c.Context(), userDevice)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
@@ -755,8 +737,8 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 		return fmt.Errorf("failed to insert metatransaction request: %w", err)
 	}
 
-	vehicleNFT.BurnRequestID = null.StringFrom(requestID)
-	if _, err := vehicleNFT.Update(c.Context(), tx, boil.Infer()); err != nil {
+	userDevice.BurnRequestID = null.StringFrom(requestID)
+	if _, err := userDevice.Update(c.Context(), tx, boil.Infer()); err != nil {
 		return fmt.Errorf("failed to update vehicle nft: %w", err)
 	}
 
@@ -768,18 +750,18 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	return client.BurnVehicleSign(requestID, bvs.TokenID, sigBytes)
 }
 
-func (udc *UserDevicesController) checkDeviceBurn(ctx context.Context, vehicleNFT *models.VehicleNFT, userID string) (registry.BurnVehicleSign, *pb.User, error) {
+func (udc *UserDevicesController) checkDeviceBurn(ctx context.Context, userDevice *models.UserDevice) (registry.BurnVehicleSign, *pb.User, error) {
 	var bvs registry.BurnVehicleSign
 
-	if vehicleNFT.R.BurnRequest != nil && vehicleNFT.R.BurnRequest.Status != models.MetaTransactionRequestStatusFailed {
+	if userDevice.R.BurnRequest != nil && userDevice.R.BurnRequest.Status != models.MetaTransactionRequestStatusFailed {
 		return bvs, nil, errors.New("burning already in progress")
 	}
 
-	if vehicleNFT.R.VehicleTokenAftermarketDevice != nil || vehicleNFT.R.VehicleTokenSyntheticDevice != nil {
+	if userDevice.R.VehicleTokenAftermarketDevice != nil || userDevice.R.VehicleTokenSyntheticDevice != nil {
 		return bvs, nil, errors.New("vehicle must be unpaired to burn")
 	}
 
-	user, err := udc.usersClient.GetUser(ctx, &pb.GetUserRequest{Id: userID})
+	user, err := udc.usersClient.GetUser(ctx, &pb.GetUserRequest{Id: userDevice.UserID})
 	if err != nil {
 		return bvs, nil, fmt.Errorf("failed to get user by id: %w", err)
 	}
@@ -789,7 +771,7 @@ func (udc *UserDevicesController) checkDeviceBurn(ctx context.Context, vehicleNF
 	}
 
 	return registry.BurnVehicleSign{
-		TokenID: vehicleNFT.TokenID.Int(nil),
+		TokenID: userDevice.TokenID.Int(nil),
 	}, user, nil
 }
 
