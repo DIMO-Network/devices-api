@@ -779,50 +779,6 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 	return c.JSON(adi)
 }
 
-// StartAutoPiUpdateTask godoc
-// @Description checks to see if aftermarket device needs to be updated, and starts update process if so.
-// @Tags        integrations
-// @Produce     json
-// @Param       serial path     string true "autopi unit id", ie. physical barcode
-// @Success     200    {object} services.AutoPiTask
-// @Security    BearerAuth
-// @Router      /aftermarket/device/by-serial/{serial}/update [post]
-func (udc *UserDevicesController) StartAutoPiUpdateTask(c *fiber.Ctx) error {
-	unitID := c.Locals("serial").(string)
-	userID := helpers.GetUserID(c)
-
-	// check if device already updated
-	unit, err := udc.autoPiSvc.GetDeviceByUnitID(unitID)
-	if err != nil {
-		if errors.Is(err, services.ErrNotFound) {
-			return fiber.NewError(fiber.StatusNotFound, "Device not found.")
-		}
-		return err
-	}
-
-	if unit.IsUpdated {
-		return c.JSON(services.AutoPiTask{
-			TaskID:      "0",
-			Status:      string(services.Success),
-			Description: "autopi device is already up to date running version " + unit.Release.Version,
-			Code:        200,
-		})
-	}
-
-	// fire off task
-	taskID, err := udc.autoPiTaskService.StartAutoPiUpdate(unit.ID, userID, unitID)
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(services.AutoPiTask{
-		TaskID:      taskID,
-		Status:      "Pending",
-		Description: "",
-		Code:        100,
-	})
-}
-
 // GetAftermarketDeviceClaimMessage godoc
 // @Description Return the EIP-712 payload to be signed for Aftermarket device claiming.
 // @Produce json

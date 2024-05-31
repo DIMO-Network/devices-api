@@ -73,24 +73,6 @@ definitions:
       message:
         type: string
     type: object
-  github_com_DIMO-Network_devices-api_internal_services.AutoPiTask:
-    properties:
-      code:
-        type: integer
-      description:
-        type: string
-      error:
-        type: string
-      status:
-        type: string
-      taskId:
-        type: string
-      updatedAt:
-        type: string
-      updates:
-        description: Updates increments every time the job was updated.
-        type: integer
-    type: object
   github_com_DIMO-Network_devices-api_internal_services.DeviceAttribute:
     properties:
       name:
@@ -1063,27 +1045,6 @@ paths:
           description: No Content
       security:
       - BearerAuth: []
-  /aftermarket/device/by-serial/{serial}/update:
-    post:
-      description: checks to see if aftermarket device needs to be updated, and starts
-        update process if so.
-      parameters:
-      - description: autopi unit id
-        in: path
-        name: serial
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiTask'
-      security:
-      - BearerAuth: []
-      tags:
-      - integrations
   /countries:
     get:
       description: Returns all the supported countries

@@ -22,7 +22,6 @@ import (
 
 //go:generate mockgen -source autopi_task_service.go -destination mocks/autopi_task_service_mock.go
 type AutoPiTaskService interface {
-	StartAutoPiUpdate(deviceID, userID, unitID string) (taskID string, err error)
 	StartQueryAndUpdateVIN(deviceID, unitID, userDeviceID string) (taskID string, err error)
 	GetTaskStatus(ctx context.Context, taskID string) (task *AutoPiTask, err error)
 	StartConsumer(ctx context.Context)
@@ -71,15 +70,6 @@ func NewAutoPiTaskService(settings *config.Settings, autoPiSvc AutoPiAPIService,
 		dbs:       dbs,
 		log:       logger.With().Str("worker queue", workerQueueName).Logger(),
 	}
-	updateTask := taskq.RegisterTask(&taskq.TaskOptions{
-		Name: updateAutoPiTask,
-		Handler: func(ctx context.Context, taskID, deviceID, userID, unitID string) error {
-			return ats.processUpdate(ctx, taskID, deviceID, userID, unitID)
-		},
-		RetryLimit: 1,
-		MinBackoff: time.Minute * 2,
-		MaxBackoff: time.Minute * 2,
-	})
 	vinTask := taskq.RegisterTask(&taskq.TaskOptions{
 		Name: queryAndUpdateVINTask,
 		Handler: func(ctx context.Context, taskID, deviceID, unitID, userDeviceID string) error {
@@ -91,7 +81,6 @@ func NewAutoPiTaskService(settings *config.Settings, autoPiSvc AutoPiAPIService,
 	})
 
 	ats.getAndSetVinTask = vinTask
-	ats.updateAutoPiTask = updateTask
 	ats.redis = r
 	return ats
 }
@@ -99,7 +88,6 @@ func NewAutoPiTaskService(settings *config.Settings, autoPiSvc AutoPiAPIService,
 type autoPiTaskService struct {
 	settings         *config.Settings
 	mainQueue        taskq.Queue
-	updateAutoPiTask *taskq.Task
 	getAndSetVinTask *taskq.Task
 	redis            StandardRedis
 	autoPiSvc        AutoPiAPIService
@@ -113,23 +101,6 @@ func (ats *autoPiTaskService) StartQueryAndUpdateVIN(deviceID, userID, unitID st
 	msg.Name = taskID
 	err = ats.mainQueue.Add(msg)
 
-	if err != nil {
-		return "", err
-	}
-	err = ats.updateTaskState(taskID, "waiting for task to be processed", Pending, 100, nil)
-	if err != nil {
-		return taskID, err
-	}
-
-	return taskID, nil
-}
-
-// StartAutoPiUpdate produces a task
-func (ats *autoPiTaskService) StartAutoPiUpdate(deviceID, unitID, userDeviceID string) (taskID string, err error) {
-	taskID = ksuid.New().String()
-	msg := ats.updateAutoPiTask.WithArgs(context.Background(), taskID, deviceID, unitID, userDeviceID)
-	msg.Name = taskID
-	err = ats.mainQueue.Add(msg)
 	if err != nil {
 		return "", err
 	}
@@ -165,95 +136,6 @@ func (ats *autoPiTaskService) GetTaskStatus(ctx context.Context, taskID string) 
 		return nil, err
 	}
 	return apTask, nil
-}
-
-var disableAutoPiUpdate = true
-
-// processUpdate handles the autopi update task when consumed
-func (ats *autoPiTaskService) processUpdate(ctx context.Context, taskID, deviceID, userID, unitID string) error {
-	if disableAutoPiUpdate {
-		_ = ats.updateTaskState(taskID, "autopi update skipped", Success, 200, nil)
-		ats.log.Warn().Str("unitId", unitID).Msg("Skipping update")
-		return nil
-	}
-
-	// check for ctx.Done in channel etc but in non-blocking way? to then return err if so to retry on next app reboot
-
-	log := ats.log.With().Str("handler", updateAutoPiTask+"_ProcessUpdate").
-		Str("taskID", taskID).
-		Str("userID", userID).
-		Str("unitID", unitID).
-		Str("deviceID", deviceID).Logger()
-	// store the userID?
-	log.Info().Msg("Started processing autopi update")
-
-	err := ats.updateTaskState(taskID, "Started", InProcess, 110, nil)
-	if err != nil {
-		log.Err(err).Msg("failed to persist state to redis")
-		return err
-	}
-	//send command to update device, retry after 1m if get an error
-	cmd, err := ats.autoPiSvc.CommandRaw(ctx, unitID, deviceID, "minionutil.update_release", "")
-	if err != nil {
-		log.Err(err).Msg("failed to call autopi api svc with update command")
-		_ = ats.updateTaskState(taskID, "autopi api call failed", Failure, 500, err)
-		return err
-	}
-	//check that command did not timeout
-	backoffSchedule := []time.Duration{
-		10 * time.Second,
-		30 * time.Second,
-		30 * time.Second,
-		60 * time.Second,
-	}
-	for _, backoff := range backoffSchedule {
-		time.Sleep(backoff)
-		job, _, err := ats.autoPiSvc.GetCommandStatus(ctx, cmd.Jid)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				_ = ats.updateTaskState(taskID, "autopi job was not found in db", Failure, 500, err)
-				log.Err(err).Msg("autopi job not found in db")
-				return err
-			}
-			continue // try again if error
-		}
-		if job.CommandState == "COMMAND_EXECUTED" {
-			_ = ats.updateTaskState(taskID, "autopi update job received by device", InProcess, 120, nil)
-			break
-		}
-		// this is what ended up hitting for me during update.
-		if job.CommandState == "TIMEOUT" {
-			_ = ats.updateTaskState(taskID, "autopi update job timed out, device may be offline or rebooting", Failure, 400, nil)
-			log.Warn().Msg("autopi update job timed out and did not reach device")
-			return errors.New("job timeout")
-		}
-	}
-	// note we could fire off a delayed sub-task for the next part, but right now this feels easier to follow and debug
-	//query device endpoint to check that update was applied. (5M timeout)
-	backoffSchedule = []time.Duration{
-		35 * time.Second,
-		30 * time.Second,
-		30 * time.Second,
-		60 * time.Second,
-		60 * time.Second,
-		60 * time.Second,
-	}
-	for _, backoff := range backoffSchedule {
-		time.Sleep(backoff)
-		d, err := ats.autoPiSvc.GetDeviceByID(deviceID)
-		if err != nil {
-			continue // keep trying if error
-		}
-		if d.IsUpdated {
-			_ = ats.updateTaskState(taskID, "autopi update confirmed", Success, 200, nil)
-			log.Info().Msg("Succesfully applied autopi update")
-			return nil
-		}
-		_ = ats.updateTaskState(taskID, "waiting for autopi to update, query not showing as updated yet", InProcess, 130, nil)
-	}
-	// if we got here we could not validate update was applied
-	_ = ats.updateTaskState(taskID, "update command sent ok, but could not confirm update applied. retries exceeded", Failure, 504, nil)
-	return nil // by not returning error, task will not be processed again.
 }
 
 // queryAndUpdateVIN processes message that: sends autopi command to get vin, polls webhook db for result, and sets user_devices. retries if needed. starts drivly task if able to get vin.
