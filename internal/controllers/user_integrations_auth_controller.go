@@ -103,8 +103,6 @@ var requiredTeslaScopes = []string{"vehicle_device_data", "vehicle_cmds", "vehic
 // @Security    BearerAuth
 // @Router      /integration/{tokenID}/credentials [post]
 func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) error {
-	fmt.Println("XDD")
-
 	// Get the current user
 	userID := helpers.GetUserID(c)
 	user, err := u.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
