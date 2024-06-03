@@ -238,6 +238,47 @@ func (s *UserIntegrationAuthControllerTestSuite) TestMissingScope() {
 	s.Contains(string(body), "vehicle_device_data")
 }
 
+func (s *UserIntegrationAuthControllerTestSuite) TestMissingRefreshToken() {
+	mockAuthCode := "Mock_fd941f8da609db8cd66b1734f84ab289e2975b1889a5bedf478f02cf0cc4"
+	mockRedirectURI := "https://mock-redirect.test.dimo.zone"
+	mockRegion := "na"
+
+	signingKey := []byte("xdd")
+
+	accessToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"scp": []string{"vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds"},
+	}).SignedString(signingKey)
+	s.Require().NoError(err)
+
+	mockAuthCodeResp := &services.TeslaAuthCodeResponse{
+		AccessToken:  accessToken,
+		RefreshToken: "",
+		Expiry:       time.Now().Add(time.Hour * 1),
+		Region:       mockRegion,
+	}
+	mockUserEthAddr := common.HexToAddress("1").String()
+	s.usersClient.EXPECT().GetUser(gomock.Any(), &users.GetUserRequest{Id: s.testUserID}).Return(&users.User{EthereumAddress: &mockUserEthAddr}, nil)
+	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&ddgrpc.Integration{
+		Vendor: constants.TeslaVendor,
+	}, nil)
+	s.teslaFleetAPISvc.EXPECT().CompleteTeslaAuthCodeExchange(gomock.Any(), mockAuthCode, mockRedirectURI, mockRegion).Return(mockAuthCodeResp, nil)
+
+	request := test.BuildRequest("POST", "/integration/2/credentials", fmt.Sprintf(`{
+		"authorizationCode": "%s",
+		"redirectUri": "%s",
+		"region": "%s"
+	}`, mockAuthCode, mockRedirectURI, mockRegion))
+	response, _ := s.app.Test(request)
+	defer response.Body.Close()
+
+	s.Equal(fiber.StatusBadRequest, response.StatusCode)
+
+	body, err := io.ReadAll(response.Body)
+	s.Require().NoError(err)
+
+	s.Contains(string(body), "offline_access")
+}
+
 func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_InvalidRegion() {
 	mockUserEthAddr := common.HexToAddress("1").String()
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &users.GetUserRequest{Id: s.testUserID}).Return(&users.User{EthereumAddress: &mockUserEthAddr}, nil)
