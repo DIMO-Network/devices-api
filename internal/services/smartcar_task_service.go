@@ -7,14 +7,16 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
+	"github.com/DIMO-Network/shared/sdtask"
 	"github.com/Shopify/sarama"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
 )
 
 //go:generate mockgen -source smartcar_task_service.go -destination mocks/smartcar_task_service_mock.go
 
 type SmartcarTaskService interface {
-	StartPoll(udai *models.UserDeviceAPIIntegration) error
+	StartPoll(udai *models.UserDeviceAPIIntegration, sd *models.SyntheticDevice) error
 	StopPoll(udai *models.UserDeviceAPIIntegration) error
 	Refresh(udai *models.UserDeviceAPIIntegration) error
 	UnlockDoors(udai *models.UserDeviceAPIIntegration) (string, error)
@@ -37,15 +39,6 @@ type SmartcarIdentifiers struct {
 	ID string `json:"id"`
 }
 
-type SmartcarCredentials struct {
-	TaskID        string    `json:"taskId"`
-	UserDeviceID  string    `json:"userDeviceId"`
-	IntegrationID string    `json:"integrationId"`
-	AccessToken   string    `json:"accessToken"`
-	Expiry        time.Time `json:"expiry"`
-	RefreshToken  string    `json:"refreshToken"`
-}
-
 type SmartcarTask struct {
 	TaskID        string              `json:"taskId"`
 	UserDeviceID  string              `json:"userDeviceId"`
@@ -54,31 +47,19 @@ type SmartcarTask struct {
 	Paths         []string            `json:"paths"`
 }
 
-type SmartcarTaskCloudEvent struct {
-	CloudEventHeaders
-	Data SmartcarTask `json:"data"`
-}
-
-type SmartcarCredentialsCloudEvent struct {
-	CloudEventHeaders
-	Data SmartcarCredentials `json:"data"`
-}
-
-func (t *smartcarTaskService) StartPoll(udai *models.UserDeviceAPIIntegration) error {
+func (t *smartcarTaskService) StartPoll(udai *models.UserDeviceAPIIntegration, sd *models.SyntheticDevice) error {
 	m := new(UserDeviceAPIIntegrationsMetadata)
 	if err := udai.Metadata.Unmarshal(m); err != nil {
 		return err
 	}
 
-	tt := SmartcarTaskCloudEvent{
-		CloudEventHeaders: CloudEventHeaders{
-			ID:          ksuid.New().String(),
-			Source:      "dimo/integration/" + udai.IntegrationID,
-			SpecVersion: "1.0",
-			Subject:     udai.UserDeviceID,
-			Time:        time.Now(),
-			Type:        "zone.dimo.task.smartcar.poll.scheduled",
-		},
+	tt := shared.CloudEvent[SmartcarTask]{
+		ID:          ksuid.New().String(),
+		Source:      "dimo/integration/" + udai.IntegrationID,
+		SpecVersion: "1.0",
+		Subject:     udai.UserDeviceID,
+		Time:        time.Now(),
+		Type:        "zone.dimo.task.smartcar.poll.scheduled",
 		Data: SmartcarTask{
 			TaskID:        udai.TaskID.String,
 			UserDeviceID:  udai.UserDeviceID,
@@ -90,22 +71,31 @@ func (t *smartcarTaskService) StartPoll(udai *models.UserDeviceAPIIntegration) e
 		},
 	}
 
-	tc := TeslaCredentialsCloudEventV2{
-		CloudEventHeaders: CloudEventHeaders{
-			ID:          ksuid.New().String(),
-			Source:      "dimo/integration/" + udai.IntegrationID,
-			SpecVersion: "1.0",
-			Subject:     udai.UserDeviceID,
-			Time:        time.Now(),
-			Type:        "zone.dimo.task.smartcar.poll.credential",
-		},
-		Data: TeslaCredentialsV2{
+	tokenID, _ := sd.TokenID.Int64()
+	integrationTokenID, _ := sd.IntegrationTokenID.Int64()
+	vehicleTokenID, _ := sd.VehicleTokenID.Int64()
+
+	tc := shared.CloudEvent[sdtask.CredentialData]{
+		ID:          ksuid.New().String(),
+		Source:      "dimo/integration/" + udai.IntegrationID,
+		SpecVersion: "1.0",
+		Subject:     udai.UserDeviceID,
+		Time:        time.Now(),
+		Type:        "zone.dimo.task.smartcar.poll.credential",
+		Data: sdtask.CredentialData{
 			TaskID:        udai.TaskID.String,
 			UserDeviceID:  udai.UserDeviceID,
 			IntegrationID: udai.IntegrationID,
 			AccessToken:   udai.AccessToken.String,
 			Expiry:        udai.AccessExpiresAt.Time,
 			RefreshToken:  udai.RefreshToken.String,
+			SyntheticDevice: &sdtask.SyntheticDevice{
+				TokenID:            int(tokenID),
+				Address:            common.BytesToAddress(sd.WalletAddress),
+				IntegrationTokenID: int(integrationTokenID),
+				WalletChildNumber:  sd.WalletChildNumber,
+				VehicleTokenID:     int(vehicleTokenID),
+			},
 		},
 	}
 
@@ -143,15 +133,13 @@ func (t *smartcarTaskService) Refresh(udai *models.UserDeviceAPIIntegration) err
 		return err
 	}
 
-	tt := SmartcarTaskCloudEvent{
-		CloudEventHeaders: CloudEventHeaders{
-			ID:          ksuid.New().String(),
-			Source:      "dimo/integration/" + udai.IntegrationID,
-			SpecVersion: "1.0",
-			Subject:     udai.UserDeviceID,
-			Time:        time.Now(),
-			Type:        "zone.dimo.task.smartcar.poll.refresh",
-		},
+	tt := shared.CloudEvent[SmartcarTask]{
+		ID:          ksuid.New().String(),
+		Source:      "dimo/integration/" + udai.IntegrationID,
+		SpecVersion: "1.0",
+		Subject:     udai.UserDeviceID,
+		Time:        time.Now(),
+		Type:        "zone.dimo.task.smartcar.poll.refresh",
 		Data: SmartcarTask{
 			TaskID:        udai.TaskID.String,
 			UserDeviceID:  udai.UserDeviceID,
@@ -182,18 +170,13 @@ func (t *smartcarTaskService) Refresh(udai *models.UserDeviceAPIIntegration) err
 func (t *smartcarTaskService) StopPoll(udai *models.UserDeviceAPIIntegration) error {
 	var taskKey = udai.TaskID.String
 
-	tt := struct {
-		CloudEventHeaders
-		Data interface{} `json:"data"`
-	}{
-		CloudEventHeaders: CloudEventHeaders{
-			ID:          ksuid.New().String(),
-			Source:      "dimo/integration/" + udai.IntegrationID,
-			SpecVersion: "1.0",
-			Subject:     udai.UserDeviceID,
-			Time:        time.Now(),
-			Type:        "zone.dimo.task.smartcar.poll.stop",
-		},
+	tt := shared.CloudEvent[any]{
+		ID:          ksuid.New().String(),
+		Source:      "dimo/integration/" + udai.IntegrationID,
+		SpecVersion: "1.0",
+		Subject:     udai.UserDeviceID,
+		Time:        time.Now(),
+		Type:        "zone.dimo.task.smartcar.poll.stop",
 		Data: struct {
 			TaskID        string `json:"taskId"`
 			UserDeviceID  string `json:"userDeviceId"`

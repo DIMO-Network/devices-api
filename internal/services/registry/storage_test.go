@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
@@ -32,6 +34,9 @@ type StorageTestSuite struct {
 	container testcontainers.Container
 	mockCtrl  *gomock.Controller
 	eventSvc  *mock_services.MockEventService
+	ddSvc     *mock_services.MockDeviceDefinitionService
+	scSvc     *mock_services.MockSmartcarTaskService
+	teslaSvc  *mock_services.MockTeslaTaskService
 
 	proc StatusProcessor
 }
@@ -54,8 +59,11 @@ func (s *StorageTestSuite) SetupTest() {
 	s.mockCtrl, s.ctx = gomock.WithContext(context.Background(), s.T())
 
 	s.eventSvc = mock_services.NewMockEventService(s.mockCtrl)
+	s.ddSvc = mock_services.NewMockDeviceDefinitionService(s.mockCtrl)
+	s.scSvc = mock_services.NewMockSmartcarTaskService(s.mockCtrl)
+	s.teslaSvc = mock_services.NewMockTeslaTaskService(s.mockCtrl)
 
-	proc, err := NewProcessor(s.dbs.DBS, logger, &config.Settings{Environment: "prod"}, s.eventSvc)
+	proc, err := NewProcessor(s.dbs.DBS, logger, &config.Settings{Environment: "prod"}, s.eventSvc, s.scSvc, s.teslaSvc, s.ddSvc)
 	if err != nil {
 		s.T().Fatal(err)
 	}
@@ -71,7 +79,7 @@ func TestStorageTestSuite(t *testing.T) {
 	suite.Run(t, new(StorageTestSuite))
 }
 
-func (s *StorageTestSuite) Test_SyntheticMintSetsID() {
+func (s *StorageTestSuite) Test_SyntheticMintSmartcar() {
 	vehicleID := int64(54)
 	integrationNode := int64(1)
 	childKeyNumber := 300
@@ -125,6 +133,13 @@ func (s *StorageTestSuite) Test_SyntheticMintSetsID() {
 	}
 	s.MustInsert(&udi)
 
+	s.ddSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(1)).Return(&grpc.Integration{
+		Id:     integrationID,
+		Vendor: constants.SmartCarVendor,
+	}, nil)
+
+	s.scSvc.EXPECT().StartPoll(gomock.Any(), gomock.Any())
+
 	a, _ := contracts.RegistryMetaData.GetAbi()
 
 	err = s.proc.Handle(context.TODO(), &ceData{
@@ -142,6 +157,102 @@ func (s *StorageTestSuite) Test_SyntheticMintSetsID() {
 					},
 					Data: common.FromHex(
 						"0000000000000000000000000000000000000000000000000000000000000001" +
+							"000000000000000000000000000000000000000000000000000000000000001e",
+					),
+				},
+			},
+		},
+	})
+	s.NoError(err)
+
+	sd, err := models.SyntheticDevices(
+		models.SyntheticDeviceWhere.MintRequestID.EQ(syntMtr.ID),
+		qm.Load(models.SyntheticDeviceRels.VehicleToken),
+	).One(s.ctx, s.dbs.DBS().Reader)
+	s.NoError(err)
+
+	tkID := types.NewNullDecimal(decimal.New(30, 0))
+	s.Equal(tkID, sd.TokenID)
+}
+
+func (s *StorageTestSuite) Test_SyntheticMintTesla() {
+	vehicleID := int64(54)
+	integrationNode := int64(1)
+	childKeyNumber := 300
+	syntheticDeviceAddr := common.HexToAddress("4")
+	cipher := new(shared.ROT13Cipher)
+	ownerAddr := common.HexToAddress("1000")
+	integrationID := ksuid.New().String()
+
+	mtr := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusMined,
+	}
+	s.MustInsert(&mtr)
+
+	ud := models.UserDevice{
+		ID:            ksuid.New().String(),
+		MintRequestID: null.StringFrom(mtr.ID),
+		TokenID:       types.NewNullDecimal(decimal.New(vehicleID, 0)),
+		OwnerAddress:  null.BytesFrom(ownerAddr.Bytes()),
+	}
+	s.MustInsert(&ud)
+
+	syntMtr := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusMined,
+	}
+	s.MustInsert(&syntMtr)
+
+	vnID := types.NewNullDecimal(decimal.New(vehicleID, 0))
+	syntheticDevice := models.SyntheticDevice{
+		VehicleTokenID:     vnID,
+		IntegrationTokenID: types.NewDecimal(decimal.New(integrationNode, 0)),
+		WalletChildNumber:  childKeyNumber,
+		WalletAddress:      syntheticDeviceAddr.Bytes(),
+		MintRequestID:      syntMtr.ID,
+	}
+	s.MustInsert(&syntheticDevice)
+
+	acToken, err := cipher.Encrypt("mockAccessToken")
+	s.NoError(err)
+	refToken, err := cipher.Encrypt("mockRefreshToken")
+	s.NoError(err)
+
+	udi := models.UserDeviceAPIIntegration{
+		IntegrationID:   integrationID,
+		UserDeviceID:    ud.ID,
+		Status:          models.UserDeviceAPIIntegrationStatusPending,
+		AccessToken:     null.StringFrom(acToken),
+		AccessExpiresAt: null.TimeFrom(time.Now()),
+		RefreshToken:    null.StringFrom(refToken),
+	}
+	s.MustInsert(&udi)
+
+	s.ddSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&grpc.Integration{
+		Id:     integrationID,
+		Vendor: constants.TeslaVendor,
+	}, nil)
+
+	s.teslaSvc.EXPECT().StartPoll(gomock.Any(), gomock.Any())
+
+	a, _ := contracts.RegistryMetaData.GetAbi()
+
+	err = s.proc.Handle(context.TODO(), &ceData{
+		RequestID: syntMtr.ID,
+		Type:      "Confirmed",
+		Transaction: ceTx{
+			Hash: "0x28db529e841dc0bc46c27a5a43ae7db8ed43294c1b97a8b81b142b8fd6763f43",
+			Logs: []ceLog{
+				{
+					Topics: []common.Hash{
+						a.Events["SyntheticDeviceNodeMinted"].ID,
+						common.BigToHash(big.NewInt(vehicleID)),
+						common.BytesToHash(syntheticDeviceAddr.Bytes()),
+						common.BytesToHash(ownerAddr.Bytes()),
+					},
+					Data: common.FromHex(
+						"0000000000000000000000000000000000000000000000000000000000000002" +
 							"000000000000000000000000000000000000000000000000000000000000001e",
 					),
 				},

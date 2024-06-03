@@ -1908,11 +1908,6 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 		}
 	}
 
-	if err := udc.smartcarTaskSvc.StartPoll(integration); err != nil {
-		localLog.Err(err).Msg("Couldn't start Smartcar polling.")
-		return opaqueInternalError
-	}
-
 	if err := tx.Commit(); err != nil {
 		localLog.Error().Msg("Failed to commit new user device integration.")
 		return opaqueInternalError
@@ -2026,6 +2021,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		Commands:        commands,
 		TeslaAPIVersion: apiVersion,
 		TeslaRegion:     region,
+		TeslaVehicleID:  v.VehicleID,
 	}
 
 	b, err := json.Marshal(meta)
@@ -2069,9 +2065,6 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		}
 		udc.requestValuation(v.VIN, userDeviceID, tokenID)
 		udc.requestInstantOffer(userDeviceID, tokenID)
-	}
-	if err := udc.teslaTaskService.StartPoll(v, &integration, apiVersion, region); err != nil {
-		return err
 	}
 
 	if err := tx.Commit(); err != nil {

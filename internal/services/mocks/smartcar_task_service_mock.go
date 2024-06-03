@@ -69,17 +69,17 @@ func (mr *MockSmartcarTaskServiceMockRecorder) Refresh(udai any) *gomock.Call {
 }
 
 // StartPoll mocks base method.
-func (m *MockSmartcarTaskService) StartPoll(udai *models.UserDeviceAPIIntegration) error {
+func (m *MockSmartcarTaskService) StartPoll(udai *models.UserDeviceAPIIntegration, sd *models.SyntheticDevice) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StartPoll", udai)
+	ret := m.ctrl.Call(m, "StartPoll", udai, sd)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // StartPoll indicates an expected call of StartPoll.
-func (mr *MockSmartcarTaskServiceMockRecorder) StartPoll(udai any) *gomock.Call {
+func (mr *MockSmartcarTaskServiceMockRecorder) StartPoll(udai, sd any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartPoll", reflect.TypeOf((*MockSmartcarTaskService)(nil).StartPoll), udai)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartPoll", reflect.TypeOf((*MockSmartcarTaskService)(nil).StartPoll), udai, sd)
 }
 
 // StopPoll mocks base method.

@@ -9,20 +9,21 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
+	"github.com/DIMO-Network/shared/sdtask"
 	"github.com/Shopify/sarama"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
 )
 
 //go:generate mockgen -source tesla_task_service.go -destination mocks/tesla_task_service_mock.go
 
 type TeslaTaskService interface {
-	StartPoll(vehicle *TeslaVehicle, udai *models.UserDeviceAPIIntegration, apiVersion int, region string) error
+	StartPoll(udai *models.UserDeviceAPIIntegration, sd *models.SyntheticDevice) error
 	StopPoll(udai *models.UserDeviceAPIIntegration) error
 	UnlockDoors(udai *models.UserDeviceAPIIntegration) (string, error)
 	LockDoors(udai *models.UserDeviceAPIIntegration) (string, error)
 	OpenTrunk(udai *models.UserDeviceAPIIntegration) (string, error)
 	OpenFrunk(udai *models.UserDeviceAPIIntegration) (string, error)
-	UpdateCredentials(udai *models.UserDeviceAPIIntegration, version int, region string) error
 }
 
 func NewTeslaTaskService(settings *config.Settings, producer sarama.SyncProducer) TeslaTaskService {
@@ -45,17 +46,6 @@ type TeslaIdentifiers struct {
 	VehicleID int `json:"vehicleId"`
 }
 
-type TeslaCredentialsV2 struct {
-	TaskID        string    `json:"taskId"`
-	UserDeviceID  string    `json:"userDeviceId"`
-	IntegrationID string    `json:"integrationId"`
-	AccessToken   string    `json:"accessToken"`
-	Expiry        time.Time `json:"expiry"`
-	RefreshToken  string    `json:"refreshToken"`
-	Version       int       `json:"version"`
-	Region        string    `json:"region"`
-}
-
 type TeslaTask struct {
 	TaskID             string           `json:"taskId"`
 	UserDeviceID       string           `json:"userDeviceId"`
@@ -64,66 +54,64 @@ type TeslaTask struct {
 	OnlineIdleLastPoll bool             `json:"onlineIdleLastPoll"`
 }
 
-// CloudEventHeaders contains the fields common to all CloudEvent messages.
-type CloudEventHeaders struct {
-	ID          string    `json:"id"`
-	Source      string    `json:"source"`
-	SpecVersion string    `json:"specversion"`
-	Subject     string    `json:"subject"`
-	Time        time.Time `json:"time"`
-	Type        string    `json:"type"`
-}
+func (t *teslaTaskService) StartPoll(udai *models.UserDeviceAPIIntegration, sd *models.SyntheticDevice) error {
+	var meta UserDeviceAPIIntegrationsMetadata
+	err := udai.Metadata.Unmarshal(&meta)
+	if err != nil {
+		return fmt.Errorf("couldn't unmarshal metadata: %w", err)
+	}
 
-type TeslaTaskCloudEvent struct {
-	CloudEventHeaders
-	Data TeslaTask `json:"data"`
-}
+	id, err := strconv.Atoi(udai.ExternalID.String)
+	if err != nil {
+		return fmt.Errorf("couldn't parse Tesla id %q: %w", udai.ExternalID.String, err)
+	}
 
-type TeslaCredentialsCloudEventV2 struct {
-	CloudEventHeaders
-	Data TeslaCredentialsV2 `json:"data"`
-}
-
-func (t *teslaTaskService) StartPoll(vehicle *TeslaVehicle, udai *models.UserDeviceAPIIntegration, version int, region string) error {
-	tt := TeslaTaskCloudEvent{
-		CloudEventHeaders: CloudEventHeaders{
-			ID:          ksuid.New().String(),
-			Source:      "dimo/integration/" + udai.IntegrationID,
-			SpecVersion: "1.0",
-			Subject:     udai.UserDeviceID,
-			Time:        time.Now(),
-			Type:        "zone.dimo.task.tesla.poll.scheduled",
-		},
+	tt := shared.CloudEvent[TeslaTask]{
+		ID:          ksuid.New().String(),
+		Source:      "dimo/integration/" + udai.IntegrationID,
+		SpecVersion: "1.0",
+		Subject:     udai.UserDeviceID,
+		Time:        time.Now(),
+		Type:        "zone.dimo.task.tesla.poll.scheduled",
 		Data: TeslaTask{
 			TaskID:        udai.TaskID.String,
 			UserDeviceID:  udai.UserDeviceID,
 			IntegrationID: udai.IntegrationID,
 			Identifiers: TeslaIdentifiers{
-				ID:        vehicle.ID,
-				VehicleID: vehicle.VehicleID,
+				ID:        id,
+				VehicleID: meta.TeslaVehicleID,
 			},
 			OnlineIdleLastPoll: false,
 		},
 	}
 
-	tc := TeslaCredentialsCloudEventV2{
-		CloudEventHeaders: CloudEventHeaders{
-			ID:          ksuid.New().String(),
-			Source:      "dimo/integration/" + udai.IntegrationID,
-			SpecVersion: "1.0",
-			Subject:     udai.UserDeviceID,
-			Time:        time.Now(),
-			Type:        "zone.dimo.task.tesla.poll.credential.v2",
-		},
-		Data: TeslaCredentialsV2{
+	tokenID, _ := sd.TokenID.Int64()
+	integrationTokenID, _ := sd.IntegrationTokenID.Int64()
+	vehicleTokenID, _ := sd.VehicleTokenID.Int64()
+
+	tc := shared.CloudEvent[sdtask.CredentialData]{
+		ID:          ksuid.New().String(),
+		Source:      "dimo/integration/" + udai.IntegrationID,
+		SpecVersion: "1.0",
+		Subject:     udai.UserDeviceID,
+		Time:        time.Now(),
+		Type:        "zone.dimo.task.tesla.poll.credential.v2",
+		Data: sdtask.CredentialData{
 			TaskID:        udai.TaskID.String,
 			UserDeviceID:  udai.UserDeviceID,
 			IntegrationID: udai.IntegrationID,
 			AccessToken:   udai.AccessToken.String,
 			Expiry:        udai.AccessExpiresAt.Time,
 			RefreshToken:  udai.RefreshToken.String,
-			Version:       version,
-			Region:        region,
+			Version:       meta.TeslaAPIVersion,
+			Region:        meta.TeslaRegion,
+			SyntheticDevice: &sdtask.SyntheticDevice{
+				TokenID:            int(tokenID),
+				Address:            common.BytesToAddress(sd.WalletAddress),
+				IntegrationTokenID: int(integrationTokenID),
+				WalletChildNumber:  sd.WalletChildNumber,
+				VehicleTokenID:     int(vehicleTokenID),
+			},
 		},
 	}
 
@@ -155,42 +143,6 @@ func (t *teslaTaskService) StartPoll(vehicle *TeslaVehicle, udai *models.UserDev
 	return err
 }
 
-func (t *teslaTaskService) UpdateCredentials(udai *models.UserDeviceAPIIntegration, version int, region string) error {
-	tc := TeslaCredentialsCloudEventV2{
-		CloudEventHeaders: CloudEventHeaders{
-			ID:          ksuid.New().String(),
-			Source:      "dimo/integration/" + udai.IntegrationID,
-			SpecVersion: "1.0",
-			Subject:     udai.UserDeviceID,
-			Time:        time.Now(),
-			Type:        "zone.dimo.task.tesla.poll.credential.v2",
-		},
-		Data: TeslaCredentialsV2{
-			TaskID:        udai.TaskID.String,
-			UserDeviceID:  udai.UserDeviceID,
-			IntegrationID: udai.IntegrationID,
-			AccessToken:   udai.AccessToken.String,
-			Expiry:        udai.AccessExpiresAt.Time,
-			RefreshToken:  udai.RefreshToken.String,
-			Version:       version,
-			Region:        region,
-		},
-	}
-
-	tcb, err := json.Marshal(tc)
-	if err != nil {
-		return err
-	}
-
-	_, _, err = t.Producer.SendMessage(&sarama.ProducerMessage{
-		Topic: t.Settings.TaskCredentialTopic,
-		Key:   sarama.StringEncoder(udai.TaskID.String),
-		Value: sarama.ByteEncoder(tcb),
-	})
-
-	return err
-}
-
 func (t *teslaTaskService) StopPoll(udai *models.UserDeviceAPIIntegration) error {
 	var taskKey string
 	if udai.TaskID.Valid {
@@ -199,18 +151,13 @@ func (t *teslaTaskService) StopPoll(udai *models.UserDeviceAPIIntegration) error
 		taskKey = fmt.Sprintf("device/%s/integration/%s", udai.UserDeviceID, udai.IntegrationID)
 	}
 
-	tt := struct {
-		CloudEventHeaders
-		Data interface{} `json:"data"`
-	}{
-		CloudEventHeaders: CloudEventHeaders{
-			ID:          ksuid.New().String(),
-			Source:      "dimo/integration/" + udai.IntegrationID,
-			SpecVersion: "1.0",
-			Subject:     udai.UserDeviceID,
-			Time:        time.Now(),
-			Type:        "zone.dimo.task.tesla.poll.stop",
-		},
+	tt := shared.CloudEvent[any]{
+		ID:          ksuid.New().String(),
+		Source:      "dimo/integration/" + udai.IntegrationID,
+		SpecVersion: "1.0",
+		Subject:     udai.UserDeviceID,
+		Time:        time.Now(),
+		Type:        "zone.dimo.task.tesla.poll.stop",
 		Data: struct {
 			TaskID        string `json:"taskId"`
 			UserDeviceID  string `json:"userDeviceId"`
