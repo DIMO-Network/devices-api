@@ -158,8 +158,8 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 	request := test.BuildRequest("POST", "/integration/2/credentials", fmt.Sprintf(`{
 		"authorizationCode": "%s",
 		"redirectUri": "%s",
-		"region": "na"
-	}`, mockAuthCode, mockRedirectURI))
+		"region": "%s"
+	}`, mockAuthCode, mockRedirectURI, mockRegion))
 	response, _ := s.app.Test(request)
 
 	s.Equal(fiber.StatusOK, response.StatusCode)
@@ -225,8 +225,8 @@ func (s *UserIntegrationAuthControllerTestSuite) TestMissingScope() {
 	request := test.BuildRequest("POST", "/integration/2/credentials", fmt.Sprintf(`{
 		"authorizationCode": "%s",
 		"redirectUri": "%s",
-		"region": "na"
-	}`, mockAuthCode, mockRedirectURI))
+		"region": "%s"
+	}`, mockAuthCode, mockRedirectURI, mockRegion))
 	response, _ := s.app.Test(request)
 	defer response.Body.Close()
 
