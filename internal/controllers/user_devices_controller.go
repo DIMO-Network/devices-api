@@ -64,7 +64,6 @@ type UserDevicesController struct {
 	cipher                    shared.Cipher
 	autoPiSvc                 services.AutoPiAPIService
 	autoPiIngestRegistrar     services.IngestRegistrar
-	autoPiTaskService         services.AutoPiTaskService
 	s3                        *s3.Client
 	producer                  sarama.SyncProducer
 	deviceDefinitionRegistrar services.DeviceDefinitionRegistrar
@@ -122,7 +121,6 @@ func NewUserDevicesController(settings *config.Settings,
 	autoPiSvc services.AutoPiAPIService,
 	autoPiIngestRegistrar services.IngestRegistrar,
 	deviceDefinitionRegistrar services.DeviceDefinitionRegistrar,
-	autoPiTaskService services.AutoPiTaskService,
 	producer sarama.SyncProducer,
 	s3NFTClient *s3.Client,
 	autoPi *autopi.Integration,
@@ -150,7 +148,6 @@ func NewUserDevicesController(settings *config.Settings,
 		cipher:                    cipher,
 		autoPiSvc:                 autoPiSvc,
 		autoPiIngestRegistrar:     autoPiIngestRegistrar,
-		autoPiTaskService:         autoPiTaskService,
 		s3:                        s3NFTClient,
 		producer:                  producer,
 		deviceDefinitionRegistrar: deviceDefinitionRegistrar,

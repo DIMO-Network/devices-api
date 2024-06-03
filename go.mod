@@ -9,7 +9,7 @@ require (
 	github.com/DIMO-Network/device-definitions-api v1.2.14
 	github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c
 	github.com/DIMO-Network/meta-transaction-processor v0.3.2
-	github.com/DIMO-Network/shared v0.10.13
+	github.com/DIMO-Network/shared v0.10.16
 	github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3
 	github.com/DIMO-Network/zflogger v1.0.0-beta
 	github.com/Shopify/sarama v1.38.1
@@ -23,6 +23,7 @@ require (
 	github.com/burdiyan/kafkautil v0.0.0-20190131162249-eaf83ed22d5b
 	github.com/docker/go-connections v0.5.0
 	github.com/elastic/go-elasticsearch/v8 v8.12.0
+	github.com/ericlagergren/decimal v0.0.0-20221120152707-495c53812d05 // Do not touch.
 	github.com/friendsofgo/errors v0.9.2
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/goccy/go-json v0.10.2
@@ -46,7 +47,6 @@ require (
 	github.com/swaggo/swag v1.16.3
 	github.com/testcontainers/testcontainers-go v0.27.0
 	github.com/tidwall/gjson v1.17.0
-	github.com/vmihailenco/taskq/v3 v3.2.8
 	github.com/volatiletech/null/v8 v8.1.2
 	github.com/volatiletech/sqlboiler/v4 v4.16.2
 	github.com/volatiletech/strmangle v0.0.6
@@ -144,17 +144,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.20.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.28.4 // indirect
 	github.com/aws/smithy-go v1.20.2 // indirect
-	github.com/bsm/redislock v0.7.2 // indirect
-	github.com/capnm/sysinfo v0.0.0-20130621111458-5909a53897f3 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/containerd/containerd v1.7.13 // indirect
-	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
 	github.com/docker/docker v25.0.3+incompatible // indirect
 	github.com/docker/go-units v0.5.0 // indirect
-	github.com/ericlagergren/decimal v0.0.0-20221120152707-495c53812d05
-	github.com/go-redis/redis_rate/v9 v9.1.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
@@ -162,8 +156,6 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc6 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
-	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -231,6 +223,4 @@ require (
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 )
 
-replace github.com/vmihailenco/taskq/v3 v3.2.8 => github.com/DIMO-Network/taskq/v3 v3.2.9-0.20220518233332-179b5552605f
-
-replace github.com/ericlagergren/decimal => github.com/ericlagergren/decimal v0.0.0-20181231230500-73749d4874d5
+replace github.com/ericlagergren/decimal => github.com/ericlagergren/decimal v0.0.0-20190420051523-6335edbaa640

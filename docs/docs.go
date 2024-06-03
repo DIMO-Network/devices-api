@@ -170,39 +170,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/aftermarket/device/by-serial/{serial}/update": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "checks to see if aftermarket device needs to be updated, and starts update process if so.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "integrations"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "autopi unit id",
-                        "name": "serial",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_services.AutoPiTask"
-                        }
-                    }
-                }
-            }
-        },
         "/aftermarket/device/{tokenId}": {
             "get": {
                 "description": "Retrieves NFT metadata for a given aftermarket device.",
@@ -2324,33 +2291,6 @@ const docTemplate = `{
                 },
                 "message": {
                     "type": "string"
-                }
-            }
-        },
-        "github_com_DIMO-Network_devices-api_internal_services.AutoPiTask": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "error": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "taskId": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "updates": {
-                    "description": "Updates increments every time the job was updated.",
-                    "type": "integer"
                 }
             }
         },
