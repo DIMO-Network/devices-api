@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -16,6 +18,7 @@ import (
 	"github.com/DIMO-Network/shared/db"
 	"github.com/DIMO-Network/shared/redis"
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog"
 )
 
@@ -81,6 +84,13 @@ type DeviceDefinition struct {
 	DeviceDefinitionID string `json:"id"`
 }
 
+type partialTeslaClaims struct {
+	jwt.RegisteredClaims
+	Scopes []string `json:"scp"`
+}
+
+var requiredTeslaScopes = []string{"vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds"}
+
 // CompleteOAuthExchange godoc
 // @Description Complete Tesla auth and get devices for authenticated user
 // @Tags        user-devices
@@ -140,6 +150,29 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to get tesla authCode:"+err.Error())
 	}
 	teslaAuth.Region = reqBody.Region
+
+	if teslaAuth.RefreshToken == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Code exchange did not return a refresh token. Make sure you've granted offline_access.")
+	}
+
+	var claims partialTeslaClaims
+	_, _, err = jwt.NewParser().ParseUnverified(teslaAuth.AccessToken, &claims)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Code exchange returned an unparseable access token.")
+	}
+
+	var missingScopes []string
+
+	for _, scope := range requiredTeslaScopes {
+		if !slices.Contains(claims.Scopes, scope) {
+			missingScopes = append(missingScopes, scope)
+		}
+	}
+
+	if len(missingScopes) != 0 {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Missing required scopes %s.", strings.Join(missingScopes, ", ")))
+	}
+
 	// Save tesla oauth credentials in cache
 	err = u.persistOauthCredentials(c.Context(), *teslaAuth, *user.EthereumAddress)
 	if err != nil {

@@ -47,7 +47,6 @@ type TeslaFleetAPIError struct {
 type TeslaAuthCodeResponse struct {
 	AccessToken  string    `json:"access_token"`
 	RefreshToken string    `json:"refresh_token"`
-	IDToken      string    `json:"id_token"`
 	Expiry       time.Time `json:"expiry"`
 	TokenType    string    `json:"token_type"`
 	Region       string    `json:"region"`

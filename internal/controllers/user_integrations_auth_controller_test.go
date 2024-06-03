@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"go.uber.org/mock/gomock"
@@ -95,10 +96,16 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 	mockRedirectURI := "https://mock-redirect.test.dimo.zone"
 	mockRegion := "na"
 
+	signingKey := []byte("xdd")
+
+	accessToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"scp": []string{"vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds"},
+	}).SignedString(signingKey)
+	s.Require().NoError(err)
+
 	mockAuthCodeResp := &services.TeslaAuthCodeResponse{
-		AccessToken:  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+		AccessToken:  accessToken,
 		RefreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw",
-		IDToken:      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.ouLgsgz-xUWN7lLuo8qE2nueNgJIrBz49QLr_GLHRno",
 		Expiry:       time.Now().Add(time.Hour * 1),
 		Region:       mockRegion,
 	}
@@ -128,10 +135,10 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 	}, nil)
 
 	tokenStr, err := json.Marshal(mockAuthCodeResp)
-	s.Assert().NoError(err)
+	s.Require().NoError(err)
 
 	encToken, err := s.cipher.Encrypt(string(tokenStr))
-	s.Assert().NoError(err)
+	s.Require().NoError(err)
 
 	cacheKey := fmt.Sprintf(teslaFleetAuthCacheKey, mockUserEthAddr)
 	s.redisClient.EXPECT().Set(gomock.Any(), cacheKey, encToken, 5*time.Minute).Return(&redis.StatusCmd{})
@@ -151,12 +158,13 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 	request := test.BuildRequest("POST", "/integration/2/credentials", fmt.Sprintf(`{
 		"authorizationCode": "%s",
 		"redirectUri": "%s",
-		"region": "na"
-	}`, mockAuthCode, mockRedirectURI))
+		"region": "%s"
+	}`, mockAuthCode, mockRedirectURI, mockRegion))
 	response, _ := s.app.Test(request)
 
-	s.Assert().Equal(fiber.StatusOK, response.StatusCode)
-	body, _ := io.ReadAll(response.Body)
+	s.Equal(fiber.StatusOK, response.StatusCode)
+	body, err := io.ReadAll(response.Body)
+	s.Require().NoError(err)
 
 	expResp := &CompleteOAuthExchangeResponseWrapper{
 		Vehicles: []CompleteOAuthExchangeResponse{
@@ -184,9 +192,91 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 	}
 
 	expected, err := json.Marshal(expResp)
-	s.Assert().NoError(err)
+	s.Require().NoError(err)
 
-	s.Assert().Equal(expected, body)
+	s.JSONEq(string(expected), string(body))
+}
+
+func (s *UserIntegrationAuthControllerTestSuite) TestMissingScope() {
+	mockAuthCode := "Mock_fd941f8da609db8cd66b1734f84ab289e2975b1889a5bedf478f02cf0cc4"
+	mockRedirectURI := "https://mock-redirect.test.dimo.zone"
+	mockRegion := "na"
+
+	signingKey := []byte("xdd")
+
+	accessToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"scp": []string{"vehicle_cmds", "vehicle_charging_cmds"},
+	}).SignedString(signingKey)
+	s.Require().NoError(err)
+
+	mockAuthCodeResp := &services.TeslaAuthCodeResponse{
+		AccessToken:  accessToken,
+		RefreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw",
+		Expiry:       time.Now().Add(time.Hour * 1),
+		Region:       mockRegion,
+	}
+	mockUserEthAddr := common.HexToAddress("1").String()
+	s.usersClient.EXPECT().GetUser(gomock.Any(), &users.GetUserRequest{Id: s.testUserID}).Return(&users.User{EthereumAddress: &mockUserEthAddr}, nil)
+	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&ddgrpc.Integration{
+		Vendor: constants.TeslaVendor,
+	}, nil)
+	s.teslaFleetAPISvc.EXPECT().CompleteTeslaAuthCodeExchange(gomock.Any(), mockAuthCode, mockRedirectURI, mockRegion).Return(mockAuthCodeResp, nil)
+
+	request := test.BuildRequest("POST", "/integration/2/credentials", fmt.Sprintf(`{
+		"authorizationCode": "%s",
+		"redirectUri": "%s",
+		"region": "%s"
+	}`, mockAuthCode, mockRedirectURI, mockRegion))
+	response, _ := s.app.Test(request)
+	defer response.Body.Close()
+
+	s.Equal(fiber.StatusBadRequest, response.StatusCode)
+
+	body, err := io.ReadAll(response.Body)
+	s.Require().NoError(err)
+
+	s.Contains(string(body), "vehicle_device_data")
+}
+
+func (s *UserIntegrationAuthControllerTestSuite) TestMissingRefreshToken() {
+	mockAuthCode := "Mock_fd941f8da609db8cd66b1734f84ab289e2975b1889a5bedf478f02cf0cc4"
+	mockRedirectURI := "https://mock-redirect.test.dimo.zone"
+	mockRegion := "na"
+
+	signingKey := []byte("xdd")
+
+	accessToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"scp": []string{"vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds"},
+	}).SignedString(signingKey)
+	s.Require().NoError(err)
+
+	mockAuthCodeResp := &services.TeslaAuthCodeResponse{
+		AccessToken:  accessToken,
+		RefreshToken: "",
+		Expiry:       time.Now().Add(time.Hour * 1),
+		Region:       mockRegion,
+	}
+	mockUserEthAddr := common.HexToAddress("1").String()
+	s.usersClient.EXPECT().GetUser(gomock.Any(), &users.GetUserRequest{Id: s.testUserID}).Return(&users.User{EthereumAddress: &mockUserEthAddr}, nil)
+	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&ddgrpc.Integration{
+		Vendor: constants.TeslaVendor,
+	}, nil)
+	s.teslaFleetAPISvc.EXPECT().CompleteTeslaAuthCodeExchange(gomock.Any(), mockAuthCode, mockRedirectURI, mockRegion).Return(mockAuthCodeResp, nil)
+
+	request := test.BuildRequest("POST", "/integration/2/credentials", fmt.Sprintf(`{
+		"authorizationCode": "%s",
+		"redirectUri": "%s",
+		"region": "%s"
+	}`, mockAuthCode, mockRedirectURI, mockRegion))
+	response, _ := s.app.Test(request)
+	defer response.Body.Close()
+
+	s.Equal(fiber.StatusBadRequest, response.StatusCode)
+
+	body, err := io.ReadAll(response.Body)
+	s.Require().NoError(err)
+
+	s.Contains(string(body), "offline_access")
 }
 
 func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_InvalidRegion() {
@@ -248,7 +338,6 @@ func (s *UserIntegrationAuthControllerTestSuite) TestPersistOauthCredentials() {
 	mockAuthCodeResp := &services.TeslaAuthCodeResponse{
 		AccessToken:  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
 		RefreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw",
-		IDToken:      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.ouLgsgz-xUWN7lLuo8qE2nueNgJIrBz49QLr_GLHRno",
 		Expiry:       time.Now().Add(time.Hour * 1),
 	}
 	tokenStr, err := json.Marshal(mockAuthCodeResp)
