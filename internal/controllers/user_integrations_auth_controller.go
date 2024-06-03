@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -160,10 +161,16 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 		return fiber.NewError(fiber.StatusBadRequest, "Code exchange returned an unparseable access token.")
 	}
 
+	var missingScopes []string
+
 	for _, scope := range requiredTeslaScopes {
 		if !slices.Contains(claims.Scopes, scope) {
-			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Missing required scope %s.", scope))
+			missingScopes = append(missingScopes, scope)
 		}
+	}
+
+	if len(missingScopes) != 0 {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Missing required scopes %s.", strings.Join(missingScopes, ", ")))
 	}
 
 	// Save tesla oauth credentials in cache
