@@ -119,6 +119,7 @@ env:
     GQ==
     -----END CERTIFICATE-----
   IPFS_URL: https://assets.dev.dimo.xyz/ipfs
+  SD_INFO_TOPIC: table.task.synthetic.fill
 service:
   type: ClusterIP
   ports:
