@@ -90,6 +90,7 @@ func main() {
 		subcommands.Register(&remakeAftermarketTopicCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&remakeUserDeviceTokenTableCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&remakeFenceTopicCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
+		subcommands.Register(&populateSDInfoTopicCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&remakeDeviceDefinitionTopicsCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
 		subcommands.Register(&updateStateCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&web2PairCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
