@@ -84,7 +84,7 @@ func remakeSDInfoTopic(settings *config.Settings, pdb db.Store, producer sarama.
 		}
 
 		msg := &sarama.ProducerMessage{
-			Topic: "table.task.synthetic.fill",
+			Topic: settings.SDInfoTopic,
 			Key:   sarama.StringEncoder(udai.TaskID.String),
 			Value: sarama.ByteEncoder(b),
 		}
