@@ -105,7 +105,7 @@ func remakeSDInfoTopic(settings *config.Settings, pdb db.Store, producer sarama.
 		logger.Info().Str("userDeviceId", udai.UserDeviceID).Msg("Sent SD info.")
 	}
 
-	logger.Info().Msgf("Done. Sent %s messages.", len(udais))
+	logger.Info().Msgf("Done. Sent %d messages.", len(udais))
 
 	return nil
 }
