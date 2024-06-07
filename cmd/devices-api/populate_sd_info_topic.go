@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/subcommands"
 	"github.com/rs/zerolog"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/DIMO-Network/shared/db"
@@ -42,15 +43,17 @@ func (p *populateSDInfoTopicCmd) SetFlags(f *flag.FlagSet) {
 
 func (p *populateSDInfoTopicCmd) Execute(_ context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	p.producer = p.container.getKafkaProducer()
-	err := remakeSDInfoTopic(&p.settings, p.pdb, p.producer)
+	err := remakeSDInfoTopic(&p.settings, p.pdb, p.producer, &p.logger)
 	if err != nil {
 		p.logger.Fatal().Err(err).Msg("Error running Smartcar Kafka re-registration")
 	}
 	return subcommands.ExitSuccess
 }
 
-func remakeSDInfoTopic(settings *config.Settings, pdb db.Store, producer sarama.SyncProducer) error {
-	ctx := context.Background()
+func remakeSDInfoTopic(settings *config.Settings, pdb db.Store, producer sarama.SyncProducer, logger *zerolog.Logger) error {
+	logger.Info().Msgf("Starting synthetic device job enrichment, sending to topic %s.", settings.SDInfoTopic)
+
+	ctx := boil.WithDebug(context.Background(), true)
 
 	udais, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.TaskID.IsNotNull(),
