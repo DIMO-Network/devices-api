@@ -57,14 +57,21 @@ func remakeSDInfoTopic(settings *config.Settings, pdb db.Store, producer sarama.
 
 	udais, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.TaskID.IsNotNull(),
-		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.UserDevice, models.UserDeviceRels.VehicleTokenSyntheticDevice)),
 	).All(ctx, pdb.DBS().Reader)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve active polling jobs: %w", err)
 	}
 
 	for _, udai := range udais {
-		sd := udai.R.UserDevice.R.VehicleTokenSyntheticDevice
+		ud, err := models.UserDevices(
+			models.UserDeviceWhere.ID.EQ(udai.UserDeviceID),
+			qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
+		).One(ctx, pdb.DBS().Reader)
+		if err != nil {
+			return fmt.Errorf("failed to retrieve vehicle %s: %w", udai.UserDeviceID, err)
+		}
+
+		sd := ud.R.VehicleTokenSyntheticDevice
 		if sd == nil || sd.TokenID.IsZero() {
 			continue
 		}
@@ -94,7 +101,11 @@ func remakeSDInfoTopic(settings *config.Settings, pdb db.Store, producer sarama.
 		if _, _, err := producer.SendMessage(msg); err != nil {
 			return fmt.Errorf("couldn't send message for synthetic device %d: %w", tokenID, err)
 		}
+
+		logger.Info().Str("userDeviceId", udai.UserDeviceID).Msg("Sent SD info.")
 	}
+
+	logger.Info().Msgf("Done. Sent %s messages.", len(udais))
 
 	return nil
 }
