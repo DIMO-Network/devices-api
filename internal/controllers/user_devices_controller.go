@@ -1417,27 +1417,33 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		}
 	}
 
+	sigBytes := common.FromHex(mr.Signature)
+
+	recAddr, err := helpers.Ecrecover(hash, sigBytes)
+	if err != nil {
+		return err
+	}
+
+	if recAddr != mvs.Owner {
+		return fiber.NewError(fiber.StatusBadRequest, "Signature incorrect.")
+	}
+
 	requestID := ksuid.New().String()
 
-	if userDevice.IpfsImageCid.Valid {
-		if len(image) != 0 {
-			return fiber.NewError(fiber.StatusBadRequest, "IPFS image already set for this vehicle; don't provide another.")
+	if len(image) == 0 {
+		if !userDevice.IpfsImageCid.Valid {
+			return fiber.NewError(fiber.StatusBadRequest, "No image in request body and none assigned previously.")
 		}
 	} else {
-		if len(image) == 0 {
-			return fiber.NewError(fiber.StatusBadRequest, "Empty image field in request and no assigned IPFS image.")
+		if userDevice.IpfsImageCid.Valid {
+			logger.Warn().Msg("Image provided in request body, but also one assigned previously.")
 		}
-
 		cid, err := udc.ipfsSvc.UploadImage(c.Context(), imageData)
 		if err != nil {
-			return fiber.NewError(fiber.StatusBadRequest, "Failed to upload image to IPFS")
+			return fiber.NewError(fiber.StatusBadRequest, "Failed to upload image to IPFS.")
 		}
 
 		userDevice.IpfsImageCid = null.StringFrom(cid)
-		_, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.IpfsImageCid))
-		if err != nil {
-			return fiber.NewError(fiber.StatusBadRequest, "failed to store IPFS CID for vehicle")
-		}
 	}
 
 	// This may not be there, but if it is we should delete it.
@@ -1458,17 +1464,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			logger.Err(err).Msg("Failed to save transparent image to S3.")
 			return opaqueInternalError
 		}
-	}
-
-	sigBytes := common.FromHex(mr.Signature)
-
-	recAddr, err := helpers.Ecrecover(hash, sigBytes)
-	if err != nil {
-		return err
-	}
-
-	if recAddr != mvs.Owner {
-		return fiber.NewError(fiber.StatusBadRequest, "Signature incorrect.")
 	}
 
 	mtr := models.MetaTransactionRequest{
