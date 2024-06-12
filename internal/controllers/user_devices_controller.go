@@ -1314,10 +1314,6 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		},
 	}
 
-	if udc.Settings.IsProduction() {
-		return c.JSON(client.GetPayload(mvs))
-	}
-
 	mvdds := registry.MintVehicleWithDeviceDefinitionSign{
 		ManufacturerNode:   mvs.ManufacturerNode,
 		Owner:              mvs.Owner,
@@ -1384,37 +1380,23 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		},
 	}
 
-	var hash []byte
-	if udc.Settings.IsProduction() {
-		logger.Info().
-			Interface("httpRequestBody", mr).
-			Interface("client", client).Interface("mintVehicleSign", mvs).
-			Interface("typedData", client.GetPayload(mvs)).
-			Msg("Got request.")
+	mvdds := registry.MintVehicleWithDeviceDefinitionSign{
+		ManufacturerNode:   mvs.ManufacturerNode,
+		Owner:              mvs.Owner,
+		Attributes:         mvs.Attributes,
+		Infos:              mvs.Infos,
+		DeviceDefinitionID: dd.NameSlug,
+	}
 
-		hash, err = client.Hash(mvs)
-		if err != nil {
-			return opaqueInternalError
-		}
-	} else {
-		mvdds := registry.MintVehicleWithDeviceDefinitionSign{
-			ManufacturerNode:   mvs.ManufacturerNode,
-			Owner:              mvs.Owner,
-			Attributes:         mvs.Attributes,
-			Infos:              mvs.Infos,
-			DeviceDefinitionID: dd.NameSlug,
-		}
+	logger.Info().
+		Interface("httpRequestBody", mr).
+		Interface("client", client).Interface("mintVehicleWithDeviceDefinitionSign", mvdds).
+		Interface("typedData", client.GetPayload(&mvdds)).
+		Msg("Got request.")
 
-		logger.Info().
-			Interface("httpRequestBody", mr).
-			Interface("client", client).Interface("mintVehicleWithDeviceDefinitionSign", mvdds).
-			Interface("typedData", client.GetPayload(&mvdds)).
-			Msg("Got request.")
-
-		hash, err = client.Hash(&mvdds)
-		if err != nil {
-			return opaqueInternalError
-		}
+	hash, err := client.Hash(&mvdds)
+	if err != nil {
+		return opaqueInternalError
 	}
 
 	sigBytes := common.FromHex(mr.Signature)
@@ -1544,19 +1526,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
-			if udc.Settings.IsProduction() {
-				return client.MintVehicleAndSdSign(requestID, contracts.MintVehicleAndSdInput{
-					ManufacturerNode:     mvs.ManufacturerNode,
-					Owner:                mvs.Owner,
-					IntegrationNode:      new(big.Int).SetUint64(intID),
-					VehicleOwnerSig:      sigBytes,
-					SyntheticDeviceSig:   sign,
-					SyntheticDeviceAddr:  common.BytesToAddress(addr),
-					AttrInfoPairsVehicle: attrListsToAttrPairs(mvs.Attributes, mvs.Infos),
-					AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
-				})
-			}
-
 			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
 				ManufacturerNode:     mvs.ManufacturerNode,
 				Owner:                mvs.Owner,
@@ -1572,10 +1541,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}
 
 	logger.Info().Msgf("Submitted metatransaction request %s", requestID)
-
-	if udc.Settings.IsProduction() {
-		return client.MintVehicleSign(requestID, mvs.ManufacturerNode, mvs.Owner, attrListsToAttrPairs(mvs.Attributes, mvs.Infos), sigBytes)
-	}
 
 	return client.MintVehicleWithDeviceDefinitionSign(requestID, mvs.ManufacturerNode, mvs.Owner, dd.NameSlug, attrListsToAttrPairs(mvs.Attributes, mvs.Infos), sigBytes)
 }
@@ -1878,10 +1843,8 @@ func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID s
 		return nil, nil, fmt.Errorf("user does not have an Ethereum address on file")
 	}
 
-	if !udc.Settings.IsProduction() {
-		if dd.NameSlug == "" {
-			return nil, nil, fmt.Errorf("invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
-		}
+	if dd.NameSlug == "" {
+		return nil, nil, fmt.Errorf("invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
 	}
 
 	mvs := &registry.MintVehicleSign{
