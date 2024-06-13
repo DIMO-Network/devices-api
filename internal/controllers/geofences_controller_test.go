@@ -9,6 +9,9 @@ import (
 	"testing"
 
 	"github.com/DIMO-Network/shared/db"
+	"github.com/ericlagergren/decimal"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/types"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
@@ -119,6 +122,9 @@ func (s *GeofencesControllerTestSuite) TestPostGeofence() {
 	app := fiber.New()
 	app.Post("/user/geofences", test.AuthInjectorTestHandler(injectedUserID), c.Create)
 	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, ksuid.New().String(), nil, "", s.pdb)
+	ud.TokenID = types.NewNullDecimal(decimal.New(1, 0))
+	_, err := ud.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
 	req := CreateGeofence{
 		Name:          "Home",
 		Type:          "PrivacyFence",
