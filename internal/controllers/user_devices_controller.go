@@ -230,7 +230,6 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 		var sdStat *SyntheticDeviceStatus
 
 		var nft *VehicleNFTData
-		var credential *VINCredentialData
 		pu := []PrivilegeUser{}
 
 		if !d.TokenID.IsZero() || d.R.MintRequest != nil {
@@ -337,15 +336,6 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			}
 		}
 
-		if cred := d.R.Claim; cred != nil {
-			credential = &VINCredentialData{
-				VIN:       d.VinIdentifier.String,
-				ExpiresAt: cred.ExpirationDate,
-				IssuedAt:  cred.IssuanceDate,
-				Valid:     time.Now().Before(cred.ExpirationDate),
-			}
-		}
-
 		udf := UserDeviceFull{
 			ID:               d.ID,
 			VIN:              d.VinIdentifier.Ptr(),
@@ -359,7 +349,6 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			NFT:              nft,
 			OptedInAt:        d.OptedInAt.Ptr(),
 			PrivilegeUsers:   pu,
-			VINCredential:    credential,
 		}
 
 		apiDevices = append(apiDevices, udf)
@@ -401,7 +390,6 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 		qm.Load(models.UserDeviceRels.BurnRequest),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
-		qm.Load(models.UserDeviceRels.Claim),
 		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" DESC"))
 
 	devices, err := models.UserDevices(query...).All(c.Context(), udc.DBS().Reader)
@@ -469,7 +457,6 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 				qm.Load(models.UserDeviceRels.BurnRequest),
 				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
 				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
-				qm.Load(models.UserDeviceRels.Claim),
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
 				if err == sql.ErrNoRows {
@@ -1764,7 +1751,6 @@ type UserDeviceFull struct {
 	NFT              *VehicleNFTData               `json:"nft,omitempty"`
 	OptedInAt        *time.Time                    `json:"optedInAt"`
 	PrivilegeUsers   []PrivilegeUser               `json:"privilegedUsers"`
-	VINCredential    *VINCredentialData            `json:"vinCredential,omitempty"`
 }
 
 type VehicleNFTData struct {
@@ -1801,13 +1787,6 @@ type SyntheticDeviceStatus struct {
 	// BurnTransaction contains the status of the synthetic device burning meta-transaction,
 	// if one is in flight or has failed.
 	BurnTransaction *TransactionStatus `json:"burnTransaction,omitempty"`
-}
-
-type VINCredentialData struct {
-	IssuedAt  time.Time `json:"issuedAt"`
-	ExpiresAt time.Time `json:"expiresAt"`
-	Valid     bool      `json:"valid"`
-	VIN       string    `json:"vin"`
 }
 
 func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID string, userDevice *models.UserDevice) (*registry.MintVehicleSign, *ddgrpc.GetDeviceDefinitionItemResponse, error) {

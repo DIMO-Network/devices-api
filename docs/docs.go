@@ -2147,38 +2147,6 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/vehicle/{tokenId}/vin-credential": {
-            "get": {
-                "description": "Returns the vin credential for the vehicle with a given token id.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permission"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    }
-                }
-            }
         }
     },
     "definitions": {
@@ -3323,9 +3291,6 @@ const docTemplate = `{
                 },
                 "vinConfirmed": {
                     "type": "boolean"
-                },
-                "vinCredential": {
-                    "$ref": "#/definitions/internal_controllers.VINCredentialData"
                 }
             }
         },
@@ -3357,23 +3322,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/big.Int"
                 },
                 "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_controllers.VINCredentialData": {
-            "type": "object",
-            "properties": {
-                "expiresAt": {
-                    "type": "string"
-                },
-                "issuedAt": {
-                    "type": "string"
-                },
-                "valid": {
-                    "type": "boolean"
-                },
-                "vin": {
                     "type": "string"
                 }
             }

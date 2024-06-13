@@ -76,7 +76,6 @@ func (s *userDeviceRPCServer) GetUserDevice(ctx context.Context, req *pb.GetUser
 		models.UserDeviceWhere.ID.EQ(req.Id),
 		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-		qm.Load(models.UserDeviceRels.Claim),
 		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(ctx, s.dbs().Reader)
 	if err != nil {
@@ -96,7 +95,6 @@ func (s *userDeviceRPCServer) GetUserDeviceByVIN(ctx context.Context, req *pb.Ge
 		qm.OrderBy("vin_confirmed desc"),
 		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-		qm.Load(models.UserDeviceRels.Claim),
 		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(ctx, s.dbs().Reader)
 	if err != nil {
@@ -134,7 +132,6 @@ func (s *userDeviceRPCServer) GetUserDeviceByEthAddr(ctx context.Context, req *p
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-		qm.Load(models.UserDeviceRels.Claim),
 		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(ctx, s.dbs().Reader)
 
@@ -434,13 +431,6 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 			// These fields have been deprecated but are populated for backwards compatibility.
 			out.AftermarketDeviceBeneficiaryAddress = out.AftermarketDevice.Beneficiary //nolint:staticcheck
 			out.AftermarketDeviceTokenId = &out.AftermarketDevice.TokenId               //nolint:staticcheck
-		}
-
-		if vc := ud.R.Claim; vc != nil {
-			out.LatestVinCredential = &pb.VinCredential{
-				Id:         vc.ClaimID,
-				Expiration: timestamppb.New(vc.ExpirationDate),
-			}
 		}
 
 		if sd := ud.R.VehicleTokenSyntheticDevice; sd != nil && !sd.TokenID.IsZero() {
