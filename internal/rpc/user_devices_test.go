@@ -131,7 +131,7 @@ func TestGetUserDevice_AftermarketDeviceObj_NotNil(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	udResult, err := udService.GetUserDevice(ctx, &pb_devices.GetUserDeviceRequest{Id: userDeviceID})
 	assert.NoError(err)
@@ -157,7 +157,7 @@ func TestGetUserDevice_AftermarketDeviceObj_Nil(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	_, err = models.AftermarketDevices(
 		models.AftermarketDeviceWhere.UserID.EQ(null.StringFrom(userDeviceID)),
@@ -184,7 +184,7 @@ func TestGetUserDevice_PopulateDeprecatedFields(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	udResult, err := udService.GetUserDevice(ctx, &pb_devices.GetUserDeviceRequest{Id: userDeviceID})
 	assert.NoError(err)
@@ -210,7 +210,7 @@ func TestGetUserDevice_PopulateSyntheticDeviceFields(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	udResult, err := udService.GetUserDevice(ctx, &pb_devices.GetUserDeviceRequest{Id: userDeviceID})
 	assert.NoError(err)
@@ -245,7 +245,7 @@ func TestGetUserDevice_NoSyntheticDeviceFields_WhenNoTokenID(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	udResult, err := udService.GetUserDevice(ctx, &pb_devices.GetUserDeviceRequest{Id: userDeviceID})
 	assert.NoError(err)

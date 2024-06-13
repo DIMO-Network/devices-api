@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"math/big"
 	"strings"
 
 	mtpgrpc "github.com/DIMO-Network/meta-transaction-processor/pkg/grpc"
@@ -31,7 +30,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
-	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/models"
 	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 )
@@ -43,7 +41,6 @@ func NewUserDeviceRPCService(
 	logger *zerolog.Logger,
 	deviceDefSvc services.DeviceDefinitionService,
 	eventService services.EventService,
-	vcIss *issuer.Issuer,
 	userDeviceService services.UserDeviceService,
 	teslaTaskService services.TeslaTaskService,
 	smartcarTaskSvc services.SmartcarTaskService,
@@ -54,7 +51,6 @@ func NewUserDeviceRPCService(
 		hardwareTemplateService: hardwareTemplateService,
 		deviceDefSvc:            deviceDefSvc,
 		eventService:            eventService,
-		vcIss:                   vcIss,
 		userDeviceSvc:           userDeviceService,
 		teslaTaskService:        teslaTaskService,
 		smartcarTaskSvc:         smartcarTaskSvc,
@@ -70,7 +66,6 @@ type userDeviceRPCServer struct {
 	settings                *config.Settings
 	deviceDefSvc            services.DeviceDefinitionService
 	eventService            services.EventService
-	vcIss                   *issuer.Issuer
 	userDeviceSvc           services.UserDeviceService
 	teslaTaskService        services.TeslaTaskService
 	smartcarTaskSvc         services.SmartcarTaskService
@@ -562,31 +557,6 @@ func nullTimeToPB(t null.Time) *timestamppb.Timestamp {
 	}
 
 	return timestamppb.New(t.Time)
-}
-
-func (s *userDeviceRPCServer) IssueVinCredential(ctx context.Context, req *pb.IssueVinCredentialRequest) (*pb.IssueVinCredentialResponse, error) {
-	ud, err := models.UserDevices(
-		models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(int64(req.TokenId), 0))),
-	).One(ctx, s.dbs().Reader)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, status.Error(codes.NotFound, "No vehicle with that id.")
-		}
-		return nil, err
-	}
-
-	if req.Vin != ud.VinIdentifier.String {
-		return nil, status.Error(codes.InvalidArgument, "Input and NFT VINs do not much.")
-	}
-
-	credID, err := s.vcIss.VIN(req.Vin, new(big.Int).SetUint64(req.TokenId), req.ExpiresAt.AsTime())
-	if err != nil {
-		s.logger.Err(err).Msg("Failed to create vin credential.")
-		return nil, err
-	}
-	return &pb.IssueVinCredentialResponse{
-		CredentialId: credID,
-	}, nil
 }
 
 func (s *userDeviceRPCServer) UpdateUserDeviceMetadata(ctx context.Context, req *pb.UpdateUserDeviceMetadataRequest) (*emptypb.Empty, error) {

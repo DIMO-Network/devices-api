@@ -74,9 +74,6 @@ type Settings struct {
 
 	MetaTransactionProcessorGRPCAddr string `yaml:"META_TRANSACTION_PROCESSOR_GRPC_ADDR"`
 
-	// IssuerPrivateKey is a base64-encoded secp256k1 private key, used to sign
-	// VIN verifiable credentials.
-	IssuerPrivateKey        string `yaml:"ISSUER_PRIVATE_KEY"`
 	SyntheticWalletGRPCAddr string `yaml:"SYNTHETIC_WALLET_GRPC_ADDR"`
 
 	DeviceFingerprintTopic         string `yaml:"DEVICE_FINGERPRINT_TOPIC"`
