@@ -15,7 +15,6 @@ import (
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/Shopify/sarama"
-	"github.com/ericlagergren/decimal"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
@@ -23,6 +22,7 @@ import (
 	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/types"
 	"golang.org/x/exp/slices"
 )
 
@@ -86,26 +86,9 @@ func (g *GeofencesController) Create(c *fiber.Ctx) error {
 		return helpers.ErrorResponseHandler(c, errors.New("Geofence with that name already exists for this user"), fiber.StatusBadRequest)
 	}
 
-	var userDevices []*models.UserDevice
-
-	// Check that the user has access to the devices in the request.
-	for _, userDeviceID := range create.UserDeviceIDs {
-		ud, err := models.UserDevices(
-			models.UserDeviceWhere.ID.EQ(userDeviceID),
-			models.UserDeviceWhere.UserID.EQ(userID),
-		).One(c.Context(), tx)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return fiber.NewError(fiber.StatusBadRequest, "User doesn't own a device with id %q.", userDeviceID)
-			}
-			return err
-		}
-
-		if ud.TokenID.IsZero() {
-			return fiber.NewError(fiber.StatusBadRequest, "Mint device %s before setting a geofence.", userDeviceID)
-		}
-
-		userDevices = append(userDevices, ud)
+	uds, err := g.createDeviceList(c.Context(), tx, userID, create.UserDeviceIDs)
+	if err != nil {
+		return err
 	}
 
 	geofence := models.Geofence{
@@ -119,9 +102,9 @@ func (g *GeofencesController) Create(c *fiber.Ctx) error {
 	if err != nil {
 		return errors.Wrap(err, "error inserting geofence")
 	}
-	for _, uID := range create.UserDeviceIDs {
+	for _, ud := range uds {
 		geoToUser := models.UserDeviceToGeofence{
-			UserDeviceID: uID,
+			UserDeviceID: ud.ID,
 			GeofenceID:   geofence.ID,
 		}
 		err = geoToUser.Upsert(c.Context(), tx, true, []string{"user_device_id", "geofence_id"}, boil.Infer(), boil.Infer())
@@ -131,8 +114,8 @@ func (g *GeofencesController) Create(c *fiber.Ctx) error {
 	}
 
 	if create.Type == models.GeofenceTypePrivacyFence {
-		for _, ud := range userDevices {
-			if err := g.EmitPrivacyFenceUpdates(c.Context(), tx, ud.ID, ud.TokenID.Big); err != nil {
+		for _, ud := range uds {
+			if err := g.EmitPrivacyFenceUpdates(c.Context(), tx, ud.ID, ud.TokenID); err != nil {
 				return err
 			}
 		}
@@ -150,7 +133,7 @@ type FenceData struct {
 	H3Indexes []string `json:"h3Indexes"`
 }
 
-func (g *GeofencesController) EmitPrivacyFenceUpdates(ctx context.Context, db boil.ContextExecutor, userDeviceID string, tokenID *decimal.Big) error {
+func (g *GeofencesController) EmitPrivacyFenceUpdates(ctx context.Context, db boil.ContextExecutor, userDeviceID string, tokenID types.NullDecimal) error {
 	rels, err := models.UserDeviceToGeofences(
 		models.UserDeviceToGeofenceWhere.UserDeviceID.EQ(userDeviceID),
 		qm.Load(models.UserDeviceToGeofenceRels.Geofence),
@@ -202,13 +185,15 @@ func (g *GeofencesController) EmitPrivacyFenceUpdates(ctx context.Context, db bo
 		return err
 	}
 
-	msg = &sarama.ProducerMessage{
-		Topic: g.Settings.PrivacyFenceTopicV2,
-		Key:   sarama.StringEncoder(tokenID.String()),
-		Value: value,
-	}
-	if _, _, err := g.producer.SendMessage(msg); err != nil {
-		return err
+	if !tokenID.IsZero() {
+		msg = &sarama.ProducerMessage{
+			Topic: g.Settings.PrivacyFenceTopicV2,
+			Key:   sarama.StringEncoder(tokenID.String()),
+			Value: value,
+		}
+		if _, _, err := g.producer.SendMessage(msg); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -344,10 +329,14 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 	if err != nil {
 		return errors.Wrap(err, "error updating geofence")
 	}
-	for _, uID := range update.UserDeviceIDs {
-		affectedDeviceIDs.Add(uID)
+
+	uds, err := g.createDeviceList(c.Context(), tx, userID, update.UserDeviceIDs)
+	if err != nil {
+		return err
+	}
+	for _, ud := range uds {
 		geoToUser := models.UserDeviceToGeofence{
-			UserDeviceID: uID,
+			UserDeviceID: ud.ID,
 			GeofenceID:   geofence.ID,
 		}
 		err = geoToUser.Upsert(c.Context(), tx, true,
@@ -355,12 +344,8 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 		if err != nil {
 			return errors.Wrapf(err, "error upserting user_device_to_geofence")
 		}
-	}
 
-	for _, uID := range affectedDeviceIDs.Slice() {
-		if err := g.EmitPrivacyFenceUpdates(c.Context(), tx, uID); err != nil {
-			return err
-		}
+		g.EmitPrivacyFenceUpdates(c.Context(), tx, ud.ID, ud.TokenID)
 	}
 
 	err = tx.Commit()
@@ -369,6 +354,42 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
+}
+
+// createDeviceList checks that the user is allowed to attach a geofence to user devices specified
+// by the given id list. It also deduplicates from this list and makes sure that the devices
+// are minted. Errors returned from this function are safe to return to Fiber.
+func (g *GeofencesController) createDeviceList(ctx context.Context, tx *sql.Tx, userID string, userDeviceIDs []string) ([]*models.UserDevice, error) {
+	var out []*models.UserDevice
+
+	seenIDs := shared.NewStringSet()
+
+	for _, id := range userDeviceIDs {
+		if seenIDs.Contains(id) {
+			continue
+		}
+
+		ud, err := models.UserDevices(
+			models.UserDeviceWhere.ID.EQ(id),
+			models.UserDeviceWhere.UserID.EQ(userID),
+		).One(ctx, tx)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, fiber.NewError(fiber.StatusBadRequest, "User doesn't own a device with id %q.", id)
+			}
+			return nil, err
+		}
+
+		if ud.TokenID.IsZero() {
+			return nil, fiber.NewError(fiber.StatusBadRequest, "Mint device %s before attaching a geofence to it.", id)
+		}
+
+		seenIDs.Add(id)
+
+		out = append(out, ud)
+	}
+
+	return out, nil
 }
 
 // Delete godoc
@@ -392,7 +413,7 @@ func (g *GeofencesController) Delete(c *fiber.Ctx) error {
 	geo, err := models.Geofences(
 		models.GeofenceWhere.UserID.EQ(userID),
 		models.GeofenceWhere.ID.EQ(id),
-		qm.Load(models.GeofenceRels.UserDeviceToGeofences),
+		qm.Load(qm.Rels(models.GeofenceRels.UserDeviceToGeofences, models.UserDeviceToGeofenceRels.UserDevice)),
 	).One(c.Context(), tx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -402,7 +423,7 @@ func (g *GeofencesController) Delete(c *fiber.Ctx) error {
 	}
 
 	for _, rel := range geo.R.UserDeviceToGeofences {
-		if err := g.EmitPrivacyFenceUpdates(c.Context(), tx, rel.UserDeviceID); err != nil {
+		if err := g.EmitPrivacyFenceUpdates(c.Context(), tx, rel.R.UserDevice.ID, rel.R.UserDevice.TokenID); err != nil {
 			return err
 		}
 	}
