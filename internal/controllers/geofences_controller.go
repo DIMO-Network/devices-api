@@ -15,6 +15,7 @@ import (
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/Shopify/sarama"
+	"github.com/ericlagergren/decimal"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
@@ -69,6 +70,7 @@ func (g *GeofencesController) Create(c *fiber.Ctx) error {
 	if err := create.Validate(); err != nil {
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusBadRequest)
 	}
+
 	tx, err := g.DBS().Writer.DB.BeginTx(c.Context(), nil)
 	defer tx.Rollback() //nolint
 	if err != nil {
@@ -84,23 +86,26 @@ func (g *GeofencesController) Create(c *fiber.Ctx) error {
 		return helpers.ErrorResponseHandler(c, errors.New("Geofence with that name already exists for this user"), fiber.StatusBadRequest)
 	}
 
+	var userDevices []*models.UserDevice
+
 	// Check that the user has access to the devices in the request.
-	if len(create.UserDeviceIDs) > 0 {
-		allUserDevices, err := models.UserDevices(models.UserDeviceWhere.UserID.EQ(userID)).All(c.Context(), tx)
+	for _, userDeviceID := range create.UserDeviceIDs {
+		ud, err := models.UserDevices(
+			models.UserDeviceWhere.ID.EQ(userDeviceID),
+			models.UserDeviceWhere.UserID.EQ(userID),
+		).One(c.Context(), tx)
 		if err != nil {
-			return fmt.Errorf("failed to look up user's devices: %w", err)
-		}
-
-		allUserDeviceIDs := shared.NewStringSet()
-		for _, userDevice := range allUserDevices {
-			allUserDeviceIDs.Add(userDevice.ID)
-		}
-
-		for _, userDeviceID := range create.UserDeviceIDs {
-			if !allUserDeviceIDs.Contains(userDeviceID) {
-				return helpers.ErrorResponseHandler(c, fmt.Errorf("user does not have a device with id %s", userDeviceID), fiber.StatusBadRequest)
+			if errors.Is(err, sql.ErrNoRows) {
+				return fiber.NewError(fiber.StatusBadRequest, "User doesn't own a device with id %q.", userDeviceID)
 			}
+			return err
 		}
+
+		if ud.TokenID.IsZero() {
+			return fiber.NewError(fiber.StatusBadRequest, "Mint device %s before setting a geofence.", userDeviceID)
+		}
+
+		userDevices = append(userDevices, ud)
 	}
 
 	geofence := models.Geofence{
@@ -126,8 +131,8 @@ func (g *GeofencesController) Create(c *fiber.Ctx) error {
 	}
 
 	if create.Type == models.GeofenceTypePrivacyFence {
-		for _, userDeviceID := range create.UserDeviceIDs {
-			if err := g.EmitPrivacyFenceUpdates(c.Context(), tx, userDeviceID); err != nil {
+		for _, ud := range userDevices {
+			if err := g.EmitPrivacyFenceUpdates(c.Context(), tx, ud.ID, ud.TokenID.Big); err != nil {
 				return err
 			}
 		}
@@ -145,7 +150,7 @@ type FenceData struct {
 	H3Indexes []string `json:"h3Indexes"`
 }
 
-func (g *GeofencesController) EmitPrivacyFenceUpdates(ctx context.Context, db boil.ContextExecutor, userDeviceID string) error {
+func (g *GeofencesController) EmitPrivacyFenceUpdates(ctx context.Context, db boil.ContextExecutor, userDeviceID string, tokenID *decimal.Big) error {
 	rels, err := models.UserDeviceToGeofences(
 		models.UserDeviceToGeofenceWhere.UserDeviceID.EQ(userDeviceID),
 		qm.Load(models.UserDeviceToGeofenceRels.Geofence),
@@ -187,9 +192,19 @@ func (g *GeofencesController) EmitPrivacyFenceUpdates(ctx context.Context, db bo
 
 		value = sarama.ByteEncoder(b)
 	}
+
 	msg := &sarama.ProducerMessage{
 		Topic: g.Settings.PrivacyFenceTopic,
 		Key:   sarama.StringEncoder(userDeviceID),
+		Value: value,
+	}
+	if _, _, err := g.producer.SendMessage(msg); err != nil {
+		return err
+	}
+
+	msg = &sarama.ProducerMessage{
+		Topic: g.Settings.PrivacyFenceTopicV2,
+		Key:   sarama.StringEncoder(tokenID.String()),
 		Value: value,
 	}
 	if _, _, err := g.producer.SendMessage(msg); err != nil {
