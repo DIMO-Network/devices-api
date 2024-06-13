@@ -186,7 +186,7 @@ func (g *GeofencesController) EmitPrivacyFenceUpdates(ctx context.Context, db bo
 	}
 
 	if !tokenID.IsZero() {
-		msg = &sarama.ProducerMessage{
+		msg := &sarama.ProducerMessage{
 			Topic: g.Settings.PrivacyFenceTopicV2,
 			Key:   sarama.StringEncoder(tokenID.String()),
 			Value: value,
@@ -357,8 +357,8 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 }
 
 // createDeviceList checks that the user is allowed to attach a geofence to user devices specified
-// by the given id list. It also deduplicates from this list and makes sure that the devices
-// are minted. Errors returned from this function are safe to return to Fiber.
+// by the given id list. It also deduplicates devices and makes sure that they are minted. Errors
+// returned from this function are safe to return to Fiber.
 func (g *GeofencesController) createDeviceList(ctx context.Context, tx *sql.Tx, userID string, userDeviceIDs []string) ([]*models.UserDevice, error) {
 	var out []*models.UserDevice
 
