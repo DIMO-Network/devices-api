@@ -345,7 +345,10 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 			return errors.Wrapf(err, "error upserting user_device_to_geofence")
 		}
 
-		g.EmitPrivacyFenceUpdates(c.Context(), tx, ud.ID, ud.TokenID)
+		err = g.EmitPrivacyFenceUpdates(c.Context(), tx, ud.ID, ud.TokenID)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = tx.Commit()
@@ -360,7 +363,7 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 // by the given id list. It also deduplicates devices and makes sure that they are minted. Errors
 // returned from this function are safe to return to Fiber.
 func (g *GeofencesController) createDeviceList(ctx context.Context, tx *sql.Tx, userID string, userDeviceIDs []string) ([]*models.UserDevice, error) {
-	var out []*models.UserDevice
+	out := make([]*models.UserDevice, 0, len(userDeviceIDs))
 
 	seenIDs := shared.NewStringSet()
 
