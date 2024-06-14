@@ -313,9 +313,15 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 		return err
 	}
 
+	// Set will contain vehicles that were previously attached to this fence and vehicles that
+	// will be attached to this fence.
 	affectedDeviceIDs := shared.NewStringSet()
+
 	for _, rel := range geofence.R.UserDeviceToGeofences {
 		affectedDeviceIDs.Add(rel.UserDeviceID)
+	}
+	for _, newUD := range update.UserDeviceIDs {
+		affectedDeviceIDs.Add(newUD)
 	}
 
 	geofence.Name = update.Name
@@ -330,7 +336,7 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 		return errors.Wrap(err, "error updating geofence")
 	}
 
-	uds, err := g.createDeviceList(c.Context(), tx, userID, update.UserDeviceIDs)
+	uds, err := g.createDeviceList(c.Context(), tx, userID, affectedDeviceIDs.Slice())
 	if err != nil {
 		return err
 	}
