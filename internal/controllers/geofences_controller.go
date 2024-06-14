@@ -338,17 +338,21 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	for _, ud := range uds {
+
+	for _, uID := range update.UserDeviceIDs {
 		geoToUser := models.UserDeviceToGeofence{
-			UserDeviceID: ud.ID,
+			UserDeviceID: uID,
 			GeofenceID:   geofence.ID,
 		}
+
 		err = geoToUser.Upsert(c.Context(), tx, true,
 			[]string{models.UserDeviceToGeofenceColumns.UserDeviceID, models.UserDeviceToGeofenceColumns.GeofenceID}, boil.Infer(), boil.Infer())
 		if err != nil {
 			return errors.Wrapf(err, "error upserting user_device_to_geofence")
 		}
+	}
 
+	for _, ud := range uds {
 		err = g.EmitPrivacyFenceUpdates(c.Context(), tx, ud.ID, ud.TokenID)
 		if err != nil {
 			return err
