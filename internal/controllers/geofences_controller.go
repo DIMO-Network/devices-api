@@ -65,6 +65,7 @@ func (g *GeofencesController) Create(c *fiber.Ctx) error {
 	create := CreateGeofence{}
 	if err := c.BodyParser(&create); err != nil {
 		// Return status 400 and error message.
+		// TODO(elffjs): Get rid of these old-style error responses.
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusBadRequest)
 	}
 	if err := create.Validate(); err != nil {
@@ -100,6 +101,7 @@ func (g *GeofencesController) Create(c *fiber.Ctx) error {
 	}
 	err = geofence.Insert(c.Context(), tx, boil.Infer())
 	if err != nil {
+		// TODO(elffjs): Get rid of pkg/errors.
 		return errors.Wrap(err, "error inserting geofence")
 	}
 	for _, ud := range uds {
@@ -107,6 +109,7 @@ func (g *GeofencesController) Create(c *fiber.Ctx) error {
 			UserDeviceID: ud.ID,
 			GeofenceID:   geofence.ID,
 		}
+		// TODO(elffjs): This upsert doesn't seem to hurt, but does it help at all?
 		err = geoToUser.Upsert(c.Context(), tx, true, []string{"user_device_id", "geofence_id"}, boil.Infer(), boil.Infer())
 		if err != nil {
 			return errors.Wrapf(err, "error upserting user_device_to_geofence")
@@ -185,6 +188,8 @@ func (g *GeofencesController) EmitPrivacyFenceUpdates(ctx context.Context, db bo
 		return err
 	}
 
+	// Only allowing for this because of Delete.
+	// TODO(elffjs): Is it okay that we re-use the subject here?
 	if !tokenID.IsZero() {
 		msg := &sarama.ProducerMessage{
 			Topic: g.Settings.PrivacyFenceTopicV2,
@@ -219,12 +224,14 @@ func (g *GeofencesController) GetAll(c *fiber.Ctx) error {
 		return err
 	}
 
+	// TODO(elffjs): Fix up the Swagger response type here.
 	if len(items) == 0 {
 		return c.JSON(fiber.Map{
 			"geofences": []GetGeofence{},
 		})
 	}
 
+	// TODO(elffjs): Clean this definition dance up.
 	// pull out list of udtg. device def ids
 	var ddIDs []string
 	for _, item := range items {
@@ -345,6 +352,8 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 			GeofenceID:   geofence.ID,
 		}
 
+		// TODO(elffjs): We should delete these join rows when a vehicle used the fence
+		// before this call, and then the request removes that relation.
 		err = geoToUser.Upsert(c.Context(), tx, true,
 			[]string{models.UserDeviceToGeofenceColumns.UserDeviceID, models.UserDeviceToGeofenceColumns.GeofenceID}, boil.Infer(), boil.Infer())
 		if err != nil {
@@ -485,6 +494,7 @@ func (g *CreateGeofence) Validate() error {
 	return validation.ValidateStruct(g,
 		validation.Field(&g.Name, validation.Required),
 		validation.Field(&g.Type, validation.Required, validation.In("PrivacyFence", "TriggerEntry", "TriggerExit")),
+		// TODO(elffjs): Validate this more. Is it hex? Is it a reasonable length for H3?
 		validation.Field(&g.H3Indexes, validation.Length(0, maxFenceTiles)),
 	)
 }
