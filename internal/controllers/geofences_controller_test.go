@@ -242,6 +242,8 @@ func (s *GeofencesControllerTestSuite) TestPutGeofence() {
 	gf := test.SetupCreateGeofence(s.T(), injectedUserID, "something", &ud, s.pdb)
 
 	// The fence is being detached from the device and it has type TriggerEntry anyway.
+	producer.ExpectSendMessageWithMessageCheckerFunctionAndSucceed(checkForDeviceAndH3(ud.ID, []string{}))
+	producer.ExpectSendMessageWithMessageCheckerFunctionAndSucceed(checkForDeviceAndH3(ud.TokenID.String(), []string{}))
 
 	req := CreateGeofence{
 		Name:          "School",
