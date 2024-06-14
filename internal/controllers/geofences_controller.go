@@ -363,9 +363,9 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-// createDeviceList checks that the user is allowed to attach a geofence to user devices specified
-// by the given id list. It also deduplicates devices and makes sure that they are minted. Errors
-// returned from this function are safe to return to Fiber.
+// createDeviceList checks that the listed vehicles exist, are minted, and are owned
+// by the user. It also performs deduplication, and returns a list of the database
+// objects for the vehicles. Errors returned from this function are safe to return to Fiber.
 func (g *GeofencesController) createDeviceList(ctx context.Context, tx *sql.Tx, userID string, userDeviceIDs []string) ([]*models.UserDevice, error) {
 	out := make([]*models.UserDevice, 0, len(userDeviceIDs))
 
