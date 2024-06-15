@@ -392,6 +392,7 @@ func (g *GeofencesController) createDeviceList(ctx context.Context, tx *sql.Tx, 
 			continue
 		}
 
+		// TODO(elffjs): Respect wallet ownership too.
 		ud, err := models.UserDevices(
 			models.UserDeviceWhere.ID.EQ(id),
 			models.UserDeviceWhere.UserID.EQ(userID),
