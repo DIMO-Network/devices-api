@@ -24,4 +24,4 @@ jobs:
         with:
           version: latest
           only-new-issues: false
-          args: --modules-download-mode=readonly --timeout=5m
+          args: --modules-download-mode=readonly --timeout=10m

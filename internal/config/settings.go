@@ -25,6 +25,7 @@ type Settings struct {
 	KafkaBrokers         string      `yaml:"KAFKA_BROKERS"`
 	// DeviceStatusTopic                 string      `yaml:"DEVICE_STATUS_TOPIC"`
 	PrivacyFenceTopic                 string `yaml:"PRIVACY_FENCE_TOPIC"`
+	PrivacyFenceTopicV2               string `yaml:"PRIVACY_FENCE_TOPIC_V2"`
 	TaskRunNowTopic                   string `yaml:"TASK_RUN_NOW_TOPIC"`
 	TaskStopTopic                     string `yaml:"TASK_STOP_TOPIC"`
 	TaskCredentialTopic               string `yaml:"TASK_CREDENTIAL_TOPIC"`

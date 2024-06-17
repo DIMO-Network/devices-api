@@ -22,6 +22,7 @@ import (
 	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/types"
 	"golang.org/x/exp/slices"
 )
 
@@ -64,11 +65,13 @@ func (g *GeofencesController) Create(c *fiber.Ctx) error {
 	create := CreateGeofence{}
 	if err := c.BodyParser(&create); err != nil {
 		// Return status 400 and error message.
+		// TODO(elffjs): Get rid of these old-style error responses.
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusBadRequest)
 	}
 	if err := create.Validate(); err != nil {
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusBadRequest)
 	}
+
 	tx, err := g.DBS().Writer.DB.BeginTx(c.Context(), nil)
 	defer tx.Rollback() //nolint
 	if err != nil {
@@ -84,23 +87,9 @@ func (g *GeofencesController) Create(c *fiber.Ctx) error {
 		return helpers.ErrorResponseHandler(c, errors.New("Geofence with that name already exists for this user"), fiber.StatusBadRequest)
 	}
 
-	// Check that the user has access to the devices in the request.
-	if len(create.UserDeviceIDs) > 0 {
-		allUserDevices, err := models.UserDevices(models.UserDeviceWhere.UserID.EQ(userID)).All(c.Context(), tx)
-		if err != nil {
-			return fmt.Errorf("failed to look up user's devices: %w", err)
-		}
-
-		allUserDeviceIDs := shared.NewStringSet()
-		for _, userDevice := range allUserDevices {
-			allUserDeviceIDs.Add(userDevice.ID)
-		}
-
-		for _, userDeviceID := range create.UserDeviceIDs {
-			if !allUserDeviceIDs.Contains(userDeviceID) {
-				return helpers.ErrorResponseHandler(c, fmt.Errorf("user does not have a device with id %s", userDeviceID), fiber.StatusBadRequest)
-			}
-		}
+	uds, err := g.createDeviceList(c.Context(), tx, userID, create.UserDeviceIDs)
+	if err != nil {
+		return err
 	}
 
 	geofence := models.Geofence{
@@ -112,13 +101,15 @@ func (g *GeofencesController) Create(c *fiber.Ctx) error {
 	}
 	err = geofence.Insert(c.Context(), tx, boil.Infer())
 	if err != nil {
+		// TODO(elffjs): Get rid of pkg/errors.
 		return errors.Wrap(err, "error inserting geofence")
 	}
-	for _, uID := range create.UserDeviceIDs {
+	for _, ud := range uds {
 		geoToUser := models.UserDeviceToGeofence{
-			UserDeviceID: uID,
+			UserDeviceID: ud.ID,
 			GeofenceID:   geofence.ID,
 		}
+		// TODO(elffjs): This upsert doesn't seem to hurt, but does it help at all?
 		err = geoToUser.Upsert(c.Context(), tx, true, []string{"user_device_id", "geofence_id"}, boil.Infer(), boil.Infer())
 		if err != nil {
 			return errors.Wrapf(err, "error upserting user_device_to_geofence")
@@ -126,8 +117,8 @@ func (g *GeofencesController) Create(c *fiber.Ctx) error {
 	}
 
 	if create.Type == models.GeofenceTypePrivacyFence {
-		for _, userDeviceID := range create.UserDeviceIDs {
-			if err := g.EmitPrivacyFenceUpdates(c.Context(), tx, userDeviceID); err != nil {
+		for _, ud := range uds {
+			if err := g.EmitPrivacyFenceUpdates(c.Context(), tx, ud.ID, ud.TokenID); err != nil {
 				return err
 			}
 		}
@@ -145,7 +136,7 @@ type FenceData struct {
 	H3Indexes []string `json:"h3Indexes"`
 }
 
-func (g *GeofencesController) EmitPrivacyFenceUpdates(ctx context.Context, db boil.ContextExecutor, userDeviceID string) error {
+func (g *GeofencesController) EmitPrivacyFenceUpdates(ctx context.Context, db boil.ContextExecutor, userDeviceID string, tokenID types.NullDecimal) error {
 	rels, err := models.UserDeviceToGeofences(
 		models.UserDeviceToGeofenceWhere.UserDeviceID.EQ(userDeviceID),
 		qm.Load(models.UserDeviceToGeofenceRels.Geofence),
@@ -187,6 +178,7 @@ func (g *GeofencesController) EmitPrivacyFenceUpdates(ctx context.Context, db bo
 
 		value = sarama.ByteEncoder(b)
 	}
+
 	msg := &sarama.ProducerMessage{
 		Topic: g.Settings.PrivacyFenceTopic,
 		Key:   sarama.StringEncoder(userDeviceID),
@@ -194,6 +186,19 @@ func (g *GeofencesController) EmitPrivacyFenceUpdates(ctx context.Context, db bo
 	}
 	if _, _, err := g.producer.SendMessage(msg); err != nil {
 		return err
+	}
+
+	// Only allowing for this because of Delete.
+	// TODO(elffjs): Is it okay that we re-use the subject here?
+	if !tokenID.IsZero() {
+		msg := &sarama.ProducerMessage{
+			Topic: g.Settings.PrivacyFenceTopicV2,
+			Key:   sarama.StringEncoder(tokenID.String()),
+			Value: value,
+		}
+		if _, _, err := g.producer.SendMessage(msg); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -219,12 +224,14 @@ func (g *GeofencesController) GetAll(c *fiber.Ctx) error {
 		return err
 	}
 
+	// TODO(elffjs): Fix up the Swagger response type here.
 	if len(items) == 0 {
 		return c.JSON(fiber.Map{
 			"geofences": []GetGeofence{},
 		})
 	}
 
+	// TODO(elffjs): Clean this definition dance up.
 	// pull out list of udtg. device def ids
 	var ddIDs []string
 	for _, item := range items {
@@ -313,14 +320,18 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 		return err
 	}
 
-	affectedDeviceIDs := shared.NewStringSet()
+	// This list will contain the vehicles that were previously attached to this fence and the
+	// vehicles that will be attached to this fence.
+	affectedDeviceIDs := update.UserDeviceIDs
+
 	for _, rel := range geofence.R.UserDeviceToGeofences {
-		affectedDeviceIDs.Add(rel.UserDeviceID)
+		affectedDeviceIDs = append(affectedDeviceIDs, rel.UserDeviceID)
 	}
 
 	geofence.Name = update.Name
 	geofence.Type = update.Type
 	geofence.H3Indexes = update.H3Indexes
+
 	_, err = geofence.Update(c.Context(), tx, boil.Whitelist(
 		models.GeofenceColumns.Name,
 		models.GeofenceColumns.Type,
@@ -329,12 +340,20 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 	if err != nil {
 		return errors.Wrap(err, "error updating geofence")
 	}
+
+	uds, err := g.createDeviceList(c.Context(), tx, userID, affectedDeviceIDs)
+	if err != nil {
+		return err
+	}
+
 	for _, uID := range update.UserDeviceIDs {
-		affectedDeviceIDs.Add(uID)
 		geoToUser := models.UserDeviceToGeofence{
 			UserDeviceID: uID,
 			GeofenceID:   geofence.ID,
 		}
+
+		// TODO(elffjs): We should delete these join rows when a vehicle used the fence
+		// before this call, and then the request removes that relation.
 		err = geoToUser.Upsert(c.Context(), tx, true,
 			[]string{models.UserDeviceToGeofenceColumns.UserDeviceID, models.UserDeviceToGeofenceColumns.GeofenceID}, boil.Infer(), boil.Infer())
 		if err != nil {
@@ -342,8 +361,9 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 		}
 	}
 
-	for _, uID := range affectedDeviceIDs.Slice() {
-		if err := g.EmitPrivacyFenceUpdates(c.Context(), tx, uID); err != nil {
+	for _, ud := range uds {
+		err = g.EmitPrivacyFenceUpdates(c.Context(), tx, ud.ID, ud.TokenID)
+		if err != nil {
 			return err
 		}
 	}
@@ -354,6 +374,46 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
+}
+
+// createDeviceList checks that the given user can attach geofences to the vehicles
+// with the given ids, and returns a slice of database objects for those vehicles.
+//
+// Specifically, the vehicles must exist, be minted, and be owned by the user. This function
+// performs deduplication, so the length of the output slice may not match that of
+// the input slice. Errors returned from this function are safe to return to Fiber.
+func (g *GeofencesController) createDeviceList(ctx context.Context, tx *sql.Tx, userID string, userDeviceIDs []string) ([]*models.UserDevice, error) {
+	out := make([]*models.UserDevice, 0, len(userDeviceIDs))
+
+	seenIDs := shared.NewStringSet()
+
+	for _, id := range userDeviceIDs {
+		if seenIDs.Contains(id) {
+			continue
+		}
+
+		// TODO(elffjs): Respect wallet ownership too.
+		ud, err := models.UserDevices(
+			models.UserDeviceWhere.ID.EQ(id),
+			models.UserDeviceWhere.UserID.EQ(userID),
+		).One(ctx, tx)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, fiber.NewError(fiber.StatusBadRequest, "User doesn't own a device with id %q.", id)
+			}
+			return nil, err
+		}
+
+		if ud.TokenID.IsZero() {
+			return nil, fiber.NewError(fiber.StatusBadRequest, "Mint device %s before attaching a geofence to it.", id)
+		}
+
+		seenIDs.Add(id)
+
+		out = append(out, ud)
+	}
+
+	return out, nil
 }
 
 // Delete godoc
@@ -377,7 +437,7 @@ func (g *GeofencesController) Delete(c *fiber.Ctx) error {
 	geo, err := models.Geofences(
 		models.GeofenceWhere.UserID.EQ(userID),
 		models.GeofenceWhere.ID.EQ(id),
-		qm.Load(models.GeofenceRels.UserDeviceToGeofences),
+		qm.Load(qm.Rels(models.GeofenceRels.UserDeviceToGeofences, models.UserDeviceToGeofenceRels.UserDevice)),
 	).One(c.Context(), tx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -387,7 +447,7 @@ func (g *GeofencesController) Delete(c *fiber.Ctx) error {
 	}
 
 	for _, rel := range geo.R.UserDeviceToGeofences {
-		if err := g.EmitPrivacyFenceUpdates(c.Context(), tx, rel.UserDeviceID); err != nil {
+		if err := g.EmitPrivacyFenceUpdates(c.Context(), tx, rel.R.UserDevice.ID, rel.R.UserDevice.TokenID); err != nil {
 			return err
 		}
 	}
@@ -435,6 +495,7 @@ func (g *CreateGeofence) Validate() error {
 	return validation.ValidateStruct(g,
 		validation.Field(&g.Name, validation.Required),
 		validation.Field(&g.Type, validation.Required, validation.In("PrivacyFence", "TriggerEntry", "TriggerExit")),
+		// TODO(elffjs): Validate this more. Is it hex? Is it a reasonable length for H3?
 		validation.Field(&g.H3Indexes, validation.Length(0, maxFenceTiles)),
 	)
 }

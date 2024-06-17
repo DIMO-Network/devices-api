@@ -9,6 +9,9 @@ import (
 	"testing"
 
 	"github.com/DIMO-Network/shared/db"
+	"github.com/ericlagergren/decimal"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/types"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
@@ -34,11 +37,11 @@ type partialFenceCloudEvent struct {
 	} `json:"data"`
 }
 
-func checkForDeviceAndH3(userDeviceID string, h3Indexes []string) func(*sarama.ProducerMessage) error {
+func checkForDeviceAndH3(key string, h3Indexes []string) func(*sarama.ProducerMessage) error {
 	return func(msg *sarama.ProducerMessage) error {
 		kb, _ := msg.Key.Encode()
-		if string(kb) != userDeviceID {
-			return fmt.Errorf("expected message to be keyed with %s but got %s", userDeviceID, string(kb))
+		if string(kb) != key {
+			return fmt.Errorf("expected message to be keyed with %s but got %s", key, string(kb))
 		}
 
 		if len(h3Indexes) == 0 {
@@ -119,6 +122,9 @@ func (s *GeofencesControllerTestSuite) TestPostGeofence() {
 	app := fiber.New()
 	app.Post("/user/geofences", test.AuthInjectorTestHandler(injectedUserID), c.Create)
 	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, ksuid.New().String(), nil, "", s.pdb)
+	ud.TokenID = types.NewNullDecimal(decimal.New(1, 0))
+	_, err := ud.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
 	req := CreateGeofence{
 		Name:          "Home",
 		Type:          "PrivacyFence",
@@ -128,6 +134,7 @@ func (s *GeofencesControllerTestSuite) TestPostGeofence() {
 	j, _ := json.Marshal(req)
 
 	producer.ExpectSendMessageWithMessageCheckerFunctionAndSucceed(checkForDeviceAndH3(ud.ID, []string{"123", "321"}))
+	producer.ExpectSendMessageWithMessageCheckerFunctionAndSucceed(checkForDeviceAndH3(ud.TokenID.String(), []string{"123", "321"}))
 
 	request := test.BuildRequest("POST", "/user/geofences", string(j))
 	response, _ := app.Test(request)
@@ -140,6 +147,7 @@ func (s *GeofencesControllerTestSuite) TestPostGeofence() {
 	assert.Len(s.T(), createdID, 27)
 
 	producer.ExpectSendMessageWithMessageCheckerFunctionAndSucceed(checkForDeviceAndH3(ud.ID, []string{"123", "321"}))
+	producer.ExpectSendMessageWithMessageCheckerFunctionAndSucceed(checkForDeviceAndH3(ud.TokenID.String(), []string{"123", "321"}))
 
 	// create one without h3 indexes required
 	req = CreateGeofence{
@@ -227,10 +235,15 @@ func (s *GeofencesControllerTestSuite) TestPutGeofence() {
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "escaped", 2020, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Return(dd, nil)
 	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud.TokenID = types.NewNullDecimal(decimal.New(1, 0))
+	_, err := ud.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+
 	gf := test.SetupCreateGeofence(s.T(), injectedUserID, "something", &ud, s.pdb)
 
 	// The fence is being detached from the device and it has type TriggerEntry anyway.
 	producer.ExpectSendMessageWithMessageCheckerFunctionAndSucceed(checkForDeviceAndH3(ud.ID, []string{}))
+	producer.ExpectSendMessageWithMessageCheckerFunctionAndSucceed(checkForDeviceAndH3(ud.TokenID.String(), []string{}))
 
 	req := CreateGeofence{
 		Name:          "School",
