@@ -52,7 +52,7 @@ func (p *populatePrivacyV2Topic) Execute(_ context.Context, _ *flag.FlagSet, _ .
 }
 
 func remakePrivacyV2Topic(settings *config.Settings, pdb db.Store, producer sarama.SyncProducer, logger *zerolog.Logger) error {
-	logger.Info().Msgf("Starting synthetic device job enrichment, sending to topic %s.", settings.SDInfoTopic)
+	logger.Info().Msgf("Starting privacy processor v2 table population, sending to topic %s.", settings.PrivacyFenceTopicV2)
 
 	ctx := context.Background()
 
