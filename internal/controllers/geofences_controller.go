@@ -400,7 +400,7 @@ func (g *GeofencesController) createDeviceList(ctx context.Context, tx *sql.Tx, 
 		addr := common.HexToAddress(*user.EthereumAddress)
 		ownerMod = qm.Expr(
 			models.UserDeviceWhere.UserID.EQ(userID),
-			models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(addr.Bytes())),
+			qm.Or2(models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(addr.Bytes()))),
 		)
 	}
 

@@ -11,6 +11,8 @@ import (
 	"github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
 
@@ -166,6 +168,39 @@ func (s *GeofencesControllerTestSuite) TestPostGeofence() {
 		fmt.Println("message: " + string(body))
 	}
 	_ = producer.Close()
+}
+
+func (s *GeofencesControllerTestSuite) TestPostGeofenceRespectsWallet() {
+	injectedUserID := ksuid.New().String()
+	usersClient := mock_services.NewMockUserServiceClient(s.mockCtrl)
+	addr := "0x00000000219ab540356cbb839cbe05303d7705fa"
+	usersClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(&users.User{EthereumAddress: &addr}, nil)
+	producer := saramamocks.NewSyncProducer(s.T(), sarama.NewConfig())
+	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, producer, s.deviceDefSvc, usersClient)
+	app := fiber.New()
+	app.Post("/user/geofences", test.AuthInjectorTestHandler(injectedUserID), c.Create)
+	someOtherUserID := ksuid.New().String()
+	ud := test.SetupCreateUserDevice(s.T(), someOtherUserID, ksuid.New().String(), nil, "", s.pdb)
+	ud.TokenID = types.NewNullDecimal(decimal.New(1, 0))
+	ud.OwnerAddress = null.BytesFrom(common.HexToAddress(addr).Bytes())
+	_, err := ud.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+	req := CreateGeofence{
+		Name:          "Home",
+		Type:          "PrivacyFence",
+		H3Indexes:     []string{"123", "321"},
+		UserDeviceIDs: []string{ud.ID},
+	}
+	j, _ := json.Marshal(req)
+
+	producer.ExpectSendMessageWithMessageCheckerFunctionAndSucceed(checkForDeviceAndH3(ud.ID, []string{"123", "321"}))
+	producer.ExpectSendMessageWithMessageCheckerFunctionAndSucceed(checkForDeviceAndH3(ud.TokenID.String(), []string{"123", "321"}))
+
+	request := test.BuildRequest("POST", "/user/geofences", string(j))
+	response, err := app.Test(request)
+	s.Require().NoError(err)
+	s.Equal(fiber.StatusCreated, response.StatusCode)
+
 }
 
 func (s *GeofencesControllerTestSuite) TestPostGeofence400IfSameName() {
