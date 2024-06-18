@@ -13,13 +13,16 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
+	"github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/Shopify/sarama"
+	"github.com/ethereum/go-ethereum/common"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
@@ -35,16 +38,18 @@ type GeofencesController struct {
 	log          *zerolog.Logger
 	producer     sarama.SyncProducer
 	deviceDefSvc services.DeviceDefinitionService
+	usersClient  users.UserServiceClient
 }
 
 // NewGeofencesController constructor
-func NewGeofencesController(settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, producer sarama.SyncProducer, deviceDefSvc services.DeviceDefinitionService) GeofencesController {
+func NewGeofencesController(settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, producer sarama.SyncProducer, deviceDefSvc services.DeviceDefinitionService, usersClient users.UserServiceClient) GeofencesController {
 	return GeofencesController{
 		Settings:     settings,
 		DBS:          dbs,
 		log:          logger,
 		producer:     producer,
 		deviceDefSvc: deviceDefSvc,
+		usersClient:  usersClient,
 	}
 }
 
@@ -383,6 +388,22 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 // performs deduplication, so the length of the output slice may not match that of
 // the input slice. Errors returned from this function are safe to return to Fiber.
 func (g *GeofencesController) createDeviceList(ctx context.Context, tx *sql.Tx, userID string, userDeviceIDs []string) ([]*models.UserDevice, error) {
+	user, err := g.usersClient.GetUser(ctx, &users.GetUserRequest{Id: userID})
+	if err != nil {
+		return nil, err
+	}
+
+	var ownerMod qm.QueryMod
+	if user.EthereumAddress == nil {
+		ownerMod = models.UserDeviceWhere.UserID.EQ(userID)
+	} else {
+		addr := common.HexToAddress(*user.EthereumAddress)
+		ownerMod = qm.Expr(
+			models.UserDeviceWhere.UserID.EQ(userID),
+			models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(addr.Bytes())),
+		)
+	}
+
 	out := make([]*models.UserDevice, 0, len(userDeviceIDs))
 
 	seenIDs := shared.NewStringSet()
@@ -392,10 +413,9 @@ func (g *GeofencesController) createDeviceList(ctx context.Context, tx *sql.Tx, 
 			continue
 		}
 
-		// TODO(elffjs): Respect wallet ownership too.
 		ud, err := models.UserDevices(
 			models.UserDeviceWhere.ID.EQ(id),
-			models.UserDeviceWhere.UserID.EQ(userID),
+			ownerMod,
 		).One(ctx, tx)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
