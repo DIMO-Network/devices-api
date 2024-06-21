@@ -171,7 +171,8 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 
 	for _, v := range req.ErrorCodes {
 		if !errorCodeRegex.MatchString(v) {
-			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Invalid error code %s", v))
+			logger.Error().Msgf("Got a weird error code list %v.", req.ErrorCodes)
+			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Invalid error code %q.", v))
 		}
 	}
 
