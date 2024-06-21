@@ -329,7 +329,7 @@ func TestUserDevicesController_ShouldErrorInvalidErrorCodes(t *testing.T) {
 
 		assert.Equal(t, fiber.StatusBadRequest, response.StatusCode)
 		assert.Equal(t,
-			"Invalid error code P33333339",
+			`Invalid error code "P33333339".`,
 			string(body),
 		)
 
@@ -396,9 +396,9 @@ func TestUserDevicesController_ShouldErrorOnEmptyErrorCodes(t *testing.T) {
 		response, _ := app.Test(request)
 		body, _ := io.ReadAll(response.Body)
 
-		assert.Equal(t, fiber.StatusBadRequest, response.StatusCode)
-		assert.Equal(t,
-			"No error codes provided",
+		assert.Equal(t, fiber.StatusOK, response.StatusCode)
+		assert.JSONEq(t,
+			`{"errorCodes": [], "clearedAt": null}`,
 			string(body),
 		)
 
