@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"math/big"
 	"net"
 	"os"
@@ -23,7 +22,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
 	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
 	"github.com/DIMO-Network/devices-api/internal/services/ipfs"
-	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/internal/services/macaron"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
@@ -197,7 +195,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	vPriv.Post("/commands/doors/lock", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.LockDoors)
 	vPriv.Post("/commands/trunk/open", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.OpenTrunk)
 	vPriv.Post("/commands/frunk/open", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.OpenFrunk)
-	vPriv.Get("/vin-credential", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleVinCredential}), nftController.GetVinCredential)
 
 	// Traditional tokens
 
@@ -324,12 +321,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	ctx := context.Background()
 
-	iss, err := createVCIssuer(settings, pdb, &logger)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to create issuer.")
-	}
-
-	if err := fingerprint.RunConsumer(ctx, settings, &logger, iss, pdb); err != nil {
+	if err := fingerprint.RunConsumer(ctx, settings, &logger, pdb); err != nil {
 		logger.Fatal().Err(err).Msg("Failed to create vin credentialer listener")
 	}
 
@@ -344,7 +336,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		logger.Fatal().Err(err).Msg("Failed to create transaction listener")
 	}
 
-	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService, iss, userDeviceSvc, teslaTaskService, scTaskSvc)
+	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService, userDeviceSvc, teslaTaskService, scTaskSvc)
 
 	c := make(chan os.Signal, 1)                    // Create channel to signify a signal being sent with length of 1
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM) // When an interrupt or termination signal is sent, notify the channel
@@ -378,7 +370,6 @@ func startGRPCServer(
 	logger *zerolog.Logger,
 	deviceDefSvc services.DeviceDefinitionService,
 	eventService services.EventService,
-	vcIss *issuer.Issuer,
 	userDeviceSvc services.UserDeviceService,
 	teslaTaskSvc services.TeslaTaskService,
 	smartcarTaskSvc services.SmartcarTaskService,
@@ -401,27 +392,10 @@ func startGRPCServer(
 	)
 
 	pb.RegisterUserDeviceServiceServer(server, rpc.NewUserDeviceRPCService(dbs, settings, hardwareTemplateService, logger,
-		deviceDefSvc, eventService, vcIss, userDeviceSvc, teslaTaskSvc, smartcarTaskSvc))
+		deviceDefSvc, eventService, userDeviceSvc, teslaTaskSvc, smartcarTaskSvc))
 	pb.RegisterAftermarketDeviceServiceServer(server, rpc.NewAftermarketDeviceService(dbs, logger))
 
 	if err := server.Serve(lis); err != nil {
 		logger.Fatal().Err(err).Msg("gRPC server terminated unexpectedly")
 	}
-}
-
-func createVCIssuer(settings *config.Settings, dbs db.Store, logger *zerolog.Logger) (*issuer.Issuer, error) {
-	pk, err := base64.RawURLEncoding.DecodeString(settings.IssuerPrivateKey)
-	if err != nil {
-		return nil, err
-	}
-
-	return issuer.New(
-		issuer.Config{
-			PrivateKey:        pk,
-			ChainID:           big.NewInt(settings.DIMORegistryChainID),
-			VehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
-			DBS:               dbs,
-		},
-		logger,
-	)
 }

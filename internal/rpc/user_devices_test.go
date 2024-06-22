@@ -34,7 +34,6 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 	deviceStyleID := "24GE7Mlc4c9o4j5P4mcD1Fzinx1"
 	userID := ksuid.New().String()
 	ownerAddress := null.BytesFrom(common.Hex2Bytes("448cF8Fd88AD914e3585401241BC434FbEA94bbb"))
-	claimID := ksuid.New().String()
 	_, childWallet, _ := test.GenerateWallet()
 
 	ud := models.UserDevice{
@@ -49,7 +48,6 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 		TokenID:            types.NewNullDecimal(decimal.New(4, 0)),
 		OwnerAddress:       null.BytesFrom(common.BigToAddress(big.NewInt(7)).Bytes()),
 		MintRequestID:      null.StringFrom(ksuid.New().String()),
-		ClaimID:            null.StringFrom(claimID),
 	}
 
 	ad := models.AftermarketDevice{
@@ -73,11 +71,6 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 		WalletAddress:      childWallet.Bytes(),
 	}
 
-	credential := models.VerifiableCredential{
-		ClaimID:        claimID,
-		ExpirationDate: time.Now().AddDate(0, 0, 7),
-	}
-
 	metaTxUd := models.MetaTransactionRequest{
 		ID:     ud.MintRequestID.String,
 		Status: models.MetaTransactionRequestStatusConfirmed,
@@ -93,10 +86,6 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 	}
 
 	if err := metaTxSd.Insert(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
-		return "", err
-	}
-
-	if err := credential.Insert(ctx, pdb.DBS().Reader, boil.Infer()); err != nil {
 		return "", err
 	}
 
@@ -131,7 +120,7 @@ func TestGetUserDevice_AftermarketDeviceObj_NotNil(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	udResult, err := udService.GetUserDevice(ctx, &pb_devices.GetUserDeviceRequest{Id: userDeviceID})
 	assert.NoError(err)
@@ -157,7 +146,7 @@ func TestGetUserDevice_AftermarketDeviceObj_Nil(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	_, err = models.AftermarketDevices(
 		models.AftermarketDeviceWhere.UserID.EQ(null.StringFrom(userDeviceID)),
@@ -184,7 +173,7 @@ func TestGetUserDevice_PopulateDeprecatedFields(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	udResult, err := udService.GetUserDevice(ctx, &pb_devices.GetUserDeviceRequest{Id: userDeviceID})
 	assert.NoError(err)
@@ -210,7 +199,7 @@ func TestGetUserDevice_PopulateSyntheticDeviceFields(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	udResult, err := udService.GetUserDevice(ctx, &pb_devices.GetUserDeviceRequest{Id: userDeviceID})
 	assert.NoError(err)
@@ -245,7 +234,7 @@ func TestGetUserDevice_NoSyntheticDeviceFields_WhenNoTokenID(t *testing.T) {
 
 	logger := zerolog.Logger{}
 	userDeviceSvc := services.NewUserDeviceService(nil, logger, pdb.DBS, nil, nil)
-	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
+	udService := NewUserDeviceRPCService(pdb.DBS, nil, nil, nil, nil, nil, userDeviceSvc, nil, nil)
 
 	udResult, err := udService.GetUserDevice(ctx, &pb_devices.GetUserDeviceRequest{Id: userDeviceID})
 	assert.NoError(err)
