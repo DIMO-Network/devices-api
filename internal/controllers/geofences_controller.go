@@ -399,7 +399,7 @@ func (g *GeofencesController) createDeviceList(ctx context.Context, tx *sql.Tx, 
 		).One(ctx, tx)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return nil, fiber.NewError(fiber.StatusBadRequest, "User doesn't own a device with id %q.", id)
+				return nil, fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("User doesn't own a device with id %q.", id))
 			}
 			return nil, err
 		}

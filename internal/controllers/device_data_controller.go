@@ -162,21 +162,32 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	}
 
 	errorCodesLimit := 100
-	if len(req.ErrorCodes) == 0 {
-		return fiber.NewError(fiber.StatusBadRequest, "No error codes provided")
-	}
 	if len(req.ErrorCodes) > errorCodesLimit {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Too many error codes. Error codes list must be %d or below in length.", errorCodesLimit))
 	}
 
+	var errorCodesCleaned []string
+
 	for _, v := range req.ErrorCodes {
-		if !errorCodeRegex.MatchString(v) {
-			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Invalid error code %s", v))
+		if v == "" {
+			// The app is sending in a lot of these.
+			continue
 		}
+		if !errorCodeRegex.MatchString(v) {
+			logger.Error().Msgf("Got a weird error code list %v.", req.ErrorCodes)
+			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Invalid error code %q.", v))
+		}
+		errorCodesCleaned = append(errorCodesCleaned, v)
+	}
+
+	if len(errorCodesCleaned) == 0 {
+		return c.JSON(&QueryDeviceErrorCodesResponse{
+			ErrorCodes: []services.ErrorCodesResponse{},
+		})
 	}
 
 	appmetrics.OpenAITotalCallsOps.Inc() // record new total call to chatgpt
-	chtResp, err := udc.openAI.GetErrorCodesDescription(dd.Type.Make, dd.Type.Model, req.ErrorCodes)
+	chtResp, err := udc.openAI.GetErrorCodesDescription(dd.Type.Make, dd.Type.Model, errorCodesCleaned)
 	if err != nil {
 		appmetrics.OpenAITotalFailedCallsOps.Inc()
 		logger.Err(err).Interface("requestBody", req).Msg("Error occurred fetching description for error codes")
