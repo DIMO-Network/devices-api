@@ -27,13 +27,13 @@ type populateSDFingerprintTable struct {
 	container dependencyContainer
 }
 
-func (*populateSDFingerprintTable) Name() string { return "populate-privacy-topic-v2" }
+func (*populateSDFingerprintTable) Name() string { return "populate-sd-fingerprint-table" }
 func (*populateSDFingerprintTable) Synopsis() string {
-	return "populate-privacy-topic-v2 args to stdout."
+	return "populate-sd-fingerprint-table args to stdout."
 }
 func (*populateSDFingerprintTable) Usage() string {
-	return `populate-privacy-topic-v2:
-	populate-privacy-topic-v2 args.
+	return `populate-sd-fingerprint-table:
+	populate-sd-fingerprint-table args.
   `
 }
 
