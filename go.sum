@@ -80,8 +80,8 @@ github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c h1:sKuB4i
 github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c/go.mod h1:K5a/Iqh9iZYdMSh3UE3J+tc4aV1PxHe4Fz0ZEhZMPbg=
 github.com/DIMO-Network/meta-transaction-processor v0.3.2 h1:eSf34mSmiRilMbQx+4Iyu6aNm/WWJjbopIGYNjz/Z6w=
 github.com/DIMO-Network/meta-transaction-processor v0.3.2/go.mod h1:qJW4pNqQ4kDeumuZJByjrfrCd8dlrCT3//5V4PVKRqA=
-github.com/DIMO-Network/shared v0.10.16 h1:RD1kJDZVg5Vv6KxSWs1TL199c72oaZZfH8bEWGupap8=
-github.com/DIMO-Network/shared v0.10.16/go.mod h1:LDNCMzOGA+MqXtHbvRDFS/1kl8sHMQgxAS8fFh4GKJA=
+github.com/DIMO-Network/shared v0.10.18 h1:NKWqIyo5plORii+hgOpXS2zUdmIHFKZuPqoo5Oaf0gk=
+github.com/DIMO-Network/shared v0.10.18/go.mod h1:LDNCMzOGA+MqXtHbvRDFS/1kl8sHMQgxAS8fFh4GKJA=
 github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3 h1:XMU6rRN57hoh7IYyuVytsIKzDymrbAnnKECFeVf88Hg=
 github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3/go.mod h1:+8E6RVHd04ewjrSOohmLf82Grt0kfSaVTQlCnHCTLZU=
 github.com/DIMO-Network/zflogger v1.0.0-beta h1:SlXZmahk4tZqprjHzp14mbLQFMrOcyJ9jpLJLQk8bhw=

@@ -9,7 +9,7 @@ require (
 	github.com/DIMO-Network/device-definitions-api v1.2.14
 	github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c
 	github.com/DIMO-Network/meta-transaction-processor v0.3.2
-	github.com/DIMO-Network/shared v0.10.16
+	github.com/DIMO-Network/shared v0.10.18
 	github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3
 	github.com/DIMO-Network/zflogger v1.0.0-beta
 	github.com/Shopify/sarama v1.38.1

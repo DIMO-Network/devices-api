@@ -6,22 +6,23 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/DIMO-Network/shared"
-	"gopkg.in/yaml.v3"
-
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/DIMO-Network/shared/dbtypes"
+	"github.com/DIMO-Network/shared/event/sdmint"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog"
+	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"gopkg.in/yaml.v3"
 )
 
 //go:embed dimo_registry_error_translations.yaml
@@ -232,6 +233,31 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				default:
 					return fmt.Errorf("unexpected integration vendor %s", integ.Vendor)
 				}
+
+				p.Eventer.Emit(&shared.CloudEvent[any]{
+					ID:          ksuid.New().String(),
+					Source:      "devices-api",
+					SpecVersion: "1.0",
+					Subject:     ud.ID,
+					Time:        time.Now(),
+					Type:        sdmint.Type,
+					Data: sdmint.Data{
+						Integration: sdmint.Integration{
+							TokenID:       int(event.IntegrationNode.Int64()),
+							IntegrationID: integ.Id,
+						},
+						Vehicle: sdmint.Vehicle{
+							TokenID:      int(event.VehicleNode.Int64()),
+							UserDeviceID: ud.ID,
+						},
+						Device: sdmint.Device{
+							TokenID:           int(event.SyntheticDeviceNode.Int64()),
+							ExternalID:        ud.R.UserDeviceAPIIntegrations[0].ExternalID.String,
+							Address:           common.BytesToAddress(sd.WalletAddress),
+							WalletChildNumber: uint32(sd.WalletChildNumber),
+						},
+					},
+				})
 
 				logger.Info().
 					Int64("vehicleTokenId", event.VehicleNode.Int64()).
