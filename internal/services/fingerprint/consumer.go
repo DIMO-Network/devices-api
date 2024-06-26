@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/appmetrics"
 	"github.com/prometheus/client_golang/prometheus"
@@ -58,10 +57,6 @@ func RunConsumer(ctx context.Context, settings *config.Settings, logger *zerolog
 
 	return nil
 }
-
-// DefaultCredDuration is the default lifetime for VIN credentials. It's meant to cover the
-// current reward week, but contains an extra day for safety.
-var DefaultCredDuration = 8 * 24 * time.Hour
 
 func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) error {
 	if !common.IsHexAddress(event.Subject) {
