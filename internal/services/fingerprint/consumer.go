@@ -2,6 +2,7 @@ package fingerprint
 
 import (
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -77,6 +78,9 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 		qm.Load(models.AftermarketDeviceRels.VehicleToken),
 	).One(ctx, c.DBS.DBS().Reader)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
 		return fmt.Errorf("failed querying for device: %w", err)
 	}
 
