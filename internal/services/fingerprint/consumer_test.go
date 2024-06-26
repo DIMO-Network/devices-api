@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
-	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
@@ -37,7 +36,6 @@ type ConsumerTestSuite struct {
 	ctx       context.Context
 	mockCtrl  *gomock.Controller
 	topic     string
-	iss       *issuer.Issuer
 	cons      *Consumer
 }
 
@@ -50,9 +48,6 @@ func (s *ConsumerTestSuite) SetupSuite() {
 	s.mockCtrl = gomock.NewController(s.T())
 	s.topic = "topic.fingerprint"
 
-	pk, err := base64.RawURLEncoding.DecodeString("2pN28-5VmEavX46XWszjasN0kx4ha3wQ6w6hGqD8o0k")
-	require.NoError(s.T(), err)
-
 	gitSha1 := os.Getenv("GIT_SHA1")
 	logger := zerolog.New(os.Stdout).With().
 		Timestamp().
@@ -60,21 +55,10 @@ func (s *ConsumerTestSuite) SetupSuite() {
 		Str("git-sha1", gitSha1).
 		Logger()
 
-	iss, err := issuer.New(issuer.Config{
-		PrivateKey:        pk,
-		ChainID:           big.NewInt(137),
-		VehicleNFTAddress: common.HexToAddress("00f1"),
-		DBS:               s.pdb,
-	},
-		&logger)
-	s.iss = iss
 	s.cons = &Consumer{
 		logger: &logger,
-		iss:    iss,
 		DBS:    s.pdb,
 	}
-
-	s.Require().NoError(err)
 }
 
 // TearDownSuite cleanup at end by terminating container
