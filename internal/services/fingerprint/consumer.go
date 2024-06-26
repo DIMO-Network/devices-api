@@ -2,7 +2,6 @@ package fingerprint
 
 import (
 	"context"
-	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -59,15 +58,6 @@ func RunConsumer(ctx context.Context, settings *config.Settings, logger *zerolog
 	}, consumer.HandleDeviceFingerprint, logger); err != nil {
 		logger.Fatal().Err(err).Msg("couldn't start device fingerprint consumer")
 	}
-
-	if err := kafka.Consume(ctx, kafka.Config{
-		Brokers: strings.Split(settings.KafkaBrokers, ","),
-		Topic:   settings.SyntheticFingerprintTopic,
-		Group:   settings.SyntheticFingerprintConsumerGroup,
-	}, consumer.HandleSyntheticFingerprint, logger); err != nil {
-		logger.Fatal().Err(err).Msg("couldn't start synthetic fingerprint consumer")
-	}
-
 	logger.Info().Msg("Starting transaction request status listener.")
 
 	return nil
@@ -167,51 +157,6 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 
 	if protocol != nil {
 		appmetrics.FingerprintRequestCount.With(prometheus.Labels{"protocol": *protocol, "status": "Success"}).Inc()
-	}
-
-	c.logger.Info().Str("device-addr", event.Subject).Msg("issued vin credential")
-
-	return nil
-}
-
-func (c *Consumer) HandleSyntheticFingerprint(ctx context.Context, event *Event) error {
-	ud, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(event.Subject),
-		qm.Load(models.UserDeviceRels.Claim),
-	).One(ctx, c.DBS.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("no vehicle with id %q", event.Subject)
-		}
-		return err
-	}
-
-	if ud.TokenID.IsZero() {
-		return fmt.Errorf("minting not complete for %s", ud.ID)
-	}
-
-	observedVIN, err := ExtractVIN(event.Data)
-	if err != nil {
-		if errors.Is(err, ErrNoVIN) {
-			return nil
-		}
-		return fmt.Errorf("couldn't extract VIN: %w", err)
-	}
-
-	if observedVIN != ud.VinIdentifier.String {
-		c.logger.Warn().Msgf("observed vin %s does not match verified vin %s for device %s", observedVIN, ud.VinIdentifier.String, ud.ID)
-		return nil
-	}
-
-	if vc := ud.R.Claim; vc != nil {
-		weekEnd := NumToWeekEnd(GetWeekNum(event.Time))
-		if vc.ExpirationDate.After(weekEnd) {
-			return nil
-		}
-	}
-
-	if _, err := c.iss.VIN(observedVIN, ud.TokenID.Int(nil), event.Time.Add(DefaultCredDuration)); err != nil {
-		return err
 	}
 
 	c.logger.Info().Str("device-addr", event.Subject).Msg("issued vin credential")
