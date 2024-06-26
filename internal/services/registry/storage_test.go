@@ -140,6 +140,8 @@ func (s *StorageTestSuite) Test_SyntheticMintSmartcar() {
 
 	s.scSvc.EXPECT().StartPoll(gomock.Any(), gomock.Any())
 
+	s.eventSvc.EXPECT().Emit(gomock.Any())
+
 	a, _ := contracts.RegistryMetaData.GetAbi()
 
 	err = s.proc.Handle(context.TODO(), &ceData{
@@ -228,6 +230,8 @@ func (s *StorageTestSuite) Test_SyntheticMintTesla() {
 		RefreshToken:    null.StringFrom(refToken),
 	}
 	s.MustInsert(&udi)
+
+	s.eventSvc.EXPECT().Emit(gomock.Any())
 
 	s.ddSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&grpc.Integration{
 		Id:     integrationID,
