@@ -166,7 +166,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Too many error codes. Error codes list must be %d or below in length.", errorCodesLimit))
 	}
 
-	var errorCodesCleaned []string
+	errorCodesCleaned := make([]string, 0, len(req.ErrorCodes))
 
 	for _, v := range req.ErrorCodes {
 		if v == "" {

@@ -17,7 +17,6 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
-	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
@@ -35,20 +34,18 @@ type Event struct {
 
 type Consumer struct {
 	logger *zerolog.Logger
-	iss    *issuer.Issuer
 	DBS    db.Store
 }
 
-func NewConsumer(dbs db.Store, iss *issuer.Issuer, log *zerolog.Logger) *Consumer {
+func NewConsumer(dbs db.Store, log *zerolog.Logger) *Consumer {
 	return &Consumer{
 		DBS:    dbs,
 		logger: log,
-		iss:    iss,
 	}
 }
 
-func RunConsumer(ctx context.Context, settings *config.Settings, logger *zerolog.Logger, i *issuer.Issuer, dbs db.Store) error {
-	consumer := NewConsumer(dbs, i, logger)
+func RunConsumer(ctx context.Context, settings *config.Settings, logger *zerolog.Logger, dbs db.Store) error {
+	consumer := NewConsumer(dbs, logger)
 
 	if err := kafka.Consume(ctx, kafka.Config{
 		Brokers: strings.Split(settings.KafkaBrokers, ","),
