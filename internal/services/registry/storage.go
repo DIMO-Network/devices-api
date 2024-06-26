@@ -234,7 +234,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return fmt.Errorf("unexpected integration vendor %s", integ.Vendor)
 				}
 
-				p.Eventer.Emit(&shared.CloudEvent[any]{
+				p.Eventer.Emit(&shared.CloudEvent[any]{ //nolint
 					ID:          ksuid.New().String(),
 					Source:      "devices-api",
 					SpecVersion: "1.0",

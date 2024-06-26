@@ -437,7 +437,7 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 		}
 
 		if vc := ud.R.Claim; vc != nil {
-			out.LatestVinCredential = &pb.VinCredential{
+			out.LatestVinCredential = &pb.VinCredential{ //nolint:staticcheck
 				Id:         vc.ClaimID,
 				Expiration: timestamppb.New(vc.ExpirationDate),
 			}
