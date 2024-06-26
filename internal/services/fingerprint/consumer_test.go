@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services/issuer"
 	"github.com/DIMO-Network/devices-api/internal/test"
@@ -304,66 +302,6 @@ func (s *ConsumerTestSuite) TestInvalidSignature() {
 	s.NotEqual(recAddr, addr)
 }
 
-func TestExtractVIN(t *testing.T) {
-
-	tests := []struct {
-		name    string
-		data    []byte
-		want    string
-		wantErr assert.ErrorAssertionFunc
-	}{
-		{
-			name: "happy path",
-			data: []byte(`{"vin":"W1N2539531F907299"}`),
-			want: "W1N2539531F907299",
-			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
-				return err == nil
-			},
-		},
-		{
-			name: "vin with space",
-			data: []byte(`{"vin":"W1N2539531F907299 "}`),
-			want: "W1N2539531F907299",
-			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
-				return err == nil
-			},
-		},
-		{
-			name: "invalid VIN",
-			data: []byte(`{"vin":"xxx"}`),
-			want: "",
-			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
-				return err.Error() == "invalid VIN"
-			},
-		},
-		{
-			name: "no VIN",
-			data: []byte(`{"caca":"xxx"}`),
-			want: "",
-			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
-				return errors.Is(err, ErrNoVIN)
-			},
-		},
-		{
-			name: "can't parse",
-			data: []byte(`caca`),
-			want: "",
-			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
-				return err != nil
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := ExtractVIN(tt.data)
-			if !tt.wantErr(t, err, fmt.Sprintf("ExtractVIN(%v)", tt.data)) {
-				return
-			}
-			assert.Equalf(t, tt.want, got, "ExtractVIN(%v)", tt.data)
-		})
-	}
-}
-
 func TestExtractProtocol(t *testing.T) {
 	p7 := "7"
 	tests := []struct {
@@ -408,57 +346,6 @@ func TestExtractProtocol(t *testing.T) {
 	}
 }
 
-func TestExtractVINMacaronType1(t *testing.T) {
-	tests := []struct {
-		name    string
-		data    string
-		want    string
-		wantErr assert.ErrorAssertionFunc
-	}{
-		{
-			name: "valid macaron data",
-			data: "AW+yb2VVFVFCV6pmvwZXQkFXWjMyMDMwMEY4Njc1Ng==",
-			want: "WBAWZ320300F86756",
-			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
-				return assert.NoError(t, err)
-			},
-		},
-		{
-			name: "invalid base64 encoding",
-			data: "not base64 data",
-			want: "",
-			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
-				return assert.Error(t, err)
-			},
-		},
-		{
-			name: "data too short",
-			data: base64.StdEncoding.EncodeToString([]byte{0x01}),
-			want: "",
-			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
-				return assert.Error(t, err)
-			},
-		},
-		{
-			name: "invalid VIN format",
-			data: "AW+yb2VVFVFCV6pmvwZXQkFXWjMyMDMwMEY4Njc1@=",
-			want: "",
-			wantErr: func(_ assert.TestingT, err error, _ ...interface{}) bool {
-				return assert.Error(t, err)
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := ExtractVINMacaronType1(tt.data)
-			if !tt.wantErr(t, err, fmt.Sprintf("ExtractVINMacaronType1(%v)", tt.data)) {
-				return
-			}
-			assert.Equalf(t, tt.want, got, "ExtractVINMacaronType1(%v)", tt.data)
-		})
-	}
-}
 func TestExtractProtocolMacaronType1(t *testing.T) {
 
 	expectedProtocol := "06"

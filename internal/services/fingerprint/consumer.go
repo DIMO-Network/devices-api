@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
@@ -81,23 +80,9 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 		return fmt.Errorf("recovered wrong address %s", recAddr)
 	}
 
-	observedVIN := ""
-	var err error
-	if event.Source == "macaron/fingerprint" {
-		observedVIN, err = ExtractVINMacaronType1(string(event.Data))
-	} else {
-		observedVIN, err = ExtractVIN(event.Data)
-	}
-	if err != nil {
-		if errors.Is(err, ErrNoVIN) {
-			return nil
-		}
-		return fmt.Errorf("couldn't extract VIN: %w", err)
-	}
-
 	ad, err := models.AftermarketDevices(
 		models.AftermarketDeviceWhere.EthereumAddress.EQ(addr.Bytes()),
-		qm.Load(qm.Rels(models.AftermarketDeviceRels.VehicleToken, models.UserDeviceRels.Claim)),
+		qm.Load(models.AftermarketDeviceRels.VehicleToken),
 	).One(ctx, c.DBS.DBS().Reader)
 	if err != nil {
 		return fmt.Errorf("failed querying for device: %w", err)
@@ -108,23 +93,7 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 		return nil
 	}
 
-	if observedVIN != ud.VinIdentifier.String {
-		c.logger.Warn().Msgf("observed vin %s does not match verified vin %s for device %s", observedVIN, ud.VinIdentifier.String, ud.ID)
-		return nil
-	}
-
-	if vc := ud.R.Claim; vc != nil {
-		weekEnd := NumToWeekEnd(GetWeekNum(time.Now()))
-		if vc.ExpirationDate.After(weekEnd) {
-			return nil
-		}
-	}
-
-	if _, err := c.iss.VIN(observedVIN, ud.TokenID.Int(nil), time.Now().Add(DefaultCredDuration)); err != nil {
-		return err
-	}
-
-	md := services.UserDeviceMetadata{}
+	var md services.UserDeviceMetadata
 	if err = ad.R.VehicleToken.Metadata.Unmarshal(&md); err != nil {
 		c.logger.Error().Msgf("Could not unmarshal userdevice metadata for device: %s", ad.R.VehicleToken.ID)
 		return err
@@ -164,47 +133,6 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 	return nil
 }
 
-var startTime = time.Date(2022, time.January, 31, 5, 0, 0, 0, time.UTC)
-var weekDuration = 7 * 24 * time.Hour
-
-func GetWeekNum(t time.Time) int {
-	sinceStart := t.Sub(startTime)
-	weekNum := int(sinceStart.Truncate(weekDuration) / weekDuration)
-	return weekNum
-}
-
-func NumToWeekEnd(n int) time.Time {
-	return startTime.Add(time.Duration(n+1) * weekDuration)
-}
-
-var ErrNoVIN = errors.New("no VIN field")
-var basicVINExp = regexp.MustCompile(`^[A-Z0-9]{17}$`)
-
-// ExtractVINMacaronType1 extracts the vin field from message type 1
-func ExtractVINMacaronType1(data string) (string, error) {
-	// Decode base64 data
-	decodedBytes, err := base64.StdEncoding.DecodeString(data)
-	if err != nil {
-		return "", fmt.Errorf("failed to decode macaron base64 data: %w", err)
-	}
-
-	// Verify the length of decodedBytes: 1 byte header, 4 bytes timestamp, 8 bytes location, 1 byte protocol, 17 bytes VIN
-	if len(decodedBytes) < 14+17 {
-		return "", errors.New("decoded bytes too short to decode VIN from macaron")
-	}
-	// Extract VIN bytes
-	vinStart := 1 + 4 + 8 + 1
-	vinBytes := decodedBytes[vinStart : vinStart+17]
-	vin := string(vinBytes)
-
-	// We have seen crazy VINs like "\u000" before.
-	if !basicVINExp.MatchString(vin) {
-		return "", errors.New("invalid VIN from macaron")
-	}
-
-	return vin, nil
-}
-
 // ExtractProtocolMacaronType1 pulls out the can protocol from macaron message type 1
 func ExtractProtocolMacaronType1(data string) (*string, error) {
 
@@ -221,33 +149,6 @@ func ExtractProtocolMacaronType1(data string) (*string, error) {
 	protocol := fmt.Sprintf("%02x", protocolByte)
 
 	return &protocol, nil
-}
-
-// ExtractVIN extracts the vin field from a status update's data object.
-// If this field is not present or fails basic validation, an error is returned.
-// The function does clean up the input slightly.
-func ExtractVIN(data []byte) (string, error) {
-	partialData := new(struct {
-		VIN *string `json:"vin"`
-	})
-
-	if err := json.Unmarshal(data, partialData); err != nil {
-		return "", fmt.Errorf("failed parsing data field: %w", err)
-	}
-
-	if partialData.VIN == nil {
-		return "", ErrNoVIN
-	}
-
-	// Minor cleaning.
-	vin := strings.ToUpper(strings.ReplaceAll(*partialData.VIN, " ", ""))
-
-	// We have seen crazy VINs like "\u000" before.
-	if !basicVINExp.MatchString(vin) {
-		return "", errors.New("invalid VIN")
-	}
-
-	return vin, nil
 }
 
 func ExtractProtocol(data []byte) (*string, error) {
