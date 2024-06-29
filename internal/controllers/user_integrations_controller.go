@@ -280,12 +280,12 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 		return err
 	}
 
-	autopiDeviceId := ""
+	autopiDeviceID := ""
 	for _, udai := range device.R.UserDeviceAPIIntegrations {
 		if udai.IntegrationID == integrationID && integr.Vendor == constants.AutoPiVendor {
 			unit, _ := udc.autoPiSvc.GetDeviceByUnitID(udai.Serial.String)
 			if unit != nil {
-				autopiDeviceId = unit.ID
+				autopiDeviceID = unit.ID
 			} else {
 				udc.log.Warn().Msgf("failed to find autopi device with serial: %s and user device id: %s", udai.Serial.String, device.ID)
 			}
@@ -315,7 +315,7 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 		return err
 	}
 
-	udc.markAutoPiUnpaired(autopiDeviceId)
+	udc.markAutoPiUnpaired(autopiDeviceID)
 
 	return c.SendStatus(fiber.StatusNoContent)
 }
