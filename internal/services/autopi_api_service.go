@@ -403,7 +403,21 @@ func (a *autoPiAPIService) GetCommandStatus(ctx context.Context, jobID string) (
 // UpdateState calls https://api.dimo.autopi.io/dongle/devices/{DEVICE_ID}/ Note that the deviceID is the autoPi one.
 // state is the device pairing state from our end for AP's troubleshooting usage, country and region to be used by AP for region balancing traffic
 func (a *autoPiAPIService) UpdateState(deviceID string, state, country, region string) error {
+	// call get to obtain existing information, make sure we don't clear any existing values
+	resDevice, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/dongle/devices/%s/", deviceID), "GET", nil)
+	if err != nil {
+		return errors.Wrapf(err, "error calling autopi api to get dongle for deviceId %s", deviceID)
+	}
+	defer resDevice.Body.Close() // nolint
+	deviceRespBody, _ := io.ReadAll(resDevice.Body)
+
 	userMetaDataStateInfo := make(map[string]interface{})
+	md := gjson.GetBytes(deviceRespBody, "user_metadata").Raw
+	err = json.Unmarshal([]byte(md), &userMetaDataStateInfo)
+	if err != nil {
+		return errors.Wrapf(err, "failed to unmarshal user_metadata")
+	}
+	// update values in metadata
 	userMetaDataStateInfo["state"] = state
 	if country != "" {
 		userMetaDataStateInfo["country_code_iso3"] = country
