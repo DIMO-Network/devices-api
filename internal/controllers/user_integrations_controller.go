@@ -273,7 +273,18 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	}
 
 	if len(device.R.UserDeviceAPIIntegrations) == 0 {
-		return fiber.NewError(fiber.StatusNotFound, "Device does not have that integration.")
+		return fiber.NewError(fiber.StatusNotFound, "Device does not have that udai.")
+	}
+	autopiDeviceId := ""
+	for _, udai := range device.R.UserDeviceAPIIntegrations {
+		if udai.IntegrationID == integrationID {
+			unit, _ := udc.autoPiSvc.GetDeviceByUnitID(udai.Serial.String)
+			if unit != nil {
+				autopiDeviceId = unit.ID
+			} else {
+				udc.log.Warn().Msgf("failed to find autopi device with serial: %s and user device id: %s", udai.Serial.String, device.ID)
+			}
+		}
 	}
 
 	if device.R.VehicleTokenSyntheticDevice != nil {
@@ -289,7 +300,7 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 			if sd.BurnRequestID.Valid {
 				return fiber.NewError(fiber.StatusConflict, "Synthetic device burn in progress.")
 			}
-			return fiber.NewError(fiber.StatusConflict, "Burn synthetic device before deleting integration.")
+			return fiber.NewError(fiber.StatusConflict, "Burn synthetic device before deleting udai.")
 		}
 	}
 
@@ -302,6 +313,12 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	err = udc.deleteDeviceIntegration(c.Context(), userID, userDeviceID, integrationID, dd)
 	if err != nil {
 		return err
+	}
+	if autopiDeviceId != "" {
+		err := udc.autoPiSvc.UpdateState(autopiDeviceId, "unpaired", "", "")
+		if err != nil {
+			udc.log.Err(err).Msgf("failed to update autopi device state with device id: %s", autopiDeviceId)
+		}
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
