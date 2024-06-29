@@ -275,9 +275,14 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	if len(device.R.UserDeviceAPIIntegrations) == 0 {
 		return fiber.NewError(fiber.StatusNotFound, "Device does not have that udai.")
 	}
+	integr, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
+	if err != nil {
+		return err
+	}
+
 	autopiDeviceId := ""
 	for _, udai := range device.R.UserDeviceAPIIntegrations {
-		if udai.IntegrationID == integrationID {
+		if udai.IntegrationID == integrationID && integr.Vendor == constants.AutoPiVendor {
 			unit, _ := udc.autoPiSvc.GetDeviceByUnitID(udai.Serial.String)
 			if unit != nil {
 				autopiDeviceId = unit.ID
@@ -289,11 +294,6 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 
 	if device.R.VehicleTokenSyntheticDevice != nil {
 		sd := device.R.VehicleTokenSyntheticDevice
-
-		integr, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
-		if err != nil {
-			return err
-		}
 
 		integrTokenID, _ := device.R.VehicleTokenSyntheticDevice.IntegrationTokenID.Uint64()
 		if integr.TokenId == integrTokenID {
@@ -314,12 +314,8 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	if err != nil {
 		return err
 	}
-	if autopiDeviceId != "" {
-		err := udc.autoPiSvc.UpdateState(autopiDeviceId, "unpaired", "", "")
-		if err != nil {
-			udc.log.Err(err).Msgf("failed to update autopi device state with device id: %s", autopiDeviceId)
-		}
-	}
+
+	udc.markAutoPiUnpaired(autopiDeviceId)
 
 	return c.SendStatus(fiber.StatusNoContent)
 }
