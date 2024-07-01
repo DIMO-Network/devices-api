@@ -8,8 +8,11 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
 
@@ -117,8 +120,10 @@ func TestGeofencesControllerTestSuite(t *testing.T) {
 /* Actual Tests */
 func (s *GeofencesControllerTestSuite) TestPostGeofence() {
 	injectedUserID := ksuid.New().String()
+	usersClient := mock_services.NewMockUserServiceClient(s.mockCtrl)
+	usersClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Times(2).Return(&users.User{}, nil)
 	producer := saramamocks.NewSyncProducer(s.T(), sarama.NewConfig())
-	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, producer, s.deviceDefSvc)
+	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, producer, s.deviceDefSvc, usersClient)
 	app := fiber.New()
 	app.Post("/user/geofences", test.AuthInjectorTestHandler(injectedUserID), c.Create)
 	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, ksuid.New().String(), nil, "", s.pdb)
@@ -165,9 +170,42 @@ func (s *GeofencesControllerTestSuite) TestPostGeofence() {
 	_ = producer.Close()
 }
 
+func (s *GeofencesControllerTestSuite) TestPostGeofenceRespectsWallet() {
+	injectedUserID := ksuid.New().String()
+	usersClient := mock_services.NewMockUserServiceClient(s.mockCtrl)
+	addr := "0x00000000219ab540356cbb839cbe05303d7705fa"
+	usersClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(&users.User{EthereumAddress: &addr}, nil)
+	producer := saramamocks.NewSyncProducer(s.T(), sarama.NewConfig())
+	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, producer, s.deviceDefSvc, usersClient)
+	app := fiber.New()
+	app.Post("/user/geofences", test.AuthInjectorTestHandler(injectedUserID), c.Create)
+	someOtherUserID := ksuid.New().String()
+	ud := test.SetupCreateUserDevice(s.T(), someOtherUserID, ksuid.New().String(), nil, "", s.pdb)
+	ud.TokenID = types.NewNullDecimal(decimal.New(1, 0))
+	ud.OwnerAddress = null.BytesFrom(common.HexToAddress(addr).Bytes())
+	_, err := ud.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+	req := CreateGeofence{
+		Name:          "Home",
+		Type:          "PrivacyFence",
+		H3Indexes:     []string{"123", "321"},
+		UserDeviceIDs: []string{ud.ID},
+	}
+	j, _ := json.Marshal(req)
+
+	producer.ExpectSendMessageWithMessageCheckerFunctionAndSucceed(checkForDeviceAndH3(ud.ID, []string{"123", "321"}))
+	producer.ExpectSendMessageWithMessageCheckerFunctionAndSucceed(checkForDeviceAndH3(ud.TokenID.String(), []string{"123", "321"}))
+
+	request := test.BuildRequest("POST", "/user/geofences", string(j))
+	response, err := app.Test(request)
+	s.Require().NoError(err)
+	s.Equal(fiber.StatusCreated, response.StatusCode)
+
+}
+
 func (s *GeofencesControllerTestSuite) TestPostGeofence400IfSameName() {
 	injectedUserID := ksuid.New().String()
-	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, nil, s.deviceDefSvc)
+	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, nil, s.deviceDefSvc, nil)
 	app := fiber.New()
 	app.Post("/user/geofences", test.AuthInjectorTestHandler(injectedUserID), c.Create)
 	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, ksuid.New().String(), nil, "", s.pdb)
@@ -185,7 +223,9 @@ func (s *GeofencesControllerTestSuite) TestPostGeofence400IfSameName() {
 }
 func (s *GeofencesControllerTestSuite) TestPostGeofence400IfNotYourDevice() {
 	injectedUserID := ksuid.New().String()
-	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, nil, s.deviceDefSvc)
+	usersClient := mock_services.NewMockUserServiceClient(s.mockCtrl)
+	usersClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(&users.User{}, nil)
+	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, nil, s.deviceDefSvc, usersClient)
 	app := fiber.New()
 	app.Post("/user/geofences", test.AuthInjectorTestHandler(injectedUserID), c.Create)
 	otherUserID := "7734"
@@ -204,7 +244,7 @@ func (s *GeofencesControllerTestSuite) TestPostGeofence400IfNotYourDevice() {
 }
 func (s *GeofencesControllerTestSuite) TestGetAllUserGeofences() {
 	injectedUserID := ksuid.New().String()
-	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, nil, s.deviceDefSvc)
+	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, nil, s.deviceDefSvc, nil)
 	app := fiber.New()
 	app.Get("/user/geofences", test.AuthInjectorTestHandler(injectedUserID), c.GetAll)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "escaped", 2020, nil)
@@ -226,8 +266,10 @@ func (s *GeofencesControllerTestSuite) TestGetAllUserGeofences() {
 }
 func (s *GeofencesControllerTestSuite) TestPutGeofence() {
 	injectedUserID := ksuid.New().String()
+	usersClient := mock_services.NewMockUserServiceClient(s.mockCtrl)
+	usersClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(&users.User{}, nil)
 	producer := saramamocks.NewSyncProducer(s.T(), sarama.NewConfig())
-	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, producer, s.deviceDefSvc)
+	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, producer, s.deviceDefSvc, usersClient)
 	app := fiber.New()
 	app.Get("/user/geofences", test.AuthInjectorTestHandler(injectedUserID), c.GetAll)
 	app.Put("/user/geofences/:geofenceID", test.AuthInjectorTestHandler(injectedUserID), c.Update)
@@ -276,7 +318,7 @@ func (s *GeofencesControllerTestSuite) TestPutGeofence() {
 func (s *GeofencesControllerTestSuite) TestDeleteGeofence() {
 	injectedUserID := ksuid.New().String()
 	producer := saramamocks.NewSyncProducer(s.T(), sarama.NewConfig())
-	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, producer, s.deviceDefSvc)
+	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, producer, s.deviceDefSvc, nil)
 	app := fiber.New()
 	app.Delete("/user/geofences/:geofenceID", test.AuthInjectorTestHandler(injectedUserID), c.Delete)
 	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, ksuid.New().String(), nil, "", s.pdb)
