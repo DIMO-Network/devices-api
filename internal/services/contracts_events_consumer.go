@@ -96,7 +96,7 @@ type Block struct {
 	Time   time.Time   `json:"time,omitempty"`
 }
 
-func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration, mcInt Integration, ddSvc DeviceDefinitionService, evtSvc EventService) *ContractsEventsConsumer {
+func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration, mcInt Integration, ddSvc DeviceDefinitionService, evtSvc EventService, scTask SyntheticTaskService, teslaTask SyntheticTaskService) *ContractsEventsConsumer {
 	return &ContractsEventsConsumer{
 		db:           pdb,
 		log:          log,
