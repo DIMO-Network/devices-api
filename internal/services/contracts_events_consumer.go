@@ -27,6 +27,7 @@ import (
 	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"google.golang.org/protobuf/proto"
 )
@@ -34,6 +35,10 @@ import (
 type Integration interface {
 	Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *big.Int) error
 	Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID *big.Int) error
+}
+
+type SyntheticTaskService interface {
+	StopPoll(udai *models.UserDeviceAPIIntegration) error
 }
 
 type ContractsEventsConsumer struct {
@@ -45,6 +50,9 @@ type ContractsEventsConsumer struct {
 	mcInt        Integration
 	ddSvc        DeviceDefinitionService
 	evtSvc       EventService
+
+	scTask    SyntheticTaskService
+	teslaTask SyntheticTaskService
 }
 
 type EventName string
@@ -209,7 +217,70 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 
 	sd, err := models.SyntheticDevices(
 		models.SyntheticDeviceWhere.TokenID.EQ(dbtypes.NullIntToDecimal(args.TokenId)),
+		qm.Load(models.SyntheticDeviceRels.VehicleToken),
 	).One(ctx, c.db.DBS().Writer)
+	if err != nil {
+		return err
+	}
+
+	ud := sd.R.VehicleToken
+
+	intID, _ := sd.IntegrationTokenID.Int64()
+
+	integ, err := c.ddSvc.GetIntegrationByTokenID(ctx, uint64(intID))
+	if err != nil {
+		return err
+	}
+
+	dd, err := c.ddSvc.GetDeviceDefinitionByID(ctx, ud.DeviceDefinitionID)
+	if err != nil {
+		return err
+	}
+
+	udai, err := models.FindUserDeviceAPIIntegration(ctx, c.db.DBS().Reader.DB, ud.ID, integ.Id)
+	if err != nil {
+		return err
+	}
+
+	if udai.TaskID.Valid {
+		switch integ.Vendor {
+		case constants.SmartCarVendor:
+			err := c.scTask.StopPoll(udai)
+			if err != nil {
+				return err
+			}
+		case constants.TeslaVendor:
+			err := c.teslaTask.StopPoll(udai)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	err = c.evtSvc.Emit(&shared.CloudEvent[any]{
+		Type:    "com.dimo.zone.device.integration.delete",
+		Source:  "devices-api",
+		Subject: ud.ID,
+		Data: UserDeviceIntegrationEvent{
+			Timestamp: time.Now(),
+			UserID:    ud.UserID,
+			Device: UserDeviceEventDevice{
+				ID:    ud.ID,
+				Make:  dd.Make.Name,
+				Model: dd.Type.Model,
+				Year:  int(dd.Type.Year),
+				VIN:   ud.VinIdentifier.String,
+			},
+			Integration: UserDeviceEventIntegration{
+				ID:     integ.Id,
+				Type:   integ.Type,
+				Style:  integ.Style,
+				Vendor: integ.Vendor,
+			},
+		},
+	})
+
+	_, err = udai.Delete(ctx, c.db.DBS().Writer)
 	if err != nil {
 		return err
 	}
