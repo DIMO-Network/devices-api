@@ -91,6 +91,7 @@ func (s *UserDevicesControllerTestSuite) TestPostBurn() {
 
 	bvs := registry.BurnVehicleSign{
 		TokenID: big.NewInt(int64(tkn)),
+		Nonce:   big.NewInt(0),
 	}
 
 	client := registry.Client{

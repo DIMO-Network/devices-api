@@ -45,12 +45,13 @@ func anySlice[A any](v []A) []any {
 	return out
 }
 
-// MintVehicleSign(uint256 manufacturerNode,address owner,string[] attributes,string[] infos)
+// MintVehicleSign(uint256 manufacturerNode,address owner,string[] attributes,string[] infos,uint256 nonce)
 type MintVehicleSign struct {
 	ManufacturerNode *big.Int
 	Owner            common.Address
 	Attributes       []string
 	Infos            []string
+	Nonce            *big.Int
 }
 
 func (m *MintVehicleSign) Name() string {
@@ -63,6 +64,7 @@ func (m *MintVehicleSign) Type() []signer.Type {
 		{Name: "owner", Type: "address"},
 		{Name: "attributes", Type: "string[]"},
 		{Name: "infos", Type: "string[]"},
+		{Name: "nonce", Type: "uint256"},
 	}
 }
 
@@ -72,16 +74,18 @@ func (m *MintVehicleSign) Message() signer.TypedDataMessage {
 		"owner":            m.Owner.Hex(),
 		"attributes":       anySlice(m.Attributes),
 		"infos":            anySlice(m.Infos),
+		"nonce":            hexutil.EncodeBig(m.Nonce),
 	}
 }
 
-// MintVehicleWithDeviceDefinitionSign(uint256 manufacturerNode, address owner, string deviceDefinitionId, (string,string)[] attrInfo, bytes signature)
+// MintVehicleWithDeviceDefinitionSign(uint256 manufacturerNode, address owner, string deviceDefinitionId, (string,string)[] attrInfo, bytes signature, uint256 nonce)
 type MintVehicleWithDeviceDefinitionSign struct {
 	ManufacturerNode   *big.Int
 	Owner              common.Address
 	DeviceDefinitionID string
 	Attributes         []string
 	Infos              []string
+	Nonce              *big.Int
 }
 
 func (m *MintVehicleWithDeviceDefinitionSign) Name() string {
@@ -95,6 +99,7 @@ func (m *MintVehicleWithDeviceDefinitionSign) Type() []signer.Type {
 		{Name: "deviceDefinitionId", Type: "string"},
 		{Name: "attributes", Type: "string[]"},
 		{Name: "infos", Type: "string[]"},
+		{Name: "nonce", Type: "uint256"},
 	}
 }
 
@@ -105,13 +110,15 @@ func (m *MintVehicleWithDeviceDefinitionSign) Message() signer.TypedDataMessage 
 		"deviceDefinitionId": m.DeviceDefinitionID,
 		"attributes":         anySlice(m.Attributes),
 		"infos":              anySlice(m.Infos),
+		"nonce":              hexutil.EncodeBig(m.Nonce),
 	}
 }
 
-// MintVehicleAndSdSign(uint256 integrationNode)
+// MintVehicleAndSdSign(uint256 integrationNode,uint256 nonce)
 // Only signed by the synthetic device's wallet.
 type MintVehicleAndSdSign struct {
 	IntegrationNode *big.Int
+	Nonce           *big.Int
 }
 
 func (m *MintVehicleAndSdSign) Name() string {
@@ -121,18 +128,21 @@ func (m *MintVehicleAndSdSign) Name() string {
 func (m *MintVehicleAndSdSign) Type() []signer.Type {
 	return []signer.Type{
 		{Name: "integrationNode", Type: "uint256"},
+		{Name: "nonce", Type: "uint256"},
 	}
 }
 
 func (m *MintVehicleAndSdSign) Message() signer.TypedDataMessage {
 	return signer.TypedDataMessage{
 		"integrationNode": hexutil.EncodeBig(m.IntegrationNode),
+		"nonce":           hexutil.EncodeBig(m.Nonce),
 	}
 }
 
-// BurnVehicleSign(uint256 tokenID)
+// BurnVehicleSign(uint256 tokenID,uint256 nonce)
 type BurnVehicleSign struct {
 	TokenID *big.Int
+	Nonce   *big.Int
 }
 
 func (b *BurnVehicleSign) Name() string {
@@ -142,19 +152,22 @@ func (b *BurnVehicleSign) Name() string {
 func (b *BurnVehicleSign) Type() []signer.Type {
 	return []signer.Type{
 		{Name: "vehicleNode", Type: "uint256"},
+		{Name: "nonce", Type: "uint256"},
 	}
 }
 
 func (b *BurnVehicleSign) Message() signer.TypedDataMessage {
 	return signer.TypedDataMessage{
 		"vehicleNode": hexutil.EncodeBig(b.TokenID),
+		"nonce":       hexutil.EncodeBig(b.Nonce),
 	}
 }
 
-// ClaimAftermarketDeviceSign(uint256 aftermarketDeviceNode,address owner)
+// ClaimAftermarketDeviceSign(uint256 aftermarketDeviceNode,address owner,uint256 nonce)
 type ClaimAftermarketDeviceSign struct {
 	AftermarketDeviceNode *big.Int
 	Owner                 common.Address
+	Nonce                 *big.Int
 }
 
 func (m *ClaimAftermarketDeviceSign) Name() string {
@@ -165,6 +178,7 @@ func (m *ClaimAftermarketDeviceSign) Type() []signer.Type {
 	return []signer.Type{
 		{Name: "aftermarketDeviceNode", Type: "uint256"},
 		{Name: "owner", Type: "address"},
+		{Name: "nonce", Type: "uint256"},
 	}
 }
 
@@ -172,13 +186,15 @@ func (m *ClaimAftermarketDeviceSign) Message() signer.TypedDataMessage {
 	return signer.TypedDataMessage{
 		"aftermarketDeviceNode": hexutil.EncodeBig(m.AftermarketDeviceNode),
 		"owner":                 m.Owner.Hex(),
+		"nonce":                 hexutil.EncodeBig(m.Nonce),
 	}
 }
 
-// PairAftermarketDeviceSign(uint256 aftermarketDeviceNode,uint256 vehicleNode)
+// PairAftermarketDeviceSign(uint256 aftermarketDeviceNode,uint256 vehicleNode,uint256 nonce)
 type PairAftermarketDeviceSign struct {
 	AftermarketDeviceNode *big.Int
 	VehicleNode           *big.Int
+	Nonce                 *big.Int
 }
 
 func (m *PairAftermarketDeviceSign) Name() string {
@@ -189,6 +205,7 @@ func (m *PairAftermarketDeviceSign) Type() []signer.Type {
 	return []signer.Type{
 		{Name: "aftermarketDeviceNode", Type: "uint256"},
 		{Name: "vehicleNode", Type: "uint256"},
+		{Name: "nonce", Type: "uint256"},
 	}
 }
 
@@ -196,14 +213,16 @@ func (m *PairAftermarketDeviceSign) Message() signer.TypedDataMessage {
 	return signer.TypedDataMessage{
 		"aftermarketDeviceNode": hexutil.EncodeBig(m.AftermarketDeviceNode),
 		"vehicleNode":           hexutil.EncodeBig(m.VehicleNode),
+		"nonce":                 hexutil.EncodeBig(m.Nonce),
 	}
 }
 
-// UnPairAftermarketDeviceSign(uint256 aftermarketDeviceNode,uint256 vehicleNode)
+// UnPairAftermarketDeviceSign(uint256 aftermarketDeviceNode,uint256 vehicleNode,uin256 nonce)
 // Looks exactly like the pairing message outside of the name.
 type UnPairAftermarketDeviceSign struct {
 	AftermarketDeviceNode *big.Int
 	VehicleNode           *big.Int
+	Nonce                 *big.Int
 }
 
 func (m *UnPairAftermarketDeviceSign) Name() string {
@@ -214,6 +233,7 @@ func (m *UnPairAftermarketDeviceSign) Type() []signer.Type {
 	return []signer.Type{
 		{Name: "aftermarketDeviceNode", Type: "uint256"},
 		{Name: "vehicleNode", Type: "uint256"},
+		{Name: "nonce", Type: "uint256"},
 	}
 }
 
@@ -221,6 +241,7 @@ func (m *UnPairAftermarketDeviceSign) Message() signer.TypedDataMessage {
 	return signer.TypedDataMessage{
 		"aftermarketDeviceNode": hexutil.EncodeBig(m.AftermarketDeviceNode),
 		"vehicleNode":           hexutil.EncodeBig(m.VehicleNode),
+		"nonce":                 hexutil.EncodeBig(m.Nonce),
 	}
 }
 
@@ -467,3 +488,38 @@ func (c *Client) Hash(msg Message) ([]byte, error) {
 	hash, _, err := signer.TypedDataAndHash(*td)
 	return hash, err
 }
+
+// func (c *Client) GetNonce() *big.Int {
+//     client, err := ethclient.Dial("https://rinkeby.infura.io")
+//     if err != nil {
+//         log.Fatal(err)
+//     }
+
+//     address := common.HexToAddress("0x147B8eb97fD247D06C4006D269c90C1908Fb5D54")
+//     instance, err := store.NewStore(address, client)
+//     if err != nil {
+//         log.Fatal(err)
+//     }
+
+//     version, err := instance.Version(nil)
+//     if err != nil {
+//         log.Fatal(err)
+//     }
+
+//     fmt.Println(version) // "1.0"
+// }
+
+// // function MintVehicleAndSdWithDeviceDefinitionSign(MintVehicleAndSdWithDdInput calldata data)
+// func (c *Client) MintVehicleAndSdWithDeviceDefinitionSign(requestID string, data contracts.MintVehicleAndSdWithDdInput) error {
+// 	abi, err := contracts.RegistryMetaData.GetAbi()
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	callData, err := abi.Pack("mintVehicleAndSdWithDeviceDefinitionSign", data)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	return c.sendRequest(requestID, callData)
+// }

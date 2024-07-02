@@ -772,6 +772,7 @@ func (udc *UserDevicesController) checkDeviceBurn(ctx context.Context, userDevic
 
 	return registry.BurnVehicleSign{
 		TokenID: userDevice.TokenID.Int(nil),
+		Nonce:   big.NewInt(0), // TODO Get current nonce for the owner from DIMORegistry, common.HexToAddress(*user.EthereumAddress)
 	}, user, nil
 }
 

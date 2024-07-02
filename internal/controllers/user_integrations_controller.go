@@ -855,6 +855,7 @@ func (udc *UserDevicesController) GetAftermarketDeviceClaimMessage(c *fiber.Ctx)
 	cads := &registry.ClaimAftermarketDeviceSign{
 		AftermarketDeviceNode: apToken,
 		Owner:                 common.HexToAddress(*user.EthereumAddress),
+		Nonce:                 big.NewInt(0), // TODO Get current nonce for the owner from DIMORegistry
 	}
 
 	var out *signer.TypedData = client.GetPayload(cads)
@@ -937,6 +938,7 @@ func (udc *UserDevicesController) PostAftermarketDeviceClaim(c *fiber.Ctx) error
 	cads := &registry.ClaimAftermarketDeviceSign{
 		AftermarketDeviceNode: apToken,
 		Owner:                 realUserAddr,
+		Nonce:                 big.NewInt(0), // TODO Get nonce from DIMORegistry
 	}
 
 	hash, err := client.Hash(cads)
@@ -1058,6 +1060,7 @@ func (udc *UserDevicesController) GetAftermarketDevicePairMessage(c *fiber.Ctx) 
 	pads := &registry.PairAftermarketDeviceSign{
 		AftermarketDeviceNode: apToken,
 		VehicleNode:           vehicleToken,
+		Nonce:                 big.NewInt(0), // TODO Get current nonce from DIMORegistry
 	}
 
 	return c.JSON(client.GetPayload(pads))
@@ -1125,6 +1128,7 @@ func (udc *UserDevicesController) PostAftermarketDevicePair(c *fiber.Ctx) error 
 	pads := registry.PairAftermarketDeviceSign{
 		AftermarketDeviceNode: apToken,
 		VehicleNode:           vehicleToken,
+		Nonce:                 big.NewInt(0), // TODO Get current nonce from DIMORegistry
 	}
 
 	hash, err := client.Hash(&pads)
@@ -1387,6 +1391,7 @@ func (udc *UserDevicesController) GetAftermarketDeviceUnpairMessage(c *fiber.Ctx
 	uads := &registry.UnPairAftermarketDeviceSign{
 		AftermarketDeviceNode: apToken,
 		VehicleNode:           vehicleToken,
+		Nonce:                 big.NewInt(0), // TODO Get current nonce from DIMORegistry
 	}
 
 	var out *signer.TypedData = client.GetPayload(uads)
@@ -1450,6 +1455,7 @@ func (udc *UserDevicesController) PostAftermarketDeviceUnpair(c *fiber.Ctx) erro
 	uads := registry.UnPairAftermarketDeviceSign{
 		AftermarketDeviceNode: apToken,
 		VehicleNode:           vehicleToken,
+		Nonce:                 big.NewInt(0), // TODO Get current nonce from DIMORegistry
 	}
 
 	// Re-using this struct. A bit lazy.

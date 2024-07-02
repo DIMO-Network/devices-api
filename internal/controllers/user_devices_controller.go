@@ -1345,6 +1345,7 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		Attributes:         mvs.Attributes,
 		Infos:              mvs.Infos,
 		DeviceDefinitionID: dd.NameSlug,
+		Nonce:              mvs.Nonce,
 	}
 
 	return c.JSON(client.GetPayload(&mvdds))
@@ -1411,6 +1412,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		Attributes:         mvs.Attributes,
 		Infos:              mvs.Infos,
 		DeviceDefinitionID: dd.NameSlug,
+		Nonce:              mvs.Nonce,
 	}
 
 	logger.Info().
@@ -1539,6 +1541,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 			mvss := registry.MintVehicleAndSdSign{
 				IntegrationNode: new(big.Int).SetUint64(intID),
+				Nonce:           big.NewInt(0), // TODO Get current nonce for the SD from DIMORegistry
 			}
 
 			hash, err := client.Hash(&mvss)
@@ -1877,6 +1880,7 @@ func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID s
 		Owner:            common.HexToAddress(*user.EthereumAddress),
 		Attributes:       []string{"Make", "Model", "Year"},
 		Infos:            []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year))},
+		Nonce:            big.NewInt(0), // TODO Get current nonce from DIMORegistry, common.HexToAddress(*user.EthereumAddress)
 	}
 
 	if userDevice.IpfsImageCid.Valid {

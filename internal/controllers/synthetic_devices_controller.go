@@ -83,6 +83,7 @@ func (sdc *SyntheticDevicesController) getEIP712Mint(integrationID, vehicleNode 
 			"MintSyntheticDeviceSign": []signer.Type{
 				{Name: "integrationNode", Type: "uint256"},
 				{Name: "vehicleNode", Type: "uint256"},
+				{Name: "nonce", Type: "uint256"},
 			},
 		},
 		PrimaryType: "MintSyntheticDeviceSign",
@@ -95,6 +96,7 @@ func (sdc *SyntheticDevicesController) getEIP712Mint(integrationID, vehicleNode 
 		Message: signer.TypedDataMessage{
 			"integrationNode": math.NewHexOrDecimal256(integrationID),
 			"vehicleNode":     math.NewHexOrDecimal256(vehicleNode),
+			"nonce":           big.NewInt(0), // TODO Get nonce from DIMORegistry
 		},
 	}
 }
@@ -571,6 +573,7 @@ func (sdc *SyntheticDevicesController) getEIP712Burn(vehicleNode, syntheticDevic
 			"BurnSyntheticDeviceSign": []signer.Type{
 				{Name: "vehicleNode", Type: "uint256"},
 				{Name: "syntheticDeviceNode", Type: "uint256"},
+				{Name: "nonce", Type: "uint256"},
 			},
 		},
 		PrimaryType: "BurnSyntheticDeviceSign",
@@ -583,6 +586,7 @@ func (sdc *SyntheticDevicesController) getEIP712Burn(vehicleNode, syntheticDevic
 		Message: signer.TypedDataMessage{
 			"vehicleNode":         math.NewHexOrDecimal256(vehicleNode),
 			"syntheticDeviceNode": math.NewHexOrDecimal256(syntheticDeviceNode),
+			"nonce":               big.NewInt(0), // TODO Get owner nonce from DIMORegistry
 		},
 	}
 }
