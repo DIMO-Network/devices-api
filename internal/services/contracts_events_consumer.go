@@ -106,6 +106,8 @@ func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *con
 		mcInt:        mcInt,
 		ddSvc:        ddSvc,
 		evtSvc:       evtSvc,
+		scTask:       scTask,
+		teslaTask:    teslaTask,
 	}
 }
 
