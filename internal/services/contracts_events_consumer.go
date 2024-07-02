@@ -227,14 +227,9 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 
 	ud := sd.R.VehicleToken
 
-	intID, _ := sd.IntegrationTokenID.Int64()
+	intID, _ := sd.IntegrationTokenID.Uint64()
 
-	integ, err := c.ddSvc.GetIntegrationByTokenID(ctx, uint64(intID))
-	if err != nil {
-		return err
-	}
-
-	dd, err := c.ddSvc.GetDeviceDefinitionByID(ctx, ud.DeviceDefinitionID)
+	integ, err := c.ddSvc.GetIntegrationByTokenID(ctx, intID)
 	if err != nil {
 		return err
 	}
@@ -256,7 +251,15 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 			if err != nil {
 				return err
 			}
+		default:
+			c.log.Warn().Msgf("Unexpected integration %s.", integ.Vendor)
 		}
+	}
+
+	// Need this for the event.
+	dd, err := c.ddSvc.GetDeviceDefinitionByID(ctx, ud.DeviceDefinitionID)
+	if err != nil {
+		return err
 	}
 
 	err = c.evtSvc.Emit(&shared.CloudEvent[any]{
@@ -281,6 +284,9 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 			},
 		},
 	})
+	if err != nil {
+		c.log.Info().Int64("syntheticDeviceTokenId", args.TokenId.Int64()).Str("owner", args.From.Hex()).Msg("Couldn't send out integration deletion event.")
+	}
 
 	_, err = udai.Delete(ctx, c.db.DBS().Writer)
 	if err != nil {
