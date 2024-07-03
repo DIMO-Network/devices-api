@@ -37,6 +37,7 @@ type Integration interface {
 	Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID *big.Int) error
 }
 
+//go:generate mockgen -source=./contracts_events_consumer.go -destination=./contract_events_consumer_mocks_test.go -package=services
 type SyntheticTaskService interface {
 	StopPoll(udai *models.UserDeviceAPIIntegration) error
 }
@@ -142,6 +143,7 @@ func (c *ContractsEventsConsumer) processEvent(ctx context.Context, event *share
 		c.log.Debug().Str("event", data.EventName).Interface("event data", event).Msg("Handler not provided for event.")
 		return nil
 	}
+
 	switch data.EventName {
 	case PrivilegeSet.String():
 		c.log.Info().Str("event", data.EventName).Msg("Event received")
@@ -222,10 +224,21 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 		qm.Load(models.SyntheticDeviceRels.VehicleToken),
 	).One(ctx, c.db.DBS().Writer)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.log.Error().Int64("sdId", args.TokenId.Int64()).Msg("Got a burn event for a synthetic device we don't know.")
+		}
+		return fmt.Errorf("couldn't find synthetic device %d: %w", sd.TokenID, err)
+	}
+
+	_, err = sd.Delete(ctx, c.db.DBS().Writer)
+	if err != nil {
 		return err
 	}
 
 	ud := sd.R.VehicleToken
+	if ud == nil {
+		return nil
+	}
 
 	intID, _ := sd.IntegrationTokenID.Uint64()
 
@@ -236,7 +249,7 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 
 	udai, err := models.FindUserDeviceAPIIntegration(ctx, c.db.DBS().Reader.DB, ud.ID, integ.Id)
 	if err != nil {
-		return err
+		return fmt.Errorf("couldn't find : %w", err)
 	}
 
 	if udai.TaskID.Valid {
@@ -289,11 +302,6 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 	}
 
 	_, err = udai.Delete(ctx, c.db.DBS().Writer)
-	if err != nil {
-		return err
-	}
-
-	_, err = sd.Delete(ctx, c.db.DBS().Writer)
 	if err != nil {
 		return err
 	}

@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -11,6 +13,7 @@ import (
 	"time"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/services/dex"
 	"github.com/segmentio/ksuid"
@@ -854,6 +857,112 @@ func Test_VehicleNodeMintedWithDeviceDefinition_NoMtx(t *testing.T) {
 	require.Equal(base64.RawURLEncoding.EncodeToString(userID), ud.UserID)
 }
 
+func TestBurnSyntheticDevice(t *testing.T) {
+	ctx := context.Background()
+	logger := zerolog.Nop()
+	sdToken := 4
+	vehicleID := 54
+	teslaIntID := 2
+
+	teslaIntegrationID := ksuid.New().String()
+
+	chainID := 1
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer container.Terminate(ctx) //nolint
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	sdAddr := randomAddr(t)
+
+	settings := &config.Settings{DIMORegistryChainID: int64(chainID), SyntheticDeviceNFTAddress: sdAddr.Hex()}
+	deviceDefSvc := NewMockDeviceDefinitionService(mockCtrl)
+
+	teslaTask := NewMockSyntheticTaskService(mockCtrl)
+
+	mtr := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusConfirmed,
+	}
+	err := mtr.Insert(ctx, pdb.DBS().Reader, boil.Infer())
+	require.NoError(t, err)
+
+	teslaInteg := &ddgrpc.Integration{
+		Id:     teslaIntegrationID,
+		Vendor: constants.TeslaVendor,
+	}
+
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		UserID:             "xdd",
+		DeviceDefinitionID: ksuid.New().String(),
+		TokenID:            types.NewNullDecimal(decimal.New(int64(vehicleID), 0)),
+	}
+	err = ud.Insert(ctx, pdb.DBS().Reader, boil.Infer())
+	require.NoError(t, err)
+
+	deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(teslaIntID)).Return(teslaInteg, nil)
+	deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Return(&ddgrpc.GetDeviceDefinitionItemResponse{
+		Make: &ddgrpc.DeviceMake{
+			Name: "Tesla",
+		},
+		Type: &ddgrpc.DeviceType{
+			Model: "Model X",
+			Year:  2024,
+		},
+	}, nil)
+
+	udai := models.UserDeviceAPIIntegration{
+		UserDeviceID:  ud.ID,
+		IntegrationID: teslaInteg.Id,
+		TaskID:        null.StringFrom(ksuid.New().String()),
+		Status:        models.UserDeviceAPIIntegrationStatusActive,
+	}
+	err = udai.Insert(ctx, pdb.DBS().Reader, boil.Infer())
+	require.NoError(t, err)
+
+	sd := models.SyntheticDevice{
+		VehicleTokenID:     ud.TokenID,
+		IntegrationTokenID: types.NewDecimal(decimal.New(2, 0)),
+		MintRequestID:      mtr.ID,
+		WalletChildNumber:  1,
+		WalletAddress:      randomAddr(t).Bytes(),
+		TokenID:            types.NewNullDecimal(decimal.New(int64(sdToken), 0)),
+	}
+	err = sd.Insert(ctx, pdb.DBS().Reader, boil.Infer())
+	require.NoError(t, err)
+
+	kprod := smock.NewSyncProducer(t, nil)
+	evt := NewEventService(&logger, settings, kprod)
+	kprod.ExpectSendMessageAndSucceed()
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, deviceDefSvc, evt, nil, teslaTask)
+
+	ownerAddr := randomAddr(t)
+
+	ced := ContractEventData{
+		ChainID:   int64(chainID),
+		EventName: "Transfer",
+		Contract:  sdAddr,
+		Arguments: []byte(fmt.Sprintf(`{"from": "%s", "to": "%s", "tokenId": %d}`, ownerAddr, zeroAddr, sdToken)),
+	}
+
+	b, _ := json.Marshal(ced)
+
+	teslaTask.EXPECT().StopPoll(gomock.Any())
+
+	err = consumer.processEvent(ctx, &shared.CloudEvent[json.RawMessage]{
+		Source: fmt.Sprintf("chain/%d", chainID),
+		Type:   contractEventCEType,
+		Data:   b,
+	})
+	require.NoError(t, err)
+
+	err = sd.Reload(ctx, pdb.DBS().Reader)
+	require.ErrorIs(t, err, sql.ErrNoRows)
+
+	err = udai.Reload(ctx, pdb.DBS().Reader)
+	require.ErrorIs(t, err, sql.ErrNoRows)
+}
+
 func initCEventsTestHelper(t *testing.T) cEventsTestHelper {
 	ctx := context.Background()
 	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
@@ -874,4 +983,13 @@ func (s cEventsTestHelper) destroy() {
 	if err := s.container.Terminate(s.ctx); err != nil {
 		s.t.Fatal(err)
 	}
+}
+
+func randomAddr(t *testing.T) common.Address {
+	addr := make([]byte, common.AddressLength)
+	_, err := rand.Read(addr)
+	if err != nil {
+		t.Fatalf("couldn't create a test address: %v", err)
+	}
+	return common.Address(addr)
 }
