@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"net/http"
 	"testing"
@@ -144,6 +145,22 @@ func (s *AutoPiAPIServiceTestSuite) TestGetDeviceByUnitID_Should_Be_NotFound() {
 
 	// assert
 	require.Error(s.T(), err)
+}
+
+//go:embed testDongleDeviceResp.json
+var testDongleDeviceResp string
+
+func TestUpdateState(t *testing.T) {
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+	// http mock
+	url := "https://mock.town/dongle/devices/1c030237-af16-492c-9020-a183dad2797b/"
+	httpmock.RegisterResponder(http.MethodGet, url, httpmock.NewStringResponder(200, testDongleDeviceResp))
+	httpmock.RegisterResponder(http.MethodPatch, url, httpmock.NewStringResponder(200, `{}`))
+
+	apSvc := NewAutoPiAPIService(&config.Settings{AutoPiAPIURL: "https://mock.town"}, nil)
+	err := apSvc.UpdateState("1c030237-af16-492c-9020-a183dad2797b", "Failed", "", "")
+	assert.NoError(t, err)
 }
 
 func TestBuildCallName(t *testing.T) {

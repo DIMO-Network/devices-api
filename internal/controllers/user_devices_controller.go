@@ -1232,10 +1232,23 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DeviceDefinitionID)
 	}
+	autopiDeviceID := ""
 
 	for _, apiInteg := range userDevice.R.UserDeviceAPIIntegrations {
 		if unit := apiInteg.R.SerialAftermarketDevice; unit != nil && !unit.VehicleTokenID.IsZero() {
 			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Cannot delete vehicle before unpairing aftermarket device %s on-chain.", unit.Serial))
+		}
+		integr, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), apiInteg.IntegrationID)
+		if err != nil {
+			return err
+		}
+		if integr.Vendor == constants.AutoPiVendor {
+			unit, _ := udc.autoPiSvc.GetDeviceByUnitID(apiInteg.Serial.String)
+			if unit != nil {
+				autopiDeviceID = unit.ID
+			} else {
+				udc.log.Warn().Msgf("failed to find autopi device with serial: %s and user device id: %s", apiInteg.Serial.String, apiInteg.UserDeviceID)
+			}
 		}
 	}
 
@@ -1273,8 +1286,20 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 	} else {
 		logger.Info().Msg("Deleted vehicle.")
 	}
+	udc.markAutoPiUnpaired(autopiDeviceID)
 
 	return c.SendStatus(fiber.StatusNoContent)
+}
+
+// markAutoPiUnpaired tells the AP cloud this device has been marked as unpaired in their metadata, only if id is not empty
+func (udc *UserDevicesController) markAutoPiUnpaired(autopiDeviceID string) {
+	// autopi would like it if we updated the state to unpaired for these cases
+	if autopiDeviceID != "" {
+		err := udc.autoPiSvc.UpdateState(autopiDeviceID, "unpaired", "", "")
+		if err != nil {
+			udc.log.Err(err).Msgf("failed to update autopi device state with device id: %s", autopiDeviceID)
+		}
+	}
 }
 
 const imageURIattribute = "ImageURI"

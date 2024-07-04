@@ -1,0 +1,78 @@
+{
+  "id": "1c030237-af16-492c-9020-a183dad2797b",
+  "unit_id": "1ad33fc8-6160-7a16-e741-9d781da7c823",
+  "token": "1fbde44b-ebd7-447f-84bb-89fcb0268fe9",
+  "callName": "",
+  "owner": 2,
+  "vehicle": {
+    "id": 9664,
+    "vin": "",
+    "display": "Subaru Ascent:2021 subaru ascent",
+    "callName": "Subaru Ascent:2021 subaru ascent",
+    "licensePlate": "",
+    "model": null,
+    "make": null,
+    "year": 2021,
+    "type": "ICE",
+    "battery_nominal_voltage": 12
+  },
+  "display": "Subaru Ascent:2021 subaru ascent",
+  "last_communication": "2024-06-28T18:57:03.727737Z",
+  "is_updated": true,
+  "release": {
+    "version": "1.25.5",
+    "active": true
+  },
+  "open_alerts": {
+    "high": 0,
+    "medium": 2,
+    "critical": 1,
+    "low": 0
+  },
+  "template": 10,
+  "warnings": [
+    {
+      "device_has_no_make_model": {
+        "header": "Missing vehicle details",
+        "message": "Make and model is not set on vehicle"
+      }
+    },
+    {
+      "open_alerts": {
+        "header": "You have 3 open alerts",
+        "message": "Make sure you monitor the alerts for your device."
+      }
+    }
+  ],
+  "key_state": "ACCEPTED",
+  "access": "READWRITE",
+  "connection": "AutoPi",
+  "docker_releases": [],
+  "is_blocked_by_release": false,
+  "geofences": [],
+  "tags": [],
+  "wifi_pass": "yougotme",
+  "is_update_enqueued": false,
+  "pending_sync_count": 0,
+  "user_metadata": {
+    "country_code_iso3": "USA",
+    "state": "Active",
+    "region": "Americas"
+  },
+  "external_metadata": {
+    "image": null,
+    "mintedAt": null
+  },
+  "imei": "353338970349089",
+  "icc": "",
+  "phone_number": "",
+  "max_data_usage": 104857600,
+  "data_usage": 0,
+  "secure_element_serial_number": "",
+  "ethereum_address": "0xfa1238a0C927717180837C4e7A729D62a535e3Eb",
+  "edition_type": "4G",
+  "hw_model_id": "",
+  "hw_revision": "7.0",
+  "hw_board_ver": "7.0",
+  "hw_modem": "LE910C4-WWXD"
+}
