@@ -273,7 +273,9 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	}
 
 	if len(device.R.UserDeviceAPIIntegrations) == 0 {
-		return fiber.NewError(fiber.StatusNotFound, "Device does not have that udai.")
+		// The synthetic burn event handler might have already deleted it.
+		// Return success so the app doesn't freak out.
+		return c.SendStatus(fiber.StatusNoContent)
 	}
 	integr, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
 	if err != nil {
@@ -311,7 +313,7 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	}
 
 	err = udc.deleteDeviceIntegration(c.Context(), userID, userDeviceID, integrationID, dd)
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
 

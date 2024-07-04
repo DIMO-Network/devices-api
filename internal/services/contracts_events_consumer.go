@@ -27,6 +27,7 @@ import (
 	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"google.golang.org/protobuf/proto"
 )
@@ -34,6 +35,11 @@ import (
 type Integration interface {
 	Pair(ctx context.Context, autoPiTokenID, vehicleTokenID *big.Int) error
 	Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID *big.Int) error
+}
+
+//go:generate mockgen -source=./contracts_events_consumer.go -destination=./contract_events_consumer_mocks_test.go -package=services
+type SyntheticTaskService interface {
+	StopPoll(udai *models.UserDeviceAPIIntegration) error
 }
 
 type ContractsEventsConsumer struct {
@@ -45,6 +51,9 @@ type ContractsEventsConsumer struct {
 	mcInt        Integration
 	ddSvc        DeviceDefinitionService
 	evtSvc       EventService
+
+	scTask    SyntheticTaskService
+	teslaTask SyntheticTaskService
 }
 
 type EventName string
@@ -88,7 +97,7 @@ type Block struct {
 	Time   time.Time   `json:"time,omitempty"`
 }
 
-func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration, mcInt Integration, ddSvc DeviceDefinitionService, evtSvc EventService) *ContractsEventsConsumer {
+func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration, mcInt Integration, ddSvc DeviceDefinitionService, evtSvc EventService, scTask SyntheticTaskService, teslaTask SyntheticTaskService) *ContractsEventsConsumer {
 	return &ContractsEventsConsumer{
 		db:           pdb,
 		log:          log,
@@ -98,6 +107,8 @@ func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *con
 		mcInt:        mcInt,
 		ddSvc:        ddSvc,
 		evtSvc:       evtSvc,
+		scTask:       scTask,
+		teslaTask:    teslaTask,
 	}
 }
 
@@ -132,6 +143,7 @@ func (c *ContractsEventsConsumer) processEvent(ctx context.Context, event *share
 		c.log.Debug().Str("event", data.EventName).Interface("event data", event).Msg("Handler not provided for event.")
 		return nil
 	}
+
 	switch data.EventName {
 	case PrivilegeSet.String():
 		c.log.Info().Str("event", data.EventName).Msg("Event received")
@@ -209,14 +221,86 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 
 	sd, err := models.SyntheticDevices(
 		models.SyntheticDeviceWhere.TokenID.EQ(dbtypes.NullIntToDecimal(args.TokenId)),
+		qm.Load(models.SyntheticDeviceRels.VehicleToken),
 	).One(ctx, c.db.DBS().Writer)
+	if err != nil {
+		return fmt.Errorf("couldn't find synthetic device %d to burn: %w", sd.TokenID, err)
+	}
+
+	// The most important thing is to delete the database rows to free things up.
+	_, err = sd.Delete(ctx, c.db.DBS().Writer)
+	if err != nil {
+		return fmt.Errorf("failed to delete synthetic device %d row: %w", sd.TokenID, err)
+	}
+
+	ud := sd.R.VehicleToken
+	if ud == nil {
+		return fmt.Errorf("burning synthetic device %d with no paired vehicle", sd.TokenID)
+	}
+
+	intID, _ := sd.IntegrationTokenID.Uint64()
+	integ, err := c.ddSvc.GetIntegrationByTokenID(ctx, intID)
 	if err != nil {
 		return err
 	}
 
-	_, err = sd.Delete(ctx, c.db.DBS().Writer)
+	udai, err := models.FindUserDeviceAPIIntegration(ctx, c.db.DBS().Reader.DB, ud.ID, integ.Id)
+	if err != nil {
+		return fmt.Errorf("failed to find job backing burned synthetic device %d: %w", sd.TokenID, err)
+	}
+
+	_, err = udai.Delete(ctx, c.db.DBS().Writer)
+	if err != nil {
+		return fmt.Errorf("failed to delete job backing synthetic device %d: %w", sd.TokenID, err)
+	}
+
+	if udai.TaskID.Valid {
+		switch integ.Vendor {
+		case constants.SmartCarVendor:
+			err := c.scTask.StopPoll(udai)
+			if err != nil {
+				return err
+			}
+		case constants.TeslaVendor:
+			err := c.teslaTask.StopPoll(udai)
+			if err != nil {
+				return err
+			}
+		default:
+			c.log.Warn().Msgf("Unexpected integration %s.", integ.Vendor)
+		}
+	}
+
+	// Need this for the event.
+	dd, err := c.ddSvc.GetDeviceDefinitionByID(ctx, ud.DeviceDefinitionID)
 	if err != nil {
 		return err
+	}
+
+	err = c.evtSvc.Emit(&shared.CloudEvent[any]{
+		Type:    "com.dimo.zone.device.integration.delete",
+		Source:  "devices-api",
+		Subject: ud.ID,
+		Data: UserDeviceIntegrationEvent{
+			Timestamp: time.Now(),
+			UserID:    ud.UserID,
+			Device: UserDeviceEventDevice{
+				ID:    ud.ID,
+				Make:  dd.Make.Name,
+				Model: dd.Type.Model,
+				Year:  int(dd.Type.Year),
+				VIN:   ud.VinIdentifier.String,
+			},
+			Integration: UserDeviceEventIntegration{
+				ID:     integ.Id,
+				Type:   integ.Type,
+				Style:  integ.Style,
+				Vendor: integ.Vendor,
+			},
+		},
+	})
+	if err != nil {
+		c.log.Info().Int64("syntheticDeviceTokenId", args.TokenId.Int64()).Str("owner", args.From.Hex()).Msg("Couldn't send out integration deletion event.")
 	}
 
 	c.log.Info().Int64("syntheticDeviceTokenId", args.TokenId.Int64()).Str("owner", args.From.Hex()).Msg("Burned synthetic device.")
