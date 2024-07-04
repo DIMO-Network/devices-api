@@ -224,24 +224,21 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 		qm.Load(models.SyntheticDeviceRels.VehicleToken),
 	).One(ctx, c.db.DBS().Writer)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			c.log.Error().Int64("sdId", args.TokenId.Int64()).Msg("Got a burn event for a synthetic device we don't know.")
-		}
-		return fmt.Errorf("couldn't find synthetic device %d: %w", sd.TokenID, err)
+		return fmt.Errorf("couldn't find synthetic device %d to burn: %w", sd.TokenID, err)
 	}
 
+	// The most important thing is to delete the database rows to free things up.
 	_, err = sd.Delete(ctx, c.db.DBS().Writer)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete synthetic device %d row: %w", sd.TokenID, err)
 	}
 
 	ud := sd.R.VehicleToken
 	if ud == nil {
-		return nil
+		return fmt.Errorf("burning synthetic device %d with no paired vehicle", sd.TokenID)
 	}
 
 	intID, _ := sd.IntegrationTokenID.Uint64()
-
 	integ, err := c.ddSvc.GetIntegrationByTokenID(ctx, intID)
 	if err != nil {
 		return err
@@ -249,7 +246,12 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 
 	udai, err := models.FindUserDeviceAPIIntegration(ctx, c.db.DBS().Reader.DB, ud.ID, integ.Id)
 	if err != nil {
-		return fmt.Errorf("couldn't find : %w", err)
+		return fmt.Errorf("failed to find job backing burned synthetic device %d: %w", sd.TokenID, err)
+	}
+
+	_, err = udai.Delete(ctx, c.db.DBS().Writer)
+	if err != nil {
+		return fmt.Errorf("failed to delete job backing synthetic device %d: %w", sd.TokenID, err)
 	}
 
 	if udai.TaskID.Valid {
@@ -299,11 +301,6 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 	})
 	if err != nil {
 		c.log.Info().Int64("syntheticDeviceTokenId", args.TokenId.Int64()).Str("owner", args.From.Hex()).Msg("Couldn't send out integration deletion event.")
-	}
-
-	_, err = udai.Delete(ctx, c.db.DBS().Writer)
-	if err != nil {
-		return err
 	}
 
 	c.log.Info().Int64("syntheticDeviceTokenId", args.TokenId.Int64()).Str("owner", args.From.Hex()).Msg("Burned synthetic device.")

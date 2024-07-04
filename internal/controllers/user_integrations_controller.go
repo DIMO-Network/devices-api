@@ -273,7 +273,9 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	}
 
 	if len(device.R.UserDeviceAPIIntegrations) == 0 {
-		return fiber.NewError(fiber.StatusNotFound, "Device does not have that integration.")
+		// The synthetic burn event handler might have already deleted it.
+		// Return success so the app doesn't freak out.
+		return c.SendStatus(fiber.StatusNoContent)
 	}
 
 	if device.R.VehicleTokenSyntheticDevice != nil {
