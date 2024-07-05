@@ -262,6 +262,7 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 
 	device, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(models.UserDeviceRels.MintRequest),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
 		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(c.Context(), tx)
@@ -270,6 +271,10 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 			return fiber.NewError(fiber.StatusNotFound, "No device with that id.")
 		}
 		return err
+	}
+
+	if device.R.MintRequest != nil && device.R.MintRequest.Status != models.MetaTransactionRequestStatusFailed && device.R.MintRequest.Status != models.MetaTransactionRequestStatusConfirmed {
+		return fiber.NewError(fiber.StatusBadRequest, "Wait for vehicle minting to complete before deleting integration.")
 	}
 
 	if len(device.R.UserDeviceAPIIntegrations) == 0 {
