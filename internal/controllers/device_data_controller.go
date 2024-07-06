@@ -170,6 +170,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 
 	for _, v := range req.ErrorCodes {
 		if v == "" {
+			logger.Warn().Msg("Client sent an empty error code.")
 			// The app is sending in a lot of these.
 			continue
 		}
@@ -181,6 +182,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	}
 
 	if len(errorCodesCleaned) == 0 {
+		logger.Warn().Msg("Client sent an empty list.")
 		return c.JSON(&QueryDeviceErrorCodesResponse{
 			ErrorCodes: []services.ErrorCodesResponse{},
 		})
