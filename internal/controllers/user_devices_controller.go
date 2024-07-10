@@ -568,13 +568,16 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		// Return status 400 and error message.
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
+
 	if err := reg.Validate(); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
+
 	country := constants.FindCountry(strings.ToUpper(reg.CountryCode))
 	if country == nil {
 		return fiber.NewError(fiber.StatusBadRequest, "unsupported or invalid country: "+reg.CountryCode)
 	}
+
 	vin := strings.ToUpper(reg.VIN)
 
 	integration, err := udc.DeviceDefIntSvc.GetAutoPiIntegration(c.Context())
@@ -582,6 +585,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		udc.log.Err(err).Msg("failed to get autopi integration")
 		return err
 	}
+
 	localLog := udc.log.With().Str("userId", userID).Str("integrationId", integration.Id).
 		Str("countryCode", country.Alpha3).Str("vin", vin).Str("handler", "RegisterDeviceForUserFromVIN").
 		Logger()
@@ -591,20 +595,26 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	// check if VIN already exists
 	existingUD, err := models.UserDevices(models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
 		models.UserDeviceWhere.VinConfirmed.EQ(true)).One(c.Context(), udc.DBS().Reader)
+
 	if err != nil && !errors.Is(sql.ErrNoRows, err) {
 		return err
 	}
+
 	var udFull *UserDeviceFull
+
 	if existingUD != nil {
 		if existingUD.UserID != userID {
 			return fiber.NewError(fiber.StatusConflict, "VIN already exists for a different user: "+reg.VIN)
 		}
-		deviceDefinitionID = existingUD.DeviceDefinitionID
+
+		deviceDefinitionID = existingUD.DefinitionID
+
 		// shortcut process, just use the already registered UD
 		dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), deviceDefinitionID)
 		if err != nil {
 			return err
 		}
+
 		udFull, err = builUserDeviceFull(existingUD, dd, reg.CountryCode)
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
@@ -616,6 +626,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 			localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle")
 			return shared.GrpcErrorToFiber(err, "unable to decode vin: "+vin)
 		}
+
 		if len(decodeVIN.DeviceDefinitionId) == 0 {
 			localLog.Warn().Msg("unable to decode vin for customer request to create vehicle")
 			return fiber.NewError(fiber.StatusFailedDependency, "unable to decode vin")
