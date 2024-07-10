@@ -19,7 +19,7 @@ func NewDeviceDefinitionFromGRPC(dd *grpc.GetDeviceDefinitionItemResponse) (serv
 		}
 	}
 	rp := services.DeviceDefinition{
-		DeviceDefinitionID:     dd.DeviceDefinitionId,
+		DeviceDefinitionID:     dd.NameSlug,
 		Name:                   dd.Name,
 		ImageURL:               &dd.ImageUrl,
 		CompatibleIntegrations: []services.DeviceCompatibility{},

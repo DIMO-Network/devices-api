@@ -175,7 +175,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 
 	ddIDs := make([]string, len(devices))
 	for i, d := range devices {
-		ddIDs[i] = d.DeviceDefinitionID
+		ddIDs[i] = d.DefinitionID
 	}
 
 	deviceDefinitionResponse, err := udc.DeviceDefSvc.GetDeviceDefinitionsByIDs(ctx, ddIDs)
@@ -185,7 +185,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 
 	filterDeviceDefinition := func(id string, items []*ddgrpc.GetDeviceDefinitionItemResponse) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
 		for _, dd := range items {
-			if id == dd.DeviceDefinitionId {
+			if id == dd.NameSlug {
 				return dd, nil
 			}
 		}
