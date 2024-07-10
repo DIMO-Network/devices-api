@@ -904,7 +904,7 @@ func (o GeofenceSlice) UpdateAll(ctx context.Context, exec boil.ContextExecutor,
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *Geofence) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns, opts ...UpsertOptionFunc) error {
+func (o *Geofence) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
 		return errors.New("models: no geofences provided for upsert")
 	}
@@ -958,7 +958,7 @@ func (o *Geofence) Upsert(ctx context.Context, exec boil.ContextExecutor, update
 	var err error
 
 	if !cached {
-		insert, _ := insertColumns.InsertColumnSet(
+		insert, ret := insertColumns.InsertColumnSet(
 			geofenceAllColumns,
 			geofenceColumnsWithDefault,
 			geofenceColumnsWithoutDefault,
@@ -974,18 +974,12 @@ func (o *Geofence) Upsert(ctx context.Context, exec boil.ContextExecutor, update
 			return errors.New("models: unable to upsert geofences, could not build update column list")
 		}
 
-		ret := strmangle.SetComplement(geofenceAllColumns, strmangle.SetIntersect(insert, update))
-
 		conflict := conflictColumns
-		if len(conflict) == 0 && updateOnConflict && len(update) != 0 {
-			if len(geofencePrimaryKeyColumns) == 0 {
-				return errors.New("models: unable to upsert geofences, could not build conflict column list")
-			}
-
+		if len(conflict) == 0 {
 			conflict = make([]string, len(geofencePrimaryKeyColumns))
 			copy(conflict, geofencePrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"geofences\"", updateOnConflict, ret, update, conflict, insert, opts...)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"geofences\"", updateOnConflict, ret, update, conflict, insert)
 
 		cache.valueMapping, err = queries.BindMapping(geofenceType, geofenceMapping, insert)
 		if err != nil {

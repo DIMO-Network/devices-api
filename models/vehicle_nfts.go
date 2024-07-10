@@ -408,7 +408,7 @@ func (o *VehicleNFT) Insert(ctx context.Context, exec boil.ContextExecutor, colu
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *VehicleNFT) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns, opts ...UpsertOptionFunc) error {
+func (o *VehicleNFT) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
 		return errors.New("models: no vehicle_nfts provided for upsert")
 	}
@@ -454,7 +454,7 @@ func (o *VehicleNFT) Upsert(ctx context.Context, exec boil.ContextExecutor, upda
 	var err error
 
 	if !cached {
-		insert, _ := insertColumns.InsertColumnSet(
+		insert, ret := insertColumns.InsertColumnSet(
 			vehicleNFTAllColumns,
 			vehicleNFTColumnsWithDefault,
 			vehicleNFTColumnsWithoutDefault,
@@ -470,18 +470,12 @@ func (o *VehicleNFT) Upsert(ctx context.Context, exec boil.ContextExecutor, upda
 			return errors.New("models: unable to upsert vehicle_nfts, could not build update column list")
 		}
 
-		ret := strmangle.SetComplement(vehicleNFTAllColumns, strmangle.SetIntersect(insert, update))
-
 		conflict := conflictColumns
-		if len(conflict) == 0 && updateOnConflict && len(update) != 0 {
-			if len(vehicleNFTPrimaryKeyColumns) == 0 {
-				return errors.New("models: unable to upsert vehicle_nfts, could not build conflict column list")
-			}
-
+		if len(conflict) == 0 {
 			conflict = make([]string, len(vehicleNFTPrimaryKeyColumns))
 			copy(conflict, vehicleNFTPrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"vehicle_nfts\"", updateOnConflict, ret, update, conflict, insert, opts...)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"vehicle_nfts\"", updateOnConflict, ret, update, conflict, insert)
 
 		cache.valueMapping, err = queries.BindMapping(vehicleNFTType, vehicleNFTMapping, insert)
 		if err != nil {
