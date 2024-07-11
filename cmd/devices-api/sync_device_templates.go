@@ -53,7 +53,7 @@ func (p *syncDeviceTemplatesCmd) Execute(ctx context.Context, _ *flag.FlagSet, _
 	}
 
 	p.logger.Info().Msgf("starting syncing device templates based on device definition setting."+
-		"\n Only moving from template ID: %s. To change specify --move-from-template XX. Set to 0 for none.", moveFromTemplateID)
+		"\n Only moving from template ID: %s. To change specify --move-from-template XX. Set to 0 for none.\n Will never move on tmpl: 115,116,128,126,127", moveFromTemplateID)
 	autoPiSvc := services.NewAutoPiAPIService(&p.settings, p.pdb.DBS)
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, p.pdb.DBS, &p.logger)
 	err := syncDeviceTemplates(ctx, &p.logger, &p.settings, p.pdb, hardwareTemplateService, moveFromTemplateID, p.targetTemplateID)
@@ -133,6 +133,11 @@ func syncDeviceTemplates(ctx context.Context, logger *zerolog.Logger, settings *
 				continue
 			}
 			fmt.Printf("%d Update template for ud: %s from template %s to template %s", i+1, ud.UserDeviceID, ud.CurrentTemplate, templateID)
+			if ud.CurrentTemplate == "115" || ud.CurrentTemplate == "116" || ud.CurrentTemplate == "128" || ud.CurrentTemplate == "126" {
+				fmt.Printf("Skipping since %s template id in blacklist to not move\n", ud.CurrentTemplate)
+				continue
+			}
+
 			_, err = autoPiHWSvc.ApplyHardwareTemplate(ctx, &pb.ApplyHardwareTemplateRequest{
 				UserDeviceId:       ud.UserDeviceID,
 				AutoApiUnitId:      ud.AutoPiUnitID,
