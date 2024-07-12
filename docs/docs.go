@@ -1901,6 +1901,31 @@ const docTemplate = `{
                 }
             }
         },
+        "/user/synthetic/device/{tokenID}/reauthenticate": {
+            "post": {
+                "description": "Restarts a synthetic device polling job with a new set of credentials.",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Synthetic device token id",
+                        "name": "tokenID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers_user_sd.Message"
+                        }
+                    }
+                }
+            }
+        },
         "/user/vehicle/{tokenID}/commands/burn": {
             "get": {
                 "security": [
@@ -3445,6 +3470,14 @@ const docTemplate = `{
                     "description": "TxHash is the hash of the minting transaction.",
                     "type": "string",
                     "example": "0x30bce3da6985897224b29a0fe064fd2b426bb85a394cc09efe823b5c83326a8e"
+                }
+            }
+        },
+        "internal_controllers_user_sd.Message": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
                 }
             }
         },
