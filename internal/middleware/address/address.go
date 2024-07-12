@@ -10,32 +10,22 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const tokenKey = "user"
+const (
+	addrKey  = "ethereumAddress"
+	tokenKey = "user"
+)
 
-const subClaim = "sub"
-const addrClaim = "ethereum_address"
-
-const addrKey = "ethereumAddress"
+const (
+	subClaim  = "sub"
+	addrClaim = "ethereum_address"
+)
 
 func New() fiber.Handler {
 	var client pb.UserServiceClient
 
 	return func(c *fiber.Ctx) error {
-		token, ok := c.Locals(tokenKey).(*jwt.Token)
-		if !ok {
-			return fmt.Errorf("token has unexpected type %T", token)
-		}
-		if token == nil {
-			return errors.New("token is nil")
-		}
-
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			return fmt.Errorf("claims object has unexpected type %T", token)
-		}
-		if claims == nil {
-			return errors.New("claims object is nil")
-		}
+		token := c.Locals(tokenKey).(*jwt.Token)
+		claims := token.Claims.(jwt.MapClaims)
 
 		addrAny, ok := claims[addrClaim]
 		if ok {
