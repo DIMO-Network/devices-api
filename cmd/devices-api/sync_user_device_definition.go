@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"flag"
+	"strings"
+
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
@@ -15,7 +17,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"strings"
 )
 
 type syncUserDeviceDeviceDefinitionCmd struct {
@@ -34,11 +35,11 @@ func (*syncUserDeviceDeviceDefinitionCmd) Usage() string {
   `
 }
 
-func (s *syncUserDeviceDeviceDefinitionCmd) SetFlags(set *flag.FlagSet) {
+func (s *syncUserDeviceDeviceDefinitionCmd) SetFlags(_ *flag.FlagSet) {
 
 }
 
-func (s *syncUserDeviceDeviceDefinitionCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interface{}) subcommands.ExitStatus {
+func (s *syncUserDeviceDeviceDefinitionCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 
 	err := s.syncUserDevicesWithTableland(ctx)
 
@@ -68,48 +69,53 @@ func (s *syncUserDeviceDeviceDefinitionCmd) syncUserDevicesWithTableland(ctx con
 
 	dbs := s.pdb.DBS()
 
-	shouldContinue := true
-
-	for shouldContinue {
-		shouldContinue, err = Process(ctx, dbs, resp.DeviceDefinitions)
-		if err != nil {
-			return err
-		}
+	err = ProcessDeviceDefinitions(ctx, dbs, resp.DeviceDefinitions)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func Process(ctx context.Context, dbs *db.ReaderWriter, deviceDefinitions []*ddgrpc.GetDeviceDefinitionItemResponse) (bool, error) {
+func ProcessDeviceDefinitions(ctx context.Context, dbs *db.ReaderWriter, deviceDefinitions []*ddgrpc.GetDeviceDefinitionItemResponse) error {
 	cursor := ""
-	userDevices, err := models.UserDevices(
-		models.UserDeviceWhere.DefinitionID.IsNull(),
-		models.UserDeviceWhere.ID.GT(cursor),
-		qm.Limit(5000),
-		qm.OrderBy(models.UserDeviceColumns.ID),
-	).All(ctx, dbs.Reader)
+	hasMore := true
 
-	if err != nil {
-		return false, err
-	}
+	for hasMore {
+		userDevices, err := models.UserDevices(
+			models.UserDeviceWhere.DefinitionID.IsNull(),
+			models.UserDeviceWhere.ID.GT(cursor),
+			qm.Limit(5000),
+			qm.OrderBy(models.UserDeviceColumns.ID),
+		).All(ctx, dbs.Reader)
 
-	if len(userDevices) == 0 {
-		return true, nil
-	}
+		if err != nil {
+			return err
+		}
 
-	cursor = userDevices[len(userDevices)-1].ID
+		if len(userDevices) == 0 {
+			break
+		}
 
-	for _, dd := range deviceDefinitions {
-		for _, ud := range userDevices {
-			if strings.EqualFold(dd.DeviceDefinitionId, ud.DeviceDefinitionID) {
-				ud.DefinitionID = null.StringFrom(dd.NameSlug)
+		cursor = userDevices[len(userDevices)-1].ID
 
-				_, err := ud.Update(ctx, dbs.Writer, boil.Infer())
-				if err != nil {
-					return false, err
+		for _, dd := range deviceDefinitions {
+			for _, ud := range userDevices {
+				if strings.EqualFold(dd.DeviceDefinitionId, ud.DeviceDefinitionID) {
+					ud.DefinitionID = null.StringFrom(dd.NameSlug)
+
+					_, err := ud.Update(ctx, dbs.Writer, boil.Infer())
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
+
+		if len(userDevices) < 5000 {
+			hasMore = false
+		}
 	}
-	return true, nil
+
+	return nil
 }
