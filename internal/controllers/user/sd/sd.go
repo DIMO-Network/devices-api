@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/middleware/address"
+	"github.com/DIMO-Network/devices-api/internal/services/integration"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
@@ -20,32 +22,24 @@ import (
 type Controller struct {
 	DBS         db.Store
 	Smartcar    SDTaskManager
-	IntegMapper IntegrationIDMapper
+	IntegClient *integration.Client
 }
 
 type SDTaskManager interface {
 	StartPoll(udai *models.UserDeviceAPIIntegration, sd *models.SyntheticDevice) error
 }
 
-type Integration struct {
-	ID     string
-	Vendor string
-}
-
-type IntegrationIDMapper interface {
-	IDFor(tokenID int) (Integration, error)
-}
-
 // PostReauthenticate godoc
 // @Description Restarts a synthetic device polling job with a new set of credentials.
 // @Produce json
-// @Param tokenId path int true "Synthetic device token id"
+// @Param tokenID path int true "Synthetic device token id"
 // @Success 200 {object}
-// @Router /user/synthetic/device/{tokenId}/reauthenticate [post]
+// @Router /user/synthetic/device/{tokenID}/reauthenticate [post]
 func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 	userAddr := address.Get(c)
+	logger := helpers.GetLogger(c, nil)
 
-	tokenID, err := c.ParamsInt("tokenId")
+	tokenID, err := c.ParamsInt("tokenID")
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", c.Params("tokenId")))
 	}
@@ -70,10 +64,10 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 
 	i, _ := sd.IntegrationTokenID.Int64()
 
-	integ, _ := co.IntegMapper.IDFor(int(i))
+	integ, _ := co.IntegClient.ByTokenID(c.Context(), int(i))
 	if integ.Vendor != constants.SmartCarVendor {
 		// TODO(elffjs): This is super dumb.
-		return fiber.NewError(fiber.StatusBadRequest, "Reauthentication only supportted for Smartcar.")
+		return fiber.NewError(fiber.StatusBadRequest, "Reauthentication only supported for Smartcar.")
 	}
 
 	udai, err := models.FindUserDeviceAPIIntegration(c.Context(), co.DBS.DBS().Reader, ud.ID, integ.ID)
@@ -95,7 +89,16 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 		return err
 	}
 
-	co.Smartcar.StartPoll(udai, sd)
+	err = co.Smartcar.StartPoll(udai, sd)
+	if err != nil {
+		return err
+	}
 
-	return nil
+	logger.Info().Int("sdId", tokenID).Msg("Restarted polling job.")
+
+	return c.JSON(Message{Message: "Restarted polling job."})
+}
+
+type Message struct {
+	Message string `json:"message"`
 }
