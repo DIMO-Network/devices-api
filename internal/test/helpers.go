@@ -219,6 +219,7 @@ func SetupCreateUserDevice(t *testing.T, testUserID string, ddID string, metadat
 		ID:                 ksuid.New().String(),
 		UserID:             testUserID,
 		DeviceDefinitionID: ddID,
+		DefinitionID:       null.StringFrom(ddID),
 		CountryCode:        null.StringFrom("USA"),
 		Name:               null.StringFrom("Chungus"),
 	}
