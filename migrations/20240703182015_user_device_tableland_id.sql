@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 SET search_path = devices_api, public;
-ALTER TABLE user_devices ADD COLUMN definition_id text not null default '';
+ALTER TABLE user_devices ADD COLUMN definition_id text null;
 -- +goose StatementEnd
 
 

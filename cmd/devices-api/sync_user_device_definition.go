@@ -9,7 +9,9 @@ import (
 	"github.com/DIMO-Network/shared/db"
 	"github.com/google/subcommands"
 	"github.com/rs/zerolog"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -49,14 +51,6 @@ func (s *syncUserDeviceDeviceDefinitionCmd) Execute(ctx context.Context, f *flag
 }
 
 func (s *syncUserDeviceDeviceDefinitionCmd) syncUserDevicesWithTableland(ctx context.Context) error {
-	dbs := s.pdb.DBS()
-
-	userDevices, err := models.UserDevices().All(ctx, dbs.Reader)
-
-	if err != nil {
-		s.logger.Fatal().Err(err).Msg("failed to get user devices")
-		return err
-	}
 
 	conn, err := grpc.Dial(s.settings.DefinitionsGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -72,20 +66,50 @@ func (s *syncUserDeviceDeviceDefinitionCmd) syncUserDevicesWithTableland(ctx con
 		return err
 	}
 
-	for _, dd := range resp.DeviceDefinitions {
-		for _, ud := range userDevices {
-			if strings.EqualFold(dd.DeviceDefinitionId, ud.DeviceDefinitionID) {
-				ud.DefinitionID = dd.NameSlug
+	dbs := s.pdb.DBS()
 
-				_, err := ud.Update(ctx, dbs.Writer, boil.Infer())
-				if err != nil {
-					s.logger.Error().Err(err).Msg("failed to update user device")
-					return err
-				}
+	shouldContinue := true
 
-			}
+	for shouldContinue {
+		shouldContinue, err = Process(ctx, dbs, resp.DeviceDefinitions)
+		if err != nil {
+			return err
 		}
 	}
 
 	return nil
+}
+
+func Process(ctx context.Context, dbs *db.ReaderWriter, deviceDefinitions []*ddgrpc.GetDeviceDefinitionItemResponse) (bool, error) {
+	cursor := ""
+	userDevices, err := models.UserDevices(
+		models.UserDeviceWhere.DefinitionID.IsNull(),
+		models.UserDeviceWhere.ID.GT(cursor),
+		qm.Limit(5000),
+		qm.OrderBy(models.UserDeviceColumns.ID),
+	).All(ctx, dbs.Reader)
+
+	if err != nil {
+		return false, err
+	}
+
+	if len(userDevices) == 0 {
+		return true, nil
+	}
+
+	cursor = userDevices[len(userDevices)-1].ID
+
+	for _, dd := range deviceDefinitions {
+		for _, ud := range userDevices {
+			if strings.EqualFold(dd.DeviceDefinitionId, ud.DeviceDefinitionID) {
+				ud.DefinitionID = null.StringFrom(dd.NameSlug)
+
+				_, err := ud.Update(ctx, dbs.Writer, boil.Infer())
+				if err != nil {
+					return false, err
+				}
+			}
+		}
+	}
+	return true, nil
 }

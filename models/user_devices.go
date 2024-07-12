@@ -44,7 +44,7 @@ type UserDevice struct {
 	ClaimID            null.String       `boil:"claim_id" json:"claim_id,omitempty" toml:"claim_id" yaml:"claim_id,omitempty"`
 	OwnerAddress       null.Bytes        `boil:"owner_address" json:"owner_address,omitempty" toml:"owner_address" yaml:"owner_address,omitempty"`
 	IpfsImageCid       null.String       `boil:"ipfs_image_cid" json:"ipfs_image_cid,omitempty" toml:"ipfs_image_cid" yaml:"ipfs_image_cid,omitempty"`
-	DefinitionID       string            `boil:"definition_id" json:"definition_id" toml:"definition_id" yaml:"definition_id"`
+	DefinitionID       null.String       `boil:"definition_id" json:"definition_id,omitempty" toml:"definition_id" yaml:"definition_id,omitempty"`
 
 	R *userDeviceR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userDeviceL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -169,7 +169,7 @@ var UserDeviceWhere = struct {
 	ClaimID            whereHelpernull_String
 	OwnerAddress       whereHelpernull_Bytes
 	IpfsImageCid       whereHelpernull_String
-	DefinitionID       whereHelperstring
+	DefinitionID       whereHelpernull_String
 }{
 	ID:                 whereHelperstring{field: "\"devices_api\".\"user_devices\".\"id\""},
 	UserID:             whereHelperstring{field: "\"devices_api\".\"user_devices\".\"user_id\""},
@@ -190,7 +190,7 @@ var UserDeviceWhere = struct {
 	ClaimID:            whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"claim_id\""},
 	OwnerAddress:       whereHelpernull_Bytes{field: "\"devices_api\".\"user_devices\".\"owner_address\""},
 	IpfsImageCid:       whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"ipfs_image_cid\""},
-	DefinitionID:       whereHelperstring{field: "\"devices_api\".\"user_devices\".\"definition_id\""},
+	DefinitionID:       whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"definition_id\""},
 }
 
 // UserDeviceRels is where relationship names are stored.

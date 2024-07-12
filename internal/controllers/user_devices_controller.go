@@ -173,7 +173,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 
 	ddIDs := make([]string, len(devices))
 	for i, d := range devices {
-		ddIDs[i] = d.DefinitionID
+		ddIDs[i] = d.DefinitionID.String
 	}
 
 	deviceDefinitionResponse, err := udc.DeviceDefSvc.GetDeviceDefinitionsByIDs(ctx, ddIDs)
@@ -612,7 +612,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 			return fiber.NewError(fiber.StatusConflict, "VIN already exists for a different user: "+reg.VIN)
 		}
 
-		deviceDefinitionID = existingUD.DefinitionID
+		deviceDefinitionID = existingUD.DeviceDefinitionID
 
 		// shortcut process, just use the already registered UD
 		dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), deviceDefinitionID)
