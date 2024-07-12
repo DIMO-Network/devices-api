@@ -33,7 +33,7 @@ type SDTaskManager interface {
 // @Description Restarts a synthetic device polling job with a new set of credentials.
 // @Produce json
 // @Param tokenID path int true "Synthetic device token id"
-// @Success 200 {object}
+// @Success 200 {object} sd.Message
 // @Router /user/synthetic/device/{tokenID}/reauthenticate [post]
 func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 	userAddr := address.Get(c)
