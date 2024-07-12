@@ -571,8 +571,8 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 	_ = test.SetupCreateVehicleNFT(s.T(), ud2, big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
-	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId, dd[0].DeviceDefinitionId}).Times(1).Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
 
 	s.controller.Settings.Environment = "dev"
 	request := test.BuildRequest("GET", "/user/devices/me", "")
