@@ -167,7 +167,7 @@ func NewUserDevicesController(settings *config.Settings,
 }
 
 func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, devices []*models.UserDevice) ([]UserDeviceFull, error) {
-	apiDevices := []UserDeviceFull{}
+	apiDevices := make([]UserDeviceFull, 0)
 
 	if len(devices) == 0 {
 		return apiDevices, nil
@@ -208,7 +208,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			return nil, err
 		}
 
-		filteredIntegrations := []services.DeviceCompatibility{}
+		filteredIntegrations := make([]services.DeviceCompatibility, 0)
 		if d.CountryCode.Valid {
 			if countryRecord := constants.FindCountry(d.CountryCode.String); countryRecord != nil {
 				for _, integration := range dd.CompatibleIntegrations {
@@ -232,7 +232,8 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 		var sdStat *SyntheticDeviceStatus
 
 		var nft *VehicleNFTData
-		pu := []PrivilegeUser{}
+		var credential *VINCredentialData
+		pu := make([]PrivilegeUser, 0)
 
 		if !d.TokenID.IsZero() || d.R.MintRequest != nil {
 			nft = &VehicleNFTData{}

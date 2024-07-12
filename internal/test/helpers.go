@@ -243,6 +243,7 @@ func SetupCreateUserDeviceWithDeviceID(t *testing.T, testUserID string, deviceID
 		ID:                 deviceID,
 		UserID:             testUserID,
 		DeviceDefinitionID: ddID,
+		DefinitionID:       null.StringFrom(ddID),
 		CountryCode:        null.StringFrom("USA"),
 		Name:               null.StringFrom("Chungus"),
 	}
@@ -474,6 +475,7 @@ func BuildDeviceDefinitionGRPC(deviceDefinitionID string, mk string, model strin
 	rp := &ddgrpc.GetDeviceDefinitionItemResponse{
 		DeviceDefinitionId: deviceDefinitionID,
 		Name:               "Name",
+		NameSlug:           deviceDefinitionID,
 		Make: &ddgrpc.DeviceMake{
 			Id:   ksuid.New().String(),
 			Name: mk,
