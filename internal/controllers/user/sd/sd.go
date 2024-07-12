@@ -21,11 +21,11 @@ import (
 
 type Controller struct {
 	DBS         db.Store
-	Smartcar    SDTaskManager
+	Smartcar    SyntheticTaskManager
 	IntegClient *integration.Client
 }
 
-type SDTaskManager interface {
+type SyntheticTaskManager interface {
 	StartPoll(udai *models.UserDeviceAPIIntegration, sd *models.SyntheticDevice) error
 }
 
