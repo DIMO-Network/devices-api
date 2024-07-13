@@ -211,12 +211,17 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
 
+	tx, err := sdc.DBS().Writer.DB.BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return err
+	}
+
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
 		qm.Load(models.UserDeviceRels.BurnRequest),
-	).One(c.Context(), sdc.DBS().Reader)
+	).One(c.Context(), tx)
 	if err != nil {
 		return err
 	}
@@ -236,7 +241,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		if sd.R.MintRequest.Status != models.MetaTransactionRequestStatusFailed {
 			return fiber.NewError(fiber.StatusConflict, "There is already a synthetic device mint in progress for this vehicle.")
 		}
-		_, err := ud.R.VehicleTokenSyntheticDevice.Delete(c.Context(), sdc.DBS().Writer)
+		_, err := ud.R.VehicleTokenSyntheticDevice.Delete(c.Context(), tx)
 		if err != nil {
 			return fmt.Errorf("failed to delete failed synthetic minting: %v", err)
 		}
@@ -311,11 +316,6 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	if err != nil {
 		sdc.log.Err(err).Msg("synthetic device minting request failed")
 		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
-	}
-
-	tx, err := sdc.DBS().Writer.DB.BeginTx(c.Context(), nil)
-	if err != nil {
-		return err
 	}
 
 	metaReq := &models.MetaTransactionRequest{

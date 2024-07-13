@@ -253,11 +253,10 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
 
-	tx, err := udc.DBS().Writer.BeginTx(c.Context(), nil)
+	tx, err := udc.DBS().Writer.BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return err
 	}
-
 	defer tx.Rollback() //nolint
 
 	device, err := models.UserDevices(
