@@ -215,6 +215,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback() //nolint
 
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
