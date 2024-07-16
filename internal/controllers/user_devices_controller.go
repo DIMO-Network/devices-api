@@ -230,7 +230,6 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 		var sdStat *SyntheticDeviceStatus
 
 		var nft *VehicleNFTData
-		var credential *VINCredentialData
 		pu := []PrivilegeUser{}
 
 		if !d.TokenID.IsZero() || d.R.MintRequest != nil {
@@ -249,6 +248,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 					models.NFTPrivilegeWhere.TokenID.EQ(types.Decimal(d.TokenID)),
 					models.NFTPrivilegeWhere.Expiry.GT(time.Now()),
 					models.NFTPrivilegeWhere.ContractAddress.EQ(common.FromHex(udc.Settings.VehicleNFTAddress)),
+					qm.OrderBy(models.NFTPrivilegeColumns.UpdatedAt+" DESC, "+models.NFTPrivilegeColumns.UserAddress+" ASC, "+models.NFTPrivilegeColumns.Privilege+" ASC"),
 				).All(ctx, udc.DBS().Reader)
 				if err != nil {
 					return nil, err
@@ -337,15 +337,6 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			}
 		}
 
-		if cred := d.R.Claim; cred != nil {
-			credential = &VINCredentialData{
-				VIN:       d.VinIdentifier.String,
-				ExpiresAt: cred.ExpirationDate,
-				IssuedAt:  cred.IssuanceDate,
-				Valid:     time.Now().Before(cred.ExpirationDate),
-			}
-		}
-
 		udf := UserDeviceFull{
 			ID:               d.ID,
 			VIN:              d.VinIdentifier.Ptr(),
@@ -359,7 +350,6 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			NFT:              nft,
 			OptedInAt:        d.OptedInAt.Ptr(),
 			PrivilegeUsers:   pu,
-			VINCredential:    credential,
 		}
 
 		apiDevices = append(apiDevices, udf)
@@ -445,6 +435,7 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 			models.NFTPrivilegeWhere.ContractAddress.EQ(common.FromHex(udc.Settings.VehicleNFTAddress)),
 			models.NFTPrivilegeWhere.UserAddress.EQ(userAddr.Bytes()),
 			models.NFTPrivilegeWhere.Expiry.GT(time.Now()),
+			qm.OrderBy(models.NFTPrivilegeColumns.UpdatedAt+" DESC, "+models.NFTPrivilegeColumns.TokenID+" DESC"),
 		).All(c.Context(), udc.DBS().Reader)
 		if err != nil {
 			return err
@@ -469,7 +460,6 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 				qm.Load(models.UserDeviceRels.BurnRequest),
 				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
 				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
-				qm.Load(models.UserDeviceRels.Claim),
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
 				if err == sql.ErrNoRows {
@@ -486,6 +476,10 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 	apiSharedDevices, err := udc.dbDevicesToDisplay(c.Context(), sharedVehicles)
 	if err != nil {
 		return err
+	}
+
+	if user.EmailAddress != nil && *user.EmailAddress == "dimomobile.test@gmail.com" {
+		udc.log.Info().Interface("response", apiSharedDevices).Msg("Debug shared devices response.")
 	}
 
 	return c.JSON(MyDevicesResp{SharedDevices: apiSharedDevices})
