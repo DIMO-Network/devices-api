@@ -484,10 +484,6 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 		return err
 	}
 
-	if user.EmailAddress != nil && *user.EmailAddress == "dimomobile.test@gmail.com" {
-		udc.log.Info().Interface("response", apiSharedDevices).Msg("Debug shared devices response.")
-	}
-
 	return c.JSON(MyDevicesResp{SharedDevices: apiSharedDevices})
 }
 
