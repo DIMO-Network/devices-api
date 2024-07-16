@@ -807,8 +807,6 @@ definitions:
         type: string
       vinConfirmed:
         type: boolean
-      vinCredential:
-        $ref: '#/definitions/internal_controllers.VINCredentialData'
     type: object
   internal_controllers.UserDeviceIntegrationStatus:
     properties:
@@ -829,17 +827,6 @@ definitions:
       tokenId:
         $ref: '#/definitions/big.Int'
       updatedAt:
-        type: string
-    type: object
-  internal_controllers.VINCredentialData:
-    properties:
-      expiresAt:
-        type: string
-      issuedAt:
-        type: string
-      valid:
-        type: boolean
-      vin:
         type: string
     type: object
   internal_controllers.VehicleMintRequest:

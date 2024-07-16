@@ -3316,9 +3316,6 @@ const docTemplate = `{
                 },
                 "vinConfirmed": {
                     "type": "boolean"
-                },
-                "vinCredential": {
-                    "$ref": "#/definitions/internal_controllers.VINCredentialData"
                 }
             }
         },
@@ -3350,23 +3347,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/big.Int"
                 },
                 "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_controllers.VINCredentialData": {
-            "type": "object",
-            "properties": {
-                "expiresAt": {
-                    "type": "string"
-                },
-                "issuedAt": {
-                    "type": "string"
-                },
-                "valid": {
-                    "type": "boolean"
-                },
-                "vin": {
                     "type": "string"
                 }
             }

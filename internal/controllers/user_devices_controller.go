@@ -1788,7 +1788,6 @@ type UserDeviceFull struct {
 	NFT              *VehicleNFTData               `json:"nft,omitempty"`
 	OptedInAt        *time.Time                    `json:"optedInAt"`
 	PrivilegeUsers   []PrivilegeUser               `json:"privilegedUsers"`
-	VINCredential    *VINCredentialData            `json:"vinCredential,omitempty"`
 }
 
 type VehicleNFTData struct {
