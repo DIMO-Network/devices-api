@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/base64"
@@ -9,6 +10,7 @@ import (
 	"fmt"
 	"math/big"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -248,7 +250,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 					models.NFTPrivilegeWhere.TokenID.EQ(types.Decimal(d.TokenID)),
 					models.NFTPrivilegeWhere.Expiry.GT(time.Now()),
 					models.NFTPrivilegeWhere.ContractAddress.EQ(common.FromHex(udc.Settings.VehicleNFTAddress)),
-					qm.OrderBy(models.NFTPrivilegeColumns.UpdatedAt+" DESC, "+models.NFTPrivilegeColumns.UserAddress+" ASC, "+models.NFTPrivilegeColumns.Privilege+" ASC"),
+					qm.OrderBy(models.NFTPrivilegeColumns.UpdatedAt+" DESC, "+models.NFTPrivilegeColumns.Privilege+" ASC"),
 				).All(ctx, udc.DBS().Reader)
 				if err != nil {
 					return nil, err
@@ -270,6 +272,10 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 						Privileges: v,
 					})
 				}
+
+				slices.SortFunc(pu, func(a, b PrivilegeUser) int {
+					return cmp.Compare(a.Address, b.Address)
+				})
 			}
 
 			if mtr := d.R.MintRequest; mtr != nil {
