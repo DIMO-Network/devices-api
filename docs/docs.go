@@ -2172,38 +2172,6 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/vehicle/{tokenId}/vin-credential": {
-            "get": {
-                "description": "Returns the vin credential for the vehicle with a given token id.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permission"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    }
-                }
-            }
         }
     },
     "definitions": {
