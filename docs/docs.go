@@ -1901,7 +1901,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/synthetic/device/{tokenID}/reauthenticate": {
+        "/user/synthetic/device/{tokenID}/commands/reauthenticate": {
             "post": {
                 "description": "Restarts a synthetic device polling job with a new set of credentials.",
                 "produces": [

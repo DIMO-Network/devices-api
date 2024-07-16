@@ -275,7 +275,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// Vehicle owner routes.
 	vehicleOwnerMw := owner.VehicleToken(pdb, usersClient, &logger)
 
-	if !settings.IsProduction() {
+	{
 		addr := address.New(usersClient, &logger)
 
 		sdc := sd.Controller{
@@ -284,7 +284,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 			IntegClient: &integration.Client{Service: ddSvc},
 		}
 
-		v1Auth.Post("/user/synthetic/device/:tokenID/reauthenticate", addr, sdc.PostReauthenticate)
+		v1Auth.Post("/user/synthetic/device/:tokenID/commands/reauthenticate", addr, sdc.PostReauthenticate)
 	}
 
 	vOwner := v1Auth.Group("/user/vehicle/:tokenID", vehicleOwnerMw)

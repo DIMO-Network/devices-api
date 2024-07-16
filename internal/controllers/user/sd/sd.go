@@ -34,7 +34,7 @@ type SyntheticTaskManager interface {
 // @Produce json
 // @Param tokenID path int true "Synthetic device token id"
 // @Success 200 {object} sd.Message
-// @Router /user/synthetic/device/{tokenID}/reauthenticate [post]
+// @Router /user/synthetic/device/{tokenID}/commands/reauthenticate [post]
 func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 	userAddr := address.Get(c)
 	logger := helpers.GetLogger(c, nil)
