@@ -214,12 +214,12 @@ func Logger() *zerolog.Logger {
 	return &l
 }
 
-func SetupCreateUserDevice(t *testing.T, testUserID string, ddID string, metadata *[]byte, vin string, pdb db.Store) models.UserDevice {
+func SetupCreateUserDevice(t *testing.T, testUserID string, ddID string, definitionID string, metadata *[]byte, vin string, pdb db.Store) models.UserDevice {
 	ud := models.UserDevice{
 		ID:                 ksuid.New().String(),
 		UserID:             testUserID,
 		DeviceDefinitionID: ddID,
-		DefinitionID:       null.StringFrom(ddID),
+		DefinitionID:       null.StringFrom(definitionID),
 		CountryCode:        null.StringFrom("USA"),
 		Name:               null.StringFrom("Chungus"),
 	}
@@ -238,12 +238,12 @@ func SetupCreateUserDevice(t *testing.T, testUserID string, ddID string, metadat
 	return ud
 }
 
-func SetupCreateUserDeviceWithDeviceID(t *testing.T, testUserID string, deviceID string, ddID string, metadata *[]byte, vin string, pdb db.Store) models.UserDevice {
+func SetupCreateUserDeviceWithDeviceID(t *testing.T, testUserID string, deviceID string, ddID string, definitionID string, metadata *[]byte, vin string, pdb db.Store) models.UserDevice {
 	ud := models.UserDevice{
 		ID:                 deviceID,
 		UserID:             testUserID,
 		DeviceDefinitionID: ddID,
-		DefinitionID:       null.StringFrom(ddID),
+		DefinitionID:       null.StringFrom(definitionID),
 		CountryCode:        null.StringFrom("USA"),
 		Name:               null.StringFrom("Chungus"),
 	}
@@ -311,7 +311,7 @@ func SetupCreateVehicleNFT(t *testing.T, userDevice models.UserDevice, tokenID *
 	return &userDevice
 }
 
-func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userID, userDeviceID string, tokenID int64, pdb db.Store) *models.UserDevice {
+func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userID, userDeviceID, definitionID string, tokenID int64, pdb db.Store) *models.UserDevice {
 	mint := models.MetaTransactionRequest{
 		ID: ksuid.New().String(),
 	}
@@ -322,6 +322,7 @@ func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userI
 		ID:                 userDeviceID,
 		UserID:             userID,
 		DeviceDefinitionID: "ddID",
+		DefinitionID:       null.StringFrom(definitionID),
 		CountryCode:        null.StringFrom("USA"),
 		Name:               null.StringFrom("Chungus"),
 		VinIdentifier:      null.StringFrom("00000000000000001"),
@@ -458,7 +459,7 @@ func BuildIntegrationGRPC(integrationVendor string, autoPiDefaultTemplateID int,
 }
 
 // BuildDeviceDefinitionGRPC generates an array with single device definition, adds integration to response if integration passed in not nil. uses Americas region
-func BuildDeviceDefinitionGRPC(deviceDefinitionID string, mk string, model string, year int, integration *ddgrpc.Integration) []*ddgrpc.GetDeviceDefinitionItemResponse {
+func BuildDeviceDefinitionGRPC(deviceDefinitionID string, mk string, model string, year int, nameSlug string, integration *ddgrpc.Integration) []*ddgrpc.GetDeviceDefinitionItemResponse {
 	// todo can we get rid of deviceDefinitionID?
 	integrationsToAdd := make([]*ddgrpc.DeviceIntegration, 2)
 	if integration != nil {
@@ -475,7 +476,7 @@ func BuildDeviceDefinitionGRPC(deviceDefinitionID string, mk string, model strin
 	rp := &ddgrpc.GetDeviceDefinitionItemResponse{
 		DeviceDefinitionId: deviceDefinitionID,
 		Name:               "Name",
-		NameSlug:           deviceDefinitionID,
+		NameSlug:           nameSlug,
 		Make: &ddgrpc.DeviceMake{
 			Id:   ksuid.New().String(),
 			Name: mk,

@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+
 	"fmt"
 	"math/big"
 	"regexp"
@@ -173,7 +174,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 
 	ddIDs := make([]string, len(devices))
 	for i, d := range devices {
-		ddIDs[i] = d.DefinitionID.String
+		ddIDs[i] = d.DeviceDefinitionID
 	}
 
 	deviceDefinitionResponse, err := udc.DeviceDefSvc.GetDeviceDefinitionsByIDs(ctx, ddIDs)
@@ -183,7 +184,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 
 	filterDeviceDefinition := func(id string, items []*ddgrpc.GetDeviceDefinitionItemResponse) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
 		for _, dd := range items {
-			if id == dd.NameSlug {
+			if id == dd.DeviceDefinitionId {
 				return dd, nil
 			}
 		}
@@ -472,7 +473,7 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 				qm.Load(models.UserDeviceRels.Claim),
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
-				if err == sql.ErrNoRows {
+				if errors.Is(err, sql.ErrNoRows) {
 					udc.log.Warn().Msgf("User %s has privileges on a vehicle %d of which we have no record.", userAddr, priv.TokenID)
 					continue
 				}
@@ -615,7 +616,9 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		deviceDefinitionID = existingUD.DeviceDefinitionID
 
 		// shortcut process, just use the already registered UD
-		dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), deviceDefinitionID)
+		dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(c.Context(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+			Slug: existingUD.DefinitionID.String,
+		})
 		if err != nil {
 			return err
 		}
@@ -809,9 +812,9 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	udc.redisCache.Set(c.Context(), buildSmartcarTokenKey(vin, userID), encToken, time.Hour*2)
 
 	if isSameUserConflict {
-		dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), existingUd.DeviceDefinitionID)
+		dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(c.Context(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{Slug: existingUd.DefinitionID.String})
 		if err2 != nil {
-			return shared.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", existingUd.DeviceDefinitionID))
+			return shared.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", existingUd.DefinitionID.String))
 		}
 		udFull, err := builUserDeviceFull(existingUd, dd, reg.CountryCode)
 		if err != nil {
@@ -1089,7 +1092,9 @@ func (udc *UserDevicesController) updatePowerTrain(ctx context.Context, userDevi
 	if err := userDevice.Metadata.Unmarshal(md); err != nil {
 		return err
 	}
-	resp, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, userDevice.DeviceDefinitionID)
+	resp, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(ctx, &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+		Slug: userDevice.DefinitionID.String,
+	})
 	if err != nil {
 		return err
 	}
@@ -1162,7 +1167,9 @@ func (udc *UserDevicesController) UpdateName(c *fiber.Ctx) error {
 		if udapi.Serial.Valid {
 			autoPiDevice, err := udc.autoPiSvc.GetDeviceByUnitID(udapi.Serial.String)
 			if err == nil {
-				dd, _ := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
+				dd, _ := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(c.Context(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+					Slug: userDevice.DefinitionID.String,
+				})
 				nm := services.BuildCallName(req.Name, dd)
 				_ = udc.autoPiSvc.PatchVehicleProfile(autoPiDevice.Vehicle.ID, services.PatchVehicleProfile{
 					CallName: &nm,
@@ -1239,9 +1246,11 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("vehicle token: %d; must burn minted vehicle to delete", userDevice.TokenID))
 	}
 
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(c.Context(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+		Slug: userDevice.DefinitionID.String,
+	})
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DeviceDefinitionID)
+		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DefinitionID.String)
 	}
 	autopiDeviceID := ""
 
@@ -1381,7 +1390,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 	).One(c.Context(), udc.DBS().Reader.DB)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
 		}
 		return err
@@ -1859,9 +1868,9 @@ func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID s
 		return nil, nil, fmt.Errorf("VIN not confirmed")
 	}
 
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, userDevice.DeviceDefinitionID)
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(ctx, &ddgrpc.GetDeviceDefinitionBySlugNameRequest{Slug: userDevice.DefinitionID.String})
 	if err != nil {
-		return nil, nil, fmt.Errorf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID)
+		return nil, nil, fmt.Errorf("error querying for device definition id: %s ", userDevice.DefinitionID.String)
 	}
 
 	if dd.Make.TokenId == 0 {
