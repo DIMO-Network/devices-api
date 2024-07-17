@@ -3,9 +3,12 @@ package controllers
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
+
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 
 	"github.com/DIMO-Network/shared"
 
@@ -130,8 +133,9 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
 		qm.Load(models.UserDeviceRels.BurnRequest),
 	).One(c.Context(), sdc.DBS().Reader)
+
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return fiber.NewError(fiber.StatusNotFound, "No vehicle with that id found.")
 		}
 		return err
@@ -172,9 +176,9 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 	}
 
 	if in.Vendor == constants.SmartCarVendor {
-		dd, err := sdc.deviceDefSvc.GetDeviceDefinitionByID(c.Context(), ud.DeviceDefinitionID)
+		dd, err := sdc.deviceDefSvc.GetDeviceDefinitionBySlugName(c.Context(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{Slug: ud.DefinitionID.String})
 		if err != nil {
-			return shared.GrpcErrorToFiber(err, "failed to get integration")
+			return shared.GrpcErrorToFiber(err, "failed to get device definition")
 		}
 
 		// block new kias from minting

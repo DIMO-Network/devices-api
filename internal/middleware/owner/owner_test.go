@@ -306,7 +306,7 @@ func TestVehicleTokenOwnerMiddleware(t *testing.T) {
 			_, err = models.UserDevices().DeleteAll(ctx, pdb.DBS().Writer)
 			require.NoError(t, err)
 
-			ud := test.SetupCreateUserDevice(t, c.UserID, "ddID", nil, "vin", pdb)
+			ud := test.SetupCreateUserDevice(t, c.UserID, "ddID", "dd-slug", nil, "vin", pdb)
 
 			usersClient.Store = map[string]*pb.User{}
 			u := &pb.User{Id: userID}

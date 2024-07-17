@@ -126,7 +126,7 @@ func (s *GeofencesControllerTestSuite) TestPostGeofence() {
 	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, producer, s.deviceDefSvc, usersClient)
 	app := fiber.New()
 	app.Post("/user/geofences", test.AuthInjectorTestHandler(injectedUserID), c.Create)
-	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, ksuid.New().String(), nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, ksuid.New().String(), "", nil, "", s.pdb)
 	ud.TokenID = types.NewNullDecimal(decimal.New(1, 0))
 	_, err := ud.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.Require().NoError(err)
@@ -208,7 +208,7 @@ func (s *GeofencesControllerTestSuite) TestPostGeofence400IfSameName() {
 	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, nil, s.deviceDefSvc, nil)
 	app := fiber.New()
 	app.Post("/user/geofences", test.AuthInjectorTestHandler(injectedUserID), c.Create)
-	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, ksuid.New().String(), nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, ksuid.New().String(), "", nil, "", s.pdb)
 	test.SetupCreateGeofence(s.T(), injectedUserID, "Home", &ud, s.pdb)
 
 	req := CreateGeofence{
@@ -229,7 +229,7 @@ func (s *GeofencesControllerTestSuite) TestPostGeofence400IfNotYourDevice() {
 	app := fiber.New()
 	app.Post("/user/geofences", test.AuthInjectorTestHandler(injectedUserID), c.Create)
 	otherUserID := "7734"
-	ud := test.SetupCreateUserDevice(s.T(), otherUserID, ksuid.New().String(), nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), otherUserID, ksuid.New().String(), "", nil, "", s.pdb)
 
 	req := CreateGeofence{
 		Name:          "Home",
@@ -247,9 +247,9 @@ func (s *GeofencesControllerTestSuite) TestGetAllUserGeofences() {
 	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, nil, s.deviceDefSvc, nil)
 	app := fiber.New()
 	app.Get("/user/geofences", test.AuthInjectorTestHandler(injectedUserID), c.GetAll)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "escaped", 2020, nil)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "escaped", 2020, "ford-escaped", nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Return(dd, nil)
-	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, dd[0].DeviceDefinitionId, "", nil, "", s.pdb)
 	test.SetupCreateGeofence(s.T(), injectedUserID, "Home", &ud, s.pdb)
 
 	request, _ := http.NewRequest("GET", "/user/geofences", nil)
@@ -274,9 +274,9 @@ func (s *GeofencesControllerTestSuite) TestPutGeofence() {
 	app.Get("/user/geofences", test.AuthInjectorTestHandler(injectedUserID), c.GetAll)
 	app.Put("/user/geofences/:geofenceID", test.AuthInjectorTestHandler(injectedUserID), c.Update)
 
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "escaped", 2020, nil)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "escaped", 2020, "ford-escaped", nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Return(dd, nil)
-	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, dd[0].DeviceDefinitionId, "", nil, "", s.pdb)
 	ud.TokenID = types.NewNullDecimal(decimal.New(1, 0))
 	_, err := ud.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.Require().NoError(err)
@@ -321,7 +321,7 @@ func (s *GeofencesControllerTestSuite) TestDeleteGeofence() {
 	c := NewGeofencesController(&config.Settings{Port: "3000"}, s.pdb.DBS, s.logger, producer, s.deviceDefSvc, nil)
 	app := fiber.New()
 	app.Delete("/user/geofences/:geofenceID", test.AuthInjectorTestHandler(injectedUserID), c.Delete)
-	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, ksuid.New().String(), nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, ksuid.New().String(), "", nil, "", s.pdb)
 	gf := test.SetupCreateGeofence(s.T(), injectedUserID, "something", &ud, s.pdb)
 
 	producer.ExpectSendMessageWithMessageCheckerFunctionAndSucceed(checkForDeviceAndH3(ud.ID, []string{}))

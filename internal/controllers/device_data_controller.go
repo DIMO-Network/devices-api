@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"time"
 
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
+
 	"github.com/DIMO-Network/shared"
 
 	"github.com/DIMO-Network/devices-api/internal/services"
@@ -125,7 +127,10 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 		return err
 	}
 
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), ud.DefinitionID.String)
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(c.Context(),
+		&ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+			Slug: ud.DefinitionID.String,
+		})
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ud.DefinitionID.String)
 	}

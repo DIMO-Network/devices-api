@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
+
 	"github.com/DIMO-Network/devices-api/internal/services/ipfs"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/utils"
@@ -104,7 +106,10 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 	}
 
 	deviceDefinitionID := ud.DefinitionID
-	def, err := nc.deviceDefSvc.GetDeviceDefinitionByID(c.Context(), deviceDefinitionID.String)
+
+	def, err := nc.deviceDefSvc.GetDeviceDefinitionBySlugName(c.Context(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+		Slug: deviceDefinitionID.String,
+	})
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "failed to get device definition")
 	}

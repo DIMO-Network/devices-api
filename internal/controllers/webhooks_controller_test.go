@@ -116,8 +116,8 @@ func (s *WebHooksControllerTestSuite) TestPostWebhookSyncCommand() {
 	autoPiTemplateID := 987
 	autoPiJobID := "AD111"
 	integ := test.BuildIntegrationGRPC(constants.AutoPiVendor, autoPiTemplateID, 0)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model X", 2020, integ)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model X", 2020, "tesla-model-x", integ)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, "tesla-model-x", nil, "", s.pdb)
 	autopiJob := test.SetupCreateAutoPiJob(s.T(), autoPiJobID, autoPiDeviceID, "state.sls pending", ud.ID, "COMMAND_EXECUTED", "", s.pdb)
 
 	ddDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Return(integ, nil)
@@ -185,8 +185,8 @@ func (s *WebHooksControllerTestSuite) TestPostWebhookRawCommand() {
 	autoPiTemplateID := 987
 	autoPiJobID := "AD111"
 	integ := test.BuildIntegrationGRPC(constants.AutoPiVendor, autoPiTemplateID, 0)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Testla", "Model X", 2020, integ)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Testla", "Model X", 2020, "tesla-model-x", integ)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, "tesla-model-x", nil, "", s.pdb)
 	// create user device api integration
 	commandResult := `{ "value": "123", "type": "vin" }`
 

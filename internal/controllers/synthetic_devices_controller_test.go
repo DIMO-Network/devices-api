@@ -126,8 +126,11 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), "ddID                       ").Return(&grpc.GetDeviceDefinitionItemResponse{
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlugName(gomock.Any(), &grpc.GetDeviceDefinitionBySlugNameRequest{
+		Slug: "ford-explorer",
+	}).Return(&grpc.GetDeviceDefinitionItemResponse{
 		DeviceDefinitionId: "ddID",
+		NameSlug:           "ford-explorer",
 		Make: &grpc.DeviceMake{
 			Name: "Ford",
 			Id:   ksuid.New().String(),
@@ -135,10 +138,10 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 		Verified: true,
 	}, nil)
 
-	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
+	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, "ford-explorer", nil)
 
 	udID := ksuid.New().String()
-	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, 57, s.pdb)
+	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, "ford-explorer", 57, s.pdb)
 	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, integration.Id, s.pdb)
 
 	request := test.BuildRequest("GET", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, integration.Id), "")
@@ -164,10 +167,10 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 
-	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
+	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, "ford-explorer", nil)
 
 	udID := ksuid.New().String()
-	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, 57, s.pdb)
+	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, "ford-explorer", 57, s.pdb)
 	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, integration.Id, s.pdb)
 
 	request := test.BuildRequest("GET", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, integration.Id), "")
@@ -191,10 +194,10 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 
-	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
+	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, "ford-explorer", nil)
 
 	udID := ksuid.New().String()
-	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, 57, s.pdb)
+	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, "ford-explorer", 57, s.pdb)
 	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, integration.Id, s.pdb)
 
 	request := test.BuildRequest("GET", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, integration.Id), "")
@@ -220,10 +223,10 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(nil, errors.New("could not find integration"))
 
-	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
+	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, "ford-explorer", nil)
 
 	udID := ksuid.New().String()
-	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, 57, s.pdb)
+	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, "ford-explorer", 57, s.pdb)
 	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, integration.Id, s.pdb)
 
 	request := test.BuildRequest("GET", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, integration.Id), "")
@@ -248,7 +251,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 
-	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
+	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, "ford-explorer", nil)
 
 	udID := ksuid.New().String()
 
@@ -277,10 +280,10 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceSmartcar()
 	integration := test.BuildIntegrationForGRPCRequest(1, "SmartCar")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
 
-	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
+	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, "ford-explorer", nil)
 
 	udID := ksuid.New().String()
-	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, 57, s.pdb)
+	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, "ford-explorer", 57, s.pdb)
 	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, integration.Id, s.pdb)
 
 	vehicleSig := common.BytesToHash(common.HexToAddress("20").Bytes()).Bytes()
@@ -379,19 +382,23 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), "ddID                       ").Return(&grpc.GetDeviceDefinitionItemResponse{
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlugName(gomock.Any(), &grpc.GetDeviceDefinitionBySlugNameRequest{
+		Slug: "kia-soul",
+	}).Return(&grpc.GetDeviceDefinitionItemResponse{
 		DeviceDefinitionId: "ddID",
+		NameSlug:           "kia-soul",
 		Make: &grpc.DeviceMake{
-			Name: "Kia",
-			Id:   "2681cSm2zmTmGHzqK3ldzoTLZIw",
+			Name:     "Kia",
+			NameSlug: "kia-soul",
+			Id:       "2681cSm2zmTmGHzqK3ldzoTLZIw",
 		},
 		Verified: true,
 	}, nil)
 
-	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Kia", "Soul", 2022, nil)
+	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Kia", "Soul", 2022, "kia-soul", nil)
 
 	udID := ksuid.New().String()
-	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, 57, s.pdb)
+	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, "kia-soul", 57, s.pdb)
 	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, integration.Id, s.pdb)
 
 	request := test.BuildRequest("GET", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, integration.Id), "")
@@ -421,10 +428,10 @@ func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayl
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
 
-	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
+	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, "ford-explorer", nil)
 
 	udID := ksuid.New().String()
-	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, 57, s.pdb)
+	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, "ford-explorer", 57, s.pdb)
 	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, integration.Id, s.pdb)
 
 	req := `{
