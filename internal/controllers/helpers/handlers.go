@@ -184,3 +184,7 @@ func Ecrecover(hash, sig []byte) (common.Address, error) {
 }
 
 // TODO(elffjs): This is becoming a dumping ground.
+
+func APIError(code int, message string, args ...any) error {
+	return fiber.NewError(code, fmt.Sprintf(message, args...))
+}

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -38,14 +39,20 @@ import (
 // @in                         header
 // @name                       Authorization
 func main() {
-
-	gitSha1 := os.Getenv("GIT_SHA1")
 	ctx := context.Background()
-	logger := zerolog.New(os.Stdout).With().
-		Timestamp().
-		Str("app", "devices-api").
-		Str("git-sha1", gitSha1).
-		Logger()
+	logger := zerolog.New(os.Stdout).With().Timestamp().Str("app", "devices-api").Logger()
+
+	// TODO(elffjs): Extract this somewhere.
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, s := range info.Settings {
+			if s.Key == "vcs.revision" {
+				if len(s.Value) >= 7 {
+					logger = logger.With().Str("commit", s.Value[:7]).Logger()
+				}
+				break
+			}
+		}
+	}
 
 	settings, err := shared.LoadConfig[config.Settings]("settings.yaml")
 	if err != nil {
@@ -84,7 +91,7 @@ func main() {
 	} else {
 
 		subcommands.Register(&migrateDBCmd{logger: logger, settings: settings}, "database")
-		subcommands.Register(&syncUserDeviceDeviceDefinitionCmd{logger: logger, settings: settings}, "populate data")
+		subcommands.Register(&syncUserDeviceDeviceDefinitionCmd{logger: logger, settings: settings}, "device data")
 		subcommands.Register(&generateEventCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "events")
 		subcommands.Register(&setCommandCompatibilityCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
 		subcommands.Register(&remakeAutoPiTopicCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
@@ -98,6 +105,7 @@ func main() {
 		subcommands.Register(&updateStateCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&web2PairCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&autoPiKTableDeleteCmd{logger: logger, container: deps}, "device integrations")
+		subcommands.Register(&startSDTask{logger: logger, container: deps, settings: settings, pdb: pdb}, "device integrations")
 
 		subcommands.Register(&populateESDDDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: deps.getElasticSearchService(), ddSvc: deps.getDeviceDefinitionService()}, "populate data")
 		subcommands.Register(&populateESRegionDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: deps.getElasticSearchService(), ddSvc: deps.getDeviceDefinitionService()}, "populate data")
@@ -200,8 +208,8 @@ func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, p
 	logger.Info().Msg("Task status consumer started")
 }
 
-func startContractEventsConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store, autoPi *autopi.Integration, macaron *macaron.Integration, ddSvc services.DeviceDefinitionService, evtSvc services.EventService) {
-	cevConsumer := services.NewContractsEventsConsumer(pdb, &logger, settings, autoPi, macaron, ddSvc, evtSvc)
+func startContractEventsConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store, autoPi *autopi.Integration, macaron *macaron.Integration, ddSvc services.DeviceDefinitionService, evtSvc services.EventService, scTask services.SmartcarTaskService, teslaTask services.TeslaTaskService) {
+	cevConsumer := services.NewContractsEventsConsumer(pdb, &logger, settings, autoPi, macaron, ddSvc, evtSvc, scTask, teslaTask)
 	if err := cevConsumer.RunConsumer(); err != nil {
 		logger.Fatal().Err(err).Msg("error occurred processing contract events")
 	}

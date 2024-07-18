@@ -253,15 +253,15 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
 
-	tx, err := udc.DBS().Writer.BeginTx(c.Context(), nil)
+	tx, err := udc.DBS().Writer.BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return err
 	}
-
 	defer tx.Rollback() //nolint
 
 	device, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(models.UserDeviceRels.MintRequest),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID)),
 		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(c.Context(), tx)
@@ -272,8 +272,14 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 		return err
 	}
 
+	if device.R.MintRequest != nil && device.R.MintRequest.Status != models.MetaTransactionRequestStatusFailed && device.R.MintRequest.Status != models.MetaTransactionRequestStatusConfirmed {
+		return fiber.NewError(fiber.StatusBadRequest, "Wait for vehicle minting to complete before deleting integration.")
+	}
+
 	if len(device.R.UserDeviceAPIIntegrations) == 0 {
-		return fiber.NewError(fiber.StatusNotFound, "Device does not have that udai.")
+		// The synthetic burn event handler might have already deleted it.
+		// Return success so the app doesn't freak out.
+		return c.SendStatus(fiber.StatusNoContent)
 	}
 	integr, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
 	if err != nil {
@@ -313,7 +319,7 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	}
 
 	err = udc.deleteDeviceIntegration(c.Context(), userID, userDeviceID, integrationID, dd)
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
 

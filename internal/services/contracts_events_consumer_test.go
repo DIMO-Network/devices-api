@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -11,6 +13,7 @@ import (
 	"time"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
+	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/services/dex"
 	"github.com/segmentio/ksuid"
@@ -87,7 +90,7 @@ func TestProcessContractsEventsMessages(t *testing.T) {
 	e := privilegeEventsPayloadFactory(1, 1, "", 0, s.settings.DIMORegistryChainID)
 	factoryResp := e[0]
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil, nil)
 
 	event, err := marshalMockPayload(factoryResp.payload)
 	s.require.NoError(err)
@@ -130,7 +133,7 @@ func TestIgnoreWrongEventNames(t *testing.T) {
 	e := privilegeEventsPayloadFactory(2, 2, "SomeEvent", 0, s.settings.DIMORegistryChainID)
 	factoryResp := e[0]
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil, nil)
 
 	event, err := marshalMockPayload(factoryResp.payload)
 	require.NoError(t, err)
@@ -157,7 +160,7 @@ func TestUpdatedTimestamp(t *testing.T) {
 	e := privilegeEventsPayloadFactory(3, 3, "", 0, s.settings.DIMORegistryChainID)
 	factoryResp := e[0]
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil, nil)
 
 	event, err := marshalMockPayload(factoryResp.payload)
 	require.NoError(t, err)
@@ -232,7 +235,7 @@ func Test_Transfer_Event_Handled_Correctly(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.require.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil, nil)
 	event, err := marshalMockPayload(factoryResp.payload)
 	require.NoError(t, err)
 
@@ -271,7 +274,7 @@ func Test_Ignore_Transfer_Mint_Event(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.require.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil, nil)
 
 	event, err := marshalMockPayload(factoryResp.payload)
 	require.NoError(t, err)
@@ -306,7 +309,7 @@ func Test_Ignore_Transfer_Claims_Event(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.require.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil, nil)
 	event, err := marshalMockPayload(factoryResp.payload)
 	require.NoError(t, err)
 
@@ -340,7 +343,7 @@ func Test_Ignore_Transfer_Wrong_Contract(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.require.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil, nil)
 
 	event, err := marshalMockPayload(factoryResp.payload)
 	require.NoError(t, err)
@@ -373,7 +376,7 @@ func Test_Ignore_Transfer_Unit_Not_Found(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.require.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil, nil)
 	event, err := marshalMockPayload(factoryResp.payload)
 	s.require.NoError(err)
 
@@ -483,7 +486,7 @@ func TestSetBeneficiary(t *testing.T) {
 		"source": "chain/%d"
 		}`, c.Address.Hex(), abi.Events["BeneficiarySet"].ID, c.Event.NodeId, c.Event.Beneficiary.Hex(), c.Event.IdProxyAddress.Hex(), s.settings.DIMORegistryChainID)
 
-		consumer := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil)
+		consumer := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil, nil)
 
 		event, err := marshalMockPayload(payload)
 		require.NoError(t, err)
@@ -520,7 +523,7 @@ func TestVehicleTransfer(t *testing.T) {
 	}
 	_ = ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
-	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil, nil)
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil, nil, nil, nil)
 	event, err := marshalMockPayload(`
 	{
 		"type": "zone.dimo.contract.event",
@@ -586,7 +589,7 @@ func Test_NFTPrivileges_Cleared_On_Vehicle_Transfer(t *testing.T) {
 	}
 	_ = ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
-	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil, nil)
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil, nil, nil, nil)
 	event, err := marshalMockPayload(`
 	{
 		"type": "zone.dimo.contract.event",
@@ -665,7 +668,7 @@ func Test_RegistryAftermarketDeviceAddressReset(t *testing.T) {
 	err := amd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.require.NoError(err)
 
-	consumer := NewContractsEventsConsumer(s.pdb, &logger, s.settings, nil, nil, nil, nil)
+	consumer := NewContractsEventsConsumer(s.pdb, &logger, s.settings, nil, nil, nil, nil, nil, nil)
 	event, err := marshalMockPayload(payload)
 	require.NoError(t, err)
 
@@ -795,7 +798,7 @@ func Test_VehicleNodeMintedWithDeviceDefinition_NoMtx(t *testing.T) {
 	kprod := smock.NewSyncProducer(t, nil)
 	evt := NewEventService(&logger, settings, kprod)
 	kprod.ExpectSendMessageAndSucceed()
-	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, deviceDefSvc, evt)
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, deviceDefSvc, evt, nil, nil)
 
 	owner := common.HexToAddress("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")
 	ddSlug := "jeep_wrangler_2013"
@@ -854,6 +857,112 @@ func Test_VehicleNodeMintedWithDeviceDefinition_NoMtx(t *testing.T) {
 	require.Equal(base64.RawURLEncoding.EncodeToString(userID), ud.UserID)
 }
 
+func TestBurnSyntheticDevice(t *testing.T) {
+	ctx := context.Background()
+	logger := zerolog.Nop()
+	sdToken := 4
+	vehicleID := 54
+	teslaIntID := 2
+
+	teslaIntegrationID := ksuid.New().String()
+
+	chainID := 1
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer container.Terminate(ctx) //nolint
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	sdAddr := randomAddr(t)
+
+	settings := &config.Settings{DIMORegistryChainID: int64(chainID), SyntheticDeviceNFTAddress: sdAddr.Hex()}
+	deviceDefSvc := NewMockDeviceDefinitionService(mockCtrl)
+
+	teslaTask := NewMockSyntheticTaskService(mockCtrl)
+
+	mtr := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusConfirmed,
+	}
+	err := mtr.Insert(ctx, pdb.DBS().Reader, boil.Infer())
+	require.NoError(t, err)
+
+	teslaInteg := &ddgrpc.Integration{
+		Id:     teslaIntegrationID,
+		Vendor: constants.TeslaVendor,
+	}
+
+	ud := models.UserDevice{
+		ID:                 ksuid.New().String(),
+		UserID:             "xdd",
+		DeviceDefinitionID: ksuid.New().String(),
+		TokenID:            types.NewNullDecimal(decimal.New(int64(vehicleID), 0)),
+	}
+	err = ud.Insert(ctx, pdb.DBS().Reader, boil.Infer())
+	require.NoError(t, err)
+
+	deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(teslaIntID)).Return(teslaInteg, nil)
+	deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Return(&ddgrpc.GetDeviceDefinitionItemResponse{
+		Make: &ddgrpc.DeviceMake{
+			Name: "Tesla",
+		},
+		Type: &ddgrpc.DeviceType{
+			Model: "Model X",
+			Year:  2024,
+		},
+	}, nil)
+
+	udai := models.UserDeviceAPIIntegration{
+		UserDeviceID:  ud.ID,
+		IntegrationID: teslaInteg.Id,
+		TaskID:        null.StringFrom(ksuid.New().String()),
+		Status:        models.UserDeviceAPIIntegrationStatusActive,
+	}
+	err = udai.Insert(ctx, pdb.DBS().Reader, boil.Infer())
+	require.NoError(t, err)
+
+	sd := models.SyntheticDevice{
+		VehicleTokenID:     ud.TokenID,
+		IntegrationTokenID: types.NewDecimal(decimal.New(2, 0)),
+		MintRequestID:      mtr.ID,
+		WalletChildNumber:  1,
+		WalletAddress:      randomAddr(t).Bytes(),
+		TokenID:            types.NewNullDecimal(decimal.New(int64(sdToken), 0)),
+	}
+	err = sd.Insert(ctx, pdb.DBS().Reader, boil.Infer())
+	require.NoError(t, err)
+
+	kprod := smock.NewSyncProducer(t, nil)
+	evt := NewEventService(&logger, settings, kprod)
+	kprod.ExpectSendMessageAndSucceed()
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, deviceDefSvc, evt, nil, teslaTask)
+
+	ownerAddr := randomAddr(t)
+
+	ced := ContractEventData{
+		ChainID:   int64(chainID),
+		EventName: "Transfer",
+		Contract:  sdAddr,
+		Arguments: []byte(fmt.Sprintf(`{"from": "%s", "to": "%s", "tokenId": %d}`, ownerAddr, zeroAddr, sdToken)),
+	}
+
+	b, _ := json.Marshal(ced)
+
+	teslaTask.EXPECT().StopPoll(gomock.Any())
+
+	err = consumer.processEvent(ctx, &shared.CloudEvent[json.RawMessage]{
+		Source: fmt.Sprintf("chain/%d", chainID),
+		Type:   contractEventCEType,
+		Data:   b,
+	})
+	require.NoError(t, err)
+
+	err = sd.Reload(ctx, pdb.DBS().Reader)
+	require.ErrorIs(t, err, sql.ErrNoRows)
+
+	err = udai.Reload(ctx, pdb.DBS().Reader)
+	require.ErrorIs(t, err, sql.ErrNoRows)
+}
+
 func initCEventsTestHelper(t *testing.T) cEventsTestHelper {
 	ctx := context.Background()
 	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
@@ -874,4 +983,13 @@ func (s cEventsTestHelper) destroy() {
 	if err := s.container.Terminate(s.ctx); err != nil {
 		s.t.Fatal(err)
 	}
+}
+
+func randomAddr(t *testing.T) common.Address {
+	addr := make([]byte, common.AddressLength)
+	_, err := rand.Read(addr)
+	if err != nil {
+		t.Fatalf("couldn't create a test address: %v", err)
+	}
+	return common.Address(addr)
 }

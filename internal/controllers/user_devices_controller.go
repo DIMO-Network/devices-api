@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/base64"
@@ -10,6 +11,7 @@ import (
 	"fmt"
 	"math/big"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -231,8 +233,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 		var sdStat *SyntheticDeviceStatus
 
 		var nft *VehicleNFTData
-		var credential *VINCredentialData
-		pu := make([]PrivilegeUser, 0)
+		pu := []PrivilegeUser{}
 
 		if !d.TokenID.IsZero() || d.R.MintRequest != nil {
 			nft = &VehicleNFTData{}
@@ -250,6 +251,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 					models.NFTPrivilegeWhere.TokenID.EQ(types.Decimal(d.TokenID)),
 					models.NFTPrivilegeWhere.Expiry.GT(time.Now()),
 					models.NFTPrivilegeWhere.ContractAddress.EQ(common.FromHex(udc.Settings.VehicleNFTAddress)),
+					qm.OrderBy(models.NFTPrivilegeColumns.UpdatedAt+" DESC, "+models.NFTPrivilegeColumns.Privilege+" ASC"),
 				).All(ctx, udc.DBS().Reader)
 				if err != nil {
 					return nil, err
@@ -271,6 +273,10 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 						Privileges: v,
 					})
 				}
+
+				slices.SortFunc(pu, func(a, b PrivilegeUser) int {
+					return cmp.Compare(a.Address, b.Address)
+				})
 			}
 
 			if mtr := d.R.MintRequest; mtr != nil {
@@ -338,15 +344,6 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			}
 		}
 
-		if cred := d.R.Claim; cred != nil {
-			credential = &VINCredentialData{
-				VIN:       d.VinIdentifier.String,
-				ExpiresAt: cred.ExpirationDate,
-				IssuedAt:  cred.IssuanceDate,
-				Valid:     time.Now().Before(cred.ExpirationDate),
-			}
-		}
-
 		udf := UserDeviceFull{
 			ID:               d.ID,
 			VIN:              d.VinIdentifier.Ptr(),
@@ -360,7 +357,6 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			NFT:              nft,
 			OptedInAt:        d.OptedInAt.Ptr(),
 			PrivilegeUsers:   pu,
-			VINCredential:    credential,
 		}
 
 		apiDevices = append(apiDevices, udf)
@@ -446,6 +442,7 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 			models.NFTPrivilegeWhere.ContractAddress.EQ(common.FromHex(udc.Settings.VehicleNFTAddress)),
 			models.NFTPrivilegeWhere.UserAddress.EQ(userAddr.Bytes()),
 			models.NFTPrivilegeWhere.Expiry.GT(time.Now()),
+			qm.OrderBy(models.NFTPrivilegeColumns.UpdatedAt+" DESC, "+models.NFTPrivilegeColumns.TokenID+" DESC"),
 		).All(c.Context(), udc.DBS().Reader)
 		if err != nil {
 			return err
@@ -470,7 +467,6 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 				qm.Load(models.UserDeviceRels.BurnRequest),
 				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
 				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
-				qm.Load(models.UserDeviceRels.Claim),
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {

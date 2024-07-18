@@ -14,13 +14,16 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
+	"github.com/DIMO-Network/devices-api/internal/controllers/user/sd"
 	"github.com/DIMO-Network/devices-api/internal/middleware"
+	"github.com/DIMO-Network/devices-api/internal/middleware/address"
 	"github.com/DIMO-Network/devices-api/internal/middleware/metrics"
 	"github.com/DIMO-Network/devices-api/internal/middleware/owner"
 	"github.com/DIMO-Network/devices-api/internal/rpc"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
 	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
+	"github.com/DIMO-Network/devices-api/internal/services/integration"
 	"github.com/DIMO-Network/devices-api/internal/services/ipfs"
 	"github.com/DIMO-Network/devices-api/internal/services/macaron"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
@@ -271,6 +274,19 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// Vehicle owner routes.
 	vehicleOwnerMw := owner.VehicleToken(pdb, usersClient, &logger)
+
+	{
+		addr := address.New(usersClient, &logger)
+
+		sdc := sd.Controller{
+			DBS:         pdb,
+			Smartcar:    scTaskSvc,
+			IntegClient: &integration.Client{Service: ddSvc},
+		}
+
+		v1Auth.Post("/user/synthetic/device/:tokenID/commands/reauthenticate", addr, sdc.PostReauthenticate)
+	}
+
 	vOwner := v1Auth.Group("/user/vehicle/:tokenID", vehicleOwnerMw)
 	vOwner.Get("/commands/burn", userDeviceController.GetBurnDevice)
 	vOwner.Post("/commands/burn", userDeviceController.PostBurnDevice)
@@ -326,7 +342,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		logger.Fatal().Err(err).Msg("Failed to create vin credentialer listener")
 	}
 
-	startContractEventsConsumer(logger, settings, pdb, autoPi, macaron, ddSvc, eventService)
+	startContractEventsConsumer(logger, settings, pdb, autoPi, macaron, ddSvc, eventService, scTaskSvc, teslaTaskService)
 
 	store, err := registry.NewProcessor(pdb.DBS, &logger, settings, eventService, scTaskSvc, teslaTaskService, ddSvc)
 	if err != nil {

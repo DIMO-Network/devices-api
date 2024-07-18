@@ -46,7 +46,6 @@ func (p *setCommandCompatibilityCmd) SetFlags(f *flag.FlagSet) {
 }
 
 func (p *setCommandCompatibilityCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
-
 	p.eventService = services.NewEventService(&p.logger, &p.settings, p.container.getKafkaProducer())
 	err := setCommandCompatibility(ctx, &p.settings, p.pdb, p.ddSvc)
 	if err != nil {
