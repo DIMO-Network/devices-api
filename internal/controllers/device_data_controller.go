@@ -271,7 +271,7 @@ func (udc *UserDevicesController) ClearUserDeviceErrorCodeQuery(c *fiber.Ctx) er
 		return fiber.NewError(fiber.StatusInternalServerError, "error occurred updating device error queries")
 	}
 
-	errorCodeResp := []services.ErrorCodesResponse{}
+	errorCodeResp := make([]services.ErrorCodesResponse, 0)
 	if err := errCodeQuery.CodesQueryResponse.Unmarshal(&errorCodeResp); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "error occurred updating device error queries")
 	}
