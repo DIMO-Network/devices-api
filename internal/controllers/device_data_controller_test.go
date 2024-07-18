@@ -151,8 +151,11 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 
 		mockDeps.deviceDefSvc.
 			EXPECT().
-			GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).
+			GetDeviceDefinitionBySlugName(gomock.Any(), &grpc.GetDeviceDefinitionBySlugNameRequest{
+				Slug: "toyota-camry",
+			}).
 			Return(&grpc.GetDeviceDefinitionItemResponse{
+				NameSlug: "toyota-camry",
 				Type: &grpc.DeviceType{
 					Make:  "Toyota",
 					Model: "Camry",
@@ -230,7 +233,9 @@ func TestUserDevicesController_ShouldErrorOnTooManyErrorCodes(t *testing.T) {
 
 		mockDeps.deviceDefSvc.
 			EXPECT().
-			GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).
+			GetDeviceDefinitionBySlugName(gomock.Any(), &grpc.GetDeviceDefinitionBySlugNameRequest{
+				Slug: "toyota-camry",
+			}).
 			Return(&grpc.GetDeviceDefinitionItemResponse{
 				Type: &grpc.DeviceType{
 					Make:  "Toyota",
@@ -299,7 +304,9 @@ func TestUserDevicesController_ShouldErrorInvalidErrorCodes(t *testing.T) {
 
 		mockDeps.deviceDefSvc.
 			EXPECT().
-			GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).
+			GetDeviceDefinitionBySlugName(gomock.Any(), &grpc.GetDeviceDefinitionBySlugNameRequest{
+				Slug: "toyota-camry",
+			}).
 			Return(&grpc.GetDeviceDefinitionItemResponse{
 				Type: &grpc.DeviceType{
 					Make:  "Toyota",
@@ -368,7 +375,9 @@ func TestUserDevicesController_ShouldErrorOnEmptyErrorCodes(t *testing.T) {
 
 		mockDeps.deviceDefSvc.
 			EXPECT().
-			GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).
+			GetDeviceDefinitionBySlugName(gomock.Any(), &grpc.GetDeviceDefinitionBySlugNameRequest{
+				Slug: "toyota-camry",
+			}).
 			Return(&grpc.GetDeviceDefinitionItemResponse{
 				Type: &grpc.DeviceType{
 					Make:  "Toyota",
@@ -437,7 +446,9 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 
 		mockDeps.deviceDefSvc.
 			EXPECT().
-			GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).
+			GetDeviceDefinitionBySlugName(gomock.Any(), &grpc.GetDeviceDefinitionBySlugNameRequest{
+				Slug: "toyota-camry",
+			}).
 			Return(&grpc.GetDeviceDefinitionItemResponse{
 				Type: &grpc.DeviceType{
 					Make:  "Toyota",
