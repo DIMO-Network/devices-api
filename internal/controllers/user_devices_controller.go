@@ -1469,16 +1469,22 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		}
 	}
 
+	tx, err := udc.DBS().Writer.BeginTx(c.Context(), nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	mtr := models.MetaTransactionRequest{
 		ID:     requestID,
 		Status: "Unsubmitted",
 	}
-	if err = mtr.Insert(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
+	if err = mtr.Insert(c.Context(), tx, boil.Infer()); err != nil {
 		return err
 	}
 
 	userDevice.MintRequestID = null.StringFrom(requestID)
-	if _, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
+	if _, err = userDevice.Update(c.Context(), tx, boil.Infer()); err != nil {
 		return err
 	}
 
@@ -1510,7 +1516,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			}
 
 			qry := fmt.Sprintf("SELECT nextval('%s.synthetic_devices_serial_sequence');", udc.Settings.DB.Name)
-			err := queries.Raw(qry).Bind(c.Context(), udc.DBS().Writer, &seq)
+			err := queries.Raw(qry).Bind(c.Context(), tx, &seq)
 			if err != nil {
 				return err
 			}
@@ -1529,7 +1535,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				WalletAddress:      addr,
 			}
 
-			if err := sd.Insert(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
+			if err := sd.Insert(c.Context(), tx, boil.Infer()); err != nil {
 				return err
 			}
 
@@ -1547,6 +1553,10 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
+			if err := tx.Commit(); err != nil {
+				return err
+			}
+
 			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
 				ManufacturerNode:     mvs.ManufacturerNode,
 				Owner:                mvs.Owner,
@@ -1559,6 +1569,10 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
 			})
 		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
 	}
 
 	logger.Info().Msgf("Submitted metatransaction request %s", requestID)
