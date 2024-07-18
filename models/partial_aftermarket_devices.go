@@ -643,7 +643,7 @@ func (o PartialAftermarketDeviceSlice) UpdateAll(ctx context.Context, exec boil.
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *PartialAftermarketDevice) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns, opts ...UpsertOptionFunc) error {
+func (o *PartialAftermarketDevice) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
 		return errors.New("models: no partial_aftermarket_devices provided for upsert")
 	}
@@ -689,7 +689,7 @@ func (o *PartialAftermarketDevice) Upsert(ctx context.Context, exec boil.Context
 	var err error
 
 	if !cached {
-		insert, _ := insertColumns.InsertColumnSet(
+		insert, ret := insertColumns.InsertColumnSet(
 			partialAftermarketDeviceAllColumns,
 			partialAftermarketDeviceColumnsWithDefault,
 			partialAftermarketDeviceColumnsWithoutDefault,
@@ -705,18 +705,12 @@ func (o *PartialAftermarketDevice) Upsert(ctx context.Context, exec boil.Context
 			return errors.New("models: unable to upsert partial_aftermarket_devices, could not build update column list")
 		}
 
-		ret := strmangle.SetComplement(partialAftermarketDeviceAllColumns, strmangle.SetIntersect(insert, update))
-
 		conflict := conflictColumns
-		if len(conflict) == 0 && updateOnConflict && len(update) != 0 {
-			if len(partialAftermarketDevicePrimaryKeyColumns) == 0 {
-				return errors.New("models: unable to upsert partial_aftermarket_devices, could not build conflict column list")
-			}
-
+		if len(conflict) == 0 {
 			conflict = make([]string, len(partialAftermarketDevicePrimaryKeyColumns))
 			copy(conflict, partialAftermarketDevicePrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"partial_aftermarket_devices\"", updateOnConflict, ret, update, conflict, insert, opts...)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"partial_aftermarket_devices\"", updateOnConflict, ret, update, conflict, insert)
 
 		cache.valueMapping, err = queries.BindMapping(partialAftermarketDeviceType, partialAftermarketDeviceMapping, insert)
 		if err != nil {

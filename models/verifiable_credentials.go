@@ -863,7 +863,7 @@ func (o VerifiableCredentialSlice) UpdateAll(ctx context.Context, exec boil.Cont
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *VerifiableCredential) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns, opts ...UpsertOptionFunc) error {
+func (o *VerifiableCredential) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
 		return errors.New("models: no verifiable_credentials provided for upsert")
 	}
@@ -909,7 +909,7 @@ func (o *VerifiableCredential) Upsert(ctx context.Context, exec boil.ContextExec
 	var err error
 
 	if !cached {
-		insert, _ := insertColumns.InsertColumnSet(
+		insert, ret := insertColumns.InsertColumnSet(
 			verifiableCredentialAllColumns,
 			verifiableCredentialColumnsWithDefault,
 			verifiableCredentialColumnsWithoutDefault,
@@ -925,18 +925,12 @@ func (o *VerifiableCredential) Upsert(ctx context.Context, exec boil.ContextExec
 			return errors.New("models: unable to upsert verifiable_credentials, could not build update column list")
 		}
 
-		ret := strmangle.SetComplement(verifiableCredentialAllColumns, strmangle.SetIntersect(insert, update))
-
 		conflict := conflictColumns
-		if len(conflict) == 0 && updateOnConflict && len(update) != 0 {
-			if len(verifiableCredentialPrimaryKeyColumns) == 0 {
-				return errors.New("models: unable to upsert verifiable_credentials, could not build conflict column list")
-			}
-
+		if len(conflict) == 0 {
 			conflict = make([]string, len(verifiableCredentialPrimaryKeyColumns))
 			copy(conflict, verifiableCredentialPrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"verifiable_credentials\"", updateOnConflict, ret, update, conflict, insert, opts...)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"verifiable_credentials\"", updateOnConflict, ret, update, conflict, insert)
 
 		cache.valueMapping, err = queries.BindMapping(verifiableCredentialType, verifiableCredentialMapping, insert)
 		if err != nil {
