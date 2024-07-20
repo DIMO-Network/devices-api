@@ -70,7 +70,8 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 	if recAddr, err := helpers.Ecrecover(hash.Bytes(), signature); err != nil {
 		return fmt.Errorf("failed to recover an address: %w", err)
 	} else if recAddr != addr {
-		return fmt.Errorf("recovered wrong address %s", recAddr)
+		// TODO(elffjs): Un-squelch this error once the Macaron data_base64 thing is fixed. SM-931.
+		return nil
 	}
 
 	ad, err := models.AftermarketDevices(
