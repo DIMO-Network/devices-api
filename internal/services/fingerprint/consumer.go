@@ -96,6 +96,7 @@ func (c *Consumer) HandleDeviceFingerprint(ctx context.Context, event *Event) er
 		return err
 	}
 
+	// TODO(elffjs): This logic is way too easy to get wrong.
 	var protocol *string
 	if md.CANProtocol == nil {
 		if event.Source == "macaron/fingerprint" {
