@@ -1473,7 +1473,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint
 
 	mtr := models.MetaTransactionRequest{
 		ID:     requestID,
