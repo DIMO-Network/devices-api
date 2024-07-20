@@ -687,7 +687,7 @@ func (o DCNSlice) UpdateAll(ctx context.Context, exec boil.ContextExecutor, cols
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *DCN) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *DCN) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns, opts ...UpsertOptionFunc) error {
 	if o == nil {
 		return errors.New("models: no dcn provided for upsert")
 	}
@@ -741,7 +741,7 @@ func (o *DCN) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnCon
 	var err error
 
 	if !cached {
-		insert, ret := insertColumns.InsertColumnSet(
+		insert, _ := insertColumns.InsertColumnSet(
 			dcnAllColumns,
 			dcnColumnsWithDefault,
 			dcnColumnsWithoutDefault,
@@ -757,12 +757,18 @@ func (o *DCN) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnCon
 			return errors.New("models: unable to upsert dcn, could not build update column list")
 		}
 
+		ret := strmangle.SetComplement(dcnAllColumns, strmangle.SetIntersect(insert, update))
+
 		conflict := conflictColumns
-		if len(conflict) == 0 {
+		if len(conflict) == 0 && updateOnConflict && len(update) != 0 {
+			if len(dcnPrimaryKeyColumns) == 0 {
+				return errors.New("models: unable to upsert dcn, could not build conflict column list")
+			}
+
 			conflict = make([]string, len(dcnPrimaryKeyColumns))
 			copy(conflict, dcnPrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"dcn\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"dcn\"", updateOnConflict, ret, update, conflict, insert, opts...)
 
 		cache.valueMapping, err = queries.BindMapping(dcnType, dcnMapping, insert)
 		if err != nil {

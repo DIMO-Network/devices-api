@@ -807,8 +807,6 @@ definitions:
         type: string
       vinConfirmed:
         type: boolean
-      vinCredential:
-        $ref: '#/definitions/internal_controllers.VINCredentialData'
     type: object
   internal_controllers.UserDeviceIntegrationStatus:
     properties:
@@ -829,17 +827,6 @@ definitions:
       tokenId:
         $ref: '#/definitions/big.Int'
       updatedAt:
-        type: string
-    type: object
-  internal_controllers.VINCredentialData:
-    properties:
-      expiresAt:
-        type: string
-      issuedAt:
-        type: string
-      valid:
-        type: boolean
-      vin:
         type: string
     type: object
   internal_controllers.VehicleMintRequest:
@@ -2296,27 +2283,6 @@ paths:
           description: Not Found
       tags:
       - nfts
-  /vehicle/{tokenId}/vin-credential:
-    get:
-      description: Returns the vin credential for the vehicle with a given token id.
-      parameters:
-      - description: token id
-        in: path
-        name: tokenId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Not Found
-      tags:
-      - permission
 securityDefinitions:
   BearerAuth:
     in: header

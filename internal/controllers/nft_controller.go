@@ -561,41 +561,6 @@ func (nc *NFTController) handleEnqueueCommand(c *fiber.Ctx, commandPath string) 
 	return c.JSON(CommandResponse{RequestID: subTaskID})
 }
 
-// GetVinCredential godoc
-// @Description Returns the vin credential for the vehicle with a given token id.
-// @Tags        permission
-// @Param       tokenId path int true "token id"
-// @Produce     json
-// @Success     200 {object} map[string]any
-// @Failure     404
-// @Router      /vehicle/{tokenId}/vin-credential [get]
-func (nc *NFTController) GetVinCredential(c *fiber.Ctx) error {
-	tis := c.Params("tokenID")
-	ti, ok := new(big.Int).SetString(tis, 10)
-	if !ok {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
-	}
-	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
-
-	ud, err := models.UserDevices(
-		models.UserDeviceWhere.TokenID.EQ(tid),
-	).One(c.Context(), nc.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "NFT not found.")
-		}
-		nc.log.Err(err).Msg("Database error retrieving NFT metadata.")
-		return opaqueInternalError
-	}
-
-	if ud.R.Claim == nil {
-		return fiber.NewError(fiber.StatusNotFound, "Credential associated with NFT not found.")
-	}
-
-	c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
-	return c.Send(ud.R.Claim.Credential.JSON)
-}
-
 // GetBurnDevice godoc
 // @Description Returns the data the user must sign in order to burn the device.
 // @Param       tokenID path int true "token id"

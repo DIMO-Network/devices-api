@@ -5,27 +5,19 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/test"
-	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
-	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog"
-	"github.com/segmentio/ksuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"go.uber.org/mock/gomock"
 )
 
@@ -73,146 +65,6 @@ func (s *ConsumerTestSuite) TearDownSuite() {
 func TestConsumerTestSuite(t *testing.T) {
 	t.Skip("Isolate this test from the network before putting it in CI.")
 	suite.Run(t, new(ConsumerTestSuite))
-}
-
-func (s *ConsumerTestSuite) TestVinCredentialerHandler_DeviceFingerprint() {
-	s.T().Skip("Isolate this test from the network before putting it in CI.")
-	deviceID := ksuid.New().String()
-	ownerAddress := null.BytesFrom(common.Hex2Bytes("448cF8Fd88AD914e3585401241BC434FbEA94bbb"))
-	vin := "W1N2539531F907299"
-	ctx := context.Background()
-	tokenID := big.NewInt(3)
-	userDeviceID := "userDeviceID1"
-	mtxReq := ksuid.New().String()
-	deiceDefID := "deviceDefID"
-	claimID := "claimID1"
-
-	// tables used in tests
-	aftermarketDevice := models.AftermarketDevice{
-		UserID:          null.StringFrom("SomeID"),
-		OwnerAddress:    ownerAddress,
-		CreatedAt:       time.Now(),
-		UpdatedAt:       time.Now(),
-		TokenID:         types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
-		VehicleTokenID:  types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
-		Beneficiary:     null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
-		EthereumAddress: ownerAddress.Bytes,
-	}
-
-	userDevice := models.UserDevice{
-		ID:                 deviceID,
-		UserID:             userDeviceID,
-		DeviceDefinitionID: deiceDefID,
-		VinConfirmed:       true,
-		VinIdentifier:      null.StringFrom(vin),
-		MintRequestID:      null.StringFrom(mtxReq),
-		TokenID:            types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
-		OwnerAddress:       ownerAddress,
-		ClaimID:            null.StringFrom(claimID),
-	}
-
-	metaTx := models.MetaTransactionRequest{
-		ID:     mtxReq,
-		Status: models.MetaTransactionRequestStatusConfirmed,
-	}
-
-	eventTime, err := time.Parse(time.RFC3339Nano, "2023-07-04T00:00:00Z")
-	s.Require().NoError(err)
-
-	credential := models.VerifiableCredential{
-		ClaimID:        claimID,
-		ExpirationDate: eventTime.AddDate(0, 0, 7),
-	}
-	msg :=
-		`{
-	"data": {"rpiUptimeSecs":39,"batteryVoltage":13.49,"timestamp":1688136702634,"vin":"W1N2539531F907299","protocol":"7"},
-	"id": "2RvhwjUbtoePjmXN7q9qfjLQgwP",
-	"signature": "7c31e54ddcffc2a548ccaf10ed64b7e4bdd239bbaa3e5f6dba41d3e4051d930b7fbdf184724c2fb8d3b2ac8ac82662d2ed74e881dd01c09c4b2a9b4e62ede5db1b",
-	"source": "aftermarket/device/fingerprint",
-	"specversion": "1.0",
-	"subject": "0x448cF8Fd88AD914e3585401241BC434FbEA94bbb",
-	"type": "zone.dimo.aftermarket.device.fingerprint"
-}`
-
-	cases := []struct {
-		Name              string
-		ReturnsError      bool
-		ExpectedResponse  string
-		UserDeviceTable   models.UserDevice
-		MetaTxTable       models.MetaTransactionRequest
-		VCTable           models.VerifiableCredential
-		AftermarketDevice models.AftermarketDevice
-	}{
-		{
-			Name:             "No corresponding aftermarket device for address",
-			ReturnsError:     true,
-			ExpectedResponse: "sql: no rows in result set",
-		},
-		{
-			Name:              "active credential",
-			ReturnsError:      false,
-			UserDeviceTable:   userDevice,
-			MetaTxTable:       metaTx,
-			VCTable:           credential,
-			AftermarketDevice: aftermarketDevice,
-		},
-		{
-			Name:            "inactive credential",
-			ReturnsError:    false,
-			UserDeviceTable: userDevice,
-			MetaTxTable:     metaTx,
-			VCTable: models.VerifiableCredential{
-				ClaimID:        claimID,
-				ExpirationDate: eventTime.AddDate(0, 0, -10),
-			},
-			AftermarketDevice: aftermarketDevice,
-		},
-		{
-			Name:            "invalid token id",
-			ReturnsError:    false,
-			UserDeviceTable: userDevice,
-			MetaTxTable:     metaTx,
-			VCTable:         credential,
-			AftermarketDevice: models.AftermarketDevice{
-				UserID:          null.StringFrom("SomeID"),
-				OwnerAddress:    ownerAddress,
-				CreatedAt:       eventTime,
-				UpdatedAt:       eventTime,
-				TokenID:         types.NewDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(13), 0)),
-				Beneficiary:     null.BytesFrom(common.BytesToAddress([]byte{uint8(1)}).Bytes()),
-				EthereumAddress: ownerAddress.Bytes,
-			},
-		},
-	}
-
-	for _, c := range cases {
-		s.T().Run(c.Name, func(t *testing.T) {
-			test.TruncateTables(s.pdb.DBS().Writer.DB, t)
-			err := c.UserDeviceTable.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
-			require.NoError(t, err)
-
-			err = c.MetaTxTable.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
-			require.NoError(t, err)
-
-			err = c.VCTable.Insert(ctx, s.pdb.DBS().Reader, boil.Infer())
-			require.NoError(t, err)
-
-			err = c.AftermarketDevice.Insert(ctx, s.pdb.DBS().Writer, boil.Infer())
-			require.NoError(t, err)
-
-			var event Event
-			err = json.Unmarshal([]byte(msg), &event)
-			require.NoError(t, err)
-			err = s.cons.HandleDeviceFingerprint(s.ctx, &event)
-
-			if c.ReturnsError {
-				assert.ErrorContains(t, err, c.ExpectedResponse)
-			} else {
-				require.NoError(t, err)
-			}
-		})
-	}
-
 }
 
 func (s *ConsumerTestSuite) TestSignatureValidation() {

@@ -875,7 +875,7 @@ func (o DeviceCommandRequestSlice) UpdateAll(ctx context.Context, exec boil.Cont
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *DeviceCommandRequest) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *DeviceCommandRequest) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns, opts ...UpsertOptionFunc) error {
 	if o == nil {
 		return errors.New("models: no device_command_requests provided for upsert")
 	}
@@ -929,7 +929,7 @@ func (o *DeviceCommandRequest) Upsert(ctx context.Context, exec boil.ContextExec
 	var err error
 
 	if !cached {
-		insert, ret := insertColumns.InsertColumnSet(
+		insert, _ := insertColumns.InsertColumnSet(
 			deviceCommandRequestAllColumns,
 			deviceCommandRequestColumnsWithDefault,
 			deviceCommandRequestColumnsWithoutDefault,
@@ -945,12 +945,18 @@ func (o *DeviceCommandRequest) Upsert(ctx context.Context, exec boil.ContextExec
 			return errors.New("models: unable to upsert device_command_requests, could not build update column list")
 		}
 
+		ret := strmangle.SetComplement(deviceCommandRequestAllColumns, strmangle.SetIntersect(insert, update))
+
 		conflict := conflictColumns
-		if len(conflict) == 0 {
+		if len(conflict) == 0 && updateOnConflict && len(update) != 0 {
+			if len(deviceCommandRequestPrimaryKeyColumns) == 0 {
+				return errors.New("models: unable to upsert device_command_requests, could not build conflict column list")
+			}
+
 			conflict = make([]string, len(deviceCommandRequestPrimaryKeyColumns))
 			copy(conflict, deviceCommandRequestPrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"device_command_requests\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"device_command_requests\"", updateOnConflict, ret, update, conflict, insert, opts...)
 
 		cache.valueMapping, err = queries.BindMapping(deviceCommandRequestType, deviceCommandRequestMapping, insert)
 		if err != nil {

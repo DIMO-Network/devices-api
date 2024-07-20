@@ -1042,7 +1042,7 @@ func (o UserDeviceToGeofenceSlice) UpdateAll(ctx context.Context, exec boil.Cont
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *UserDeviceToGeofence) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *UserDeviceToGeofence) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns, opts ...UpsertOptionFunc) error {
 	if o == nil {
 		return errors.New("models: no user_device_to_geofence provided for upsert")
 	}
@@ -1096,7 +1096,7 @@ func (o *UserDeviceToGeofence) Upsert(ctx context.Context, exec boil.ContextExec
 	var err error
 
 	if !cached {
-		insert, ret := insertColumns.InsertColumnSet(
+		insert, _ := insertColumns.InsertColumnSet(
 			userDeviceToGeofenceAllColumns,
 			userDeviceToGeofenceColumnsWithDefault,
 			userDeviceToGeofenceColumnsWithoutDefault,
@@ -1112,12 +1112,18 @@ func (o *UserDeviceToGeofence) Upsert(ctx context.Context, exec boil.ContextExec
 			return errors.New("models: unable to upsert user_device_to_geofence, could not build update column list")
 		}
 
+		ret := strmangle.SetComplement(userDeviceToGeofenceAllColumns, strmangle.SetIntersect(insert, update))
+
 		conflict := conflictColumns
-		if len(conflict) == 0 {
+		if len(conflict) == 0 && updateOnConflict && len(update) != 0 {
+			if len(userDeviceToGeofencePrimaryKeyColumns) == 0 {
+				return errors.New("models: unable to upsert user_device_to_geofence, could not build conflict column list")
+			}
+
 			conflict = make([]string, len(userDeviceToGeofencePrimaryKeyColumns))
 			copy(conflict, userDeviceToGeofencePrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"user_device_to_geofence\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"user_device_to_geofence\"", updateOnConflict, ret, update, conflict, insert, opts...)
 
 		cache.valueMapping, err = queries.BindMapping(userDeviceToGeofenceType, userDeviceToGeofenceMapping, insert)
 		if err != nil {

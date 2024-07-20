@@ -1183,7 +1183,7 @@ func (o AutopiJobSlice) UpdateAll(ctx context.Context, exec boil.ContextExecutor
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *AutopiJob) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *AutopiJob) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns, opts ...UpsertOptionFunc) error {
 	if o == nil {
 		return errors.New("models: no autopi_jobs provided for upsert")
 	}
@@ -1237,7 +1237,7 @@ func (o *AutopiJob) Upsert(ctx context.Context, exec boil.ContextExecutor, updat
 	var err error
 
 	if !cached {
-		insert, ret := insertColumns.InsertColumnSet(
+		insert, _ := insertColumns.InsertColumnSet(
 			autopiJobAllColumns,
 			autopiJobColumnsWithDefault,
 			autopiJobColumnsWithoutDefault,
@@ -1253,12 +1253,18 @@ func (o *AutopiJob) Upsert(ctx context.Context, exec boil.ContextExecutor, updat
 			return errors.New("models: unable to upsert autopi_jobs, could not build update column list")
 		}
 
+		ret := strmangle.SetComplement(autopiJobAllColumns, strmangle.SetIntersect(insert, update))
+
 		conflict := conflictColumns
-		if len(conflict) == 0 {
+		if len(conflict) == 0 && updateOnConflict && len(update) != 0 {
+			if len(autopiJobPrimaryKeyColumns) == 0 {
+				return errors.New("models: unable to upsert autopi_jobs, could not build conflict column list")
+			}
+
 			conflict = make([]string, len(autopiJobPrimaryKeyColumns))
 			copy(conflict, autopiJobPrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"autopi_jobs\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"autopi_jobs\"", updateOnConflict, ret, update, conflict, insert, opts...)
 
 		cache.valueMapping, err = queries.BindMapping(autopiJobType, autopiJobMapping, insert)
 		if err != nil {

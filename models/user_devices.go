@@ -41,7 +41,6 @@ type UserDevice struct {
 	MintRequestID      null.String       `boil:"mint_request_id" json:"mint_request_id,omitempty" toml:"mint_request_id" yaml:"mint_request_id,omitempty"`
 	BurnRequestID      null.String       `boil:"burn_request_id" json:"burn_request_id,omitempty" toml:"burn_request_id" yaml:"burn_request_id,omitempty"`
 	TokenID            types.NullDecimal `boil:"token_id" json:"token_id,omitempty" toml:"token_id" yaml:"token_id,omitempty"`
-	ClaimID            null.String       `boil:"claim_id" json:"claim_id,omitempty" toml:"claim_id" yaml:"claim_id,omitempty"`
 	OwnerAddress       null.Bytes        `boil:"owner_address" json:"owner_address,omitempty" toml:"owner_address" yaml:"owner_address,omitempty"`
 	IpfsImageCid       null.String       `boil:"ipfs_image_cid" json:"ipfs_image_cid,omitempty" toml:"ipfs_image_cid" yaml:"ipfs_image_cid,omitempty"`
 	DefinitionID       null.String       `boil:"definition_id" json:"definition_id,omitempty" toml:"definition_id" yaml:"definition_id,omitempty"`
@@ -67,7 +66,6 @@ var UserDeviceColumns = struct {
 	MintRequestID      string
 	BurnRequestID      string
 	TokenID            string
-	ClaimID            string
 	OwnerAddress       string
 	IpfsImageCid       string
 	DefinitionID       string
@@ -88,7 +86,6 @@ var UserDeviceColumns = struct {
 	MintRequestID:      "mint_request_id",
 	BurnRequestID:      "burn_request_id",
 	TokenID:            "token_id",
-	ClaimID:            "claim_id",
 	OwnerAddress:       "owner_address",
 	IpfsImageCid:       "ipfs_image_cid",
 	DefinitionID:       "definition_id",
@@ -111,7 +108,6 @@ var UserDeviceTableColumns = struct {
 	MintRequestID      string
 	BurnRequestID      string
 	TokenID            string
-	ClaimID            string
 	OwnerAddress       string
 	IpfsImageCid       string
 	DefinitionID       string
@@ -132,7 +128,6 @@ var UserDeviceTableColumns = struct {
 	MintRequestID:      "user_devices.mint_request_id",
 	BurnRequestID:      "user_devices.burn_request_id",
 	TokenID:            "user_devices.token_id",
-	ClaimID:            "user_devices.claim_id",
 	OwnerAddress:       "user_devices.owner_address",
 	IpfsImageCid:       "user_devices.ipfs_image_cid",
 	DefinitionID:       "user_devices.definition_id",
@@ -166,7 +161,6 @@ var UserDeviceWhere = struct {
 	MintRequestID      whereHelpernull_String
 	BurnRequestID      whereHelpernull_String
 	TokenID            whereHelpertypes_NullDecimal
-	ClaimID            whereHelpernull_String
 	OwnerAddress       whereHelpernull_Bytes
 	IpfsImageCid       whereHelpernull_String
 	DefinitionID       whereHelpernull_String
@@ -187,7 +181,6 @@ var UserDeviceWhere = struct {
 	MintRequestID:      whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"mint_request_id\""},
 	BurnRequestID:      whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"burn_request_id\""},
 	TokenID:            whereHelpertypes_NullDecimal{field: "\"devices_api\".\"user_devices\".\"token_id\""},
-	ClaimID:            whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"claim_id\""},
 	OwnerAddress:       whereHelpernull_Bytes{field: "\"devices_api\".\"user_devices\".\"owner_address\""},
 	IpfsImageCid:       whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"ipfs_image_cid\""},
 	DefinitionID:       whereHelpernull_String{field: "\"devices_api\".\"user_devices\".\"definition_id\""},
@@ -196,7 +189,6 @@ var UserDeviceWhere = struct {
 // UserDeviceRels is where relationship names are stored.
 var UserDeviceRels = struct {
 	BurnRequest                   string
-	Claim                         string
 	MintRequest                   string
 	VehicleTokenAftermarketDevice string
 	VehicleTokenSyntheticDevice   string
@@ -207,7 +199,6 @@ var UserDeviceRels = struct {
 	UserDeviceToGeofences         string
 }{
 	BurnRequest:                   "BurnRequest",
-	Claim:                         "Claim",
 	MintRequest:                   "MintRequest",
 	VehicleTokenAftermarketDevice: "VehicleTokenAftermarketDevice",
 	VehicleTokenSyntheticDevice:   "VehicleTokenSyntheticDevice",
@@ -221,7 +212,6 @@ var UserDeviceRels = struct {
 // userDeviceR is where relationships are stored.
 type userDeviceR struct {
 	BurnRequest                   *MetaTransactionRequest       `boil:"BurnRequest" json:"BurnRequest" toml:"BurnRequest" yaml:"BurnRequest"`
-	Claim                         *VerifiableCredential         `boil:"Claim" json:"Claim" toml:"Claim" yaml:"Claim"`
 	MintRequest                   *MetaTransactionRequest       `boil:"MintRequest" json:"MintRequest" toml:"MintRequest" yaml:"MintRequest"`
 	VehicleTokenAftermarketDevice *AftermarketDevice            `boil:"VehicleTokenAftermarketDevice" json:"VehicleTokenAftermarketDevice" toml:"VehicleTokenAftermarketDevice" yaml:"VehicleTokenAftermarketDevice"`
 	VehicleTokenSyntheticDevice   *SyntheticDevice              `boil:"VehicleTokenSyntheticDevice" json:"VehicleTokenSyntheticDevice" toml:"VehicleTokenSyntheticDevice" yaml:"VehicleTokenSyntheticDevice"`
@@ -242,13 +232,6 @@ func (r *userDeviceR) GetBurnRequest() *MetaTransactionRequest {
 		return nil
 	}
 	return r.BurnRequest
-}
-
-func (r *userDeviceR) GetClaim() *VerifiableCredential {
-	if r == nil {
-		return nil
-	}
-	return r.Claim
 }
 
 func (r *userDeviceR) GetMintRequest() *MetaTransactionRequest {
@@ -311,9 +294,9 @@ func (r *userDeviceR) GetUserDeviceToGeofences() UserDeviceToGeofenceSlice {
 type userDeviceL struct{}
 
 var (
-	userDeviceAllColumns            = []string{"id", "user_id", "device_definition_id", "vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at", "mint_request_id", "burn_request_id", "token_id", "claim_id", "owner_address", "ipfs_image_cid", "definition_id"}
+	userDeviceAllColumns            = []string{"id", "user_id", "device_definition_id", "vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at", "mint_request_id", "burn_request_id", "token_id", "owner_address", "ipfs_image_cid", "definition_id"}
 	userDeviceColumnsWithoutDefault = []string{"id", "user_id", "device_definition_id"}
-	userDeviceColumnsWithDefault    = []string{"vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at", "mint_request_id", "burn_request_id", "token_id", "claim_id", "owner_address", "ipfs_image_cid", "definition_id"}
+	userDeviceColumnsWithDefault    = []string{"vin_identifier", "name", "custom_image_url", "country_code", "created_at", "updated_at", "vin_confirmed", "metadata", "device_style_id", "opted_in_at", "mint_request_id", "burn_request_id", "token_id", "owner_address", "ipfs_image_cid", "definition_id"}
 	userDevicePrimaryKeyColumns     = []string{"id"}
 	userDeviceGeneratedColumns      = []string{}
 )
@@ -634,17 +617,6 @@ func (o *UserDevice) BurnRequest(mods ...qm.QueryMod) metaTransactionRequestQuer
 	return MetaTransactionRequests(queryMods...)
 }
 
-// Claim pointed to by the foreign key.
-func (o *UserDevice) Claim(mods ...qm.QueryMod) verifiableCredentialQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"claim_id\" = ?", o.ClaimID),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	return VerifiableCredentials(queryMods...)
-}
-
 // MintRequest pointed to by the foreign key.
 func (o *UserDevice) MintRequest(mods ...qm.QueryMod) metaTransactionRequestQuery {
 	queryMods := []qm.QueryMod{
@@ -864,130 +836,6 @@ func (userDeviceL) LoadBurnRequest(ctx context.Context, e boil.ContextExecutor, 
 					foreign.R = &metaTransactionRequestR{}
 				}
 				foreign.R.BurnRequestUserDevice = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadClaim allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (userDeviceL) LoadClaim(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUserDevice interface{}, mods queries.Applicator) error {
-	var slice []*UserDevice
-	var object *UserDevice
-
-	if singular {
-		var ok bool
-		object, ok = maybeUserDevice.(*UserDevice)
-		if !ok {
-			object = new(UserDevice)
-			ok = queries.SetFromEmbeddedStruct(&object, &maybeUserDevice)
-			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeUserDevice))
-			}
-		}
-	} else {
-		s, ok := maybeUserDevice.(*[]*UserDevice)
-		if ok {
-			slice = *s
-		} else {
-			ok = queries.SetFromEmbeddedStruct(&slice, maybeUserDevice)
-			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeUserDevice))
-			}
-		}
-	}
-
-	args := make(map[interface{}]struct{})
-	if singular {
-		if object.R == nil {
-			object.R = &userDeviceR{}
-		}
-		if !queries.IsNil(object.ClaimID) {
-			args[object.ClaimID] = struct{}{}
-		}
-
-	} else {
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &userDeviceR{}
-			}
-
-			if !queries.IsNil(obj.ClaimID) {
-				args[obj.ClaimID] = struct{}{}
-			}
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	argsSlice := make([]interface{}, len(args))
-	i := 0
-	for arg := range args {
-		argsSlice[i] = arg
-		i++
-	}
-
-	query := NewQuery(
-		qm.From(`devices_api.verifiable_credentials`),
-		qm.WhereIn(`devices_api.verifiable_credentials.claim_id in ?`, argsSlice...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.QueryContext(ctx, e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load VerifiableCredential")
-	}
-
-	var resultSlice []*VerifiableCredential
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice VerifiableCredential")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for verifiable_credentials")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for verifiable_credentials")
-	}
-
-	if len(verifiableCredentialAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.Claim = foreign
-		if foreign.R == nil {
-			foreign.R = &verifiableCredentialR{}
-		}
-		foreign.R.ClaimUserDevice = object
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if queries.Equal(local.ClaimID, foreign.ClaimID) {
-				local.R.Claim = foreign
-				if foreign.R == nil {
-					foreign.R = &verifiableCredentialR{}
-				}
-				foreign.R.ClaimUserDevice = local
 				break
 			}
 		}
@@ -1988,75 +1836,6 @@ func (o *UserDevice) RemoveBurnRequest(ctx context.Context, exec boil.ContextExe
 	return nil
 }
 
-// SetClaim of the userDevice to the related item.
-// Sets o.R.Claim to related.
-// Adds o to related.R.ClaimUserDevice.
-func (o *UserDevice) SetClaim(ctx context.Context, exec boil.ContextExecutor, insert bool, related *VerifiableCredential) error {
-	var err error
-	if insert {
-		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"devices_api\".\"user_devices\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"claim_id"}),
-		strmangle.WhereClause("\"", "\"", 2, userDevicePrimaryKeyColumns),
-	)
-	values := []interface{}{related.ClaimID, o.ID}
-
-	if boil.IsDebug(ctx) {
-		writer := boil.DebugWriterFrom(ctx)
-		fmt.Fprintln(writer, updateQuery)
-		fmt.Fprintln(writer, values)
-	}
-	if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	queries.Assign(&o.ClaimID, related.ClaimID)
-	if o.R == nil {
-		o.R = &userDeviceR{
-			Claim: related,
-		}
-	} else {
-		o.R.Claim = related
-	}
-
-	if related.R == nil {
-		related.R = &verifiableCredentialR{
-			ClaimUserDevice: o,
-		}
-	} else {
-		related.R.ClaimUserDevice = o
-	}
-
-	return nil
-}
-
-// RemoveClaim relationship.
-// Sets o.R.Claim to nil.
-// Removes o from all passed in related items' relationships struct.
-func (o *UserDevice) RemoveClaim(ctx context.Context, exec boil.ContextExecutor, related *VerifiableCredential) error {
-	var err error
-
-	queries.SetScanner(&o.ClaimID, nil)
-	if _, err = o.Update(ctx, exec, boil.Whitelist("claim_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.Claim = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	related.R.ClaimUserDevice = nil
-	return nil
-}
-
 // SetMintRequest of the userDevice to the related item.
 // Sets o.R.MintRequest to related.
 // Adds o to related.R.MintRequestUserDevice.
@@ -2879,7 +2658,7 @@ func (o UserDeviceSlice) UpdateAll(ctx context.Context, exec boil.ContextExecuto
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *UserDevice) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *UserDevice) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns, opts ...UpsertOptionFunc) error {
 	if o == nil {
 		return errors.New("models: no user_devices provided for upsert")
 	}
@@ -2933,7 +2712,7 @@ func (o *UserDevice) Upsert(ctx context.Context, exec boil.ContextExecutor, upda
 	var err error
 
 	if !cached {
-		insert, ret := insertColumns.InsertColumnSet(
+		insert, _ := insertColumns.InsertColumnSet(
 			userDeviceAllColumns,
 			userDeviceColumnsWithDefault,
 			userDeviceColumnsWithoutDefault,
@@ -2949,12 +2728,18 @@ func (o *UserDevice) Upsert(ctx context.Context, exec boil.ContextExecutor, upda
 			return errors.New("models: unable to upsert user_devices, could not build update column list")
 		}
 
+		ret := strmangle.SetComplement(userDeviceAllColumns, strmangle.SetIntersect(insert, update))
+
 		conflict := conflictColumns
-		if len(conflict) == 0 {
+		if len(conflict) == 0 && updateOnConflict && len(update) != 0 {
+			if len(userDevicePrimaryKeyColumns) == 0 {
+				return errors.New("models: unable to upsert user_devices, could not build conflict column list")
+			}
+
 			conflict = make([]string, len(userDevicePrimaryKeyColumns))
 			copy(conflict, userDevicePrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"user_devices\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"user_devices\"", updateOnConflict, ret, update, conflict, insert, opts...)
 
 		cache.valueMapping, err = queries.BindMapping(userDeviceType, userDeviceMapping, insert)
 		if err != nil {
