@@ -108,6 +108,11 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 		if err != nil {
 			return err
 		}
+
+		if cred.IntegrationID != int(i) {
+			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Stored credentials are for integration %d, not Tesla.", cred.IntegrationID))
+		}
+
 		_, err = co.TeslaAPI.GetVehicle(c.Context(), cred.AccessToken, "na", 1997)
 		if err != nil {
 			return err
