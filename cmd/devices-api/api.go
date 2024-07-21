@@ -175,7 +175,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1.Get("/aftermarket/device/:tokenID", cacheHandler, nftController.GetAftermarketDeviceNFTMetadata)
 	v1.Get("/aftermarket/device/:tokenID/image", nftController.GetAftermarketDeviceNFTImage)
 
-	v1.Get("/aftermarket/device/:tokenID/image", nftController.GetSyntheticDeviceNFTMetadata)
+	v1.Get("/synthetic/device/:tokenID/image", nftController.GetSyntheticDeviceNFTMetadata)
 
 	v1.Get("/integration/:tokenID", nftController.GetIntegrationNFTMetadata)
 
