@@ -12,3 +12,12 @@ import (
 func BigToDecimal(x *big.Int) types.Decimal {
 	return types.NewDecimal(new(decimal.Big).SetBigMantScale(x, 0))
 }
+
+// NullableBigToDecimal translates a big integer into a
+// nullable decimal for SQLBoiler.
+func NullableBigToDecimal(x *big.Int) types.NullDecimal {
+	if x == nil {
+		return types.NewNullDecimal(nil)
+	}
+	return types.NewNullDecimal(new(decimal.Big).SetBigMantScale(x, 0))
+}
