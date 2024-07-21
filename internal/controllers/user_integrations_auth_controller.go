@@ -1,8 +1,6 @@
 package controllers
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"slices"
 	"strconv"
@@ -14,10 +12,10 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/middleware/address"
 	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/DIMO-Network/shared/redis"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog"
@@ -35,8 +33,7 @@ type UserIntegrationAuthController struct {
 	DeviceDefSvc     services.DeviceDefinitionService
 	log              *zerolog.Logger
 	teslaFleetAPISvc services.TeslaFleetAPIService
-	cache            redis.CacheService
-	cipher           shared.Cipher
+	store            *tmpcred.Store
 }
 
 func NewUserIntegrationAuthController(
@@ -48,14 +45,17 @@ func NewUserIntegrationAuthController(
 	cache redis.CacheService,
 	cipher shared.Cipher,
 ) UserIntegrationAuthController {
+
 	return UserIntegrationAuthController{
 		Settings:         settings,
 		DBS:              dbs,
 		DeviceDefSvc:     ddSvc,
 		log:              logger,
 		teslaFleetAPISvc: teslaFleetAPISvc,
-		cache:            cache,
-		cipher:           cipher,
+		store: &tmpcred.Store{
+			Redis:  cache,
+			Cipher: cipher,
+		},
 	}
 }
 
@@ -166,10 +166,13 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 	}
 
 	// Save tesla oauth credentials in cache
-	err = u.persistOauthCredentials(c.Context(), *teslaAuth, userAddr)
-	if err != nil {
-		u.log.Err(err).Msg("an error occurred while trying to persist user auth credentials to cache")
-		return fiber.NewError(fiber.StatusInternalServerError, "an error occurred during tesla authorization")
+	if err := u.store.Store(c.Context(), userAddr, &tmpcred.Credential{
+		IntegrationID: int(tokenID),
+		AccessToken:   teslaAuth.AccessToken,
+		RefreshToken:  teslaAuth.RefreshToken,
+		Expiry:        teslaAuth.Expiry,
+	}); err != nil {
+		return fmt.Errorf("error persisting credentials: %w", err)
 	}
 
 	vehicles, err := u.teslaFleetAPISvc.GetVehicles(c.Context(), teslaAuth.AccessToken, reqBody.Region)
@@ -181,12 +184,11 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 	for _, v := range vehicles {
 		decodeVIN, err := u.DeviceDefSvc.DecodeVIN(c.Context(), v.VIN, "", 0, "")
 		if err != nil || len(decodeVIN.DeviceDefinitionId) == 0 {
-			u.log.Err(err).Msg("An error occurred decoding vin for tesla vehicle")
 			return fiber.NewError(fiber.StatusFailedDependency, "An error occurred completing tesla authorization")
 		}
 
 		dd, err := u.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), decodeVIN.DeviceDefinitionId)
-		if err != nil || len(decodeVIN.DeviceDefinitionId) == 0 {
+		if err != nil {
 			u.log.Err(err).Str("deviceDefinitionID", decodeVIN.DeviceDefinitionId).Msg("An error occurred fetching device definition using ID")
 			return fiber.NewError(fiber.StatusFailedDependency, "An error occurred completing tesla authorization")
 		}
@@ -208,24 +210,4 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 	}
 
 	return c.JSON(vehicleResp)
-}
-
-func (u *UserIntegrationAuthController) persistOauthCredentials(ctx context.Context, teslaAuth services.TeslaAuthCodeResponse, userEthAddr common.Address) error {
-	tokenStr, err := json.Marshal(teslaAuth)
-	if err != nil {
-		return fmt.Errorf("failed to marshal credentials: %w", err)
-	}
-
-	encToken, err := u.cipher.Encrypt(string(tokenStr))
-	if err != nil {
-		return fmt.Errorf("failed to encrypt credentials: %w", err)
-	}
-
-	cacheKey := fmt.Sprintf(teslaFleetAuthCacheKey, userEthAddr.Hex())
-	status := u.cache.Set(ctx, cacheKey, encToken, cacheDuration)
-	if status.Err() != nil {
-		return fmt.Errorf("an error occurred saving auth credentials to cache: %w", status.Err())
-	}
-
-	return nil
 }

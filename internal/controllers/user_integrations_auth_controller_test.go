@@ -316,29 +316,3 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_Inval
 
 	s.Assert().Equal(fiber.StatusBadRequest, response.StatusCode)
 }
-
-func (s *UserIntegrationAuthControllerTestSuite) TestPersistOauthCredentials() {
-	mockAuthCodeResp := &services.TeslaAuthCodeResponse{
-		AccessToken:  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-		RefreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw",
-		Expiry:       time.Now().Add(time.Hour * 1),
-	}
-	tokenStr, err := json.Marshal(mockAuthCodeResp)
-	s.Assert().NoError(err)
-
-	mockUserEthAddr := common.HexToAddress("1")
-
-	encToken, err := s.cipher.Encrypt(string(tokenStr))
-	s.Assert().NoError(err)
-
-	cacheKey := fmt.Sprintf(teslaFleetAuthCacheKey, mockUserEthAddr)
-	s.redisClient.EXPECT().Set(gomock.Any(), cacheKey, encToken, 5*time.Minute).Return(&redis.StatusCmd{})
-
-	intCtrl := NewUserIntegrationAuthController(&config.Settings{
-		Port:        "3000",
-		Environment: "prod",
-	}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.teslaFleetAPISvc, s.redisClient, s.cipher)
-
-	err = intCtrl.persistOauthCredentials(s.ctx, *mockAuthCodeResp, mockUserEthAddr)
-	s.Assert().NoError(err)
-}

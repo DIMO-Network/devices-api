@@ -6,7 +6,9 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/middleware/address"
+	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/integration"
+	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
@@ -22,7 +24,10 @@ import (
 type Controller struct {
 	DBS         db.Store
 	Smartcar    SyntheticTaskManager
+	Tesla       SyntheticTaskManager
 	IntegClient *integration.Client
+	Store       *tmpcred.Store
+	TeslaAPI    services.TeslaFleetAPIService
 }
 
 type SyntheticTaskManager interface {
@@ -65,38 +70,55 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 	i, _ := sd.IntegrationTokenID.Int64()
 
 	integ, _ := co.IntegClient.ByTokenID(c.Context(), int(i))
-	if integ.Vendor != constants.SmartCarVendor {
-		// TODO(elffjs): This is super dumb.
-		return fiber.NewError(fiber.StatusBadRequest, "Reauthentication only supported for Smartcar.")
-	}
 
 	udai, err := models.FindUserDeviceAPIIntegration(c.Context(), co.DBS.DBS().Reader, ud.ID, integ.ID)
 	if err != nil {
 		return err
 	}
 
-	if udai.Status != models.UserDeviceAPIIntegrationStatusAuthenticationFailure {
-		// TODO(elffjs): Can probably still "succeed" in this case.
-		return fiber.NewError(fiber.StatusBadRequest, "Device is not in authentication failure.")
+	// TODO(elffjs): Yeah, yeah, this is bad.
+	switch integ.Vendor {
+	case constants.SmartCarVendor:
+		if udai.Status != models.UserDeviceAPIIntegrationStatusAuthenticationFailure {
+			// TODO(elffjs): Can probably still "succeed" in this case.
+			return fiber.NewError(fiber.StatusBadRequest, "Device is not in authentication failure.")
+		}
+
+		udai.Status = models.UserDeviceAPIIntegrationStatusPendingFirstData
+		udai.TaskID = null.StringFrom(ksuid.New().String())
+
+		cols := models.UserDeviceAPIIntegrationColumns
+		_, err = udai.Update(c.Context(), co.DBS.DBS().Writer, boil.Whitelist(cols.Status, cols.TaskID, cols.UpdatedAt))
+		if err != nil {
+			return err
+		}
+
+		co.Store.Retrieve(c.Context(), userAddr)
+
+		err = co.Smartcar.StartPoll(udai, sd)
+		if err != nil {
+			return err
+		}
+
+		logger.Info().Int("sdId", tokenID).Msg("Restarted polling job.")
+
+		return c.JSON(Message{Message: "Restarted polling job."})
+	case constants.TeslaVendor:
+		cred, err := co.Store.Retrieve(c.Context(), userAddr)
+		if err != nil {
+			return err
+		}
+		_, err = co.TeslaAPI.GetVehicle(c.Context(), cred.AccessToken, "na", 1997)
+		if err != nil {
+			return err
+		}
+
+		// TODO(elffjs): Stop the old one, regenerate the id. Some races here.
+		co.Tesla.StartPoll(udai, sd)
+		return c.JSON(Message{Message: "Restarted polling job."})
+	default:
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Integration %s does not support reauthentication.", integ.Vendor))
 	}
-
-	udai.Status = models.UserDeviceAPIIntegrationStatusPendingFirstData
-	udai.TaskID = null.StringFrom(ksuid.New().String())
-
-	cols := models.UserDeviceAPIIntegrationColumns
-	_, err = udai.Update(c.Context(), co.DBS.DBS().Writer, boil.Whitelist(cols.Status, cols.TaskID, cols.UpdatedAt))
-	if err != nil {
-		return err
-	}
-
-	err = co.Smartcar.StartPoll(udai, sd)
-	if err != nil {
-		return err
-	}
-
-	logger.Info().Int("sdId", tokenID).Msg("Restarted polling job.")
-
-	return c.JSON(Message{Message: "Restarted polling job."})
 }
 
 type Message struct {
