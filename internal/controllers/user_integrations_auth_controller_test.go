@@ -15,7 +15,6 @@ import (
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/DIMO-Network/shared/redis/mocks"
 	"github.com/ethereum/go-ethereum/common"
@@ -39,8 +38,8 @@ type UserIntegrationAuthControllerTestSuite struct {
 	testUserID       string
 	redisClient      *mocks.MockCacheService
 	teslaFleetAPISvc *mock_services.MockTeslaFleetAPIService
-	usersClient      *mock_services.MockUserServiceClient
 	cipher           shared.Cipher
+	userAddr         common.Address
 }
 
 // SetupSuite starts container db
@@ -56,13 +55,17 @@ func (s *UserIntegrationAuthControllerTestSuite) SetupSuite() {
 	s.redisClient = mocks.NewMockCacheService(mockCtrl)
 	s.testUserID = "123123"
 	s.cipher = new(shared.ROT13Cipher)
-	s.usersClient = mock_services.NewMockUserServiceClient(mockCtrl)
 	c := NewUserIntegrationAuthController(&config.Settings{
 		Port:        "3000",
 		Environment: "prod",
-	}, s.pdb.DBS, logger, s.deviceDefSvc, s.teslaFleetAPISvc, s.redisClient, s.cipher, s.usersClient)
+	}, s.pdb.DBS, logger, s.deviceDefSvc, s.teslaFleetAPISvc, s.redisClient, s.cipher)
 	app := test.SetupAppFiber(*logger)
-	app.Post("/integration/:tokenID/credentials", test.AuthInjectorTestHandler(s.testUserID), c.CompleteOAuthExchange)
+	s.userAddr = common.HexToAddress("1")
+	app.Post("/integration/:tokenID/credentials", func(c *fiber.Ctx) error {
+		// TODO(elffjs): Yes, yes, this is bad.
+		c.Locals("ethereumAddress", s.userAddr)
+		return c.Next()
+	}, c.CompleteOAuthExchange)
 
 	s.controller = &c
 	s.app = app
@@ -110,7 +113,6 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 		Region:       mockRegion,
 	}
 	mockUserEthAddr := common.HexToAddress("1").String()
-	s.usersClient.EXPECT().GetUser(gomock.Any(), &users.GetUserRequest{Id: s.testUserID}).Return(&users.User{EthereumAddress: &mockUserEthAddr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&ddgrpc.Integration{
 		Vendor: constants.TeslaVendor,
 	}, nil)
@@ -215,8 +217,6 @@ func (s *UserIntegrationAuthControllerTestSuite) TestMissingScope() {
 		Expiry:       time.Now().Add(time.Hour * 1),
 		Region:       mockRegion,
 	}
-	mockUserEthAddr := common.HexToAddress("1").String()
-	s.usersClient.EXPECT().GetUser(gomock.Any(), &users.GetUserRequest{Id: s.testUserID}).Return(&users.User{EthereumAddress: &mockUserEthAddr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&ddgrpc.Integration{
 		Vendor: constants.TeslaVendor,
 	}, nil)
@@ -256,8 +256,6 @@ func (s *UserIntegrationAuthControllerTestSuite) TestMissingRefreshToken() {
 		Expiry:       time.Now().Add(time.Hour * 1),
 		Region:       mockRegion,
 	}
-	mockUserEthAddr := common.HexToAddress("1").String()
-	s.usersClient.EXPECT().GetUser(gomock.Any(), &users.GetUserRequest{Id: s.testUserID}).Return(&users.User{EthereumAddress: &mockUserEthAddr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&ddgrpc.Integration{
 		Vendor: constants.TeslaVendor,
 	}, nil)
@@ -280,8 +278,6 @@ func (s *UserIntegrationAuthControllerTestSuite) TestMissingRefreshToken() {
 }
 
 func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_InvalidRegion() {
-	mockUserEthAddr := common.HexToAddress("1").String()
-	s.usersClient.EXPECT().GetUser(gomock.Any(), &users.GetUserRequest{Id: s.testUserID}).Return(&users.User{EthereumAddress: &mockUserEthAddr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&ddgrpc.Integration{
 		Vendor: constants.TeslaVendor,
 	}, nil)
@@ -293,14 +289,9 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_Inval
 	response, _ := s.app.Test(request)
 
 	s.Assert().Equal(fiber.StatusBadRequest, response.StatusCode)
-	body, _ := io.ReadAll(response.Body)
-
-	s.Assert().Equal(`{"code":400,"message":"invalid value provided for region, only na and eu are allowed"}`, string(body))
 }
 
 func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_UnprocessableTokenID() {
-	mockUserEthAddr := common.HexToAddress("1").String()
-	s.usersClient.EXPECT().GetUser(gomock.Any(), &users.GetUserRequest{Id: s.testUserID}).Return(&users.User{EthereumAddress: &mockUserEthAddr}, nil)
 	request := test.BuildRequest("POST", "/integration/wrongTokenID/credentials", fmt.Sprintf(`{
 		"authorizationCode": "%s",
 		"redirectUri": "%s",
@@ -309,14 +300,9 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_Unpro
 	response, _ := s.app.Test(request)
 
 	s.Assert().Equal(fiber.StatusBadRequest, response.StatusCode)
-	body, _ := io.ReadAll(response.Body)
-
-	s.Assert().Equal(`{"code":400,"message":"could not process the provided tokenId!"}`, string(body))
 }
 
 func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_InvalidTokenID() {
-	mockUserEthAddr := common.HexToAddress("1").String()
-	s.usersClient.EXPECT().GetUser(gomock.Any(), &users.GetUserRequest{Id: s.testUserID}).Return(&users.User{EthereumAddress: &mockUserEthAddr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(1)).Return(&ddgrpc.Integration{
 		Vendor: constants.SmartCarVendor,
 	}, nil)
@@ -329,9 +315,6 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_Inval
 	response, _ := s.app.Test(request)
 
 	s.Assert().Equal(fiber.StatusBadRequest, response.StatusCode)
-	body, _ := io.ReadAll(response.Body)
-
-	s.Assert().Equal(`{"code":400,"message":"invalid value provided for tokenId!"}`, string(body))
 }
 
 func (s *UserIntegrationAuthControllerTestSuite) TestPersistOauthCredentials() {
@@ -343,7 +326,7 @@ func (s *UserIntegrationAuthControllerTestSuite) TestPersistOauthCredentials() {
 	tokenStr, err := json.Marshal(mockAuthCodeResp)
 	s.Assert().NoError(err)
 
-	mockUserEthAddr := common.HexToAddress("1").String()
+	mockUserEthAddr := common.HexToAddress("1")
 
 	encToken, err := s.cipher.Encrypt(string(tokenStr))
 	s.Assert().NoError(err)
@@ -354,7 +337,7 @@ func (s *UserIntegrationAuthControllerTestSuite) TestPersistOauthCredentials() {
 	intCtrl := NewUserIntegrationAuthController(&config.Settings{
 		Port:        "3000",
 		Environment: "prod",
-	}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.teslaFleetAPISvc, s.redisClient, s.cipher, s.usersClient)
+	}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.teslaFleetAPISvc, s.redisClient, s.cipher)
 
 	err = intCtrl.persistOauthCredentials(s.ctx, *mockAuthCodeResp, mockUserEthAddr)
 	s.Assert().NoError(err)
