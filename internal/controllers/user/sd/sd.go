@@ -154,6 +154,12 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 		udai.Status = models.UserDeviceAPIIntegrationStatusPendingFirstData
 		udai.TaskID = null.StringFrom(ksuid.New().String())
 
+		cols := models.UserDeviceAPIIntegrationColumns
+		_, err = udai.Update(c.Context(), co.DBS.DBS().Writer, boil.Whitelist(cols.Status, cols.TaskID, cols.AccessToken, cols.RefreshToken, cols.AccessExpiresAt, cols.UpdatedAt))
+		if err != nil {
+			return err
+		}
+
 		// TODO(elffjs): Stop the old one, regenerate the id. Some races here.
 		if err := co.Tesla.StartPoll(udai, sd); err != nil {
 			return err
