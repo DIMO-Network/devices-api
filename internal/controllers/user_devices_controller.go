@@ -1476,7 +1476,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	mtr := models.MetaTransactionRequest{
 		ID:     requestID,
-		Status: "Unsubmitted",
+		Status: models.MetaTransactionRequestStatusUnsubmitted,
 	}
 	if err = mtr.Insert(c.Context(), tx, boil.Infer()); err != nil {
 		return err
