@@ -12,6 +12,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/integration"
 	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
@@ -30,6 +31,7 @@ type Controller struct {
 	IntegClient *integration.Client
 	Store       *tmpcred.Store
 	TeslaAPI    services.TeslaFleetAPIService
+	Cipher      shared.Cipher
 }
 
 type SyntheticTaskManager interface {
@@ -133,6 +135,21 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 		if err != nil {
 			return err
 		}
+
+		encAccess, err := co.Cipher.Encrypt(cred.AccessToken)
+		if err != nil {
+			return err
+		}
+		encRefresh, err := co.Cipher.Encrypt(cred.RefreshToken)
+		if err != nil {
+			return err
+		}
+		// TODO(elffjs): Really need to clear these so that they can't be used again.
+		// Refreshes will clash.
+
+		udai.AccessToken = null.StringFrom(encAccess)
+		udai.RefreshToken = null.StringFrom(encRefresh)
+		udai.AccessExpiresAt = null.TimeFrom(cred.Expiry)
 
 		udai.Status = models.UserDeviceAPIIntegrationStatusPendingFirstData
 		udai.TaskID = null.StringFrom(ksuid.New().String())
