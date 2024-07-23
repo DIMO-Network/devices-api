@@ -2031,7 +2031,11 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 
 	var commands *services.UserDeviceAPIIntegrationsMetadataCommands
 	if apiVersion == constants.TeslaAPIV2 {
-		commands = udc.teslaFleetAPISvc.GetAvailableCommands()
+		var err error
+		commands, err = udc.teslaFleetAPISvc.GetAvailableCommands(reqBody.AccessToken)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "Couldn't determine available commands.")
+		}
 	} else {
 		commands = udc.teslaService.GetAvailableCommands()
 	}

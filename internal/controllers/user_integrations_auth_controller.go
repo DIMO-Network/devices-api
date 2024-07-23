@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -89,7 +88,7 @@ type partialTeslaClaims struct {
 	Scopes []string `json:"scp"`
 }
 
-var requiredTeslaScopes = []string{"vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds"}
+var teslaDataScope = "vehicle_device_data"
 
 // CompleteOAuthExchange godoc
 // @Description Complete Tesla auth and get devices for authenticated user
@@ -161,16 +160,8 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 		return fiber.NewError(fiber.StatusBadRequest, "Code exchange returned an unparseable access token.")
 	}
 
-	var missingScopes []string
-
-	for _, scope := range requiredTeslaScopes {
-		if !slices.Contains(claims.Scopes, scope) {
-			missingScopes = append(missingScopes, scope)
-		}
-	}
-
-	if len(missingScopes) != 0 {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Missing required scopes %s.", strings.Join(missingScopes, ", ")))
+	if !slices.Contains(claims.Scopes, teslaDataScope) {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Missing scope %s.", teslaDataScope))
 	}
 
 	// Save tesla oauth credentials in cache

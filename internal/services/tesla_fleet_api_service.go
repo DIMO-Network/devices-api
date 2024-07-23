@@ -15,6 +15,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/goccy/go-json"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog"
 	"golang.org/x/exp/slices"
 	"golang.org/x/oauth2"
@@ -26,7 +27,7 @@ type TeslaFleetAPIService interface {
 	GetVehicles(ctx context.Context, token, region string) ([]TeslaVehicle, error)
 	GetVehicle(ctx context.Context, token, region string, vehicleID int) (*TeslaVehicle, error)
 	WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error
-	GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands
+	GetAvailableCommands(token string) (*UserDeviceAPIIntegrationsMetadataCommands, error)
 	VirtualKeyConnectionStatus(ctx context.Context, token, region, vin string) (bool, error)
 	SubscribeForTelemetryData(ctx context.Context, token, region, vin string) error
 	GetTelemetrySubscriptionStatus(ctx context.Context, token, region, vin string) (bool, error)
@@ -203,10 +204,43 @@ func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region 
 	return err
 }
 
-func (t *teslaFleetAPIService) GetAvailableCommands() *UserDeviceAPIIntegrationsMetadataCommands {
-	return &UserDeviceAPIIntegrationsMetadataCommands{
-		Enabled: []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit, constants.TelemetrySubscribe},
+// TODO(elffjs): This being here is a bad sign.
+type partialTeslaClaims struct {
+	jwt.RegisteredClaims
+	Scopes []string `json:"scp"`
+}
+
+const (
+	teslaCommandScope  = "vehicle_cmds"
+	teslaChargingScope = "vehicle_charging_cmds"
+)
+
+func (t *teslaFleetAPIService) GetAvailableCommands(token string) (*UserDeviceAPIIntegrationsMetadataCommands, error) {
+	var claims partialTeslaClaims
+	_, _, err := jwt.NewParser().ParseUnverified(token, &claims)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't parse JWT: %w", err)
 	}
+
+	enabled := []string{constants.TelemetrySubscribe} // TODO(elffjs): Maybe not a safe assumption.
+	disabled := []string{}
+
+	if slices.Contains(claims.Scopes, teslaCommandScope) {
+		enabled = append(enabled, constants.DoorsLock, constants.DoorsUnlock, constants.TrunkOpen, constants.FrunkOpen)
+	} else {
+		disabled = append(disabled, constants.DoorsLock, constants.DoorsUnlock, constants.TrunkOpen, constants.FrunkOpen)
+	}
+
+	if slices.Contains(claims.Scopes, teslaCommandScope) || slices.Contains(claims.Scopes, teslaChargingScope) {
+		enabled = append(enabled, constants.ChargeLimit)
+	} else {
+		disabled = append(disabled, constants.ChargeLimit)
+	}
+
+	return &UserDeviceAPIIntegrationsMetadataCommands{
+		Enabled:  enabled,
+		Disabled: disabled,
+	}, nil
 }
 
 // VirtualKeyConnectionStatus returns true if our virtual key (public key) has been added to the vehicle.
