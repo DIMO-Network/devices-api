@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"time"
 
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
+
 	"github.com/DIMO-Network/shared"
 
 	"github.com/DIMO-Network/devices-api/internal/services"
@@ -151,9 +153,12 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 		return err
 	}
 
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), ud.DeviceDefinitionID)
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(c.Context(),
+		&ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+			Slug: ud.DefinitionID.String,
+		})
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ud.DeviceDefinitionID)
+		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ud.DefinitionID.String)
 	}
 
 	req := &QueryDeviceErrorCodesReq{}
@@ -292,7 +297,7 @@ func (udc *UserDevicesController) ClearUserDeviceErrorCodeQuery(c *fiber.Ctx) er
 		return fiber.NewError(fiber.StatusInternalServerError, "error occurred updating device error queries")
 	}
 
-	errorCodeResp := []services.ErrorCodesResponse{}
+	errorCodeResp := make([]services.ErrorCodesResponse, 0)
 	if err := errCodeQuery.CodesQueryResponse.Unmarshal(&errorCodeResp); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "error occurred updating device error queries")
 	}

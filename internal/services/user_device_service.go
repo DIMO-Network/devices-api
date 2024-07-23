@@ -102,6 +102,7 @@ func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID,
 		ID:                 userDeviceID,
 		UserID:             userID,
 		DeviceDefinitionID: dd.DeviceDefinitionId,
+		DefinitionID:       null.StringFrom(dd.NameSlug),
 		CountryCode:        null.StringFrom(countryCode),
 		VinIdentifier:      null.StringFromPtr(vin),
 		VinConfirmed:       vinConfirmed,
@@ -120,7 +121,7 @@ func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID,
 
 	err = ud.Insert(ctx, tx, boil.Infer())
 	if err != nil {
-		return nil, nil, fiber.NewError(fiber.StatusInternalServerError, "could not create user device for def_id: "+dd.DeviceDefinitionId)
+		return nil, nil, fiber.NewError(fiber.StatusInternalServerError, "could not create user device for def_id: "+dd.NameSlug)
 	}
 
 	err = tx.Commit() // commmit the transaction
