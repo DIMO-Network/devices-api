@@ -204,6 +204,7 @@ func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region 
 	return err
 }
 
+// TODO(elffjs): This being here is a bad sign.
 type partialTeslaClaims struct {
 	jwt.RegisteredClaims
 	Scopes []string `json:"scp"`
