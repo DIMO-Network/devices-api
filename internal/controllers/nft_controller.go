@@ -418,6 +418,7 @@ func (nc *NFTController) GetSyntheticDeviceNFTMetadata(c *fiber.Ctx) error {
 	).One(c.Context(), nc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			helpers.SkipErrorLog(c)
 			return fiber.NewError(fiber.StatusNotFound, "No device with that id.")
 		}
 		return err
