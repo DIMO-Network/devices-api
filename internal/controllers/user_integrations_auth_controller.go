@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
-	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -23,8 +22,6 @@ import (
 )
 
 const teslaFleetAuthCacheKey = "integration_credentials_%s"
-
-const cacheDuration = 5 * time.Minute
 
 type UserIntegrationAuthController struct {
 	Settings         *config.Settings

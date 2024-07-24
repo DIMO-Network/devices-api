@@ -57,7 +57,7 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint
 
 	sd, err := models.SyntheticDevices(
 		models.SyntheticDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(int64(tokenID), 0))),
