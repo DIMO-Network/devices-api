@@ -150,13 +150,7 @@ func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Con
 	return isSubscribed, nil
 }
 
-func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, userID, userDeviceID, integrationID string, dd *ddgrpc.GetDeviceDefinitionItemResponse) error {
-	tx, err := udc.DBS().Writer.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback() //nolint
-
+func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, userID, userDeviceID, integrationID string, dd *ddgrpc.GetDeviceDefinitionItemResponse, tx *sql.Tx) error {
 	apiInt, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID),
@@ -199,11 +193,6 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 	}
 
 	_, err = apiInt.Delete(ctx, tx)
-	if err != nil {
-		return err
-	}
-
-	err = tx.Commit()
 	if err != nil {
 		return err
 	}
@@ -316,12 +305,16 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+device.DeviceDefinitionID)
 	}
 
-	err = udc.deleteDeviceIntegration(c.Context(), userID, userDeviceID, integrationID, dd)
+	err = udc.deleteDeviceIntegration(c.Context(), userID, userDeviceID, integrationID, dd, tx)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
 
 	udc.markAutoPiUnpaired(autopiDeviceID)
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
 
 	return c.SendStatus(fiber.StatusNoContent)
 }

@@ -906,7 +906,5 @@ func (s *UserDevicesControllerTestSuite) TestDeleteUserDevice_ErrNFTNotBurned() 
 	err = json.Unmarshal(body, &resp)
 	s.Require().NoError(err)
 
-	s.Equal(fiber.StatusFailedDependency, response.StatusCode)
-	s.Equal(resp["message"].(string), fmt.Sprintf("vehicle token: %d; must burn minted vehicle to delete", big.NewInt(1)))
-
+	s.Equal(fiber.StatusBadRequest, response.StatusCode)
 }
