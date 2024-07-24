@@ -2,7 +2,7 @@ replicaCount: 3
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 1.27.20
+  tag: 1.27.22
 cronJob:
   enabled: false
   schedule: 0 0 1 * *
@@ -48,7 +48,7 @@ env:
   SYNTHETIC_WALLET_GRPC_ADDR: synthetic-wallet-instance-prod:8086
   DEVICE_DATA_GRPC_ADDR: device-data-api-prod:8086
   TESLA_TOKEN_URL: https://auth.tesla.com/oauth2/v3/token
-  TESLA_FLEET_URL: https://fleet-api.prd.%s.vn.cloud.tesla.com
+  TESLA_FLEET_URL: http://tesla-command-api-prod.prod.svc.cluster.local:8080
   META_TRANSACTION_PROCESSOR_GRPC_ADDR: meta-transaction-processor-prod:8086
   SYNTHETIC_DEVICE_NFT_ADDRESS: '0x4804e8D1661cd1a1e5dDdE1ff458A7f878c0aC6D'
   IPFS_URL: https://assets.dimo.xyz/ipfs

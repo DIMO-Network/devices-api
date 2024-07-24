@@ -397,6 +397,46 @@ func (nc *NFTController) GetAftermarketDeviceNFTImage(c *fiber.Ctx) error {
 	return c.Send(b)
 }
 
+// GetSyntheticDeviceNFTMetadata godoc
+// @Description Retrieves NFT metadata for a given synthetic device.
+// @Tags        nfts
+// @Param       tokenId path int true "token id"
+// @Produce     json
+// @Success     200 {object} controllers.NFTMetadataResp
+// @Failure     404
+// @Router      /synthetic/device/{tokenId} [get]
+func (nc *NFTController) GetSyntheticDeviceNFTMetadata(c *fiber.Ctx) error {
+	tidStr := c.Params("tokenID")
+
+	tid, ok := new(big.Int).SetString(tidStr, 10)
+	if !ok {
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse token id.")
+	}
+
+	unit, err := models.SyntheticDevices(
+		models.SyntheticDeviceWhere.TokenID.EQ(utils.NullableBigToDecimal(tid)),
+	).One(c.Context(), nc.DBS().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			helpers.SkipErrorLog(c)
+			return fiber.NewError(fiber.StatusNotFound, "No device with that id.")
+		}
+		return err
+	}
+	var name string
+	if three, err := mnemonic.EntropyToMnemonicThreeWords(unit.WalletAddress); err == nil {
+		name = strings.Join(three, " ")
+	}
+
+	return c.JSON(NFTMetadataResp{
+		Name:        name,
+		Description: name + ", a DIMO synthetic device.",
+		Attributes: []NFTAttribute{
+			{TraitType: "Ethereum Address", Value: common.BytesToAddress(unit.WalletAddress).String()},
+		},
+	})
+}
+
 // UnlockDoors godoc
 // @Summary     Unlock the device's doors
 // @Description Unlock the device's doors.

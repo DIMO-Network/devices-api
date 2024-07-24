@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 8d42290
+  tag: 18e3a9f
 imagePullSecrets: []
 nameOverride: ''
 fullnameOverride: ''
@@ -88,7 +88,7 @@ env:
   SYNTHETIC_FINGERPRINT_TOPIC: topic.synthetic.fingerprint
   SYNTHETIC_FINGERPRINT_CONSUMER_GROUP: consumer.synthetic.fingerprint
   TESLA_TOKEN_URL: https://auth.tesla.com/oauth2/v3/token
-  TESLA_FLEET_URL: https://fleet-api.prd.%s.vn.cloud.tesla.com
+  TESLA_FLEET_URL: http://tesla-command-api-dev.dev.svc.cluster.local:8080
   META_TRANSACTION_PROCESSOR_GRPC_ADDR: meta-transaction-processor-dev:8086
   TESLA_TELEMETRY_HOST_NAME: ingest-tesla.dev.dimo.zone
   SYNTHETIC_DEVICE_NFT_ADDRESS: '0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f'

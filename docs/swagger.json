@@ -527,6 +527,37 @@
                 }
             }
         },
+        "/synthetic/device/{tokenId}": {
+            "get": {
+                "description": "Retrieves NFT metadata for a given synthetic device.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nfts"
+                ],
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "token id",
+                        "name": "tokenId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.NFTMetadataResp"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
+            }
+        },
         "/user/devices": {
             "post": {
                 "security": [

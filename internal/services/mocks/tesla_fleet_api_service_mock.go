@@ -56,17 +56,18 @@ func (mr *MockTeslaFleetAPIServiceMockRecorder) CompleteTeslaAuthCodeExchange(ct
 }
 
 // GetAvailableCommands mocks base method.
-func (m *MockTeslaFleetAPIService) GetAvailableCommands() *services.UserDeviceAPIIntegrationsMetadataCommands {
+func (m *MockTeslaFleetAPIService) GetAvailableCommands(token string) (*services.UserDeviceAPIIntegrationsMetadataCommands, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAvailableCommands")
+	ret := m.ctrl.Call(m, "GetAvailableCommands", token)
 	ret0, _ := ret[0].(*services.UserDeviceAPIIntegrationsMetadataCommands)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetAvailableCommands indicates an expected call of GetAvailableCommands.
-func (mr *MockTeslaFleetAPIServiceMockRecorder) GetAvailableCommands() *gomock.Call {
+func (mr *MockTeslaFleetAPIServiceMockRecorder) GetAvailableCommands(token any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAvailableCommands", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).GetAvailableCommands))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAvailableCommands", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).GetAvailableCommands), token)
 }
 
 // GetTelemetrySubscriptionStatus mocks base method.
