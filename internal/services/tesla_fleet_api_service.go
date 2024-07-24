@@ -284,8 +284,8 @@ var fields = TelemetryFields{
 	"BatteryLevel":        {IntervalSeconds: 60},
 }
 
-func (t *teslaFleetAPIService) fleetURLForRegion(region string) string {
-	return fmt.Sprintf(t.Settings.TeslaFleetURL, region)
+func (t *teslaFleetAPIService) fleetURLForRegion(_ string) string {
+	return t.Settings.TeslaFleetURL
 }
 
 func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, token, region, vin string) error {
