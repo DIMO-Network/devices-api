@@ -1228,7 +1228,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Vehicle was minted with token id %d. Burn this NFT to delete the vehicle.", userDevice.TokenID))
 	}
 	if userDevice.R.MintRequest != nil && userDevice.R.MintRequest.Status != models.MetaTransactionRequestStatusFailed {
-		return fiber.NewError(fiber.StatusFailedDependency, "Vehicle minting in process. Burn the resulting NFT in order to delete this vehicle.")
+		return fiber.NewError(fiber.StatusBadRequest, "Vehicle minting in progress. Burn the resulting NFT in order to delete this vehicle.")
 	}
 
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
