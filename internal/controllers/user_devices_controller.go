@@ -1210,6 +1210,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback() //nolint
 
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(udi),
