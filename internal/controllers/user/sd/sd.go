@@ -36,6 +36,7 @@ type Controller struct {
 
 type SyntheticTaskManager interface {
 	StartPoll(udai *models.UserDeviceAPIIntegration, sd *models.SyntheticDevice) error
+	StopPoll(udai *models.UserDeviceAPIIntegration) error
 }
 
 // PostReauthenticate godoc
@@ -145,6 +146,12 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 		}
 		// TODO(elffjs): Really need to clear these so that they can't be used again.
 		// Refreshes will clash.
+
+		if udai.TaskID.Valid {
+			if err := co.Tesla.StopPoll(udai); err != nil {
+				return err
+			}
+		}
 
 		udai.AccessToken = null.StringFrom(encAccess)
 		udai.RefreshToken = null.StringFrom(encRefresh)
