@@ -290,7 +290,14 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		sdc := sd.Controller{
 			DBS:         pdb,
 			Smartcar:    scTaskSvc,
+			Tesla:       teslaTaskService,
 			IntegClient: &integration.Client{Service: ddSvc},
+			Store: &tmpcred.Store{
+				Redis:  redisCache,
+				Cipher: cipher,
+			},
+			TeslaAPI: teslaFleetAPISvc,
+			Cipher:   cipher,
 		}
 
 		v1Auth.Post("/user/synthetic/device/:tokenID/commands/reauthenticate", addr, sdc.PostReauthenticate)
