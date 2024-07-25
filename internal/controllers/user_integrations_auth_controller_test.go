@@ -13,12 +13,10 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
+	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	"github.com/DIMO-Network/devices-api/internal/test"
-	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
-	"github.com/DIMO-Network/shared/redis/mocks"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/suite"
@@ -36,10 +34,9 @@ type UserIntegrationAuthControllerTestSuite struct {
 	app              *fiber.App
 	deviceDefSvc     *mock_services.MockDeviceDefinitionService
 	testUserID       string
-	redisClient      *mocks.MockCacheService
 	teslaFleetAPISvc *mock_services.MockTeslaFleetAPIService
-	cipher           shared.Cipher
 	userAddr         common.Address
+	credStore        *MockCredStore
 }
 
 // SetupSuite starts container db
@@ -50,15 +47,14 @@ func (s *UserIntegrationAuthControllerTestSuite) SetupSuite() {
 	mockCtrl := gomock.NewController(s.T())
 	s.mockCtrl = mockCtrl
 
+	s.credStore = NewMockCredStore(mockCtrl)
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(mockCtrl)
 	s.teslaFleetAPISvc = mock_services.NewMockTeslaFleetAPIService(mockCtrl)
-	s.redisClient = mocks.NewMockCacheService(mockCtrl)
 	s.testUserID = "123123"
-	s.cipher = new(shared.ROT13Cipher)
 	c := NewUserIntegrationAuthController(&config.Settings{
 		Port:        "3000",
 		Environment: "prod",
-	}, s.pdb.DBS, logger, s.deviceDefSvc, s.teslaFleetAPISvc, s.redisClient, s.cipher)
+	}, s.pdb.DBS, logger, s.deviceDefSvc, s.teslaFleetAPISvc, s.credStore)
 	app := test.SetupAppFiber(*logger)
 	s.userAddr = common.HexToAddress("1")
 	app.Post("/integration/:tokenID/credentials", func(c *fiber.Ctx) error {
@@ -112,7 +108,6 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 		Expiry:       time.Now().Add(time.Hour * 1),
 		Region:       mockRegion,
 	}
-	mockUserEthAddr := common.HexToAddress("1").String()
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&ddgrpc.Integration{
 		Vendor: constants.TeslaVendor,
 	}, nil)
@@ -136,14 +131,12 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 		},
 	}, nil)
 
-	tokenStr, err := json.Marshal(mockAuthCodeResp)
-	s.Require().NoError(err)
-
-	encToken, err := s.cipher.Encrypt(string(tokenStr))
-	s.Require().NoError(err)
-
-	cacheKey := fmt.Sprintf(teslaFleetAuthCacheKey, mockUserEthAddr)
-	s.redisClient.EXPECT().Set(gomock.Any(), cacheKey, encToken, 5*time.Minute).Return(&redis.StatusCmd{})
+	s.credStore.EXPECT().Store(gomock.Any(), s.userAddr, &tmpcred.Credential{
+		IntegrationID: 2,
+		AccessToken:   mockAuthCodeResp.AccessToken,
+		RefreshToken:  mockAuthCodeResp.RefreshToken,
+		Expiry:        mockAuthCodeResp.Expiry,
+	}).DoAndReturn(nil)
 
 	resp := []services.TeslaVehicle{
 		{
@@ -162,7 +155,8 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 		"redirectUri": "%s",
 		"region": "%s"
 	}`, mockAuthCode, mockRedirectURI, mockRegion))
-	response, _ := s.app.Test(request)
+	response, err := s.app.Test(request)
+	s.Require().NoError(err)
 
 	s.Equal(fiber.StatusOK, response.StatusCode)
 	body, err := io.ReadAll(response.Body)

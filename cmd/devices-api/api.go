@@ -27,6 +27,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/ipfs"
 	"github.com/DIMO-Network/devices-api/internal/services/macaron"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 	"github.com/DIMO-Network/shared"
 	pbuser "github.com/DIMO-Network/shared/api/users"
@@ -139,7 +140,10 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
 	countriesController := controllers.NewCountriesController()
-	userIntegrationAuthController := controllers.NewUserIntegrationAuthController(settings, pdb.DBS, &logger, ddSvc, teslaFleetAPISvc, redisCache, cipher)
+	userIntegrationAuthController := controllers.NewUserIntegrationAuthController(settings, pdb.DBS, &logger, ddSvc, teslaFleetAPISvc, &tmpcred.Store{
+		Redis:  redisCache,
+		Cipher: cipher,
+	})
 
 	app.Use(metrics.HTTPMetricsMiddleware)
 

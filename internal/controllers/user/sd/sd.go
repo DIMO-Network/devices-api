@@ -46,7 +46,6 @@ type SyntheticTaskManager interface {
 // @Router /user/synthetic/device/{tokenID}/commands/reauthenticate [post]
 func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 	userAddr := address.Get(c)
-	// logger := helpers.GetLogger(c, nil)
 
 	tokenID, err := c.ParamsInt("tokenID")
 	if err != nil {

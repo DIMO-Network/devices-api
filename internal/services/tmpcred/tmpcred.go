@@ -28,6 +28,7 @@ type Credential struct {
 	Expiry        time.Time `json:"expiry"`
 }
 
+// Store stores the given credential for the given user.
 func (s *Store) Store(ctx context.Context, user common.Address, cred *Credential) error {
 	credJSON, err := json.Marshal(cred)
 	if err != nil {
@@ -56,6 +57,11 @@ func (s *Store) Retrieve(ctx context.Context, user common.Address) (*Credential,
 			return nil, errors.New("no credentials found for user")
 		}
 		return nil, fmt.Errorf("failed to retrieve credentials: %w", err)
+	}
+
+	// Don't want a second call to pick this up. Use it or lose it.
+	if _, err := s.Redis.Del(ctx, cacheKey).Result(); err != nil {
+		return nil, err
 	}
 
 	if len(encCred) == 0 {

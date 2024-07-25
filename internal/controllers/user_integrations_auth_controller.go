@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strconv"
@@ -11,9 +12,8 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/middleware/address"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
-	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
-	"github.com/DIMO-Network/shared/redis"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog"
@@ -29,7 +29,12 @@ type UserIntegrationAuthController struct {
 	DeviceDefSvc     services.DeviceDefinitionService
 	log              *zerolog.Logger
 	teslaFleetAPISvc services.TeslaFleetAPIService
-	store            *tmpcred.Store
+	store            CredStore
+}
+
+//go:generate mockgen -destination=cred_store_mock_test.go -package controllers . CredStore
+type CredStore interface {
+	Store(ctx context.Context, user common.Address, cred *tmpcred.Credential) error
 }
 
 func NewUserIntegrationAuthController(
@@ -38,8 +43,7 @@ func NewUserIntegrationAuthController(
 	logger *zerolog.Logger,
 	ddSvc services.DeviceDefinitionService,
 	teslaFleetAPISvc services.TeslaFleetAPIService,
-	cache redis.CacheService,
-	cipher shared.Cipher,
+	credStore CredStore,
 ) UserIntegrationAuthController {
 
 	return UserIntegrationAuthController{
@@ -48,10 +52,7 @@ func NewUserIntegrationAuthController(
 		DeviceDefSvc:     ddSvc,
 		log:              logger,
 		teslaFleetAPISvc: teslaFleetAPISvc,
-		store: &tmpcred.Store{
-			Redis:  cache,
-			Cipher: cipher,
-		},
+		store:            credStore,
 	}
 }
 
