@@ -144,8 +144,6 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 		if err != nil {
 			return err
 		}
-		// TODO(elffjs): Really need to clear these so that they can't be used again.
-		// Refreshes will clash.
 
 		if udai.TaskID.Valid {
 			if err := co.Tesla.StopPoll(udai); err != nil {
@@ -166,7 +164,6 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 			return err
 		}
 
-		// TODO(elffjs): Stop the old one, regenerate the id. Some races here.
 		if err := co.Tesla.StartPoll(udai, sd); err != nil {
 			return err
 		}
