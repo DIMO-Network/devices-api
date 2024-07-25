@@ -96,6 +96,10 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 
 	// TODO(elffjs): Yeah, yeah, this is bad.
 	switch integ.Vendor {
+	// In this case, the client should have redirected the user to [Smartcar Reauthentication]
+	// endpoint. The credentials we already have should start working again.
+	//
+	// [Smartcar Reauthentication]: https://smartcar.com/docs/connect/re-auth/redirect-to-connect.
 	case constants.SmartCarVendor:
 		if udai.Status != models.UserDeviceAPIIntegrationStatusAuthenticationFailure {
 			// TODO(elffjs): Can probably still "succeed" in this case.
