@@ -96,20 +96,16 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		}
 
 		if apiVersion == constants.TeslaAPIV2 {
-			if meta.TeslaRegion == "" {
-				return fiber.NewError(fiber.StatusFailedDependency, "missing tesla region")
-			}
-
 			if !apiIntegration.ExternalID.Valid || !apiIntegration.AccessToken.Valid || !apiIntegration.R.UserDevice.VinConfirmed || !apiIntegration.R.UserDevice.VinIdentifier.Valid {
 				return fiber.NewError(fiber.StatusFailedDependency, "missing device or integration details")
 			}
 
-			isConnected, err := udc.getDeviceVirtualKeyStatus(c.Context(), meta.TeslaRegion, apiIntegration)
+			isConnected, err := udc.getDeviceVirtualKeyStatus(c.Context(), apiIntegration)
 			if err != nil {
 				return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla connection status %s", err.Error()))
 			}
 
-			isSubscribed, err := udc.getTelemetrySubscriptionStatus(c.Context(), meta.TeslaRegion, apiIntegration)
+			isSubscribed, err := udc.getTelemetrySubscriptionStatus(c.Context(), apiIntegration)
 			if err != nil {
 				return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla telemetry subscription status %s", err.Error()))
 			}
@@ -122,7 +118,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context, region string, integration *models.UserDeviceAPIIntegration) (bool, error) {
+func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context, integration *models.UserDeviceAPIIntegration) (bool, error) {
 	accessTk, err := udc.cipher.Decrypt(integration.AccessToken.String)
 	if err != nil {
 		return false, fmt.Errorf("couldn't decrypt access token: %w", err)
@@ -136,7 +132,7 @@ func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context,
 	return isConnected, nil
 }
 
-func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Context, region string, integration *models.UserDeviceAPIIntegration) (bool, error) {
+func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Context, integration *models.UserDeviceAPIIntegration) (bool, error) {
 	accessTk, err := udc.cipher.Decrypt(integration.AccessToken.String)
 	if err != nil {
 		return false, fmt.Errorf("couldn't decrypt access token: %w", err)
@@ -592,7 +588,7 @@ func (udc *UserDevicesController) TelemetrySubscribe(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
-	if md.TeslaRegion == "" || md.Commands == nil {
+	if md.Commands == nil {
 		return fiber.NewError(fiber.StatusBadRequest, "No commands config for integration and device")
 	}
 
@@ -1964,7 +1960,6 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse externalId %q as an integer.", teslaID))
 	}
 
-	region := ""
 	teslaV2CacheKey := ""
 	if apiVersion == constants.TeslaAPIV2 { // If version is 2, we are using fleet api which has token stored in cache
 		user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: ud.UserID})
@@ -1984,7 +1979,6 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		reqBody.RefreshToken = deviceIntReq.RefreshToken
 		reqBody.AccessToken = deviceIntReq.AccessToken
 		reqBody.ExpiresIn = int(time.Until(deviceIntReq.Expiry).Seconds())
-		region = deviceIntReq.Region
 	}
 
 	v, err := udc.getTeslaVehicle(c.Context(), reqBody.AccessToken, teslaID, apiVersion)
@@ -2040,7 +2034,6 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	meta := services.UserDeviceAPIIntegrationsMetadata{
 		Commands:        commands,
 		TeslaAPIVersion: apiVersion,
-		TeslaRegion:     region,
 		TeslaVehicleID:  v.VehicleID,
 	}
 

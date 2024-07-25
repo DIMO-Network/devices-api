@@ -1076,10 +1076,8 @@ func (s *UserIntegrationsControllerTestSuite) TestTelemetrySubscribe() {
 	refreshTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw"
 	extID := "SomeID"
 	expectedExpiry := time.Now().Add(10 * time.Minute)
-	region := "na"
 
 	mtd, err := json.Marshal(services.UserDeviceAPIIntegrationsMetadata{
-		TeslaRegion: region,
 		Commands: &services.UserDeviceAPIIntegrationsMetadataCommands{
 			Enabled: []string{constants.TelemetrySubscribe},
 		},
@@ -1175,9 +1173,7 @@ func (s *UserIntegrationsControllerTestSuite) Test_TelemetrySubscribe_NotCapable
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
 
-	mtd, err := json.Marshal(services.UserDeviceAPIIntegrationsMetadata{
-		TeslaRegion: "na",
-	})
+	mtd, err := json.Marshal(services.UserDeviceAPIIntegrationsMetadata{})
 	s.Require().NoError(err)
 	apIntd := models.UserDeviceAPIIntegration{
 		UserDeviceID:  ud.ID,

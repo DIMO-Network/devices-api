@@ -104,7 +104,6 @@ func (t *teslaTaskService) StartPoll(udai *models.UserDeviceAPIIntegration, sd *
 			Expiry:        udai.AccessExpiresAt.Time,
 			RefreshToken:  udai.RefreshToken.String,
 			Version:       meta.TeslaAPIVersion,
-			Region:        meta.TeslaRegion,
 			SyntheticDevice: &sdtask.SyntheticDevice{
 				TokenID:            int(tokenID),
 				Address:            common.BytesToAddress(sd.WalletAddress),
