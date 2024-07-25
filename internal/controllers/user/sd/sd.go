@@ -135,7 +135,7 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 		}
 
 		// Make sure that these credentials have access to this particular vehicle.
-		_, err = co.TeslaAPI.GetVehicle(c.Context(), cred.AccessToken, "na", teslaID)
+		_, err = co.TeslaAPI.GetVehicle(c.Context(), cred.AccessToken, teslaID)
 		if err != nil {
 			return err
 		}

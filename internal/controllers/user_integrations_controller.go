@@ -96,20 +96,16 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		}
 
 		if apiVersion == constants.TeslaAPIV2 {
-			if meta.TeslaRegion == "" {
-				return fiber.NewError(fiber.StatusFailedDependency, "missing tesla region")
-			}
-
 			if !apiIntegration.ExternalID.Valid || !apiIntegration.AccessToken.Valid || !apiIntegration.R.UserDevice.VinConfirmed || !apiIntegration.R.UserDevice.VinIdentifier.Valid {
 				return fiber.NewError(fiber.StatusFailedDependency, "missing device or integration details")
 			}
 
-			isConnected, err := udc.getDeviceVirtualKeyStatus(c.Context(), meta.TeslaRegion, apiIntegration)
+			isConnected, err := udc.getDeviceVirtualKeyStatus(c.Context(), apiIntegration)
 			if err != nil {
 				return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla connection status %s", err.Error()))
 			}
 
-			isSubscribed, err := udc.getTelemetrySubscriptionStatus(c.Context(), meta.TeslaRegion, apiIntegration)
+			isSubscribed, err := udc.getTelemetrySubscriptionStatus(c.Context(), apiIntegration)
 			if err != nil {
 				return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla telemetry subscription status %s", err.Error()))
 			}
@@ -122,13 +118,13 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context, region string, integration *models.UserDeviceAPIIntegration) (bool, error) {
+func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context, integration *models.UserDeviceAPIIntegration) (bool, error) {
 	accessTk, err := udc.cipher.Decrypt(integration.AccessToken.String)
 	if err != nil {
 		return false, fmt.Errorf("couldn't decrypt access token: %w", err)
 	}
 
-	isConnected, err := udc.teslaFleetAPISvc.VirtualKeyConnectionStatus(ctx, accessTk, region, integration.R.UserDevice.VinIdentifier.String)
+	isConnected, err := udc.teslaFleetAPISvc.VirtualKeyConnectionStatus(ctx, accessTk, integration.R.UserDevice.VinIdentifier.String)
 	if err != nil {
 		return false, fiber.NewError(fiber.StatusFailedDependency, err.Error())
 	}
@@ -136,13 +132,18 @@ func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context,
 	return isConnected, nil
 }
 
-func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Context, region string, integration *models.UserDeviceAPIIntegration) (bool, error) {
+func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Context, integration *models.UserDeviceAPIIntegration) (bool, error) {
 	accessTk, err := udc.cipher.Decrypt(integration.AccessToken.String)
 	if err != nil {
 		return false, fmt.Errorf("couldn't decrypt access token: %w", err)
 	}
 
-	isSubscribed, err := udc.teslaFleetAPISvc.GetTelemetrySubscriptionStatus(ctx, accessTk, region, integration.R.UserDevice.VinIdentifier.String)
+	teslaID, err := strconv.Atoi(integration.ExternalID.String)
+	if err != nil {
+		return false, err
+	}
+
+	isSubscribed, err := udc.teslaFleetAPISvc.GetTelemetrySubscriptionStatus(ctx, accessTk, teslaID)
 	if err != nil {
 		return false, fiber.NewError(fiber.StatusFailedDependency, err.Error())
 	}
@@ -587,7 +588,7 @@ func (udc *UserDevicesController) TelemetrySubscribe(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
-	if md.TeslaRegion == "" || md.Commands == nil {
+	if md.Commands == nil {
 		return fiber.NewError(fiber.StatusBadRequest, "No commands config for integration and device")
 	}
 
@@ -608,7 +609,6 @@ func (udc *UserDevicesController) TelemetrySubscribe(c *fiber.Ctx) error {
 		}
 		if err := udc.teslaFleetAPISvc.SubscribeForTelemetryData(c.Context(),
 			accessToken,
-			md.TeslaRegion,
 			device.VinIdentifier.String,
 		); err != nil {
 			logger.Error().Err(err).Msg("error registering for telemetry")
@@ -1960,7 +1960,6 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse externalId %q as an integer.", teslaID))
 	}
 
-	region := ""
 	teslaV2CacheKey := ""
 	if apiVersion == constants.TeslaAPIV2 { // If version is 2, we are using fleet api which has token stored in cache
 		fmt.Println("XPP")
@@ -1992,7 +1991,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		reqBody.ExpiresIn = int(time.Until(cred.Expiry).Seconds())
 	}
 
-	v, err := udc.getTeslaVehicle(c.Context(), reqBody.AccessToken, region, teslaID, apiVersion)
+	v, err := udc.getTeslaVehicle(c.Context(), reqBody.AccessToken, teslaID, apiVersion)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't retrieve vehicle from Tesla.")
 	}
@@ -2045,7 +2044,6 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	meta := services.UserDeviceAPIIntegrationsMetadata{
 		Commands:        commands,
 		TeslaAPIVersion: apiVersion,
-		TeslaRegion:     region,
 		TeslaVehicleID:  v.VehicleID,
 	}
 
@@ -2079,7 +2077,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		return err
 	}
 
-	if err := udc.wakeupTeslaVehicle(c.Context(), reqBody.AccessToken, region, teslaID, apiVersion); err != nil {
+	if err := udc.wakeupTeslaVehicle(c.Context(), reqBody.AccessToken, teslaID, apiVersion); err != nil {
 		logger.Err(err).Msg("Couldn't wake up Tesla.")
 	}
 
@@ -2108,21 +2106,21 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-func (udc *UserDevicesController) wakeupTeslaVehicle(ctx context.Context, token, region string, vehicleID, version int) error {
+func (udc *UserDevicesController) wakeupTeslaVehicle(ctx context.Context, token string, vehicleID, version int) error {
 	var err error
 	if version == constants.TeslaAPIV2 {
-		err = udc.teslaFleetAPISvc.WakeUpVehicle(ctx, token, region, vehicleID)
+		err = udc.teslaFleetAPISvc.WakeUpVehicle(ctx, token, vehicleID)
 	} else {
 		err = udc.teslaService.WakeUpVehicle(token, vehicleID)
 	}
 	return err
 }
 
-func (udc *UserDevicesController) getTeslaVehicle(ctx context.Context, token, region string, vehicleID, version int) (*services.TeslaVehicle, error) {
+func (udc *UserDevicesController) getTeslaVehicle(ctx context.Context, token string, vehicleID, version int) (*services.TeslaVehicle, error) {
 	var vehicle *services.TeslaVehicle
 	var err error
 	if version == constants.TeslaAPIV2 {
-		vehicle, err = udc.teslaFleetAPISvc.GetVehicle(ctx, token, region, vehicleID)
+		vehicle, err = udc.teslaFleetAPISvc.GetVehicle(ctx, token, vehicleID)
 	} else {
 		vehicle, err = udc.teslaService.GetVehicle(token, vehicleID)
 	}

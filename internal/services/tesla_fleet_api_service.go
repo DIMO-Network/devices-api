@@ -24,13 +24,13 @@ import (
 //go:generate mockgen -source tesla_fleet_api_service.go -destination mocks/tesla_fleet_api_service_mock.go
 type TeslaFleetAPIService interface {
 	CompleteTeslaAuthCodeExchange(ctx context.Context, authCode, redirectURI, region string) (*TeslaAuthCodeResponse, error)
-	GetVehicles(ctx context.Context, token, region string) ([]TeslaVehicle, error)
-	GetVehicle(ctx context.Context, token, region string, vehicleID int) (*TeslaVehicle, error)
-	WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error
+	GetVehicles(ctx context.Context, token string) ([]TeslaVehicle, error)
+	GetVehicle(ctx context.Context, token string, vehicleID int) (*TeslaVehicle, error)
+	WakeUpVehicle(ctx context.Context, token string, vehicleID int) error
 	GetAvailableCommands(token string) (*UserDeviceAPIIntegrationsMetadataCommands, error)
-	VirtualKeyConnectionStatus(ctx context.Context, token, region, vin string) (bool, error)
-	SubscribeForTelemetryData(ctx context.Context, token, region, vin string) error
-	GetTelemetrySubscriptionStatus(ctx context.Context, token, region, vin string) (bool, error)
+	VirtualKeyConnectionStatus(ctx context.Context, token, vin string) (bool, error)
+	SubscribeForTelemetryData(ctx context.Context, token, vin string) error
+	GetTelemetrySubscriptionStatus(ctx context.Context, token string, tokenID int) (bool, error)
 }
 
 var teslaScopes = []string{"openid", "offline_access", "user_data", "vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds"}
@@ -100,14 +100,21 @@ type teslaFleetAPIService struct {
 	Settings   *config.Settings
 	HTTPClient *http.Client
 	log        *zerolog.Logger
+	FleetBase  *url.URL
 }
 
-func NewTeslaFleetAPIService(settings *config.Settings, logger *zerolog.Logger) TeslaFleetAPIService {
+func NewTeslaFleetAPIService(settings *config.Settings, logger *zerolog.Logger) (TeslaFleetAPIService, error) {
+	u, err := url.ParseRequestURI(settings.TeslaFleetURL)
+	if err != nil {
+		return nil, err
+	}
+
 	return &teslaFleetAPIService{
 		Settings:   settings,
 		HTTPClient: &http.Client{},
 		log:        logger,
-	}
+		FleetBase:  u,
+	}, nil
 }
 
 // CompleteTeslaAuthCodeExchange calls Tesla Fleet API and exchange auth code for a new auth and refresh token
@@ -125,7 +132,9 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	tok, err := conf.Exchange(ctxTimeout, authCode, oauth2.SetAuthURLParam("audience", t.fleetURLForRegion(region)))
+	// TODO(elffjs): Tesla says on their site that audience is required, but the token always has
+	// both na and eu audiences and omitting the parameter results in no errors.
+	tok, err := conf.Exchange(ctxTimeout, authCode)
 	if err != nil {
 		var e *oauth2.RetrieveError
 		errString := err.Error()
@@ -144,11 +153,8 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 }
 
 // GetVehicles calls Tesla Fleet API to get a list of vehicles using authorization token
-func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region string) ([]TeslaVehicle, error) {
-	url, err := url.JoinPath(t.fleetURLForRegion(region), "/api/1/vehicles")
-	if err != nil {
-		return nil, err
-	}
+func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token string) ([]TeslaVehicle, error) {
+	url := t.FleetBase.JoinPath("api/1/vehicles")
 
 	body, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
@@ -169,11 +175,8 @@ func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token, region st
 }
 
 // GetVehicle calls Tesla Fleet API to get a single vehicle by ID
-func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region string, vehicleID int) (*TeslaVehicle, error) {
-	url, err := url.JoinPath(t.fleetURLForRegion(region), "/api/1/vehicles", strconv.Itoa(vehicleID))
-	if err != nil {
-		return nil, fmt.Errorf("error constructing URL: %w", err)
-	}
+func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token string, vehicleID int) (*TeslaVehicle, error) {
+	url := t.FleetBase.JoinPath("api/1/vehicles", strconv.Itoa(vehicleID))
 
 	body, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
@@ -190,18 +193,14 @@ func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token, region str
 }
 
 // WakeUpVehicle Calls Tesla Fleet API to wake a vehicle from sleep
-func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token, region string, vehicleID int) error {
-	url, err := url.JoinPath(t.fleetURLForRegion(region), "/api/1/vehicles", strconv.Itoa(vehicleID), "wake_up")
-	if err != nil {
-		return fmt.Errorf("error constructing URL: %w", err)
-	}
+func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token string, vehicleID int) error {
+	url := t.FleetBase.JoinPath("api/1/vehicles", strconv.Itoa(vehicleID), "wake_up")
 
-	_, err = t.performRequest(ctx, url, token, http.MethodGet, nil)
-	if err != nil {
+	if _, err := t.performRequest(ctx, url, token, http.MethodGet, nil); err != nil {
 		return fmt.Errorf("could not wake vehicle: %w", err)
 	}
 
-	return err
+	return nil
 }
 
 // TODO(elffjs): This being here is a bad sign.
@@ -245,11 +244,8 @@ func (t *teslaFleetAPIService) GetAvailableCommands(token string) (*UserDeviceAP
 
 // VirtualKeyConnectionStatus returns true if our virtual key (public key) has been added to the vehicle.
 // This is a prerequisite for issuing commands or subscribing to telemetry.
-func (t *teslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, token, region, vin string) (bool, error) {
-	url, err := url.JoinPath(t.fleetURLForRegion(region), "/api/1/vehicles/fleet_status")
-	if err != nil {
-		return false, fmt.Errorf("error constructing URL: %w", err)
-	}
+func (t *teslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, token, vin string) (bool, error) {
+	url := t.FleetBase.JoinPath("api/1/vehicles/fleet_status")
 
 	jsonBody := fmt.Sprintf(`{"vins": [%q]}`, vin)
 	inBody := strings.NewReader(jsonBody)
@@ -284,15 +280,8 @@ var fields = TelemetryFields{
 	"BatteryLevel":        {IntervalSeconds: 60},
 }
 
-func (t *teslaFleetAPIService) fleetURLForRegion(_ string) string {
-	return t.Settings.TeslaFleetURL
-}
-
-func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, token, region, vin string) error {
-	u, err := url.JoinPath(t.fleetURLForRegion(region), "/api/1/vehicles/fleet_telemetry_config")
-	if err != nil {
-		return fmt.Errorf("error constructing URL: %w", err)
-	}
+func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, token string, vin string) error {
+	url := t.FleetBase.JoinPath("api/1/vehicles/fleet_telemetry_config")
 
 	r := SubscribeForTelemetryDataRequest{
 		VINs: []string{vin},
@@ -309,7 +298,7 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 		return err
 	}
 
-	body, err := t.performRequest(ctx, u, token, http.MethodPost, bytes.NewReader(b))
+	body, err := t.performRequest(ctx, url, token, http.MethodPost, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -339,11 +328,8 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 	return nil
 }
 
-func (t *teslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Context, token, region, vin string) (bool, error) {
-	u, err := url.JoinPath(t.fleetURLForRegion(region), "/api/1/vehicles", vin, "fleet_telemetry_config")
-	if err != nil {
-		return false, fmt.Errorf("error constructing URL: %w", err)
-	}
+func (t *teslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Context, token string, vehicleID int) (bool, error) {
+	u := t.FleetBase.JoinPath("api/1/vehicles", strconv.Itoa(vehicleID), "fleet_telemetry_config")
 
 	body, err := t.performRequest(ctx, u, token, http.MethodGet, nil)
 	if err != nil {
@@ -360,11 +346,11 @@ func (t *teslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Contex
 }
 
 // performRequest a helper function for making http requests, it adds a timeout context and parses error response
-func (t *teslaFleetAPIService) performRequest(ctx context.Context, url, token, method string, body io.Reader) ([]byte, error) {
+func (t *teslaFleetAPIService) performRequest(ctx context.Context, url *url.URL, token, method string, body io.Reader) ([]byte, error) {
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctxTimeout, method, url, body)
+	req, err := http.NewRequestWithContext(ctxTimeout, method, url.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -387,7 +373,7 @@ func (t *teslaFleetAPIService) performRequest(ctx context.Context, url, token, m
 		if err := json.Unmarshal(b, &errBody); err != nil {
 			t.log.
 				Err(err).
-				Str("url", url).
+				Str("url", url.String()).
 				Msg("An error occurred when attempting to decode the error message from the api.")
 			return nil, fmt.Errorf("couldn't parse Tesla error response body: %w", err)
 		}

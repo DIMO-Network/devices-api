@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 
@@ -883,12 +884,12 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 		Region:             "Americas",
 	}).Return(nil)
 
-	s.teslaFleetAPISvc.EXPECT().GetVehicle(gomock.Any(), "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", "", 1145).Return(&services.TeslaVehicle{
+	s.teslaFleetAPISvc.EXPECT().GetVehicle(gomock.Any(), "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", 1145).Return(&services.TeslaVehicle{
 		ID:        1145,
 		VehicleID: 223,
 		VIN:       "5YJYGDEF9NF010423",
 	}, nil)
-	s.teslaFleetAPISvc.EXPECT().WakeUpVehicle(gomock.Any(), "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", "", 1145).Return(nil)
+	s.teslaFleetAPISvc.EXPECT().WakeUpVehicle(gomock.Any(), "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", 1145).Return(nil)
 	s.teslaFleetAPISvc.EXPECT().GetAvailableCommands(gomock.Any()).Return(&services.UserDeviceAPIIntegrationsMetadataCommands{
 		Enabled:  []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
 		Disabled: []string{constants.TelemetrySubscribe},
@@ -1014,7 +1015,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
 
 	accessTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 	refreshTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw"
-	extID := "SomeID"
+	extID := 1337
 	expectedExpiry := time.Now().Add(10 * time.Minute)
 	region := "na"
 
@@ -1030,15 +1031,15 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
 		AccessToken:     null.StringFrom(encAccessTk),
 		AccessExpiresAt: null.TimeFrom(expectedExpiry),
 		RefreshToken:    null.StringFrom(encRefreshTk),
-		ExternalID:      null.StringFrom(extID),
+		ExternalID:      null.StringFrom(strconv.Itoa(extID)),
 		Metadata:        null.JSONFrom([]byte(fmt.Sprintf(`{"teslaRegion":%q, "teslaApiVersion": 2}`, region))),
 	}
 	err = apIntd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.Require().NoError(err)
 
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
-	s.teslaFleetAPISvc.EXPECT().VirtualKeyConnectionStatus(gomock.Any(), accessTk, region, ud.VinIdentifier.String).Return(true, nil)
-	s.teslaFleetAPISvc.EXPECT().GetTelemetrySubscriptionStatus(gomock.Any(), accessTk, region, ud.VinIdentifier.String).Return(false, nil)
+	s.teslaFleetAPISvc.EXPECT().VirtualKeyConnectionStatus(gomock.Any(), accessTk, ud.VinIdentifier.String).Return(true, nil)
+	s.teslaFleetAPISvc.EXPECT().GetTelemetrySubscriptionStatus(gomock.Any(), accessTk, extID).Return(false, nil)
 
 	request := test.BuildRequest(http.MethodGet, fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), "")
 	res, err := s.app.Test(request, 60*1000)
@@ -1055,7 +1056,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
 	s.Assert().True(actual.Tesla.VirtualKeyAdded)
 	s.Assert().False(actual.Tesla.TelemetrySubscribed)
 	s.Assert().Equal(models.UserDeviceAPIIntegrationStatusActive, actual.Status)
-	s.Assert().Equal(extID, actual.ExternalID.String)
+	s.Assert().Equal(strconv.Itoa(extID), actual.ExternalID.String)
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestTelemetrySubscribe() {
@@ -1068,10 +1069,8 @@ func (s *UserIntegrationsControllerTestSuite) TestTelemetrySubscribe() {
 	refreshTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw"
 	extID := "SomeID"
 	expectedExpiry := time.Now().Add(10 * time.Minute)
-	region := "na"
 
 	mtd, err := json.Marshal(services.UserDeviceAPIIntegrationsMetadata{
-		TeslaRegion: region,
 		Commands: &services.UserDeviceAPIIntegrationsMetadataCommands{
 			Enabled: []string{constants.TelemetrySubscribe},
 		},
@@ -1092,7 +1091,7 @@ func (s *UserIntegrationsControllerTestSuite) TestTelemetrySubscribe() {
 	s.Require().NoError(err)
 
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
-	s.teslaFleetAPISvc.EXPECT().SubscribeForTelemetryData(gomock.Any(), accessTk, region, ud.VinIdentifier.String).Return(nil)
+	s.teslaFleetAPISvc.EXPECT().SubscribeForTelemetryData(gomock.Any(), accessTk, ud.VinIdentifier.String).Return(nil)
 
 	request := test.BuildRequest(http.MethodPost, fmt.Sprintf("/user/devices/%s/integrations/%s/commands/telemetry/subscribe", ud.ID, integration.Id), "")
 	res, err := s.app.Test(request, 60*1000)
@@ -1167,9 +1166,7 @@ func (s *UserIntegrationsControllerTestSuite) Test_TelemetrySubscribe_NotCapable
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
 
-	mtd, err := json.Marshal(services.UserDeviceAPIIntegrationsMetadata{
-		TeslaRegion: "na",
-	})
+	mtd, err := json.Marshal(services.UserDeviceAPIIntegrationsMetadata{})
 	s.Require().NoError(err)
 	apIntd := models.UserDeviceAPIIntegration{
 		UserDeviceID:  ud.ID,

@@ -103,7 +103,10 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	smartcarClient := services.NewSmartcarClient(settings)
 	teslaTaskService := services.NewTeslaTaskService(settings, producer)
 	teslaSvc := services.NewTeslaService(settings)
-	teslaFleetAPISvc := services.NewTeslaFleetAPIService(settings, &logger)
+	teslaFleetAPISvc, err := services.NewTeslaFleetAPIService(settings, &logger)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Error constructing Tesla Fleet API client.")
+	}
 	autoPiSvc := services.NewAutoPiAPIService(settings, pdb.DBS)
 	autoPiIngest := services.NewIngestRegistrar(producer)
 	deviceDefinitionRegistrar := services.NewDeviceDefinitionRegistrar(producer, settings)
