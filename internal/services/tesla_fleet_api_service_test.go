@@ -27,7 +27,9 @@ func (t *TeslaFleetAPIServiceTestSuite) SetupSuite() {
 	logger := test.Logger()
 	t.settings = &config.Settings{TeslaFleetURL: mockTeslaFleetBaseURL, TeslaTelemetryCACertificate: "Ca-Cert", TeslaTelemetryPort: 443, TeslaTelemetryHostName: "tel.dimo.com"}
 
-	t.SUT = NewTeslaFleetAPIService(t.settings, logger)
+	var err error
+	t.SUT, err = NewTeslaFleetAPIService(t.settings, logger)
+	t.Require().NoError(err)
 }
 
 func TestTeslaFleetAPIServiceTestSuite(t *testing.T) {
@@ -39,7 +41,6 @@ func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForTelemetryData() {
 	defer httpmock.DeactivateAndReset()
 
 	token := "someToken"
-	region := "mockRegion"
 	vin := "RandomVin"
 
 	baseURL := mockTeslaFleetBaseURL
@@ -56,7 +57,7 @@ func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForTelemetryData() {
 	t.Require().NoError(err)
 	httpmock.RegisterResponder(http.MethodPost, u, jsonResp)
 
-	err = t.SUT.SubscribeForTelemetryData(t.ctx, token, region, vin)
+	err = t.SUT.SubscribeForTelemetryData(t.ctx, token, vin)
 
 	t.Require().NoError(err)
 }
@@ -113,7 +114,6 @@ func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForTelemetryData_Errror_Cas
 
 	for _, tst := range tests {
 		token := "someToken"
-		region := "mockRegion"
 
 		baseURL := mockTeslaFleetBaseURL
 		u := fmt.Sprintf("%s/api/1/vehicles/fleet_telemetry_config", baseURL)
@@ -122,7 +122,7 @@ func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForTelemetryData_Errror_Cas
 		t.Require().NoError(err)
 		httpmock.RegisterResponder(http.MethodPost, u, responder)
 
-		err = t.SUT.SubscribeForTelemetryData(t.ctx, token, region, vin)
+		err = t.SUT.SubscribeForTelemetryData(t.ctx, token, vin)
 
 		t.Require().EqualError(err, tst.expectedError)
 	}

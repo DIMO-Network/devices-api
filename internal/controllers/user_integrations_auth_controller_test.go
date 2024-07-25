@@ -153,7 +153,7 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 			VIN: "WAUAF78E95A553420",
 		},
 	}
-	s.teslaFleetAPISvc.EXPECT().GetVehicles(gomock.Any(), mockAuthCodeResp.AccessToken, mockRegion).Return(resp, nil)
+	s.teslaFleetAPISvc.EXPECT().GetVehicles(gomock.Any(), mockAuthCodeResp.AccessToken).Return(resp, nil)
 
 	request := test.BuildRequest("POST", "/integration/2/credentials", fmt.Sprintf(`{
 		"authorizationCode": "%s",
