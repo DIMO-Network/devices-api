@@ -136,7 +136,7 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 		AccessToken:   mockAuthCodeResp.AccessToken,
 		RefreshToken:  mockAuthCodeResp.RefreshToken,
 		Expiry:        mockAuthCodeResp.Expiry,
-	}).DoAndReturn(nil)
+	}).Return(nil)
 
 	resp := []services.TeslaVehicle{
 		{
