@@ -18,6 +18,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	pb "github.com/DIMO-Network/shared/api/users"
@@ -1972,15 +1973,20 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		}
 		teslaV2CacheKey = fmt.Sprintf(teslaFleetAuthCacheKey, *user.EthereumAddress)
 
-		deviceIntReq, err := udc.getTeslaAuthFromCache(c.Context(), teslaV2CacheKey)
-		if err != nil {
-			udc.log.Err(err).Msg("Error occurred retrieving tesla auth from cache")
-			return fiber.NewError(fiber.StatusBadRequest, "Couldn't retrieve stored credentials: "+err.Error())
+		// Yes, yes.
+		store := &tmpcred.Store{
+			Redis:  udc.redisCache,
+			Cipher: udc.cipher,
 		}
-		reqBody.RefreshToken = deviceIntReq.RefreshToken
-		reqBody.AccessToken = deviceIntReq.AccessToken
-		reqBody.ExpiresIn = int(time.Until(deviceIntReq.Expiry).Seconds())
-		region = deviceIntReq.Region
+
+		cred, err := store.Retrieve(c.Context(), common.HexToAddress(*user.EthereumAddress))
+		if err != nil {
+			return err
+		}
+
+		reqBody.RefreshToken = cred.RefreshToken
+		reqBody.AccessToken = cred.AccessToken
+		reqBody.ExpiresIn = int(time.Until(cred.Expiry).Seconds())
 	}
 
 	v, err := udc.getTeslaVehicle(c.Context(), reqBody.AccessToken, region, teslaID, apiVersion)
