@@ -1963,6 +1963,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	region := ""
 	teslaV2CacheKey := ""
 	if apiVersion == constants.TeslaAPIV2 { // If version is 2, we are using fleet api which has token stored in cache
+		fmt.Println("XPP")
 		user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: ud.UserID})
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "could not fetch user information: %w", err.Error())
@@ -1980,6 +1981,9 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 
 		cred, err := store.Retrieve(c.Context(), common.HexToAddress(*user.EthereumAddress))
 		if err != nil {
+			if errors.Is(err, tmpcred.ErrNotFound) {
+				return fiber.NewError(fiber.StatusBadRequest, "No credentials found for user.")
+			}
 			return err
 		}
 

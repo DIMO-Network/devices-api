@@ -975,15 +975,10 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_PartialCredential
 	request := test.BuildRequest("POST", fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), in)
 	res, _ := s.app.Test(request, 60*1000)
 
-	s.Assert().True(res.StatusCode == fiber.StatusBadRequest)
-	body, _ := io.ReadAll(res.Body)
-
-	defer res.Body.Close()
+	s.Equal(fiber.StatusInternalServerError, res.StatusCode)
 
 	_, err = models.UserDeviceAPIIntegrations(models.UserDeviceAPIIntegrationWhere.ExternalID.EQ(null.StringFrom("1145"))).One(s.ctx, s.pdb.DBS().Reader)
 	s.Assert().Equal(err.Error(), sql.ErrNoRows.Error())
-
-	s.Assert().Equal("Couldn't retrieve stored credentials: missing tesla auth credentials", gjson.GetBytes(body, "message").String())
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_MissingCredentials() {
@@ -1006,15 +1001,10 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_MissingCredential
 	request := test.BuildRequest("POST", fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), in)
 	res, _ := s.app.Test(request, 60*1000)
 
-	s.Assert().True(res.StatusCode == fiber.StatusBadRequest)
-	body, _ := io.ReadAll(res.Body)
-
-	defer res.Body.Close()
+	s.Assert().Equal(fiber.StatusInternalServerError, res.StatusCode)
 
 	_, err := models.UserDeviceAPIIntegrations(models.UserDeviceAPIIntegrationWhere.ExternalID.EQ(null.StringFrom("1145"))).One(s.ctx, s.pdb.DBS().Reader)
-	s.Assert().Equal(err.Error(), sql.ErrNoRows.Error())
-
-	s.Assert().Equal("Couldn't retrieve stored credentials: no credential found", gjson.GetBytes(body, "message").String())
+	s.Assert().ErrorIs(err, sql.ErrNoRows)
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {

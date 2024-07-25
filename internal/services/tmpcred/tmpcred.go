@@ -13,8 +13,14 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-const prefix = "integration_credentials_"
-const duration = 5 * time.Minute
+const (
+	prefix   = "integration_credentials_"
+	duration = 5 * time.Minute
+)
+
+var (
+	ErrNotFound = errors.New("no credentials found for user")
+)
 
 type Store struct {
 	Redis  credis.CacheService
@@ -54,7 +60,7 @@ func (s *Store) Retrieve(ctx context.Context, user common.Address) (*Credential,
 	encCred, err := s.Redis.Get(ctx, cacheKey).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			return nil, errors.New("no credentials found for user")
+			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to retrieve credentials: %w", err)
 	}
