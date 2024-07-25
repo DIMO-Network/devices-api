@@ -111,7 +111,7 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&ddgrpc.Integration{
 		Vendor: constants.TeslaVendor,
 	}, nil)
-	s.teslaFleetAPISvc.EXPECT().CompleteTeslaAuthCodeExchange(gomock.Any(), mockAuthCode, mockRedirectURI, mockRegion).Return(mockAuthCodeResp, nil)
+	s.teslaFleetAPISvc.EXPECT().CompleteTeslaAuthCodeExchange(gomock.Any(), mockAuthCode, mockRedirectURI).Return(mockAuthCodeResp, nil)
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "1GBGC24U93Z337558", "", 0, "").Return(&ddgrpc.DecodeVinResponse{DeviceDefinitionId: "someID-1"}, nil)
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "WAUAF78E95A553420", "", 0, "").Return(&ddgrpc.DecodeVinResponse{DeviceDefinitionId: "someID-2"}, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), "someID-1").Return(&ddgrpc.GetDeviceDefinitionItemResponse{
@@ -214,7 +214,7 @@ func (s *UserIntegrationAuthControllerTestSuite) TestMissingScope() {
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&ddgrpc.Integration{
 		Vendor: constants.TeslaVendor,
 	}, nil)
-	s.teslaFleetAPISvc.EXPECT().CompleteTeslaAuthCodeExchange(gomock.Any(), mockAuthCode, mockRedirectURI, mockRegion).Return(mockAuthCodeResp, nil)
+	s.teslaFleetAPISvc.EXPECT().CompleteTeslaAuthCodeExchange(gomock.Any(), mockAuthCode, mockRedirectURI).Return(mockAuthCodeResp, nil)
 
 	request := test.BuildRequest("POST", "/integration/2/credentials", fmt.Sprintf(`{
 		"authorizationCode": "%s",
@@ -253,7 +253,7 @@ func (s *UserIntegrationAuthControllerTestSuite) TestMissingRefreshToken() {
 	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&ddgrpc.Integration{
 		Vendor: constants.TeslaVendor,
 	}, nil)
-	s.teslaFleetAPISvc.EXPECT().CompleteTeslaAuthCodeExchange(gomock.Any(), mockAuthCode, mockRedirectURI, mockRegion).Return(mockAuthCodeResp, nil)
+	s.teslaFleetAPISvc.EXPECT().CompleteTeslaAuthCodeExchange(gomock.Any(), mockAuthCode, mockRedirectURI).Return(mockAuthCodeResp, nil)
 
 	request := test.BuildRequest("POST", "/integration/2/credentials", fmt.Sprintf(`{
 		"authorizationCode": "%s",

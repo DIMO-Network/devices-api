@@ -134,7 +134,7 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 
 	logger.Info().Msg("Attempting to complete Tesla authorization")
 
-	teslaAuth, err := u.teslaFleetAPISvc.CompleteTeslaAuthCodeExchange(c.Context(), reqBody.AuthorizationCode, reqBody.RedirectURI, reqBody.Region)
+	teslaAuth, err := u.teslaFleetAPISvc.CompleteTeslaAuthCodeExchange(c.Context(), reqBody.AuthorizationCode, reqBody.RedirectURI)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to get tesla authCode:"+err.Error())
 	}

@@ -23,7 +23,7 @@ import (
 
 //go:generate mockgen -source tesla_fleet_api_service.go -destination mocks/tesla_fleet_api_service_mock.go
 type TeslaFleetAPIService interface {
-	CompleteTeslaAuthCodeExchange(ctx context.Context, authCode, redirectURI, region string) (*TeslaAuthCodeResponse, error)
+	CompleteTeslaAuthCodeExchange(ctx context.Context, authCode, redirectURI string) (*TeslaAuthCodeResponse, error)
 	GetVehicles(ctx context.Context, token string) ([]TeslaVehicle, error)
 	GetVehicle(ctx context.Context, token string, vehicleID int) (*TeslaVehicle, error)
 	WakeUpVehicle(ctx context.Context, token string, vehicleID int) error
@@ -118,7 +118,7 @@ func NewTeslaFleetAPIService(settings *config.Settings, logger *zerolog.Logger) 
 }
 
 // CompleteTeslaAuthCodeExchange calls Tesla Fleet API and exchange auth code for a new auth and refresh token
-func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context, authCode, redirectURI, region string) (*TeslaAuthCodeResponse, error) {
+func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context, authCode, redirectURI string) (*TeslaAuthCodeResponse, error) {
 	conf := oauth2.Config{
 		ClientID:     t.Settings.TeslaClientID,
 		ClientSecret: t.Settings.TeslaClientSecret,
