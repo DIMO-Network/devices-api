@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	smartcar "github.com/smartcar/go-sdk"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
@@ -2125,35 +2124,6 @@ func (udc *UserDevicesController) getTeslaVehicle(ctx context.Context, token, re
 	}
 
 	return vehicle, err
-}
-
-func (udc *UserDevicesController) getTeslaAuthFromCache(ctx context.Context, cacheKey string) (*services.TeslaAuthCodeResponse, error) {
-	encTeslaAuth, err := udc.redisCache.Get(ctx, cacheKey).Result()
-	if err != nil {
-		if errors.Is(err, redis.Nil) {
-			return nil, fmt.Errorf("tesla authorization token has expired")
-		}
-		return nil, fmt.Errorf("could not retrieve Tesla credentials: %w", err)
-	}
-	if len(encTeslaAuth) == 0 {
-		return nil, fmt.Errorf("no credential found")
-	}
-	decrypted, err := udc.cipher.Decrypt(encTeslaAuth)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt tesla token: %w", err)
-	}
-
-	teslaAuth := &services.TeslaAuthCodeResponse{}
-	err = json.Unmarshal([]byte(decrypted), &teslaAuth)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse tesla authorization token: %w", err)
-	}
-
-	if teslaAuth.AccessToken == "" || teslaAuth.RefreshToken == "" || teslaAuth.Expiry.IsZero() {
-		return nil, fmt.Errorf("missing tesla auth credentials")
-	}
-
-	return teslaAuth, nil
 }
 
 // fixTeslaDeviceDefinition tries to use the VIN provided by Tesla to correct the device definition
