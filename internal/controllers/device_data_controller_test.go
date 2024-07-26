@@ -53,7 +53,7 @@ func TestUserDevicesController_calculateRange(t *testing.T) {
 			Value: "20",
 		},
 	}
-	deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ddID).Times(1).Return(&grpc.GetDeviceDefinitionItemResponse{
+	deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ddID).Times(2).Return(&grpc.GetDeviceDefinitionItemResponse{
 		DeviceDefinitionId: ddID,
 		Verified:           true,
 		DeviceAttributes:   attrs,
@@ -61,6 +61,11 @@ func TestUserDevicesController_calculateRange(t *testing.T) {
 
 	_ = NewUserDevicesController(&config.Settings{Port: "3000"}, nil, &logger, deviceDefSvc, nil, &fakeEventService{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	rge, err := calculateRange(ctx, deviceDefSvc, ddID, styleID, .7)
+	require.NoError(t, err)
+	require.NotNil(t, rge)
+	assert.Equal(t, 337.9614, *rge)
+
+	rge, err = calculateRange(ctx, deviceDefSvc, ddID, styleID, 70)
 	require.NoError(t, err)
 	require.NotNil(t, rge)
 	assert.Equal(t, 337.9614, *rge)
