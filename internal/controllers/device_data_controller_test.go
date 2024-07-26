@@ -20,7 +20,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -28,48 +27,6 @@ import (
 )
 
 const migrationsDirRelPath = "../../migrations"
-
-func TestUserDevicesController_calculateRange(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
-
-	ctx := context.Background()
-	deviceDefSvc := mock_services.NewMockDeviceDefinitionService(mockCtrl)
-
-	logger := zerolog.New(os.Stdout).With().
-		Timestamp().
-		Str("app", "devices-api").
-		Logger()
-
-	ddID := ksuid.New().String()
-	styleID := null.StringFrom(ksuid.New().String())
-	attrs := []*grpc.DeviceTypeAttribute{
-		{
-			Name:  "fuel_tank_capacity_gal",
-			Value: "15",
-		},
-		{
-			Name:  "mpg",
-			Value: "20",
-		},
-	}
-	deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ddID).Times(2).Return(&grpc.GetDeviceDefinitionItemResponse{
-		DeviceDefinitionId: ddID,
-		Verified:           true,
-		DeviceAttributes:   attrs,
-	}, nil)
-
-	_ = NewUserDevicesController(&config.Settings{Port: "3000"}, nil, &logger, deviceDefSvc, nil, &fakeEventService{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	rge, err := calculateRange(ctx, deviceDefSvc, ddID, styleID, .7)
-	require.NoError(t, err)
-	require.NotNil(t, rge)
-	assert.Equal(t, 337.9614, *rge)
-
-	rge, err = calculateRange(ctx, deviceDefSvc, ddID, styleID, 70)
-	require.NoError(t, err)
-	require.NotNil(t, rge)
-	assert.Equal(t, 337.9614, *rge)
-}
 
 type deps struct {
 	deviceDefIntSvc        *mock_services.MockDeviceDefinitionIntegrationService

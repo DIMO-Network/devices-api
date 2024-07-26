@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -19,7 +18,6 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
-	smartcar "github.com/smartcar/go-sdk"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -44,33 +42,6 @@ type GetUserDeviceErrorCodeQueriesResponseItem struct {
 	// ClearedAt is the time at which the user cleared the codes from this query.
 	// May be null.
 	ClearedAt *time.Time `json:"clearedAt" example:"2023-05-23T12:57:05Z"`
-}
-
-// calculateRange returns the current estimated range based on fuel tank capacity, mpg, and fuelPercentRemaining and returns it in Kilometers
-func calculateRange(ctx context.Context, ddSvc services.DeviceDefinitionService, deviceDefinitionID string, deviceStyleID null.String, fuelPercentRemaining float64) (*float64, error) {
-	if fuelPercentRemaining <= 0.01 {
-		return nil, errors.New("fuelPercentRemaining lt 0.01 so cannot calculate range")
-	}
-
-	dd, err := ddSvc.GetDeviceDefinitionByID(ctx, deviceDefinitionID)
-	if err != nil {
-		return nil, shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+deviceDefinitionID)
-	}
-	if fuelPercentRemaining > 1 {
-		fuelPercentRemaining = fuelPercentRemaining / 100
-	}
-	// want the decimal form of the percentage for this calculation
-	rangeData := helpers.GetActualDeviceDefinitionMetadataValues(dd, deviceStyleID) // one reason to put styles in tableland...
-
-	// calculate, convert to Km
-	if rangeData.FuelTankCapGal > 0 && rangeData.Mpg > 0 {
-		fuelTankAtGal := rangeData.FuelTankCapGal * fuelPercentRemaining
-		rangeMiles := rangeData.Mpg * fuelTankAtGal
-		rangeKm := 1.60934 * rangeMiles
-		return &rangeKm, nil
-	}
-
-	return nil, nil
 }
 
 // RefreshUserDeviceStatus godoc
@@ -303,24 +274,4 @@ func (udc *UserDevicesController) ClearUserDeviceErrorCodeQuery(c *fiber.Ctx) er
 		ErrorCodes: errorCodeResp,
 		ClearedAt:  &errCodeQuery.ClearedAt.Time,
 	})
-}
-
-// DeviceSnapshot is the response object for device status endpoint
-// https://docs.google.com/document/d/1DYzzTOR9WA6WJNoBnwpKOoxfmrVwPWNLv0x0MkjIAqY/edit#heading=h.dnp7xngl47bw
-type DeviceSnapshot struct {
-	Charging             *bool                  `json:"charging,omitempty"`
-	FuelPercentRemaining *float64               `json:"fuelPercentRemaining,omitempty"`
-	BatteryCapacity      *int64                 `json:"batteryCapacity,omitempty"`
-	OilLevel             *float64               `json:"oil,omitempty"`
-	Odometer             *float64               `json:"odometer,omitempty"`
-	Latitude             *float64               `json:"latitude,omitempty"`
-	Longitude            *float64               `json:"longitude,omitempty"`
-	Range                *float64               `json:"range,omitempty"`
-	StateOfCharge        *float64               `json:"soc,omitempty"`
-	ChargeLimit          *float64               `json:"chargeLimit,omitempty"`
-	RecordUpdatedAt      *time.Time             `json:"recordUpdatedAt,omitempty"`
-	RecordCreatedAt      *time.Time             `json:"recordCreatedAt,omitempty"`
-	TirePressure         *smartcar.TirePressure `json:"tirePressure,omitempty"`
-	BatteryVoltage       *float64               `json:"batteryVoltage,omitempty"`
-	AmbientTemp          *float64               `json:"ambientTemp,omitempty"`
 }
