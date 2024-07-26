@@ -53,12 +53,14 @@ func calculateRange(ctx context.Context, ddSvc services.DeviceDefinitionService,
 	}
 
 	dd, err := ddSvc.GetDeviceDefinitionByID(ctx, deviceDefinitionID)
-
 	if err != nil {
 		return nil, shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+deviceDefinitionID)
 	}
-
-	rangeData := helpers.GetActualDeviceDefinitionMetadataValues(dd, deviceStyleID)
+	if fuelPercentRemaining > 1 {
+		fuelPercentRemaining = fuelPercentRemaining / 100
+	}
+	// want the decimal form of the percentage for this calculation
+	rangeData := helpers.GetActualDeviceDefinitionMetadataValues(dd, deviceStyleID) // one reason to put styles in tableland...
 
 	// calculate, convert to Km
 	if rangeData.FuelTankCapGal > 0 && rangeData.Mpg > 0 {
