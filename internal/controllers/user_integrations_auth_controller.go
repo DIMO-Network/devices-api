@@ -65,7 +65,6 @@ type CompleteOAuthExchangeResponseWrapper struct {
 type CompleteOAuthExchangeRequest struct {
 	AuthorizationCode string `json:"authorizationCode"`
 	RedirectURI       string `json:"redirectUri"`
-	Region            string `json:"region"`
 }
 
 // CompleteOAuthExchangeResponse response object for tesla vehicles attached to user account
@@ -128,17 +127,12 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse JSON request body.")
 	}
 
-	if reqBody.Region != "na" && reqBody.Region != "eu" {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf(`Region should be "na" or "eu", but was %q.`, reqBody.Region))
-	}
-
 	logger.Info().Msg("Attempting to complete Tesla authorization")
 
 	teslaAuth, err := u.teslaFleetAPISvc.CompleteTeslaAuthCodeExchange(c.Context(), reqBody.AuthorizationCode, reqBody.RedirectURI)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to get tesla authCode:"+err.Error())
 	}
-	teslaAuth.Region = reqBody.Region
 
 	if teslaAuth.RefreshToken == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "Code exchange did not return a refresh token. Make sure you've granted offline_access.")

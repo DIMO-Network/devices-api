@@ -271,20 +271,6 @@ func (s *UserIntegrationAuthControllerTestSuite) TestMissingRefreshToken() {
 	s.Contains(string(body), "offline_access")
 }
 
-func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_InvalidRegion() {
-	s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&ddgrpc.Integration{
-		Vendor: constants.TeslaVendor,
-	}, nil)
-	request := test.BuildRequest("POST", "/integration/2/credentials", fmt.Sprintf(`{
-		"authorizationCode": "%s",
-		"redirectUri": "%s",
-		"region": "us-central"
-	}`, "mockAuthCode", "mockRedirectURI"))
-	response, _ := s.app.Test(request)
-
-	s.Assert().Equal(fiber.StatusBadRequest, response.StatusCode)
-}
-
 func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchange_UnprocessableTokenID() {
 	request := test.BuildRequest("POST", "/integration/wrongTokenID/credentials", fmt.Sprintf(`{
 		"authorizationCode": "%s",
