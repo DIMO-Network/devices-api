@@ -8,7 +8,18 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/rs/zerolog"
+)
+
+var failureCount = promauto.NewCounter(
+	prometheus.CounterOpts{
+		Namespace: "devices_api",
+		Subsystem: "meta_transaction_consumer",
+		Name:      "failures_total",
+		Help:      "Metatransactions intended for devices-api on which the service errored.",
+	},
 )
 
 type ceLog struct {
@@ -60,7 +71,8 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 			} else {
 				err := c.storage.Handle(session.Context(), &event.Data)
 				if err != nil {
-					c.logger.Err(err).Int32("partition", message.Partition).Int64("offset", message.Offset).Msg("Failed to update transaction status.")
+					failureCount.Inc()
+					c.logger.Err(err).Str("requestId", event.Data.RequestID).Msg("Failed to process meta-transaction status update.")
 				}
 			}
 			session.MarkMessage(message, "")
