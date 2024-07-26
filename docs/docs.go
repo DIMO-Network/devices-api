@@ -2720,9 +2720,6 @@ const docTemplate = `{
                 },
                 "redirectUri": {
                     "type": "string"
-                },
-                "region": {
-                    "type": "string"
                 }
             }
         },

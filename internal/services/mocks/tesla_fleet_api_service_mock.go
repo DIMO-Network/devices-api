@@ -41,18 +41,18 @@ func (m *MockTeslaFleetAPIService) EXPECT() *MockTeslaFleetAPIServiceMockRecorde
 }
 
 // CompleteTeslaAuthCodeExchange mocks base method.
-func (m *MockTeslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context, authCode, redirectURI, region string) (*services.TeslaAuthCodeResponse, error) {
+func (m *MockTeslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context, authCode, redirectURI string) (*services.TeslaAuthCodeResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CompleteTeslaAuthCodeExchange", ctx, authCode, redirectURI, region)
+	ret := m.ctrl.Call(m, "CompleteTeslaAuthCodeExchange", ctx, authCode, redirectURI)
 	ret0, _ := ret[0].(*services.TeslaAuthCodeResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CompleteTeslaAuthCodeExchange indicates an expected call of CompleteTeslaAuthCodeExchange.
-func (mr *MockTeslaFleetAPIServiceMockRecorder) CompleteTeslaAuthCodeExchange(ctx, authCode, redirectURI, region any) *gomock.Call {
+func (mr *MockTeslaFleetAPIServiceMockRecorder) CompleteTeslaAuthCodeExchange(ctx, authCode, redirectURI any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompleteTeslaAuthCodeExchange", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).CompleteTeslaAuthCodeExchange), ctx, authCode, redirectURI, region)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompleteTeslaAuthCodeExchange", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).CompleteTeslaAuthCodeExchange), ctx, authCode, redirectURI)
 }
 
 // GetAvailableCommands mocks base method.

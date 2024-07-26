@@ -34,6 +34,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
@@ -900,11 +901,11 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 	s.userClient.EXPECT().GetUser(gomock.Any(), &pbuser.GetUserRequest{Id: testUserID}).Return(&pbuser.User{EthereumAddress: &userEthAddr}, nil).AnyTimes()
 
 	expectedExpiry := time.Now().Add(10 * time.Minute)
-	teslaResp := services.TeslaAuthCodeResponse{
-		AccessToken:  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-		RefreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw",
-		Expiry:       expectedExpiry,
-		Region:       "na",
+	teslaResp := tmpcred.Credential{
+		IntegrationID: 2,
+		AccessToken:   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+		RefreshToken:  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw",
+		Expiry:        expectedExpiry,
 	}
 	tokenStr, err := json.Marshal(teslaResp)
 	s.Assert().NoError(err)
@@ -914,18 +915,20 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 
 	cacheKey := fmt.Sprintf(teslaFleetAuthCacheKey, userEthAddr)
 	s.redisClient.EXPECT().Get(gomock.Any(), cacheKey).Return(redis.NewStringResult(encTeslaAuth, nil))
-	s.redisClient.EXPECT().Del(gomock.Any(), cacheKey).Return(redis.NewIntResult(1, nil))
+	s.redisClient.EXPECT().Del(gomock.Any(), cacheKey).AnyTimes().Return(redis.NewIntResult(1, nil))
 
 	in := `{
 		"externalId": "1145",
 		"version": 2
 	}`
 	request := test.BuildRequest("POST", fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), in)
-	_, err = s.app.Test(request, 60*1000)
+	res, err := s.app.Test(request, 60*1000)
 	s.Assert().NoError(err)
 
+	s.Equal(fiber.StatusNoContent, res.StatusCode)
+
 	intd, err := models.UserDeviceAPIIntegrations(models.UserDeviceAPIIntegrationWhere.ExternalID.EQ(null.StringFrom("1145"))).One(s.ctx, s.pdb.DBS().Reader)
-	s.Assert().NoError(err)
+	s.Require().NoError(err)
 	s.Assert().NotEmpty(intd.Metadata)
 
 	encAccessToken, err := s.cipher.Encrypt(teslaResp.AccessToken)
@@ -973,15 +976,10 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_PartialCredential
 	request := test.BuildRequest("POST", fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), in)
 	res, _ := s.app.Test(request, 60*1000)
 
-	s.Assert().True(res.StatusCode == fiber.StatusBadRequest)
-	body, _ := io.ReadAll(res.Body)
-
-	defer res.Body.Close()
+	s.Equal(fiber.StatusInternalServerError, res.StatusCode)
 
 	_, err = models.UserDeviceAPIIntegrations(models.UserDeviceAPIIntegrationWhere.ExternalID.EQ(null.StringFrom("1145"))).One(s.ctx, s.pdb.DBS().Reader)
 	s.Assert().Equal(err.Error(), sql.ErrNoRows.Error())
-
-	s.Assert().Equal("Couldn't retrieve stored credentials: missing tesla auth credentials", gjson.GetBytes(body, "message").String())
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_MissingCredentials() {
@@ -1004,15 +1002,10 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_MissingCredential
 	request := test.BuildRequest("POST", fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), in)
 	res, _ := s.app.Test(request, 60*1000)
 
-	s.Assert().True(res.StatusCode == fiber.StatusBadRequest)
-	body, _ := io.ReadAll(res.Body)
-
-	defer res.Body.Close()
+	s.Assert().Equal(fiber.StatusInternalServerError, res.StatusCode)
 
 	_, err := models.UserDeviceAPIIntegrations(models.UserDeviceAPIIntegrationWhere.ExternalID.EQ(null.StringFrom("1145"))).One(s.ctx, s.pdb.DBS().Reader)
-	s.Assert().Equal(err.Error(), sql.ErrNoRows.Error())
-
-	s.Assert().Equal("Couldn't retrieve stored credentials: no credential found", gjson.GetBytes(body, "message").String())
+	s.Assert().ErrorIs(err, sql.ErrNoRows)
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {

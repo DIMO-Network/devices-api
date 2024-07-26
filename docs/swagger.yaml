@@ -351,8 +351,6 @@ definitions:
         type: string
       redirectUri:
         type: string
-      region:
-        type: string
     type: object
   internal_controllers.CompleteOAuthExchangeResponse:
     properties:

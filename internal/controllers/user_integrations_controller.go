@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	smartcar "github.com/smartcar/go-sdk"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
@@ -18,6 +17,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	pb "github.com/DIMO-Network/shared/api/users"
@@ -1971,14 +1971,23 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		}
 		teslaV2CacheKey = fmt.Sprintf(teslaFleetAuthCacheKey, *user.EthereumAddress)
 
-		deviceIntReq, err := udc.getTeslaAuthFromCache(c.Context(), teslaV2CacheKey)
-		if err != nil {
-			udc.log.Err(err).Msg("Error occurred retrieving tesla auth from cache")
-			return fiber.NewError(fiber.StatusBadRequest, "Couldn't retrieve stored credentials: "+err.Error())
+		// Yes, yes.
+		store := &tmpcred.Store{
+			Redis:  udc.redisCache,
+			Cipher: udc.cipher,
 		}
-		reqBody.RefreshToken = deviceIntReq.RefreshToken
-		reqBody.AccessToken = deviceIntReq.AccessToken
-		reqBody.ExpiresIn = int(time.Until(deviceIntReq.Expiry).Seconds())
+
+		cred, err := store.Retrieve(c.Context(), common.HexToAddress(*user.EthereumAddress))
+		if err != nil {
+			if errors.Is(err, tmpcred.ErrNotFound) {
+				return fiber.NewError(fiber.StatusBadRequest, "No credentials found for user.")
+			}
+			return err
+		}
+
+		reqBody.RefreshToken = cred.RefreshToken
+		reqBody.AccessToken = cred.AccessToken
+		reqBody.ExpiresIn = int(time.Until(cred.Expiry).Seconds())
 	}
 
 	v, err := udc.getTeslaVehicle(c.Context(), reqBody.AccessToken, teslaID, apiVersion)
@@ -2116,35 +2125,6 @@ func (udc *UserDevicesController) getTeslaVehicle(ctx context.Context, token str
 	}
 
 	return vehicle, err
-}
-
-func (udc *UserDevicesController) getTeslaAuthFromCache(ctx context.Context, cacheKey string) (*services.TeslaAuthCodeResponse, error) {
-	encTeslaAuth, err := udc.redisCache.Get(ctx, cacheKey).Result()
-	if err != nil {
-		if errors.Is(err, redis.Nil) {
-			return nil, fmt.Errorf("tesla authorization token has expired")
-		}
-		return nil, fmt.Errorf("could not retrieve Tesla credentials: %w", err)
-	}
-	if len(encTeslaAuth) == 0 {
-		return nil, fmt.Errorf("no credential found")
-	}
-	decrypted, err := udc.cipher.Decrypt(encTeslaAuth)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt tesla token: %w", err)
-	}
-
-	teslaAuth := &services.TeslaAuthCodeResponse{}
-	err = json.Unmarshal([]byte(decrypted), &teslaAuth)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse tesla authorization token: %w", err)
-	}
-
-	if teslaAuth.AccessToken == "" || teslaAuth.RefreshToken == "" || teslaAuth.Expiry.IsZero() {
-		return nil, fmt.Errorf("missing tesla auth credentials")
-	}
-
-	return teslaAuth, nil
 }
 
 // fixTeslaDeviceDefinition tries to use the VIN provided by Tesla to correct the device definition
