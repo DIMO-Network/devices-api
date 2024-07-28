@@ -118,7 +118,6 @@ type UserDeviceAPIIntegrationsMetadata struct {
 	AutoPiTemplateApplied   *int                                       `json:"autoPiTemplateApplied,omitempty"`
 	AutoPiSubStatus         *string                                    `json:"autoPiSubStatus,omitempty"`
 	AutoPiRegistrationError *string                                    `json:"autoPiRegistrationError,omitempty"`
-	EnableTeslaLock         bool                                       `json:"enableTeslaLock,omitempty"`
 	SmartcarEndpoints       []string                                   `json:"smartcarEndpoints,omitempty"`
 	SmartcarUserID          *string                                    `json:"smartcarUserId,omitempty"`
 	Commands                *UserDeviceAPIIntegrationsMetadataCommands `json:"commands,omitempty"`
