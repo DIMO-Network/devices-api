@@ -1,8 +1,6 @@
 module github.com/DIMO-Network/devices-api
 
-go 1.21
-
-toolchain go1.21.5
+go 1.22
 
 require (
 	github.com/DIMO-Network/device-data-api v0.9.4
