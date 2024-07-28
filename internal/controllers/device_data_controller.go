@@ -95,7 +95,7 @@ func (udc *UserDevicesController) RefreshUserDeviceStatus(c *fiber.Ctx) error {
 				}
 				return c.SendStatus(204)
 			}
-
+			helpers.SkipErrorLog(c)
 			return fiber.NewError(fiber.StatusConflict, "Integration not active.")
 		}
 	}
