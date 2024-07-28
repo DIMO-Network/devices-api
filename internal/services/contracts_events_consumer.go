@@ -525,8 +525,10 @@ func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) 
 		return fmt.Errorf("error retrieving manufacturer %d: %w", am.DeviceManufacturerTokenID, err)
 	}
 
+	cols := models.AftermarketDeviceColumns
+
 	am.VehicleTokenID = types.NewNullDecimal(utils.BigToDecimal(args.VehicleNode).Big)
-	_, err = am.Update(context.TODO(), c.db.DBS().Writer, boil.Whitelist(models.AftermarketDeviceColumns.VehicleTokenID))
+	_, err = am.Update(context.TODO(), c.db.DBS().Writer, boil.Whitelist(cols.VehicleTokenID, cols.UpdatedAt))
 	if err != nil {
 		return fmt.Errorf("failed to update aftermarket device: %w", err)
 	}
