@@ -1614,8 +1614,6 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 		return shared.GrpcErrorToFiber(err, "failed to get device definition with id: "+ud.DeviceDefinitionID)
 	}
 
-	logger.Info().Msgf("get device definition id result during registration %+v", dd)
-
 	// filter out the desired integration from the compatible ones
 	var deviceInteg *ddgrpc.Integration
 	for _, integration := range dd.DeviceIntegrations {
