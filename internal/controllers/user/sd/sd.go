@@ -155,6 +155,21 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 			}
 		}
 
+		var md services.UserDeviceAPIIntegrationsMetadata
+		if err := udai.Metadata.Unmarshal(&md); err != nil {
+			return err
+		}
+
+		md.TeslaAPIVersion = constants.TeslaAPIV2
+		md.Commands, err = co.TeslaAPI.GetAvailableCommands(cred.AccessToken)
+		if err != nil {
+			return err
+		}
+
+		if err := udai.Metadata.Marshal(md); err != nil {
+			return err
+		}
+
 		udai.AccessToken = null.StringFrom(encAccess)
 		udai.RefreshToken = null.StringFrom(encRefresh)
 		udai.AccessExpiresAt = null.TimeFrom(cred.Expiry)
@@ -163,7 +178,7 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 		udai.TaskID = null.StringFrom(ksuid.New().String())
 
 		cols := models.UserDeviceAPIIntegrationColumns
-		_, err = udai.Update(c.Context(), co.DBS.DBS().Writer, boil.Whitelist(cols.Status, cols.TaskID, cols.AccessToken, cols.RefreshToken, cols.AccessExpiresAt, cols.UpdatedAt))
+		_, err = udai.Update(c.Context(), co.DBS.DBS().Writer, boil.Whitelist(cols.Status, cols.TaskID, cols.AccessToken, cols.RefreshToken, cols.AccessExpiresAt, cols.Metadata, cols.UpdatedAt))
 		if err != nil {
 			return err
 		}
