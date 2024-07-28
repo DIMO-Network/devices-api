@@ -79,6 +79,7 @@ func (udc *UserDevicesController) RefreshUserDeviceStatus(c *fiber.Ctx) error {
 		if deviceDatum.IntegrationId == smartCarInteg.Id {
 			nextAvailableTime := deviceDatum.RecordUpdatedAt.AsTime().UTC().Add(time.Second * time.Duration(smartCarInteg.RefreshLimitSecs))
 			if time.Now().UTC().Before(nextAvailableTime) {
+				helpers.SkipErrorLog(c)
 				return fiber.NewError(fiber.StatusTooManyRequests,
 					fmt.Sprintf("rate limit for integration refresh hit, next available: %s", nextAvailableTime.Format(time.RFC3339)))
 			}
