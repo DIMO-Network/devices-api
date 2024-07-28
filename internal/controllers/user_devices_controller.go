@@ -200,7 +200,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 	for _, d := range devices {
 		deviceDefinition, err := filterDeviceDefinition(d.DeviceDefinitionID, deviceDefinitionResponse)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("user device %s has unknown device definition %s", d.ID, d.DeviceDefinitionID)
 		}
 
 		dd, err := NewDeviceDefinitionFromGRPC(deviceDefinition)
