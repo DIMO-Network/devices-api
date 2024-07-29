@@ -1372,18 +1372,25 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	logger := helpers.GetLogger(c, udc.log)
 
+	tx, err := udc.DBS().Writer.BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint
+
 	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(models.UserDeviceRels.MintRequest),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-	).One(c.Context(), udc.DBS().Reader.DB)
+	).One(c.Context(), tx)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
+			return fiber.NewError(fiber.StatusNotFound, "No device with that id found.")
 		}
 		return err
 	}
 
+	// This actually makes no database calls!
 	mvs, dd, err := udc.checkVehicleMint(c.Context(), userID, userDevice)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
@@ -1480,12 +1487,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			return opaqueInternalError
 		}
 	}
-
-	tx, err := udc.DBS().Writer.BeginTx(c.Context(), nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback() //nolint
 
 	mtr := models.MetaTransactionRequest{
 		ID:     requestID,
