@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"strings"
-
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
@@ -16,7 +14,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/protobuf/types/known/emptypb"
+	"time"
 )
 
 type syncUserDeviceDeviceDefinitionCmd struct {
@@ -41,7 +39,7 @@ func (s *syncUserDeviceDeviceDefinitionCmd) SetFlags(_ *flag.FlagSet) {
 
 func (s *syncUserDeviceDeviceDefinitionCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 
-	err := s.syncUserDevicesWithTableland(ctx)
+	err := s.processDeviceDefinitions(ctx)
 
 	if err != nil {
 		s.logger.Fatal().Err(err).Msg("failed to sync user devices with tableland")
@@ -51,35 +49,22 @@ func (s *syncUserDeviceDeviceDefinitionCmd) Execute(ctx context.Context, _ *flag
 	return subcommands.ExitSuccess
 }
 
-func (s *syncUserDeviceDeviceDefinitionCmd) syncUserDevicesWithTableland(ctx context.Context) error {
+func (s *syncUserDeviceDeviceDefinitionCmd) processDeviceDefinitions(ctx context.Context) error {
+	cursor := ""
+	hasMore := true
+	dbs := s.pdb.DBS()
 
 	conn, err := grpc.Dial(s.settings.DefinitionsGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		s.logger.Fatal().Err(err).Msg("failed to connect to device definitions grpc")
-		return err
-	}
-	defer conn.Close()
-
-	definitionsClient := ddgrpc.NewDeviceDefinitionServiceClient(conn)
-	resp, err := definitionsClient.GetDeviceDefinitions(ctx, &emptypb.Empty{})
-	if err != nil {
-		s.logger.Fatal().Err(err).Msg("failed to get device definitions")
 		return err
 	}
 
-	dbs := s.pdb.DBS()
-
-	err = ProcessDeviceDefinitions(ctx, dbs, resp.DeviceDefinitions)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func ProcessDeviceDefinitions(ctx context.Context, dbs *db.ReaderWriter, deviceDefinitions []*ddgrpc.GetDeviceDefinitionItemResponse) error {
-	cursor := ""
-	hasMore := true
+	defer func(conn *grpc.ClientConn) {
+		err := conn.Close()
+		if err != nil {
+			s.logger.Error().Err(err).Msg("failed to close connection")
+		}
+	}(conn)
 
 	for hasMore {
 		userDevices, err := models.UserDevices(
@@ -99,17 +84,25 @@ func ProcessDeviceDefinitions(ctx context.Context, dbs *db.ReaderWriter, deviceD
 
 		cursor = userDevices[len(userDevices)-1].ID
 
-		for _, dd := range deviceDefinitions {
-			for _, ud := range userDevices {
-				if strings.EqualFold(dd.DeviceDefinitionId, ud.DeviceDefinitionID) {
-					ud.DefinitionID = null.StringFrom(dd.NameSlug)
+		for _, ud := range userDevices {
 
-					_, err := ud.Update(ctx, dbs.Writer, boil.Infer())
-					if err != nil {
-						return err
-					}
-				}
+			deviceDefinitions, err := s.getDeviceDefinitionByID(ctx, conn, ud.DeviceDefinitionID)
+
+			if err != nil {
+				return err
 			}
+
+			dd := deviceDefinitions.DeviceDefinitions[0]
+
+			ud.DefinitionID = null.StringFrom(dd.NameSlug)
+
+			_, err = ud.Update(ctx, dbs.Writer, boil.Infer())
+
+			if err != nil {
+				return err
+			}
+
+			time.Sleep(100 * time.Millisecond)
 		}
 
 		if len(userDevices) < 5000 {
@@ -118,4 +111,15 @@ func ProcessDeviceDefinitions(ctx context.Context, dbs *db.ReaderWriter, deviceD
 	}
 
 	return nil
+}
+
+func (s *syncUserDeviceDeviceDefinitionCmd) getDeviceDefinitionByID(ctx context.Context, conn *grpc.ClientConn, deviceDefinitionID string) (*ddgrpc.GetDeviceDefinitionResponse, error) {
+	definitionsClient := ddgrpc.NewDeviceDefinitionServiceClient(conn)
+	resp, err := definitionsClient.GetDeviceDefinitionByID(ctx, &ddgrpc.GetDeviceDefinitionRequest{Ids: []string{deviceDefinitionID}})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
