@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
@@ -70,7 +71,7 @@ func (s *syncUserDeviceDeviceDefinitionCmd) processDeviceDefinitions(ctx context
 		userDevices, err := models.UserDevices(
 			models.UserDeviceWhere.DefinitionID.IsNull(),
 			models.UserDeviceWhere.ID.GT(cursor),
-			qm.Limit(5000),
+			qm.Limit(1000),
 			qm.OrderBy(models.UserDeviceColumns.ID),
 		).All(ctx, dbs.Reader)
 
@@ -89,7 +90,8 @@ func (s *syncUserDeviceDeviceDefinitionCmd) processDeviceDefinitions(ctx context
 			deviceDefinitions, err := s.getDeviceDefinitionByID(ctx, conn, ud.DeviceDefinitionID)
 
 			if err != nil {
-				return err
+				s.logger.Err(err).Msgf("failed to sync user device definition to tableland id: dd_id %s", ud.DeviceDefinitionID)
+				continue
 			}
 
 			dd := deviceDefinitions.DeviceDefinitions[0]
@@ -99,13 +101,14 @@ func (s *syncUserDeviceDeviceDefinitionCmd) processDeviceDefinitions(ctx context
 			_, err = ud.Update(ctx, dbs.Writer, boil.Infer())
 
 			if err != nil {
-				return err
+				s.logger.Err(err).Msgf("failed to udpdate user device with tableland id: user device id: %s", ud.ID)
 			}
 
 			time.Sleep(100 * time.Millisecond)
 		}
+		fmt.Println("processed 1000 user devices")
 
-		if len(userDevices) < 5000 {
+		if len(userDevices) < 1000 {
 			hasMore = false
 		}
 	}
