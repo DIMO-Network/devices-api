@@ -122,6 +122,9 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 	case constants.TeslaVendor:
 		cred, err := co.Store.Retrieve(c.Context(), userAddr)
 		if err != nil {
+			if errors.Is(err, tmpcred.ErrNotFound) {
+				return fiber.NewError(fiber.StatusBadRequest, "No stored credentials found.")
+			}
 			return err
 		}
 
