@@ -26,7 +26,7 @@ type populateTeslaTelemetryMapCmd struct {
 	container dependencyContainer
 }
 
-func (*populateTeslaTelemetryMapCmd) Name() string { return "populate-sd-info-topic" }
+func (*populateTeslaTelemetryMapCmd) Name() string { return "populate-tesla-telemetry-map" }
 func (*populateTeslaTelemetryMapCmd) Synopsis() string {
 	return "populate-sd-info-topic args to stdout."
 }
