@@ -99,6 +99,7 @@ func main() {
 		subcommands.Register(&remakeUserDeviceTokenTableCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&remakeFenceTopicCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&populateSDInfoTopicCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
+		subcommands.Register(&populateTeslaTelemetryMapCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&populatePrivacyV2Topic{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&remakeDeviceDefinitionTopicsCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
 		subcommands.Register(&populateSDFingerprintTable{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
