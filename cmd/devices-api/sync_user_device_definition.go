@@ -53,7 +53,6 @@ func (s *syncUserDeviceDeviceDefinitionCmd) Execute(ctx context.Context, _ *flag
 func (s *syncUserDeviceDeviceDefinitionCmd) processDeviceDefinitions(ctx context.Context) error {
 	cursor := ""
 	hasMore := true
-	dbs := s.pdb.DBS()
 
 	conn, err := grpc.Dial(s.settings.DefinitionsGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -73,7 +72,7 @@ func (s *syncUserDeviceDeviceDefinitionCmd) processDeviceDefinitions(ctx context
 			models.UserDeviceWhere.ID.GT(cursor),
 			qm.Limit(1000),
 			qm.OrderBy(models.UserDeviceColumns.ID),
-		).All(ctx, dbs.Reader)
+		).All(ctx, s.pdb.DBS().Writer)
 
 		if err != nil {
 			return err
@@ -98,7 +97,7 @@ func (s *syncUserDeviceDeviceDefinitionCmd) processDeviceDefinitions(ctx context
 
 			ud.DefinitionID = null.StringFrom(dd.NameSlug)
 
-			_, err = ud.Update(ctx, dbs.Writer, boil.Infer())
+			_, err = ud.Update(ctx, s.pdb.DBS().Writer, boil.Whitelist(models.UserDeviceColumns.DefinitionID, models.UserDeviceColumns.UpdatedAt))
 
 			if err != nil {
 				s.logger.Err(err).Msgf("failed to udpdate user device with tableland id: user device id: %s", ud.ID)
