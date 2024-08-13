@@ -721,6 +721,10 @@ definitions:
         description: |-
           VirtualKeyStatus indicates whether the Tesla can pair with DIMO's virtual key; and if it can,
           whether the key has been added.
+        enum:
+        - Paired
+        - Unpaired
+        - Incompatible
         type: string
     type: object
   internal_controllers.TransactionStatus:

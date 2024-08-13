@@ -3230,7 +3230,12 @@ const docTemplate = `{
                 },
                 "virtualKeyStatus": {
                     "description": "VirtualKeyStatus indicates whether the Tesla can pair with DIMO's virtual key; and if it can,\nwhether the key has been added.",
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "Paired",
+                        "Unpaired",
+                        "Incompatible"
+                    ]
                 }
             }
         },
