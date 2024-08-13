@@ -51,7 +51,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		return err
 	}
 	if !deviceExists {
-		return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("no user device with ID %s", userDeviceID))
+		return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("No user device with id %q.", userDeviceID))
 	}
 
 	apiIntegration, err := models.UserDeviceAPIIntegrations(
@@ -82,7 +82,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		var meta services.UserDeviceAPIIntegrationsMetadata
 		err = apiIntegration.Metadata.Unmarshal(&meta)
 		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "error occurred decoding integration metadata")
+			return fiber.NewError(fiber.StatusInternalServerError, "Integration metadata is corrupted.")
 		}
 
 		apiVersion := 1
@@ -97,21 +97,38 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 
 		if apiVersion == constants.TeslaAPIV2 {
 			if !apiIntegration.ExternalID.Valid || !apiIntegration.AccessToken.Valid || !apiIntegration.R.UserDevice.VinConfirmed || !apiIntegration.R.UserDevice.VinIdentifier.Valid {
-				return fiber.NewError(fiber.StatusFailedDependency, "missing device or integration details")
+				return fiber.NewError(fiber.StatusInternalServerError, "missing device or integration details")
 			}
 
 			isConnected, err := udc.getDeviceVirtualKeyStatus(c.Context(), apiIntegration)
 			if err != nil {
-				return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla connection status %s", err.Error()))
+				return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("error checking verifying tesla connection status %s", err.Error()))
+			}
+
+			var vks VirtualKeyStatus
+			if isConnected {
+				vks = Paired
+			} else {
+				dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(context.TODO(), apiIntegration.R.UserDevice.DeviceDefinitionID)
+				if err != nil {
+					return err
+				}
+
+				if (dd.Name == "Model S" || dd.Name == "Model X") && dd.Type.Year < 2021 {
+					vks = Unpaired
+				} else {
+					vks = Incompatible
+				}
 			}
 
 			isSubscribed, err := udc.getTelemetrySubscriptionStatus(c.Context(), apiIntegration)
 			if err != nil {
-				return fiber.NewError(fiber.StatusFailedDependency, fmt.Sprintf("error checking verifying tesla telemetry subscription status %s", err.Error()))
+				return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("error checking verifying tesla telemetry subscription status %s", err.Error()))
 			}
 
 			resp.Tesla.VirtualKeyAdded = isConnected
 			resp.Tesla.TelemetrySubscribed = isSubscribed
+			resp.Tesla.VirtualKeyStatus = vks
 		}
 	}
 
@@ -2188,11 +2205,23 @@ type TeslaIntegrationInfo struct {
 	// APIVersion is the version of the Tesla API being used. There are currently two valid values:
 	// 1 is the old "Owner API", 2 is the new "Fleet API".
 	APIVersion int `json:"apiVersion"`
-	// VirtualKeyAdded is true if the DIMO virtual key has been added to the vehicle.
+	// VirtualKeyAdded is true if the DIMO virtual key has been added to the vehicle. This is deprecated.
+	// use VirtualKeyStatus instead.
 	VirtualKeyAdded bool `json:"virtualKeyAdded"`
 	// TelemetrySubscribed is true if DIMO has subscribed to the vehicle's telemetry stream.
 	TelemetrySubscribed bool `json:"telemetrySubscribed"`
+	// VirtualKeyStatus indicates whether the Tesla can add DIMO's virtual key; and if it can,
+	// then whether the key has been added.
+	VirtualKeyStatus VirtualKeyStatus `json:"virtualKeyStatus" swaggertype:"string" enum:"Paired,Unpaired,Incomptable"`
 }
+
+type VirtualKeyStatus string
+
+const (
+	Paired       VirtualKeyStatus = "Paired"
+	Unpaired     VirtualKeyStatus = "Unpaired"
+	Incompatible VirtualKeyStatus = "Incompatible"
+)
 
 type GetUserDeviceIntegrationResponse struct {
 	// Status is one of "Pending", "PendingFirstData", "Active", "Failed", "DuplicateIntegration".
