@@ -608,8 +608,6 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 			return fiber.NewError(fiber.StatusConflict, "VIN already exists for a different user: "+reg.VIN)
 		}
 
-		deviceDefinitionID = existingUD.DeviceDefinitionID
-
 		// shortcut process, just use the already registered UD
 		dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(c.Context(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
 			Slug: existingUD.DefinitionID.String,
@@ -1299,10 +1297,11 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 			Timestamp: time.Now(),
 			UserID:    userID,
 			Device: services.UserDeviceEventDevice{
-				ID:    udi,
-				Make:  dd.Make.Name,
-				Model: dd.Type.Model,
-				Year:  int(dd.Type.Year),
+				ID:           udi,
+				Make:         dd.Make.Name,
+				Model:        dd.Type.Model,
+				Year:         int(dd.Type.Year),
+				DefinitionID: dd.NameSlug,
 			},
 		},
 	}); err != nil {

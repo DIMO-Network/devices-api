@@ -139,10 +139,11 @@ func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID,
 			Timestamp: time.Now(),
 			UserID:    userID,
 			Device: UserDeviceEventDevice{
-				ID:    userDeviceID,
-				Make:  dd.Make.Name,
-				Model: dd.Type.Model,
-				Year:  int(dd.Type.Year), // Odd.
+				ID:           userDeviceID,
+				Make:         dd.Make.Name,
+				Model:        dd.Type.Model,
+				Year:         int(dd.Type.Year), // Odd.
+				DefinitionID: dd.NameSlug,
 			},
 		},
 	})

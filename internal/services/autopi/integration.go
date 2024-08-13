@@ -370,10 +370,11 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 			Timestamp: time.Now(),
 			UserID:    ud.UserID,
 			Device: services.UserDeviceEventDevice{
-				ID:    ud.ID,
-				Make:  def.Make.Name,
-				Model: def.Type.Model,
-				Year:  int(def.Type.Year),
+				ID:           ud.ID,
+				Make:         def.Make.Name,
+				Model:        def.Type.Model,
+				Year:         int(def.Type.Year),
+				DefinitionID: def.NameSlug,
 			},
 			Integration: services.UserDeviceEventIntegration{
 				ID:     integ.Id,

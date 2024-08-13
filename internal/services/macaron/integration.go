@@ -142,6 +142,7 @@ func (i *Integration) Pair(ctx context.Context, amTokenID, vehicleTokenID *big.I
 					Model:              def.Type.Model,
 					Year:               int(def.Type.Year),
 					VIN:                ud.VinIdentifier.String,
+					DefinitionID:       ud.DefinitionID.String,
 				},
 				Integration: services.UserDeviceEventIntegration{
 					ID:     integ.Id,

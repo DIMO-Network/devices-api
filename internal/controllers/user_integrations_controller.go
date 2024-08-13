@@ -240,11 +240,12 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 			Timestamp: time.Now(),
 			UserID:    userID,
 			Device: services.UserDeviceEventDevice{
-				ID:    userDeviceID,
-				Make:  dd.Make.Name,
-				Model: dd.Type.Model,
-				Year:  int(dd.Type.Year),
-				VIN:   vin,
+				ID:           userDeviceID,
+				Make:         dd.Make.Name,
+				Model:        dd.Type.Model,
+				Year:         int(dd.Type.Year),
+				VIN:          vin,
+				DefinitionID: dd.NameSlug,
 			},
 			Integration: services.UserDeviceEventIntegration{
 				ID:     integ.Id,
@@ -1766,6 +1767,7 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 					Model:              dd.Type.Model,
 					Year:               int(dd.Type.Year),
 					VIN:                ud.VinIdentifier.String,
+					DefinitionID:       dd.NameSlug,
 				},
 				Integration: services.UserDeviceEventIntegration{
 					ID:     integ.Id,

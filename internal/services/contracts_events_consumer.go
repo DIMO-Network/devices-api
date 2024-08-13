@@ -285,11 +285,12 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 			Timestamp: time.Now(),
 			UserID:    ud.UserID,
 			Device: UserDeviceEventDevice{
-				ID:    ud.ID,
-				Make:  dd.Make.Name,
-				Model: dd.Type.Model,
-				Year:  int(dd.Type.Year),
-				VIN:   ud.VinIdentifier.String,
+				ID:           ud.ID,
+				Make:         dd.Make.Name,
+				Model:        dd.Type.Model,
+				Year:         int(dd.Type.Year),
+				VIN:          ud.VinIdentifier.String,
+				DefinitionID: dd.NameSlug,
 			},
 			Integration: UserDeviceEventIntegration{
 				ID:     integ.Id,
@@ -858,6 +859,7 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 				ID:                 ud.ID,
 				VIN:                ud.VinIdentifier.String,
 				DeviceDefinitionID: ud.DeviceDefinitionID,
+				DefinitionID:       ud.DefinitionID.String,
 			},
 			NFT: UserDeviceEventNFT{
 				TokenID: args.VehicleId,
