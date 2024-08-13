@@ -115,7 +115,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 				}
 
 				if (dd.Name == "Model S" || dd.Name == "Model X") && dd.Type.Year < 2021 {
-					vks = Incompatible
+					vks = Incapable
 				} else {
 					vks = Unpaired
 				}
@@ -2211,21 +2211,21 @@ type TeslaIntegrationInfo struct {
 	// TelemetrySubscribed is true if DIMO has subscribed to the vehicle's telemetry stream.
 	TelemetrySubscribed bool `json:"telemetrySubscribed"`
 	// VirtualKeyStatus indicates whether the Tesla can pair with DIMO's virtual key; and if it can,
-	// whether the key has been added.
-	VirtualKeyStatus VirtualKeyStatus `json:"virtualKeyStatus" swaggertype:"string" enums:"Paired,Unpaired,Incompatible"`
+	// whether the key has indeed been paired.
+	VirtualKeyStatus VirtualKeyStatus `json:"virtualKeyStatus" swaggertype:"string" enums:"Paired,Unpaired,Incapable"`
 }
 
 type VirtualKeyStatus int
 
 const (
-	Incompatible VirtualKeyStatus = iota
+	Incapable VirtualKeyStatus = iota
 	Paired
 	Unpaired
 )
 
 func (s VirtualKeyStatus) String() string {
 	switch s {
-	case Incompatible:
+	case Incapable:
 		return "Incompatible"
 	case Paired:
 		return "Paired"
