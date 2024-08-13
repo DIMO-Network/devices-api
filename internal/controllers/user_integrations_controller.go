@@ -2226,7 +2226,7 @@ const (
 func (s VirtualKeyStatus) String() string {
 	switch s {
 	case Incapable:
-		return "Incompatible"
+		return "Incapable"
 	case Paired:
 		return "Paired"
 	case Unpaired:
