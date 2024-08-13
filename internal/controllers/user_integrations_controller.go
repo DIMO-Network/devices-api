@@ -2212,7 +2212,7 @@ type TeslaIntegrationInfo struct {
 	TelemetrySubscribed bool `json:"telemetrySubscribed"`
 	// VirtualKeyStatus indicates whether the Tesla can pair with DIMO's virtual key; and if it can,
 	// whether the key has been added.
-	VirtualKeyStatus VirtualKeyStatus `json:"virtualKeyStatus" swaggertype:"string" enum:"Paired,Unpaired,Incomptable"`
+	VirtualKeyStatus VirtualKeyStatus `json:"virtualKeyStatus" swaggertype:"string" enum:"Paired,Unpaired,Incompatible"`
 }
 
 type VirtualKeyStatus int
