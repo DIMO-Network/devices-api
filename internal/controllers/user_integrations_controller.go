@@ -2237,6 +2237,10 @@ func (s VirtualKeyStatus) String() string {
 	return ""
 }
 
+func (s VirtualKeyStatus) MarshalText() ([]byte, error) {
+	return []byte(s.String()), nil
+}
+
 type GetUserDeviceIntegrationResponse struct {
 	// Status is one of "Pending", "PendingFirstData", "Active", "Failed", "DuplicateIntegration".
 	Status string `json:"status"`
