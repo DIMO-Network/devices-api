@@ -100,16 +100,16 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 				return fiber.NewError(fiber.StatusInternalServerError, "missing device or integration details")
 			}
 
-			isConnected, err := udc.getDeviceVirtualKeyStatus(c.Context(), apiIntegration)
+			keyPaired, err := udc.getDeviceVirtualKeyStatus(c.Context(), apiIntegration)
 			if err != nil {
 				return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("error checking verifying tesla connection status %s", err.Error()))
 			}
 
 			var vks VirtualKeyStatus
-			if isConnected {
+			if keyPaired {
 				vks = Paired
 			} else {
-				dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(context.TODO(), apiIntegration.R.UserDevice.DeviceDefinitionID)
+				dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), apiIntegration.R.UserDevice.DeviceDefinitionID)
 				if err != nil {
 					return err
 				}
@@ -126,7 +126,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 				return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("error checking verifying tesla telemetry subscription status %s", err.Error()))
 			}
 
-			resp.Tesla.VirtualKeyAdded = isConnected
+			resp.Tesla.VirtualKeyAdded = keyPaired
 			resp.Tesla.TelemetrySubscribed = isSubscribed
 			resp.Tesla.VirtualKeyStatus = vks
 		}
