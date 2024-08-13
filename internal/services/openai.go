@@ -131,7 +131,7 @@ func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []strin
 	codes := strings.Join(errorCodes, ", ")
 
 	req := fmt.Sprintf(`{
-		"model": "gpt-3.5-turbo-0613",
+		"model": "gpt-4o-mini",
 		"temperature": 0,
 		"messages": [
 			{
