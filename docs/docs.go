@@ -3225,8 +3225,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "virtualKeyAdded": {
-                    "description": "VirtualKeyAdded is true if the DIMO virtual key has been added to the vehicle.",
+                    "description": "VirtualKeyAdded is true if the DIMO virtual key has been added to the vehicle. This is deprecated.\nuse VirtualKeyStatus instead.",
                     "type": "boolean"
+                },
+                "virtualKeyStatus": {
+                    "description": "VirtualKeyStatus indicates whether the Tesla can add DIMO's virtual key; and if it can,\nthen whether the key has been added.",
+                    "type": "string"
                 }
             }
         },

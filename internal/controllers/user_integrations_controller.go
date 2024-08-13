@@ -2215,13 +2215,25 @@ type TeslaIntegrationInfo struct {
 	VirtualKeyStatus VirtualKeyStatus `json:"virtualKeyStatus" swaggertype:"string" enum:"Paired,Unpaired,Incomptable"`
 }
 
-type VirtualKeyStatus string
+type VirtualKeyStatus int
 
 const (
-	Paired       VirtualKeyStatus = "Paired"
-	Unpaired     VirtualKeyStatus = "Unpaired"
-	Incompatible VirtualKeyStatus = "Incompatible"
+	Incompatible VirtualKeyStatus = iota
+	Paired
+	Unpaired
 )
+
+func (s VirtualKeyStatus) String() string {
+	switch s {
+	case Incompatible:
+		return "Incompatible"
+	case Paired:
+		return "Paired"
+	case Unpaired:
+		return "Unpaired"
+	}
+	return ""
+}
 
 type GetUserDeviceIntegrationResponse struct {
 	// Status is one of "Pending", "PendingFirstData", "Active", "Failed", "DuplicateIntegration".
