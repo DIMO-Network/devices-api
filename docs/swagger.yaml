@@ -715,7 +715,7 @@ definitions:
       virtualKeyAdded:
         description: |-
           VirtualKeyAdded is true if the DIMO virtual key has been added to the vehicle. This is deprecated.
-          use VirtualKeyStatus instead.
+          Use VirtualKeyStatus instead.
         type: boolean
       virtualKeyStatus:
         description: |-

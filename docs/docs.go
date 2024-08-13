@@ -3225,7 +3225,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "virtualKeyAdded": {
-                    "description": "VirtualKeyAdded is true if the DIMO virtual key has been added to the vehicle. This is deprecated.\nuse VirtualKeyStatus instead.",
+                    "description": "VirtualKeyAdded is true if the DIMO virtual key has been added to the vehicle. This is deprecated.\nUse VirtualKeyStatus instead.",
                     "type": "boolean"
                 },
                 "virtualKeyStatus": {

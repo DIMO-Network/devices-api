@@ -2206,7 +2206,7 @@ type TeslaIntegrationInfo struct {
 	// 1 is the old "Owner API", 2 is the new "Fleet API".
 	APIVersion int `json:"apiVersion"`
 	// VirtualKeyAdded is true if the DIMO virtual key has been added to the vehicle. This is deprecated.
-	// use VirtualKeyStatus instead.
+	// Use VirtualKeyStatus instead.
 	VirtualKeyAdded bool `json:"virtualKeyAdded"`
 	// TelemetrySubscribed is true if DIMO has subscribed to the vehicle's telemetry stream.
 	TelemetrySubscribed bool `json:"telemetrySubscribed"`
