@@ -3229,7 +3229,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "virtualKeyStatus": {
-                    "description": "VirtualKeyStatus indicates whether the Tesla can add DIMO's virtual key; and if it can,\nthen whether the key has been added.",
+                    "description": "VirtualKeyStatus indicates whether the Tesla can pair with DIMO's virtual key; and if it can,\nwhether the key has been added.",
                     "type": "string"
                 }
             }
