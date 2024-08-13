@@ -2208,7 +2208,8 @@ type TeslaIntegrationInfo struct {
 	// VirtualKeyAdded is true if the DIMO virtual key has been added to the vehicle. This is deprecated.
 	// Use VirtualKeyStatus instead.
 	VirtualKeyAdded bool `json:"virtualKeyAdded"`
-	// TelemetrySubscribed is true if DIMO has subscribed to the vehicle's telemetry stream.
+	// TelemetrySubscribed is true if DIMO has subscribed to the vehicle's telemetry stream. Note that
+	// virtual key pairing is required for this to work.
 	TelemetrySubscribed bool `json:"telemetrySubscribed"`
 	// VirtualKeyStatus indicates whether the Tesla can pair with DIMO's virtual key; and if it can,
 	// whether the key has indeed been paired.

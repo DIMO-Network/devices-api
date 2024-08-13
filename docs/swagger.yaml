@@ -709,8 +709,9 @@ definitions:
           1 is the old "Owner API", 2 is the new "Fleet API".
         type: integer
       telemetrySubscribed:
-        description: TelemetrySubscribed is true if DIMO has subscribed to the vehicle's
-          telemetry stream.
+        description: |-
+          TelemetrySubscribed is true if DIMO has subscribed to the vehicle's telemetry stream. Note that
+          virtual key pairing is required for this to work.
         type: boolean
       virtualKeyAdded:
         description: |-

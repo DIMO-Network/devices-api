@@ -3221,7 +3221,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "telemetrySubscribed": {
-                    "description": "TelemetrySubscribed is true if DIMO has subscribed to the vehicle's telemetry stream.",
+                    "description": "TelemetrySubscribed is true if DIMO has subscribed to the vehicle's telemetry stream. Note that\nvirtual key pairing is required for this to work.",
                     "type": "boolean"
                 },
                 "virtualKeyAdded": {
