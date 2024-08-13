@@ -102,7 +102,8 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 
 			keyPaired, err := udc.getDeviceVirtualKeyStatus(c.Context(), apiIntegration)
 			if err != nil {
-				return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("error checking verifying tesla connection status %s", err.Error()))
+				udc.log.Err(err).Msg("Error checking virtual key status.")
+				return fiber.NewError(fiber.StatusInternalServerError, "Error checking virtual key status.")
 			}
 
 			var vks VirtualKeyStatus
