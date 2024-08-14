@@ -1312,7 +1312,7 @@ func (o SyntheticDeviceSlice) UpdateAll(ctx context.Context, exec boil.ContextEx
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *SyntheticDevice) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *SyntheticDevice) Upsert(ctx context.Context, exec boil.ContextExecutor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns, opts ...UpsertOptionFunc) error {
 	if o == nil {
 		return errors.New("models: no synthetic_devices provided for upsert")
 	}
@@ -1358,7 +1358,7 @@ func (o *SyntheticDevice) Upsert(ctx context.Context, exec boil.ContextExecutor,
 	var err error
 
 	if !cached {
-		insert, ret := insertColumns.InsertColumnSet(
+		insert, _ := insertColumns.InsertColumnSet(
 			syntheticDeviceAllColumns,
 			syntheticDeviceColumnsWithDefault,
 			syntheticDeviceColumnsWithoutDefault,
@@ -1374,12 +1374,18 @@ func (o *SyntheticDevice) Upsert(ctx context.Context, exec boil.ContextExecutor,
 			return errors.New("models: unable to upsert synthetic_devices, could not build update column list")
 		}
 
+		ret := strmangle.SetComplement(syntheticDeviceAllColumns, strmangle.SetIntersect(insert, update))
+
 		conflict := conflictColumns
-		if len(conflict) == 0 {
+		if len(conflict) == 0 && updateOnConflict && len(update) != 0 {
+			if len(syntheticDevicePrimaryKeyColumns) == 0 {
+				return errors.New("models: unable to upsert synthetic_devices, could not build conflict column list")
+			}
+
 			conflict = make([]string, len(syntheticDevicePrimaryKeyColumns))
 			copy(conflict, syntheticDevicePrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"synthetic_devices\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"devices_api\".\"synthetic_devices\"", updateOnConflict, ret, update, conflict, insert, opts...)
 
 		cache.valueMapping, err = queries.BindMapping(syntheticDeviceType, syntheticDeviceMapping, insert)
 		if err != nil {
