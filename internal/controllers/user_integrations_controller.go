@@ -2241,6 +2241,20 @@ func (s VirtualKeyStatus) MarshalText() ([]byte, error) {
 	return []byte(s.String()), nil
 }
 
+func (s *VirtualKeyStatus) UnmarshalText(text []byte) error {
+	switch str := string(text); str {
+	case "Incapable":
+		*s = Incapable
+	case "Paired":
+		*s = Paired
+	case "Unpaired":
+		*s = Unpaired
+	default:
+		return fmt.Errorf("unrecognized status %q", str)
+	}
+	return nil
+}
+
 type GetUserDeviceIntegrationResponse struct {
 	// Status is one of "Pending", "PendingFirstData", "Active", "Failed", "DuplicateIntegration".
 	Status string `json:"status"`
