@@ -147,7 +147,7 @@ func TestUserDevicesControllerTestSuite(t *testing.T) {
 }
 
 /* Actual Tests */
-func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
+func (s *UserDevicesControllerTestSuite) TestRegisterDeviceForUserFromSmartcar() {
 	// arrange DB
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, "ford-f150", integration)

@@ -910,7 +910,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 	s.teslaFleetAPISvc.EXPECT().GetAvailableCommands(gomock.Any()).Return(&services.UserDeviceAPIIntegrationsMetadataCommands{
 		Enabled:  []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
 		Disabled: []string{constants.TelemetrySubscribe},
-	})
+	}, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlugName(gomock.Any(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
 		Slug: ud.DefinitionID.String,
 	}).Times(2).Return(dd[0], nil)
