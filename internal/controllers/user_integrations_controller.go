@@ -596,8 +596,8 @@ func (udc *UserDevicesController) TelemetrySubscribe(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
-	if udai.Status != models.UserDeviceAPIIntegrationStatusActive {
-		return fiber.NewError(fiber.StatusConflict, "Integration is not active for this device.")
+	if udai.Status == models.UserDeviceAPIIntegrationStatusAuthenticationFailure {
+		return fiber.NewError(fiber.StatusBadRequest, "Integration credentials have expired. Reauthenticate before attempting to subscribe.")
 	}
 
 	md := new(services.UserDeviceAPIIntegrationsMetadata)

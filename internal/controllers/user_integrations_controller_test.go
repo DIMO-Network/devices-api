@@ -1138,7 +1138,7 @@ func (s *UserIntegrationsControllerTestSuite) Test_InactiveIntegration_Telemetry
 	res, err := s.app.Test(request, 60*1000)
 	s.Assert().NoError(err)
 
-	s.Assert().True(res.StatusCode == fiber.StatusConflict)
+	s.Equal(fiber.StatusBadRequest, res.StatusCode)
 }
 
 func (s *UserIntegrationsControllerTestSuite) Test_MissingRegionAndCapable_TelemetrySubscribe() {
