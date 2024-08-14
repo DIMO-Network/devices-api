@@ -232,7 +232,6 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 		var sdStat *SyntheticDeviceStatus
 
 		var nft *VehicleNFTData
-		var credential *VINCredentialData
 		pu := make([]PrivilegeUser, 0)
 
 		if !d.TokenID.IsZero() || d.R.MintRequest != nil {
