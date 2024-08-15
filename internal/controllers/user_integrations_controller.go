@@ -630,7 +630,7 @@ func (udc *UserDevicesController) TelemetrySubscribe(c *fiber.Ctx) error {
 			device.VinIdentifier.String,
 		); err != nil {
 			logger.Error().Err(err).Msg("error registering for telemetry")
-			return fiber.NewError(fiber.StatusFailedDependency, "could not register device for tesla telemetry: ", err.Error())
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to update telemetry configuration.")
 		}
 	default:
 		return fiber.NewError(fiber.StatusBadRequest, "Integration not supported for this command")
