@@ -313,10 +313,23 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	requestID := ksuid.New().String()
 
-	syntheticDeviceAddr, err := sdc.sendSyntheticDeviceMintPayload(c.Context(), requestID, tdHash, int(vid), in.TokenId, ownerSignature, childKeyNumber)
+	syntheticDeviceAddr, err := sdc.walletSvc.GetAddress(c.Context(), uint32(childKeyNumber))
 	if err != nil {
-		sdc.log.Err(err).Msg("synthetic device minting request failed")
-		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
+		sdc.log.Err(err).
+			Str("function-name", "SyntheticWallet.GetAddress").
+			Int("childKeyNumber", childKeyNumber).
+			Msg("Error occurred getting synthetic wallet address")
+		return err
+	}
+
+	virtSig, err := sdc.walletSvc.SignHash(c.Context(), uint32(childKeyNumber), tdHash)
+	if err != nil {
+		sdc.log.Err(err).
+			Str("function-name", "SyntheticWallet.SignHash").
+			Bytes("Hash", tdHash).
+			Int("childKeyNumber", childKeyNumber).
+			Msg("Error occurred signing message hash")
+		return err
 	}
 
 	metaReq := &models.MetaTransactionRequest{
@@ -343,6 +356,18 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	mvt := contracts.MintSyntheticDeviceInput{
+		IntegrationNode:     new(big.Int).SetUint64(in.TokenId),
+		VehicleNode:         new(big.Int).SetInt64(vid),
+		VehicleOwnerSig:     ownerSignature,
+		SyntheticDeviceAddr: common.BytesToAddress(syntheticDeviceAddr),
+		SyntheticDeviceSig:  virtSig,
+	}
+
+	if err := sdc.registryClient.MintSyntheticDeviceSign(requestID, mvt); err != nil {
 		return err
 	}
 
