@@ -541,38 +541,6 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 	return sdc.registryClient.BurnSyntheticDeviceSign(reqID, big.NewInt(vehicleNode), big.NewInt(syntheticDeviceNode), ownerSignature)
 }
 
-func (sdc *SyntheticDevicesController) sendSyntheticDeviceMintPayload(ctx context.Context, requestID string, hash []byte, vehicleNode int, intTokenID uint64, ownerSignature []byte, childKeyNumber int) ([]byte, error) {
-	syntheticDeviceAddr, err := sdc.walletSvc.GetAddress(ctx, uint32(childKeyNumber))
-	if err != nil {
-		sdc.log.Err(err).
-			Str("function-name", "SyntheticWallet.GetAddress").
-			Int("childKeyNumber", childKeyNumber).
-			Msg("Error occurred getting synthetic wallet address")
-		return nil, err
-	}
-
-	virtSig, err := sdc.walletSvc.SignHash(ctx, uint32(childKeyNumber), hash)
-	if err != nil {
-		sdc.log.Err(err).
-			Str("function-name", "SyntheticWallet.SignHash").
-			Bytes("Hash", hash).
-			Int("childKeyNumber", childKeyNumber).
-			Msg("Error occurred signing message hash")
-		return nil, err
-	}
-
-	vNode := new(big.Int).SetInt64(int64(vehicleNode))
-	mvt := contracts.MintSyntheticDeviceInput{
-		IntegrationNode:     new(big.Int).SetUint64(intTokenID),
-		VehicleNode:         vNode,
-		VehicleOwnerSig:     ownerSignature,
-		SyntheticDeviceAddr: common.BytesToAddress(syntheticDeviceAddr),
-		SyntheticDeviceSig:  virtSig,
-	}
-
-	return syntheticDeviceAddr, sdc.registryClient.MintSyntheticDeviceSign(requestID, mvt)
-}
-
 func (sdc *SyntheticDevicesController) generateNextChildKeyNumber(ctx context.Context) (int, error) {
 	seq := SyntheticDeviceSequence{}
 
