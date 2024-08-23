@@ -295,7 +295,7 @@ type TeslaSubscriptionError struct {
 	Type     TeslaSubscriptionErrorType
 }
 
-func (e TeslaSubscriptionError) Error() string {
+func (e *TeslaSubscriptionError) Error() string {
 	return e.internal
 }
 
@@ -333,15 +333,15 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 	}
 
 	if slices.Contains(subResp.Response.SkippedVehicles.MissingKey, vin) {
-		return TeslaSubscriptionError{internal: "virtual key not added to vehicle", Type: KeyUnpaired}
+		return &TeslaSubscriptionError{internal: "virtual key not added to vehicle", Type: KeyUnpaired}
 	}
 
 	if slices.Contains(subResp.Response.SkippedVehicles.UnsupportedHardware, vin) {
-		return TeslaSubscriptionError{internal: "vehicle hardware not supported", Type: UnsupportedVehicle}
+		return &TeslaSubscriptionError{internal: "vehicle hardware not supported", Type: UnsupportedVehicle}
 	}
 
 	if slices.Contains(subResp.Response.SkippedVehicles.UnsupportedFirmware, vin) {
-		return TeslaSubscriptionError{internal: "vehicle firmware not supported", Type: UnsupportedFirmware}
+		return &TeslaSubscriptionError{internal: "vehicle firmware not supported", Type: UnsupportedFirmware}
 	}
 
 	return nil
