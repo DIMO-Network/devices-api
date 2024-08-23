@@ -91,10 +91,10 @@ func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID,
 	}
 
 	tx, err := uds.dbs().Writer.DB.BeginTx(ctx, nil)
-	defer tx.Rollback() //nolint
 	if err != nil {
 		return nil, nil, err
 	}
+	defer tx.Rollback() //nolint
 
 	userDeviceID := ksuid.New().String()
 	// register device for the user
