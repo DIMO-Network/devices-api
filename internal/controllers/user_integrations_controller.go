@@ -649,7 +649,7 @@ func (udc *UserDevicesController) TelemetrySubscribe(c *fiber.Ctx) error {
 
 	logger.Info().Msg("Successfully subscribed to telemetry")
 
-	return c.SendStatus(fiber.StatusOK)
+	return c.JSON(fiber.Map{"message": "Successfully subscribed to vehicle telemetry."})
 }
 
 // GetAftermarketDeviceInfo godoc
