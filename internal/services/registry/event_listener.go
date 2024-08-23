@@ -62,6 +62,12 @@ func (c *Consumer) Cleanup(sarama.ConsumerGroupSession) error {
 func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for {
 		select {
+		case <-session.Context().Done():
+			return nil
+		default:
+		}
+
+		select {
 		case message := <-claim.Messages():
 			c.logger.Info().Int32("partition", message.Partition).Int64("offset", message.Offset).RawJSON("value", message.Value).Msg("Got message")
 			event := shared.CloudEvent[ceData]{}
@@ -76,8 +82,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 				}
 			}
 			session.MarkMessage(message, "")
-		case <-session.Context().Done():
-			return nil
+		default:
 		}
 	}
 }
