@@ -630,6 +630,17 @@ func (udc *UserDevicesController) TelemetrySubscribe(c *fiber.Ctx) error {
 			device.VinIdentifier.String,
 		); err != nil {
 			logger.Error().Err(err).Msg("error registering for telemetry")
+			var subErr *services.TeslaSubscriptionError
+			if errors.As(err, &subErr) {
+				switch subErr.Type {
+				case services.KeyUnpaired:
+					return fiber.NewError(fiber.StatusBadRequest, "Virtual key not paired with vehicle.")
+				case services.UnsupportedVehicle:
+					return fiber.NewError(fiber.StatusBadRequest, "Pre-2021 Model S and X do not support telemetry.")
+				case services.UnsupportedFirmware:
+					return fiber.NewError(fiber.StatusBadRequest, "Vehicle firmware version is earlier than 2024.26.")
+				}
+			}
 			return fiber.NewError(fiber.StatusInternalServerError, "Failed to update telemetry configuration.")
 		}
 	default:

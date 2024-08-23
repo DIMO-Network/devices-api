@@ -280,6 +280,25 @@ var fields = TelemetryFields{
 	"BatteryLevel":        {IntervalSeconds: 60},
 }
 
+type TeslaSubscriptionErrorType int
+
+const (
+	KeyUnpaired TeslaSubscriptionErrorType = iota
+	UnsupportedVehicle
+	UnsupportedFirmware
+)
+
+// TeslaSubscriptionError is an error containing text suitable for showing to the user.
+// It indicates user error.
+type TeslaSubscriptionError struct {
+	internal string
+	Type     TeslaSubscriptionErrorType
+}
+
+func (e TeslaSubscriptionError) Error() string {
+	return e.internal
+}
+
 func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, token string, vin string) error {
 	url := t.FleetBase.JoinPath("api/1/vehicles/fleet_telemetry_config")
 
@@ -314,15 +333,15 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 	}
 
 	if slices.Contains(subResp.Response.SkippedVehicles.MissingKey, vin) {
-		return errors.New("virtual key not added to vehicle")
+		return TeslaSubscriptionError{internal: "virtual key not added to vehicle", Type: KeyUnpaired}
 	}
 
 	if slices.Contains(subResp.Response.SkippedVehicles.UnsupportedHardware, vin) {
-		return errors.New("vehicle hardware not supported")
+		return TeslaSubscriptionError{internal: "vehicle hardware not supported", Type: UnsupportedVehicle}
 	}
 
 	if slices.Contains(subResp.Response.SkippedVehicles.UnsupportedFirmware, vin) {
-		return errors.New("vehicle firmware not supported")
+		return TeslaSubscriptionError{internal: "vehicle firmware not supported", Type: UnsupportedFirmware}
 	}
 
 	return nil

@@ -124,6 +124,6 @@ func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForTelemetryData_Errror_Cas
 
 		err = t.SUT.SubscribeForTelemetryData(t.ctx, token, vin)
 
-		t.Require().EqualError(err, tst.expectedError)
+		t.EqualError(err, tst.expectedError)
 	}
 }
