@@ -6,6 +6,7 @@ import (
 	"flag"
 	"time"
 
+	"github.com/IBM/sarama"
 	"github.com/google/subcommands"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
@@ -14,7 +15,6 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
-	"github.com/Shopify/sarama"
 )
 
 type remakeUserDeviceTokenTableCmd struct {

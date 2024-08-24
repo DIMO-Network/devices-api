@@ -34,7 +34,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/volatiletech/sqlboiler/v4/types"
 
-	smock "github.com/Shopify/sarama/mocks"
+	smock "github.com/IBM/sarama/mocks"
 )
 
 type mockTestEntity struct {

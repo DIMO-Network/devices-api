@@ -6,9 +6,9 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/elasticsearch"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/shared/db"
+	"github.com/IBM/sarama"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/Shopify/sarama"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"

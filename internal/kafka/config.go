@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/pkg/errors"
 )
 
@@ -17,7 +17,7 @@ type Config struct {
 	CertPEMBlock, KeyPEMBlock, CaPEMCerts []byte
 }
 
-//nolint
+// nolint
 func (c *Config) Connect() (sarama.ConsumerGroup, error) {
 	// check if keys have been set to use tls.config for secure connection, otherwise likely means running locally
 	if len(c.CertPEMBlock) > 0 || len(c.CaPEMCerts) > 0 || len(c.KeyPEMBlock) > 0 {
@@ -37,7 +37,7 @@ func (c *Config) Connect() (sarama.ConsumerGroup, error) {
 	return group, nil
 }
 
-//nolint
+// nolint
 func (c *Config) tlsConfig() (*tls.Config, error) {
 	cert, err := tls.X509KeyPair(c.CertPEMBlock, c.KeyPEMBlock)
 	if err != nil {

@@ -8,7 +8,7 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/sdtask"
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
 )

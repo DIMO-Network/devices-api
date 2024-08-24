@@ -36,7 +36,7 @@ import (
 	"github.com/DIMO-Network/shared/privileges"
 	"github.com/DIMO-Network/shared/redis"
 	"github.com/DIMO-Network/zflogger"
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/goccy/go-json"
