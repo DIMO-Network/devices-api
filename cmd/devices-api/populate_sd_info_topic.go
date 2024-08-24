@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/IBM/sarama"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/subcommands"
 	"github.com/rs/zerolog"
@@ -16,7 +17,6 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/Shopify/sarama"
 )
 
 type populateSDInfoTopicCmd struct {

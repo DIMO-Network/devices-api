@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/IBM/sarama"
 	"github.com/google/subcommands"
 
 	"github.com/DIMO-Network/shared/db"
@@ -14,7 +15,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
-	"github.com/Shopify/sarama"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )

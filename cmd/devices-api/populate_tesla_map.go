@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/IBM/sarama"
 	"github.com/google/subcommands"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/Shopify/sarama"
 )
 
 type populateTeslaTelemetryMapCmd struct {

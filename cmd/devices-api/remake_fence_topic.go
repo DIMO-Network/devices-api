@@ -6,6 +6,7 @@ import (
 	"flag"
 	"time"
 
+	"github.com/IBM/sarama"
 	"github.com/google/subcommands"
 	"github.com/rs/zerolog"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/controllers"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
-	"github.com/Shopify/sarama"
 	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )

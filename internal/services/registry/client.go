@@ -7,7 +7,7 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/shared"
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"

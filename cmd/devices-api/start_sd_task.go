@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/IBM/sarama"
 	"github.com/google/subcommands"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
@@ -17,7 +18,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/Shopify/sarama"
 )
 
 type startSDTask struct {
