@@ -85,6 +85,9 @@ type DeviceDefinition struct {
 type partialTeslaClaims struct {
 	jwt.RegisteredClaims
 	Scopes []string `json:"scp"`
+
+	// For debugging.
+	OUCode string `json:"ou_code"`
 }
 
 var teslaDataScope = "vehicle_device_data"
@@ -160,7 +163,8 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 
 	vehicles, err := u.teslaFleetAPISvc.GetVehicles(c.Context(), teslaAuth.AccessToken)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "error occurred fetching vehicles:"+err.Error())
+		logger.Err(err).Str("subject", claims.Subject).Str("ouCode", claims.OUCode).Interface("audience", claims.Audience).Msg("Error retrieving vehicles.")
+		return fiber.NewError(fiber.StatusInternalServerError, "Couldn't fetch vehicles from Tesla.")
 	}
 
 	response := make([]CompleteOAuthExchangeResponse, 0, len(vehicles))
