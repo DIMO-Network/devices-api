@@ -242,6 +242,12 @@ kafka:
         min.compaction.lag.ms: '3600000'
         min.cleanable.dirty.ratio: '0.01'
         delete.retention.ms: '3600000'
+    - name: topic.event
+      config:
+        segment.ms: '3600000'
+        compression.type: producer
+        cleanup.policy: delete
+        min.compaction.lag.ms: '3600000'
 serviceMonitor:
   enabled: true
   path: /metrics
