@@ -115,7 +115,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 					return err
 				}
 
-				if (dd.Name == "Model S" || dd.Name == "Model X") && dd.Type.Year < 2021 {
+				if (dd.Type.Model == "Model S" || dd.Type.Model == "Model X") && dd.Type.Year < 2021 {
 					vks = Incapable
 				} else {
 					vks = Unpaired
