@@ -170,7 +170,8 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 	response := make([]CompleteOAuthExchangeResponse, 0, len(vehicles))
 	for _, v := range vehicles {
 		decodeVIN, err := u.DeviceDefSvc.DecodeVIN(c.Context(), v.VIN, "", 0, "")
-		if err != nil || len(decodeVIN.DeviceDefinitionId) == 0 {
+		if err != nil {
+			logger.Err(err).Str("vin", v.VIN).Msg("Failed to decode Tesla VIN.")
 			return fiber.NewError(fiber.StatusFailedDependency, "An error occurred completing tesla authorization")
 		}
 
