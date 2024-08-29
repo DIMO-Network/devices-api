@@ -384,6 +384,9 @@ func (t *teslaFleetAPIService) performRequest(ctx context.Context, url *url.URL,
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.Header.Get("Content-Type") != "application/json" {
+			return nil, fmt.Errorf("status code %d and non-JSON response", resp.StatusCode)
+		}
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, fmt.Errorf("error reading response body: %w", err)
