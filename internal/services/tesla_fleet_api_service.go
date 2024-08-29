@@ -390,6 +390,7 @@ func (t *teslaFleetAPIService) performRequest(ctx context.Context, url *url.URL,
 		}
 		var errBody TeslaFleetAPIError
 		if err := json.Unmarshal(b, &errBody); err != nil {
+			t.log.Info().Int("code", resp.StatusCode).Msgf("Tesla error content type %q", resp.Header.Get("Content-Type"))
 			return nil, fmt.Errorf("couldn't parse Tesla error response body: %w", err)
 		}
 		t.log.Info().Int("code", resp.StatusCode).Str("error", errBody.Error).Str("errorDescription", errBody.ErrorDescription).Str("url", url.String()).Msg("Tesla error.")
