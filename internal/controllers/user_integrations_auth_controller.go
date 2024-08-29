@@ -12,6 +12,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/middleware/address"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
+	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
@@ -169,7 +170,8 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 
 	response := make([]CompleteOAuthExchangeResponse, 0, len(vehicles))
 	for _, v := range vehicles {
-		decodeVIN, err := u.DeviceDefSvc.DecodeVIN(c.Context(), v.VIN, "", 0, "")
+		queryVIN := shared.VIN(v.VIN) // Try to help decoding out with model and year hints.
+		decodeVIN, err := u.DeviceDefSvc.DecodeVIN(c.Context(), v.VIN, queryVIN.TeslaModel(), queryVIN.Year(), "")
 		if err != nil {
 			logger.Err(err).Str("vin", v.VIN).Msg("Failed to decode Tesla VIN.")
 			return fiber.NewError(fiber.StatusFailedDependency, "An error occurred completing tesla authorization")
