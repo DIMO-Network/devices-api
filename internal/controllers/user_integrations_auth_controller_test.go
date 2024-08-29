@@ -112,13 +112,13 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 		Vendor: constants.TeslaVendor,
 	}, nil)
 	s.teslaFleetAPISvc.EXPECT().CompleteTeslaAuthCodeExchange(gomock.Any(), mockAuthCode, mockRedirectURI).Return(mockAuthCodeResp, nil)
-	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "1GBGC24U93Z337558", "", 0, "").Return(&ddgrpc.DecodeVinResponse{DeviceDefinitionId: "someID-1"}, nil)
-	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "WAUAF78E95A553420", "", 0, "").Return(&ddgrpc.DecodeVinResponse{DeviceDefinitionId: "someID-2"}, nil)
+	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "5YJ3E1EB7NF145351", "Model 3", 2022, "").Return(&ddgrpc.DecodeVinResponse{DeviceDefinitionId: "someID-1"}, nil)
+	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "5YJYGDED4MF107402", "Model Y", 2021, "").Return(&ddgrpc.DecodeVinResponse{DeviceDefinitionId: "someID-2"}, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), "someID-1").Return(&ddgrpc.GetDeviceDefinitionItemResponse{
 		DeviceDefinitionId: "someID-1",
 		Type: &ddgrpc.DeviceType{
 			Make:  "Tesla",
-			Model: "Y",
+			Model: "Model 3",
 			Year:  2022,
 		},
 	}, nil)
@@ -126,8 +126,8 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 		DeviceDefinitionId: "someID-2",
 		Type: &ddgrpc.DeviceType{
 			Make:  "Tesla",
-			Model: "X",
-			Year:  2020,
+			Model: "Model Y",
+			Year:  2021,
 		},
 	}, nil)
 
@@ -141,11 +141,11 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 	resp := []services.TeslaVehicle{
 		{
 			ID:  11114464922222,
-			VIN: "1GBGC24U93Z337558",
+			VIN: "5YJ3E1EB7NF145351",
 		},
 		{
 			ID:  22222464999999,
-			VIN: "WAUAF78E95A553420",
+			VIN: "5YJYGDED4MF107402",
 		},
 	}
 	s.teslaFleetAPISvc.EXPECT().GetVehicles(gomock.Any(), mockAuthCodeResp.AccessToken).Return(resp, nil)
@@ -166,21 +166,21 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 		Vehicles: []CompleteOAuthExchangeResponse{
 			{
 				ExternalID: "11114464922222",
-				VIN:        "1GBGC24U93Z337558",
+				VIN:        "5YJ3E1EB7NF145351",
 				Definition: DeviceDefinition{
 					Make:               "Tesla",
-					Model:              "Y",
+					Model:              "Model 3",
 					Year:               2022,
 					DeviceDefinitionID: "someID-1",
 				},
 			},
 			{
 				ExternalID: "22222464999999",
-				VIN:        "WAUAF78E95A553420",
+				VIN:        "5YJYGDED4MF107402",
 				Definition: DeviceDefinition{
 					Make:               "Tesla",
-					Model:              "X",
-					Year:               2020,
+					Model:              "Model Y",
+					Year:               2021,
 					DeviceDefinitionID: "someID-2",
 				},
 			},
