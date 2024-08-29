@@ -35,7 +35,6 @@ import (
 	"github.com/DIMO-Network/shared/middleware/privilegetoken"
 	"github.com/DIMO-Network/shared/privileges"
 	"github.com/DIMO-Network/shared/redis"
-	"github.com/DIMO-Network/zflogger"
 	"github.com/IBM/sarama"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/ethereum/go-ethereum/common"
@@ -155,9 +154,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		EnableStackTrace:  true,
 		StackTraceHandler: nil,
 	}))
-
-	// Request logging.
-	app.Use(zflogger.New(logger, nil)) // TODO(elffjs): Is this even printing?
 
 	cacheHandler := cache.New(cache.Config{
 		Next: func(c *fiber.Ctx) bool {
