@@ -17,6 +17,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -93,6 +95,16 @@ type partialTeslaClaims struct {
 
 var teslaDataScope = "vehicle_device_data"
 
+var teslaCodeFailureCount = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Namespace: "devices_api",
+		Subsystem: "tesla",
+		Name:      "code_exchange_failures_total",
+		Help:      "Known strains of failure during Tesla authorization code exchange and ensuing vehicle display.",
+	},
+	[]string{"type"},
+)
+
 // CompleteOAuthExchange godoc
 // @Description Complete Tesla auth and get devices for authenticated user
 // @Tags        user-devices
@@ -149,6 +161,7 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 	}
 
 	if !slices.Contains(claims.Scopes, teslaDataScope) {
+		teslaCodeFailureCount.WithLabelValues("missing_scope").Inc()
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Missing scope %s.", teslaDataScope))
 	}
 
@@ -173,6 +186,7 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 		queryVIN := shared.VIN(v.VIN) // Try to help decoding out with model and year hints.
 		decodeVIN, err := u.DeviceDefSvc.DecodeVIN(c.Context(), v.VIN, queryVIN.TeslaModel(), queryVIN.Year(), "")
 		if err != nil {
+			teslaCodeFailureCount.WithLabelValues("vin_decode").Inc()
 			logger.Err(err).Str("vin", v.VIN).Msg("Failed to decode Tesla VIN.")
 			return fiber.NewError(fiber.StatusFailedDependency, "An error occurred completing tesla authorization")
 		}

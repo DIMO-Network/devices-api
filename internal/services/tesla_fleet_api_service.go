@@ -139,6 +139,7 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 		var e *oauth2.RetrieveError
 		errString := err.Error()
 		if errors.As(err, &e) {
+			t.log.Info().Str("error", e.ErrorCode).Msg("Code exchange failure.")
 			errString = e.ErrorDescription
 		}
 		return nil, fmt.Errorf("error occurred completing authorization: %s", errString)
@@ -396,6 +397,7 @@ func (t *teslaFleetAPIService) performRequest(ctx context.Context, url *url.URL,
 				Msg("An error occurred when attempting to decode the error message from the api.")
 			return nil, fmt.Errorf("couldn't parse Tesla error response body: %w", err)
 		}
+		t.log.Info().Str("error", errBody.Error).Str("errorDescription", errBody.ErrorDescription).Str("url", url.String()).Msg("Tesla error.")
 		return nil, fmt.Errorf("error occurred calling Tesla api: %s", errBody.Error)
 	}
 
