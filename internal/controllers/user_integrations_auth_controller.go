@@ -24,8 +24,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const teslaFleetAuthCacheKey = "integration_credentials_%s"
-
 type UserIntegrationAuthController struct {
 	Settings         *config.Settings
 	DBS              func() *db.ReaderWriter

@@ -83,6 +83,9 @@ type UserIntegrationsControllerTestSuite struct {
 const testUserID = "123123"
 const testUser2 = "someOtherUser2"
 
+// TODO(elffjs): This shouldn't be necessary anymore. Need to work with an interface.
+const teslaFleetAuthCacheKey = "integration_credentials_%s"
+
 // SetupSuite starts container db
 func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 	s.ctx = context.Background()

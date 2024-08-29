@@ -1987,7 +1987,6 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse externalId %q as an integer.", teslaID))
 	}
 
-	teslaV2CacheKey := ""
 	if apiVersion == constants.TeslaAPIV2 { // If version is 2, we are using fleet api which has token stored in cache
 		user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: ud.UserID})
 		if err != nil {
@@ -1996,7 +1995,6 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		if user.EthereumAddress == nil {
 			return fiber.NewError(fiber.StatusBadRequest, "missing wallet details for user")
 		}
-		teslaV2CacheKey = fmt.Sprintf(teslaFleetAuthCacheKey, *user.EthereumAddress)
 
 		// Yes, yes.
 		store := &tmpcred.Store{
@@ -2121,13 +2119,6 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	}
 
 	logger.Info().Msg("Finished Tesla device registration")
-
-	if apiVersion == constants.TeslaAPIV2 && teslaV2CacheKey != "" {
-		err = udc.redisCache.Del(c.Context(), teslaV2CacheKey).Err()
-		if err != nil {
-			udc.log.Err(err).Str("cacheKey", teslaV2CacheKey).Msg("error occurred deleting record from cache")
-		}
-	}
 
 	return c.SendStatus(fiber.StatusNoContent)
 }
