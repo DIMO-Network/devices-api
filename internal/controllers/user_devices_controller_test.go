@@ -401,6 +401,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_FailDecode() 
 	assert.Equal(s.T(), "failed to decode vin. unable to decode vin: 4T3R6RFVXMU023395", gjson.GetBytes(body, "message").String())
 }
 
+// case where there the VIN already exists, but it is for the same user as current request.
 func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_SameUser_DuplicateVIN() {
 	// arrange DB
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
@@ -420,11 +421,12 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_SameUser_Dupl
 	s.deviceDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Times(1).Return(apInteg, nil)
 	// we always call this just in case
 	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), apInteg.Id, dd[0].DeviceDefinitionId, "Americas").
-		Times(1)
+		Times(1).Return(nil, nil)
 
 	request := test.BuildRequest("POST", "/user/devices/fromvin", string(j))
 	response, responseError := s.app.Test(request, 10000)
-	fmt.Println(responseError)
+	require.NoError(s.T(), responseError)
+
 	body, _ := io.ReadAll(response.Body)
 	// assert
 	if assert.Equal(s.T(), fiber.StatusCreated, response.StatusCode) == false {

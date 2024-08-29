@@ -619,6 +619,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
+		deviceDefinitionID = existingUD.DefinitionID.String
 	} else {
 		// decode VIN with grpc call
 		decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, "", 0, reg.CountryCode)
@@ -639,7 +640,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
 	}
-
+	// todo: this needs to be changed to take in a new nameSlug ddid
 	// create device_integration record in definitions just in case. If we got the VIN normally means Mobile App able to decode.
 	_, err = udc.DeviceDefIntSvc.CreateDeviceDefinitionIntegration(c.Context(), integration.Id, deviceDefinitionID, country.Region)
 	if err != nil {
