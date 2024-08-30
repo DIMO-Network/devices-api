@@ -39,6 +39,9 @@ type TeslaResponseWrapper[A any] struct {
 	Response A `json:"response"`
 }
 
+// ErrWrongRegion is returned when the Tesla proxy chooses the wrong region for a request.
+var ErrWrongRegion = errors.New("tesla: incorrect region")
+
 type TeslaFleetAPIError struct {
 	Error            string `json:"error"`
 	ErrorDescription string `json:"error_description"`
@@ -139,7 +142,7 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 		var e *oauth2.RetrieveError
 		errString := err.Error()
 		if errors.As(err, &e) {
-			t.log.Info().Str("error", e.ErrorCode).Msg("Code exchange failure.")
+			t.log.Info().Str("error", e.ErrorCode).Str("errorDescription", e.ErrorDescription).Msg("Code exchange failure.")
 			errString = e.ErrorDescription
 		}
 		return nil, fmt.Errorf("error occurred completing authorization: %s", errString)
@@ -159,7 +162,7 @@ func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token string) ([
 
 	body, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch vehicles for user: %w", err)
+		return nil, fmt.Errorf("failed to list vehicles: %w", err)
 	}
 
 	var vehicles TeslaResponseWrapper[[]TeslaVehicle]
@@ -384,8 +387,11 @@ func (t *teslaFleetAPIService) performRequest(ctx context.Context, url *url.URL,
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		if resp.Header.Get("Content-Type") != "application/json" {
-			return nil, fmt.Errorf("status code %d and non-JSON response", resp.StatusCode)
+		if resp.StatusCode == 421 {
+			return nil, ErrWrongRegion
+		}
+		if ct := resp.Header.Get("Content-Type"); ct != "application/json" {
+			return nil, fmt.Errorf("status code %d and content type %q", resp.StatusCode, ct)
 		}
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
@@ -396,6 +402,7 @@ func (t *teslaFleetAPIService) performRequest(ctx context.Context, url *url.URL,
 			return nil, fmt.Errorf("couldn't parse Tesla error response body: %w", err)
 		}
 		t.log.Info().Int("code", resp.StatusCode).Str("error", errBody.Error).Str("errorDescription", errBody.ErrorDescription).Str("url", url.String()).Msg("Tesla error.")
+
 		return nil, fmt.Errorf("error occurred calling Tesla api: %s", errBody.Error)
 	}
 
