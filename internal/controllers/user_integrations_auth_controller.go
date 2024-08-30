@@ -146,6 +146,10 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 
 	teslaAuth, err := u.teslaFleetAPISvc.CompleteTeslaAuthCodeExchange(c.Context(), reqBody.AuthorizationCode, reqBody.RedirectURI)
 	if err != nil {
+		if errors.Is(err, services.ErrInvalidAuthCode) {
+			teslaCodeFailureCount.WithLabelValues("auth_code").Inc()
+			return fiber.NewError(fiber.StatusBadRequest, "Authorization code invalid, expired, or revoked.")
+		}
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to get tesla authCode:"+err.Error())
 	}
 

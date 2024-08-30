@@ -120,6 +120,8 @@ func NewTeslaFleetAPIService(settings *config.Settings, logger *zerolog.Logger) 
 	}, nil
 }
 
+var ErrInvalidAuthCode = errors.New("authorization code invalid, expired, or revoked")
+
 // CompleteTeslaAuthCodeExchange calls Tesla Fleet API and exchange auth code for a new auth and refresh token
 func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context, authCode, redirectURI string) (*TeslaAuthCodeResponse, error) {
 	conf := oauth2.Config{
@@ -142,6 +144,10 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 		var e *oauth2.RetrieveError
 		errString := err.Error()
 		if errors.As(err, &e) {
+			// Non-standard error code from Tesla. See RFC 6749.
+			if e.ErrorCode == "invalid_auth_code" {
+				return nil, ErrInvalidAuthCode
+			}
 			t.log.Info().Str("error", e.ErrorCode).Str("errorDescription", e.ErrorDescription).Msg("Code exchange failure.")
 			errString = e.ErrorDescription
 		}
