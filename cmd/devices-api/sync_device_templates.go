@@ -67,7 +67,7 @@ func (p *syncDeviceTemplatesCmd) Execute(ctx context.Context, _ *flag.FlagSet, _
 // syncDeviceTemplates looks for DD's with a templateID set, and then compares to all UD's connected and Applies the template if doesn't match.
 // If onlyMoveFromTemplate is > 0, then only apply the template if the current template is this value.
 func syncDeviceTemplates(ctx context.Context, logger *zerolog.Logger, settings *config.Settings, pdb db.Store, autoPiHWSvc autopi.HardwareTemplateService, onlyMoveFromTemplate string, targetTemplateID *string) error {
-	conn, err := grpc.Dial(settings.DefinitionsGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(settings.DefinitionsGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return err
 	}

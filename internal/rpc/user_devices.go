@@ -577,7 +577,7 @@ func (s *userDeviceRPCServer) UpdateUserDeviceMetadata(ctx context.Context, req 
 
 func (s *userDeviceRPCServer) ClearMetaTransactionRequests(ctx context.Context, _ *emptypb.Empty) (*pb.ClearMetaTransactionRequestsResponse, error) {
 
-	conn, err := grpc.Dial(s.settings.MetaTransactionProcessorGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(s.settings.MetaTransactionProcessorGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to meta transaction processor: %w", err)
