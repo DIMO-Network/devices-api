@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
-	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -143,7 +142,6 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse JSON request body.")
 	}
 
-	exchStart := time.Now()
 	teslaAuth, err := u.teslaFleetAPISvc.CompleteTeslaAuthCodeExchange(c.Context(), reqBody.AuthorizationCode, reqBody.RedirectURI)
 	if err != nil {
 		if errors.Is(err, services.ErrInvalidAuthCode) {
@@ -152,7 +150,6 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to get tesla authCode:"+err.Error())
 	}
-	logger.Info().Msgf("Tesla code exchange took %s.", time.Since(exchStart))
 
 	if teslaAuth.RefreshToken == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "Code exchange did not return a refresh token. Make sure you've granted offline_access.")
@@ -179,7 +176,6 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 		return fmt.Errorf("error persisting credentials: %w", err)
 	}
 
-	listStart := time.Now()
 	vehicles, err := u.teslaFleetAPISvc.GetVehicles(c.Context(), teslaAuth.AccessToken)
 	if err != nil {
 		logger.Err(err).Str("subject", claims.Subject).Str("ouCode", claims.OUCode).Interface("audience", claims.Audience).Msg("Error retrieving vehicles.")
@@ -189,18 +185,15 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "Couldn't fetch vehicles from Tesla.")
 	}
-	logger.Info().Msgf("Retrieving Tesla vehicle list took %s.", time.Since(listStart))
 
 	response := make([]CompleteOAuthExchangeResponse, 0, len(vehicles))
 	for _, v := range vehicles {
-		decodeStart := time.Now()
 		ddRes, err := u.decodeTeslaVIN(c.Context(), v.VIN)
 		if err != nil {
 			teslaCodeFailureCount.WithLabelValues("vin_decode").Inc()
 			logger.Err(err).Str("vin", v.VIN).Msg("Failed to decode Tesla VIN.")
 			return fiber.NewError(fiber.StatusFailedDependency, "An error occurred completing tesla authorization")
 		}
-		logger.Info().Msgf("Tesla VIN decode took %s.", time.Since(decodeStart))
 
 		response = append(response, CompleteOAuthExchangeResponse{
 			ExternalID: strconv.Itoa(v.ID),
