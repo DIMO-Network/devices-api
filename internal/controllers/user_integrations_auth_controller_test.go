@@ -112,24 +112,9 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 		Vendor: constants.TeslaVendor,
 	}, nil)
 	s.teslaFleetAPISvc.EXPECT().CompleteTeslaAuthCodeExchange(gomock.Any(), mockAuthCode, mockRedirectURI).Return(mockAuthCodeResp, nil)
-	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "5YJ3E1EB7NF145351", "Model 3", 2022, "").Return(&ddgrpc.DecodeVinResponse{DeviceDefinitionId: "someID-1"}, nil)
-	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "5YJYGDED4MF107402", "Model Y", 2021, "").Return(&ddgrpc.DecodeVinResponse{DeviceDefinitionId: "someID-2"}, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), "someID-1").Return(&ddgrpc.GetDeviceDefinitionItemResponse{
-		DeviceDefinitionId: "someID-1",
-		Type: &ddgrpc.DeviceType{
-			Make:  "Tesla",
-			Model: "Model 3",
-			Year:  2022,
-		},
-	}, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), "someID-2").Return(&ddgrpc.GetDeviceDefinitionItemResponse{
-		DeviceDefinitionId: "someID-2",
-		Type: &ddgrpc.DeviceType{
-			Make:  "Tesla",
-			Model: "Model Y",
-			Year:  2021,
-		},
-	}, nil)
+
+	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), "Tesla", "Model 3", 2022).Return(&ddgrpc.GetDeviceDefinitionItemResponse{DeviceDefinitionId: "someID-1"}, nil)
+	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), "Tesla", "Model Y", 2021).Return(&ddgrpc.GetDeviceDefinitionItemResponse{DeviceDefinitionId: "someID-2"}, nil)
 
 	s.credStore.EXPECT().Store(gomock.Any(), s.userAddr, &tmpcred.Credential{
 		IntegrationID: 2,

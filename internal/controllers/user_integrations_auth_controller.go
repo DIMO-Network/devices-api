@@ -193,9 +193,8 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 
 	response := make([]CompleteOAuthExchangeResponse, 0, len(vehicles))
 	for _, v := range vehicles {
-		queryVIN := shared.VIN(v.VIN) // Try to help decoding out with model and year hints.
 		decodeStart := time.Now()
-		decodeVIN, err := u.DeviceDefSvc.DecodeVIN(c.Context(), v.VIN, queryVIN.TeslaModel(), queryVIN.Year(), "")
+		ddRes, err := u.decodeTeslaVIN(c.Context(), v.VIN)
 		if err != nil {
 			teslaCodeFailureCount.WithLabelValues("vin_decode").Inc()
 			logger.Err(err).Str("vin", v.VIN).Msg("Failed to decode Tesla VIN.")
@@ -203,20 +202,14 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 		}
 		logger.Info().Msgf("Tesla VIN decode took %s.", time.Since(decodeStart))
 
-		dd, err := u.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), decodeVIN.DeviceDefinitionId)
-		if err != nil {
-			u.log.Err(err).Str("deviceDefinitionID", decodeVIN.DeviceDefinitionId).Msg("An error occurred fetching device definition using ID")
-			return fiber.NewError(fiber.StatusFailedDependency, "An error occurred completing tesla authorization")
-		}
-
 		response = append(response, CompleteOAuthExchangeResponse{
 			ExternalID: strconv.Itoa(v.ID),
 			VIN:        v.VIN,
 			Definition: DeviceDefinition{
-				Make:               dd.Type.Make,
-				Model:              dd.Type.Model,
-				Year:               int(dd.Type.Year),
-				DeviceDefinitionID: decodeVIN.DeviceDefinitionId,
+				Make:               ddRes.Make,
+				Model:              ddRes.Model,
+				Year:               ddRes.Year,
+				DeviceDefinitionID: ddRes.ID,
 			},
 		})
 	}
@@ -226,4 +219,24 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 	}
 
 	return c.JSON(vehicleResp)
+}
+
+type decodeResult struct {
+	ID    string
+	Make  string
+	Model string
+	Year  int
+}
+
+func (u *UserIntegrationAuthController) decodeTeslaVIN(ctx context.Context, vin string) (*decodeResult, error) {
+	teslaMake := "Tesla"
+	model := shared.VIN(vin).TeslaModel()
+	year := shared.VIN(vin).Year()
+
+	res, err := u.DeviceDefSvc.FindDeviceDefinitionByMMY(ctx, teslaMake, model, year)
+	if err != nil {
+		return nil, err
+	}
+
+	return &decodeResult{ID: res.DeviceDefinitionId, Make: teslaMake, Model: model, Year: year}, nil
 }
