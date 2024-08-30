@@ -197,7 +197,7 @@ func (t *teslaFleetAPIService) GetVehicle(ctx context.Context, token string, veh
 func (t *teslaFleetAPIService) WakeUpVehicle(ctx context.Context, token string, vehicleID int) error {
 	url := t.FleetBase.JoinPath("api/1/vehicles", strconv.Itoa(vehicleID), "wake_up")
 
-	if _, err := t.performRequest(ctx, url, token, http.MethodGet, nil); err != nil {
+	if _, err := t.performRequest(ctx, url, token, http.MethodPost, nil); err != nil {
 		return fmt.Errorf("could not wake vehicle: %w", err)
 	}
 
