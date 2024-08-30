@@ -137,6 +137,12 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 }
 
 func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context, integration *models.UserDeviceAPIIntegration) (bool, error) {
+	if !integration.AccessExpiresAt.Valid || !integration.AccessExpiresAt.Time.After(time.Now()) {
+		// TODO(elffjs): Need to find a way to fail these eventually.
+		udc.log.Warn().Str("userDeviceId", integration.UserDeviceID).Msg("Tesla token expired.")
+		return false, nil
+	}
+
 	accessTk, err := udc.cipher.Decrypt(integration.AccessToken.String)
 	if err != nil {
 		return false, fmt.Errorf("couldn't decrypt access token: %w", err)
@@ -151,6 +157,11 @@ func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context,
 }
 
 func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Context, integration *models.UserDeviceAPIIntegration) (bool, error) {
+	if !integration.AccessExpiresAt.Valid || !integration.AccessExpiresAt.Time.After(time.Now()) {
+		// TODO(elffjs): Need to find a way to fail these eventually.
+		return false, nil
+	}
+
 	accessTk, err := udc.cipher.Decrypt(integration.AccessToken.String)
 	if err != nil {
 		return false, fmt.Errorf("couldn't decrypt access token: %w", err)
