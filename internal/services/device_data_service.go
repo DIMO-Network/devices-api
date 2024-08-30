@@ -23,7 +23,7 @@ type DeviceDataService interface {
 }
 
 func NewDeviceDataService(deviceDataGrpcAddr string, logger *zerolog.Logger) DeviceDataService {
-	uddcon, err := grpc.Dial(deviceDataGrpcAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	uddcon, err := grpc.NewClient(deviceDataGrpcAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed dialing device-data-api.")
 	}

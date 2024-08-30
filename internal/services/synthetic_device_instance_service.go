@@ -19,7 +19,7 @@ type syntheticWalletInstanceService struct {
 }
 
 func NewSyntheticWalletInstanceService(settings *config.Settings) (SyntheticWalletInstanceService, error) {
-	conn, err := grpc.Dial(settings.SyntheticWalletGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(settings.SyntheticWalletGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}

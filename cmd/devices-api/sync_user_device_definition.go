@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"time"
+
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
@@ -15,7 +17,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"time"
 )
 
 type syncUserDeviceDeviceDefinitionCmd struct {
@@ -54,7 +55,7 @@ func (s *syncUserDeviceDeviceDefinitionCmd) processDeviceDefinitions(ctx context
 	cursor := ""
 	hasMore := true
 
-	conn, err := grpc.Dial(s.settings.DefinitionsGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(s.settings.DefinitionsGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return err
 	}

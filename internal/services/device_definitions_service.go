@@ -380,7 +380,7 @@ func buildDeviceAttributes(existingDeviceAttrs []*ddgrpc.DeviceTypeAttribute, vi
 
 // getDeviceDefsGrpcClient instanties new connection with client to dd service. You must defer conn.close from returned connection
 func (d *deviceDefinitionService) getDeviceDefsGrpcClient() (ddgrpc.DeviceDefinitionServiceClient, *grpc.ClientConn, error) {
-	conn, err := grpc.Dial(d.definitionsGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(d.definitionsGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, conn, err
 	}
@@ -390,7 +390,7 @@ func (d *deviceDefinitionService) getDeviceDefsGrpcClient() (ddgrpc.DeviceDefini
 
 func (d *deviceDefinitionService) getVINDecodeGrpcClient() (ddgrpc.VinDecoderServiceClient, *grpc.ClientConn, error) {
 	// we may need to increase timeout for this request
-	conn, err := grpc.Dial(d.definitionsGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(d.definitionsGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, conn, err
 	}

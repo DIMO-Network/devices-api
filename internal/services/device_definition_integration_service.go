@@ -206,7 +206,7 @@ func (d *deviceDefinitionIntegrationService) GetDeviceDefinitionIntegration(ctx 
 
 // getDeviceDefsIntGrpcClient instanties new connection with client to dd service. You must defer conn.close from returned connection
 func (d *deviceDefinitionIntegrationService) getDeviceDefsIntGrpcClient() (ddgrpc.DeviceDefinitionServiceClient, *grpc.ClientConn, error) {
-	conn, err := grpc.Dial(d.definitionsGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(d.definitionsGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, conn, err
 	}
