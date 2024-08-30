@@ -934,7 +934,7 @@ func (udc *UserDevicesController) DeviceOptIn(c *fiber.Ctx) error {
 		return err
 	}
 
-	logger.Info().Msg("Opted into data-sharing.")
+	logger.Debug().Msg("Opted into data-sharing.")
 
 	return nil
 }
