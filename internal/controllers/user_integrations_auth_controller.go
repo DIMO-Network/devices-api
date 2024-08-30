@@ -178,6 +178,7 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 	if err != nil {
 		logger.Err(err).Str("subject", claims.Subject).Str("ouCode", claims.OUCode).Interface("audience", claims.Audience).Msg("Error retrieving vehicles.")
 		if errors.Is(err, services.ErrWrongRegion) {
+			teslaCodeFailureCount.WithLabelValues("wrong_region").Inc()
 			return fiber.NewError(fiber.StatusInternalServerError, "Region detection failed. Waiting on a fix from Tesla.")
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "Couldn't fetch vehicles from Tesla.")
