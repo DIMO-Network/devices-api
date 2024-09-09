@@ -1889,6 +1889,18 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 			localLog.Error().Msg("VIN %s already in use.")
 			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("VIN %s in use by a previously connected device.", ud.VinIdentifier.String))
 		}
+
+		// TODO(elffjs): Super unfortunate to put another blocking call here. Maybe we do a batch?
+		// Doing it only in production because sometimes it's nice to use Teslas to test Smartcar on dev.
+		info, err := udc.smartcarClient.GetInfo(c.Context(), token.Access, externalID)
+		if err != nil {
+			logger.Err(err).Msg("Error listing vehicle details for Smartcar Tesla check.")
+			return smartcarCallErr
+		}
+
+		if info.Make == "TESLA" { // They always have this in ALL CAPS for some reason.
+			return fiber.NewError(fiber.StatusBadRequest, "Teslas should be connected using the official integration.")
+		}
 	}
 
 	endpoints, err := udc.smartcarClient.GetEndpoints(c.Context(), token.Access, externalID)
