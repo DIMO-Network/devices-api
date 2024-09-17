@@ -17,6 +17,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
 )
 
 type syncUserDeviceDeviceDefinitionCmd struct {

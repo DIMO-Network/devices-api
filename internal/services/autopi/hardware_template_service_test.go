@@ -80,11 +80,11 @@ func (s *HardwareTemplateServiceTestSuite) Test_GetTemplateID() {
 	integration := test.BuildIntegrationDefaultGRPC(constants.AutoPiVendor, def, bev, true)
 	integrationWithoutAutoPiPowertrainTemplate := test.BuildIntegrationDefaultGRPC(constants.AutoPiVendor, def, 0, false)
 
-	ddWithTID := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)[0]
-	ddWithDeviceStyleTID := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)[0]
-	ddWithMakeTID := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)[0]
-	ddNoTIDs := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)[0]
-	ddWithDeviceStyleInUD := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)[0]
+	ddWithTID := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, "ford-f150", integration)[0]
+	ddWithDeviceStyleTID := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, "ford-f150", integration)[0]
+	ddWithMakeTID := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, "ford-f150", integration)[0]
+	ddNoTIDs := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, "ford-f150", integration)[0]
+	ddWithDeviceStyleInUD := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, "ford-f150", integration)[0]
 
 	ddWithTID.HardwareTemplateId = tIDDeviceDef
 	ddWithDeviceStyleTID.DeviceStyles = append(ddWithDeviceStyleTID.DeviceStyles, &ddgrpc.DeviceStyle{

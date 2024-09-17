@@ -240,11 +240,12 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 			Timestamp: time.Now(),
 			UserID:    userID,
 			Device: services.UserDeviceEventDevice{
-				ID:    userDeviceID,
-				Make:  dd.Make.Name,
-				Model: dd.Type.Model,
-				Year:  int(dd.Type.Year),
-				VIN:   vin,
+				ID:           userDeviceID,
+				Make:         dd.Make.Name,
+				Model:        dd.Type.Model,
+				Year:         int(dd.Type.Year),
+				VIN:          vin,
+				DefinitionID: dd.NameSlug,
 			},
 			Integration: services.UserDeviceEventIntegration{
 				ID:     integ.Id,
@@ -330,9 +331,11 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	}
 
 	// Need this for activity log.
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), device.DeviceDefinitionID)
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(c.Context(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+		Slug: device.DefinitionID.String,
+	})
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+device.DeviceDefinitionID)
+		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+device.DefinitionID.String)
 	}
 
 	err = udc.deleteDeviceIntegration(c.Context(), userID, userDeviceID, integrationID, dd, tx)
@@ -1648,10 +1651,12 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 	}
 	logger = logger.With().Str("region", countryRecord.Region).Logger()
 
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), ud.DeviceDefinitionID)
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(c.Context(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+		Slug: ud.DefinitionID.String,
+	})
 	if err != nil {
 		logger.Err(err).Msg("grpc error searching for device definition")
-		return shared.GrpcErrorToFiber(err, "failed to get device definition with id: "+ud.DeviceDefinitionID)
+		return shared.GrpcErrorToFiber(err, "failed to get device definition with id: "+ud.DefinitionID.String)
 	}
 
 	// filter out the desired integration from the compatible ones
@@ -1740,9 +1745,11 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 
 	ud := udai.R.UserDevice
 	// pull dd info again - don't pass it in, as it may have changed
-	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, ud.DeviceDefinitionID)
+	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(ctx, &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+		Slug: ud.DefinitionID.String,
+	})
 	if err2 != nil {
-		logger.Err(err2).Str("deviceDefinitionId", ud.DeviceDefinitionID).Msg("failed to retrieve device defintion")
+		logger.Err(err2).Str("deviceDefinitionId", ud.DefinitionID.String).Msg("failed to retrieve device defintion")
 	}
 
 	err = udc.eventService.Emit(
@@ -1760,6 +1767,7 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 					Model:              dd.Type.Model,
 					Year:               int(dd.Type.Year),
 					VIN:                ud.VinIdentifier.String,
+					DefinitionID:       dd.NameSlug,
 				},
 				Integration: services.UserDeviceEventIntegration{
 					ID:     integ.Id,

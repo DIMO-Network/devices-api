@@ -79,6 +79,8 @@ type UserDeviceEventDevice struct {
 	Model              string `json:"model"`
 	Year               int    `json:"year"`
 	VIN                string `json:"vin"`
+	// new human readable definition id that can be queried from identity-api
+	DefinitionID string `json:"definition_id"`
 }
 
 type UserDeviceEventIntegration struct {

@@ -167,7 +167,7 @@ func NewUserDevicesController(settings *config.Settings,
 }
 
 func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, devices []*models.UserDevice) ([]UserDeviceFull, error) {
-	apiDevices := []UserDeviceFull{}
+	apiDevices := make([]UserDeviceFull, 0)
 
 	if len(devices) == 0 {
 		return apiDevices, nil
@@ -208,7 +208,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			return nil, err
 		}
 
-		filteredIntegrations := []services.DeviceCompatibility{}
+		filteredIntegrations := make([]services.DeviceCompatibility, 0)
 		if d.CountryCode.Valid {
 			if countryRecord := constants.FindCountry(d.CountryCode.String); countryRecord != nil {
 				for _, integration := range dd.CompatibleIntegrations {
@@ -232,7 +232,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 		var sdStat *SyntheticDeviceStatus
 
 		var nft *VehicleNFTData
-		pu := []PrivilegeUser{}
+		pu := make([]PrivilegeUser, 0)
 
 		if !d.TokenID.IsZero() || d.R.MintRequest != nil {
 			nft = &VehicleNFTData{}
@@ -467,7 +467,7 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
-				if err == sql.ErrNoRows {
+				if errors.Is(err, sql.ErrNoRows) {
 					udc.log.Warn().Msgf("User %s has privileges on a vehicle %d of which we have no record.", userAddr, priv.TokenID)
 					continue
 				}
@@ -568,13 +568,16 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		// Return status 400 and error message.
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
+
 	if err := reg.Validate(); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
+
 	country := constants.FindCountry(strings.ToUpper(reg.CountryCode))
 	if country == nil {
 		return fiber.NewError(fiber.StatusBadRequest, "unsupported or invalid country: "+reg.CountryCode)
 	}
+
 	vin := strings.ToUpper(reg.VIN)
 
 	integration, err := udc.DeviceDefIntSvc.GetAutoPiIntegration(c.Context())
@@ -582,6 +585,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		udc.log.Err(err).Msg("failed to get autopi integration")
 		return err
 	}
+
 	localLog := udc.log.With().Str("userId", userID).Str("integrationId", integration.Id).
 		Str("countryCode", country.Alpha3).Str("vin", vin).Str("handler", "RegisterDeviceForUserFromVIN").
 		Logger()
@@ -591,24 +595,31 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	// check if VIN already exists
 	existingUD, err := models.UserDevices(models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
 		models.UserDeviceWhere.VinConfirmed.EQ(true)).One(c.Context(), udc.DBS().Reader)
+
 	if err != nil && !errors.Is(sql.ErrNoRows, err) {
 		return err
 	}
+
 	var udFull *UserDeviceFull
+
 	if existingUD != nil {
 		if existingUD.UserID != userID {
 			return fiber.NewError(fiber.StatusConflict, "VIN already exists for a different user: "+reg.VIN)
 		}
-		deviceDefinitionID = existingUD.DeviceDefinitionID
+
 		// shortcut process, just use the already registered UD
-		dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), deviceDefinitionID)
+		dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(c.Context(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+			Slug: existingUD.DefinitionID.String,
+		})
 		if err != nil {
 			return err
 		}
+
 		udFull, err = builUserDeviceFull(existingUD, dd, reg.CountryCode)
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
+		deviceDefinitionID = existingUD.DefinitionID.String
 	} else {
 		// decode VIN with grpc call
 		decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, "", 0, reg.CountryCode)
@@ -616,6 +627,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 			localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle")
 			return shared.GrpcErrorToFiber(err, "unable to decode vin: "+vin)
 		}
+
 		if len(decodeVIN.DeviceDefinitionId) == 0 {
 			localLog.Warn().Msg("unable to decode vin for customer request to create vehicle")
 			return fiber.NewError(fiber.StatusFailedDependency, "unable to decode vin")
@@ -628,7 +640,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
 	}
-
+	// todo: this needs to be changed to take in a new nameSlug ddid
 	// create device_integration record in definitions just in case. If we got the VIN normally means Mobile App able to decode.
 	_, err = udc.DeviceDefIntSvc.CreateDeviceDefinitionIntegration(c.Context(), integration.Id, deviceDefinitionID, country.Region)
 	if err != nil {
@@ -793,9 +805,9 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	udc.redisCache.Set(c.Context(), buildSmartcarTokenKey(vin, userID), encToken, time.Hour*2)
 
 	if isSameUserConflict {
-		dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), existingUd.DeviceDefinitionID)
+		dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(c.Context(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{Slug: existingUd.DefinitionID.String})
 		if err2 != nil {
-			return shared.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", existingUd.DeviceDefinitionID))
+			return shared.GrpcErrorToFiber(err2, fmt.Sprintf("error querying for device definition id: %s ", existingUd.DefinitionID.String))
 		}
 		udFull, err := builUserDeviceFull(existingUd, dd, reg.CountryCode)
 		if err != nil {
@@ -1073,7 +1085,9 @@ func (udc *UserDevicesController) updatePowerTrain(ctx context.Context, userDevi
 	if err := userDevice.Metadata.Unmarshal(md); err != nil {
 		return err
 	}
-	resp, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, userDevice.DeviceDefinitionID)
+	resp, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(ctx, &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+		Slug: userDevice.DefinitionID.String,
+	})
 	if err != nil {
 		return err
 	}
@@ -1146,7 +1160,9 @@ func (udc *UserDevicesController) UpdateName(c *fiber.Ctx) error {
 		if udapi.Serial.Valid {
 			autoPiDevice, err := udc.autoPiSvc.GetDeviceByUnitID(udapi.Serial.String)
 			if err == nil {
-				dd, _ := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
+				dd, _ := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(c.Context(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+					Slug: userDevice.DefinitionID.String,
+				})
 				nm := services.BuildCallName(req.Name, dd)
 				_ = udc.autoPiSvc.PatchVehicleProfile(autoPiDevice.Vehicle.ID, services.PatchVehicleProfile{
 					CallName: &nm,
@@ -1232,9 +1248,11 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Vehicle minting in progress. Burn the resulting NFT in order to delete this vehicle.")
 	}
 
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(c.Context(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+		Slug: userDevice.DefinitionID.String,
+	})
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DeviceDefinitionID)
+		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DefinitionID.String)
 	}
 	autopiDeviceID := ""
 
@@ -1279,10 +1297,11 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 			Timestamp: time.Now(),
 			UserID:    userID,
 			Device: services.UserDeviceEventDevice{
-				ID:    udi,
-				Make:  dd.Make.Name,
-				Model: dd.Type.Model,
-				Year:  int(dd.Type.Year),
+				ID:           udi,
+				Make:         dd.Make.Name,
+				Model:        dd.Type.Model,
+				Year:         int(dd.Type.Year),
+				DefinitionID: dd.NameSlug,
 			},
 		},
 	}); err != nil {
@@ -1384,8 +1403,8 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 	).One(c.Context(), tx)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return fiber.NewError(fiber.StatusNotFound, "No device with that id found.")
+		if errors.Is(err, sql.ErrNoRows) {
+			return fiber.NewError(fiber.StatusNotFound, "No device with that ID found.")
 		}
 		return err
 	}
@@ -1870,9 +1889,9 @@ func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID s
 		return nil, nil, fmt.Errorf("VIN not confirmed")
 	}
 
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, userDevice.DeviceDefinitionID)
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(ctx, &ddgrpc.GetDeviceDefinitionBySlugNameRequest{Slug: userDevice.DefinitionID.String})
 	if err != nil {
-		return nil, nil, fmt.Errorf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID)
+		return nil, nil, fmt.Errorf("error querying for device definition id: %s ", userDevice.DefinitionID.String)
 	}
 
 	if dd.Make.TokenId == 0 {
