@@ -754,20 +754,47 @@ func (s *userDeviceRPCServer) StopUserDeviceIntegration(ctx context.Context, req
 	return &emptypb.Empty{}, nil
 }
 
+// DeleteVehicle deletes the synthetic device and the user device. Tries to stops synthetic device tasks using above method
 func (s *userDeviceRPCServer) DeleteVehicle(ctx context.Context, req *pb.DeleteVehicleRequest) (*emptypb.Empty, error) {
 	ti := new(big.Int).SetUint64(req.TokenId)
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
 
-	_, _ = models.SyntheticDevices(
-		models.SyntheticDeviceWhere.VehicleTokenID.EQ(tid),
-	).DeleteAll(ctx, s.dbs().Reader)
-	// ignore if not synthetic device as this could be common
-	_, err := models.UserDevices(
+	userDevice, err := models.UserDevices(
 		models.UserDeviceWhere.TokenID.EQ(tid),
-	).DeleteAll(ctx, s.dbs().Writer)
-
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
+	).One(ctx, s.dbs().Writer)
 	if err != nil {
-		return nil, fmt.Errorf("error deleting device: %s", err.Error())
+		return nil, fmt.Errorf("failed to find vehicle %d: %w", req.TokenId, err)
+	}
+
+	// check if has synthetic device, and if so stop jobs
+	synthDevice, err := models.SyntheticDevices(
+		models.SyntheticDeviceWhere.VehicleTokenID.EQ(tid)).One(ctx, s.dbs().Reader)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("error checking synthetic device: %s", err.Error())
+	}
+	// UDAI and synthetic should be a unit more or less
+	if synthDevice != nil {
+		// stop the tasks for each
+		for _, udai := range userDevice.R.UserDeviceAPIIntegrations {
+			_, err := s.StopUserDeviceIntegration(ctx, &pb.StopUserDeviceIntegrationRequest{
+				UserDeviceId:  userDevice.ID,
+				IntegrationId: udai.IntegrationID,
+			})
+			// ideally this doesn't happen but we should log regardless
+			if err != nil {
+				s.logger.Error().Err(err).Uint64("vehicleTokenId", req.TokenId).Msg("failed to stop user device integration from a delete vehicle request")
+			}
+		}
+		// delete the synthetic device
+		_, _ = models.SyntheticDevices(
+			models.SyntheticDeviceWhere.VehicleTokenID.EQ(tid),
+		).DeleteAll(ctx, s.dbs().Reader)
+	}
+
+	_, err = userDevice.Delete(ctx, s.dbs().Writer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to delete user device: %w", err)
 	}
 
 	s.logger.Info().Uint64("vehicleTokenId", req.TokenId).Msgf("successfully deleted vehicle via grpc call")
