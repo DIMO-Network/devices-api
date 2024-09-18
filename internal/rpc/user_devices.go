@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 
 	mtpgrpc "github.com/DIMO-Network/meta-transaction-processor/pkg/grpc"
@@ -750,5 +751,25 @@ func (s *userDeviceRPCServer) StopUserDeviceIntegration(ctx context.Context, req
 	}
 
 	log.Info().Msg("integration polling stopped")
+	return &emptypb.Empty{}, nil
+}
+
+func (s *userDeviceRPCServer) DeleteVehicle(ctx context.Context, req *pb.DeleteVehicleRequest) (*emptypb.Empty, error) {
+	ti := new(big.Int).SetUint64(req.TokenId)
+	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
+
+	_, _ = models.SyntheticDevices(
+		models.SyntheticDeviceWhere.VehicleTokenID.EQ(tid),
+	).DeleteAll(ctx, s.dbs().Reader)
+	// ignore if not synthetic device as this could be common
+	_, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(tid),
+	).DeleteAll(ctx, s.dbs().Writer)
+
+	if err != nil {
+		return nil, fmt.Errorf("error deleting device: %s", err.Error())
+	}
+
+	s.logger.Info().Uint64("vehicleTokenId", req.TokenId).Msgf("successfully deleted vehicle via grpc call")
 	return &emptypb.Empty{}, nil
 }
