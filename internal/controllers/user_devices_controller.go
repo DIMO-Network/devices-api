@@ -19,6 +19,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
+	sig2 "github.com/DIMO-Network/devices-api/internal/contracts/signature"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
@@ -36,6 +37,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/gofiber/fiber/v2"
@@ -1358,6 +1360,8 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 	return c.JSON(client.GetPayload(&mvdds))
 }
 
+var erc1271magicValue = [4]byte{0x16, 0x26, 0xba, 0x7e}
+
 // PostMintDevice godoc
 // @Description Sends a mint device request to the blockchain
 // @Tags        user-devices
@@ -1441,13 +1445,28 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	sigBytes := common.FromHex(mr.Signature)
 
-	recAddr, err := helpers.Ecrecover(hash, sigBytes)
-	if err != nil {
-		return err
-	}
+	recAddr, origErr := helpers.Ecrecover(hash, sigBytes)
+	if origErr != nil || recAddr != mvs.Owner {
+		ethClient, err := ethclient.Dial(udc.Settings.MainRPCURL)
+		if err != nil {
+			return err
+		}
 
-	if recAddr != mvs.Owner {
-		return fiber.NewError(fiber.StatusBadRequest, "Signature incorrect.")
+		sigCon, err := sig2.NewErc1271(mvs.Owner, ethClient)
+		if err != nil {
+			return err
+		}
+
+		ret, err := sigCon.IsValidSignature(nil, common.BytesToHash(hash), sigBytes)
+		if err != nil {
+			return err
+		}
+
+		if ret != erc1271magicValue {
+			return fiber.NewError(fiber.StatusBadRequest, "Could not verify ERC-1271 signature.")
+		}
+
+		return fiber.NewError(fiber.StatusInternalServerError, "You gave the right EIP-1271 signature, but we're not ready for this yet.")
 	}
 
 	requestID := ksuid.New().String()
