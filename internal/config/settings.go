@@ -95,6 +95,8 @@ type Settings struct {
 	IPFSURL                           string `yaml:"IPFS_URL"`
 
 	SDInfoTopic string `yaml:"SD_INFO_TOPIC"`
+
+	MainRPCURL string `yaml:"MAIN_RPC_URL"`
 }
 
 func (s *Settings) IsProduction() bool {
