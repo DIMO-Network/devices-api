@@ -352,7 +352,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		logger.Fatal().Err(err).Msg("Failed to create vin credentialer listener")
 	}
 
-	startContractEventsConsumer(logger, settings, pdb, autoPi, macaron, ddSvc, eventService, scTaskSvc, teslaTaskService)
+	startContractEventsConsumer(logger, settings, pdb, genericADIntegration, ddSvc, eventService, scTaskSvc, teslaTaskService)
 
 	store, err := registry.NewProcessor(pdb.DBS, &logger, settings, eventService, scTaskSvc, teslaTaskService, ddSvc)
 	if err != nil {

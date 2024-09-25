@@ -90,7 +90,7 @@ func TestProcessContractsEventsMessages(t *testing.T) {
 	e := privilegeEventsPayloadFactory(1, 1, "", 0, s.settings.DIMORegistryChainID)
 	factoryResp := e[0]
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil)
 
 	event, err := marshalMockPayload(factoryResp.payload)
 	s.require.NoError(err)
@@ -133,7 +133,7 @@ func TestIgnoreWrongEventNames(t *testing.T) {
 	e := privilegeEventsPayloadFactory(2, 2, "SomeEvent", 0, s.settings.DIMORegistryChainID)
 	factoryResp := e[0]
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil)
 
 	event, err := marshalMockPayload(factoryResp.payload)
 	require.NoError(t, err)
@@ -160,7 +160,7 @@ func TestUpdatedTimestamp(t *testing.T) {
 	e := privilegeEventsPayloadFactory(3, 3, "", 0, s.settings.DIMORegistryChainID)
 	factoryResp := e[0]
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil)
 
 	event, err := marshalMockPayload(factoryResp.payload)
 	require.NoError(t, err)
@@ -235,7 +235,7 @@ func Test_Transfer_Event_Handled_Correctly(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.require.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil)
 	event, err := marshalMockPayload(factoryResp.payload)
 	require.NoError(t, err)
 
@@ -274,7 +274,7 @@ func Test_Ignore_Transfer_Mint_Event(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.require.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil)
 
 	event, err := marshalMockPayload(factoryResp.payload)
 	require.NoError(t, err)
@@ -309,7 +309,7 @@ func Test_Ignore_Transfer_Claims_Event(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.require.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil)
 	event, err := marshalMockPayload(factoryResp.payload)
 	require.NoError(t, err)
 
@@ -343,7 +343,7 @@ func Test_Ignore_Transfer_Wrong_Contract(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.require.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil)
 
 	event, err := marshalMockPayload(factoryResp.payload)
 	require.NoError(t, err)
@@ -376,7 +376,7 @@ func Test_Ignore_Transfer_Unit_Not_Found(t *testing.T) {
 	err := autopiUnit.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.require.NoError(err)
 
-	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil, nil)
+	c := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil)
 	event, err := marshalMockPayload(factoryResp.payload)
 	s.require.NoError(err)
 
@@ -486,7 +486,7 @@ func TestSetBeneficiary(t *testing.T) {
 		"source": "chain/%d"
 		}`, c.Address.Hex(), abi.Events["BeneficiarySet"].ID, c.Event.NodeId, c.Event.Beneficiary.Hex(), c.Event.IdProxyAddress.Hex(), s.settings.DIMORegistryChainID)
 
-		consumer := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil, nil)
+		consumer := NewContractsEventsConsumer(s.pdb, &s.logger, s.settings, nil, nil, nil, nil, nil)
 
 		event, err := marshalMockPayload(payload)
 		require.NoError(t, err)
@@ -523,7 +523,7 @@ func TestVehicleTransfer(t *testing.T) {
 	}
 	_ = ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
-	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil, nil, nil, nil)
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil, nil, nil)
 	event, err := marshalMockPayload(`
 	{
 		"type": "zone.dimo.contract.event",
@@ -589,7 +589,7 @@ func Test_NFTPrivileges_Cleared_On_Vehicle_Transfer(t *testing.T) {
 	}
 	_ = ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
-	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil, nil, nil, nil)
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, nil, nil, nil)
 	event, err := marshalMockPayload(`
 	{
 		"type": "zone.dimo.contract.event",
@@ -668,7 +668,7 @@ func Test_RegistryAftermarketDeviceAddressReset(t *testing.T) {
 	err := amd.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.require.NoError(err)
 
-	consumer := NewContractsEventsConsumer(s.pdb, &logger, s.settings, nil, nil, nil, nil, nil, nil)
+	consumer := NewContractsEventsConsumer(s.pdb, &logger, s.settings, nil, nil, nil, nil, nil)
 	event, err := marshalMockPayload(payload)
 	require.NoError(t, err)
 
@@ -798,7 +798,7 @@ func Test_VehicleNodeMintedWithDeviceDefinition_NoMtx(t *testing.T) {
 	kprod := smock.NewSyncProducer(t, nil)
 	evt := NewEventService(&logger, settings, kprod)
 	kprod.ExpectSendMessageAndSucceed()
-	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, deviceDefSvc, evt, nil, nil)
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, deviceDefSvc, evt, nil, nil)
 
 	owner := common.HexToAddress("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")
 	ddSlug := "jeep_wrangler_2013"
@@ -934,7 +934,7 @@ func TestBurnSyntheticDevice(t *testing.T) {
 	kprod := smock.NewSyncProducer(t, nil)
 	evt := NewEventService(&logger, settings, kprod)
 	kprod.ExpectSendMessageAndSucceed()
-	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, nil, deviceDefSvc, evt, nil, teslaTask)
+	consumer := NewContractsEventsConsumer(pdb, &logger, settings, nil, deviceDefSvc, evt, nil, teslaTask)
 
 	ownerAddr := randomAddr(t)
 

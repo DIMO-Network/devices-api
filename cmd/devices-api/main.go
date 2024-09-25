@@ -15,8 +15,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/kafka"
 	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/devices-api/internal/services/autopi"
-	"github.com/DIMO-Network/devices-api/internal/services/macaron"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/IBM/sarama"
@@ -209,8 +207,8 @@ func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, p
 	logger.Info().Msg("Task status consumer started")
 }
 
-func startContractEventsConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store, autoPi *autopi.Integration, macaron *macaron.Integration, ddSvc services.DeviceDefinitionService, evtSvc services.EventService, scTask services.SmartcarTaskService, teslaTask services.TeslaTaskService) {
-	cevConsumer := services.NewContractsEventsConsumer(pdb, &logger, settings, autoPi, macaron, ddSvc, evtSvc, scTask, teslaTask)
+func startContractEventsConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store, genericADInteg services.Integration, ddSvc services.DeviceDefinitionService, evtSvc services.EventService, scTask services.SmartcarTaskService, teslaTask services.TeslaTaskService) {
+	cevConsumer := services.NewContractsEventsConsumer(pdb, &logger, settings, genericADInteg, ddSvc, evtSvc, scTask, teslaTask)
 	if err := cevConsumer.RunConsumer(); err != nil {
 		logger.Fatal().Err(err).Msg("error occurred processing contract events")
 	}
