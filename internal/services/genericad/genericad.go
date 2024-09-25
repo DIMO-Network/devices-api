@@ -1,11 +1,13 @@
-package macaron
+package genericad
 
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"math/big"
 	"time"
 
+	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/shared"
 
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -59,16 +61,31 @@ func (i *Integration) Pair(ctx context.Context, amTokenID, vehicleTokenID *big.I
 		return err
 	}
 
-	integ, err := i.defs.GetIntegrationByVendor(ctx, "Macaron")
-	if err != nil {
-		return err
-	}
-
 	amDev, err := models.AftermarketDevices(
 		models.AftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(amTokenID)),
 	).One(ctx, tx)
 	if err != nil {
 		return err
+	}
+
+	integs, err := i.defs.GetIntegrations(ctx)
+	if err != nil {
+		return err
+	}
+
+	var integ *grpc.Integration
+
+	// TODO(elffjs): Stop doing this loop all the time.
+	for _, maybeInteg := range integs {
+		mfrID, _ := amDev.DeviceManufacturerTokenID.Uint64()
+		if maybeInteg.ManufacturerTokenId == mfrID {
+			integ = maybeInteg
+			break
+		}
+	}
+
+	if integ == nil {
+		return fmt.Errorf("manufacturer %d does not have an associated integration", amDev.DeviceManufacturerTokenID)
 	}
 
 	ud, err := models.UserDevices(
@@ -188,16 +205,26 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 		return err
 	}
 
-	autoPiModel, err := models.AftermarketDevices(
+	amDev, err := models.AftermarketDevices(
 		models.AftermarketDeviceWhere.TokenID.EQ(utils.BigToDecimal(autoPiTokenID)),
 	).One(ctx, tx)
 	if err != nil {
 		return err
 	}
 
-	integ, err := i.defs.GetIntegrationByVendor(ctx, "Macaron")
+	integs, err := i.defs.GetIntegrations(ctx)
 	if err != nil {
 		return err
+	}
+
+	var integ *grpc.Integration
+
+	for _, maybeInteg := range integs {
+		mfrID, _ := amDev.DeviceManufacturerTokenID.Uint64()
+		if maybeInteg.ManufacturerTokenId == mfrID {
+			integ = maybeInteg
+			break
+		}
 	}
 
 	udai, err := models.FindUserDeviceAPIIntegration(ctx, i.db().Writer, ud.ID, integ.Id)
@@ -212,7 +239,7 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 		}
 	}
 
-	err = i.apReg.Deregister2(common.BytesToAddress(autoPiModel.EthereumAddress))
+	err = i.apReg.Deregister2(common.BytesToAddress(amDev.EthereumAddress))
 	if err != nil {
 		return err
 	}

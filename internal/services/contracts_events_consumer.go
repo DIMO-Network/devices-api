@@ -47,8 +47,7 @@ type ContractsEventsConsumer struct {
 	log          *zerolog.Logger
 	settings     *config.Settings
 	registryAddr common.Address
-	apInt        Integration
-	mcInt        Integration
+	genericInt   Integration
 	ddSvc        DeviceDefinitionService
 	evtSvc       EventService
 
@@ -97,14 +96,13 @@ type Block struct {
 	Time   time.Time   `json:"time,omitempty"`
 }
 
-func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration, mcInt Integration, ddSvc DeviceDefinitionService, evtSvc EventService, scTask SyntheticTaskService, teslaTask SyntheticTaskService) *ContractsEventsConsumer {
+func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, genericInt Integration, ddSvc DeviceDefinitionService, evtSvc EventService, scTask SyntheticTaskService, teslaTask SyntheticTaskService) *ContractsEventsConsumer {
 	return &ContractsEventsConsumer{
 		db:           pdb,
 		log:          log,
 		settings:     settings,
 		registryAddr: common.HexToAddress(settings.DIMORegistryAddr),
-		apInt:        apInt,
-		mcInt:        mcInt,
+		genericInt:   genericInt,
 		ddSvc:        ddSvc,
 		evtSvc:       evtSvc,
 		scTask:       scTask,
@@ -520,11 +518,6 @@ func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) 
 		return fmt.Errorf("failed to retrieve aftermarket device: %w", err)
 	}
 
-	dm, err := c.ddSvc.GetMakeByTokenID(context.TODO(), am.DeviceManufacturerTokenID.Int(nil))
-	if err != nil {
-		return fmt.Errorf("error retrieving manufacturer %d: %w", am.DeviceManufacturerTokenID, err)
-	}
-
 	cols := models.AftermarketDeviceColumns
 
 	am.VehicleTokenID = types.NewNullDecimal(utils.BigToDecimal(args.VehicleNode).Big)
@@ -533,18 +526,7 @@ func (c *ContractsEventsConsumer) aftermarketDevicePaired(e *ContractEventData) 
 		return fmt.Errorf("failed to update aftermarket device: %w", err)
 	}
 
-	switch dm.Name {
-	case constants.AutoPiVendor:
-		err = c.apInt.Pair(context.TODO(), args.AftermarketDeviceNode, args.VehicleNode)
-	case "Hashdog":
-		err = c.mcInt.Pair(context.TODO(), args.AftermarketDeviceNode, args.VehicleNode)
-	default:
-		err = fmt.Errorf("unexpected aftermarket device manufacturer vendor %s", dm.Name)
-	}
-
-	log.Info().Msg("aftermarket device pairing completed")
-	return err
-
+	return c.genericInt.Pair(context.TODO(), args.AftermarketDeviceNode, args.VehicleNode)
 }
 
 // aftermarketDeviceAttributeSet handles the event of the same name from the registry contract.
@@ -621,11 +603,6 @@ func (c *ContractsEventsConsumer) aftermarketDeviceUnpaired(e *ContractEventData
 		return err
 	}
 
-	dm, err := c.ddSvc.GetMakeByTokenID(context.TODO(), am.DeviceManufacturerTokenID.Int(nil))
-	if err != nil {
-		return fmt.Errorf("error retrieving manufacturer %d: %w", am.DeviceManufacturerTokenID, err)
-	}
-
 	am.VehicleTokenID = types.NullDecimal{}
 	am.PairRequestID = null.String{}
 
@@ -633,16 +610,7 @@ func (c *ContractsEventsConsumer) aftermarketDeviceUnpaired(e *ContractEventData
 		return err
 	}
 
-	switch dm.Name {
-	case constants.AutoPiVendor:
-		err = c.apInt.Unpair(context.TODO(), args.AftermarketDeviceNode, args.VehicleNode)
-	case "Hashdog":
-		err = c.mcInt.Unpair(context.TODO(), args.AftermarketDeviceNode, args.VehicleNode)
-	default:
-		err = fmt.Errorf("unexpected aftermarket device manufacturer vendor %s", dm.Name)
-	}
-
-	return err
+	return c.genericInt.Unpair(context.TODO(), args.AftermarketDeviceNode, args.VehicleNode)
 }
 
 func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {

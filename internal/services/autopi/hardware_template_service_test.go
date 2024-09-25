@@ -23,6 +23,8 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+const migrationsDirRelPath = "../../../migrations"
+
 type HardwareTemplateServiceTestSuite struct {
 	suite.Suite
 	hardwareTemplateService HardwareTemplateService
