@@ -22,7 +22,6 @@ import (
 	sig2 "github.com/DIMO-Network/devices-api/internal/contracts/signature"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/devices-api/internal/services/autopi"
 	"github.com/DIMO-Network/devices-api/internal/services/ipfs"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/models"
@@ -71,7 +70,6 @@ type UserDevicesController struct {
 	s3                        *s3.Client
 	producer                  sarama.SyncProducer
 	deviceDefinitionRegistrar services.DeviceDefinitionRegistrar
-	autoPiIntegration         *autopi.Integration
 	redisCache                redis.CacheService
 	openAI                    services.OpenAI
 	usersClient               pb.UserServiceClient
@@ -127,7 +125,6 @@ func NewUserDevicesController(settings *config.Settings,
 	deviceDefinitionRegistrar services.DeviceDefinitionRegistrar,
 	producer sarama.SyncProducer,
 	s3NFTClient *s3.Client,
-	autoPi *autopi.Integration,
 	cache redis.CacheService,
 	openAI services.OpenAI,
 	usersClient pb.UserServiceClient,
@@ -155,7 +152,6 @@ func NewUserDevicesController(settings *config.Settings,
 		s3:                        s3NFTClient,
 		producer:                  producer,
 		deviceDefinitionRegistrar: deviceDefinitionRegistrar,
-		autoPiIntegration:         autoPi,
 		redisCache:                cache,
 		openAI:                    openAI,
 		usersClient:               usersClient,

@@ -1336,50 +1336,6 @@ func (udc *UserDevicesController) checkUnpairable(ctx context.Context, exec boil
 	return ud, ad, nil
 }
 
-// CloudRepairAutoPi godoc
-// @Description Re-apply AutoPi cloud actions in an attempt to get the device transmitting data again.
-// @Produce json
-// @Param userDeviceID path string true "Device id"
-// @Success 204
-// @Security BearerAuth
-// @Router /user/devices/{userDeviceID}/aftermarket/commands/cloud-repair [post]
-func (udc *UserDevicesController) CloudRepairAutoPi(c *fiber.Ctx) error {
-	userDeviceID := c.Params("userDeviceID")
-
-	logger := helpers.GetLogger(c, udc.log)
-	logger.Info().Msg("Got Aftermarket pair request.")
-
-	ud, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
-	).One(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "No device with that id found.")
-		}
-		logger.Err(err).Msg("Database failure searching for device.")
-		return opaqueInternalError
-	}
-
-	if ud.TokenID.IsZero() {
-		return fiber.NewError(fiber.StatusConflict, "Vehicle not yet minted.")
-	}
-
-	if ud.R.VehicleTokenAftermarketDevice == nil {
-		return fiber.NewError(fiber.StatusConflict, "Vehicle not paired on-chain with an aftermarket device.")
-	}
-
-	vehicleID := ud.TokenID.Int(nil)
-	autoPiID := ud.R.VehicleTokenAftermarketDevice.TokenID.Int(nil)
-
-	err = udc.autoPiIntegration.Pair(c.Context(), autoPiID, vehicleID)
-	if err != nil {
-		return err
-	}
-
-	return c.SendStatus(204)
-}
-
 // GetAftermarketDeviceUnpairMessage godoc
 // @Description Return the EIP-712 payload to be signed for aftermarket device unpairing.
 // @Produce json

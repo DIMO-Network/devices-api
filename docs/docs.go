@@ -791,33 +791,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/devices/{userDeviceID}/aftermarket/commands/cloud-repair": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Re-apply AutoPi cloud actions in an attempt to get the device transmitting data again.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
         "/user/devices/{userDeviceID}/aftermarket/commands/pair": {
             "get": {
                 "security": [
