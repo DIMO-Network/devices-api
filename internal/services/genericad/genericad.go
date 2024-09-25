@@ -75,10 +75,12 @@ func (i *Integration) Pair(ctx context.Context, amTokenID, vehicleTokenID *big.I
 
 	var integ *grpc.Integration
 
+	// TODO(elffjs): Stop doing this loop all the time.
 	for _, maybeInteg := range integs {
 		mfrID, _ := amDev.DeviceManufacturerTokenID.Uint64()
 		if maybeInteg.ManufacturerTokenId == mfrID {
 			integ = maybeInteg
+			break
 		}
 	}
 
@@ -221,6 +223,7 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 		mfrID, _ := amDev.DeviceManufacturerTokenID.Uint64()
 		if maybeInteg.ManufacturerTokenId == mfrID {
 			integ = maybeInteg
+			break
 		}
 	}
 
