@@ -47,8 +47,7 @@ type ContractsEventsConsumer struct {
 	log          *zerolog.Logger
 	settings     *config.Settings
 	registryAddr common.Address
-	apInt        Integration
-	mcInt        Integration
+	genericInt   Integration
 	ddSvc        DeviceDefinitionService
 	evtSvc       EventService
 
@@ -97,14 +96,13 @@ type Block struct {
 	Time   time.Time   `json:"time,omitempty"`
 }
 
-func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, apInt Integration, mcInt Integration, ddSvc DeviceDefinitionService, evtSvc EventService, scTask SyntheticTaskService, teslaTask SyntheticTaskService) *ContractsEventsConsumer {
+func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, genericInt Integration, ddSvc DeviceDefinitionService, evtSvc EventService, scTask SyntheticTaskService, teslaTask SyntheticTaskService) *ContractsEventsConsumer {
 	return &ContractsEventsConsumer{
 		db:           pdb,
 		log:          log,
 		settings:     settings,
 		registryAddr: common.HexToAddress(settings.DIMORegistryAddr),
-		apInt:        apInt,
-		mcInt:        mcInt,
+		genericInt:   genericInt,
 		ddSvc:        ddSvc,
 		evtSvc:       evtSvc,
 		scTask:       scTask,
