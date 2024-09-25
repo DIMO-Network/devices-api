@@ -214,3 +214,20 @@ func (a *hardwareTemplateService) ApplyHardwareTemplate(ctx context.Context, req
 
 	return &pb.ApplyHardwareTemplateResponse{Applied: true}, nil
 }
+
+func powertrainToTemplate(pt *services.PowertrainType, integ *ddgrpc.Integration) int32 {
+	out := integ.AutoPiDefaultTemplateId
+	if pt != nil {
+		switch *pt {
+		case services.ICE:
+			out = integ.AutoPiPowertrainTemplate.ICE
+		case services.HEV:
+			out = integ.AutoPiPowertrainTemplate.HEV
+		case services.PHEV:
+			out = integ.AutoPiPowertrainTemplate.PHEV
+		case services.BEV:
+			out = integ.AutoPiPowertrainTemplate.BEV
+		}
+	}
+	return out
+}
