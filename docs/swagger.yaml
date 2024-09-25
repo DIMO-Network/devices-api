@@ -1299,23 +1299,6 @@ paths:
       - BearerAuth: []
       tags:
       - user-devices
-  /user/devices/{userDeviceID}/aftermarket/commands/cloud-repair:
-    post:
-      description: Re-apply AutoPi cloud actions in an attempt to get the device transmitting
-        data again.
-      parameters:
-      - description: Device id
-        in: path
-        name: userDeviceID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-      security:
-      - BearerAuth: []
   /user/devices/{userDeviceID}/aftermarket/commands/pair:
     get:
       description: |-

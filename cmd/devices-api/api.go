@@ -136,7 +136,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// controllers
 	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService,
 		smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, autoPiIngest,
-		deviceDefinitionRegistrar, producer, s3NFTServiceClient, autoPi, redisCache, openAI, usersClient,
+		deviceDefinitionRegistrar, producer, s3NFTServiceClient, redisCache, openAI, usersClient,
 		ddaSvc, natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc, ipfsSvc)
 	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc, usersClient)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
@@ -330,7 +330,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Post("/aftermarket/commands/pair", userDeviceController.PostAftermarketDevicePair)
 	udOwner.Get("/aftermarket/commands/unpair", userDeviceController.GetAftermarketDeviceUnpairMessage)
 	udOwner.Post("/aftermarket/commands/unpair", userDeviceController.PostAftermarketDeviceUnpair)
-	udOwner.Post("/aftermarket/commands/cloud-repair", userDeviceController.CloudRepairAutoPi)
 
 	logger.Info().Msg("Server started on port " + settings.Port)
 	// Start Server from a different go routine
