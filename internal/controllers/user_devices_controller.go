@@ -1462,7 +1462,9 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusBadRequest, "Could not verify ERC-1271 signature.")
 		}
 
-		return fiber.NewError(fiber.StatusInternalServerError, "You gave the right EIP-1271 signature, but we're not ready for this yet.")
+		if udc.Settings.IsProduction() {
+			return fiber.NewError(fiber.StatusInternalServerError, "You gave the right EIP-1271 signature, but we're not ready for this yet.")
+		}
 	}
 
 	requestID := ksuid.New().String()
