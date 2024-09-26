@@ -12,6 +12,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
+	sig2 "github.com/DIMO-Network/devices-api/internal/contracts/signature"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
@@ -21,6 +22,7 @@ import (
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/ethclient"
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
@@ -295,14 +297,31 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	ownerSignature := common.FromHex(req.Signature)
-	recAddr, err := helpers.Ecrecover(tdHash, ownerSignature)
-	if err != nil {
-		sdc.log.Err(err).Msg("unable to validate signature")
-		return err
-	}
 
-	if recAddr != userAddr {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature.")
+	recAddr, origErr := helpers.Ecrecover(tdHash, ownerSignature)
+	if origErr != nil || recAddr != userAddr {
+		ethClient, err := ethclient.Dial(sdc.Settings.MainRPCURL)
+		if err != nil {
+			return err
+		}
+
+		sigCon, err := sig2.NewErc1271(userAddr, ethClient)
+		if err != nil {
+			return err
+		}
+
+		ret, err := sigCon.IsValidSignature(nil, common.BytesToHash(tdHash), ownerSignature)
+		if err != nil {
+			return err
+		}
+
+		if ret != erc1271magicValue {
+			return fiber.NewError(fiber.StatusBadRequest, "Could not verify ERC-1271 signature.")
+		}
+
+		if sdc.Settings.IsProduction() {
+			return fiber.NewError(fiber.StatusInternalServerError, "You gave the right EIP-1271 signature, but we're not ready for this yet.")
+		}
 	}
 
 	childKeyNumber, err := sdc.generateNextChildKeyNumber(c.Context())
@@ -510,10 +529,30 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't verify signature.")
 	}
 
-	if recAddr, err := helpers.Ecrecover(hash, ownerSignature); err != nil {
-		return err
-	} else if recAddr != ownerAddr {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Signature not valid for vehicle owner %s.", ownerAddr))
+	recAddr, origErr := helpers.Ecrecover(hash, ownerSignature)
+	if origErr != nil || recAddr != ownerAddr {
+		ethClient, err := ethclient.Dial(sdc.Settings.MainRPCURL)
+		if err != nil {
+			return err
+		}
+
+		sigCon, err := sig2.NewErc1271(ownerAddr, ethClient)
+		if err != nil {
+			return err
+		}
+
+		ret, err := sigCon.IsValidSignature(nil, common.BytesToHash(hash), ownerSignature)
+		if err != nil {
+			return err
+		}
+
+		if ret != erc1271magicValue {
+			return fiber.NewError(fiber.StatusBadRequest, "Could not verify ERC-1271 signature.")
+		}
+
+		if sdc.Settings.IsProduction() {
+			return fiber.NewError(fiber.StatusInternalServerError, "You gave the right EIP-1271 signature, but we're not ready for this yet.")
+		}
 	}
 
 	reqID := ksuid.New().String()
