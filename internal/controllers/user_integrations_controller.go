@@ -191,6 +191,10 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 		return err
 	}
 
+	if unit := apiInt.R.SerialAftermarketDevice; unit != nil && (unit.PairRequestID.Valid || !unit.VehicleTokenID.IsZero()) {
+		return fiber.NewError(fiber.StatusBadRequest, "Must un-pair device on-chain instead.")
+	}
+
 	integ, err := udc.DeviceDefSvc.GetIntegrationByID(ctx, integrationID)
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting integration id: "+integrationID)
@@ -212,10 +216,7 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 			}
 		}
 	case constants.AutoPiVendor:
-		if unit := apiInt.R.SerialAftermarketDevice; unit != nil && unit.PairRequestID.Valid {
-			return fiber.NewError(fiber.StatusConflict, "Must un-pair on-chain before deleting integration.")
-		}
-
+		// Should never hit this.
 		err = udc.autoPiIngestRegistrar.Deregister(apiInt.ExternalID.String, apiInt.UserDeviceID, apiInt.IntegrationID)
 		if err != nil {
 			return err
