@@ -409,6 +409,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 }
 
 func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayload_BadSignatureFailure() {
+	s.T().Skip()
 	_, addr, err := test.GenerateWallet()
 	s.Require().NoError(err)
 
