@@ -519,9 +519,6 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	ownerSignature := common.FromHex(req.Signature)
-	if len(ownerSignature) != 65 {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Owner signature was length %d, not 65.", len(ownerSignature)))
-	}
 
 	hash, _, err := signer.TypedDataAndHash(*td)
 	if err != nil {
