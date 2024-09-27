@@ -26,7 +26,6 @@ import (
 	"github.com/DIMO-Network/shared/redis/mocks"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/segmentio/ksuid"
@@ -112,7 +111,6 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	app.Post("/user/devices/second", test.AuthInjectorTestHandler(testUserID2), c.RegisterDeviceForUser) // for different test user
 	app.Get("/user/devices/me", test.AuthInjectorTestHandler(s.testUserID), c.GetUserDevices)
 	app.Patch("/user/devices/:userDeviceID/vin", test.AuthInjectorTestHandler(s.testUserID), c.UpdateVIN)
-	app.Patch("/user/devices/:userDeviceID/name", test.AuthInjectorTestHandler(s.testUserID), c.UpdateName)
 	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID), c.RefreshUserDeviceStatus)
 	app.Get("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID), c.GetBurnDevice)
 	app.Post("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID), c.PostBurnDevice)
@@ -708,90 +706,6 @@ func (s *UserDevicesControllerTestSuite) TestVINValidate() {
 			assert.Error(s.T(), err, tc.reason)
 		}
 	}
-}
-
-func (s *UserDevicesControllerTestSuite) TestNameValidate() {
-
-	type test struct {
-		name   string
-		want   bool
-		reason string
-	}
-
-	tests := []test{
-		{name: "ValidNameHere", want: true, reason: "valid name"},
-		{name: "MyCar2022", want: true, reason: "valid name"},
-		{name: "16CharactersLong", want: true, reason: "valid name"},
-		{name: "12345", want: true, reason: "valid name"},
-		{name: "a", want: true, reason: "valid name"},
-		{name: "เร็ว", want: true, reason: "valid name"},
-		{name: "快速地", want: true, reason: "valid name"},
-		{name: "швидко", want: true, reason: "valid name"},
-		{name: "سريع", want: true, reason: "valid name"},
-		{name: "Dimo's Fav Car", want: true, reason: "valid name"},
-		{name: "My Car: 2022", want: true, reason: "valid name"},
-		{name: "Car #2", want: true, reason: "valid name"},
-		{name: `Sally "Speed Demon" Sedan`, want: true, reason: "valid name"},
-		{name: "Valid Car Name", want: true, reason: "valid name"},
-		{name: " Invalid Name", want: false, reason: "starts with space"},
-		{name: "My Car!!!", want: true, reason: "valid name with !"},
-		{name: "", want: false, reason: "empty name"},
-		{name: "ThisNameIsTooLong--CanOnlyBe40CharactersInLengthxdd", want: false, reason: "too long"},
-		{name: "Audi E-tron Sportback Atanas", want: true, reason: "up to 40 characters"},
-		{name: "no\nNewLine", want: false, reason: "no new lines allowed"},
-		{name: "RC Kia eNiro 4+", want: true, reason: "+ is okay"},
-		{name: "Tesla (Alaska)", want: true, reason: "Parentheses allowed"},
-	}
-
-	for _, tc := range tests {
-		vinReq := UpdateNameReq{Name: &tc.name}
-		err := vinReq.validate()
-		if tc.want {
-			assert.NoError(s.T(), err, tc.reason)
-		} else {
-			assert.Error(s.T(), err, tc.reason)
-		}
-	}
-}
-
-func (s *UserDevicesControllerTestSuite) TestPatchName() {
-	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, ksuid.New().String(), nil, "", s.pdb)
-	deviceID := uuid.New().String()
-	apunit := test.SetupCreateAftermarketDevice(s.T(), s.testUserID, nil, uuid.NewString(), &deviceID, s.pdb)
-	autoPiIntID := ksuid.New().String()
-	vehicleID := 3214
-	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), apunit.Serial, deviceID, ud.ID, autoPiIntID, s.pdb)
-
-	// nil check test
-	payload := `{}`
-	request := test.BuildRequest("PATCH", "/user/devices/"+ud.ID+"/name", payload)
-	response, _ := s.app.Test(request)
-	assert.Equal(s.T(), fiber.StatusBadRequest, response.StatusCode)
-	// name with spaces happy path test
-	testName := "Queens Charriot,.@!$’"
-	payload = fmt.Sprintf(`{ "name": " %s " }`, testName) // intentionally has spaces to test trimming
-
-	s.autoPiSvc.EXPECT().GetDeviceByUnitID(apunit.Serial).Times(1).Return(&services.AutoPiDongleDevice{
-		ID: deviceID, UnitID: apunit.Serial, Vehicle: services.AutoPiDongleVehicle{ID: vehicleID},
-	}, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Times(1).Return(&ddgrpc.GetDeviceDefinitionItemResponse{
-		Type: &ddgrpc.DeviceType{
-			Year:      2024,
-			MakeSlug:  "ford",
-			ModelSlug: "escape",
-		}}, nil)
-	nm := testName + ":2024 ford escape"
-	s.autoPiSvc.EXPECT().PatchVehicleProfile(vehicleID, services.PatchVehicleProfile{
-		CallName: &nm,
-	}).Times(1).Return(nil)
-	request = test.BuildRequest("PATCH", "/user/devices/"+ud.ID+"/name", payload)
-	response, _ = s.app.Test(request)
-	if assert.Equal(s.T(), fiber.StatusNoContent, response.StatusCode) == false {
-		body, _ := io.ReadAll(response.Body)
-		fmt.Println("message: " + string(body))
-	}
-	require.NoError(s.T(), ud.Reload(s.ctx, s.pdb.DBS().Reader))
-	assert.Equal(s.T(), testName, ud.Name.String)
 }
 
 func (s *UserDevicesControllerTestSuite) TestPostRefreshSmartCar() {

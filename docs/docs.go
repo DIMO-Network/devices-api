@@ -1643,48 +1643,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/devices/{userDeviceID}/name": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "updates the Name on the user device record",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "description": "Name",
-                        "name": "name",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.UpdateNameReq"
-                        }
-                    },
-                    {
-                        "type": "string",
-                        "description": "user id",
-                        "name": "user_device_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
         "/user/devices/{userDeviceId}/commands/update-nft-image": {
             "post": {
                 "security": [
@@ -3243,14 +3201,6 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "countryCode": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_controllers.UpdateNameReq": {
-            "type": "object",
-            "properties": {
-                "name": {
                     "type": "string"
                 }
             }
