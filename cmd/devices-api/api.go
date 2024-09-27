@@ -259,7 +259,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Post("/commands/mint", userDeviceController.PostMintDevice)
 
 	udOwner.Patch("/vin", userDeviceController.UpdateVIN)
-	udOwner.Patch("/name", userDeviceController.UpdateName)
 	udOwner.Patch("/country-code", userDeviceController.UpdateCountryCode)
 
 	udOwner.Post("/error-codes", userDeviceController.QueryDeviceErrorCodes)

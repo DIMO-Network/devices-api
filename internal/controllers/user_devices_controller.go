@@ -1097,66 +1097,6 @@ func (udc *UserDevicesController) updatePowerTrain(ctx context.Context, userDevi
 	return nil
 }
 
-// UpdateName godoc
-// @Description updates the Name on the user device record
-// @Tags        user-devices
-// @Produce     json
-// @Accept      json
-// @Param       name           body controllers.UpdateNameReq true "Name"
-// @Param       user_device_id path string                    true "user id"
-// @Success     204
-// @Security    BearerAuth
-// @Router      /user/devices/{userDeviceID}/name [patch]
-func (udc *UserDevicesController) UpdateName(c *fiber.Ctx) error {
-	udi := c.Params("userDeviceID")
-
-	logger := helpers.GetLogger(c, udc.log)
-
-	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi),
-		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations)).One(c.Context(), udc.DBS().Writer)
-	if err != nil {
-		return err
-	}
-	req := &UpdateNameReq{}
-	if err := c.BodyParser(req); err != nil {
-		// Return status 400 and error message.
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
-	}
-	if req.Name == nil {
-		return fiber.NewError(fiber.StatusBadRequest, "name cannot be empty")
-	}
-	*req.Name = strings.TrimSpace(*req.Name)
-
-	if err := req.validate(); err != nil {
-		if req.Name != nil {
-			logger.Warn().Err(err).Str("name", *req.Name).Msg("Proposed device name is invalid.")
-		}
-		return fiber.NewError(fiber.StatusBadRequest, "Name field is limited to 16 alphanumeric characters.")
-	}
-
-	userDevice.Name = null.StringFromPtr(req.Name)
-	_, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Infer())
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-	// update name on autopi too. This helps for debugging purposes to search a vehicle
-	for _, udapi := range userDevice.R.UserDeviceAPIIntegrations {
-		if udapi.Serial.Valid {
-			autoPiDevice, err := udc.autoPiSvc.GetDeviceByUnitID(udapi.Serial.String)
-			if err == nil {
-				dd, _ := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
-				nm := services.BuildCallName(req.Name, dd)
-				_ = udc.autoPiSvc.PatchVehicleProfile(autoPiDevice.Vehicle.ID, services.PatchVehicleProfile{
-					CallName: &nm,
-				})
-			}
-			break
-		}
-	}
-
-	return c.SendStatus(fiber.StatusNoContent)
-}
-
 // UpdateCountryCode godoc
 // @Description updates the CountryCode on the user device record
 // @Tags        user-devices
@@ -1746,10 +1686,6 @@ type UpdateVINReq struct {
 	Signature string `json:"signature" example:"16b15f88bbd2e0a22d1d0084b8b7080f2003ea83eab1a00f80d8c18446c9c1b6224f17aa09eaf167717ca4f355bb6dc94356e037edf3adf6735a86fc3741f5231b" validate:"optional"`
 }
 
-type UpdateNameReq struct {
-	Name *string `json:"name"`
-}
-
 type UpdateCountryCodeReq struct {
 	CountryCode *string `json:"countryCode"`
 }
@@ -1790,18 +1726,6 @@ func (u *UpdateVINReq) validate() error {
 	}
 
 	return nil
-}
-
-func (u *UpdateNameReq) validate() error {
-	return validation.ValidateStruct(u,
-		// name must be between 1 and 40 alphanumeric characters in length
-		// NOTE: this captures characters in the latin/ chinese/ cyrillic alphabet but doesn't work as well for thai or arabic
-		validation.Field(&u.Name, validation.Required, validation.Match(regexp.MustCompile(`^[\p{L}\p{N}\p{M}# ,’.@!$'":_/()+-]{1,40}$`))),
-		// cannot start with space
-		validation.Field(&u.Name, validation.Required, validation.Match(regexp.MustCompile(`^[^\s]`))),
-		// cannot end with space
-		validation.Field(&u.Name, validation.Required, validation.Match(regexp.MustCompile(`.+[^\s]$|[^\s]$`))),
-	)
 }
 
 // PrivilegeUser represents set of privileges I've granted to a user
