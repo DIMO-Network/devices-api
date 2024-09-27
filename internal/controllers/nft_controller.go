@@ -29,6 +29,7 @@ import (
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -452,40 +453,11 @@ func validVINChar(r rune) bool {
 // @Router      /vehicle/{tokenId}/vin [patch]
 func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 	tis := c.Params("tokenID")
-	ti, ok := new(big.Int).SetString(tis, 10)
+	tokenID, ok := new(big.Int).SetString(tis, 10)
 	if !ok {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
 	}
 	logger := helpers.GetLogger(c, udc.log).With().Str("route", c.Route().Name).Logger()
-
-	// Don't want phantom reads.
-	tx, err := udc.DBS().GetWriterConn().BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
-	if err != nil {
-		return opaqueInternalError
-	}
-	defer tx.Rollback() //nolint
-
-	userDevice, err := models.UserDevices(
-		models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(tokenID)),
-	).One(c.Context(), tx)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "Vehicle NFTnot found.")
-		}
-		logger.Err(err).Msg("Failed to search for device.")
-		return opaqueInternalError
-	}
-
-	if userDevice.VinConfirmed {
-		switch {
-		case req.Signature == "":
-			return fiber.NewError(fiber.StatusConflict, "Vehicle already has a confirmed VIN.")
-		case req.VIN != userDevice.VinIdentifier.String:
-			return fiber.NewError(fiber.StatusConflict, "Submitted VIN does not match confirmed VIN.")
-		default:
-			return c.SendStatus(fiber.StatusNoContent)
-		}
-	}
 
 	var req UpdateVINReq
 	if err := c.BodyParser(&req); err != nil {
@@ -500,6 +472,35 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 	for _, r := range req.VIN {
 		if !validVINChar(r) {
 			return fiber.NewError(fiber.StatusBadRequest, "VIN contains a non-alphanumeric character.")
+		}
+	}
+
+	// Don't want phantom reads.
+	tx, err := udc.DBS().GetWriterConn().BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return opaqueInternalError
+	}
+	defer tx.Rollback() //nolint
+
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(utils.NullableBigToDecimal(tokenID)),
+	).One(c.Context(), tx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("Vehicle NFT %d not found.", tokenID))
+		}
+		logger.Err(err).Msg("Failed to search for device.")
+		return opaqueInternalError
+	}
+
+	if userDevice.VinConfirmed {
+		switch {
+		case req.Signature == "":
+			return fiber.NewError(fiber.StatusConflict, "Vehicle already has a confirmed VIN.")
+		case req.VIN != userDevice.VinIdentifier.String:
+			return fiber.NewError(fiber.StatusConflict, "Submitted VIN does not match confirmed VIN.")
+		default:
+			return c.SendStatus(fiber.StatusNoContent)
 		}
 	}
 
@@ -521,7 +522,7 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 
 		found, err := models.AftermarketDevices(
 			models.AftermarketDeviceWhere.EthereumAddress.EQ(recAddr.Bytes()),
-		).Exists(c.Context(), udc.DBS().Reader)
+		).Exists(c.Context(), tx)
 		if err != nil {
 			return err
 		}
