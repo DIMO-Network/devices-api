@@ -35,7 +35,6 @@ import (
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -935,130 +934,6 @@ func (udc *UserDevicesController) DeviceOptIn(c *fiber.Ctx) error {
 	logger.Debug().Msg("Opted into data-sharing.")
 
 	return nil
-}
-
-func validVINChar(r rune) bool {
-	return 'A' <= r && r <= 'Z' || '0' <= r && r <= '9'
-}
-
-// UpdateVIN godoc
-// @Description updates the VIN on the user device record
-// @Tags        user-devices
-// @Produce     json
-// @Accept      json
-// @Param       vin          body controllers.UpdateVINReq true "VIN"
-// @Param       userDeviceID path string                   true "user id"
-// @Success     204
-// @Security    BearerAuth
-// @Router      /user/devices/{userDeviceID}/vin [patch]
-func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
-	udi := c.Params("userDeviceID")
-
-	logger := helpers.GetLogger(c, udc.log).With().Str("route", c.Route().Name).Logger()
-
-	var req UpdateVINReq
-	if err := c.BodyParser(&req); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Could not parse request body.")
-	}
-
-	req.VIN = strings.TrimSpace(strings.ToUpper(req.VIN))
-	if len(req.VIN) != 17 {
-		return fiber.NewError(fiber.StatusBadRequest, "VIN is not 17 characters long.")
-	}
-
-	for _, r := range req.VIN {
-		if !validVINChar(r) {
-			return fiber.NewError(fiber.StatusBadRequest, "VIN contains a non-alphanumeric character.")
-		}
-	}
-
-	// If signed, we should be able to set the VIN to validated.
-	if req.Signature != "" {
-		vinByte := []byte(req.VIN)
-		sig := common.FromHex(req.Signature)
-		if len(sig) != 65 {
-			logger.Error().Str("rawSignature", req.Signature).Msg("Signature was not 65 bytes.")
-			return fiber.NewError(fiber.StatusBadRequest, "Signature is not 65 bytes long.")
-		}
-
-		hash := crypto.Keccak256(vinByte)
-
-		recAddr, err := helpers.Ecrecover(hash, sig)
-		if err != nil {
-			return fiber.NewError(fiber.StatusBadRequest, "Couldn't recover signer address.")
-		}
-
-		found, err := models.AftermarketDevices(
-			models.AftermarketDeviceWhere.EthereumAddress.EQ(recAddr.Bytes()),
-		).Exists(c.Context(), udc.DBS().Reader)
-		if err != nil {
-			return err
-		}
-		if !found {
-			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("VIN signature author %s does not match any known aftermarket device.", recAddr))
-		}
-	}
-
-	// Don't want phantom reads.
-	tx, err := udc.DBS().GetWriterConn().BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
-	if err != nil {
-		return opaqueInternalError
-	}
-	defer tx.Rollback() //nolint
-
-	userDevice, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(udi),
-	).One(c.Context(), tx)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "Vehicle not found.")
-		}
-		return err
-	}
-
-	if userDevice.VinConfirmed {
-		switch {
-		case req.Signature == "":
-			return fiber.NewError(fiber.StatusConflict, "Vehicle already has a confirmed VIN.")
-		case req.VIN != userDevice.VinIdentifier.String:
-			return fiber.NewError(fiber.StatusConflict, "Submitted VIN does not match confirmed VIN.")
-		default:
-			return c.SendStatus(fiber.StatusNoContent)
-		}
-	}
-
-	if req.Signature != "" {
-		existing, err := models.UserDevices(
-			models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(req.VIN)),
-			models.UserDeviceWhere.VinConfirmed.EQ(true),
-		).Exists(c.Context(), tx)
-		if err != nil {
-			return err
-		}
-		if udc.Settings.IsProduction() && existing {
-			return fiber.NewError(fiber.StatusConflict, "VIN already in use by another vehicle.")
-		}
-		userDevice.VinConfirmed = true
-	}
-
-	userDevice.VinIdentifier = null.StringFrom(req.VIN)
-
-	if _, err := userDevice.Update(c.Context(), tx, boil.Infer()); err != nil {
-		return err
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-
-	if userDevice.CountryCode.Valid {
-		if err := udc.updatePowerTrain(c.Context(), userDevice); err != nil {
-			logger.Err(err).Msg("Failed to update powertrain type.")
-		}
-	}
-
-	return c.SendStatus(fiber.StatusNoContent)
 }
 
 const (
