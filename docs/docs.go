@@ -1642,7 +1642,7 @@ const docTemplate = `{
                     }
                 }
             }
-        }
+        },
         "/user/devices/{userDeviceID}/vin": {
             "patch": {
                 "security": [
