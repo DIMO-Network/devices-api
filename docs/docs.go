@@ -1685,48 +1685,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/devices/{userDeviceID}/vin": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "updates the VIN on the user device record",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "description": "VIN",
-                        "name": "vin",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.UpdateVINReq"
-                        }
-                    },
-                    {
-                        "type": "string",
-                        "description": "user id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
         "/user/devices/{userDeviceId}/commands/update-nft-image": {
             "post": {
                 "security": [
@@ -2173,6 +2131,39 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found"
+                    }
+                }
+            }
+        },
+        "/vehicle/{tokenId}/vin": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "updates the VIN on the user device record",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user-devices"
+                ],
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "token id",
+                        "name": "tokenId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             }
@@ -3261,24 +3252,6 @@ const docTemplate = `{
             "properties": {
                 "name": {
                     "type": "string"
-                }
-            }
-        },
-        "internal_controllers.UpdateVINReq": {
-            "type": "object",
-            "required": [
-                "vin"
-            ],
-            "properties": {
-                "signature": {
-                    "description": "Signature is the hex-encoded result of the AutoPi signing the VIN. It must\nbe present to verify the VIN.",
-                    "type": "string",
-                    "example": "16b15f88bbd2e0a22d1d0084b8b7080f2003ea83eab1a00f80d8c18446c9c1b6224f17aa09eaf167717ca4f355bb6dc94356e037edf3adf6735a86fc3741f5231b"
-                },
-                "vin": {
-                    "description": "VIN is a vehicle identification number. At the very least, it must be\n17 characters in length and contain only letters and numbers.",
-                    "type": "string",
-                    "example": "4Y1SL65848Z411439"
                 }
             }
         },

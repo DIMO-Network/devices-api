@@ -769,23 +769,6 @@ definitions:
       name:
         type: string
     type: object
-  internal_controllers.UpdateVINReq:
-    properties:
-      signature:
-        description: |-
-          Signature is the hex-encoded result of the AutoPi signing the VIN. It must
-          be present to verify the VIN.
-        example: 16b15f88bbd2e0a22d1d0084b8b7080f2003ea83eab1a00f80d8c18446c9c1b6224f17aa09eaf167717ca4f355bb6dc94356e037edf3adf6735a86fc3741f5231b
-        type: string
-      vin:
-        description: |-
-          VIN is a vehicle identification number. At the very least, it must be
-          17 characters in length and contain only letters and numbers.
-        example: 4Y1SL65848Z411439
-        type: string
-    required:
-    - vin
-    type: object
   internal_controllers.UserDeviceFull:
     properties:
       countryCode:
@@ -1887,32 +1870,6 @@ paths:
       - BearerAuth: []
       tags:
       - user-devices
-  /user/devices/{userDeviceID}/vin:
-    patch:
-      consumes:
-      - application/json
-      description: updates the VIN on the user device record
-      parameters:
-      - description: VIN
-        in: body
-        name: vin
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.UpdateVINReq'
-      - description: user id
-        in: path
-        name: userDeviceID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-      security:
-      - BearerAuth: []
-      tags:
-      - user-devices
   /user/devices/{userDeviceId}/commands/update-nft-image:
     post:
       description: Updates a user's NFT image.
@@ -2295,6 +2252,26 @@ paths:
           description: Not Found
       tags:
       - nfts
+  /vehicle/{tokenId}/vin:
+    patch:
+      consumes:
+      - application/json
+      description: updates the VIN on the user device record
+      parameters:
+      - description: token id
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
 securityDefinitions:
   BearerAuth:
     in: header
