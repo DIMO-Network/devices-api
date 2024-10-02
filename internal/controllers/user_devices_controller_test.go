@@ -11,6 +11,7 @@ import (
 	"time"
 
 	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
+	"github.com/ericlagergren/decimal"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
@@ -37,6 +38,7 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/types"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -110,7 +112,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	app.Post("/user/devices/fromsmartcar", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUserFromSmartcar)
 	app.Post("/user/devices/second", test.AuthInjectorTestHandler(testUserID2), c.RegisterDeviceForUser) // for different test user
 	app.Get("/user/devices/me", test.AuthInjectorTestHandler(s.testUserID), c.GetUserDevices)
-	app.Patch("/user/devices/:userDeviceID/vin", test.AuthInjectorTestHandler(s.testUserID), c.UpdateVIN)
+	app.Patch("/vehicle/:tokenID/vin", c.UpdateVIN) // Auth done by the middleware.
 	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID), c.RefreshUserDeviceStatus)
 	app.Get("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID), c.GetBurnDevice)
 	app.Post("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID), c.PostBurnDevice)
@@ -648,6 +650,10 @@ func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 	}
 
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud.TokenID = types.NewNullDecimal(new(decimal.Big).SetUint64(40))
+	_, err := ud.Update(context.TODO(), s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
+
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: nil}, nil)
@@ -660,7 +666,7 @@ func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 		Return(dd[0], nil)
 
 	payload := `{ "vin": "5YJYGDEE5MF085533" }`
-	request := test.BuildRequest("PATCH", "/user/devices/"+ud.ID+"/vin", payload)
+	request := test.BuildRequest("PATCH", "/vehicle/40/vin", payload)
 	response, responseError := s.app.Test(request)
 	require.NoError(s.T(), responseError)
 	if assert.Equal(s.T(), fiber.StatusNoContent, response.StatusCode) == false {
