@@ -1856,32 +1856,6 @@ paths:
       - device
       - integration
       - command
-  /user/devices/{userDeviceID}/vin:
-    patch:
-      consumes:
-      - application/json
-      description: updates the VIN on the user device record
-      parameters:
-      - description: VIN
-        in: body
-        name: vin
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.UpdateVINReq'
-      - description: user id
-        in: path
-        name: userDeviceID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-      security:
-      - BearerAuth: []
-      tags:
-      - user-devices
   /user/devices/{userDeviceId}/commands/update-nft-image:
     post:
       description: Updates a user's NFT image.
@@ -2264,6 +2238,32 @@ paths:
           description: Not Found
       tags:
       - nfts
+  /vehicle/{tokenId}/vin:
+    patch:
+      consumes:
+      - application/json
+      description: updates the VIN on the user device record
+      parameters:
+      - description: token id
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      - description: VIN
+        in: body
+        name: vin
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.UpdateVINReq'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      tags:
+      - user-devices
 securityDefinitions:
   BearerAuth:
     in: header

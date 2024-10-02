@@ -29,6 +29,7 @@ import (
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -435,6 +436,134 @@ func (nc *NFTController) GetSyntheticDeviceNFTMetadata(c *fiber.Ctx) error {
 			{TraitType: "Ethereum Address", Value: common.BytesToAddress(unit.WalletAddress).String()},
 		},
 	})
+}
+
+func validVINChar(r rune) bool {
+	return 'A' <= r && r <= 'Z' || '0' <= r && r <= '9'
+}
+
+// UpdateVIN godoc
+// @Description updates the VIN on the user device record
+// @Tags        user-devices
+// @Produce     json
+// @Accept      json
+// @Param       tokenId path int true "token id"
+// @Param       vin body controllers.UpdateVINReq true "VIN"
+// @Success     204
+// @Security    BearerAuth
+// @Router      /vehicle/{tokenId}/vin [patch]
+func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
+	tis := c.Params("tokenID")
+	tokenID, ok := new(big.Int).SetString(tis, 10)
+	if !ok {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
+	}
+	logger := helpers.GetLogger(c, udc.log).With().Str("route", c.Route().Name).Logger()
+
+	var req UpdateVINReq
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Could not parse request body.")
+	}
+
+	req.VIN = strings.TrimSpace(strings.ToUpper(req.VIN))
+	if len(req.VIN) != 17 {
+		return fiber.NewError(fiber.StatusBadRequest, "VIN is not 17 characters long.")
+	}
+
+	for _, r := range req.VIN {
+		if !validVINChar(r) {
+			return fiber.NewError(fiber.StatusBadRequest, "VIN contains a non-alphanumeric character.")
+		}
+	}
+
+	// Don't want phantom reads.
+	tx, err := udc.DBS().GetWriterConn().BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return opaqueInternalError
+	}
+	defer tx.Rollback() //nolint
+
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(utils.NullableBigToDecimal(tokenID)),
+	).One(c.Context(), tx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("Vehicle NFT %d not found.", tokenID))
+		}
+		logger.Err(err).Msg("Failed to search for device.")
+		return opaqueInternalError
+	}
+
+	if userDevice.VinConfirmed {
+		switch {
+		case req.Signature == "":
+			return fiber.NewError(fiber.StatusConflict, "Vehicle already has a confirmed VIN.")
+		case req.VIN != userDevice.VinIdentifier.String:
+			return fiber.NewError(fiber.StatusConflict, "Submitted VIN does not match confirmed VIN.")
+		default:
+			return c.SendStatus(fiber.StatusNoContent)
+		}
+	}
+
+	// If signed, we should be able to set the VIN to validated.
+	if req.Signature != "" {
+		vinByte := []byte(req.VIN)
+		sig := common.FromHex(req.Signature)
+		if len(sig) != 65 {
+			logger.Error().Str("rawSignature", req.Signature).Msg("Signature was not 65 bytes.")
+			return fiber.NewError(fiber.StatusBadRequest, "Signature is not 65 bytes long.")
+		}
+
+		hash := crypto.Keccak256(vinByte)
+
+		recAddr, err := helpers.Ecrecover(hash, sig)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "Couldn't recover signer address.")
+		}
+
+		found, err := models.AftermarketDevices(
+			models.AftermarketDeviceWhere.EthereumAddress.EQ(recAddr.Bytes()),
+		).Exists(c.Context(), tx)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("VIN signature author %s does not match any known aftermarket device.", recAddr))
+		}
+	}
+
+	if req.Signature != "" {
+		existing, err := models.UserDevices(
+			models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(req.VIN)),
+			models.UserDeviceWhere.VinConfirmed.EQ(true),
+		).Exists(c.Context(), tx)
+		if err != nil {
+			return err
+		}
+		if udc.Settings.IsProduction() && existing {
+			return fiber.NewError(fiber.StatusConflict, "VIN already in use by another vehicle.")
+		}
+		userDevice.VinConfirmed = true
+	}
+
+	userDevice.VinIdentifier = null.StringFrom(req.VIN)
+
+	if _, err := userDevice.Update(c.Context(), tx, boil.Infer()); err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	if userDevice.CountryCode.Valid {
+		if err := udc.updatePowerTrain(c.Context(), userDevice); err != nil {
+			logger.Err(err).Msg("Failed to update powertrain type.")
+		}
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 // UnlockDoors godoc
