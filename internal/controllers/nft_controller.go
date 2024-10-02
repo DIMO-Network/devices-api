@@ -447,7 +447,8 @@ func validVINChar(r rune) bool {
 // @Tags        user-devices
 // @Produce     json
 // @Accept      json
-// @Param      	tokenId path int true "token id"
+// @Param       tokenId path int true "token id"
+// @Param       vin body controllers.UpdateVINReq true "VIN"
 // @Success     204
 // @Security    BearerAuth
 // @Router      /vehicle/{tokenId}/vin [patch]
