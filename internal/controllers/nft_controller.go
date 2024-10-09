@@ -442,7 +442,7 @@ func validVINChar(r rune) bool {
 	return 'A' <= r && r <= 'Z' || '0' <= r && r <= '9'
 }
 
-// UpdateVIN godoc
+// UpdateVINV2 godoc
 // @Description updates the VIN on the user device record
 // @Tags        user-devices
 // @Produce     json
@@ -452,7 +452,7 @@ func validVINChar(r rune) bool {
 // @Success     204
 // @Security    BearerAuth
 // @Router      /vehicle/{tokenId}/vin [patch]
-func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
+func (udc *UserDevicesController) UpdateVINV2(c *fiber.Ctx) error {
 	tis := c.Params("tokenID")
 	tokenID, ok := new(big.Int).SetString(tis, 10)
 	if !ok {
