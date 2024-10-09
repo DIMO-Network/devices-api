@@ -199,7 +199,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 
 	// vehicle command privileges
-	vPriv.Patch("/vin", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), userDeviceController.UpdateVIN)
+	vPriv.Patch("/vin", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), userDeviceController.UpdateVINV2)
 	vPriv.Post("/commands/doors/unlock", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.UnlockDoors)
 	vPriv.Post("/commands/doors/lock", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.LockDoors)
 	vPriv.Post("/commands/trunk/open", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.OpenTrunk)
@@ -259,6 +259,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Get("/commands/mint", userDeviceController.GetMintDevice)
 	udOwner.Post("/commands/mint", userDeviceController.PostMintDevice)
 
+	udOwner.Patch("/vin", userDeviceController.UpdateVIN)
 	udOwner.Patch("/country-code", userDeviceController.UpdateCountryCode)
 
 	udOwner.Post("/error-codes", userDeviceController.QueryDeviceErrorCodes)
