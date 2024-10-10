@@ -376,7 +376,7 @@ func (t *teslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Contex
 
 // performRequest a helper function for making http requests, it adds a timeout context and parses error response
 func (t *teslaFleetAPIService) performRequest(ctx context.Context, url *url.URL, token, method string, body io.Reader) ([]byte, error) {
-	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
+	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctxTimeout, method, url.String(), body)
