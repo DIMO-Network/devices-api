@@ -393,7 +393,7 @@ func (t *teslaFleetAPIService) performRequest(ctx context.Context, url *url.URL,
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == 421 {
+		if resp.StatusCode == http.StatusMisdirectedRequest {
 			return nil, ErrWrongRegion
 		}
 		if ct := resp.Header.Get("Content-Type"); ct != "application/json" {
