@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
+	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -186,6 +187,7 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 		return fiber.NewError(fiber.StatusInternalServerError, "Couldn't fetch vehicles from Tesla.")
 	}
 
+	decodeStart := time.Now()
 	response := make([]CompleteOAuthExchangeResponse, 0, len(vehicles))
 	for _, v := range vehicles {
 		ddRes, err := u.decodeTeslaVIN(c.Context(), v.VIN)
@@ -206,6 +208,7 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 			},
 		})
 	}
+	logger.Info().Msgf("Took %s to \"decode\" %d Tesla VINs.", time.Since(decodeStart), len(vehicles))
 
 	vehicleResp := &CompleteOAuthExchangeResponseWrapper{
 		Vehicles: response,
