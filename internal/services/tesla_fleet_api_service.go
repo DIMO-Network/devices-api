@@ -36,7 +36,10 @@ type TeslaFleetAPIService interface {
 var teslaScopes = []string{"openid", "offline_access", "user_data", "vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds"}
 
 type TeslaResponseWrapper[A any] struct {
-	Response A `json:"response"`
+	Response   A `json:"response"`
+	Pagination struct {
+		Next int `json:"next"`
+	} `json:"pagination"`
 }
 
 // ErrWrongRegion is returned when the Tesla proxy chooses the wrong region for a request.
@@ -164,24 +167,38 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 
 // GetVehicles calls Tesla Fleet API to get a list of vehicles using authorization token
 func (t *teslaFleetAPIService) GetVehicles(ctx context.Context, token string) ([]TeslaVehicle, error) {
-	url := t.FleetBase.JoinPath("api/1/vehicles")
+	out := make([]TeslaVehicle, 0)
+	page := 1
 
-	body, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list vehicles: %w", err)
+	listStart := time.Now()
+	for {
+		url := t.FleetBase.JoinPath("api/1/vehicles")
+
+		v := url.Query()
+		v.Set("page_size", "5")
+		v.Set("page", strconv.Itoa(page))
+		url.RawQuery = v.Encode()
+
+		body, err := t.performRequest(ctx, url, token, http.MethodGet, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list vehicles: %w", err)
+		}
+
+		var vehicles TeslaResponseWrapper[[]TeslaVehicle]
+		err = json.Unmarshal(body, &vehicles)
+		if err != nil {
+			return nil, fmt.Errorf("invalid response encountered while fetching user vehicles: %w", err)
+		}
+
+		out = append(out, vehicles.Response...)
+
+		if vehicles.Pagination.Next == 0 {
+			t.log.Info().Msgf("Took %s to page through %d vehicles.", time.Since(listStart), len(out))
+			return out, nil
+		}
+
+		page = vehicles.Pagination.Next
 	}
-
-	var vehicles TeslaResponseWrapper[[]TeslaVehicle]
-	err = json.Unmarshal(body, &vehicles)
-	if err != nil {
-		return nil, fmt.Errorf("invalid response encountered while fetching user vehicles: %w", err)
-	}
-
-	if vehicles.Response == nil {
-		return nil, fmt.Errorf("error occurred fetching user vehicles")
-	}
-
-	return vehicles.Response, nil
 }
 
 // GetVehicle calls Tesla Fleet API to get a single vehicle by ID

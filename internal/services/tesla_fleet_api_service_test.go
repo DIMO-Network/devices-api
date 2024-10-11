@@ -47,7 +47,7 @@ func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForTelemetryData() {
 	u := fmt.Sprintf("%s/api/1/vehicles/fleet_telemetry_config", baseURL)
 
 	respBody := TeslaResponseWrapper[SubscribeForTelemetryDataResponse]{
-		SubscribeForTelemetryDataResponse{
+		Response: SubscribeForTelemetryDataResponse{
 			UpdatedVehicles: 1,
 			SkippedVehicles: SkippedVehicles{},
 		},
@@ -73,7 +73,7 @@ func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForTelemetryData_Errror_Cas
 	}{
 		{
 			response: TeslaResponseWrapper[SubscribeForTelemetryDataResponse]{
-				SubscribeForTelemetryDataResponse{
+				Response: SubscribeForTelemetryDataResponse{
 					UpdatedVehicles: 0,
 					SkippedVehicles: SkippedVehicles{
 						MissingKey:          []string{vin},
@@ -86,7 +86,7 @@ func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForTelemetryData_Errror_Cas
 		},
 		{
 			response: TeslaResponseWrapper[SubscribeForTelemetryDataResponse]{
-				SubscribeForTelemetryDataResponse{
+				Response: SubscribeForTelemetryDataResponse{
 					UpdatedVehicles: 0,
 					SkippedVehicles: SkippedVehicles{
 						MissingKey:          nil,
@@ -99,7 +99,7 @@ func (t *TeslaFleetAPIServiceTestSuite) TestSubscribeForTelemetryData_Errror_Cas
 		},
 		{
 			response: TeslaResponseWrapper[SubscribeForTelemetryDataResponse]{
-				SubscribeForTelemetryDataResponse{
+				Response: SubscribeForTelemetryDataResponse{
 					UpdatedVehicles: 0,
 					SkippedVehicles: SkippedVehicles{
 						MissingKey:          nil,
