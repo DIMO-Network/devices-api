@@ -1,13 +1,15 @@
 module github.com/DIMO-Network/devices-api
 
-go 1.22
+go 1.22.3
+
+toolchain go1.23.2
 
 require (
 	github.com/DIMO-Network/device-data-api v0.9.4
 	github.com/DIMO-Network/device-definitions-api v1.2.14
 	github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c
 	github.com/DIMO-Network/meta-transaction-processor v0.3.2
-	github.com/DIMO-Network/shared v0.12.0
+	github.com/DIMO-Network/shared v0.12.5
 	github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3
 	github.com/IBM/sarama v1.43.3
 	github.com/ThreeDotsLabs/watermill v1.3.5
@@ -48,11 +50,12 @@ require (
 	go.uber.org/automaxprocs v1.5.3
 	go.uber.org/mock v0.4.0
 	golang.org/x/mod v0.17.0
-	golang.org/x/oauth2 v0.18.0
+	golang.org/x/oauth2 v0.21.0
 )
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
+	github.com/DIMO-Network/yaml v0.1.0 // indirect
 	github.com/MicahParks/keyfunc/v2 v2.1.0 // indirect
 	github.com/avast/retry-go v3.0.0+incompatible // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.23.2 // indirect
@@ -117,8 +120,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	google.golang.org/appengine v1.6.8 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240415180920-8c6c420018be // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240604185151-ef581f913117 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
@@ -157,13 +159,12 @@ require (
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -180,8 +181,8 @@ require (
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	golang.org/x/crypto v0.26.0 // indirect
-	google.golang.org/grpc v1.64.1
-	google.golang.org/protobuf v1.33.0
+	google.golang.org/grpc v1.66.0
+	google.golang.org/protobuf v1.34.2
 )
 
 require (
