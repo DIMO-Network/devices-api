@@ -48,7 +48,7 @@ type AutoPiAPIService interface {
 	UpdateJob(ctx context.Context, jobID, newState string, result *AutoPiCommandResult) (*models.AutopiJob, error)
 	UpdateState(deviceID string, state, country, region string) error
 	GetAllTemplates() ([]TemplateItem, error)
-	GetDevicesInTemplate(templateID int) (*DeviceInTemplateResponse, error)
+	GetDevicesInTemplate(templateID int, page int, pageSize int) (*DeviceInTemplateResponse, error)
 }
 
 type autoPiAPIService struct {
@@ -84,8 +84,14 @@ func (a *autoPiAPIService) GetAllTemplates() ([]TemplateItem, error) {
 	return templates.Results, nil
 }
 
-func (a *autoPiAPIService) GetDevicesInTemplate(templateID int) (*DeviceInTemplateResponse, error) {
-	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/dongle/templates/{%d}/devices/?page=1&page_size=500", templateID), "GET", nil)
+func (a *autoPiAPIService) GetDevicesInTemplate(templateID int, page int, pageSize int) (*DeviceInTemplateResponse, error) {
+	if page == 0 {
+		page = 1
+	}
+	if pageSize == 0 {
+		pageSize = 500
+	}
+	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/dongle/templates/{%d}/devices/?page=%d&page_size=%d", templateID, page, pageSize), "GET", nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error calling autopi api to get devices in template %d", templateID)
 	}

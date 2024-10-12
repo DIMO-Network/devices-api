@@ -185,17 +185,30 @@ func moveAllDevicesToTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc aut
 	reader := bufio.NewReader(os.Stdin)
 	// loop over each template
 	for _, template := range templates {
-		if template.ID == targetTemplateID || template.ID == 8 {
+		if template.ID == targetTemplateID {
 			continue // skip if base tmpl or the tmpl we are moving to
 		}
 		fmt.Printf("Template %d has %d devices. Move them all to %d? y/n \n", template.ID, template.DeviceCount, targetTemplateID)
 		input, _ := reader.ReadString('\n')
 		if input != "y\n" {
-			devices, err := autoPiAPI.GetDevicesInTemplate(template.ID)
+			// todo need pagination for template 8, gets it in blocks of 500
+			pageNum := 1
+			devices, err := autoPiAPI.GetDevicesInTemplate(template.ID, pageNum, 500)
 			if err != nil {
 				return err
 			}
-			for _, d := range devices.Results {
+			deviceList := make([]services.DeviceListItem, 0)
+			deviceList = append(deviceList, devices.Results...)
+			for pageNum*500 < devices.Count {
+				pageNum++
+				d, err := autoPiAPI.GetDevicesInTemplate(template.ID, pageNum, 500)
+				if err != nil {
+					return err
+				}
+				deviceList = append(deviceList, d.Results...)
+			}
+
+			for _, d := range deviceList {
 				// move the device to the target template
 				amd, err := models.AftermarketDevices(
 					models.AftermarketDeviceWhere.Serial.EQ(d.UnitID),
