@@ -69,7 +69,11 @@ func (p *syncDeviceTemplatesCmd) Execute(ctx context.Context, _ *flag.FlagSet, _
 			p.logger.Fatal().Err(err2).Msg("target template id must be an integer")
 			return subcommands.ExitFailure
 		}
-		err := moveAllDevicesToTemplate(ctx, p.pdb, hardwareTemplateService, autoPiSvc, tt)
+		fromTemplateID := 0
+		if p.moveFromTemplateID != nil {
+			fromTemplateID, err2 = strconv.Atoi(*p.moveFromTemplateID)
+		}
+		err := moveAllDevicesToTemplate(ctx, p.pdb, hardwareTemplateService, autoPiSvc, tt, fromTemplateID)
 		if err != nil {
 			p.logger.Fatal().Err(err).Msg("failed to move all devices to template")
 		}
@@ -177,7 +181,14 @@ func syncDeviceTemplates(ctx context.Context, logger *zerolog.Logger, settings *
 	return nil
 }
 
-func moveAllDevicesToTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc autopi.HardwareTemplateService, autoPiAPI services.AutoPiAPIService, targetTemplateID int) error {
+func moveAllDevicesToTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc autopi.HardwareTemplateService,
+	autoPiAPI services.AutoPiAPIService, targetTemplateID int, fromTemplate int) error {
+
+	if fromTemplate > 0 {
+		fmt.Printf("Moving all devices from template %d to %d\n", fromTemplate, targetTemplateID)
+		return moveDevicesInTemplate(ctx, pdb, autoPiHWSvc, autoPiAPI, targetTemplateID, fromTemplate)
+	}
+
 	templates, err := autoPiAPI.GetAllTemplates()
 	if err != nil {
 		return err
@@ -185,60 +196,68 @@ func moveAllDevicesToTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc aut
 	reader := bufio.NewReader(os.Stdin)
 	// loop over each template
 	for _, template := range templates {
-		if template.ID == targetTemplateID {
+		if template.ID == targetTemplateID || template.ID == 128 || template.ID == 127 {
 			continue // skip if base tmpl or the tmpl we are moving to
 		}
+
 		if template.DeviceCount == 0 {
 			continue
 		}
 		fmt.Printf("Template %d has %d devices. Move them all to %d? y/n \n", template.ID, template.DeviceCount, targetTemplateID)
 		input, _ := reader.ReadString('\n')
 		if input == "y\n" {
-			pageNum := 1
-			devices, err := autoPiAPI.GetDevicesInTemplate(template.ID, pageNum, 500)
-			if err != nil {
-				return err
+			err2 := moveDevicesInTemplate(ctx, pdb, autoPiHWSvc, autoPiAPI, targetTemplateID, template.ID)
+			if err2 != nil {
+				return err2
 			}
-			deviceList := make([]services.DeviceListItem, 0)
-			deviceList = append(deviceList, devices.Results...)
-			for pageNum*500 < devices.Count {
-				pageNum++
-				d, err := autoPiAPI.GetDevicesInTemplate(template.ID, pageNum, 500)
-				if err != nil {
-					return err
-				}
-				deviceList = append(deviceList, d.Results...)
-			}
-
-			for _, d := range deviceList {
-				// find the record in the db to update it
-				amd, err := models.AftermarketDevices(
-					models.AftermarketDeviceWhere.Serial.EQ(d.UnitID),
-					qm.Load(models.AftermarketDeviceRels.VehicleToken),
-				).One(ctx, pdb.DBS().Reader)
-				if err != nil {
-					fmt.Printf("Failed to find device in our db with unitid %s\n", d.UnitID)
-					continue
-				}
-				udId := ""
-				if amd.R.VehicleToken != nil {
-					udId = amd.R.VehicleToken.ID
-				}
-				// sync change
-				_, err = autoPiHWSvc.ApplyHardwareTemplate(ctx, &pb.ApplyHardwareTemplateRequest{
-					UserDeviceId:       udId,
-					AutoApiUnitId:      d.UnitID,
-					HardwareTemplateId: strconv.Itoa(targetTemplateID),
-				})
-				if err != nil {
-					fmt.Printf("Failed to move device %s to template %d\n", d.UnitID, targetTemplateID)
-				} else {
-					fmt.Printf("Moved device %s to template %d\n", d.UnitID, targetTemplateID)
-				}
-				time.Sleep(time.Millisecond * 400)
-			}
-
 		}
+	}
+	return nil
+}
+
+func moveDevicesInTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc autopi.HardwareTemplateService, autoPiAPI services.AutoPiAPIService, targetTemplateID int, fromTemplateID int) error {
+	pageNum := 1
+	devices, err := autoPiAPI.GetDevicesInTemplate(fromTemplateID, pageNum, 500)
+	if err != nil {
+		return err
+	}
+	deviceList := make([]services.DeviceListItem, 0)
+	deviceList = append(deviceList, devices.Results...)
+	for pageNum*500 < devices.Count {
+		pageNum++
+		d, err := autoPiAPI.GetDevicesInTemplate(fromTemplateID, pageNum, 500)
+		if err != nil {
+			return err
+		}
+		deviceList = append(deviceList, d.Results...)
+	}
+
+	for _, d := range deviceList {
+		// find the record in the db to update it
+		amd, err := models.AftermarketDevices(
+			models.AftermarketDeviceWhere.Serial.EQ(d.UnitID),
+			qm.Load(models.AftermarketDeviceRels.VehicleToken),
+		).One(ctx, pdb.DBS().Reader)
+		if err != nil {
+			fmt.Printf("Failed to find device in our db with unitid %s\n", d.UnitID)
+			continue
+		}
+		udId := ""
+		if amd.R.VehicleToken != nil {
+			udId = amd.R.VehicleToken.ID
+		}
+		// sync change
+		_, err = autoPiHWSvc.ApplyHardwareTemplate(ctx, &pb.ApplyHardwareTemplateRequest{
+			UserDeviceId:       udId,
+			AutoApiUnitId:      d.UnitID,
+			HardwareTemplateId: strconv.Itoa(targetTemplateID),
+		})
+		if err != nil {
+			fmt.Printf("Failed to move device %s to template %d\n", d.UnitID, targetTemplateID)
+		} else {
+			fmt.Printf("Moved device %s to template %d\n", d.UnitID, targetTemplateID)
+		}
+		time.Sleep(time.Millisecond * 400)
 	}
 	return nil
 }
