@@ -5,7 +5,6 @@
 //
 //	mockgen -source tesla_task_service.go -destination mocks/tesla_task_service_mock.go
 //
-
 // Package mock_services is a generated GoMock package.
 package mock_services
 
