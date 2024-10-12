@@ -211,7 +211,7 @@ func moveAllDevicesToTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc aut
 			}
 
 			for _, d := range deviceList {
-				// move the device to the target template
+				// find the record in the db to update it
 				amd, err := models.AftermarketDevices(
 					models.AftermarketDeviceWhere.Serial.EQ(d.UnitID),
 					qm.Load(models.AftermarketDeviceRels.VehicleToken),
@@ -220,9 +220,13 @@ func moveAllDevicesToTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc aut
 					fmt.Printf("Failed to find device in our db with unitid %s\n", d.UnitID)
 					continue
 				}
+				udId := ""
+				if amd.R.VehicleToken != nil {
+					udId = amd.R.VehicleToken.ID
+				}
 				// sync change
 				_, err = autoPiHWSvc.ApplyHardwareTemplate(ctx, &pb.ApplyHardwareTemplateRequest{
-					UserDeviceId:       amd.R.VehicleToken.ID,
+					UserDeviceId:       udId,
 					AutoApiUnitId:      d.UnitID,
 					HardwareTemplateId: strconv.Itoa(targetTemplateID),
 				})
