@@ -5,7 +5,6 @@
 //
 //	mockgen -destination=cred_store_mock_test.go -package controllers . CredStore
 //
-
 // Package controllers is a generated GoMock package.
 package controllers
 

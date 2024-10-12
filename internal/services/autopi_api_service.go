@@ -47,6 +47,8 @@ type AutoPiAPIService interface {
 	GetCommandStatusFromAutoPi(deviceID string, jobID string) ([]byte, error)
 	UpdateJob(ctx context.Context, jobID, newState string, result *AutoPiCommandResult) (*models.AutopiJob, error)
 	UpdateState(deviceID string, state, country, region string) error
+	GetAllTemplates() ([]TemplateItem, error)
+	GetDevicesInTemplate(templateID int) (*DeviceInTemplateResponse, error)
 }
 
 type autoPiAPIService struct {
@@ -66,6 +68,35 @@ func NewAutoPiAPIService(settings *config.Settings, dbs func() *db.ReaderWriter)
 		httpClient: hcw,
 		dbs:        dbs,
 	}
+}
+
+func (a *autoPiAPIService) GetAllTemplates() ([]TemplateItem, error) {
+	res, err := a.httpClient.ExecuteRequest("/dongle/templates/", "GET", nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error calling autopi api to get all templates")
+	}
+	defer res.Body.Close() // nolint
+	var templates TemplatesResponse
+	err = json.NewDecoder(res.Body).Decode(&templates)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error decoding json from autopi api to get all templates")
+	}
+	return templates.Results, nil
+}
+
+func (a *autoPiAPIService) GetDevicesInTemplate(templateID int) (*DeviceInTemplateResponse, error) {
+	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/dongle/templates/{%d}/devices/?page=1&page_size=500", templateID), "GET", nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error calling autopi api to get devices in template %d", templateID)
+	}
+	defer res.Body.Close() // nolint
+
+	var response DeviceInTemplateResponse
+	err = json.NewDecoder(res.Body).Decode(&response)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error decoding json from autopi api to get devices in template %d", templateID)
+	}
+	return &response, nil
 }
 
 func (a *autoPiAPIService) GetUserDeviceIntegrationByUnitID(ctx context.Context, unitID string) (*models.UserDeviceAPIIntegration, error) {
@@ -564,6 +595,35 @@ type addPIDRequest struct {
 	Verify    bool     `json:"verify"`
 	Enabled   bool     `json:"enabled"`
 	Template  int      `json:"template"`
+}
+
+type TemplatesResponse struct {
+	Count   int            `json:"count"`
+	Results []TemplateItem `json:"results"`
+}
+
+type TemplateItem struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Parent      int    `json:"parent"`
+	Hash        string `json:"hash"`
+	DeviceCount int    `json:"device_count"`
+	Description string `json:"description"`
+	Type        string `json:"type"`
+}
+
+type DeviceInTemplateResponse struct {
+	Count   int              `json:"count"`
+	Results []DeviceListItem `json:"results"`
+}
+
+type DeviceListItem struct {
+	ID                string    `json:"id"`
+	UnitID            string    `json:"unit_id"`
+	Display           string    `json:"display"`
+	LastCommunication time.Time `json:"last_communication"`
+	TemplateState     string    `json:"template_state"`
+	TemplateAppliedAt time.Time `json:"template_applied_at"`
 }
 
 func newAddPIDReqWithDefaults(templateID, pid, interval int) *addPIDRequest {

@@ -73,7 +73,7 @@ type scExchangeRes struct {
 	TokenType    string `json:"token_type"`
 }
 
-var scReqIDHeader = "SC-Request-Id"
+var scReqIDHeader = "SC-Request-ID"
 
 type SmartcarError struct {
 	RequestID string

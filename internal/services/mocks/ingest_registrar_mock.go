@@ -5,7 +5,6 @@
 //
 //	mockgen -source ingest_registrar.go -destination mocks/ingest_registrar_mock.go
 //
-
 // Package mock_services is a generated GoMock package.
 package mock_services
 

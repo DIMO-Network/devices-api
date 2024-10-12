@@ -5,7 +5,6 @@
 //
 //	mockgen -source autopi_api_service.go -destination mocks/autopi_api_service_mock.go
 //
-
 // Package mock_services is a generated GoMock package.
 package mock_services
 
@@ -157,6 +156,21 @@ func (mr *MockAutoPiAPIServiceMockRecorder) DeleteVehicleLogger(loggerType, logg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteVehicleLogger", reflect.TypeOf((*MockAutoPiAPIService)(nil).DeleteVehicleLogger), loggerType, loggerID)
 }
 
+// GetAllTemplates mocks base method.
+func (m *MockAutoPiAPIService) GetAllTemplates() ([]services.TemplateItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllTemplates")
+	ret0, _ := ret[0].([]services.TemplateItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllTemplates indicates an expected call of GetAllTemplates.
+func (mr *MockAutoPiAPIServiceMockRecorder) GetAllTemplates() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllTemplates", reflect.TypeOf((*MockAutoPiAPIService)(nil).GetAllTemplates))
+}
+
 // GetCommandStatus mocks base method.
 func (m *MockAutoPiAPIService) GetCommandStatus(ctx context.Context, jobID string) (*services.AutoPiCommandJob, *models.AutopiJob, error) {
 	m.ctrl.T.Helper()
@@ -231,6 +245,21 @@ func (m *MockAutoPiAPIService) GetDeviceByUnitID(unitID string) (*services.AutoP
 func (mr *MockAutoPiAPIServiceMockRecorder) GetDeviceByUnitID(unitID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeviceByUnitID", reflect.TypeOf((*MockAutoPiAPIService)(nil).GetDeviceByUnitID), unitID)
+}
+
+// GetDevicesInTemplate mocks base method.
+func (m *MockAutoPiAPIService) GetDevicesInTemplate(templateID int) (*services.DeviceInTemplateResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDevicesInTemplate", templateID)
+	ret0, _ := ret[0].(*services.DeviceInTemplateResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetDevicesInTemplate indicates an expected call of GetDevicesInTemplate.
+func (mr *MockAutoPiAPIServiceMockRecorder) GetDevicesInTemplate(templateID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDevicesInTemplate", reflect.TypeOf((*MockAutoPiAPIService)(nil).GetDevicesInTemplate), templateID)
 }
 
 // GetUserDeviceIntegrationByUnitID mocks base method.

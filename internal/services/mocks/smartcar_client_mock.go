@@ -5,7 +5,6 @@
 //
 //	mockgen -source smartcar_client.go -destination mocks/smartcar_client_mock.go
 //
-
 // Package mock_services is a generated GoMock package.
 package mock_services
 
