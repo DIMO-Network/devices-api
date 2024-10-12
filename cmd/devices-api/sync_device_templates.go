@@ -1,12 +1,17 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"flag"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/DIMO-Network/devices-api/models"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/google/subcommands"
@@ -29,6 +34,7 @@ type syncDeviceTemplatesCmd struct {
 	pdb                db.Store
 	moveFromTemplateID *string
 	targetTemplateID   *string
+	moveAllDevices     bool // if true calls autopi to get all templates and devices from there
 }
 
 func (*syncDeviceTemplatesCmd) Name() string { return "sync-device-templates" }
@@ -44,6 +50,7 @@ func (*syncDeviceTemplatesCmd) Usage() string {
 func (p *syncDeviceTemplatesCmd) SetFlags(f *flag.FlagSet) {
 	p.moveFromTemplateID = f.String("move-from-template", "10", "By default only moves devices in template 10, specify this to change or 0 for any")
 	p.targetTemplateID = f.String("target-template", "", "Filter device definitions to apply for where the template is this value. Good for moving only certain autopi's.")
+	f.BoolVar(&p.moveAllDevices, "move-all-devices", false, "move all devices in autopi to the template specified.")
 }
 
 func (p *syncDeviceTemplatesCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
@@ -56,10 +63,23 @@ func (p *syncDeviceTemplatesCmd) Execute(ctx context.Context, _ *flag.FlagSet, _
 		"\n Only moving from template ID: %s. To change specify --move-from-template XX. Set to 0 for none.\n Will never move on tmpl: 115,116,128,126,127", moveFromTemplateID)
 	autoPiSvc := services.NewAutoPiAPIService(&p.settings, p.pdb.DBS)
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, p.pdb.DBS, &p.logger)
-	err := syncDeviceTemplates(ctx, &p.logger, &p.settings, p.pdb, hardwareTemplateService, moveFromTemplateID, p.targetTemplateID)
-	if err != nil {
-		p.logger.Fatal().Err(err).Msg("failed to sync all devices with their templates")
+	if p.moveAllDevices {
+		tt, err2 := strconv.Atoi(*p.targetTemplateID)
+		if err2 != nil {
+			p.logger.Fatal().Err(err2).Msg("target template id must be an integer")
+			return subcommands.ExitFailure
+		}
+		err := moveAllDevicesToTemplate(ctx, p.pdb, hardwareTemplateService, autoPiSvc, tt)
+		if err != nil {
+			p.logger.Fatal().Err(err).Msg("failed to move all devices to template")
+		}
+	} else {
+		err := syncDeviceTemplates(ctx, &p.logger, &p.settings, p.pdb, hardwareTemplateService, moveFromTemplateID, p.targetTemplateID)
+		if err != nil {
+			p.logger.Fatal().Err(err).Msg("failed to sync all devices with their templates")
+		}
 	}
+
 	p.logger.Info().Msg("success")
 	return subcommands.ExitSuccess
 }
@@ -154,5 +174,52 @@ func syncDeviceTemplates(ctx context.Context, logger *zerolog.Logger, settings *
 
 	}
 
+	return nil
+}
+
+func moveAllDevicesToTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc autopi.HardwareTemplateService, autoPiAPI services.AutoPiAPIService, targetTemplateID int) error {
+	templates, err := autoPiAPI.GetAllTemplates()
+	if err != nil {
+		return err
+	}
+	reader := bufio.NewReader(os.Stdin)
+	// loop over each template
+	for _, template := range templates {
+		if template.ID == targetTemplateID || template.ID == 8 {
+			continue // skip if base tmpl or the tmpl we are moving to
+		}
+		fmt.Printf("Template %d has %d devices. Move them all to %d? y/n \n", template.ID, template.DeviceCount, targetTemplateID)
+		input, _ := reader.ReadString('\n')
+		if input != "y\n" {
+			devices, err := autoPiAPI.GetDevicesInTemplate(template.ID)
+			if err != nil {
+				return err
+			}
+			for _, d := range devices.Results {
+				// move the device to the target template
+				amd, err := models.AftermarketDevices(
+					models.AftermarketDeviceWhere.Serial.EQ(d.UnitID),
+					qm.Load(models.AftermarketDeviceRels.VehicleToken),
+				).One(ctx, pdb.DBS().Reader)
+				if err != nil {
+					fmt.Printf("Failed to find device in our db with unitid %s\n", d.UnitID)
+					continue
+				}
+				// sync change
+				_, err = autoPiHWSvc.ApplyHardwareTemplate(ctx, &pb.ApplyHardwareTemplateRequest{
+					UserDeviceId:       amd.R.VehicleToken.ID,
+					AutoApiUnitId:      d.UnitID,
+					HardwareTemplateId: strconv.Itoa(targetTemplateID),
+				})
+				if err != nil {
+					fmt.Printf("Failed to move device %s to template %d\n", d.UnitID, targetTemplateID)
+				} else {
+					fmt.Printf("Moved device %s to template %d\n", d.UnitID, targetTemplateID)
+				}
+				time.Sleep(time.Millisecond * 400)
+			}
+
+		}
+	}
 	return nil
 }

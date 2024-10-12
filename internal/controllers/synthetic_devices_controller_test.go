@@ -454,7 +454,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayl
 	// s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
 	// scInt := &ddgrpc.Integration{
-	// 	Id:      "22N2xaPOq2WW2gAHBHd0Ikn4Zob",
+	// 	ID:      "22N2xaPOq2WW2gAHBHd0Ikn4Zob",
 	// 	Vendor:  "SmartCar",
 	// 	TokenId: 1,
 	// }

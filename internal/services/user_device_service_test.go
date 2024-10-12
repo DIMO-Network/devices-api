@@ -46,7 +46,7 @@ package services
 //	deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ddID).Times(1).Return(dd[0], nil)
 //	//style will have hybrid name in it and powertrain attr HEV
 //	deviceDefSvc.EXPECT().GetDeviceStyleByID(gomock.Any(), styleID).Times(1).Return(&ddgrpc.DeviceStyle{
-//		Id:                 ksuid.New().String(),
+//		ID:                 ksuid.New().String(),
 //		Name:               "Super Hybrid",
 //		DeviceDefinitionId: ddID,
 //		DeviceAttributes: []*ddgrpc.DeviceTypeAttribute{
