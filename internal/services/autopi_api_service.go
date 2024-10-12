@@ -91,7 +91,7 @@ func (a *autoPiAPIService) GetDevicesInTemplate(templateID int, page int, pageSi
 	if pageSize == 0 {
 		pageSize = 500
 	}
-	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/dongle/templates/{%d}/devices/?page=%d&page_size=%d", templateID, page, pageSize), "GET", nil)
+	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/dongle/templates/%d/devices/?page=%d&page_size=%d", templateID, page, pageSize), "GET", nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error calling autopi api to get devices in template %d", templateID)
 	}

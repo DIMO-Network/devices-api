@@ -194,7 +194,6 @@ func moveAllDevicesToTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc aut
 		fmt.Printf("Template %d has %d devices. Move them all to %d? y/n \n", template.ID, template.DeviceCount, targetTemplateID)
 		input, _ := reader.ReadString('\n')
 		if input == "y\n" {
-			// todo need pagination for template 8, gets it in blocks of 500
 			pageNum := 1
 			devices, err := autoPiAPI.GetDevicesInTemplate(template.ID, pageNum, 500)
 			if err != nil {

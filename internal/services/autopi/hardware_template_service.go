@@ -121,6 +121,8 @@ func (a *hardwareTemplateService) CreateTemplate(req *pb.CreateTemplateRequest) 
 	return &pb.CreateTemplateResponse{Id: int64(newTemplateID)}, err
 }
 
+// ApplyHardwareTemplate applies and updates our db with the specified template id for the AP device.
+// if no device found locally, only updates on AP side.
 func (a *hardwareTemplateService) ApplyHardwareTemplate(ctx context.Context, req *pb.ApplyHardwareTemplateRequest) (*pb.ApplyHardwareTemplateResponse, error) {
 	tx, err := a.dbs().Writer.BeginTx(ctx, nil)
 	if err != nil {
@@ -132,14 +134,14 @@ func (a *hardwareTemplateService) ApplyHardwareTemplate(ctx context.Context, req
 		models.UserDeviceAPIIntegrationWhere.Serial.EQ(null.StringFrom(req.AutoApiUnitId)),
 	).One(ctx, tx)
 	if err != nil {
-		return nil, err
+		a.logger.Info().Msgf("not found, continuing setting on AP cloud - UserDeviceAPIIntegration for user device %s and auto api unit %s", req.UserDeviceId, req.AutoApiUnitId)
 	}
 
 	autoPiModel, err := models.AftermarketDevices(
 		models.AftermarketDeviceWhere.Serial.EQ(req.AutoApiUnitId),
 	).One(ctx, tx)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to get autoPiDevice %s", req.AutoApiUnitId)
 	}
 
 	autoPi, err := a.ap.GetDeviceByUnitID(autoPiModel.Serial)
@@ -192,20 +194,23 @@ func (a *hardwareTemplateService) ApplyHardwareTemplate(ctx context.Context, req
 		return nil, errors.Wrapf(err, "failed to sync changes to autoPiDevice %s", autoPi.ID)
 	}
 
-	udMetadata := services.UserDeviceAPIIntegrationsMetadata{
-		AutoPiUnitID:          &autoPi.UnitID,
-		AutoPiIMEI:            &autoPi.IMEI,
-		AutoPiTemplateApplied: &hardwareTemplateID,
-	}
+	// update our db only if not nil
+	if udapi != nil {
+		udMetadata := services.UserDeviceAPIIntegrationsMetadata{
+			AutoPiUnitID:          &autoPi.UnitID,
+			AutoPiIMEI:            &autoPi.IMEI,
+			AutoPiTemplateApplied: &hardwareTemplateID,
+		}
 
-	err = udapi.Metadata.Marshal(udMetadata)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshall user device integration metadata")
-	}
+		err = udapi.Metadata.Marshal(udMetadata)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to marshall user device integration metadata")
+		}
 
-	_, err = udapi.Update(ctx, tx, boil.Whitelist(models.UserDeviceColumns.Metadata, models.UserDeviceColumns.UpdatedAt))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to update user device status to Pending")
+		_, err = udapi.Update(ctx, tx, boil.Whitelist(models.UserDeviceColumns.Metadata, models.UserDeviceColumns.UpdatedAt))
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to update user device status to Pending")
+		}
 	}
 
 	if err = tx.Commit(); err != nil {
