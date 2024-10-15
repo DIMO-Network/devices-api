@@ -105,33 +105,42 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 				keyPaired, err := udc.getDeviceVirtualKeyStatus(c.Context(), apiIntegration)
 				if err != nil {
 					udc.log.Err(err).Msg("Error checking virtual key status.")
-					return fiber.NewError(fiber.StatusInternalServerError, "Error checking virtual key status.")
-				}
-
-				var vks VirtualKeyStatus
-				if keyPaired {
-					vks = Paired
+					if !errors.Is(err, services.ErrUnauthorized) {
+						return fiber.NewError(fiber.StatusInternalServerError, "Error checking virtual key status.")
+					}
 				} else {
-					dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), apiIntegration.R.UserDevice.DeviceDefinitionID)
-					if err != nil {
-						return err
-					}
+					// Deprecated.
+					resp.Tesla.VirtualKeyAdded = keyPaired
 
-					if (dd.Type.Model == "Model S" || dd.Type.Model == "Model X") && dd.Type.Year < 2021 {
-						vks = Incapable
+					var vks VirtualKeyStatus
+
+					if keyPaired {
+						vks = Paired
 					} else {
-						vks = Unpaired
+						dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), apiIntegration.R.UserDevice.DeviceDefinitionID)
+						if err != nil {
+							return err
+						}
+
+						if (dd.Type.Model == "Model S" || dd.Type.Model == "Model X") && dd.Type.Year < 2021 {
+							vks = Incapable
+						} else {
+							vks = Unpaired
+						}
+					}
+
+					resp.Tesla.VirtualKeyStatus = vks
+
+					isSubscribed, err := udc.getTelemetrySubscriptionStatus(c.Context(), apiIntegration)
+					if err != nil {
+						udc.log.Err(err).Msg("Error checking telemetry subscription status.")
+						if !errors.Is(err, services.ErrUnauthorized) {
+							return fiber.NewError(fiber.StatusInternalServerError, "Error checking telemetry subscription status.")
+						}
+					} else {
+						resp.Tesla.TelemetrySubscribed = isSubscribed
 					}
 				}
-
-				isSubscribed, err := udc.getTelemetrySubscriptionStatus(c.Context(), apiIntegration)
-				if err != nil {
-					return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("error checking verifying tesla telemetry subscription status %s", err.Error()))
-				}
-
-				resp.Tesla.VirtualKeyAdded = keyPaired
-				resp.Tesla.TelemetrySubscribed = isSubscribed
-				resp.Tesla.VirtualKeyStatus = vks
 			}
 		}
 	}
@@ -153,7 +162,7 @@ func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context,
 
 	isConnected, err := udc.teslaFleetAPISvc.VirtualKeyConnectionStatus(ctx, accessTk, integration.R.UserDevice.VinIdentifier.String)
 	if err != nil {
-		return false, fiber.NewError(fiber.StatusFailedDependency, err.Error())
+		return false, err
 	}
 
 	return isConnected, nil
