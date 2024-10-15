@@ -1870,6 +1870,10 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 		if info.Make == "TESLA" { // They always have this in ALL CAPS for some reason.
 			return fiber.NewError(fiber.StatusBadRequest, "Teslas should be connected using the official integration.")
 		}
+
+		if info.Make == "KIA" {
+			return fiber.NewError(fiber.StatusBadRequest, "The ability to create new Kia connections through Smartcar has been disabled.")
+		}
 	}
 
 	endpoints, err := udc.smartcarClient.GetEndpoints(c.Context(), token.Access, externalID)
