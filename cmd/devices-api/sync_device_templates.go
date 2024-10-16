@@ -276,8 +276,8 @@ func moveDevicesInTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc autopi
 		}
 		if dimoTemplate != nil {
 			_, err2 := vsdClient.CreateAftermarketDeviceTemplate(ctx, &vsdgrpc.AftermarketDeviceTemplateRequest{
-				EthereumAddress: nil,
-				TemplateName:    "",
+				EthereumAddress: amd.EthereumAddress,
+				TemplateName:    *dimoTemplate,
 			})
 			if err2 != nil {
 				fmt.Printf("Failed to map device to dimo template: %s\n", err2.Error())
