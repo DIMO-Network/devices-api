@@ -5,6 +5,7 @@
 //
 //	mockgen -source=./contracts_events_consumer.go -destination=./contract_events_consumer_mocks_test.go -package=services
 //
+
 // Package services is a generated GoMock package.
 package services
 
