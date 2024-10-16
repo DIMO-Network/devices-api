@@ -76,6 +76,7 @@ env:
     ADBFAiBX3cQDsz1j+5M5f943vu2nmX4SUQ1T+XQwF9fPcagr/AIhANC1iQbHUAtz
     VJfn+Y6hzMyVYhAcbfzSwFPY1XtEbsNh
     -----END CERTIFICATE-----
+  VEHICLE_DECODING_GRPC_ADDR: vehicle-signal-decoding-prod:8086
 ingress:
   enabled: true
   className: nginx

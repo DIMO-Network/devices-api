@@ -5,6 +5,7 @@
 //
 //	mockgen -source device_data_service.go -destination mocks/device_data_service_mock.go
 //
+
 // Package mock_services is a generated GoMock package.
 package mock_services
 

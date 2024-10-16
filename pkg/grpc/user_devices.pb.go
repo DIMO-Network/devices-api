@@ -1081,7 +1081,7 @@ type CreateTemplateResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id int64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	Id int64 `protobuf:"varint,1,opt,name=Id,proto3" json:"Id,omitempty"`
 }
 
 func (x *CreateTemplateResponse) Reset() {
