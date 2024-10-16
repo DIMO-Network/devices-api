@@ -10,6 +10,9 @@ import (
 	"strings"
 	"time"
 
+	vsdgrpc "github.com/DIMO-Network/vehicle-signal-decoding/pkg/grpc"
+	"github.com/pkg/errors"
+
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
@@ -35,6 +38,7 @@ type syncDeviceTemplatesCmd struct {
 	moveFromTemplateID *string
 	targetTemplateID   *string
 	moveAllDevices     bool // if true calls autopi to get all templates and devices from there
+	dimoTemplate       *string
 }
 
 func (*syncDeviceTemplatesCmd) Name() string { return "sync-device-templates" }
@@ -51,6 +55,7 @@ func (p *syncDeviceTemplatesCmd) SetFlags(f *flag.FlagSet) {
 	p.moveFromTemplateID = f.String("move-from-template", "10", "By default only moves devices in template 10, specify this to change or 0 for any")
 	p.targetTemplateID = f.String("target-template", "", "Filter device definitions to apply for where the template is this value. Good for moving only certain autopi's.")
 	f.BoolVar(&p.moveAllDevices, "move-all-devices", false, "move all devices in autopi to the template specified.")
+	p.dimoTemplate = f.String("dimo-template", "", "If set, will set the dimo template for this device in vehicle-signal-decoding")
 }
 
 func (p *syncDeviceTemplatesCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
@@ -71,9 +76,9 @@ func (p *syncDeviceTemplatesCmd) Execute(ctx context.Context, _ *flag.FlagSet, _
 		}
 		fromTemplateID := 0
 		if p.moveFromTemplateID != nil {
-			fromTemplateID, err2 = strconv.Atoi(*p.moveFromTemplateID)
+			fromTemplateID, _ = strconv.Atoi(*p.moveFromTemplateID)
 		}
-		err := moveAllDevicesToTemplate(ctx, p.pdb, hardwareTemplateService, autoPiSvc, tt, fromTemplateID)
+		err := moveAllDevicesToTemplate(ctx, p.pdb, hardwareTemplateService, autoPiSvc, p.settings.VehicleDecodingGRPCAddr, tt, fromTemplateID, p.dimoTemplate)
 		if err != nil {
 			p.logger.Fatal().Err(err).Msg("failed to move all devices to template")
 		}
@@ -181,12 +186,20 @@ func syncDeviceTemplates(ctx context.Context, logger *zerolog.Logger, settings *
 	return nil
 }
 
-func moveAllDevicesToTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc autopi.HardwareTemplateService,
-	autoPiAPI services.AutoPiAPIService, targetTemplateID int, fromTemplate int) error {
+func moveAllDevicesToTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc autopi.HardwareTemplateService, autoPiAPI services.AutoPiAPIService,
+	vehicleDecodingGRPCAddr string, targetTemplateID int, fromTemplate int, dimoTemplate *string) error {
+
+	// instantiate vsdClient for vehicle signal decoding grpc
+	conn, err := grpc.NewClient(vehicleDecodingGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return errors.Wrap(err, "failed to create vehicle decoding grpc vsdClient")
+	}
+	defer conn.Close()
+	vsdClient := vsdgrpc.NewAftermarketDeviceTemplateServiceClient(conn)
 
 	if fromTemplate > 0 {
 		fmt.Printf("Moving all devices from template %d to %d\n", fromTemplate, targetTemplateID)
-		return moveDevicesInTemplate(ctx, pdb, autoPiHWSvc, autoPiAPI, targetTemplateID, fromTemplate)
+		return moveDevicesInTemplate(ctx, pdb, autoPiHWSvc, autoPiAPI, targetTemplateID, fromTemplate, vsdClient, dimoTemplate)
 	}
 
 	templates, err := autoPiAPI.GetAllTemplates()
@@ -206,7 +219,7 @@ func moveAllDevicesToTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc aut
 		fmt.Printf("Template %d has %d devices. Move them all to %d? y/n \n", template.ID, template.DeviceCount, targetTemplateID)
 		input, _ := reader.ReadString('\n')
 		if input == "y\n" {
-			err2 := moveDevicesInTemplate(ctx, pdb, autoPiHWSvc, autoPiAPI, targetTemplateID, template.ID)
+			err2 := moveDevicesInTemplate(ctx, pdb, autoPiHWSvc, autoPiAPI, targetTemplateID, template.ID, vsdClient, dimoTemplate)
 			if err2 != nil {
 				return err2
 			}
@@ -215,7 +228,8 @@ func moveAllDevicesToTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc aut
 	return nil
 }
 
-func moveDevicesInTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc autopi.HardwareTemplateService, autoPiAPI services.AutoPiAPIService, targetTemplateID int, fromTemplateID int) error {
+func moveDevicesInTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc autopi.HardwareTemplateService, autoPiAPI services.AutoPiAPIService,
+	targetTemplateID int, fromTemplateID int, vsdClient vsdgrpc.AftermarketDeviceTemplateServiceClient, dimoTemplate *string) error {
 	pageNum := 1
 	devices, err := autoPiAPI.GetDevicesInTemplate(fromTemplateID, pageNum, 500)
 	if err != nil {
@@ -231,6 +245,9 @@ func moveDevicesInTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc autopi
 		}
 		deviceList = append(deviceList, d.Results...)
 	}
+	if dimoTemplate != nil {
+		fmt.Printf("DIMO Template Name to set %s\n", *dimoTemplate)
+	}
 
 	for _, d := range deviceList {
 		// find the record in the db to update it
@@ -242,13 +259,13 @@ func moveDevicesInTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc autopi
 			fmt.Printf("Failed to find device in our db with unitid %s\n", d.UnitID)
 			continue
 		}
-		udId := ""
+		udID := ""
 		if amd.R.VehicleToken != nil {
-			udId = amd.R.VehicleToken.ID
+			udID = amd.R.VehicleToken.ID
 		}
 		// sync change
 		_, err = autoPiHWSvc.ApplyHardwareTemplate(ctx, &pb.ApplyHardwareTemplateRequest{
-			UserDeviceId:       udId,
+			UserDeviceId:       udID,
 			AutoApiUnitId:      d.UnitID,
 			HardwareTemplateId: strconv.Itoa(targetTemplateID),
 		})
@@ -256,6 +273,15 @@ func moveDevicesInTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc autopi
 			fmt.Printf("Failed to move device %s to template %d\n", d.UnitID, targetTemplateID)
 		} else {
 			fmt.Printf("Moved device %s to template %d\n", d.UnitID, targetTemplateID)
+		}
+		if dimoTemplate != nil {
+			_, err2 := vsdClient.CreateAftermarketDeviceTemplate(ctx, &vsdgrpc.AftermarketDeviceTemplateRequest{
+				EthereumAddress: nil,
+				TemplateName:    "",
+			})
+			if err2 != nil {
+				fmt.Printf("Failed to map device to dimo template: %s\n", err2.Error())
+			}
 		}
 		time.Sleep(time.Millisecond * 400)
 	}

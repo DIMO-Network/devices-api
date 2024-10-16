@@ -121,6 +121,7 @@ env:
   IPFS_URL: https://assets.dev.dimo.xyz/ipfs
   SD_INFO_TOPIC: table.task.synthetic.fill
   PRIVACY_FENCE_TOPIC_V2: table.device.privacyfence.v2
+  VEHICLE_DECODING_GRPC_ADDR: vehicle-signal-decoding-dev:8086
 service:
   type: ClusterIP
   ports:

@@ -77,12 +77,12 @@ type Settings struct {
 
 	// IssuerPrivateKey is a base64-encoded secp256k1 private key, used to sign
 	// VIN verifiable credentials.
-	IssuerPrivateKey        string `yaml:"ISSUER_PRIVATE_KEY"`
+	IssuerPrivateKey string `yaml:"ISSUER_PRIVATE_KEY"`
+
 	SyntheticWalletGRPCAddr string `yaml:"SYNTHETIC_WALLET_GRPC_ADDR"`
+	DeviceFingerprintTopic  string `yaml:"DEVICE_FINGERPRINT_TOPIC"`
 
-	DeviceFingerprintTopic         string `yaml:"DEVICE_FINGERPRINT_TOPIC"`
-	DeviceFingerprintConsumerGroup string `yaml:"DEVICE_FINGERPRINT_CONSUMER_GROUP"`
-
+	DeviceFingerprintConsumerGroup    string `yaml:"DEVICE_FINGERPRINT_CONSUMER_GROUP"`
 	SyntheticFingerprintTopic         string `yaml:"SYNTHETIC_FINGERPRINT_TOPIC"`
 	SyntheticFingerprintConsumerGroup string `yaml:"SYNTHETIC_FINGERPRINT_CONSUMER_GROUP"`
 	TeslaClientID                     string `yaml:"TESLA_CLIENT_ID"`
@@ -92,11 +92,13 @@ type Settings struct {
 	TeslaTelemetryHostName            string `yaml:"TESLA_TELEMETRY_HOST_NAME"`
 	TeslaTelemetryPort                int    `yaml:"TESLA_TELEMETRY_PORT"`
 	TeslaTelemetryCACertificate       string `yaml:"TESLA_TELEMETRY_CA_CERTIFICATE"`
-	IPFSURL                           string `yaml:"IPFS_URL"`
+
+	IPFSURL string `yaml:"IPFS_URL"`
 
 	SDInfoTopic string `yaml:"SD_INFO_TOPIC"`
+	MainRPCURL  string `yaml:"MAIN_RPC_URL"`
 
-	MainRPCURL string `yaml:"MAIN_RPC_URL"`
+	VehicleDecodingGRPCAddr string `yaml:"VEHICLE_DECODING_GRPC_ADDR"`
 }
 
 func (s *Settings) IsProduction() bool {
