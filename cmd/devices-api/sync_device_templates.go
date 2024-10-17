@@ -245,8 +245,10 @@ func moveDevicesInTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc autopi
 		}
 		deviceList = append(deviceList, d.Results...)
 	}
+	dt := ""
 	if dimoTemplate != nil {
-		fmt.Printf("DIMO Template Name to set %s\n", *dimoTemplate)
+		dt = strings.TrimSpace(*dimoTemplate)
+		fmt.Printf("DIMO Template Name to set %s\n", dt)
 	}
 
 	for _, d := range deviceList {
@@ -274,13 +276,13 @@ func moveDevicesInTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc autopi
 		} else {
 			fmt.Printf("Moved device %s to template %d\n", d.UnitID, targetTemplateID)
 		}
-		if dimoTemplate != nil {
+		if dt != "" {
 			_, err2 := vsdClient.CreateAftermarketDeviceTemplate(ctx, &vsdgrpc.AftermarketDeviceTemplateRequest{
 				EthereumAddress: amd.EthereumAddress,
-				TemplateName:    *dimoTemplate,
+				TemplateName:    dt,
 			})
 			if err2 != nil {
-				fmt.Printf("Failed to map device to dimo template: %s\n", err2.Error())
+				fmt.Printf("Failed to map device to dimo template: %s: %s\n", dt, err2.Error())
 			}
 		}
 		time.Sleep(time.Millisecond * 400)
