@@ -184,6 +184,10 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 			sdc.log.Warn().Msgf("new kias blocked from minting with smartcar connections")
 			return fiber.NewError(fiber.StatusFailedDependency, "Kia vehicles connected via smartcar cannot be manually minted.")
 		}
+
+		if dd.Make.Name == "Peugeot" && dd.Type.Model == "2008" && dd.Type.Year == 2024 {
+			return fiber.NewError(fiber.StatusBadRequest, "Certain Peugeot vehicles cannot be connected through Smartcar at this time.")
+		}
 	}
 
 	if in.TokenId == 0 {
