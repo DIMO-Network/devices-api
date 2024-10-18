@@ -415,7 +415,7 @@ func (t *teslaFleetAPIService) performRequest(ctx context.Context, url *url.URL,
 		if resp.StatusCode == http.StatusMisdirectedRequest {
 			return nil, ErrWrongRegion
 		}
-		if ct := resp.Header.Get("Content-Type"); ct != "application/json" {
+		if ct := resp.Header.Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
 			return nil, fmt.Errorf("status code %d and content type %q", resp.StatusCode, ct)
 		}
 		b, err := io.ReadAll(resp.Body)
