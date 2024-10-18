@@ -186,7 +186,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 		}
 
 		if dd.Make.Name == "Peugeot" && dd.Type.Model == "2008" && dd.Type.Year == 2024 {
-			return fiber.NewError(fiber.StatusBadRequest, "Certain Peugeot models cannot be minted at this time.")
+			return fiber.NewError(fiber.StatusBadRequest, "Certain Peugeot vehicles cannot be connected through Smartcar at this time.")
 		}
 	}
 
