@@ -280,6 +280,7 @@ func (t *teslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, t
 
 	body, err := t.performRequest(ctx, url, token, http.MethodPost, inBody)
 	if err != nil {
+		t.log.Warn().Str("body", jsonBody).Msg("Virtual key status request failure.")
 		return false, fmt.Errorf("error requesting key status: %w", err)
 	}
 
