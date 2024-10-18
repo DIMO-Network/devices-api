@@ -405,6 +405,9 @@ func (t *teslaFleetAPIService) performRequest(ctx context.Context, url *url.URL,
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 
 	resp, err := t.HTTPClient.Do(req)
 	if err != nil {
