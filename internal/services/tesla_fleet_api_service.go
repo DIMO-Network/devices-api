@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"slices"
@@ -415,8 +416,10 @@ func (t *teslaFleetAPIService) performRequest(ctx context.Context, url *url.URL,
 		if resp.StatusCode == http.StatusMisdirectedRequest {
 			return nil, ErrWrongRegion
 		}
-		if ct := resp.Header.Get("Content-Type"); ct != "application/json" {
-			return nil, fmt.Errorf("status code %d and content type %q", resp.StatusCode, ct)
+		if typ, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type")); err != nil {
+			return nil, fmt.Errorf("status code %d and unparseable content type %q: %w", resp.StatusCode, resp.Header.Get("Content-Type"), err)
+		} else if typ != "application/json" {
+			return nil, fmt.Errorf("status code %d and non-JSON content type %s", resp.StatusCode, resp.Header.Get("Content-Type"))
 		}
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
