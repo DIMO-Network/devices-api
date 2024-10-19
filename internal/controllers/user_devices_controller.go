@@ -49,6 +49,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
+	"golang.org/x/exp/maps"
 )
 
 var _ = signer.TypedData{} // Use this package so that the swag command doesn't throw a fit.
@@ -400,6 +401,88 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	devices, err := models.UserDevices(query...).All(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
+	}
+
+	{
+		type Rec struct {
+			UserDeviceID string
+			Updated      time.Time
+		}
+
+		var toCheck map[uint64]*models.UserDeviceAPIIntegration
+		for _, ud := range devices {
+			if ud.TokenID.IsZero() {
+				continue
+			}
+			for _, udai := range ud.R.UserDeviceAPIIntegrations {
+				if udai.IntegrationID == "2lcaMFuCO0HJIUfdq8o780Kx5n3" && udai.Status != "Active" {
+					tok, _ := ud.TokenID.Uint64()
+					toCheck[tok] = udai
+				}
+			}
+		}
+
+		if len(toCheck) != 0 {
+			anyIDs := make([]any, 0)
+			for i, x := range maps.Keys(toCheck) {
+				anyIDs[i] = x
+			}
+
+			q := &queries.Query{}
+			// queries.SetDialect(q, &dialect)
+			qm.Apply(q,
+				qm.Select("token_id", "max(timestamp)"),
+				qm.From("signal"),
+				qm.WhereIn("token_id in ?", anyIDs...),
+				qm.GroupBy("token_id"),
+			)
+			query, args := queries.BuildQuery(q)
+
+			rows, err := s.conn.Query(c.Context(), query, args...)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+
+			var secCheck map[uint64]time.Time
+			for rows.Next() {
+				var tokenID uint64
+				var lastSeen time.Time
+				if err := rows.Scan(&tokenID, &lastSeen); err != nil {
+					return err
+				}
+
+				secCheck[tokenID] = lastSeen
+			}
+
+			var toModify []*models.UserDeviceAPIIntegration
+
+			for tokenID, lastSeen := range secCheck {
+				udai := toCheck[tokenID]
+				if lastSeen.After(udai.UpdatedAt) {
+					toModify = append(toModify, udai)
+				}
+			}
+
+			if len(toModify) != 0 {
+				tx, err := udc.DBS().Writer.BeginTx(c.Context(), nil)
+				if err != nil {
+					return err
+				}
+
+				for _, udai := range toModify {
+					udai.Status = models.UserDeviceAPIIntegrationStatusActive
+					_, err := udai.Update(c.Context(), tx, boil.Whitelist(models.UserDeviceAPIIntegrationColumns.Status, models.UserDeviceAPIIntegrationColumns.UpdatedAt))
+					if err != nil {
+						return err
+					}
+				}
+
+				if err := tx.Commit(); err != nil {
+					return err
+				}
+			}
+		}
 	}
 
 	apiMyDevices, err := udc.dbDevicesToDisplay(c.Context(), devices)
