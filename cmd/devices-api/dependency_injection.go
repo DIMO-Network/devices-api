@@ -9,7 +9,6 @@ import (
 	"github.com/IBM/sarama"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -52,20 +51,7 @@ func (dc *dependencyContainer) getKafkaProducer() sarama.SyncProducer {
 func (dc *dependencyContainer) getS3ServiceClient(ctx context.Context) *s3.Client {
 	if dc.s3ServiceClient == nil {
 
-		cfg, err := awsconfig.LoadDefaultConfig(ctx,
-			awsconfig.WithRegion(dc.settings.AWSRegion),
-			// Comment the below out if not using localhost
-			awsconfig.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
-				func(_, _ string, _ ...interface{}) (aws.Endpoint, error) {
-
-					if dc.settings.Environment == "local" {
-						return aws.Endpoint{PartitionID: "aws", URL: dc.settings.DocumentsAWSEndpoint, SigningRegion: dc.settings.AWSRegion}, nil // The SigningRegion key was what's was missing! D'oh.
-					}
-
-					// returning EndpointNotFoundError will allow the service to fallback to its default resolution
-					return aws.Endpoint{}, &aws.EndpointNotFoundError{}
-				})))
-
+		cfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(dc.settings.AWSRegion))
 		if err != nil {
 			dc.logger.Fatal().Err(err).Msg("Could not load aws config, terminating")
 		}
@@ -73,6 +59,11 @@ func (dc *dependencyContainer) getS3ServiceClient(ctx context.Context) *s3.Clien
 		dc.s3ServiceClient = s3.NewFromConfig(cfg, func(o *s3.Options) {
 			o.Region = dc.settings.AWSRegion
 			o.Credentials = credentials.NewStaticCredentialsProvider(dc.settings.DocumentsAWSAccessKeyID, dc.settings.DocumentsAWSSecretsAccessKey, "")
+
+			if dc.settings.Environment == "local" {
+				o.BaseEndpoint = &dc.settings.DocumentsAWSEndpoint
+				o.UsePathStyle = true
+			}
 		})
 	}
 	return dc.s3ServiceClient
@@ -81,19 +72,7 @@ func (dc *dependencyContainer) getS3ServiceClient(ctx context.Context) *s3.Clien
 func (dc *dependencyContainer) getS3NFTServiceClient(ctx context.Context) *s3.Client {
 	if dc.s3NFTServiceClient == nil {
 
-		cfg, err := awsconfig.LoadDefaultConfig(ctx,
-			awsconfig.WithRegion(dc.settings.AWSRegion),
-			// Comment the below out if not using localhost
-			awsconfig.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
-				func(_, _ string, _ ...any) (aws.Endpoint, error) {
-					if dc.settings.DocumentsAWSEndpoint != "" {
-						return aws.Endpoint{PartitionID: "aws", URL: dc.settings.DocumentsAWSEndpoint, SigningRegion: dc.settings.AWSRegion}, nil // The SigningRegion key was what's was missing! D'oh.
-					}
-
-					// returning EndpointNotFoundError will allow the service to fallback to its default resolution
-					return aws.Endpoint{}, &aws.EndpointNotFoundError{}
-				})))
-
+		cfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(dc.settings.AWSRegion))
 		if err != nil {
 			dc.logger.Fatal().Err(err).Msg("Could not load aws config, terminating")
 		}
@@ -101,7 +80,9 @@ func (dc *dependencyContainer) getS3NFTServiceClient(ctx context.Context) *s3.Cl
 		dc.s3NFTServiceClient = s3.NewFromConfig(cfg, func(o *s3.Options) {
 			o.Region = dc.settings.AWSRegion
 			o.Credentials = credentials.NewStaticCredentialsProvider(dc.settings.NFTAWSAccessKeyID, dc.settings.NFTAWSSecretsAccessKey, "")
+
 			if dc.settings.DocumentsAWSEndpoint != "" {
+				o.BaseEndpoint = &dc.settings.DocumentsAWSEndpoint
 				o.UsePathStyle = true
 			}
 		})
