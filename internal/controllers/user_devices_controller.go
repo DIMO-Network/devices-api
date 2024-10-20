@@ -475,6 +475,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 			}
 
 			if len(toModify) != 0 {
+				modTime := time.Now()
 				tx, err := udc.DBS().Writer.BeginTx(c.Context(), nil)
 				if err != nil {
 					return err
@@ -482,6 +483,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 
 				for _, udai := range toModify {
 					udai.Status = models.UserDeviceAPIIntegrationStatusActive
+					udai.UpdatedAt = modTime
 					_, err := udai.Update(c.Context(), tx, boil.Whitelist(models.UserDeviceAPIIntegrationColumns.Status, models.UserDeviceAPIIntegrationColumns.UpdatedAt))
 					if err != nil {
 						return err
