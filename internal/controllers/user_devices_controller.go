@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ClickHouse/clickhouse-go/v2"
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -46,10 +47,11 @@ import (
 	smartcar "github.com/smartcar/go-sdk"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/drivers"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/queries/qmhelper"
 	"github.com/volatiletech/sqlboiler/v4/types"
-	"golang.org/x/exp/maps"
 )
 
 var _ = signer.TypedData{} // Use this package so that the swag command doesn't throw a fit.
@@ -80,6 +82,7 @@ type UserDevicesController struct {
 	userDeviceSvc             services.UserDeviceService
 	teslaFleetAPISvc          services.TeslaFleetAPIService
 	ipfsSvc                   *ipfs.IPFS
+	clickHouseConn            clickhouse.Conn
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -363,6 +366,11 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 	return apiDevices, nil
 }
 
+var dialect = drivers.Dialect{
+	LQ: '`',
+	RQ: '`',
+}
+
 // GetUserDevices godoc
 // @Description gets all devices associated with current user - pulled from token
 // @Tags        user-devices
@@ -404,12 +412,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	}
 
 	{
-		type Rec struct {
-			UserDeviceID string
-			Updated      time.Time
-		}
-
-		var toCheck map[uint64]*models.UserDeviceAPIIntegration
+		toCheck := make(map[uint64]*models.UserDeviceAPIIntegration)
 		for _, ud := range devices {
 			if ud.TokenID.IsZero() {
 				continue
@@ -423,45 +426,44 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 		}
 
 		if len(toCheck) != 0 {
-			anyIDs := make([]any, 0)
-			for i, x := range maps.Keys(toCheck) {
-				anyIDs[i] = x
+			var innerList []qm.QueryMod
+
+			for tokenID, udai := range toCheck {
+				if len(innerList) == 0 {
+					innerList = append(innerList, qm.Expr(qmhelper.Where("token_id", qmhelper.EQ, tokenID), qmhelper.Where("timestamp", qmhelper.GT, udai.UpdatedAt)))
+				} else {
+					innerList = append(innerList, qm.Or2(qm.Expr(qmhelper.Where("token_id", qmhelper.EQ, tokenID), qmhelper.Where("timestamp", qmhelper.GT, udai.UpdatedAt))))
+				}
+			}
+
+			list := []qm.QueryMod{
+				qm.Distinct("token_id"),
+				qm.Select("token_id", "max(timestamp)"),
+				qm.From("signal"),
+				qmhelper.Where("source", qmhelper.EQ, "dimo/integration/2lcaMFuCO0HJIUfdq8o780Kx5n3"),
+				qm.Expr(innerList...),
 			}
 
 			q := &queries.Query{}
-			// queries.SetDialect(q, &dialect)
-			qm.Apply(q,
-				qm.Select("token_id", "max(timestamp)"),
-				qm.From("signal"),
-				qm.WhereIn("token_id in ?", anyIDs...),
-				qm.GroupBy("token_id"),
-			)
+			queries.SetDialect(q, &dialect)
+			qm.Apply(q, list...)
+
 			query, args := queries.BuildQuery(q)
 
-			rows, err := s.conn.Query(c.Context(), query, args...)
+			rows, err := udc.clickHouseConn.Query(c.Context(), query, args...)
 			if err != nil {
 				return err
 			}
 			defer rows.Close()
 
-			var secCheck map[uint64]time.Time
-			for rows.Next() {
-				var tokenID uint64
-				var lastSeen time.Time
-				if err := rows.Scan(&tokenID, &lastSeen); err != nil {
-					return err
-				}
-
-				secCheck[tokenID] = lastSeen
-			}
-
 			var toModify []*models.UserDeviceAPIIntegration
 
-			for tokenID, lastSeen := range secCheck {
-				udai := toCheck[tokenID]
-				if lastSeen.After(udai.UpdatedAt) {
-					toModify = append(toModify, udai)
+			for rows.Next() {
+				var tokenID uint64
+				if err := rows.Scan(&tokenID); err != nil {
+					return err
 				}
+				toModify = append(toModify, toCheck[tokenID])
 			}
 
 			if len(toModify) != 0 {
