@@ -470,6 +470,10 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 				}
 			}
 
+			if rows.Err() != nil {
+				return fmt.Errorf("clickhouse scan error: %w", rows.Err())
+			}
+
 			if len(toModify) != 0 {
 				tx, err := udc.DBS().Writer.BeginTx(c.Context(), nil)
 				if err != nil {
