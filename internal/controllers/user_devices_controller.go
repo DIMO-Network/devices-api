@@ -463,7 +463,11 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 				if err := rows.Scan(&tokenID); err != nil {
 					return err
 				}
-				toModify = append(toModify, toCheck[tokenID])
+				if udai, ok := toCheck[tokenID]; ok {
+					toModify = append(toModify, udai)
+				} else {
+					return fmt.Errorf("signal activity query returned a token id %d not in the query", tokenID)
+				}
 			}
 
 			if len(toModify) != 0 {
