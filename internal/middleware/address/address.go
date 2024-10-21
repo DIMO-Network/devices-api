@@ -2,7 +2,7 @@ package address
 
 import (
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
-	pb "github.com/DIMO-Network/shared/api/users"
+	pb "github.com/DIMO-Network/users-api/pkg/grpc"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"

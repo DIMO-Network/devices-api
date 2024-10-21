@@ -26,9 +26,9 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
-	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/DIMO-Network/shared/redis"
+	pb "github.com/DIMO-Network/users-api/pkg/grpc"
 	"github.com/IBM/sarama"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -49,6 +49,8 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var _ = signer.TypedData{} // Use this package so that the swag command doesn't throw a fit.
@@ -360,6 +362,29 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 	}
 
 	return apiDevices, nil
+}
+
+func (udc *UserDevicesController) getCallerEthAddress(c *fiber.Ctx) (*common.Address, error) {
+	tokenAddr := helpers.GetUserEthAddr(c)
+	if tokenAddr != nil {
+		return tokenAddr, nil
+	}
+
+	userID := helpers.GetUserID(c)
+	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		if s, ok := status.FromError(err); ok && s.Code() == codes.NotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed searching users-api for id %s: %w", userID, err)
+	}
+
+	if len(user.EthereumAddressBytes) == 20 {
+		addr := common.BytesToAddress(user.EthereumAddressBytes)
+		return &addr, nil
+	}
+
+	return nil, nil
 }
 
 // GetUserDevices godoc

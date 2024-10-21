@@ -23,8 +23,8 @@ import (
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/rs/zerolog"
 
-	pbuser "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
+	pbuser "github.com/DIMO-Network/users-api/pkg/grpc"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"

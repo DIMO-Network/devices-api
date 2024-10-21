@@ -12,8 +12,8 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/models"
-	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
+	pb "github.com/DIMO-Network/users-api/pkg/grpc"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
@@ -116,6 +116,8 @@ func AftermarketDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *z
 		if err != nil {
 			return shared.GrpcErrorToFiber(err, "Error retrieving user")
 		}
+
+		fmt.Println("XDD", user, err)
 
 		if user.EthereumAddress == nil {
 			return fiber.NewError(fiber.StatusForbidden, "user does not have a valid ethereum address")

@@ -9,7 +9,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
-	pb "github.com/DIMO-Network/shared/api/users"
+	pb "github.com/DIMO-Network/users-api/pkg/grpc"
 	smock "github.com/IBM/sarama/mocks"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"

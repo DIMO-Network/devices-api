@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	pb "github.com/DIMO-Network/shared/api/users"
+	pb "github.com/DIMO-Network/users-api/pkg/grpc"
 
 	"github.com/DIMO-Network/shared"
 

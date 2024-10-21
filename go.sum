@@ -80,6 +80,8 @@ github.com/DIMO-Network/shared v0.12.5 h1:+e1JjbGcGwJBb26HE7BSgI+V2cYGkor7GFQb0o
 github.com/DIMO-Network/shared v0.12.5/go.mod h1:dtoa/pN19FFR/ghTsUWJynQClwvc+cIlf2mPDaUBDsE=
 github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3 h1:XMU6rRN57hoh7IYyuVytsIKzDymrbAnnKECFeVf88Hg=
 github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3/go.mod h1:+8E6RVHd04ewjrSOohmLf82Grt0kfSaVTQlCnHCTLZU=
+github.com/DIMO-Network/users-api v0.7.8 h1:D7aDNyruQqfTxaUFSg8V09KyfyESiApgFP3E4ie+m5A=
+github.com/DIMO-Network/users-api v0.7.8/go.mod h1:NTh+02AJuCZH+Q+wRdFKh228OmNpUeZu40m8ZKRGOSg=
 github.com/DIMO-Network/vehicle-signal-decoding v0.10.17 h1:VQIO1b2o0xrMBu5+VgE2FRuGI42prNjrTvEZvqQxcq8=
 github.com/DIMO-Network/vehicle-signal-decoding v0.10.17/go.mod h1:sHuoQg4ho/7kpxQtO5rwZBBBxApQTF4IeVdc5cO6g3Y=
 github.com/DIMO-Network/yaml v0.1.0 h1:KQ3oKHUZETchR6Pxbmmol3e4ewrPv/q8cEwqxfwyZbU=
@@ -347,8 +349,8 @@ github.com/go-stack/stack v1.8.0/go.mod h1:v0f6uXyyMGvRgIKkXu+yp6POWl0qKG85gN/me
 github.com/go-stack/stack v1.8.1 h1:ntEHSVwIt7PNXNpgPmVfMrNhLtgjlmnZha2kOpuRiDw=
 github.com/go-stack/stack v1.8.1/go.mod h1:dcoOX6HbPZSZptuspn9bctJ+N/CnF5gGygcUP3XYfe4=
 github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0/go.mod h1:fyg7847qk6SyHyPtNmDHnmrv/HOrqktSC+C9fM+CJOE=
-github.com/goccy/go-json v0.10.2 h1:CrxCmQqYDkv1z7lO7Wbh2HN93uovUHgrECaO5ZrCXAU=
-github.com/goccy/go-json v0.10.2/go.mod h1:6MelG93GURQebXPDq3khkgXZkazVtN9CRI+MGFi0w8I=
+github.com/goccy/go-json v0.10.3 h1:KZ5WoDbxAIgm2HNbYckL0se1fHD6rz5j4ywS6ebzDqA=
+github.com/goccy/go-json v0.10.3/go.mod h1:oq7eo15ShAhp70Anwd5lgX2pLfOS3QCiwU/PULtXL6M=
 github.com/godbus/dbus/v5 v5.0.4/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5xrFpKfA=
 github.com/gofiber/contrib/jwt v1.0.10 h1:/ilGepl6i0Bntl0Zcd+lAzagY8BiS1+fEiAj32HMApk=
 github.com/gofiber/contrib/jwt v1.0.10/go.mod h1:1qBENE6sZ6PPT4xIpBzx1VxeyROQO7sj48OlM1I9qdU=

@@ -24,7 +24,7 @@ require (
 	github.com/ericlagergren/decimal v0.0.0-20240411145413-00de7ca16731 // Do not touch.
 	github.com/friendsofgo/errors v0.9.2
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
-	github.com/goccy/go-json v0.10.2
+	github.com/goccy/go-json v0.10.3
 	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/subcommands v1.2.0
@@ -53,7 +53,10 @@ require (
 	golang.org/x/oauth2 v0.21.0
 )
 
-require github.com/DIMO-Network/vehicle-signal-decoding v0.10.17
+require (
+	github.com/DIMO-Network/users-api v0.7.8
+	github.com/DIMO-Network/vehicle-signal-decoding v0.10.17
+)
 
 require (
 	dario.cat/mergo v1.0.1 // indirect

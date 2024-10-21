@@ -6,9 +6,10 @@ import (
 	"math/big"
 	"testing"
 
+	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
-	pb "github.com/DIMO-Network/shared/api/users"
+	pb "github.com/DIMO-Network/users-api/pkg/grpc"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
@@ -19,6 +20,7 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
+	"go.uber.org/mock/gomock"
 )
 
 func TestUserDeviceOwnerMiddleware(t *testing.T) {
@@ -32,18 +34,18 @@ func TestUserDeviceOwnerMiddleware(t *testing.T) {
 	pdb, container := test.StartContainerDatabase(ctx, t, "../../../migrations")
 	logger := test.Logger()
 
-	usersClient := &test.UsersClient{}
+	ctrl := gomock.NewController(t)
+	usersClient := mock_services.NewMockUserServiceClient(ctrl)
 	middleware := UserDevice(pdb, usersClient, logger)
 
-	usersClient.Store = map[string]*pb.User{}
-	usersClient.Store[userID] = &pb.User{
-		Id:              userID,
-		EthereumAddress: &userAddr,
-	}
-	usersClient.Store[otherUserID] = &pb.User{
-		Id:              otherUserID,
-		EthereumAddress: nil,
-	}
+	usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: userID}).AnyTimes().Return(&pb.User{
+		Id:                   userID,
+		EthereumAddress:      &userAddr,
+		EthereumAddressBytes: common.Hex2Bytes(userAddr),
+	}, nil)
+	usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: otherUserID}).AnyTimes().Return(&pb.User{
+		Id: otherUserID,
+	}, nil)
 
 	ud := []models.UserDevice{
 		{
@@ -128,7 +130,8 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 	pdb, container := test.StartContainerDatabase(ctx, t, "../../../migrations")
 	logger := test.Logger()
 
-	usersClient := &test.UsersClient{}
+	ctrl := gomock.NewController(t)
+	usersClient := mock_services.NewMockUserServiceClient(ctrl)
 	middleware := AftermarketDevice(pdb, usersClient, logger)
 
 	app := test.SetupAppFiber(*logger)
@@ -238,10 +241,14 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 			err = c.AftermarketDevice.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 			require.NoError(t, err)
 
-			usersClient.Store = map[string]*pb.User{}
-			u := &pb.User{Id: userID}
-			u.EthereumAddress = c.UserEthAddr
-			usersClient.Store[userID] = u
+			ret := &pb.User{
+				Id: userID,
+			}
+			if c.UserEthAddr != nil {
+				ret.EthereumAddress = c.UserEthAddr
+				ret.EthereumAddressBytes = common.Hex2Bytes(*c.UserEthAddr)
+			}
+			usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: userID}).AnyTimes().Return(ret, nil)
 
 			t.Log(c.Name)
 			res, err := app.Test(request)
@@ -258,7 +265,8 @@ func TestVehicleTokenOwnerMiddleware(t *testing.T) {
 	pdb, container := test.StartContainerDatabase(ctx, t, "../../../migrations")
 	logger := test.Logger()
 
-	usersClient := &test.UsersClient{}
+	ctrl := gomock.NewController(t)
+	usersClient := mock_services.NewMockUserServiceClient(ctrl)
 	middleware := VehicleToken(pdb, usersClient, logger)
 	app := test.SetupAppFiber(*logger)
 
@@ -308,17 +316,18 @@ func TestVehicleTokenOwnerMiddleware(t *testing.T) {
 
 			ud := test.SetupCreateUserDevice(t, c.UserID, "ddID", nil, "vin", pdb)
 
-			usersClient.Store = map[string]*pb.User{}
-			u := &pb.User{Id: userID}
+			ret := &pb.User{Id: userID}
 
 			if c.OwnerAddress != common.HexToAddress("") {
 				_ = test.SetupCreateVehicleNFT(t, ud, big.NewInt(5), null.BytesFrom(c.OwnerAddress.Bytes()), pdb)
 
 				addr := c.OwnerAddress.Hex()
-				u.EthereumAddress = &addr
+				ret.EthereumAddress = &addr
+				ret.EthereumAddressBytes = common.Hex2Bytes(addr)
 			}
 
-			usersClient.Store[userID] = u
+			usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: userID}).Return(ret, nil)
+
 			request := test.BuildRequest("GET", fmt.Sprintf("/user/vehicle/%s/commands/burn", c.TokenID.String()), "")
 			res, err := app.Test(request)
 			require.Nil(t, err)

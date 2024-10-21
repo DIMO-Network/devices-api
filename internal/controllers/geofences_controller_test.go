@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
+	users "github.com/DIMO-Network/users-api/pkg/grpc"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/volatiletech/null/v8"
