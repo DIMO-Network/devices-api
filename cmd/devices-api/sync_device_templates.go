@@ -328,13 +328,14 @@ func moveDevicesFromCSV(ctx context.Context, path string, targetTemplateID int, 
 		if len(row) > 0 {
 			fmt.Println("device 0x addr:" + row[0])
 			// execute the move
-			addr := common.Hex2Bytes(row[0])
+			hex := strings.TrimPrefix("0x", row[0])
+			addr := common.Hex2Bytes(hex)
 			amd, err := models.AftermarketDevices(
 				models.AftermarketDeviceWhere.EthereumAddress.EQ(addr),
 				qm.Load(models.AftermarketDeviceRels.VehicleToken),
 			).One(ctx, pdb.DBS().Reader)
 			if err != nil {
-				fmt.Printf("Failed to find device in our db with 0x %s\n", row[0])
+				fmt.Printf("Failed to find device in our db with addr: %02X\n", addr)
 				continue
 			}
 			udID := ""
