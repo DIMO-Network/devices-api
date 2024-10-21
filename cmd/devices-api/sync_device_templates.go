@@ -81,7 +81,9 @@ func (p *syncDeviceTemplatesCmd) Execute(ctx context.Context, _ *flag.FlagSet, _
 	}
 	// move devices from csv file list
 	if p.csvDevicesPath != nil {
-		err := moveDevicesFromCSV(ctx, *p.csvDevicesPath, targetTempl, p.pdb, hardwareTemplateService)
+		fmt.Printf("moving devices from csv file: %s to template id: %d\n", *p.csvDevicesPath, targetTempl)
+		path := "/tmp/" + *p.csvDevicesPath
+		err := moveDevicesFromCSV(ctx, path, targetTempl, p.pdb, hardwareTemplateService)
 		if err != nil {
 			p.logger.Fatal().Err(err).Msg("failed to move devices from csv file")
 			return subcommands.ExitFailure
@@ -309,7 +311,7 @@ func moveDevicesFromCSV(ctx context.Context, path string, targetTemplateID int, 
 	o, err := os.Open(path)
 	defer o.Close() //nolint
 	if err != nil {
-		return errors.Wrap(err, "failed to open csv file")
+		return errors.Wrapf(err, "failed to open csv file: %s", path)
 	}
 	r := csv.NewReader(o)
 	// Iterate over each row
