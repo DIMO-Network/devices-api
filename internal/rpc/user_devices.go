@@ -148,27 +148,23 @@ func (s *userDeviceRPCServer) GetUserDeviceByEthAddr(ctx context.Context, req *p
 }
 
 func (s *userDeviceRPCServer) GetUserDeviceByTokenId(ctx context.Context, req *pb.GetUserDeviceByTokenIdRequest) (*pb.UserDevice, error) { // nolint
-
 	tknID := types.NewNullDecimal(decimal.New(req.TokenId, 0))
 
-	nft, err := models.UserDevices(
+	dbDevice, err := models.UserDevices(
 		models.UserDeviceWhere.TokenID.EQ(tknID),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(ctx, s.dbs().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, status.Error(codes.NotFound, "No device with that token ID found.")
+			return nil, status.Error(codes.NotFound, "No device with that token Id found.")
 		}
-		s.logger.Err(err).Int64("tokenID", req.TokenId).Msg("Database failure retrieving device.")
+		s.logger.Err(err).Int64("tokenId", req.TokenId).Msg("Database failure retrieving device.")
 		return nil, status.Error(codes.Internal, "Internal error.")
 	}
 
-	out := &pb.UserDevice{
-		Id:           nft.ID,
-		TokenId:      s.toUint64(nft.TokenID),
-		OwnerAddress: nft.OwnerAddress.Bytes,
-	}
-
-	return out, nil
+	return s.deviceModelToAPI(dbDevice), nil
 }
 
 func (s *userDeviceRPCServer) ListUserDevicesForUser(ctx context.Context, req *pb.ListUserDevicesForUserRequest) (*pb.ListUserDevicesForUserResponse, error) {
