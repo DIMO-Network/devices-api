@@ -750,7 +750,7 @@ func (s *userDeviceRPCServer) StopUserDeviceIntegration(ctx context.Context, req
 	return &emptypb.Empty{}, nil
 }
 
-// DeleteVehicle Tries to stops synthetic device tasks using above method, marks user device as unverified
+// DeleteVehicle Tries to stops synthetic device tasks using above method, deletes the vehicle from web2
 func (s *userDeviceRPCServer) DeleteVehicle(ctx context.Context, req *pb.DeleteVehicleRequest) (*emptypb.Empty, error) {
 	ti := new(big.Int).SetUint64(req.TokenId)
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
@@ -782,51 +782,20 @@ func (s *userDeviceRPCServer) DeleteVehicle(ctx context.Context, req *pb.DeleteV
 				s.logger.Error().Err(err).Uint64("vehicleTokenId", req.TokenId).Msg("failed to stop user device integration from a delete vehicle request")
 			}
 		}
-		// delete the synthetic device, currently deciding against this, we'll see how it goes
-		//_, _ = models.SyntheticDevices(
-		//	models.SyntheticDeviceWhere.VehicleTokenID.EQ(tid),
-		//).DeleteAll(ctx, s.dbs().Reader)
+		// delete the synthetic device
+		_, err = models.SyntheticDevices(
+			models.SyntheticDeviceWhere.VehicleTokenID.EQ(tid),
+		).DeleteAll(ctx, s.dbs().Reader)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete synthetic device: %w", err)
+		}
 	}
-	// for now we're just going to mark the vehicle as unverified,
-	userDevice.VinConfirmed = false
-	_, err = userDevice.Update(ctx, s.dbs().Writer, boil.Infer())
-	if err != nil {
-		return nil, fmt.Errorf("failed to set vinconfirmed valse for userDevice %s: %w", userDevice.TokenID, err)
-	}
-
-	// maybe we need to enable this in the future, but ideally we do an on-chain operation together with this.
-	//_, err = userDevice.Delete(ctx, s.dbs().Writer)
-	//if err != nil {
-	//	return nil, fmt.Errorf("failed to delete user device: %w", err)
-	//}
-	//s.logger.Info().Uint64("vehicleTokenId", req.TokenId).Msgf("successfully deleted vehicle via grpc call")
-	s.logger.Info().Uint64("vehicleTokenId", req.TokenId).Msgf("successfully unverified vehicle via grpc call")
-
-	return &emptypb.Empty{}, nil
-}
-
-// DeleteUnMintedUserDevice deletes user_device records that have not been minted
-func (s *userDeviceRPCServer) DeleteUnMintedUserDevice(ctx context.Context, req *pb.DeleteUnMintedUserDeviceRequest) (*emptypb.Empty, error) {
-	log := s.logger.With().
-		Str("userDeviceId", req.UserDeviceId).
-		Logger()
-
-	userDevice, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(req.UserDeviceId),
-		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-	).One(ctx, s.dbs().Writer)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find vehicle %s: %w", req.UserDeviceId, err)
-	}
-	if !userDevice.TokenID.IsZero() {
-		return nil, fmt.Errorf("cannot delete user device %s, it has a token id", req.UserDeviceId)
-	}
+	// delete the vehicle, web2 only, we'll still have web3 records.
 	_, err = userDevice.Delete(ctx, s.dbs().Writer)
 	if err != nil {
-		return nil, fmt.Errorf("failed to delete user device %s : %w", req.UserDeviceId, err)
+		return nil, fmt.Errorf("failed to set delete userDevice %s: %w", userDevice.TokenID, err)
 	}
-	log.Info().Msg("deleted unminted user device")
+	s.logger.Info().Uint64("vehicleTokenId", req.TokenId).Msgf("successfully deleted vehicle via grpc call")
 
 	return &emptypb.Empty{}, nil
-
 }
