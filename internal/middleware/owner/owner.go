@@ -117,8 +117,6 @@ func AftermarketDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *z
 			return shared.GrpcErrorToFiber(err, "Error retrieving user")
 		}
 
-		fmt.Println("XDD", user, err)
-
 		if user.EthereumAddress == nil {
 			return fiber.NewError(fiber.StatusForbidden, "user does not have a valid ethereum address")
 		}

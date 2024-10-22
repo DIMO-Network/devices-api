@@ -21,6 +21,9 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"go.uber.org/mock/gomock"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestUserDeviceOwnerMiddleware(t *testing.T) {
@@ -38,14 +41,24 @@ func TestUserDeviceOwnerMiddleware(t *testing.T) {
 	usersClient := mock_services.NewMockUserServiceClient(ctrl)
 	middleware := UserDevice(pdb, usersClient, logger)
 
-	usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: userID}).AnyTimes().Return(&pb.User{
-		Id:                   userID,
-		EthereumAddress:      &userAddr,
-		EthereumAddressBytes: common.Hex2Bytes(userAddr),
-	}, nil)
-	usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: otherUserID}).AnyTimes().Return(&pb.User{
-		Id: otherUserID,
-	}, nil)
+	usersClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).AnyTimes().DoAndReturn(
+		func(ctx context.Context, req *pb.GetUserRequest, opts ...grpc.CallOption) (*pb.User, error) {
+			switch req.Id {
+			case userID:
+				return &pb.User{
+					Id:                   userID,
+					EthereumAddress:      &userAddr,
+					EthereumAddressBytes: common.Hex2Bytes(userAddr),
+				}, nil
+			case otherUserID:
+				return &pb.User{
+					Id: otherUserID,
+				}, nil
+			default:
+				return nil, status.Error(codes.NotFound, "Unknown user.")
+			}
+		},
+	)
 
 	ud := []models.UserDevice{
 		{
@@ -129,17 +142,6 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 	ctx := context.Background()
 	pdb, container := test.StartContainerDatabase(ctx, t, "../../../migrations")
 	logger := test.Logger()
-
-	ctrl := gomock.NewController(t)
-	usersClient := mock_services.NewMockUserServiceClient(ctrl)
-	middleware := AftermarketDevice(pdb, usersClient, logger)
-
-	app := test.SetupAppFiber(*logger)
-	app.Get("/:serial", test.AuthInjectorTestHandler(userID), middleware, func(c *fiber.Ctx) error {
-		logger := c.Locals("logger").(*zerolog.Logger)
-		logger.Info().Msg("Omega croggers.")
-		return nil
-	})
 
 	request := test.BuildRequest("GET", "/"+unitID, "")
 
@@ -228,6 +230,17 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			usersClient := mock_services.NewMockUserServiceClient(ctrl)
+			middleware := AftermarketDevice(pdb, usersClient, logger)
+
+			app := test.SetupAppFiber(*logger)
+			app.Get("/:serial", test.AuthInjectorTestHandler(userID), middleware, func(c *fiber.Ctx) error {
+				logger := c.Locals("logger").(*zerolog.Logger)
+				logger.Info().Msg("Omega croggers.")
+				return nil
+			})
+
 			_, err := models.AftermarketDevices().DeleteAll(ctx, pdb.DBS().Writer)
 			require.NoError(t, err)
 			_, err = models.UserDevices().DeleteAll(ctx, pdb.DBS().Writer)
@@ -248,12 +261,14 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 				ret.EthereumAddress = c.UserEthAddr
 				ret.EthereumAddressBytes = common.Hex2Bytes(*c.UserEthAddr)
 			}
-			usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: userID}).AnyTimes().Return(ret, nil)
+			usersClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).AnyTimes().Return(ret, nil)
 
 			t.Log(c.Name)
 			res, err := app.Test(request)
 			require.Nil(t, err)
 			assert.Equal(t, c.ExpectedCode, res.StatusCode)
+
+			test.TruncateTables(pdb.DBS().Writer.DB, t)
 		})
 	}
 
