@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/DIMO-Network/shared"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -111,18 +113,17 @@ func (sdc *SyntheticDevicesController) getEIP712Mint(integrationID, vehicleNode 
 // @Success     200 {array} signer.TypedData
 // @Router 	    /user/devices/{userDeviceID}/integrations/{integrationID}/commands/mint [get]
 func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
 
-	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	maybeAddr, err := sdc.getCallerEthAddress(c)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "error occurred when fetching user")
+		return err
 	}
 
-	if user.EthereumAddress == nil {
+	if maybeAddr == nil {
 		return fiber.NewError(fiber.StatusUnauthorized, "User does not have an Ethereum address.")
 	}
 
-	userAddr := common.HexToAddress(*user.EthereumAddress)
+	userAddr := *maybeAddr
 
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
@@ -276,22 +277,21 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fmt.Errorf("vehicle token id invalid, this should never happen %d", ud.TokenID)
 	}
 
-	userID := helpers.GetUserID(c)
 	var req MintSyntheticDeviceRequest
 	if err := c.BodyParser(&req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
 	}
 
-	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	maybeAddr, err := sdc.getCallerEthAddress(c)
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "error occurred when fetching user")
 	}
 
-	if user.EthereumAddress == nil {
+	if maybeAddr == nil {
 		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
 	}
 
-	userAddr := common.HexToAddress(*user.EthereumAddress)
+	userAddr := *maybeAddr
 	rawPayload := sdc.getEIP712Mint(int64(in.TokenId), vid)
 
 	tdHash, _, err := signer.TypedDataAndHash(*rawPayload)
@@ -619,4 +619,27 @@ func (sdc *SyntheticDevicesController) getEIP712Burn(vehicleNode, syntheticDevic
 			"syntheticDeviceNode": math.NewHexOrDecimal256(syntheticDeviceNode),
 		},
 	}
+}
+
+func (sdc *SyntheticDevicesController) getCallerEthAddress(c *fiber.Ctx) (*common.Address, error) {
+	tokenAddr := helpers.GetUserEthAddr(c)
+	if tokenAddr != nil {
+		return tokenAddr, nil
+	}
+
+	userID := helpers.GetUserID(c)
+	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		if s, ok := status.FromError(err); ok && s.Code() == codes.NotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed searching users-api for id %s: %w", userID, err)
+	}
+
+	if len(user.EthereumAddressBytes) == 20 {
+		addr := common.BytesToAddress(user.EthereumAddressBytes)
+		return &addr, nil
+	}
+
+	return nil, nil
 }
