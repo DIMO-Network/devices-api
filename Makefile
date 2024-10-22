@@ -44,6 +44,9 @@ gen-mocks:
 gen-proto:
 	@protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative pkg/grpc/*.proto
 
+gen-swag:
+	@swag init -g cmd/devices-api/main.go --parseDependency --parseInternal
+
 docker-tags:
 	@echo "latest,$(VER_CUT),$(VER_MAJOR).$(VER_MINOR),$(VER_MAJOR)" > .tags
 
