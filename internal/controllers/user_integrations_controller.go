@@ -21,7 +21,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
-	pb "github.com/DIMO-Network/users-api/pkg/grpc"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
@@ -882,13 +881,12 @@ func (udc *UserDevicesController) GetAftermarketDeviceClaimMessage(c *fiber.Ctx)
 
 	apToken := unit.TokenID.Int(nil)
 
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	maybeAddr, err := udc.getCallerEthAddress(c)
 	if err != nil {
-		udc.log.Err(err).Msg("Couldn't retrieve user record.")
-		return opaqueInternalError
+		return err
 	}
 
-	if user.EthereumAddress == nil {
+	if maybeAddr == nil {
 		udc.log.Error().Msg("No Ethereum address on file for user.")
 		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
 	}
@@ -906,7 +904,7 @@ func (udc *UserDevicesController) GetAftermarketDeviceClaimMessage(c *fiber.Ctx)
 
 	cads := &registry.ClaimAftermarketDeviceSign{
 		AftermarketDeviceNode: apToken,
-		Owner:                 common.HexToAddress(*user.EthereumAddress),
+		Owner:                 *maybeAddr,
 	}
 
 	var out *signer.TypedData = client.GetPayload(cads)
@@ -963,13 +961,12 @@ func (udc *UserDevicesController) PostAftermarketDeviceClaim(c *fiber.Ctx) error
 
 	apToken := unit.TokenID.Int(nil)
 
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	maybeAddr, err := udc.getCallerEthAddress(c)
 	if err != nil {
-		udc.log.Err(err).Msg("Couldn't retrieve user record.")
-		return opaqueInternalError
+		return err
 	}
 
-	if user.EthereumAddress == nil {
+	if maybeAddr == nil {
 		return fiber.NewError(fiber.StatusBadRequest, "User does not have an Ethereum address.")
 	}
 
@@ -984,7 +981,7 @@ func (udc *UserDevicesController) PostAftermarketDeviceClaim(c *fiber.Ctx) error
 		},
 	}
 
-	realUserAddr := common.HexToAddress(*user.EthereumAddress)
+	realUserAddr := *maybeAddr
 
 	cads := &registry.ClaimAftermarketDeviceSign{
 		AftermarketDeviceNode: apToken,
@@ -1068,7 +1065,6 @@ func (udc *UserDevicesController) PostAftermarketDeviceClaim(c *fiber.Ctx) error
 // @Security BearerAuth
 // @Router /user/devices/{userDeviceID}/aftermarket/commands/pair [get]
 func (udc *UserDevicesController) GetAftermarketDevicePairMessage(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
 	userDeviceID := c.Params("userDeviceID")
 	logger := helpers.GetLogger(c, udc.log)
 
@@ -1086,13 +1082,12 @@ func (udc *UserDevicesController) GetAftermarketDevicePairMessage(c *fiber.Ctx) 
 	vehicleToken := vnft.TokenID.Int(nil)
 	apToken := ad.TokenID.Int(nil)
 
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	maybeAddr, err := udc.getCallerEthAddress(c)
 	if err != nil {
-		udc.log.Err(err).Msg("Failed to retrieve user information.")
-		return opaqueInternalError
+		return err
 	}
 
-	if user.EthereumAddress == nil {
+	if maybeAddr == nil {
 		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
 	}
 
@@ -1123,7 +1118,6 @@ func (udc *UserDevicesController) GetAftermarketDevicePairMessage(c *fiber.Ctx) 
 // @Security BearerAuth
 // @Router /user/devices/{userDeviceID}/aftermarket/commands/pair [post]
 func (udc *UserDevicesController) PostAftermarketDevicePair(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
 	userDeviceID := c.Params("userDeviceID")
 	logger := helpers.GetLogger(c, udc.log)
 
@@ -1148,17 +1142,16 @@ func (udc *UserDevicesController) PostAftermarketDevicePair(c *fiber.Ctx) error 
 		return err
 	}
 
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	maybeAddr, err := udc.getCallerEthAddress(c)
 	if err != nil {
-		udc.log.Err(err).Msg("Failed to retrieve user information.")
-		return opaqueInternalError
+		return err
 	}
 
-	if user.EthereumAddress == nil {
+	if maybeAddr == nil {
 		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
 	}
 
-	userAddr := common.HexToAddress(*user.EthereumAddress)
+	userAddr := *maybeAddr
 
 	apToken := ad.TokenID.Int(nil)
 	vehicleToken := vnft.TokenID.Int(nil)
@@ -1357,8 +1350,6 @@ func (udc *UserDevicesController) checkUnpairable(ctx context.Context, exec boil
 // @Security BearerAuth
 // @Router /user/devices/{userDeviceID}/aftermarket/commands/unpair [get]
 func (udc *UserDevicesController) GetAftermarketDeviceUnpairMessage(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
-
 	userDeviceID := c.Params("userDeviceID")
 	logger := helpers.GetLogger(c, udc.log)
 	logger.Info().Msg("Got Aftermarket unpair request.")
@@ -1371,13 +1362,12 @@ func (udc *UserDevicesController) GetAftermarketDeviceUnpairMessage(c *fiber.Ctx
 	apToken := autoPiUnit.TokenID.Int(nil)
 	vehicleToken := vnft.TokenID.Int(nil)
 
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	maybeAddr, err := udc.getCallerEthAddress(c)
 	if err != nil {
-		udc.log.Err(err).Msg("Failed to retrieve user information.")
-		return opaqueInternalError
+		return err
 	}
 
-	if user.EthereumAddress == nil {
+	if maybeAddr == nil {
 		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
 	}
 
@@ -1410,19 +1400,16 @@ func (udc *UserDevicesController) GetAftermarketDeviceUnpairMessage(c *fiber.Ctx
 // @Security BearerAuth
 // @Router /user/devices/{userDeviceID}/aftermarket/commands/unpair [post]
 func (udc *UserDevicesController) PostAftermarketDeviceUnpair(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
-
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	maybeAddr, err := udc.getCallerEthAddress(c)
 	if err != nil {
-		udc.log.Err(err).Msg("Failed to retrieve user information.")
-		return opaqueInternalError
+		return err
 	}
 
-	if user.EthereumAddress == nil {
+	if maybeAddr == nil {
 		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
 	}
 
-	realAddr := common.HexToAddress(*user.EthereumAddress)
+	realAddr := *maybeAddr
 
 	userDeviceID := c.Params("userDeviceID")
 
@@ -1984,11 +1971,11 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	}
 
 	if apiVersion == constants.TeslaAPIV2 { // If version is 2, we are using fleet api which has token stored in cache
-		user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: ud.UserID})
+		maybeAddr, err := udc.getCallerEthAddress(c)
 		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "could not fetch user information: %w", err.Error())
+			return err
 		}
-		if user.EthereumAddress == nil {
+		if maybeAddr == nil {
 			return fiber.NewError(fiber.StatusBadRequest, "missing wallet details for user")
 		}
 
@@ -1998,7 +1985,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 			Cipher: udc.cipher,
 		}
 
-		cred, err := store.Retrieve(c.Context(), common.HexToAddress(*user.EthereumAddress))
+		cred, err := store.Retrieve(c.Context(), *maybeAddr)
 		if err != nil {
 			if errors.Is(err, tmpcred.ErrNotFound) {
 				return fiber.NewError(fiber.StatusBadRequest, "No credentials found for user.")
