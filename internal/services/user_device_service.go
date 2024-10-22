@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	pb "github.com/DIMO-Network/users-api/pkg/grpc"
-
 	"github.com/DIMO-Network/shared"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
@@ -32,16 +30,14 @@ type userDeviceService struct {
 	log          zerolog.Logger
 	dbs          func() *db.ReaderWriter
 	eventService EventService
-	usersClient  pb.UserServiceClient
 }
 
-func NewUserDeviceService(deviceDefSvc DeviceDefinitionService, log zerolog.Logger, dbs func() *db.ReaderWriter, eventService EventService, usersClient pb.UserServiceClient) UserDeviceService {
+func NewUserDeviceService(deviceDefSvc DeviceDefinitionService, log zerolog.Logger, dbs func() *db.ReaderWriter, eventService EventService) UserDeviceService {
 	return &userDeviceService{
 		deviceDefSvc: deviceDefSvc,
 		log:          log,
 		dbs:          dbs,
 		eventService: eventService,
-		usersClient:  usersClient,
 	}
 }
 

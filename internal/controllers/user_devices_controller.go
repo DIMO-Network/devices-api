@@ -396,21 +396,22 @@ func (udc *UserDevicesController) getCallerEthAddress(c *fiber.Ctx) (*common.Add
 // @Router      /user/devices/me [get]
 func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+
+	maybeUserAddr, err := udc.getCallerEthAddress(c)
 	if err != nil {
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
 	}
 
 	var query []qm.QueryMod
 
-	if user.EthereumAddress == nil {
+	if maybeUserAddr == nil {
 		query = []qm.QueryMod{
 			models.UserDeviceWhere.UserID.EQ(userID),
 		}
 	} else {
 		query = []qm.QueryMod{
 			models.UserDeviceWhere.UserID.EQ(userID),
-			qm.Or2(models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(common.HexToAddress(*user.EthereumAddress).Bytes()))),
+			qm.Or2(models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(maybeUserAddr.Bytes()))),
 		}
 	}
 
@@ -445,23 +446,17 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 	// todo grpc call out to grpc service endpoint in the deviceDefinitionsService udc.deviceDefSvc.GetDeviceDefinitionsByIDs(c.Context(), []string{ "todo"} )
 
-	userID := helpers.GetUserID(c)
-
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	maybeUserAddr, err := udc.getCallerEthAddress(c)
 	if err != nil {
-		udc.log.Err(err).Msg("Couldn't retrieve user record.")
-		return opaqueInternalError
+		return err
 	}
 
 	var sharedVehicles []*models.UserDevice
 
-	if user.EthereumAddress != nil {
-		// This is N+1 hell.
-		userAddr := common.HexToAddress(*user.EthereumAddress)
-
+	if maybeUserAddr != nil {
 		privs, err := models.NFTPrivileges(
 			models.NFTPrivilegeWhere.ContractAddress.EQ(common.FromHex(udc.Settings.VehicleNFTAddress)),
-			models.NFTPrivilegeWhere.UserAddress.EQ(userAddr.Bytes()),
+			models.NFTPrivilegeWhere.UserAddress.EQ(maybeUserAddr.Bytes()),
 			models.NFTPrivilegeWhere.Expiry.GT(time.Now()),
 			qm.OrderBy(models.NFTPrivilegeColumns.UpdatedAt+" DESC, "+models.NFTPrivilegeColumns.TokenID+" DESC"),
 		).All(c.Context(), udc.DBS().Reader)
@@ -491,7 +486,7 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 			).One(c.Context(), udc.DBS().Reader)
 			if err != nil {
 				if err == sql.ErrNoRows {
-					udc.log.Warn().Msgf("User %s has privileges on a vehicle %d of which we have no record.", userAddr, priv.TokenID)
+					udc.log.Warn().Msgf("User %s has privileges on a vehicle %d of which we have no record.", *maybeUserAddr, priv.TokenID)
 					continue
 				}
 				return err
@@ -885,10 +880,6 @@ func buildSmartcarTokenKey(vin, userID string) string {
 func (udc *UserDevicesController) createUserDevice(ctx context.Context, deviceDefID, styleID, countryCode, userID string, vin, canProtocol *string) (*UserDeviceFull, error) {
 	ud, dd, err := udc.userDeviceSvc.CreateUserDevice(ctx, deviceDefID, styleID, countryCode, userID, vin, canProtocol, false)
 	if err != nil {
-		if errors.Is(err, services.ErrEmailUnverified) {
-			return nil, fiber.NewError(fiber.StatusBadRequest,
-				"Your email has not been verified. Please check your email for the DIMO verification email.")
-		}
 		return nil, err
 	}
 
@@ -1262,7 +1253,6 @@ const imageURIattribute = "ImageURI"
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/commands/mint [get]
 func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
 	userDeviceID := c.Params("userDeviceID")
 
 	userDevice, err := models.UserDevices(
@@ -1273,7 +1263,7 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "No vehicle with that id found.")
 	}
 
-	mvs, dd, err := udc.checkVehicleMint(c.Context(), userID, userDevice)
+	mvs, dd, err := udc.checkVehicleMint(c, userDevice)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
@@ -1312,7 +1302,6 @@ var erc1271magicValue = [4]byte{0x16, 0x26, 0xba, 0x7e}
 // @Router      /user/devices/{userDeviceID}/commands/mint [post]
 func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 
 	logger := helpers.GetLogger(c, udc.log)
 
@@ -1335,7 +1324,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}
 
 	// This actually makes no database calls!
-	mvs, dd, err := udc.checkVehicleMint(c.Context(), userID, userDevice)
+	mvs, dd, err := udc.checkVehicleMint(c, userDevice)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
@@ -1806,7 +1795,7 @@ type VINCredentialData struct {
 	VIN       string    `json:"vin"`
 }
 
-func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID string, userDevice *models.UserDevice) (*registry.MintVehicleSign, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
+func (udc *UserDevicesController) checkVehicleMint(c *fiber.Ctx, userDevice *models.UserDevice) (*registry.MintVehicleSign, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
 	if !userDevice.TokenID.IsZero() {
 		return nil, nil, fmt.Errorf("vehicle already minted with token id %d", userDevice.TokenID.Big)
 	}
@@ -1819,7 +1808,7 @@ func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID s
 		return nil, nil, fmt.Errorf("VIN not confirmed")
 	}
 
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, userDevice.DeviceDefinitionID)
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID)
 	}
@@ -1829,13 +1818,12 @@ func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID s
 	}
 	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
 
-	user, err := udc.usersClient.GetUser(ctx, &pb.GetUserRequest{Id: userID})
+	maybeAddr, err := udc.getCallerEthAddress(c)
 	if err != nil {
-		udc.log.Err(err).Msg("couldn't retrieve user record")
-		return nil, nil, opaqueInternalError
+		return nil, nil, err
 	}
 
-	if user.EthereumAddress == nil {
+	if maybeAddr == nil {
 		return nil, nil, fmt.Errorf("user does not have an Ethereum address on file")
 	}
 
@@ -1845,7 +1833,7 @@ func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID s
 
 	mvs := &registry.MintVehicleSign{
 		ManufacturerNode: makeTokenID,
-		Owner:            common.HexToAddress(*user.EthereumAddress),
+		Owner:            *maybeAddr,
 		Attributes:       []string{"Make", "Model", "Year"},
 		Infos:            []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year))},
 	}
