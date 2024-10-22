@@ -36,7 +36,6 @@ const (
 	UserDeviceService_ClearMetaTransactionRequests_FullMethodName  = "/devices.UserDeviceService/ClearMetaTransactionRequests"
 	UserDeviceService_StopUserDeviceIntegration_FullMethodName     = "/devices.UserDeviceService/StopUserDeviceIntegration"
 	UserDeviceService_DeleteVehicle_FullMethodName                 = "/devices.UserDeviceService/DeleteVehicle"
-	UserDeviceService_DeleteUnMintedUserDevice_FullMethodName      = "/devices.UserDeviceService/DeleteUnMintedUserDevice"
 )
 
 // UserDeviceServiceClient is the client API for UserDeviceService service.
@@ -61,8 +60,6 @@ type UserDeviceServiceClient interface {
 	StopUserDeviceIntegration(ctx context.Context, in *StopUserDeviceIntegrationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// used by dimo admin to delete vehicles as need by customer support
 	DeleteVehicle(ctx context.Context, in *DeleteVehicleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// used by dimo admin to delete unminted user_device records
-	DeleteUnMintedUserDevice(ctx context.Context, in *DeleteUnMintedUserDeviceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type userDeviceServiceClient struct {
@@ -240,15 +237,6 @@ func (c *userDeviceServiceClient) DeleteVehicle(ctx context.Context, in *DeleteV
 	return out, nil
 }
 
-func (c *userDeviceServiceClient) DeleteUnMintedUserDevice(ctx context.Context, in *DeleteUnMintedUserDeviceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, UserDeviceService_DeleteUnMintedUserDevice_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // UserDeviceServiceServer is the server API for UserDeviceService service.
 // All implementations must embed UnimplementedUserDeviceServiceServer
 // for forward compatibility
@@ -271,8 +259,6 @@ type UserDeviceServiceServer interface {
 	StopUserDeviceIntegration(context.Context, *StopUserDeviceIntegrationRequest) (*emptypb.Empty, error)
 	// used by dimo admin to delete vehicles as need by customer support
 	DeleteVehicle(context.Context, *DeleteVehicleRequest) (*emptypb.Empty, error)
-	// used by dimo admin to delete unminted user_device records
-	DeleteUnMintedUserDevice(context.Context, *DeleteUnMintedUserDeviceRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedUserDeviceServiceServer()
 }
 
@@ -327,9 +313,6 @@ func (UnimplementedUserDeviceServiceServer) StopUserDeviceIntegration(context.Co
 }
 func (UnimplementedUserDeviceServiceServer) DeleteVehicle(context.Context, *DeleteVehicleRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteVehicle not implemented")
-}
-func (UnimplementedUserDeviceServiceServer) DeleteUnMintedUserDevice(context.Context, *DeleteUnMintedUserDeviceRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteUnMintedUserDevice not implemented")
 }
 func (UnimplementedUserDeviceServiceServer) mustEmbedUnimplementedUserDeviceServiceServer() {}
 
@@ -635,24 +618,6 @@ func _UserDeviceService_DeleteVehicle_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UserDeviceService_DeleteUnMintedUserDevice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteUnMintedUserDeviceRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(UserDeviceServiceServer).DeleteUnMintedUserDevice(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: UserDeviceService_DeleteUnMintedUserDevice_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserDeviceServiceServer).DeleteUnMintedUserDevice(ctx, req.(*DeleteUnMintedUserDeviceRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // UserDeviceService_ServiceDesc is the grpc.ServiceDesc for UserDeviceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -719,10 +684,6 @@ var UserDeviceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteVehicle",
 			Handler:    _UserDeviceService_DeleteVehicle_Handler,
-		},
-		{
-			MethodName: "DeleteUnMintedUserDevice",
-			Handler:    _UserDeviceService_DeleteUnMintedUserDevice_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

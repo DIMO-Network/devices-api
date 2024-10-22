@@ -35,8 +35,6 @@ service UserDeviceService {
   rpc StopUserDeviceIntegration(StopUserDeviceIntegrationRequest) returns (google.protobuf.Empty);
   // used by dimo admin to delete vehicles as need by customer support
   rpc DeleteVehicle(DeleteVehicleRequest) returns (google.protobuf.Empty);
-  // used by dimo admin to delete unminted user_device records
-  rpc DeleteUnMintedUserDevice(DeleteUnMintedUserDeviceRequest) returns (google.protobuf.Empty);
 }
 
 message GetUserDeviceByAutoPIUnitIdRequest { string id = 1; }
@@ -179,8 +177,4 @@ message StopUserDeviceIntegrationRequest {
 
 message DeleteVehicleRequest {
   uint64 token_id =1 ;
-}
-
-message DeleteUnMintedUserDeviceRequest {
-  string user_device_id = 1;
 }
