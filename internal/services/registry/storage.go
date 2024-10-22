@@ -131,6 +131,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 							ID:                 ud.ID,
 							VIN:                ud.VinIdentifier.String,
 							DeviceDefinitionID: ud.DeviceDefinitionID,
+							DefinitionID:       ud.DefinitionID.String,
 						},
 						NFT: services.UserDeviceEventNFT{
 							TokenID: event.VehicleId,
@@ -169,8 +170,9 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 						Timestamp: time.Now(),
 						UserID:    ud.UserID,
 						Device: services.UserDeviceEventDevice{
-							ID:  ud.ID,
-							VIN: ud.VinIdentifier.String,
+							ID:           ud.ID,
+							VIN:          ud.VinIdentifier.String,
+							DefinitionID: ud.DefinitionID.String,
 						},
 						NFT: services.UserDeviceEventNFT{
 							TokenID: event.TokenId,

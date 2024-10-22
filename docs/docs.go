@@ -2341,6 +2341,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceCompatibility"
                     }
                 },
+                "definitionId": {
+                    "type": "string"
+                },
                 "deviceAttributes": {
                     "description": "DeviceAttributes is a list of attributes for the device type as defined in device_types.properties",
                     "type": "array",

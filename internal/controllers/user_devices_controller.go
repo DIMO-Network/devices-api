@@ -1196,10 +1196,11 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 			Timestamp: time.Now(),
 			UserID:    userID,
 			Device: services.UserDeviceEventDevice{
-				ID:    udi,
-				Make:  dd.Make.Name,
-				Model: dd.Type.Model,
-				Year:  int(dd.Type.Year),
+				ID:           udi,
+				Make:         dd.Make.Name,
+				Model:        dd.Type.Model,
+				Year:         int(dd.Type.Year),
+				DefinitionID: dd.NameSlug,
 			},
 		},
 	}); err != nil {
