@@ -15,6 +15,7 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
+	pb "github.com/DIMO-Network/users-api/pkg/grpc"
 	users "github.com/DIMO-Network/users-api/pkg/grpc"
 	"github.com/IBM/sarama"
 	"github.com/ethereum/go-ethereum/common"
@@ -27,6 +28,8 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // TODO(elffjs): Setting?
@@ -92,7 +95,7 @@ func (g *GeofencesController) Create(c *fiber.Ctx) error {
 		return helpers.ErrorResponseHandler(c, errors.New("Geofence with that name already exists for this user"), fiber.StatusBadRequest)
 	}
 
-	uds, err := g.createDeviceList(c.Context(), tx, userID, create.UserDeviceIDs)
+	uds, err := g.createDeviceList(c, tx, userID, create.UserDeviceIDs)
 	if err != nil {
 		return err
 	}
@@ -346,7 +349,7 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 		return errors.Wrap(err, "error updating geofence")
 	}
 
-	uds, err := g.createDeviceList(c.Context(), tx, userID, affectedDeviceIDs)
+	uds, err := g.createDeviceList(c, tx, userID, affectedDeviceIDs)
 	if err != nil {
 		return err
 	}
@@ -381,23 +384,47 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+func (g *GeofencesController) getCallerEthAddress(c *fiber.Ctx) (*common.Address, error) {
+	// Yes, wrong abstraction, no argument from me.
+	tokenAddr := helpers.GetUserEthAddr(c)
+	if tokenAddr != nil {
+		return tokenAddr, nil
+	}
+
+	userID := helpers.GetUserID(c)
+	user, err := g.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	if err != nil {
+		if s, ok := status.FromError(err); ok && s.Code() == codes.NotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed searching users-api for id %s: %w", userID, err)
+	}
+
+	if len(user.EthereumAddressBytes) == 20 {
+		addr := common.BytesToAddress(user.EthereumAddressBytes)
+		return &addr, nil
+	}
+
+	return nil, nil
+}
+
 // createDeviceList checks that the given user can attach geofences to the vehicles
 // with the given ids, and returns a slice of database objects for those vehicles.
 //
 // Specifically, the vehicles must exist, be minted, and be owned by the user. This function
 // performs deduplication, so the length of the output slice may not match that of
 // the input slice. Errors returned from this function are safe to return to Fiber.
-func (g *GeofencesController) createDeviceList(ctx context.Context, tx *sql.Tx, userID string, userDeviceIDs []string) ([]*models.UserDevice, error) {
-	user, err := g.usersClient.GetUser(ctx, &users.GetUserRequest{Id: userID})
+func (g *GeofencesController) createDeviceList(c *fiber.Ctx, tx *sql.Tx, userID string, userDeviceIDs []string) ([]*models.UserDevice, error) {
+	maybeAddr, err := g.getCallerEthAddress(c)
 	if err != nil {
 		return nil, err
 	}
 
 	var ownerMod qm.QueryMod
-	if user.EthereumAddress == nil {
+	if maybeAddr == nil {
 		ownerMod = models.UserDeviceWhere.UserID.EQ(userID)
 	} else {
-		addr := common.HexToAddress(*user.EthereumAddress)
+		addr := *maybeAddr
 		ownerMod = qm.Expr(
 			models.UserDeviceWhere.UserID.EQ(userID),
 			qm.Or2(models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(addr.Bytes()))),
@@ -416,7 +443,7 @@ func (g *GeofencesController) createDeviceList(ctx context.Context, tx *sql.Tx, 
 		ud, err := models.UserDevices(
 			models.UserDeviceWhere.ID.EQ(id),
 			ownerMod,
-		).One(ctx, tx)
+		).One(c.Context(), tx)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("User doesn't own a device with id %q.", id))
