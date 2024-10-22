@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"io"
@@ -23,7 +22,6 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/go-mnemonic"
 	"github.com/DIMO-Network/shared/db"
-	pb "github.com/DIMO-Network/users-api/pkg/grpc"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
@@ -774,7 +772,7 @@ func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	bvs, _, err := udc.checkDeviceBurn(c.Context(), userDevice)
+	bvs, _, err := udc.checkDeviceBurn(c, userDevice)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
@@ -827,7 +825,7 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	bvs, user, err := udc.checkDeviceBurn(c.Context(), userDevice)
+	bvs, user, err := udc.checkDeviceBurn(c, userDevice)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
@@ -855,7 +853,7 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 		return fmt.Errorf("could not recover signature: %w", err)
 	}
 
-	realAddr := common.HexToAddress(*user.EthereumAddress)
+	realAddr := user
 	if recAddr != realAddr {
 		return fiber.NewError(fiber.StatusBadRequest, "signature incorrect")
 	}
@@ -884,29 +882,31 @@ func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
 	return client.BurnVehicleSign(requestID, bvs.TokenID, sigBytes)
 }
 
-func (udc *UserDevicesController) checkDeviceBurn(ctx context.Context, userDevice *models.UserDevice) (registry.BurnVehicleSign, *pb.User, error) {
+var zeroAddr common.Address
+
+func (udc *UserDevicesController) checkDeviceBurn(c *fiber.Ctx, userDevice *models.UserDevice) (registry.BurnVehicleSign, common.Address, error) {
 	var bvs registry.BurnVehicleSign
 
 	if userDevice.R.BurnRequest != nil && userDevice.R.BurnRequest.Status != models.MetaTransactionRequestStatusFailed {
-		return bvs, nil, errors.New("burning already in progress")
+		return bvs, zeroAddr, errors.New("burning already in progress")
 	}
 
 	if userDevice.R.VehicleTokenAftermarketDevice != nil || userDevice.R.VehicleTokenSyntheticDevice != nil {
-		return bvs, nil, errors.New("vehicle must be unpaired to burn")
+		return bvs, zeroAddr, errors.New("vehicle must be unpaired to burn")
 	}
 
-	user, err := udc.usersClient.GetUser(ctx, &pb.GetUserRequest{Id: userDevice.UserID})
+	maybeAddr, err := udc.getCallerEthAddress(c)
 	if err != nil {
-		return bvs, nil, fmt.Errorf("failed to get user by id: %w", err)
+		return bvs, zeroAddr, err
 	}
 
-	if user.EthereumAddress == nil {
-		return bvs, nil, errors.New("user does not have an Ethereum address on file")
+	if maybeAddr == nil {
+		return bvs, zeroAddr, errors.New("user does not have an Ethereum address on file")
 	}
 
 	return registry.BurnVehicleSign{
 		TokenID: userDevice.TokenID.Int(nil),
-	}, user, nil
+	}, *maybeAddr, nil
 }
 
 // BurnRequest contains the user's signature for the burn request.

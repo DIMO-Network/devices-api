@@ -15,7 +15,6 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
-	pb "github.com/DIMO-Network/users-api/pkg/grpc"
 	users "github.com/DIMO-Network/users-api/pkg/grpc"
 	"github.com/IBM/sarama"
 	"github.com/ethereum/go-ethereum/common"
@@ -392,7 +391,7 @@ func (g *GeofencesController) getCallerEthAddress(c *fiber.Ctx) (*common.Address
 	}
 
 	userID := helpers.GetUserID(c)
-	user, err := g.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	user, err := g.usersClient.GetUser(c.Context(), &users.GetUserRequest{Id: userID})
 	if err != nil {
 		if s, ok := status.FromError(err); ok && s.Code() == codes.NotFound {
 			return nil, nil
