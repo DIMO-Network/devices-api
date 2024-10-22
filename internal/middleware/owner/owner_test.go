@@ -241,14 +241,7 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 				return nil
 			})
 
-			_, err := models.AftermarketDevices().DeleteAll(ctx, pdb.DBS().Writer)
-			require.NoError(t, err)
-			_, err = models.UserDevices().DeleteAll(ctx, pdb.DBS().Writer)
-			require.NoError(t, err)
-			_, err = models.MetaTransactionRequests().DeleteAll(ctx, pdb.DBS().Writer)
-			require.NoError(t, err)
-
-			err = c.UserDevice.Insert(ctx, pdb.DBS().Writer, boil.Infer())
+			err := c.UserDevice.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 			require.NoError(t, err)
 
 			err = c.AftermarketDevice.Insert(ctx, pdb.DBS().Writer, boil.Infer())
@@ -280,17 +273,7 @@ func TestVehicleTokenOwnerMiddleware(t *testing.T) {
 	pdb, container := test.StartContainerDatabase(ctx, t, "../../../migrations")
 	logger := test.Logger()
 
-	ctrl := gomock.NewController(t)
-	usersClient := mock_services.NewMockUserServiceClient(ctrl)
-	middleware := VehicleToken(pdb, usersClient, logger)
-	app := test.SetupAppFiber(*logger)
-
 	userID := ksuid.New().String()
-	app.Get("/user/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(userID), middleware, func(c *fiber.Ctx) error {
-		logger := c.Locals("logger").(*zerolog.Logger)
-		logger.Info().Msg("Omega croggers.")
-		return nil
-	})
 
 	cases := []struct {
 		Name         string
@@ -324,6 +307,17 @@ func TestVehicleTokenOwnerMiddleware(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			usersClient := mock_services.NewMockUserServiceClient(ctrl)
+			middleware := VehicleToken(pdb, usersClient, logger)
+			app := test.SetupAppFiber(*logger)
+
+			app.Get("/user/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(userID), middleware, func(c *fiber.Ctx) error {
+				logger := c.Locals("logger").(*zerolog.Logger)
+				logger.Info().Msg("Omega croggers.")
+				return nil
+			})
+
 			_, err := models.UserDevices().DeleteAll(ctx, pdb.DBS().Writer)
 			require.NoError(t, err)
 			_, err = models.UserDevices().DeleteAll(ctx, pdb.DBS().Writer)

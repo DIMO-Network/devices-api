@@ -63,7 +63,7 @@ func UserDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.
 				return err
 			}
 
-			if user.EthereumAddress == nil || common.IsHexAddress(*user.EthereumAddress) {
+			if user.EthereumAddress == nil || !common.IsHexAddress(*user.EthereumAddress) {
 				return errNotFound
 			}
 
@@ -121,7 +121,17 @@ func AftermarketDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *z
 		maybeAddr := helpers.GetUserEthAddr(c)
 
 		if maybeAddr == nil {
-			return fiber.NewError(fiber.StatusForbidden, "User does not have a valid ethereum address.")
+			user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+			if err != nil {
+				return err
+			}
+
+			if user.EthereumAddress == nil || !common.IsHexAddress(*user.EthereumAddress) {
+				return fiber.NewError(fiber.StatusForbidden, "User does not have a valid ethereum address.")
+			}
+
+			a := common.HexToAddress(*user.EthereumAddress)
+			maybeAddr = &a
 		}
 
 		userAddr := *maybeAddr
@@ -179,7 +189,7 @@ func VehicleToken(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolo
 				return err
 			}
 
-			if user.EthereumAddress == nil || common.IsHexAddress(*user.EthereumAddress) {
+			if user.EthereumAddress == nil || !common.IsHexAddress(*user.EthereumAddress) {
 				logger.Info().Msg("no eth addr for user")
 				return errNotFound
 			}
