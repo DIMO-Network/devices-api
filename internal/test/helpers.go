@@ -221,7 +221,7 @@ func SetupCreateUserDevice(t *testing.T, testUserID string, ddID string, metadat
 		ID:                 ksuid.New().String(),
 		UserID:             testUserID,
 		DeviceDefinitionID: ddID,
-		DefinitionID:       null.StringFrom("ford_escape_2020"),
+		DefinitionID:       "ford_escape_2020",
 		CountryCode:        null.StringFrom("USA"),
 		Name:               null.StringFrom("Chungus"),
 	}
@@ -245,7 +245,7 @@ func SetupCreateUserDeviceWithDeviceID(t *testing.T, testUserID string, deviceID
 		ID:                 deviceID,
 		UserID:             testUserID,
 		DeviceDefinitionID: ddID,
-		DefinitionID:       null.StringFrom("ford_escape_2020"),
+		DefinitionID:       "ford_escape_2020",
 		CountryCode:        null.StringFrom("USA"),
 		Name:               null.StringFrom("Chungus"),
 	}
@@ -324,7 +324,7 @@ func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userI
 		ID:                 userDeviceID,
 		UserID:             userID,
 		DeviceDefinitionID: "ddID",
-		DefinitionID:       null.StringFrom("ford_escape_2020"),
+		DefinitionID:       "ford_escape_2020",
 		CountryCode:        null.StringFrom("USA"),
 		Name:               null.StringFrom("Chungus"),
 		VinIdentifier:      null.StringFrom("00000000000000001"),

@@ -2163,7 +2163,7 @@ func fixTeslaDeviceDefinition(ctx context.Context, logger *zerolog.Logger, ddSvc
 			"Device moving to new device definition from %s to %s", ud.DeviceDefinitionID, mmy.DeviceDefinitionId,
 		)
 		ud.DeviceDefinitionID = mmy.DeviceDefinitionId
-		ud.DefinitionID = null.StringFrom(mmy.NameSlug)
+		ud.DefinitionID = mmy.NameSlug
 		_, err = ud.Update(ctx, exec, boil.Infer())
 		if err != nil {
 			return err

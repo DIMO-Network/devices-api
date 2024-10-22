@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-DROP TABLE user_device_data;
+DROP TABLE IF EXISTS user_device_data;
 -- +goose StatementEnd
 
 -- +goose Down
