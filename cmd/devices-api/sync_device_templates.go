@@ -349,9 +349,9 @@ func moveDevicesFromCSV(ctx context.Context, path string, targetTemplateID int, 
 				HardwareTemplateId: strconv.Itoa(targetTemplateID),
 			})
 			if err != nil {
-				fmt.Printf("Failed to move device %s to template %d\n", row[0], 128)
+				fmt.Printf("Failed to move device %s to template %d\n", row[0], targetTemplateID)
 			} else {
-				fmt.Printf("Moved device %s to template %d\n", row[0], 128)
+				fmt.Printf("Moved device %s to template %d\n", row[0], targetTemplateID)
 			}
 		}
 	}
