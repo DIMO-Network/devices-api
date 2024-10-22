@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/DIMO-Network/shared"
 	"github.com/ericlagergren/decimal"
 
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
@@ -53,21 +52,28 @@ func UserDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.
 			return c.Next()
 		}
 
-		user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-		if err != nil {
-			if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
+		maybeAddr := helpers.GetUserEthAddr(c)
+
+		if maybeAddr == nil {
+			user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+			if err != nil {
+				if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
+					return errNotFound
+				}
+				return err
+			}
+
+			if user.EthereumAddress == nil || common.IsHexAddress(*user.EthereumAddress) {
 				return errNotFound
 			}
-			return err
-		}
 
-		if user.EthereumAddress == nil {
-			return errNotFound
+			a := common.HexToAddress(*user.EthereumAddress)
+			maybeAddr = &a
 		}
 
 		if userAddrOwns, err := models.UserDevices(
 			models.UserDeviceWhere.ID.EQ(udi),
-			models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(*user.EthereumAddress))),
+			models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(maybeAddr.Bytes())),
 		).Exists(c.Context(), dbs.DBS().Reader); err != nil {
 			return err
 		} else if userAddrOwns {
@@ -106,22 +112,19 @@ func AftermarketDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *z
 			return err
 		}
 
-		// If token_id is null, device is not paired.
+		// If vehicle_token_id is null, device is not paired.
 		// Also short-circuit the address checks if user is the "web2 owner".
 		if aftermarketDevice.VehicleTokenID.IsZero() || aftermarketDevice.UserID.Valid && aftermarketDevice.UserID.String == userID {
 			return c.Next()
 		}
 
-		user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-		if err != nil {
-			return shared.GrpcErrorToFiber(err, "Error retrieving user")
+		maybeAddr := helpers.GetUserEthAddr(c)
+
+		if maybeAddr == nil {
+			return fiber.NewError(fiber.StatusForbidden, "User does not have a valid ethereum address.")
 		}
 
-		if user.EthereumAddress == nil {
-			return fiber.NewError(fiber.StatusForbidden, "user does not have a valid ethereum address")
-		}
-
-		userAddr := common.HexToAddress(*user.EthereumAddress)
+		userAddr := *maybeAddr
 		apOwner := common.BytesToAddress(aftermarketDevice.OwnerAddress.Bytes)
 
 		if userAddr == apOwner {
@@ -164,23 +167,30 @@ func VehicleToken(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolo
 		logger := logger.With().Str("userId", userID).Str("tokenID", tid.Big.String()).Logger()
 		c.Locals("logger", &logger)
 		logger.Info().Msg("vehicle token auth")
-		user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-		if err != nil {
-			logger.Info().Msg("failed to get user")
-			if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
+
+		maybeAddr := helpers.GetUserEthAddr(c)
+		if maybeAddr == nil {
+			user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+			if err != nil {
+				logger.Info().Msg("failed to get user")
+				if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
+					return errNotFound
+				}
+				return err
+			}
+
+			if user.EthereumAddress == nil || common.IsHexAddress(*user.EthereumAddress) {
+				logger.Info().Msg("no eth addr for user")
 				return errNotFound
 			}
-			return err
-		}
 
-		if user.EthereumAddress == nil {
-			logger.Info().Msg("no eth addr for user")
-			return errNotFound
+			a := common.HexToAddress(*user.EthereumAddress)
+			maybeAddr = &a
 		}
 
 		if userAddrOwns, err := models.UserDevices(
 			models.UserDeviceWhere.TokenID.EQ(tid),
-			models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(*user.EthereumAddress))),
+			models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(maybeAddr.Bytes())),
 		).Exists(c.Context(), dbs.DBS().Reader); err != nil {
 			logger.Info().Msg("user does not own vehicle nft")
 			return err
