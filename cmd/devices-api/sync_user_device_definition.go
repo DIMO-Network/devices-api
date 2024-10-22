@@ -67,6 +67,9 @@ func (s *syncUserDeviceDeviceDefinitionCmd) processDeviceDefinitions(ctx context
 		}
 	}(conn)
 
+	notFoundIDs := map[string]bool{}
+	successCount := 0
+
 	for hasMore {
 		userDevices, err := models.UserDevices(
 			models.UserDeviceWhere.DefinitionID.IsNull(),
@@ -82,6 +85,7 @@ func (s *syncUserDeviceDeviceDefinitionCmd) processDeviceDefinitions(ctx context
 		if len(userDevices) == 0 {
 			break
 		}
+		fmt.Printf("processing %d user devices\n", len(userDevices))
 
 		cursor = userDevices[len(userDevices)-1].ID
 
@@ -90,7 +94,8 @@ func (s *syncUserDeviceDeviceDefinitionCmd) processDeviceDefinitions(ctx context
 			deviceDefinitions, err := s.getDeviceDefinitionByID(ctx, conn, ud.DeviceDefinitionID)
 
 			if err != nil {
-				s.logger.Err(err).Msgf("failed to sync user device definition to tableland id: dd_id %s", ud.DeviceDefinitionID)
+				s.logger.Err(err).Msgf("failed to sync user device definition to tableland id. dd_id %s", ud.DeviceDefinitionID)
+				notFoundIDs[ud.DeviceDefinitionID] = true
 				continue
 			}
 
@@ -103,14 +108,22 @@ func (s *syncUserDeviceDeviceDefinitionCmd) processDeviceDefinitions(ctx context
 			if err != nil {
 				s.logger.Err(err).Msgf("failed to udpdate user device with tableland id: user device id: %s", ud.ID)
 			}
+			successCount++
 
 			time.Sleep(100 * time.Millisecond)
 		}
+
 		fmt.Println("processed 1000 user devices")
 
 		if len(userDevices) < 1000 {
 			hasMore = false
 		}
+	}
+	fmt.Printf("succesfully processed %d user devices\n", successCount)
+
+	fmt.Println("Legacy ID's not found:")
+	for id, _ := range notFoundIDs {
+		fmt.Println(id)
 	}
 
 	return nil
