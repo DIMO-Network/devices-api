@@ -512,6 +512,18 @@
     "lora_region": "AS923"
   },
   {
+    "name": "Japan",
+    "alpha_2": "JP",
+    "alpha_3": "JPN",
+    "region": "Asia",
+    "sub_region": "East Asia",
+    "intermediate_region": "",
+    "region_code": 142,
+    "sub_region_code": 0,
+    "intermediate_region_code": "",
+    "lora_region": "AS923"
+  },
+  {
     "name": "United Arab Emirates",
     "alpha_2": "AE",
     "alpha_3": "ARE",
