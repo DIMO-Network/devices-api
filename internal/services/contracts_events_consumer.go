@@ -810,7 +810,7 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 		DeviceDefinitionID: dDef.DeviceDefinitionId,
 		OwnerAddress:       null.BytesFrom(args.Owner.Bytes()),
 		TokenID:            dbtypes.NullIntToDecimal(args.VehicleId),
-		DefinitionID:       null.StringFrom(dDef.NameSlug),
+		DefinitionID:       dDef.NameSlug,
 	}
 
 	if err := ud.Insert(ctx, tx, boil.Infer()); err != nil {

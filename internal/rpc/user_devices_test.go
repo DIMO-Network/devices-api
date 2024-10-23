@@ -40,7 +40,7 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 		ID:                 ksuid.New().String(),
 		UserID:             userID,
 		DeviceDefinitionID: dd[0].DeviceDefinitionId,
-		DefinitionID:       null.StringFrom(dd[0].NameSlug),
+		DefinitionID:       dd[0].NameSlug,
 		VinIdentifier:      null.StringFrom(vin),
 		CountryCode:        null.StringFrom("USA"),
 		VinConfirmed:       true,
