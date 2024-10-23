@@ -17,7 +17,6 @@ import (
 	"github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/IBM/sarama"
-	"github.com/ethereum/go-ethereum/common"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
@@ -33,23 +32,23 @@ import (
 const maxFenceTiles = 12
 
 type GeofencesController struct {
-	Settings     *config.Settings
-	DBS          func() *db.ReaderWriter
-	log          *zerolog.Logger
-	producer     sarama.SyncProducer
-	deviceDefSvc services.DeviceDefinitionService
-	usersClient  users.UserServiceClient
+	Settings      *config.Settings
+	DBS           func() *db.ReaderWriter
+	log           *zerolog.Logger
+	producer      sarama.SyncProducer
+	deviceDefSvc  services.DeviceDefinitionService
+	ethAddrGetter helpers.EthAddrGetter
 }
 
 // NewGeofencesController constructor
 func NewGeofencesController(settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, producer sarama.SyncProducer, deviceDefSvc services.DeviceDefinitionService, usersClient users.UserServiceClient) GeofencesController {
 	return GeofencesController{
-		Settings:     settings,
-		DBS:          dbs,
-		log:          logger,
-		producer:     producer,
-		deviceDefSvc: deviceDefSvc,
-		usersClient:  usersClient,
+		Settings:      settings,
+		DBS:           dbs,
+		log:           logger,
+		producer:      producer,
+		deviceDefSvc:  deviceDefSvc,
+		ethAddrGetter: helpers.CreateUserAddrGetter(usersClient),
 	}
 }
 
@@ -92,7 +91,7 @@ func (g *GeofencesController) Create(c *fiber.Ctx) error {
 		return helpers.ErrorResponseHandler(c, errors.New("Geofence with that name already exists for this user"), fiber.StatusBadRequest)
 	}
 
-	uds, err := g.createDeviceList(c.Context(), tx, userID, create.UserDeviceIDs)
+	uds, err := g.createDeviceList(c, tx, userID, create.UserDeviceIDs)
 	if err != nil {
 		return err
 	}
@@ -346,7 +345,7 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 		return errors.Wrap(err, "error updating geofence")
 	}
 
-	uds, err := g.createDeviceList(c.Context(), tx, userID, affectedDeviceIDs)
+	uds, err := g.createDeviceList(c, tx, userID, affectedDeviceIDs)
 	if err != nil {
 		return err
 	}
@@ -387,17 +386,17 @@ func (g *GeofencesController) Update(c *fiber.Ctx) error {
 // Specifically, the vehicles must exist, be minted, and be owned by the user. This function
 // performs deduplication, so the length of the output slice may not match that of
 // the input slice. Errors returned from this function are safe to return to Fiber.
-func (g *GeofencesController) createDeviceList(ctx context.Context, tx *sql.Tx, userID string, userDeviceIDs []string) ([]*models.UserDevice, error) {
-	user, err := g.usersClient.GetUser(ctx, &users.GetUserRequest{Id: userID})
+func (g *GeofencesController) createDeviceList(c *fiber.Ctx, tx *sql.Tx, userID string, userDeviceIDs []string) ([]*models.UserDevice, error) {
+
+	addr, hasAddr, err := g.ethAddrGetter.GetEthAddr(c)
 	if err != nil {
 		return nil, err
 	}
 
 	var ownerMod qm.QueryMod
-	if user.EthereumAddress == nil {
+	if !hasAddr {
 		ownerMod = models.UserDeviceWhere.UserID.EQ(userID)
 	} else {
-		addr := common.HexToAddress(*user.EthereumAddress)
 		ownerMod = qm.Expr(
 			models.UserDeviceWhere.UserID.EQ(userID),
 			qm.Or2(models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(addr.Bytes()))),
@@ -416,7 +415,7 @@ func (g *GeofencesController) createDeviceList(ctx context.Context, tx *sql.Tx, 
 		ud, err := models.UserDevices(
 			models.UserDeviceWhere.ID.EQ(id),
 			ownerMod,
-		).One(ctx, tx)
+		).One(c.Context(), tx)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("User doesn't own a device with id %q.", id))
