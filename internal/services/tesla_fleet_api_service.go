@@ -435,7 +435,7 @@ func (t *teslaFleetAPIService) performRequest(ctx context.Context, url *url.URL,
 		}
 		t.log.Info().Int("code", resp.StatusCode).Str("error", errBody.Error).Str("errorDescription", errBody.ErrorDescription).Str("url", url.String()).Msg("Tesla error.")
 
-		if resp.StatusCode == http.StatusUnauthorized {
+		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 			return nil, ErrUnauthorized
 		}
 
