@@ -79,6 +79,7 @@ type UserDevicesController struct {
 	userDeviceSvc             services.UserDeviceService
 	teslaFleetAPISvc          services.TeslaFleetAPIService
 	ipfsSvc                   *ipfs.IPFS
+	userAddrGetter            helpers.EthAddrGetter
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -161,6 +162,7 @@ func NewUserDevicesController(settings *config.Settings,
 		userDeviceSvc:             userDeviceSvc,
 		teslaFleetAPISvc:          teslaFleetAPISvc,
 		ipfsSvc:                   ipfsSvc,
+		userAddrGetter:            helpers.CreateUserAddrGetter(usersClient),
 	}
 }
 
@@ -1249,7 +1251,7 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "No vehicle with that id found.")
 	}
 
-	mvs, dd, err := udc.checkVehicleMint(c.Context(), userID, userDevice)
+	mvs, dd, err := udc.checkVehicleMint(c, userID, userDevice)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
@@ -1311,7 +1313,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}
 
 	// This actually makes no database calls!
-	mvs, dd, err := udc.checkVehicleMint(c.Context(), userID, userDevice)
+	mvs, dd, err := udc.checkVehicleMint(c, userID, userDevice)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
@@ -1782,7 +1784,7 @@ type VINCredentialData struct {
 	VIN       string    `json:"vin"`
 }
 
-func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID string, userDevice *models.UserDevice) (*registry.MintVehicleSign, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
+func (udc *UserDevicesController) checkVehicleMint(c *fiber.Ctx, userID string, userDevice *models.UserDevice) (*registry.MintVehicleSign, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
 	if !userDevice.TokenID.IsZero() {
 		return nil, nil, fmt.Errorf("vehicle already minted with token id %d", userDevice.TokenID.Big)
 	}
@@ -1795,7 +1797,7 @@ func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID s
 		return nil, nil, fmt.Errorf("VIN not confirmed")
 	}
 
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, userDevice.DeviceDefinitionID)
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID)
 	}
@@ -1805,13 +1807,10 @@ func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID s
 	}
 	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
 
-	user, err := udc.usersClient.GetUser(ctx, &pb.GetUserRequest{Id: userID})
+	userAddr, hasAddr, err := udc.userAddrGetter.GetEthAddr(c)
 	if err != nil {
-		udc.log.Err(err).Msg("couldn't retrieve user record")
-		return nil, nil, opaqueInternalError
-	}
-
-	if user.EthereumAddress == nil {
+		return nil, nil, err
+	} else if !hasAddr {
 		return nil, nil, fmt.Errorf("user does not have an Ethereum address on file")
 	}
 
@@ -1821,7 +1820,7 @@ func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID s
 
 	mvs := &registry.MintVehicleSign{
 		ManufacturerNode: makeTokenID,
-		Owner:            common.HexToAddress(*user.EthereumAddress),
+		Owner:            userAddr,
 		Attributes:       []string{"Make", "Model", "Year"},
 		Infos:            []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year))},
 	}
