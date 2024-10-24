@@ -940,7 +940,7 @@ func (udc *UserDevicesController) DeviceOptIn(c *fiber.Ctx) error {
 }
 
 // UpdateVIN godoc
-// @Description updates the VIN on the user device record
+// @Description Deprecated. updates the VIN on the user device record
 // @Tags        user-devices
 // @Produce     json
 // @Accept      json
@@ -950,6 +950,7 @@ func (udc *UserDevicesController) DeviceOptIn(c *fiber.Ctx) error {
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/vin [patch]
 func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
+	// todo remove this endpoint on next mobile app release
 	udi := c.Params("userDeviceID")
 	logger := helpers.GetLogger(c, udc.log).With().Str("route", c.Route().Name).Logger()
 	var req UpdateVINReq
@@ -1665,6 +1666,10 @@ type UpdateVINReq struct {
 	// VIN is a vehicle identification number. At the very least, it must be
 	// 17 characters in length and contain only letters and numbers.
 	VIN string `json:"vin" example:"4Y1SL65848Z411439" validate:"required"`
+	// CountryCode optional. Is set on the user device record
+	CountryCode string `json:"countryCode"`
+	// CANProtocol optional. Numeric style made up protocol. 6 = CAN11_500, 7 = CAN29_500, 66/77 are some UDS thing etc
+	CANProtocol string `json:"canProtocol"`
 	// Signature is the hex-encoded result of the AutoPi signing the VIN. It must
 	// be present to verify the VIN.
 	Signature string `json:"signature" example:"16b15f88bbd2e0a22d1d0084b8b7080f2003ea83eab1a00f80d8c18446c9c1b6224f17aa09eaf167717ca4f355bb6dc94356e037edf3adf6735a86fc3741f5231b" validate:"optional"`
