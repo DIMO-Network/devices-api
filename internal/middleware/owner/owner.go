@@ -89,7 +89,11 @@ func AftermarketDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *z
 		userID := helpers.GetUserID(c)
 
 		serial := c.Params("serial")
-		serial = strings.TrimSpace(strings.ToLower(serial)) // A UUID for AutoPi. An 11-digit number for Macaron.
+		serial = strings.TrimSpace(serial)
+		if len(serial) == 36 {
+			// The lowercasing here is really just for AutoPi's UUIDs.
+			serial = strings.ToLower(serial)
+		}
 
 		logger := logger.With().Str("userId", userID).Str("serial", serial).Logger()
 		c.Locals("userID", userID)
