@@ -1240,7 +1240,6 @@ const imageURIattribute = "ImageURI"
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/commands/mint [get]
 func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
 	userDeviceID := c.Params("userDeviceID")
 
 	userDevice, err := models.UserDevices(
@@ -1251,7 +1250,7 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "No vehicle with that id found.")
 	}
 
-	mvs, dd, err := udc.checkVehicleMint(c, userID, userDevice)
+	mvs, dd, err := udc.checkVehicleMint(c, userDevice)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
@@ -1290,7 +1289,6 @@ var erc1271magicValue = [4]byte{0x16, 0x26, 0xba, 0x7e}
 // @Router      /user/devices/{userDeviceID}/commands/mint [post]
 func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 
 	logger := helpers.GetLogger(c, udc.log)
 
@@ -1313,7 +1311,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}
 
 	// This actually makes no database calls!
-	mvs, dd, err := udc.checkVehicleMint(c, userID, userDevice)
+	mvs, dd, err := udc.checkVehicleMint(c, userDevice)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
@@ -1784,7 +1782,7 @@ type VINCredentialData struct {
 	VIN       string    `json:"vin"`
 }
 
-func (udc *UserDevicesController) checkVehicleMint(c *fiber.Ctx, userID string, userDevice *models.UserDevice) (*registry.MintVehicleSign, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
+func (udc *UserDevicesController) checkVehicleMint(c *fiber.Ctx, userDevice *models.UserDevice) (*registry.MintVehicleSign, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
 	if !userDevice.TokenID.IsZero() {
 		return nil, nil, fmt.Errorf("vehicle already minted with token id %d", userDevice.TokenID.Big)
 	}
