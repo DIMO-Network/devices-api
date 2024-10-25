@@ -799,3 +799,27 @@ func (s *userDeviceRPCServer) DeleteVehicle(ctx context.Context, req *pb.DeleteV
 
 	return &emptypb.Empty{}, nil
 }
+
+// DeleteUnMintedUserDevice deletes user_device records that have not been minted
+func (s *userDeviceRPCServer) DeleteUnMintedUserDevice(ctx context.Context, req *pb.DeleteUnMintedUserDeviceRequest) (*emptypb.Empty, error) {
+	log := s.logger.With().
+		Str("userDeviceId", req.UserDeviceId).
+		Logger()
+
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(req.UserDeviceId),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
+	).One(ctx, s.dbs().Writer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find vehicle %s: %w", req.UserDeviceId, err)
+	}
+	if !userDevice.TokenID.IsZero() {
+		return nil, fmt.Errorf("cannot delete user device %s, it has a token id", req.UserDeviceId)
+	}
+	_, err = userDevice.Delete(ctx, s.dbs().Writer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to delete user device %s : %w", req.UserDeviceId, err)
+	}
+	log.Info().Msg("deleted unminted user device")
+	return &emptypb.Empty{}, nil
+}
