@@ -148,27 +148,23 @@ func (s *userDeviceRPCServer) GetUserDeviceByEthAddr(ctx context.Context, req *p
 }
 
 func (s *userDeviceRPCServer) GetUserDeviceByTokenId(ctx context.Context, req *pb.GetUserDeviceByTokenIdRequest) (*pb.UserDevice, error) { // nolint
-
 	tknID := types.NewNullDecimal(decimal.New(req.TokenId, 0))
 
-	nft, err := models.UserDevices(
+	dbDevice, err := models.UserDevices(
 		models.UserDeviceWhere.TokenID.EQ(tknID),
+		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(ctx, s.dbs().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, status.Error(codes.NotFound, "No device with that token ID found.")
+			return nil, status.Error(codes.NotFound, "No device with that token Id found.")
 		}
-		s.logger.Err(err).Int64("tokenID", req.TokenId).Msg("Database failure retrieving device.")
+		s.logger.Err(err).Int64("tokenId", req.TokenId).Msg("Database failure retrieving device.")
 		return nil, status.Error(codes.Internal, "Internal error.")
 	}
 
-	out := &pb.UserDevice{
-		Id:           nft.ID,
-		TokenId:      s.toUint64(nft.TokenID),
-		OwnerAddress: nft.OwnerAddress.Bytes,
-	}
-
-	return out, nil
+	return s.deviceModelToAPI(dbDevice), nil
 }
 
 func (s *userDeviceRPCServer) ListUserDevicesForUser(ctx context.Context, req *pb.ListUserDevicesForUserRequest) (*pb.ListUserDevicesForUserResponse, error) {
@@ -754,7 +750,7 @@ func (s *userDeviceRPCServer) StopUserDeviceIntegration(ctx context.Context, req
 	return &emptypb.Empty{}, nil
 }
 
-// DeleteVehicle Tries to stops synthetic device tasks using above method, marks user device as unverified
+// DeleteVehicle Tries to stops synthetic device tasks using above method, deletes the vehicle from web2
 func (s *userDeviceRPCServer) DeleteVehicle(ctx context.Context, req *pb.DeleteVehicleRequest) (*emptypb.Empty, error) {
 	ti := new(big.Int).SetUint64(req.TokenId)
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
@@ -786,25 +782,20 @@ func (s *userDeviceRPCServer) DeleteVehicle(ctx context.Context, req *pb.DeleteV
 				s.logger.Error().Err(err).Uint64("vehicleTokenId", req.TokenId).Msg("failed to stop user device integration from a delete vehicle request")
 			}
 		}
-		// delete the synthetic device, currently deciding against this, we'll see how it goes
-		//_, _ = models.SyntheticDevices(
-		//	models.SyntheticDeviceWhere.VehicleTokenID.EQ(tid),
-		//).DeleteAll(ctx, s.dbs().Reader)
+		// delete the synthetic device
+		_, err = models.SyntheticDevices(
+			models.SyntheticDeviceWhere.VehicleTokenID.EQ(tid),
+		).DeleteAll(ctx, s.dbs().Reader)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete synthetic device: %w", err)
+		}
 	}
-	// for now we're just going to mark the vehicle as unverified,
-	userDevice.VinConfirmed = false
-	_, err = userDevice.Update(ctx, s.dbs().Writer, boil.Infer())
+	// delete the vehicle, web2 only, we'll still have web3 records.
+	_, err = userDevice.Delete(ctx, s.dbs().Writer)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set vinconfirmed valse for userDevice %s: %w", userDevice.TokenID, err)
+		return nil, fmt.Errorf("failed to set delete userDevice %s: %w", userDevice.TokenID, err)
 	}
-
-	// maybe we need to enable this in the future, but ideally we do an on-chain operation together with this.
-	//_, err = userDevice.Delete(ctx, s.dbs().Writer)
-	//if err != nil {
-	//	return nil, fmt.Errorf("failed to delete user device: %w", err)
-	//}
-	//s.logger.Info().Uint64("vehicleTokenId", req.TokenId).Msgf("successfully deleted vehicle via grpc call")
-	s.logger.Info().Uint64("vehicleTokenId", req.TokenId).Msgf("successfully unverified vehicle via grpc call")
+	s.logger.Info().Uint64("vehicleTokenId", req.TokenId).Msgf("successfully deleted vehicle via grpc call")
 
 	return &emptypb.Empty{}, nil
 }
@@ -830,7 +821,5 @@ func (s *userDeviceRPCServer) DeleteUnMintedUserDevice(ctx context.Context, req 
 		return nil, fmt.Errorf("failed to delete user device %s : %w", req.UserDeviceId, err)
 	}
 	log.Info().Msg("deleted unminted user device")
-
 	return &emptypb.Empty{}, nil
-
 }

@@ -443,7 +443,7 @@ func validVINChar(r rune) bool {
 }
 
 // UpdateVINV2 godoc
-// @Description updates the VIN on the user device record
+// @Description updates the VIN on the user device record. Can optionally also update the protocol and the country code
 // @Tags        user-devices
 // @Produce     json
 // @Accept      json
@@ -547,6 +547,22 @@ func (udc *UserDevicesController) UpdateVINV2(c *fiber.Ctx) error {
 	}
 
 	userDevice.VinIdentifier = null.StringFrom(req.VIN)
+	if len(req.CountryCode) == 3 {
+		userDevice.CountryCode = null.StringFrom(req.CountryCode)
+	}
+	if req.CANProtocol != "" {
+		var udMD = &services.UserDeviceMetadata{}
+		errMd := userDevice.Metadata.Unmarshal(udMD)
+		if errMd != nil {
+			udc.log.Err(errMd).Msgf("failed to unmarshal ud metadata. %s", string(userDevice.Metadata.JSON))
+		} else {
+			udMD.CANProtocol = &req.CANProtocol
+			errMd = userDevice.Metadata.Marshal(udMD)
+			if errMd != nil {
+				udc.log.Err(errMd).Msgf("failed to marshal ud metadata. %+v", udMD)
+			}
+		}
+	}
 
 	if _, err := userDevice.Update(c.Context(), tx, boil.Infer()); err != nil {
 		return err

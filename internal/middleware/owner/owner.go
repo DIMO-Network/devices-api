@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/DIMO-Network/shared"
 	"github.com/ericlagergren/decimal"
 
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
@@ -33,6 +32,8 @@ var errNotFound = fiber.NewError(fiber.StatusNotFound, "Device not found.")
 //   - Either the user owns the device, or the user's account has an Ethereum address that
 //     owns the corresponding NFT.
 func UserDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logger) fiber.Handler {
+	addrGett := helpers.CreateUserAddrGetter(usersClient)
+
 	return func(c *fiber.Ctx) error {
 		userID := helpers.GetUserID(c)
 		udi := c.Params("userDeviceID")
@@ -53,21 +54,16 @@ func UserDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.
 			return c.Next()
 		}
 
-		user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+		userAddr, hasAddr, err := addrGett.GetEthAddr(c)
 		if err != nil {
-			if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
-				return errNotFound
-			}
 			return err
-		}
-
-		if user.EthereumAddress == nil {
+		} else if !hasAddr {
 			return errNotFound
 		}
 
 		if userAddrOwns, err := models.UserDevices(
 			models.UserDeviceWhere.ID.EQ(udi),
-			models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(common.FromHex(*user.EthereumAddress))),
+			models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(userAddr.Bytes())),
 		).Exists(c.Context(), dbs.DBS().Reader); err != nil {
 			return err
 		} else if userAddrOwns {
@@ -87,11 +83,17 @@ func UserDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.
 //     the user has an address on file that is either the owner of the AftermarketDevice or the owner
 //     of the paired vehicle.
 func AftermarketDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logger) fiber.Handler {
+	addrGett := helpers.CreateUserAddrGetter(usersClient)
+
 	return func(c *fiber.Ctx) error {
 		userID := helpers.GetUserID(c)
 
 		serial := c.Params("serial")
-		serial = strings.TrimSpace(strings.ToLower(serial)) // A UUID for AutoPi. An 11-digit number for Macaron.
+		serial = strings.TrimSpace(serial)
+		if len(serial) == 36 {
+			// The lowercasing here is really just for AutoPi's UUIDs.
+			serial = strings.ToLower(serial)
+		}
 
 		logger := logger.With().Str("userId", userID).Str("serial", serial).Logger()
 		c.Locals("userID", userID)
@@ -112,16 +114,13 @@ func AftermarketDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *z
 			return c.Next()
 		}
 
-		user, err := usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+		userAddr, hasAddr, err := addrGett.GetEthAddr(c)
 		if err != nil {
-			return shared.GrpcErrorToFiber(err, "Error retrieving user")
+			return err
+		} else if !hasAddr {
+			return fiber.NewError(fiber.StatusForbidden, "User has no Ethereum address on file.")
 		}
 
-		if user.EthereumAddress == nil {
-			return fiber.NewError(fiber.StatusForbidden, "user does not have a valid ethereum address")
-		}
-
-		userAddr := common.HexToAddress(*user.EthereumAddress)
 		apOwner := common.BytesToAddress(aftermarketDevice.OwnerAddress.Bytes)
 
 		if userAddr == apOwner {

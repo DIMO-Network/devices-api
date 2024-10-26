@@ -83,6 +83,7 @@ type UserDevicesController struct {
 	teslaFleetAPISvc          services.TeslaFleetAPIService
 	ipfsSvc                   *ipfs.IPFS
 	clickHouseConn            clickhouse.Conn
+	userAddrGetter            helpers.EthAddrGetter
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -165,6 +166,7 @@ func NewUserDevicesController(settings *config.Settings,
 		userDeviceSvc:             userDeviceSvc,
 		teslaFleetAPISvc:          teslaFleetAPISvc,
 		ipfsSvc:                   ipfsSvc,
+		userAddrGetter:            helpers.CreateUserAddrGetter(usersClient),
 	}
 }
 
@@ -1033,7 +1035,7 @@ func (udc *UserDevicesController) DeviceOptIn(c *fiber.Ctx) error {
 }
 
 // UpdateVIN godoc
-// @Description updates the VIN on the user device record
+// @Description Deprecated. updates the VIN on the user device record
 // @Tags        user-devices
 // @Produce     json
 // @Accept      json
@@ -1043,6 +1045,7 @@ func (udc *UserDevicesController) DeviceOptIn(c *fiber.Ctx) error {
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/vin [patch]
 func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
+	// todo remove this endpoint on next mobile app release
 	udi := c.Params("userDeviceID")
 	logger := helpers.GetLogger(c, udc.log).With().Str("route", c.Route().Name).Logger()
 	var req UpdateVINReq
@@ -1291,10 +1294,11 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 			Timestamp: time.Now(),
 			UserID:    userID,
 			Device: services.UserDeviceEventDevice{
-				ID:    udi,
-				Make:  dd.Make.Name,
-				Model: dd.Type.Model,
-				Year:  int(dd.Type.Year),
+				ID:           udi,
+				Make:         dd.Make.Name,
+				Model:        dd.Type.Model,
+				Year:         int(dd.Type.Year),
+				DefinitionID: dd.NameSlug,
 			},
 		},
 	}); err != nil {
@@ -1332,7 +1336,6 @@ const imageURIattribute = "ImageURI"
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/commands/mint [get]
 func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
 	userDeviceID := c.Params("userDeviceID")
 
 	userDevice, err := models.UserDevices(
@@ -1343,7 +1346,7 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "No vehicle with that id found.")
 	}
 
-	mvs, dd, err := udc.checkVehicleMint(c.Context(), userID, userDevice)
+	mvs, dd, err := udc.checkVehicleMint(c, userDevice)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
@@ -1382,7 +1385,6 @@ var erc1271magicValue = [4]byte{0x16, 0x26, 0xba, 0x7e}
 // @Router      /user/devices/{userDeviceID}/commands/mint [post]
 func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 
 	logger := helpers.GetLogger(c, udc.log)
 
@@ -1405,7 +1407,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}
 
 	// This actually makes no database calls!
-	mvs, dd, err := udc.checkVehicleMint(c.Context(), userID, userDevice)
+	mvs, dd, err := udc.checkVehicleMint(c, userDevice)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
@@ -1759,6 +1761,10 @@ type UpdateVINReq struct {
 	// VIN is a vehicle identification number. At the very least, it must be
 	// 17 characters in length and contain only letters and numbers.
 	VIN string `json:"vin" example:"4Y1SL65848Z411439" validate:"required"`
+	// CountryCode optional. Is set on the user device record
+	CountryCode string `json:"countryCode"`
+	// CANProtocol optional. Numeric style made up protocol. 6 = CAN11_500, 7 = CAN29_500, 66/77 are some UDS thing etc
+	CANProtocol string `json:"canProtocol"`
 	// Signature is the hex-encoded result of the AutoPi signing the VIN. It must
 	// be present to verify the VIN.
 	Signature string `json:"signature" example:"16b15f88bbd2e0a22d1d0084b8b7080f2003ea83eab1a00f80d8c18446c9c1b6224f17aa09eaf167717ca4f355bb6dc94356e037edf3adf6735a86fc3741f5231b" validate:"optional"`
@@ -1876,7 +1882,7 @@ type VINCredentialData struct {
 	VIN       string    `json:"vin"`
 }
 
-func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID string, userDevice *models.UserDevice) (*registry.MintVehicleSign, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
+func (udc *UserDevicesController) checkVehicleMint(c *fiber.Ctx, userDevice *models.UserDevice) (*registry.MintVehicleSign, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
 	if !userDevice.TokenID.IsZero() {
 		return nil, nil, fmt.Errorf("vehicle already minted with token id %d", userDevice.TokenID.Big)
 	}
@@ -1889,7 +1895,7 @@ func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID s
 		return nil, nil, fmt.Errorf("VIN not confirmed")
 	}
 
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, userDevice.DeviceDefinitionID)
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID)
 	}
@@ -1899,13 +1905,10 @@ func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID s
 	}
 	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
 
-	user, err := udc.usersClient.GetUser(ctx, &pb.GetUserRequest{Id: userID})
+	userAddr, hasAddr, err := udc.userAddrGetter.GetEthAddr(c)
 	if err != nil {
-		udc.log.Err(err).Msg("couldn't retrieve user record")
-		return nil, nil, opaqueInternalError
-	}
-
-	if user.EthereumAddress == nil {
+		return nil, nil, err
+	} else if !hasAddr {
 		return nil, nil, fmt.Errorf("user does not have an Ethereum address on file")
 	}
 
@@ -1915,7 +1918,7 @@ func (udc *UserDevicesController) checkVehicleMint(ctx context.Context, userID s
 
 	mvs := &registry.MintVehicleSign{
 		ManufacturerNode: makeTokenID,
-		Owner:            common.HexToAddress(*user.EthereumAddress),
+		Owner:            userAddr,
 		Attributes:       []string{"Make", "Model", "Year"},
 		Infos:            []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year))},
 	}

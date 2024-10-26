@@ -807,6 +807,7 @@ func (s *UserDevicesControllerTestSuite) TestDeleteUserDevice_ErrNFTNotBurned() 
 		ID:                 ksuid.New().String(),
 		UserID:             testUserID,
 		DeviceDefinitionID: ksuid.New().String(),
+		DefinitionID:       "ford_escape_2020",
 		CountryCode:        null.StringFrom("USA"),
 		Name:               null.StringFrom("Chungus"),
 		VinConfirmed:       true,

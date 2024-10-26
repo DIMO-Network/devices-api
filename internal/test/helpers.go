@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DIMO-Network/shared"
+
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -219,6 +221,7 @@ func SetupCreateUserDevice(t *testing.T, testUserID string, ddID string, metadat
 		ID:                 ksuid.New().String(),
 		UserID:             testUserID,
 		DeviceDefinitionID: ddID,
+		DefinitionID:       "ford_escape_2020",
 		CountryCode:        null.StringFrom("USA"),
 		Name:               null.StringFrom("Chungus"),
 	}
@@ -242,6 +245,7 @@ func SetupCreateUserDeviceWithDeviceID(t *testing.T, testUserID string, deviceID
 		ID:                 deviceID,
 		UserID:             testUserID,
 		DeviceDefinitionID: ddID,
+		DefinitionID:       "ford_escape_2020",
 		CountryCode:        null.StringFrom("USA"),
 		Name:               null.StringFrom("Chungus"),
 	}
@@ -320,6 +324,7 @@ func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userI
 		ID:                 userDeviceID,
 		UserID:             userID,
 		DeviceDefinitionID: "ddID",
+		DefinitionID:       "ford_escape_2020",
 		CountryCode:        null.StringFrom("USA"),
 		Name:               null.StringFrom("Chungus"),
 		VinIdentifier:      null.StringFrom("00000000000000001"),
@@ -472,6 +477,7 @@ func BuildDeviceDefinitionGRPC(deviceDefinitionID string, mk string, model strin
 
 	rp := &ddgrpc.GetDeviceDefinitionItemResponse{
 		DeviceDefinitionId: deviceDefinitionID,
+		NameSlug:           shared.SlugString(mk + " " + model + " " + strconv.Itoa(year)),
 		Name:               "Name",
 		Make: &ddgrpc.DeviceMake{
 			Id:   ksuid.New().String(),

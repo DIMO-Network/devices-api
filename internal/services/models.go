@@ -23,6 +23,7 @@ type DeviceDefinition struct {
 	DeviceAttributes []DeviceAttribute `json:"deviceAttributes,omitempty"`
 	Metadata         interface{}       `json:"metadata"`
 	Verified         bool              `json:"verified"`
+	DefinitionID     string            `json:"definitionId"`
 }
 
 type DeviceMake struct {

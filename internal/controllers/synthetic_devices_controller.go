@@ -39,9 +39,9 @@ type SyntheticDevicesController struct {
 	DBS            func() *db.ReaderWriter
 	log            *zerolog.Logger
 	deviceDefSvc   services.DeviceDefinitionService
-	usersClient    pb.UserServiceClient
 	walletSvc      services.SyntheticWalletInstanceService
 	registryClient registry.Client
+	walletGetter   helpers.EthAddrGetter
 }
 
 type MintSyntheticDeviceRequest struct {
@@ -65,10 +65,10 @@ func NewSyntheticDevicesController(
 		Settings:       settings,
 		DBS:            dbs,
 		log:            logger,
-		usersClient:    usersClient,
 		deviceDefSvc:   deviceDefSvc,
 		walletSvc:      walletSvc,
 		registryClient: registryClient,
+		walletGetter:   helpers.CreateUserAddrGetter(usersClient),
 	}
 }
 
@@ -111,18 +111,12 @@ func (sdc *SyntheticDevicesController) getEIP712Mint(integrationID, vehicleNode 
 // @Success     200 {array} signer.TypedData
 // @Router 	    /user/devices/{userDeviceID}/integrations/{integrationID}/commands/mint [get]
 func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
-
-	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	userAddr, hasAddr, err := sdc.walletGetter.GetEthAddr(c)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "error occurred when fetching user")
-	}
-
-	if user.EthereumAddress == nil {
+		return err
+	} else if !hasAddr {
 		return fiber.NewError(fiber.StatusUnauthorized, "User does not have an Ethereum address.")
 	}
-
-	userAddr := common.HexToAddress(*user.EthereumAddress)
 
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
@@ -276,22 +270,18 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fmt.Errorf("vehicle token id invalid, this should never happen %d", ud.TokenID)
 	}
 
-	userID := helpers.GetUserID(c)
 	var req MintSyntheticDeviceRequest
 	if err := c.BodyParser(&req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
 	}
 
-	user, err := sdc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	userAddr, hasAddr, err := sdc.walletGetter.GetEthAddr(c)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "error occurred when fetching user")
+		return err
+	} else if !hasAddr {
+		return fiber.NewError(fiber.StatusUnauthorized, "User does not have an Ethereum address.")
 	}
 
-	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
-	}
-
-	userAddr := common.HexToAddress(*user.EthereumAddress)
 	rawPayload := sdc.getEIP712Mint(int64(in.TokenId), vid)
 
 	tdHash, _, err := signer.TypedDataAndHash(*rawPayload)

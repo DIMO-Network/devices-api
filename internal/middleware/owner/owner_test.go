@@ -50,12 +50,14 @@ func TestUserDeviceOwnerMiddleware(t *testing.T) {
 			ID:                 userDeviceID1,
 			UserID:             userID,
 			DeviceDefinitionID: ksuid.New().String(),
+			DefinitionID:       "ford_escape_2020",
 			OwnerAddress:       null.BytesFrom(common.HexToAddress(userAddr).Bytes()),
 		},
 		{
 			ID:                 userDeviceID2,
 			UserID:             otherUserID,
 			DeviceDefinitionID: ksuid.New().String(),
+			DefinitionID:       "ford_escape_2020",
 			OwnerAddress:       null.BytesFrom(common.HexToAddress(userAddr).Bytes()),
 		},
 	}

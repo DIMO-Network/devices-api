@@ -1650,7 +1650,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "updates the VIN on the user device record",
+                "description": "Deprecated. updates the VIN on the user device record",
                 "consumes": [
                     "application/json"
                 ],
@@ -2142,7 +2142,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "updates the VIN on the user device record",
+                "description": "updates the VIN on the user device record. Can optionally also update the protocol and the country code",
                 "consumes": [
                     "application/json"
                 ],
@@ -2340,6 +2340,9 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_services.DeviceCompatibility"
                     }
+                },
+                "definitionId": {
+                    "type": "string"
                 },
                 "deviceAttributes": {
                     "description": "DeviceAttributes is a list of attributes for the device type as defined in device_types.properties",
@@ -3262,6 +3265,14 @@ const docTemplate = `{
                 "vin"
             ],
             "properties": {
+                "canProtocol": {
+                    "description": "CANProtocol optional. Numeric style made up protocol. 6 = CAN11_500, 7 = CAN29_500, 66/77 are some UDS thing etc",
+                    "type": "string"
+                },
+                "countryCode": {
+                    "description": "CountryCode optional. Is set on the user device record",
+                    "type": "string"
+                },
                 "signature": {
                     "description": "Signature is the hex-encoded result of the AutoPi signing the VIN. It must\nbe present to verify the VIN.",
                     "type": "string",

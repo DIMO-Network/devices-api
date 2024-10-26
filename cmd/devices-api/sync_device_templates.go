@@ -3,12 +3,15 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/csv"
 	"flag"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	vsdgrpc "github.com/DIMO-Network/vehicle-signal-decoding/pkg/grpc"
 	"github.com/pkg/errors"
@@ -39,6 +42,7 @@ type syncDeviceTemplatesCmd struct {
 	targetTemplateID   *string
 	moveAllDevices     bool // if true calls autopi to get all templates and devices from there
 	dimoTemplate       *string
+	csvDevicesPath     *string
 }
 
 func (*syncDeviceTemplatesCmd) Name() string { return "sync-device-templates" }
@@ -56,6 +60,7 @@ func (p *syncDeviceTemplatesCmd) SetFlags(f *flag.FlagSet) {
 	p.targetTemplateID = f.String("target-template", "", "Filter device definitions to apply for where the template is this value. Good for moving only certain autopi's.")
 	f.BoolVar(&p.moveAllDevices, "move-all-devices", false, "move all devices in autopi to the template specified.")
 	p.dimoTemplate = f.String("dimo-template", "", "If set, will set the dimo template for this device in vehicle-signal-decoding")
+	p.csvDevicesPath = f.String("csv-devices", "", "optionally pass in a csv file with a list of devices 0x address to move to the template specified.")
 }
 
 func (p *syncDeviceTemplatesCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
@@ -68,17 +73,28 @@ func (p *syncDeviceTemplatesCmd) Execute(ctx context.Context, _ *flag.FlagSet, _
 		"\n Only moving from template ID: %s. To change specify --move-from-template XX. Set to 0 for none.\n Will never move on tmpl: 115,116,128,126,127", moveFromTemplateID)
 	autoPiSvc := services.NewAutoPiAPIService(&p.settings, p.pdb.DBS)
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, p.pdb.DBS, &p.logger)
-	if p.moveAllDevices {
-		tt, err2 := strconv.Atoi(*p.targetTemplateID)
-		if err2 != nil {
-			p.logger.Fatal().Err(err2).Msg("target template id must be an integer")
+
+	targetTempl, err2 := strconv.Atoi(*p.targetTemplateID)
+	if err2 != nil {
+		p.logger.Fatal().Err(err2).Msg("target template id must be an integer")
+		return subcommands.ExitFailure
+	}
+	// move devices from csv file list
+	if p.csvDevicesPath != nil {
+		fmt.Printf("moving devices from csv file: %s to template id: %d\n", *p.csvDevicesPath, targetTempl)
+		path := "/tmp/" + *p.csvDevicesPath
+		err := moveDevicesFromCSV(ctx, path, targetTempl, p.pdb, hardwareTemplateService)
+		if err != nil {
+			p.logger.Fatal().Err(err).Msg("failed to move devices from csv file")
 			return subcommands.ExitFailure
 		}
+	} else if p.moveAllDevices {
+
 		fromTemplateID := 0
 		if p.moveFromTemplateID != nil {
 			fromTemplateID, _ = strconv.Atoi(*p.moveFromTemplateID)
 		}
-		err := moveAllDevicesToTemplate(ctx, p.pdb, hardwareTemplateService, autoPiSvc, p.settings.VehicleDecodingGRPCAddr, tt, fromTemplateID, p.dimoTemplate)
+		err := moveAllDevicesToTemplate(ctx, p.pdb, hardwareTemplateService, autoPiSvc, p.settings.VehicleDecodingGRPCAddr, targetTempl, fromTemplateID, p.dimoTemplate)
 		if err != nil {
 			p.logger.Fatal().Err(err).Msg("failed to move all devices to template")
 		}
@@ -286,6 +302,58 @@ func moveDevicesInTemplate(ctx context.Context, pdb db.Store, autoPiHWSvc autopi
 			}
 		}
 		time.Sleep(time.Millisecond * 400)
+	}
+	return nil
+}
+
+func moveDevicesFromCSV(ctx context.Context, path string, targetTemplateID int, pdb db.Store, autoPiHWSvc autopi.HardwareTemplateService) error {
+	// read file from path
+	o, err := os.Open(path)
+	defer o.Close() //nolint
+	if err != nil {
+		return errors.Wrapf(err, "failed to open csv file: %s", path)
+	}
+	r := csv.NewReader(o)
+	// Iterate over each row
+	for {
+		// Read one row at a time
+		row, err := r.Read()
+		if err != nil {
+			if err.Error() == "EOF" {
+				// Reached the end of the file
+				break
+			}
+			return errors.Wrap(err, "failed to read csv file")
+		}
+		if len(row) > 0 {
+			fmt.Println("device 0x addr:" + row[0])
+			// execute the move
+			hex := strings.TrimPrefix("0x", row[0])
+			addr := common.Hex2Bytes(hex)
+			amd, err := models.AftermarketDevices(
+				models.AftermarketDeviceWhere.EthereumAddress.EQ(addr),
+				qm.Load(models.AftermarketDeviceRels.VehicleToken),
+			).One(ctx, pdb.DBS().Reader)
+			if err != nil {
+				fmt.Printf("Failed to find device in our db with addr: %02X\n", addr)
+				continue
+			}
+			udID := ""
+			if amd.R.VehicleToken != nil {
+				udID = amd.R.VehicleToken.ID
+			}
+
+			_, err = autoPiHWSvc.ApplyHardwareTemplate(ctx, &pb.ApplyHardwareTemplateRequest{
+				UserDeviceId:       udID,
+				AutoApiUnitId:      amd.Serial,
+				HardwareTemplateId: strconv.Itoa(targetTemplateID),
+			})
+			if err != nil {
+				fmt.Printf("Failed to move device %s to template %d\n", row[0], targetTemplateID)
+			} else {
+				fmt.Printf("Moved device %s to template %d\n", row[0], targetTemplateID)
+			}
+		}
 	}
 	return nil
 }
