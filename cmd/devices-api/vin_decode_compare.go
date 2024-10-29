@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/csv"
 	"flag"
+	"math/big"
+	"os"
+
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
@@ -13,8 +16,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
-	"math/big"
-	"os"
 )
 
 type vinDecodeCompareCmd struct {
@@ -31,7 +32,7 @@ func (*vinDecodeCompareCmd) Usage() string {
 	return `vin-decode-compare`
 }
 
-func (p *vinDecodeCompareCmd) SetFlags(f *flag.FlagSet) {
+func (p *vinDecodeCompareCmd) SetFlags(_ *flag.FlagSet) {
 	//	p.targetTemplateID = f.String("target-template", "", "Filter device definitions to apply for where the template is this value. Good for moving only certain autopi's.")
 	//f.BoolVar(&p.moveAllDevices, "move-all-devices", false, "move all devices in autopi to the template specified.")
 }
@@ -58,11 +59,11 @@ func (p *vinDecodeCompareCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ..
 
 	keepGoing := true
 	zero := big.NewInt(int64(0))
-	markerTokenId := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(zero, 0))
+	markerTokenID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(zero, 0))
 
 	for keepGoing {
 		uds, err := models.UserDevices(models.UserDeviceWhere.TokenID.IsNotNull(), models.UserDeviceWhere.VinConfirmed.EQ(true),
-			models.UserDeviceWhere.TokenID.GT(markerTokenId),
+			models.UserDeviceWhere.TokenID.GT(markerTokenID),
 			qm.OrderBy(models.UserDeviceColumns.TokenID), qm.Limit(1000)).All(ctx, p.pdb.DBS().Reader)
 		if err != nil {
 			p.logger.Error().Err(err).Msg("failed to get user devices")
@@ -71,10 +72,10 @@ func (p *vinDecodeCompareCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ..
 		if len(uds) < 999 {
 			keepGoing = false
 		}
-		tk, _ := markerTokenId.Uint64()
+		tk, _ := markerTokenID.Uint64()
 		p.logger.Info().Msgf("processing %d user devices, starting at token_id: %d", len(uds), tk)
 
-		markerTokenId = uds[len(uds)-1].TokenID
+		markerTokenID = uds[len(uds)-1].TokenID
 
 		for _, ud := range uds {
 			decodeVIN, err := ddSvc.DecodeVIN(ctx, ud.VinIdentifier.String, "", 0, ud.CountryCode.String)
