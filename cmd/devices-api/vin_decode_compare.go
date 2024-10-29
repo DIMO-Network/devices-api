@@ -40,7 +40,7 @@ func (p *vinDecodeCompareCmd) SetFlags(_ *flag.FlagSet) {
 func (p *vinDecodeCompareCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	ddSvc := services.NewDeviceDefinitionService(p.pdb.DBS, &p.logger, &p.settings)
 
-	file, err := os.OpenFile("vin-decode-compare.csv", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	file, err := os.OpenFile("/tmp/vin-decode-compare.csv", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	defer file.Close() // nolint
 	if err != nil {
 		p.logger.Error().Err(err).Msg("failed to open file")
