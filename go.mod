@@ -6,7 +6,7 @@ toolchain go1.23.2
 
 require (
 	github.com/DIMO-Network/device-data-api v0.9.10
-	github.com/DIMO-Network/device-definitions-api v1.2.36
+	github.com/DIMO-Network/device-definitions-api v1.2.51
 	github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c
 	github.com/DIMO-Network/meta-transaction-processor v0.3.2
 	github.com/DIMO-Network/shared v0.12.5
