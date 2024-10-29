@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/csv"
 	"flag"
+	"fmt"
 	"math/big"
 	"os"
+	"strconv"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services"
@@ -46,7 +48,7 @@ func (p *vinDecodeCompareCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ..
 		p.logger.Error().Err(err).Msg("failed to open file")
 		return subcommands.ExitFailure
 	}
-	// todo: check if file exists and what token left off on
+	lastProcessedTokenID := getLatestTokenID(file)
 
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
@@ -59,6 +61,9 @@ func (p *vinDecodeCompareCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ..
 
 	keepGoing := true
 	zero := big.NewInt(int64(0))
+	if lastProcessedTokenID > 0 {
+		zero = big.NewInt(int64(lastProcessedTokenID))
+	}
 	markerTokenID := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(zero, 0))
 
 	for keepGoing {
@@ -82,6 +87,11 @@ func (p *vinDecodeCompareCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ..
 			t, _ := ud.TokenID.Uint64()
 			if err != nil {
 				p.logger.Error().Uint64("token_id", t).Err(err).Msg("failed to decode vin")
+				errW := writer.Write([]string{ud.TokenID.String(), ud.VinIdentifier.String, ud.DefinitionID, "failed"})
+				if errW != nil {
+					p.logger.Error().Err(errW).Msg("failed to write CSV row")
+				}
+				continue
 			}
 			if ud.DefinitionID != decodeVIN.DefinitionId {
 				// log and csv
@@ -97,4 +107,33 @@ func (p *vinDecodeCompareCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ..
 	}
 
 	return subcommands.ExitSuccess
+}
+
+func getLatestTokenID(file *os.File) uint64 {
+	info, err := file.Stat()
+
+	if err == nil && info.Size() > 1 {
+		reader := csv.NewReader(file)
+		// Read all rows from the CSV file
+		rows, err := reader.ReadAll()
+		if err != nil {
+			fmt.Println("Error reading CSV file:", err)
+			return 0
+		}
+		// Check if there are rows in the file
+		if len(rows) == 0 {
+			fmt.Println("CSV file is empty")
+			return 0
+		}
+		// Get the last row
+		lastRow := rows[len(rows)-1]
+
+		// Get the value in the first column of the last row
+		if len(lastRow) > 0 {
+			tid := lastRow[0]
+			value, _ := strconv.ParseUint(tid, 10, 64)
+			return value
+		}
+	}
+	return 0
 }
