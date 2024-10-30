@@ -110,30 +110,28 @@ func (p *vinDecodeCompareCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ..
 }
 
 func getLatestTokenID(file *os.File) uint64 {
-	info, err := file.Stat()
 
-	if err == nil && info.Size() > 1 {
-		reader := csv.NewReader(file)
-		// Read all rows from the CSV file
-		rows, err := reader.ReadAll()
-		if err != nil {
-			fmt.Println("Error reading CSV file:", err)
-			return 0
-		}
-		// Check if there are rows in the file
-		if len(rows) == 0 {
-			fmt.Println("CSV file is empty")
-			return 0
-		}
-		// Get the last row
-		lastRow := rows[len(rows)-1]
-
-		// Get the value in the first column of the last row
-		if len(lastRow) > 0 {
-			tid := lastRow[0]
-			value, _ := strconv.ParseUint(tid, 10, 64)
-			return value
-		}
+	reader := csv.NewReader(file)
+	// Read all rows from the CSV file
+	rows, err := reader.ReadAll()
+	if err != nil {
+		fmt.Println("Error reading CSV file:", err) //Error reading CSV file: read /tmp/vin-decode-compare.csv: bad file descriptor
+		return 0
 	}
+	// Check if there are rows in the file
+	if len(rows) == 0 {
+		fmt.Println("CSV file is empty")
+		return 0
+	}
+	// Get the last row
+	lastRow := rows[len(rows)-1]
+
+	// Get the value in the first column of the last row
+	if len(lastRow) > 0 {
+		tid := lastRow[0]
+		value, _ := strconv.ParseUint(tid, 10, 64)
+		return value
+	}
+
 	return 0
 }
