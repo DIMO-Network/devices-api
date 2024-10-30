@@ -417,7 +417,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	}
 
 	if !udc.Settings.IsProduction() {
-		toCheck := make(map[uint64]*models.UserDeviceAPIIntegration)
+		toCheck := make(map[uint32]*models.UserDeviceAPIIntegration)
 		for _, ud := range devices {
 			if ud.TokenID.IsZero() {
 				continue
@@ -426,7 +426,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 				if udai.IntegrationID == "2lcaMFuCO0HJIUfdq8o780Kx5n3" {
 					if udai.Status != "Active" {
 						tok, _ := ud.TokenID.Uint64()
-						toCheck[tok] = udai
+						toCheck[uint32(tok)] = udai
 					}
 					break
 				}
@@ -469,7 +469,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 			var toModify []*models.UserDeviceAPIIntegration
 
 			for rows.Next() {
-				var tokenID uint64
+				var tokenID uint32
 				if err := rows.Scan(&tokenID); err != nil {
 					return err
 				}
