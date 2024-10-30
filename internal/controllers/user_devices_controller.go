@@ -447,7 +447,6 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 
 			list := []qm.QueryMod{
 				qm.Distinct("token_id"),
-				qm.Select("token_id", "max(timestamp)"),
 				qm.From("signal"),
 				qmhelper.Where("source", qmhelper.EQ, "dimo/integration/2lcaMFuCO0HJIUfdq8o780Kx5n3"),
 				qm.Expr(innerList...),
@@ -458,6 +457,8 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 			qm.Apply(q, list...)
 
 			query, args := queries.BuildQuery(q)
+
+			udc.log.Info().Str("userId", userID).Str("query", query).Msg("Ruptela query.")
 
 			rows, err := udc.clickHouseConn.Query(c.Context(), query, args...)
 			if err != nil {
