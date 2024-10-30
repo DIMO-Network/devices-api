@@ -111,6 +111,7 @@ func main() {
 		subcommands.Register(&stopTaskByKeyCmd{logger: logger, settings: settings, container: deps}, "tasks")
 
 		subcommands.Register(&syncDeviceTemplatesCmd{logger: logger, settings: settings, pdb: pdb}, "user devices")
+		subcommands.Register(&vinDecodeCompareCmd{logger: logger, settings: settings, pdb: pdb}, "user devices")
 
 		flag.Parse()
 		os.Exit(int(subcommands.Execute(ctx)))

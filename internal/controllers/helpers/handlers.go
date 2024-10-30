@@ -46,7 +46,7 @@ func GetJWTEthAddr(c *fiber.Ctx) (common.Address, bool) {
 	if !ok || !common.IsHexAddress(ethAddr) {
 		return zeroAddr, false
 	}
-	return common.HexToAddress(ethAddr), false
+	return common.HexToAddress(ethAddr), true
 }
 
 type EthAddrGetter struct {

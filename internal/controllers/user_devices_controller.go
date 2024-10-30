@@ -382,21 +382,22 @@ var dialect = drivers.Dialect{
 // @Router      /user/devices/me [get]
 func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+
+	userAddr, hasAddr, err := udc.userAddrGetter.GetEthAddr(c)
 	if err != nil {
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
 	}
 
 	var query []qm.QueryMod
 
-	if user.EthereumAddress == nil {
+	if !hasAddr {
 		query = []qm.QueryMod{
 			models.UserDeviceWhere.UserID.EQ(userID),
 		}
 	} else {
 		query = []qm.QueryMod{
 			models.UserDeviceWhere.UserID.EQ(userID),
-			qm.Or2(models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(common.HexToAddress(*user.EthereumAddress).Bytes()))),
+			qm.Or2(models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(userAddr.Bytes()))),
 		}
 	}
 
@@ -517,9 +518,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 	// todo grpc call out to grpc service endpoint in the deviceDefinitionsService udc.deviceDefSvc.GetDeviceDefinitionsByIDs(c.Context(), []string{ "todo"} )
 
-	userID := helpers.GetUserID(c)
-
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
+	userAddr, hasAddr, err := udc.userAddrGetter.GetEthAddr(c)
 	if err != nil {
 		udc.log.Err(err).Msg("Couldn't retrieve user record.")
 		return opaqueInternalError
@@ -527,10 +526,8 @@ func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 
 	var sharedVehicles []*models.UserDevice
 
-	if user.EthereumAddress != nil {
+	if hasAddr {
 		// This is N+1 hell.
-		userAddr := common.HexToAddress(*user.EthereumAddress)
-
 		privs, err := models.NFTPrivileges(
 			models.NFTPrivilegeWhere.ContractAddress.EQ(common.FromHex(udc.Settings.VehicleNFTAddress)),
 			models.NFTPrivilegeWhere.UserAddress.EQ(userAddr.Bytes()),
