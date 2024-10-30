@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/DIMO-Network/clickhouse-infra/pkg/connect/config"
 	"github.com/DIMO-Network/shared/db"
 )
 
@@ -99,6 +100,8 @@ type Settings struct {
 	MainRPCURL  string `yaml:"MAIN_RPC_URL"`
 
 	VehicleDecodingGRPCAddr string `yaml:"VEHICLE_DECODING_GRPC_ADDR"`
+
+	Clickhouse config.Settings `yaml:",inline"`
 }
 
 func (s *Settings) IsProduction() bool {

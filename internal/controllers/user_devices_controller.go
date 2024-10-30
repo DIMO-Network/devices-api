@@ -139,6 +139,7 @@ func NewUserDevicesController(settings *config.Settings,
 	userDeviceSvc services.UserDeviceService,
 	teslaFleetAPISvc services.TeslaFleetAPIService,
 	ipfsSvc *ipfs.IPFS,
+	chConn clickhouse.Conn,
 ) UserDevicesController {
 	return UserDevicesController{
 		Settings:                  settings,
@@ -167,6 +168,7 @@ func NewUserDevicesController(settings *config.Settings,
 		teslaFleetAPISvc:          teslaFleetAPISvc,
 		ipfsSvc:                   ipfsSvc,
 		userAddrGetter:            helpers.CreateUserAddrGetter(usersClient),
+		clickHouseConn:            chConn,
 	}
 }
 
@@ -414,16 +416,19 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
 	}
 
-	{
+	if !udc.Settings.IsProduction() {
 		toCheck := make(map[uint64]*models.UserDeviceAPIIntegration)
 		for _, ud := range devices {
 			if ud.TokenID.IsZero() {
 				continue
 			}
 			for _, udai := range ud.R.UserDeviceAPIIntegrations {
-				if udai.IntegrationID == "2lcaMFuCO0HJIUfdq8o780Kx5n3" && udai.Status != "Active" {
-					tok, _ := ud.TokenID.Uint64()
-					toCheck[tok] = udai
+				if udai.IntegrationID == "2lcaMFuCO0HJIUfdq8o780Kx5n3" {
+					if udai.Status != "Active" {
+						tok, _ := ud.TokenID.Uint64()
+						toCheck[tok] = udai
+					}
+					break
 				}
 			}
 		}

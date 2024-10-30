@@ -72,6 +72,8 @@ github.com/ClickHouse/clickhouse-go/v2 v2.30.0 h1:AG4D/hW39qa58+JHQIFOSnxyL46H6h
 github.com/ClickHouse/clickhouse-go/v2 v2.30.0/go.mod h1:i9ZQAojcayW3RsdCb3YR+n+wC2h65eJsZCscZ1Z1wyo=
 github.com/DATA-DOG/go-sqlmock v1.4.1 h1:ThlnYciV1iM/V0OSF/dtkqWb6xo5qITT1TJBG1MRDJM=
 github.com/DATA-DOG/go-sqlmock v1.4.1/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q5eFN3EC/SaM=
+github.com/DIMO-Network/clickhouse-infra v0.0.3 h1:B6/4IY9IxLcyydET14IjHUT+A5SDEis7p//DoFzrMk4=
+github.com/DIMO-Network/clickhouse-infra v0.0.3/go.mod h1:NtpQ1btkPzebDvpYYygeqiiBmJ/q5oJb/T/JWzUVRlk=
 github.com/DIMO-Network/device-data-api v0.9.10 h1:ORyxDSKPCEPFGG5S593+2OkLzWFsy4ZO0o90TPebQN4=
 github.com/DIMO-Network/device-data-api v0.9.10/go.mod h1:tjR1bA9sw2sj5GNi88dqpGsGLjYHjQzSfv2lcCYLjqQ=
 github.com/DIMO-Network/device-definitions-api v1.2.51 h1:kMCy8yS+KwGzTfQnXDfA1MJFlqqxNLfAcyCCI4jC/gw=
@@ -1302,6 +1304,7 @@ golang.org/x/tools v0.1.5/go.mod h1:o0xws9oXOQQZyjljx8fwUC0k7L1pTE6eaCbjGeHmOkk=
 golang.org/x/tools v0.1.12/go.mod h1:hNGJHUnrk76NpqgfD5Aqm5Crs+Hm0VOH/i9J2+nxYbc=
 golang.org/x/tools v0.25.0 h1:oFU9pkj/iJgs+0DT+VMHrx+oBKs/LJMV+Uvg78sl+fE=
 golang.org/x/tools v0.25.0/go.mod h1:/vtpO8WL1N9cQC3FN5zPqb//fRXskFHbLKk4OW1Q7rg=
+golang.org/x/tools v0.26.0/go.mod h1:TPVVj70c7JJ3WCazhD8OdXcZg/og+b9+tH/KxylGwH0=
 golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
