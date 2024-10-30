@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ClickHouse/clickhouse-go/v2"
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -46,8 +47,10 @@ import (
 	smartcar "github.com/smartcar/go-sdk"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/drivers"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/queries/qmhelper"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
@@ -79,6 +82,7 @@ type UserDevicesController struct {
 	userDeviceSvc             services.UserDeviceService
 	teslaFleetAPISvc          services.TeslaFleetAPIService
 	ipfsSvc                   *ipfs.IPFS
+	clickHouseConn            clickhouse.Conn
 	userAddrGetter            helpers.EthAddrGetter
 }
 
@@ -135,6 +139,7 @@ func NewUserDevicesController(settings *config.Settings,
 	userDeviceSvc services.UserDeviceService,
 	teslaFleetAPISvc services.TeslaFleetAPIService,
 	ipfsSvc *ipfs.IPFS,
+	chConn clickhouse.Conn,
 ) UserDevicesController {
 	return UserDevicesController{
 		Settings:                  settings,
@@ -163,6 +168,7 @@ func NewUserDevicesController(settings *config.Settings,
 		teslaFleetAPISvc:          teslaFleetAPISvc,
 		ipfsSvc:                   ipfsSvc,
 		userAddrGetter:            helpers.CreateUserAddrGetter(usersClient),
+		clickHouseConn:            chConn,
 	}
 }
 
@@ -364,6 +370,11 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 	return apiDevices, nil
 }
 
+var dialect = drivers.Dialect{
+	LQ: '`',
+	RQ: '`',
+}
+
 // GetUserDevices godoc
 // @Description gets all devices associated with current user - pulled from token
 // @Tags        user-devices
@@ -403,6 +414,96 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	devices, err := models.UserDevices(query...).All(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
+	}
+
+	if !udc.Settings.IsProduction() {
+		toCheck := make(map[uint64]*models.UserDeviceAPIIntegration)
+		for _, ud := range devices {
+			if ud.TokenID.IsZero() {
+				continue
+			}
+			for _, udai := range ud.R.UserDeviceAPIIntegrations {
+				if udai.IntegrationID == "2lcaMFuCO0HJIUfdq8o780Kx5n3" {
+					if udai.Status != "Active" {
+						tok, _ := ud.TokenID.Uint64()
+						toCheck[tok] = udai
+					}
+					break
+				}
+			}
+		}
+
+		if len(toCheck) != 0 {
+			var innerList []qm.QueryMod
+
+			for tokenID, udai := range toCheck {
+				if len(innerList) == 0 {
+					innerList = append(innerList, qm.Expr(qmhelper.Where("token_id", qmhelper.EQ, tokenID), qmhelper.Where("timestamp", qmhelper.GT, udai.UpdatedAt)))
+				} else {
+					innerList = append(innerList, qm.Or2(qm.Expr(qmhelper.Where("token_id", qmhelper.EQ, tokenID), qmhelper.Where("timestamp", qmhelper.GT, udai.UpdatedAt))))
+				}
+			}
+
+			list := []qm.QueryMod{
+				qm.Distinct("token_id"),
+				qm.Select("token_id", "max(timestamp)"),
+				qm.From("signal"),
+				qmhelper.Where("source", qmhelper.EQ, "dimo/integration/2lcaMFuCO0HJIUfdq8o780Kx5n3"),
+				qm.Expr(innerList...),
+			}
+
+			q := &queries.Query{}
+			queries.SetDialect(q, &dialect)
+			qm.Apply(q, list...)
+
+			query, args := queries.BuildQuery(q)
+
+			rows, err := udc.clickHouseConn.Query(c.Context(), query, args...)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+
+			var toModify []*models.UserDeviceAPIIntegration
+
+			for rows.Next() {
+				var tokenID uint64
+				if err := rows.Scan(&tokenID); err != nil {
+					return err
+				}
+				if udai, ok := toCheck[tokenID]; ok {
+					toModify = append(toModify, udai)
+				} else {
+					return fmt.Errorf("signal activity query returned a token id %d not in the query", tokenID)
+				}
+			}
+
+			if rows.Err() != nil {
+				return fmt.Errorf("clickhouse scan error: %w", rows.Err())
+			}
+
+			if len(toModify) != 0 {
+				modTime := time.Now()
+				tx, err := udc.DBS().Writer.BeginTx(c.Context(), nil)
+				if err != nil {
+					return err
+				}
+
+				for _, udai := range toModify {
+					udc.log.Info().Str("userId", userID).Str("userDeviceId", udai.UserDeviceID).Msg("Setting Ruptela connection active.")
+					udai.Status = models.UserDeviceAPIIntegrationStatusActive
+					udai.UpdatedAt = modTime
+					_, err := udai.Update(c.Context(), tx, boil.Whitelist(models.UserDeviceAPIIntegrationColumns.Status, models.UserDeviceAPIIntegrationColumns.UpdatedAt))
+					if err != nil {
+						return err
+					}
+				}
+
+				if err := tx.Commit(); err != nil {
+					return err
+				}
+			}
+		}
 	}
 
 	apiMyDevices, err := udc.dbDevicesToDisplay(c.Context(), devices)
