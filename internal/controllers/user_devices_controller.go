@@ -434,6 +434,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 		}
 
 		if len(toCheck) != 0 {
+			udc.log.Info().Str("userId", userID).Msgf("Checking %d Ruptela connections.", len(toCheck))
 			var innerList []qm.QueryMod
 
 			for tokenID, udai := range toCheck {
