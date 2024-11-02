@@ -503,7 +503,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 				}
 
 				for _, udai := range toModify {
-					udc.log.Info().Str("userId", userID).Str("userDeviceId", udai.UserDeviceID).Msg("Setting Ruptela connection active.")
+					udc.log.Info().Str("userId", userID).Str("userDeviceId", udai.UserDeviceID).Str("integrationId", udai.IntegrationID).Msg("Setting connection active.")
 					udai.Status = models.UserDeviceAPIIntegrationStatusActive
 					udai.UpdatedAt = modTime
 					_, err := udai.Update(c.Context(), tx, boil.Whitelist(models.UserDeviceAPIIntegrationColumns.Status, models.UserDeviceAPIIntegrationColumns.UpdatedAt))
