@@ -416,20 +416,25 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
 	}
 
-	if !udc.Settings.IsProduction() {
-		toCheck := make(map[uint32]*models.UserDeviceAPIIntegration)
+	{
+		const sourcePrefix = "dimo/integration/"
+		type checkKey struct {
+			TokenID       uint32
+			IntegrationID string
+		}
+		toCheck := make(map[checkKey]*models.UserDeviceAPIIntegration)
 		for _, ud := range devices {
 			if ud.TokenID.IsZero() {
 				continue
 			}
 			for _, udai := range ud.R.UserDeviceAPIIntegrations {
-				if udai.IntegrationID == "2lcaMFuCO0HJIUfdq8o780Kx5n3" {
-					if udai.Status != "Active" {
-						tok, _ := ud.TokenID.Uint64()
-						toCheck[uint32(tok)] = udai
-					}
-					break
+				// TODO(elffjs): Really no point in doing this for synthetics if the job hasn't started.
+				// Hard to tell this at this point
+				if udai.Status != "Active" {
+					tok, _ := ud.TokenID.Uint64()
+					toCheck[checkKey{uint32(tok), udai.IntegrationID}] = udai
 				}
+				break
 			}
 		}
 
@@ -437,16 +442,21 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 			udc.log.Info().Str("userId", userID).Msgf("Checking %d Ruptela connections.", len(toCheck))
 			var innerList []qm.QueryMod
 
-			for tokenID, udai := range toCheck {
+			for key, udai := range toCheck {
+				clause := qm.Expr(
+					qmhelper.Where("token_id", qmhelper.EQ, key.TokenID),
+					qmhelper.Where("source", qmhelper.EQ, sourcePrefix+key.IntegrationID),
+					qmhelper.Where("timestamp", qmhelper.GT, udai.UpdatedAt))
 				if len(innerList) == 0 {
-					innerList = append(innerList, qm.Expr(qmhelper.Where("token_id", qmhelper.EQ, tokenID), qmhelper.Where("timestamp", qmhelper.GT, udai.UpdatedAt)))
+					innerList = append(innerList, clause)
 				} else {
-					innerList = append(innerList, qm.Or2(qm.Expr(qmhelper.Where("token_id", qmhelper.EQ, tokenID), qmhelper.Where("timestamp", qmhelper.GT, udai.UpdatedAt))))
+					innerList = append(innerList, qm.Or2(clause))
 				}
 			}
 
+			// Please query optimizer. PLEASE.
 			list := []qm.QueryMod{
-				qm.Distinct("token_id"),
+				qm.Distinct("token_id, source"),
 				qm.From("signal"),
 				qmhelper.Where("source", qmhelper.EQ, "dimo/integration/2lcaMFuCO0HJIUfdq8o780Kx5n3"),
 				qm.Expr(innerList...),
@@ -470,10 +480,11 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 
 			for rows.Next() {
 				var tokenID uint32
-				if err := rows.Scan(&tokenID); err != nil {
+				var source string
+				if err := rows.Scan(&tokenID, &source); err != nil {
 					return err
 				}
-				if udai, ok := toCheck[tokenID]; ok {
+				if udai, ok := toCheck[checkKey{tokenID, strings.TrimPrefix(source, sourcePrefix)}]; ok {
 					toModify = append(toModify, udai)
 				} else {
 					return fmt.Errorf("signal activity query returned a token id %d not in the query", tokenID)
