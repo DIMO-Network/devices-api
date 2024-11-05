@@ -66,7 +66,8 @@ message UserDevice {
   optional uint64 aftermarket_device_token_id = 6 [deprecated = true];
   repeated UserDeviceIntegration integrations = 7;
   optional string vin = 8;
-  string device_definition_id = 9;
+  // old ksuid, use definition_id now
+  string device_definition_id = 9 [deprecated = true];
   optional string device_style_id = 10;
   // Use aftermarket_device.beneficiary instead.
   optional bytes aftermarket_device_beneficiary_address = 11 [deprecated = true];
@@ -82,6 +83,8 @@ message UserDevice {
   string geo_decoded_state_prov = 19;
   optional AftermarketDevice aftermarket_device = 20;
   optional SyntheticDevice syntheticDevice = 21;
+  // new human readable definition id used in tableland
+  string definition_id = 22;
 }
 
 message SyntheticDevice {
