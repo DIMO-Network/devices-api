@@ -10,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/DIMO-Network/clickhouse-infra/pkg/connect"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -134,17 +133,14 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		logger.Fatal().Err(err).Msg("Couldn't construct wallet client.")
 	}
 
-	var chConn clickhouse.Conn
-	if !settings.IsProduction() {
-		chConn, err = connect.GetClickhouseConn(&settings.Clickhouse)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Couldn't construct ClickHouse client.")
-		}
+	chConn, err := connect.GetClickhouseConn(&settings.Clickhouse)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Couldn't construct ClickHouse client.")
+	}
 
-		err = chConn.Ping(context.Background())
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Failed to ping ClickHouse.")
-		}
+	err = chConn.Ping(context.Background())
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to ping ClickHouse.")
 	}
 
 	// controllers
