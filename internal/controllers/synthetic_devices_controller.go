@@ -312,10 +312,6 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		if ret != erc1271magicValue {
 			return fiber.NewError(fiber.StatusBadRequest, "Could not verify ERC-1271 signature.")
 		}
-
-		if sdc.Settings.IsProduction() {
-			return fiber.NewError(fiber.StatusInternalServerError, "You gave the right EIP-1271 signature, but we're not ready for this yet.")
-		}
 	}
 
 	childKeyNumber, err := sdc.generateNextChildKeyNumber(c.Context())
@@ -539,10 +535,6 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 
 		if ret != erc1271magicValue {
 			return fiber.NewError(fiber.StatusBadRequest, "Could not verify ERC-1271 signature.")
-		}
-
-		if sdc.Settings.IsProduction() {
-			return fiber.NewError(fiber.StatusInternalServerError, "You gave the right EIP-1271 signature, but we're not ready for this yet.")
 		}
 	}
 
