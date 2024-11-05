@@ -436,7 +436,6 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	}
 
 	{
-		const sourcePrefix = "dimo/integration/"
 		type checkKey struct {
 			TokenID       uint32
 			IntegrationID string
@@ -448,8 +447,8 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 			}
 			for _, udai := range ud.R.UserDeviceAPIIntegrations {
 				// TODO(elffjs): Really no point in doing this for synthetics if the job hasn't started.
-				// Hard to tell this at this point
-				if udai.Status != "Active" {
+				// Should check for aftermarket or synthetic pairing, ideally.
+				if udai.Status == models.UserDeviceAPIIntegrationStatusPending || udai.Status == models.UserDeviceAPIIntegrationStatusPendingFirstData {
 					tok, _ := ud.TokenID.Uint64()
 					toCheck[checkKey{uint32(tok), udai.IntegrationID}] = udai
 				}
