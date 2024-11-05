@@ -393,11 +393,12 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 	out := &pb.UserDevice{
 		Id:                 ud.ID,
 		UserId:             ud.UserID,
-		DeviceDefinitionId: ud.DeviceDefinitionID,
+		DeviceDefinitionId: ud.DeviceDefinitionID, //nolint
 		DeviceStyleId:      ud.DeviceStyleID.Ptr(),
 		OptedInAt:          nullTimeToPB(ud.OptedInAt),
 		Integrations:       make([]*pb.UserDeviceIntegration, len(ud.R.UserDeviceAPIIntegrations)),
 		VinConfirmed:       ud.VinConfirmed,
+		DefinitionId:       ud.DefinitionID,
 	}
 
 	if !ud.TokenID.IsZero() {
