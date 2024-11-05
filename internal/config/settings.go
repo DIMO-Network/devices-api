@@ -101,7 +101,8 @@ type Settings struct {
 
 	VehicleDecodingGRPCAddr string `yaml:"VEHICLE_DECODING_GRPC_ADDR"`
 
-	Clickhouse config.Settings `yaml:",inline"`
+	Clickhouse          config.Settings `yaml:",inline"`
+	RuptelaConnectionID string          `yaml:"RUPTELA_CONNECTION_ID"`
 }
 
 func (s *Settings) IsProduction() bool {

@@ -375,6 +375,25 @@ var dialect = drivers.Dialect{
 	RQ: '`',
 }
 
+const (
+	sourcePrefix         = "dimo/integration/"
+	ruptelaIntegrationID = "2lcaMFuCO0HJIUfdq8o780Kx5n3"
+)
+
+func (udc *UserDevicesController) chSourceToIntegrationID(s string) string {
+	if s == udc.Settings.RuptelaConnectionID {
+		return ruptelaIntegrationID
+	}
+	return strings.TrimPrefix(s, sourcePrefix)
+}
+
+func (udc *UserDevicesController) integrationIDToCHSource(id string) string {
+	if id == ruptelaIntegrationID {
+		return udc.Settings.RuptelaConnectionID
+	}
+	return sourcePrefix + id
+}
+
 // GetUserDevices godoc
 // @Description gets all devices associated with current user - pulled from token
 // @Tags        user-devices
@@ -445,7 +464,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 			for key, udai := range toCheck {
 				clause := qm.Expr(
 					qmhelper.Where("token_id", qmhelper.EQ, key.TokenID),
-					qmhelper.Where("source", qmhelper.EQ, sourcePrefix+key.IntegrationID),
+					qmhelper.Where("source", qmhelper.EQ, udc.integrationIDToCHSource(key.IntegrationID)),
 					qmhelper.Where("timestamp", qmhelper.GT, udai.UpdatedAt))
 				if len(innerList) == 0 {
 					innerList = append(innerList, clause)
@@ -481,7 +500,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 				if err := rows.Scan(&tokenID, &source); err != nil {
 					return err
 				}
-				if udai, ok := toCheck[checkKey{tokenID, strings.TrimPrefix(source, sourcePrefix)}]; ok {
+				if udai, ok := toCheck[checkKey{tokenID, udc.chSourceToIntegrationID(source)}]; ok {
 					toModify = append(toModify, udai)
 				} else {
 					return fmt.Errorf("signal activity query returned a token id %d not in the query", tokenID)
