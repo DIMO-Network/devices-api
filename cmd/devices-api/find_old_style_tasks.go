@@ -30,7 +30,7 @@ func (*findOldStyleTasks) Usage() string {
 }
 
 // nolint
-func (p *findOldStyleTasks) SetFlags(f *flag.FlagSet) {
+func (*findOldStyleTasks) SetFlags(f *flag.FlagSet) {
 
 }
 
