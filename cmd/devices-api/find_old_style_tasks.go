@@ -71,7 +71,7 @@ func (fost *findOldStyleTasks) Execute(_ context.Context, _ *flag.FlagSet, _ ...
 		}
 
 		for m := range pc.Messages() {
-			if m.Offset >= hwm {
+			if m.Offset >= hwm-1 {
 				fost.logger.Info().Msgf("Finished processing partition %d.", p)
 				break
 			}
