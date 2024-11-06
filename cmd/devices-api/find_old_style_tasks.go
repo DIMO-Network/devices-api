@@ -100,9 +100,13 @@ func (fost *findOldStyleTasks) Execute(_ context.Context, _ *flag.FlagSet, _ ...
 				}
 			}
 		}
+
+		_ = pc.Close()
 	}
 
 	fost.logger.Info().Msgf("Finished examining %d partitions.", len(ps))
+
+	_ = cons.Close()
 
 	return subcommands.ExitSuccess
 }
