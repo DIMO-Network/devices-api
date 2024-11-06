@@ -72,7 +72,7 @@ func (fost *findOldStyleTasks) Execute(_ context.Context, _ *flag.FlagSet, _ ...
 
 	MsgLoop:
 		for m := range pc.Messages() {
-			if m.Offset >= hwm {
+			if m.Offset >= hwm-1 {
 				fost.logger.Info().Msgf("Finished processing parition %d.", p)
 				continue MsgLoop
 			}
@@ -92,10 +92,10 @@ func (fost *findOldStyleTasks) Execute(_ context.Context, _ *flag.FlagSet, _ ...
 
 			if out.Data.SyntheticDevice == nil {
 				missing[key] = struct{}{}
-				fost.logger.Warn().Str("userDeviceId", out.Data.UserDeviceID).Str("integrationId", out.Data.IntegrationID).Str("taskId", out.Data.TaskID).Str("key", key).Int64("offset", m.Offset).Msg("Found a bad one.")
+				fost.logger.Warn().Str("userDeviceId", out.Data.UserDeviceID).Time("msgTime", m.Timestamp).Str("integrationId", out.Data.IntegrationID).Str("taskId", out.Data.TaskID).Str("key", key).Int64("offset", m.Offset).Msg("Found a bad one.")
 			} else {
 				if _, ok := missing[key]; ok {
-					fost.logger.Info().Str("userDeviceId", out.Data.UserDeviceID).Str("integrationId", out.Data.IntegrationID).Str("taskId", out.Data.TaskID).Str("key", key).Int64("offset", m.Offset).Msg("Bad one was later replaced with a good one.")
+					fost.logger.Info().Str("userDeviceId", out.Data.UserDeviceID).Time("msgTime", m.Timestamp).Str("integrationId", out.Data.IntegrationID).Str("taskId", out.Data.TaskID).Str("key", key).Int64("offset", m.Offset).Msg("Bad one was later replaced with a good one.")
 					delete(missing, key)
 				}
 			}
