@@ -74,7 +74,10 @@ func (fost *findOldStyleTasks) Execute(_ context.Context, _ *flag.FlagSet, _ ...
 				break
 			}
 
+			key := string(m.Key)
+
 			if m.Value == nil {
+				delete(missing, key)
 				continue
 			}
 
@@ -84,8 +87,6 @@ func (fost *findOldStyleTasks) Execute(_ context.Context, _ *flag.FlagSet, _ ...
 			if err != nil {
 				panic(err)
 			}
-
-			key := string(m.Key)
 
 			if out.Data.SyntheticDevice == nil {
 				missing[key] = out
