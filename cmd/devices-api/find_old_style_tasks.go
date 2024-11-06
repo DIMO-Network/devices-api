@@ -2,23 +2,19 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"flag"
 	"strings"
 
 	"github.com/IBM/sarama"
 	"github.com/google/subcommands"
 	"github.com/rs/zerolog"
-	"github.com/volatiletech/null/v8"
 
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/DIMO-Network/shared/sdtask"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/models"
 )
 
 type findOldStyleTasks struct {
@@ -100,20 +96,7 @@ func (fost *findOldStyleTasks) Execute(ctx context.Context, _ *flag.FlagSet, _ .
 		}
 
 		for key, task := range missing {
-			var status string
-			udai, err := models.UserDeviceAPIIntegrations(
-				models.UserDeviceAPIIntegrationWhere.TaskID.EQ(null.StringFrom(task.Data.TaskID)),
-			).One(ctx, fost.pdb.DBS().Reader)
-			if err != nil {
-				if errors.Is(err, sql.ErrNoRows) {
-					status = "NotFound"
-				} else {
-					panic(err)
-				}
-			} else {
-				status = udai.Status
-			}
-			fost.logger.Warn().Str("userDeviceId", task.Data.UserDeviceID).Str("integrationId", task.Data.IntegrationID).Str("taskId", task.Data.TaskID).Str("key", key).Time("lastRefresh", task.Time).Str("dbStatus", status).Msg("Task is missing synthetic data.")
+			fost.logger.Warn().Str("userDeviceId", task.Data.UserDeviceID).Str("integrationId", task.Data.IntegrationID).Str("taskId", task.Data.TaskID).Str("key", key).Time("lastRefresh", task.Time).Msg("Task is missing synthetic data.")
 		}
 
 		_ = pc.Close()
