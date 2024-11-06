@@ -76,11 +76,18 @@ func stopTaskByKey(settings *config.Settings, taskKey string, producer sarama.Sy
 		return err
 	}
 
-	_, _, err = producer.SendMessage(
-		&sarama.ProducerMessage{
-			Topic: settings.TaskStopTopic,
-			Key:   sarama.StringEncoder(taskKey),
-			Value: sarama.ByteEncoder(ttb),
+	err = producer.SendMessages(
+		[]*sarama.ProducerMessage{
+			{
+				Topic: settings.TaskStopTopic,
+				Key:   sarama.StringEncoder(taskKey),
+				Value: sarama.ByteEncoder(ttb),
+			},
+			{
+				Topic: settings.TaskCredentialTopic,
+				Key:   sarama.StringEncoder(taskKey),
+				Value: nil,
+			},
 		},
 	)
 
