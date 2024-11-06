@@ -70,28 +70,28 @@ func (fost *findOldStyleTasks) Execute(_ context.Context, _ *flag.FlagSet, _ ...
 		}
 
 		for m := range pc.Messages() {
-			if m.Offset >= hwm-1 {
-				break
-			}
-
 			key := string(m.Key)
 
 			if m.Value == nil {
 				delete(missing, key)
-				continue
-			}
-
-			var out shared.CloudEvent[sdtask.CredentialData]
-
-			err := json.Unmarshal(m.Value, &out)
-			if err != nil {
-				panic(err)
-			}
-
-			if out.Data.SyntheticDevice == nil {
-				missing[key] = out
 			} else {
-				delete(missing, key)
+
+				var out shared.CloudEvent[sdtask.CredentialData]
+
+				err := json.Unmarshal(m.Value, &out)
+				if err != nil {
+					panic(err)
+				}
+
+				if out.Data.SyntheticDevice == nil {
+					missing[key] = out
+				} else {
+					delete(missing, key)
+				}
+			}
+
+			if m.Offset >= hwm-1 {
+				break
 			}
 		}
 
