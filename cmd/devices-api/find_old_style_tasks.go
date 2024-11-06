@@ -56,10 +56,9 @@ func (fost *findOldStyleTasks) Execute(_ context.Context, _ *flag.FlagSet, _ ...
 		panic(err)
 	}
 
-	missing := make(map[string]struct{})
-
 	for _, p := range ps {
-		p := p
+		missing := make(map[string]shared.CloudEvent[sdtask.CredentialData])
+
 		hwm, err := client.GetOffset(topic, p, sarama.OffsetNewest)
 		if err != nil {
 			panic(err)
@@ -72,7 +71,6 @@ func (fost *findOldStyleTasks) Execute(_ context.Context, _ *flag.FlagSet, _ ...
 
 		for m := range pc.Messages() {
 			if m.Offset >= hwm-1 {
-				fost.logger.Info().Msgf("Finished processing partition %d.", p)
 				break
 			}
 
@@ -90,20 +88,18 @@ func (fost *findOldStyleTasks) Execute(_ context.Context, _ *flag.FlagSet, _ ...
 			key := string(m.Key)
 
 			if out.Data.SyntheticDevice == nil {
-				missing[key] = struct{}{}
-				fost.logger.Warn().Str("userDeviceId", out.Data.UserDeviceID).Time("msgTime", m.Timestamp).Str("integrationId", out.Data.IntegrationID).Str("taskId", out.Data.TaskID).Str("key", key).Int64("offset", m.Offset).Msg("Found a bad one.")
+				missing[key] = out
 			} else {
-				if _, ok := missing[key]; ok {
-					fost.logger.Info().Str("userDeviceId", out.Data.UserDeviceID).Time("msgTime", m.Timestamp).Str("integrationId", out.Data.IntegrationID).Str("taskId", out.Data.TaskID).Str("key", key).Int64("offset", m.Offset).Msg("Bad one was later replaced with a good one.")
-					delete(missing, key)
-				}
+				delete(missing, key)
 			}
+		}
+
+		for key, task := range missing {
+			fost.logger.Warn().Str("userDeviceId", task.Data.UserDeviceID).Str("integrationId", task.Data.IntegrationID).Str("taskId", task.Data.TaskID).Str("key", key).Msg("Task is missing synthetic data.")
 		}
 
 		_ = pc.Close()
 	}
-
-	fost.logger.Info().Msgf("Finished examining %d partitions.", len(ps))
 
 	_ = cons.Close()
 
