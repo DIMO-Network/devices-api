@@ -110,7 +110,7 @@ func main() {
 		subcommands.Register(&populateESDDDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: deps.getElasticSearchService(), ddSvc: deps.getDeviceDefinitionService()}, "populate data")
 		subcommands.Register(&populateESRegionDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: deps.getElasticSearchService(), ddSvc: deps.getDeviceDefinitionService()}, "populate data")
 
-		subcommands.Register(&stopTaskByKeyCmd{logger: logger, settings: settings, container: deps}, "tasks")
+		subcommands.Register(&stopTaskByKeyCmd{logger: logger, settings: settings, container: pdb: pdb, deps}, "tasks")
 
 		subcommands.Register(&syncDeviceTemplatesCmd{logger: logger, settings: settings, pdb: pdb}, "user devices")
 		subcommands.Register(&vinDecodeCompareCmd{logger: logger, settings: settings, pdb: pdb}, "user devices")

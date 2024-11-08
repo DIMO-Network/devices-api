@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"flag"
 	"os"
 	"time"
@@ -10,9 +12,13 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/google/subcommands"
 	"github.com/rs/zerolog"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
+	"github.com/DIMO-Network/shared/db"
 	"github.com/segmentio/ksuid"
 )
 
@@ -21,6 +27,7 @@ type stopTaskByKeyCmd struct {
 	settings  config.Settings
 	producer  sarama.SyncProducer
 	container dependencyContainer
+	pdb       db.Store
 }
 
 func (*stopTaskByKeyCmd) Name() string     { return "stop-task-by-key" }
@@ -45,14 +52,29 @@ func (p *stopTaskByKeyCmd) Execute(_ context.Context, _ *flag.FlagSet, _ ...inte
 	}
 	taskKey := os.Args[2]
 	p.logger.Info().Msgf("Stopping task %s", taskKey)
-	err := stopTaskByKey(&p.settings, taskKey, p.producer)
+	err := p.stopTaskByKey(&p.settings, taskKey, p.producer)
 	if err != nil {
 		p.logger.Fatal().Err(err).Msg("Error stopping task.")
 	}
 	return subcommands.ExitSuccess
 }
 
-func stopTaskByKey(settings *config.Settings, taskKey string, producer sarama.SyncProducer) error {
+func (p *stopTaskByKeyCmd) stopTaskByKey(settings *config.Settings, taskKey string, producer sarama.SyncProducer) error {
+	udai, err := models.UserDeviceAPIIntegrations(
+		models.UserDeviceAPIIntegrationWhere.TaskID.EQ(null.StringFrom(taskKey)),
+	).One(context.TODO(), p.container.dbs().Reader)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+	} else {
+		udai.Status = models.UserDeviceAPIIntegrationStatusAuthenticationFailure
+		_, err := udai.Update(context.TODO(), p.container.dbs().Writer, boil.Whitelist(models.UserDeviceAPIIntegrationColumns.Status, models.UserDeviceAPIIntegrationColumns.UpdatedAt))
+		if err != nil {
+			return err
+		}
+	}
+
 	tt := shared.CloudEvent[any]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/FAKE",
