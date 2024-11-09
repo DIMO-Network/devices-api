@@ -203,6 +203,8 @@ func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, p
 
 	kcf := sarama.NewConfig()
 	kcf.Version = sarama.V3_6_0_0
+	kcf.Producer.Partitioner = kafkautil.NewJVMCompatiblePartitioner
+	kcf.Producer.Return.Successes = true
 
 	kp, err := sarama.NewSyncProducer(strings.Split(settings.KafkaBrokers, ","), kcf)
 	if err != nil {
