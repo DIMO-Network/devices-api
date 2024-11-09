@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
+	"github.com/IBM/sarama"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -26,6 +28,8 @@ type TaskStatusListener struct {
 	db           func() *db.ReaderWriter
 	log          *zerolog.Logger
 	DeviceDefSvc DeviceDefinitionService
+	prod         sarama.SyncProducer
+	settings     config.Settings
 }
 
 type TaskStatusData struct {
@@ -36,8 +40,8 @@ type TaskStatusData struct {
 	Status        string `json:"status"`
 }
 
-func NewTaskStatusListener(db func() *db.ReaderWriter, log *zerolog.Logger, ddSvc DeviceDefinitionService) *TaskStatusListener {
-	return &TaskStatusListener{db: db, log: log, DeviceDefSvc: ddSvc}
+func NewTaskStatusListener(db func() *db.ReaderWriter, log *zerolog.Logger, ddSvc DeviceDefinitionService, prod sarama.SyncProducer, settings *config.Settings) *TaskStatusListener {
+	return &TaskStatusListener{db: db, log: log, DeviceDefSvc: ddSvc, prod: prod, settings: *settings}
 }
 
 func (i *TaskStatusListener) ProcessTaskUpdates(messages <-chan *message.Message) {
@@ -105,6 +109,15 @@ func (i *TaskStatusListener) processSmartcarPollStatusEvent(event *shared.CloudE
 		// Maybe you've restarted the task with new credentials already.
 		// TODO: Delete credentials entry?
 		udai.TaskID = null.String{}
+
+		_, _, err := i.prod.SendMessage(&sarama.ProducerMessage{
+			Topic: i.settings.TaskCredentialTopic,
+			Key:   sarama.StringEncoder(event.Data.TaskID),
+			Value: nil,
+		})
+		if err != nil {
+			i.log.Err(err).Msg("Failed to null out credential message for failed job.")
+		}
 	}
 
 	udai.Status = models.UserDeviceAPIIntegrationStatusAuthenticationFailure
@@ -143,6 +156,15 @@ func (i *TaskStatusListener) processTeslaPollStatusEvent(event *shared.CloudEven
 		// Maybe you've restarted the task with new credentials already.
 		// TODO: Delete credentials entry?
 		udai.TaskID = null.String{}
+
+		_, _, err := i.prod.SendMessage(&sarama.ProducerMessage{
+			Topic: i.settings.TaskCredentialTopic,
+			Key:   sarama.StringEncoder(event.Data.TaskID),
+			Value: nil,
+		})
+		if err != nil {
+			i.log.Err(err).Msg("Failed to null out credential message for failed job.")
+		}
 	}
 	udai.Status = models.UserDeviceAPIIntegrationStatusAuthenticationFailure
 
