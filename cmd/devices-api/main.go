@@ -186,7 +186,7 @@ func startCredentialConsumer(logger zerolog.Logger, settings *config.Settings, p
 
 func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store) {
 	clusterConfig := sarama.NewConfig()
-	clusterConfig.Version = sarama.V2_8_1_0
+	clusterConfig.Version = sarama.V3_6_0_0
 	clusterConfig.Consumer.Offsets.Initial = sarama.OffsetNewest
 
 	cfg := &kafka.Config{
