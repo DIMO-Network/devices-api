@@ -29,7 +29,7 @@ type TaskStatusListener struct {
 	log          *zerolog.Logger
 	DeviceDefSvc DeviceDefinitionService
 	prod         sarama.SyncProducer
-	settings     config.Settings
+	settings     *config.Settings
 }
 
 type TaskStatusData struct {
@@ -41,7 +41,7 @@ type TaskStatusData struct {
 }
 
 func NewTaskStatusListener(db func() *db.ReaderWriter, log *zerolog.Logger, ddSvc DeviceDefinitionService, prod sarama.SyncProducer, settings *config.Settings) *TaskStatusListener {
-	return &TaskStatusListener{db: db, log: log, DeviceDefSvc: ddSvc, prod: prod, settings: *settings}
+	return &TaskStatusListener{db: db, log: log, DeviceDefSvc: ddSvc, prod: prod, settings: settings}
 }
 
 func (i *TaskStatusListener) ProcessTaskUpdates(messages <-chan *message.Message) {
