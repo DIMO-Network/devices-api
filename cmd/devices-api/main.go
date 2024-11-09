@@ -186,7 +186,7 @@ func startCredentialConsumer(logger zerolog.Logger, settings *config.Settings, p
 
 func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store) {
 	clusterConfig := sarama.NewConfig()
-	clusterConfig.Version = sarama.V2_8_1_0
+	clusterConfig.Version = sarama.V3_6_0_0
 	clusterConfig.Consumer.Offsets.Initial = sarama.OffsetNewest
 
 	cfg := &kafka.Config{
@@ -201,9 +201,19 @@ func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, p
 		logger.Fatal().Err(err).Msg("Could not start credential update consumer")
 	}
 
+	kcf := sarama.NewConfig()
+	kcf.Version = sarama.V3_6_0_0
+	kcf.Producer.Partitioner = kafkautil.NewJVMCompatiblePartitioner
+	kcf.Producer.Return.Successes = true
+
+	kp, err := sarama.NewSyncProducer(strings.Split(settings.KafkaBrokers, ","), kcf)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Could not create Kafka producer.")
+	}
+
 	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, settings)
 
-	taskStatusService := services.NewTaskStatusListener(pdb.DBS, &logger, ddSvc)
+	taskStatusService := services.NewTaskStatusListener(pdb.DBS, &logger, ddSvc, kp, settings)
 	consumer.Start(context.Background(), taskStatusService.ProcessTaskUpdates)
 
 	logger.Info().Msg("Task status consumer started")

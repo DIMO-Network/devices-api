@@ -34,7 +34,7 @@ func (*findOldStyleTasks) SetFlags(f *flag.FlagSet) {
 
 }
 
-func (fost *findOldStyleTasks) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
+func (fost *findOldStyleTasks) Execute(_ context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 
 	kc := sarama.NewConfig()
 	kc.Version = sarama.V3_6_0_0
