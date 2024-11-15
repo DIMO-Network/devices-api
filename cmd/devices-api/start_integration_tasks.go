@@ -76,7 +76,6 @@ func (p *startIntegrationTask) startIntegrationTaskGo() error {
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(intID),
 		models.UserDeviceAPIIntegrationWhere.Status.EQ(models.UserDeviceAPIIntegrationStatusActive),
 		models.UserDeviceAPIIntegrationWhere.TaskID.IsNotNull(),
-		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.UserDevice, models.UserDeviceRels.VehicleTokenSyntheticDevice)),
 	).All(ctx, p.container.dbs().Reader)
 	if err != nil {
 		return err
@@ -86,8 +85,15 @@ func (p *startIntegrationTask) startIntegrationTaskGo() error {
 	// stuff from smartcar_task_service.go and so on.
 
 	for _, udai := range udais {
-		ud := udai.R.UserDevice
-		if ud.TokenID.IsZero() || ud.R.VehicleTokenSyntheticDevice == nil {
+		ud, err := models.UserDevices(
+			models.UserDeviceWhere.ID.EQ(udai.UserDeviceID),
+			qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
+		).One(ctx, p.container.dbs().Reader)
+		if err != nil {
+			return err
+		}
+
+		if sd := ud.R.VehicleTokenSyntheticDevice; ud.TokenID.IsZero() || sd == nil || sd.TokenID.IsZero() {
 			continue
 		}
 
