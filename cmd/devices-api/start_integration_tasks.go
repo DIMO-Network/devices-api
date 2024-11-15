@@ -61,11 +61,11 @@ func (p *startIntegrationTask) Execute(_ context.Context, _ *flag.FlagSet, _ ...
 
 func (p *startIntegrationTask) startIntegrationTaskGo() error {
 	ctx := context.Background()
-	if len(os.Args[1:]) != 2 {
+	if len(os.Args[2:]) != 1 {
 		p.logger.Fatal().Msg("Expected an argument, the integration name.")
 	}
 
-	intName := os.Args[1]
+	intName := os.Args[2]
 
 	intID, ok := intMap[intName]
 	if !ok {
