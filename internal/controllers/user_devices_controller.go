@@ -452,12 +452,11 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 					tok, _ := ud.TokenID.Uint64()
 					toCheck[checkKey{uint32(tok), udai.IntegrationID}] = udai
 				}
-				break
 			}
 		}
 
 		if len(toCheck) != 0 {
-			udc.log.Info().Str("userId", userID).Msgf("Checking %d inactive connections.", len(toCheck))
+			udc.log.Debug().Str("userId", userID).Msgf("Checking %d inactive connections.", len(toCheck))
 			var innerList []qm.QueryMod
 
 			for key, udai := range toCheck {
@@ -485,7 +484,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 
 			query, args := queries.BuildQuery(q)
 
-			udc.log.Info().Str("userId", userID).Msgf("Querying for inactives. Query %q, args %q", query, args)
+			udc.log.Debug().Str("userId", userID).Msgf("Querying for inactives. Query %q, args %q", query, args)
 
 			rows, err := udc.clickHouseConn.Query(c.Context(), query, args...)
 			if err != nil {
