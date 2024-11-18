@@ -447,7 +447,6 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 			}
 			for _, udai := range ud.R.UserDeviceAPIIntegrations {
 				// TODO(elffjs): Really no point in doing this for synthetics if the job hasn't started.
-				// Should check for aftermarket or synthetic pairing, ideally.
 				if udai.Status == models.UserDeviceAPIIntegrationStatusPending || udai.Status == models.UserDeviceAPIIntegrationStatusPendingFirstData {
 					tok, _ := ud.TokenID.Uint64()
 					toCheck[checkKey{uint32(tok), udai.IntegrationID}] = udai
