@@ -1229,6 +1229,13 @@ func (udc *UserDevicesController) UpdateCountryCode(c *fiber.Ctx) error {
 		// Return status 400 and error message.
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusBadRequest)
 	}
+	// validate country_code
+	if countryCode.CountryCode == nil {
+		return fiber.NewError(fiber.StatusBadRequest, "CountryCode is required")
+	}
+	if constants.FindCountry(*countryCode.CountryCode) == nil {
+		return fiber.NewError(fiber.StatusBadRequest, "CountryCode does not exist: "+*countryCode.CountryCode)
+	}
 
 	userDevice.CountryCode = null.StringFromPtr(countryCode.CountryCode)
 	_, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Infer())
