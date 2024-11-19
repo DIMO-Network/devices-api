@@ -19,7 +19,7 @@ import (
 )
 
 type OpenAI interface {
-	GetErrorCodesDescription(make, model string, errorCodes []string) ([]ErrorCodesResponse, error)
+	GetErrorCodesDescription(vMake, model string, errorCodes []string) ([]ErrorCodesResponse, error)
 }
 
 type openAI struct {
@@ -127,7 +127,7 @@ func (o *openAI) askChatGPT(body io.Reader) (*ChatGPTResponse, error) {
 	return cResp, nil
 }
 
-func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []string) ([]ErrorCodesResponse, error) {
+func (o *openAI) GetErrorCodesDescription(vMake, model string, errorCodes []string) ([]ErrorCodesResponse, error) {
 	codes := strings.Join(errorCodes, ", ")
 
 	req := fmt.Sprintf(`{
@@ -165,7 +165,7 @@ func (o *openAI) GetErrorCodesDescription(make, model string, errorCodes []strin
 			}
 		]
 	}
-	`, make, model, codes)
+	`, vMake, model, codes)
 
 	r, err := o.askChatGPT(strings.NewReader(req))
 	if err != nil {
