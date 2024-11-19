@@ -1986,12 +1986,12 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	}
 
 	if apiVersion == constants.TeslaAPIV2 { // If version is 2, we are using fleet api which has token stored in cache
-		user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: ud.UserID})
+		userAddr, hasAddr, err := udc.userAddrGetter.GetEthAddr(c)
 		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "could not fetch user information: %w", err.Error())
+			return fiber.NewError(fiber.StatusInternalServerError, "Couldn't retrieve user Ethereum address.")
 		}
-		if user.EthereumAddress == nil {
-			return fiber.NewError(fiber.StatusBadRequest, "missing wallet details for user")
+		if !hasAddr {
+			return fiber.NewError(fiber.StatusBadRequest, "No Ethereum address for user.")
 		}
 
 		// Yes, yes.
@@ -2000,7 +2000,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 			Cipher: udc.cipher,
 		}
 
-		cred, err := store.Retrieve(c.Context(), common.HexToAddress(*user.EthereumAddress))
+		cred, err := store.Retrieve(c.Context(), userAddr)
 		if err != nil {
 			if errors.Is(err, tmpcred.ErrNotFound) {
 				return fiber.NewError(fiber.StatusBadRequest, "No credentials found for user.")
