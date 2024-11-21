@@ -548,6 +548,10 @@ func (udc *UserDevicesController) UpdateVINV2(c *fiber.Ctx) error {
 
 	userDevice.VinIdentifier = null.StringFrom(req.VIN)
 	if len(req.CountryCode) == 3 {
+		// validate country_code
+		if constants.FindCountry(req.CountryCode) == nil {
+			return fiber.NewError(fiber.StatusBadRequest, "CountryCode does not exist: "+req.CountryCode)
+		}
 		userDevice.CountryCode = null.StringFrom(req.CountryCode)
 	}
 	if req.CANProtocol != "" {

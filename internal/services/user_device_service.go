@@ -87,6 +87,10 @@ func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID,
 	defer tx.Rollback() //nolint
 
 	userDeviceID := ksuid.New().String()
+	// validate country_code
+	if constants.FindCountry(countryCode) == nil {
+		return nil, nil, fiber.NewError(fiber.StatusBadRequest, "CountryCode does not exist: "+countryCode)
+	}
 	// register device for the user
 	ud := models.UserDevice{
 		ID:                 userDeviceID,
