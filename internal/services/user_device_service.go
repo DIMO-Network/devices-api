@@ -99,7 +99,7 @@ func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID,
 		CountryCode:        null.StringFrom(countryCode),
 		VinIdentifier:      null.StringFromPtr(vin),
 		VinConfirmed:       vinConfirmed,
-		DefinitionID:       dd.NameSlug,
+		DefinitionID:       dd.Id,
 	}
 	// always instantiate metadata with powerTrain and CANProtocol
 	udMD := &UserDeviceMetadata{
@@ -135,9 +135,9 @@ func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID,
 			Device: UserDeviceEventDevice{
 				ID:           userDeviceID,
 				Make:         dd.Make.Name,
-				Model:        dd.Type.Model,
-				Year:         int(dd.Type.Year), // Odd.
-				DefinitionID: dd.NameSlug,
+				Model:        dd.Model,
+				Year:         int(dd.Year), // Odd.
+				DefinitionID: dd.Id,
 			},
 		},
 	})

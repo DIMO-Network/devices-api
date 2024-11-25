@@ -155,9 +155,9 @@ func (i *Integration) Pair(ctx context.Context, amTokenID, vehicleTokenID *big.I
 				Device: services.UserDeviceEventDevice{
 					ID:                 ud.ID,
 					DeviceDefinitionID: def.DeviceDefinitionId,
-					Make:               def.Type.Make,
-					Model:              def.Type.Model,
-					Year:               int(def.Type.Year),
+					Make:               def.Make.Name,
+					Model:              def.Model,
+					Year:               int(def.Year),
 					VIN:                ud.VinIdentifier.String,
 				},
 				Integration: services.UserDeviceEventIntegration{
@@ -181,12 +181,12 @@ func (i *Integration) Pair(ctx context.Context, amTokenID, vehicleTokenID *big.I
 		IntegrationID:      integ.Id,
 		UserDeviceID:       ud.ID,
 		DeviceDefinitionID: ud.DeviceDefinitionID,
-		Make:               def.Type.Make,
-		Model:              def.Type.Model,
-		Year:               int(def.Type.Year),
+		Make:               def.Make.Name,
+		Model:              def.Model,
+		Year:               int(def.Year),
 		Region:             region,
-		MakeSlug:           def.Type.MakeSlug,
-		ModelSlug:          def.Type.ModelSlug,
+		MakeSlug:           def.Make.NameSlug,
+		ModelSlug:          shared.SlugString(def.Model),
 	})
 
 	return nil
@@ -259,8 +259,8 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 			Device: services.UserDeviceEventDevice{
 				ID:    ud.ID,
 				Make:  def.Make.Name,
-				Model: def.Type.Model,
-				Year:  int(def.Type.Year),
+				Model: def.Model,
+				Year:  int(def.Year),
 			},
 			Integration: services.UserDeviceEventIntegration{
 				ID:     integ.Id,

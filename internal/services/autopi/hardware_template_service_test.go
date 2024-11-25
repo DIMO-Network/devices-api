@@ -88,7 +88,7 @@ func (s *HardwareTemplateServiceTestSuite) Test_GetTemplateID() {
 	ddNoTIDs := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)[0]
 	ddWithDeviceStyleInUD := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)[0]
 
-	ddWithTID.HardwareTemplateId = tIDDeviceDef
+	ddWithTID.HardwareTemplateId = tIDDeviceDef //nolint
 	ddWithDeviceStyleTID.DeviceStyles = append(ddWithDeviceStyleTID.DeviceStyles, &ddgrpc.DeviceStyle{
 		Id:                 ksuid.New().String(),
 		HardwareTemplateId: tIDDeviceStyle,
@@ -97,7 +97,7 @@ func (s *HardwareTemplateServiceTestSuite) Test_GetTemplateID() {
 		Id:                 ksuid.New().String(),
 		HardwareTemplateId: tIDDeviceStyleFromUD,
 	})
-	ddWithMakeTID.Make.HardwareTemplateId = tIDDeviceMake
+	ddWithMakeTID.Make.HardwareTemplateId = tIDDeviceMake //nolint
 
 	pt := services.BEV
 	udmdBEVPT := services.UserDeviceMetadata{

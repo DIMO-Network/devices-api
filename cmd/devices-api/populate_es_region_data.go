@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/DIMO-Network/shared"
+
 	"github.com/google/subcommands"
 
 	"github.com/DIMO-Network/shared/db"
@@ -91,8 +93,8 @@ func populateESRegionData(ctx context.Context, settings *config.Settings, e es.E
 			dd := services.DeviceDefinitionDTO{
 				DeviceDefinitionID: ud.DeviceDefinitionID,
 				UserDeviceID:       ud.ID,
-				MakeSlug:           d.Type.MakeSlug,
-				ModelSlug:          d.Type.ModelSlug,
+				MakeSlug:           d.Make.NameSlug,
+				ModelSlug:          shared.SlugString(d.Model),
 				Region:             c.Region,
 			}
 

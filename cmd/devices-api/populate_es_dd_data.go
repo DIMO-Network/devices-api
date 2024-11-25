@@ -103,8 +103,8 @@ func populateESDDData(ctx context.Context, settings *config.Settings, e es.Elast
 				DeviceDefinitionID: ddID,
 				UserDeviceID:       apiInt.R.UserDevice.ID,
 				Make:               makeRel.Name,
-				Model:              dd.Type.Model,
-				Year:               int(dd.Type.Year),
+				Model:              dd.Model,
+				Year:               int(dd.Year),
 			}
 			err = e.UpdateAutopiDevicesByQuery(dd, settings.ElasticDeviceStatusIndex)
 			if err != nil {

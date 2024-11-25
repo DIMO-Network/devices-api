@@ -163,7 +163,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	}
 
 	appmetrics.OpenAITotalCallsOps.Inc() // record new total call to chatgpt
-	chtResp, err := udc.openAI.GetErrorCodesDescription(dd.Type.Make, dd.Type.Model, errorCodesCleaned)
+	chtResp, err := udc.openAI.GetErrorCodesDescription(dd.Make.Name, dd.Model, errorCodesCleaned)
 	if err != nil {
 		appmetrics.OpenAITotalFailedCallsOps.Inc()
 		logger.Err(err).Interface("requestBody", req).Msg("Error occurred fetching description for error codes")

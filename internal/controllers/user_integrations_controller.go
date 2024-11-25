@@ -122,7 +122,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 							return err
 						}
 
-						if (dd.Type.Model == "Model S" || dd.Type.Model == "Model X") && dd.Type.Year < 2021 {
+						if (dd.Model == "Model S" || dd.Model == "Model X") && dd.Year < 2021 {
 							vks = Incapable
 						} else {
 							vks = Unpaired
@@ -255,10 +255,10 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 			Device: services.UserDeviceEventDevice{
 				ID:           userDeviceID,
 				Make:         dd.Make.Name,
-				Model:        dd.Type.Model,
-				Year:         int(dd.Type.Year),
+				Model:        dd.Model,
+				Year:         int(dd.Year),
 				VIN:          vin,
-				DefinitionID: dd.NameSlug,
+				DefinitionID: dd.Id,
 			},
 			Integration: services.UserDeviceEventIntegration{
 				ID:     integ.Id,
@@ -1626,7 +1626,7 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 
 	// filter out the desired integration from the compatible ones
 	var deviceInteg *ddgrpc.Integration
-	for _, integration := range dd.DeviceIntegrations {
+	for _, integration := range dd.DeviceIntegrations { //nolint
 		if integration.Integration.Id == integrationID {
 			deviceInteg = &ddgrpc.Integration{
 				Id:     integration.Integration.Id,
@@ -1726,11 +1726,11 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 				Device: services.UserDeviceEventDevice{
 					ID:                 userDeviceID,
 					DeviceDefinitionID: dd.DeviceDefinitionId,
-					Make:               dd.Type.Make,
-					Model:              dd.Type.Model,
-					Year:               int(dd.Type.Year),
+					Make:               dd.Make.Name,
+					Model:              dd.Model,
+					Year:               int(dd.Year),
 					VIN:                ud.VinIdentifier.String,
-					DefinitionID:       dd.NameSlug,
+					DefinitionID:       dd.Id,
 				},
 				Integration: services.UserDeviceEventIntegration{
 					ID:     integ.Id,
@@ -1756,12 +1756,12 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 		IntegrationID:      integ.Id,
 		UserDeviceID:       ud.ID,
 		DeviceDefinitionID: ud.DeviceDefinitionID,
-		Make:               dd.Type.Make,
-		Model:              dd.Type.Model,
-		Year:               int(dd.Type.Year),
+		Make:               dd.Make.Name,
+		Model:              dd.Model,
+		Year:               int(dd.Year),
 		Region:             region,
-		MakeSlug:           dd.Type.MakeSlug,
-		ModelSlug:          dd.Type.ModelSlug,
+		MakeSlug:           dd.Make.NameSlug,
+		ModelSlug:          shared.SlugString(dd.Model),
 	})
 	if err != nil {
 		logger.Err(err).Msg("Failed to set values in device definition tables.")
@@ -2163,7 +2163,7 @@ func fixTeslaDeviceDefinition(ctx context.Context, logger *zerolog.Logger, ddSvc
 			"Device moving to new device definition from %s to %s", ud.DeviceDefinitionID, mmy.DeviceDefinitionId,
 		)
 		ud.DeviceDefinitionID = mmy.DeviceDefinitionId
-		ud.DefinitionID = mmy.NameSlug
+		ud.DefinitionID = mmy.Id
 		_, err = ud.Update(ctx, exec, boil.Infer())
 		if err != nil {
 			return err

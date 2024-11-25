@@ -58,13 +58,13 @@ func (a *hardwareTemplateService) GetTemplateID(ud *models.UserDevice, dd *ddgrp
 	}
 
 	// get template from Device Definition
-	if isTemplateIDValid(dd.HardwareTemplateId) {
-		return dd.HardwareTemplateId, nil
+	if isTemplateIDValid(dd.HardwareTemplateId) { //nolint
+		return dd.HardwareTemplateId, nil //nolint
 	}
 
 	// get template from Make
-	if isTemplateIDValid(dd.Make.HardwareTemplateId) {
-		return dd.Make.HardwareTemplateId, nil
+	if isTemplateIDValid(dd.Make.HardwareTemplateId) { //nolint
+		return dd.Make.HardwareTemplateId, nil //nolint
 	}
 
 	// get template from powertrain based on map in integration metadata

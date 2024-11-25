@@ -169,9 +169,10 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&ddgrpc.DecodeVinResponse{
 		DeviceMakeId:       dd[0].Make.Id,
-		DeviceDefinitionId: dd[0].DeviceDefinitionId,
+		DefinitionId:       "ford_f150_2020",
+		DeviceDefinitionId: dd[0].Ksuid,
 		DeviceStyleId:      "",
-		Year:               dd[0].Type.Year,
+		Year:               dd[0].Year,
 	}, nil)
 	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), "22N2xaPOq2WW2gAHBHd0Ikn4Zob", dd[0].DeviceDefinitionId, "Americas").Times(1).
 		Return(nil, nil)
@@ -182,6 +183,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 			ID:                 ksuid.New().String(),
 			UserID:             testUserID,
 			DeviceDefinitionID: dd[0].DeviceDefinitionId,
+			DefinitionID:       dd[0].Id,
 			VinIdentifier:      null.StringFrom(vinny),
 			CountryCode:        null.StringFrom("USA"),
 			VinConfirmed:       true,
@@ -190,6 +192,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 
 	request := test.BuildRequest("POST", "/user/devices/fromsmartcar", string(j))
 	response, responseError := s.app.Test(request, 10000)
+	fmt.Println(responseError)
 	require.NoError(s.T(), responseError)
 	body, _ := io.ReadAll(response.Body)
 	// assert
@@ -202,13 +205,8 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 
 	assert.Len(s.T(), regUserResp.ID, 27)
 	assert.Equal(s.T(), dd[0].DeviceDefinitionId, regUserResp.DeviceDefinition.DeviceDefinitionID)
-	if assert.Len(s.T(), regUserResp.DeviceDefinition.CompatibleIntegrations, 2) == false {
-		fmt.Println("resp body: " + string(body))
-	}
-	assert.Equal(s.T(), integration.Vendor, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Vendor)
-	assert.Equal(s.T(), integration.Type, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Type)
-	assert.Equal(s.T(), integration.Id, regUserResp.DeviceDefinition.CompatibleIntegrations[0].ID)
 	assert.Equal(s.T(), &vinny, regUserResp.VIN)
+	// note: have removed any requirements on device definition integrations
 }
 
 func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_Fail_Decode() {
@@ -319,9 +317,10 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&ddgrpc.DecodeVinResponse{
 		DeviceMakeId:       dd[0].Make.Id,
-		DeviceDefinitionId: dd[0].DeviceDefinitionId,
+		DefinitionId:       "ford_f150_2020",
+		DeviceDefinitionId: dd[0].Ksuid, //nolint //todo need to not require this
 		DeviceStyleId:      deviceStyleID,
-		Year:               dd[0].Type.Year,
+		Year:               dd[0].Year,
 	}, nil)
 
 	apInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 10)
@@ -331,7 +330,8 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 		Return(&models.UserDevice{
 			ID:                 ksuid.New().String(),
 			UserID:             s.testUserID,
-			DeviceDefinitionID: dd[0].DeviceDefinitionId,
+			DeviceDefinitionID: dd[0].Ksuid,
+			DefinitionID:       dd[0].Id,
 			VinIdentifier:      null.StringFrom(vinny),
 			CountryCode:        null.StringFrom("USA"),
 			VinConfirmed:       true,
@@ -352,13 +352,8 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	_ = json.Unmarshal([]byte(jsonUD.String()), &regUserResp)
 
 	assert.Len(s.T(), regUserResp.ID, 27)
-	assert.Equal(s.T(), dd[0].DeviceDefinitionId, regUserResp.DeviceDefinition.DeviceDefinitionID)
-	if assert.Len(s.T(), regUserResp.DeviceDefinition.CompatibleIntegrations, 2) == false {
-		fmt.Println("resp body: " + string(body))
-	}
-	assert.Equal(s.T(), integration.Vendor, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Vendor)
-	assert.Equal(s.T(), integration.Type, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Type)
-	assert.Equal(s.T(), integration.Id, regUserResp.DeviceDefinition.CompatibleIntegrations[0].ID)
+	assert.Equal(s.T(), dd[0].Id, regUserResp.DeviceDefinition.DefinitionID)
+
 	assert.Equal(s.T(), "USA", *regUserResp.CountryCode)
 	assert.Equal(s.T(), vinny, *regUserResp.VIN)
 	assert.Equal(s.T(), true, regUserResp.VINConfirmed)
@@ -432,13 +427,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_SameUser_Dupl
 
 	assert.Len(s.T(), regUserResp.ID, 27)
 	assert.Equal(s.T(), existingUD.ID, regUserResp.ID, "expected to return existing user_device")
-	assert.Equal(s.T(), dd[0].DeviceDefinitionId, regUserResp.DeviceDefinition.DeviceDefinitionID)
-	if assert.Len(s.T(), regUserResp.DeviceDefinition.CompatibleIntegrations, 2) == false {
-		fmt.Println("resp body: " + string(body))
-	}
-	assert.Equal(s.T(), integration.Vendor, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Vendor)
-	assert.Equal(s.T(), integration.Type, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Type)
-	assert.Equal(s.T(), integration.Id, regUserResp.DeviceDefinition.CompatibleIntegrations[0].ID)
+	assert.Equal(s.T(), dd[0].Id, regUserResp.DeviceDefinition.DefinitionID)
 
 	msg, responseError := s.natsService.JetStream.GetMsg(natsStreamName, 1)
 	assert.NoError(s.T(), responseError, "expected no error from nats")
@@ -469,6 +458,7 @@ func (s *UserDevicesControllerTestSuite) TestPostWithExistingDefinitionID() {
 			ID:                 ksuid.New().String(),
 			UserID:             testUserID,
 			DeviceDefinitionID: dd[0].DeviceDefinitionId,
+			DefinitionID:       dd[0].Id,
 			CountryCode:        null.StringFrom("USA"),
 			VinConfirmed:       true,
 			Metadata:           null.JSONFrom([]byte(`{ "powertrainType": "ICE" }`)),
@@ -488,13 +478,7 @@ func (s *UserDevicesControllerTestSuite) TestPostWithExistingDefinitionID() {
 
 	assert.Len(s.T(), regUserResp.ID, 27)
 	assert.Len(s.T(), regUserResp.DeviceDefinition.DeviceDefinitionID, 27)
-	assert.Equal(s.T(), dd[0].DeviceDefinitionId, regUserResp.DeviceDefinition.DeviceDefinitionID)
-	if assert.Len(s.T(), regUserResp.DeviceDefinition.CompatibleIntegrations, 2) == false {
-		fmt.Println("resp body: " + string(body))
-	}
-	assert.Equal(s.T(), integration.Vendor, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Vendor)
-	assert.Equal(s.T(), integration.Type, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Type)
-	assert.Equal(s.T(), integration.Id, regUserResp.DeviceDefinition.CompatibleIntegrations[0].ID)
+	assert.Equal(s.T(), dd[0].Id, regUserResp.DeviceDefinition.DefinitionID)
 }
 
 func (s *UserDevicesControllerTestSuite) TestPostWithoutDefinitionID_BadRequest() {

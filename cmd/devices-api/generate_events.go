@@ -102,9 +102,9 @@ func generateEvents(logger zerolog.Logger, pdb db.Store, eventService services.E
 					Device: services.UserDeviceEventDevice{
 						ID:           device.ID,
 						Make:         dd.Make.Name,
-						Model:        dd.Type.Model,
-						Year:         int(dd.Type.Year),
-						DefinitionID: dd.NameSlug,
+						Model:        dd.Model,
+						Year:         int(dd.Year),
+						DefinitionID: dd.Id,
 					},
 				},
 			},
@@ -162,10 +162,10 @@ func generateEvents(logger zerolog.Logger, pdb db.Store, eventService services.E
 					Device: services.UserDeviceEventDevice{
 						ID:           scInteg.UserDeviceID,
 						Make:         dd.Make.Name,
-						Model:        dd.Type.Model,
-						Year:         int(dd.Type.Year),
+						Model:        dd.Model,
+						Year:         int(dd.Year),
 						VIN:          scInteg.R.UserDevice.VinIdentifier.String,
-						DefinitionID: dd.NameSlug,
+						DefinitionID: dd.Id,
 					},
 					Integration: services.UserDeviceEventIntegration{
 						ID:     integration.Id,

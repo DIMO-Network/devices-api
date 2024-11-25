@@ -657,7 +657,7 @@ func BuildCallName(callName *string, dd *ddgrpc.GetDeviceDefinitionItemResponse)
 		}
 		return uniquer
 	}
-	mmy := fmt.Sprintf("%d %s %s", dd.Type.Year, dd.Type.MakeSlug, dd.Type.ModelSlug)
+	mmy := fmt.Sprintf("%d %s %s", dd.Year, dd.Make.NameSlug, shared.SlugString(dd.Model))
 	if callName == nil {
 		return uniquer + ":" + mmy
 	}

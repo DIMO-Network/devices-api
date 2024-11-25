@@ -6,7 +6,7 @@ toolchain go1.23.2
 
 require (
 	github.com/DIMO-Network/device-data-api v0.9.10
-	github.com/DIMO-Network/device-definitions-api v1.2.51
+	github.com/DIMO-Network/device-definitions-api v1.2.65
 	github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c
 	github.com/DIMO-Network/meta-transaction-processor v0.3.2
 	github.com/DIMO-Network/shared v0.12.5
@@ -50,7 +50,7 @@ require (
 	go.uber.org/automaxprocs v1.5.3
 	go.uber.org/mock v0.4.0
 	golang.org/x/mod v0.21.0
-	golang.org/x/oauth2 v0.21.0
+	golang.org/x/oauth2 v0.23.0
 )
 
 require github.com/DIMO-Network/vehicle-signal-decoding v0.10.17
@@ -123,17 +123,17 @@ require (
 	github.com/tklauser/go-sysconf v0.3.14 // indirect
 	github.com/tklauser/numcpus v0.8.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.53.0 // indirect
-	go.opentelemetry.io/otel v1.28.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.54.0 // indirect
+	go.opentelemetry.io/otel v1.29.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.19.0 // indirect
-	go.opentelemetry.io/otel/metric v1.28.0 // indirect
-	go.opentelemetry.io/otel/trace v1.28.0 // indirect
+	go.opentelemetry.io/otel/metric v1.29.0 // indirect
+	go.opentelemetry.io/otel/trace v1.29.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.0.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240604185151-ef581f913117 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240822170219-fc7c04adadcd // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240814211410-ddb44dafa142 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20241021214115-324edc3d5d38 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
@@ -193,8 +193,8 @@ require (
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	golang.org/x/crypto v0.28.0 // indirect
-	google.golang.org/grpc v1.66.0
-	google.golang.org/protobuf v1.34.2
+	google.golang.org/grpc v1.67.1
+	google.golang.org/protobuf v1.35.1
 )
 
 require (

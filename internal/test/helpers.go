@@ -463,6 +463,7 @@ func BuildIntegrationGRPC(integrationVendor string, autoPiDefaultTemplateID int,
 // BuildDeviceDefinitionGRPC generates an array with single device definition, adds integration to response if integration passed in not nil. uses Americas region
 func BuildDeviceDefinitionGRPC(deviceDefinitionID string, mk string, model string, year int, integration *ddgrpc.Integration) []*ddgrpc.GetDeviceDefinitionItemResponse {
 	// todo can we get rid of deviceDefinitionID?
+	// can we get rid of integrations?
 	integrationsToAdd := make([]*ddgrpc.DeviceIntegration, 2)
 	if integration != nil {
 		integrationsToAdd[0] = &ddgrpc.DeviceIntegration{
@@ -477,35 +478,20 @@ func BuildDeviceDefinitionGRPC(deviceDefinitionID string, mk string, model strin
 
 	rp := &ddgrpc.GetDeviceDefinitionItemResponse{
 		DeviceDefinitionId: deviceDefinitionID,
-		NameSlug:           shared.SlugString(mk + " " + model + " " + strconv.Itoa(year)),
+		Id:                 shared.SlugString(mk) + "_" + shared.SlugString(model) + "_" + strconv.Itoa(year),
 		Name:               "Name",
+		Ksuid:              deviceDefinitionID,
 		Make: &ddgrpc.DeviceMake{
-			Id:   ksuid.New().String(),
-			Name: mk,
+			Id:       ksuid.New().String(),
+			Name:     mk,
+			NameSlug: shared.SlugString(mk),
 		},
-		Type: &ddgrpc.DeviceType{
-			Type:  "Vehicle",
-			Make:  mk,
-			Model: model,
-			Year:  int32(year),
-		},
-		VehicleData: &ddgrpc.VehicleInfo{
-			MPG:                 1,
-			MPGHighway:          1,
-			MPGCity:             1,
-			FuelTankCapacityGal: 1,
-			FuelType:            "gas",
-			Base_MSRP:           1,
-			DrivenWheels:        "1",
-			NumberOfDoors:       1,
-			EPAClass:            "class",
-			VehicleType:         "Vehicle",
-		},
-		//Metadata: dd.Metadata,
+		Model:    model,
+		Year:     int32(year),
 		Verified: true,
 	}
 	if integration != nil {
-		rp.DeviceIntegrations = integrationsToAdd
+		rp.DeviceIntegrations = integrationsToAdd //nolint
 	}
 
 	rp.DeviceAttributes = append(rp.DeviceAttributes, &ddgrpc.DeviceTypeAttribute{
