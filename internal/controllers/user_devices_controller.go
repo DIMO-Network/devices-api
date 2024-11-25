@@ -1334,9 +1334,9 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 			Device: services.UserDeviceEventDevice{
 				ID:           udi,
 				Make:         dd.Make.Name,
-				Model:        dd.Type.Model,
-				Year:         int(dd.Type.Year),
-				DefinitionID: dd.NameSlug,
+				Model:        dd.Model,
+				Year:         int(dd.Year),
+				DefinitionID: dd.Id,
 			},
 		},
 	}); err != nil {
@@ -1582,7 +1582,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return fiber.NewError(fiber.StatusFailedDependency, "Kia vehicles connected via smartcar cannot be manually minted for now.")
 			}
 
-			if dd.Make.Name == "Peugeot" && dd.Type.Model == "2008" && dd.Type.Year == 2024 {
+			if dd.Make.Name == "Peugeot" && dd.Model == "2008" && dd.Year == 2024 {
 				return fiber.NewError(fiber.StatusBadRequest, "Certain Peugeot vehicles cannot be connected through Smartcar at this time.")
 			}
 
@@ -1954,7 +1954,7 @@ func (udc *UserDevicesController) checkVehicleMint(c *fiber.Ctx, userDevice *mod
 		ManufacturerNode: makeTokenID,
 		Owner:            userAddr,
 		Attributes:       []string{"Make", "Model", "Year"},
-		Infos:            []string{dd.Make.Name, dd.Type.Model, strconv.Itoa(int(dd.Type.Year))},
+		Infos:            []string{dd.Make.Name, dd.Model, strconv.Itoa(int(dd.Year))},
 	}
 
 	if userDevice.IpfsImageCid.Valid {
