@@ -1726,7 +1726,7 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 				Device: services.UserDeviceEventDevice{
 					ID:                 userDeviceID,
 					DeviceDefinitionID: dd.DeviceDefinitionId,
-					Make:               dd.Make.NameSlug,
+					Make:               dd.Make.Name,
 					Model:              dd.Model,
 					Year:               int(dd.Year),
 					VIN:                ud.VinIdentifier.String,

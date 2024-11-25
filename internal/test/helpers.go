@@ -482,8 +482,9 @@ func BuildDeviceDefinitionGRPC(deviceDefinitionID string, mk string, model strin
 		Name:               "Name",
 		Ksuid:              deviceDefinitionID,
 		Make: &ddgrpc.DeviceMake{
-			Id:   ksuid.New().String(),
-			Name: mk,
+			Id:       ksuid.New().String(),
+			Name:     mk,
+			NameSlug: shared.SlugString(mk),
 		},
 		Model:    model,
 		Year:     int32(year),

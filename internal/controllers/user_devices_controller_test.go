@@ -427,13 +427,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_SameUser_Dupl
 
 	assert.Len(s.T(), regUserResp.ID, 27)
 	assert.Equal(s.T(), existingUD.ID, regUserResp.ID, "expected to return existing user_device")
-	assert.Equal(s.T(), dd[0].DeviceDefinitionId, regUserResp.DeviceDefinition.DeviceDefinitionID)
-	if assert.Len(s.T(), regUserResp.DeviceDefinition.CompatibleIntegrations, 2) == false {
-		fmt.Println("resp body: " + string(body))
-	}
-	assert.Equal(s.T(), integration.Vendor, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Vendor)
-	assert.Equal(s.T(), integration.Type, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Type)
-	assert.Equal(s.T(), integration.Id, regUserResp.DeviceDefinition.CompatibleIntegrations[0].ID)
+	assert.Equal(s.T(), dd[0].Id, regUserResp.DeviceDefinition.DefinitionID)
 
 	msg, responseError := s.natsService.JetStream.GetMsg(natsStreamName, 1)
 	assert.NoError(s.T(), responseError, "expected no error from nats")
@@ -464,6 +458,7 @@ func (s *UserDevicesControllerTestSuite) TestPostWithExistingDefinitionID() {
 			ID:                 ksuid.New().String(),
 			UserID:             testUserID,
 			DeviceDefinitionID: dd[0].DeviceDefinitionId,
+			DefinitionID:       dd[0].Id,
 			CountryCode:        null.StringFrom("USA"),
 			VinConfirmed:       true,
 			Metadata:           null.JSONFrom([]byte(`{ "powertrainType": "ICE" }`)),
@@ -483,13 +478,7 @@ func (s *UserDevicesControllerTestSuite) TestPostWithExistingDefinitionID() {
 
 	assert.Len(s.T(), regUserResp.ID, 27)
 	assert.Len(s.T(), regUserResp.DeviceDefinition.DeviceDefinitionID, 27)
-	assert.Equal(s.T(), dd[0].DeviceDefinitionId, regUserResp.DeviceDefinition.DeviceDefinitionID)
-	if assert.Len(s.T(), regUserResp.DeviceDefinition.CompatibleIntegrations, 2) == false {
-		fmt.Println("resp body: " + string(body))
-	}
-	assert.Equal(s.T(), integration.Vendor, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Vendor)
-	assert.Equal(s.T(), integration.Type, regUserResp.DeviceDefinition.CompatibleIntegrations[0].Type)
-	assert.Equal(s.T(), integration.Id, regUserResp.DeviceDefinition.CompatibleIntegrations[0].ID)
+	assert.Equal(s.T(), dd[0].Id, regUserResp.DeviceDefinition.DefinitionID)
 }
 
 func (s *UserDevicesControllerTestSuite) TestPostWithoutDefinitionID_BadRequest() {

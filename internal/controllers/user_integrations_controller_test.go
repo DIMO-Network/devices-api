@@ -372,7 +372,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 
 			data := event.Data.(services.UserDeviceIntegrationEvent)
 
-			assert.Equal(s.T(), dd[0].DeviceDefinitionId, data.Device.DeviceDefinitionID)
+			assert.Equal(s.T(), dd[0].Id, data.Device.DefinitionID)
 			assert.Equal(s.T(), dd[0].Make.Name, data.Device.Make)
 			assert.Equal(s.T(), dd[0].Model, data.Device.Model)
 			assert.Equal(s.T(), int(dd[0].Year), data.Device.Year)
@@ -393,6 +393,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 		Model:              dd[0].Model,
 		Year:               int(dd[0].Year),
 		Region:             "Americas",
+		MakeSlug:           dd[0].Make.NameSlug,
+		ModelSlug:          shared.SlugString(dd[0].Model),
 	}).Return(nil)
 
 	s.scClient.EXPECT().GetUserID(gomock.Any(), token.Access).Return(smartCarUserID, nil)
