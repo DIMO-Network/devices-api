@@ -19,7 +19,6 @@ import (
 )
 
 //go:generate mockgen -source device_definitions_service.go -destination mocks/device_definitions_service_mock.go
-
 type DeviceDefinitionService interface {
 	FindDeviceDefinitionByMMY(ctx context.Context, mk, model string, year int) (*ddgrpc.GetDeviceDefinitionItemResponse, error)
 	GetOrCreateMake(ctx context.Context, tx boil.ContextExecutor, makeName string) (*ddgrpc.DeviceMake, error)
@@ -34,7 +33,7 @@ type DeviceDefinitionService interface {
 	DecodeVIN(ctx context.Context, vin string, model string, year int, countryCode string) (*ddgrpc.DecodeVinResponse, error)
 	GetIntegrationByTokenID(ctx context.Context, tokenID uint64) (*ddgrpc.Integration, error)
 	GetDeviceStyleByID(ctx context.Context, id string) (*ddgrpc.DeviceStyle, error)
-	GetDeviceDefinitionBySlugName(ctx context.Context, in *ddgrpc.GetDeviceDefinitionBySlugNameRequest) (*ddgrpc.GetDeviceDefinitionItemResponse, error)
+	GetDeviceDefinitionBySlugName(ctx context.Context, definitionID string) (*ddgrpc.GetDeviceDefinitionItemResponse, error)
 	//go:generate mockgen -source device_definitions_service.go -destination ./device_definition_service_mock_test.go -package=services
 }
 
@@ -236,7 +235,7 @@ func (d *deviceDefinitionService) GetIntegrationByVendor(ctx context.Context, ve
 	return integration, nil
 }
 
-func (d *deviceDefinitionService) GetDeviceDefinitionBySlugName(ctx context.Context, in *ddgrpc.GetDeviceDefinitionBySlugNameRequest) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
+func (d *deviceDefinitionService) GetDeviceDefinitionBySlugName(ctx context.Context, definitionID string) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
 	definitionsClient, conn, err := d.getDeviceDefsGrpcClient()
 	if err != nil {
 		return nil, err
@@ -244,7 +243,7 @@ func (d *deviceDefinitionService) GetDeviceDefinitionBySlugName(ctx context.Cont
 	defer conn.Close()
 
 	return definitionsClient.GetDeviceDefinitionBySlugName(ctx, &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
-		Slug: in.Slug,
+		Slug: definitionID,
 	})
 }
 

@@ -1922,9 +1922,9 @@ func (udc *UserDevicesController) checkVehicleMint(c *fiber.Ctx, userDevice *mod
 		return nil, nil, fmt.Errorf("VIN not confirmed")
 	}
 
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), userDevice.DeviceDefinitionID)
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(c.Context(), userDevice.DefinitionID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error querying for device definition id: %s ", userDevice.DeviceDefinitionID)
+		return nil, nil, fmt.Errorf("error querying for device definition id: %s ", userDevice.DefinitionID)
 	}
 
 	if dd.Make.TokenId == 0 {

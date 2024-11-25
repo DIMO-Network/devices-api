@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
@@ -791,9 +790,9 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 		return fmt.Errorf("failed to convert address to user id: %w", err)
 	}
 
-	dDef, err := c.ddSvc.GetDeviceDefinitionBySlugName(ctx, &ddgrpc.GetDeviceDefinitionBySlugNameRequest{Slug: args.DeviceDefinitionId})
+	dDef, err := c.ddSvc.GetDeviceDefinitionBySlugName(ctx, args.DeviceDefinitionId)
 	if err != nil {
-		return fmt.Errorf("failed to get device definition: %w", err)
+		return fmt.Errorf("failed to get device definition: %s error: %w", args.DeviceDefinitionId, err)
 	}
 
 	if dDef.Make.TokenId == 0 {
