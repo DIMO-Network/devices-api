@@ -952,15 +952,6 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle")
 		return fiber.NewError(fiber.StatusFailedDependency, "failed to decode vin")
 	}
-	// attach smartcar integration to device definition
-	// todo can we remove this
-	_, err = udc.DeviceDefIntSvc.CreateDeviceDefinitionIntegration(c.Context(), smartCarIntegrationID,
-		decodeVIN.DeviceDefinitionId, country.Region) //nolint
-	if err != nil {
-		localLog.Err(err).
-			Msgf("unable to CreateDeviceDefinitionIntegration for dd_id: %s", decodeVIN.DefinitionId)
-		return fiber.NewError(fiber.StatusConflict, errors.Wrap(err, "unable to attach smartcar integration to device definition id").Error())
-	}
 
 	// attach device def to user
 	//nolint
