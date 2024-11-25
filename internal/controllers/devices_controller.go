@@ -20,7 +20,7 @@ func NewDeviceDefinitionFromGRPC(dd *grpc.GetDeviceDefinitionItemResponse) (serv
 	}
 	rp := services.DeviceDefinition{
 		DeviceDefinitionID:     dd.DeviceDefinitionId,
-		DefinitionID:           dd.NameSlug,
+		DefinitionID:           dd.Id,
 		Name:                   dd.Name,
 		ImageURL:               &dd.ImageUrl,
 		CompatibleIntegrations: []services.DeviceCompatibility{},
@@ -32,10 +32,10 @@ func NewDeviceDefinitionFromGRPC(dd *grpc.GetDeviceDefinitionItemResponse) (serv
 		},
 		DeviceAttributes: deviceAttributes,
 		Type: services.DeviceType{
-			Type:  dd.Type.Type,
-			Make:  dd.Type.Make,
-			Model: dd.Type.Model,
-			Year:  int(dd.Type.Year),
+			Type:  "vehicle",
+			Make:  dd.Make.Name,
+			Model: dd.Model,
+			Year:  int(dd.Year),
 		},
 		//Metadata: dd.Metadata,
 		Verified: dd.Verified,
@@ -47,7 +47,9 @@ func NewDeviceDefinitionFromGRPC(dd *grpc.GetDeviceDefinitionItemResponse) (serv
 	// compatible integrations
 	rp.CompatibleIntegrations = DeviceCompatibilityFromDB(dd.DeviceIntegrations)
 	// sub_models
-	rp.Type.SubModels = dd.Type.SubModels
+	for _, style := range dd.DeviceStyles {
+		rp.Type.SubModels = append(rp.Type.SubModels, style.SubModel)
+	}
 
 	return rp, nil
 }

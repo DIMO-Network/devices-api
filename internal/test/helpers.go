@@ -477,35 +477,18 @@ func BuildDeviceDefinitionGRPC(deviceDefinitionID string, mk string, model strin
 
 	rp := &ddgrpc.GetDeviceDefinitionItemResponse{
 		DeviceDefinitionId: deviceDefinitionID,
-		NameSlug:           shared.SlugString(mk + " " + model + " " + strconv.Itoa(year)),
+		Id:                 shared.SlugString(mk + " " + model + " " + strconv.Itoa(year)),
 		Name:               "Name",
 		Make: &ddgrpc.DeviceMake{
 			Id:   ksuid.New().String(),
 			Name: mk,
 		},
-		Type: &ddgrpc.DeviceType{
-			Type:  "Vehicle",
-			Make:  mk,
-			Model: model,
-			Year:  int32(year),
-		},
-		VehicleData: &ddgrpc.VehicleInfo{
-			MPG:                 1,
-			MPGHighway:          1,
-			MPGCity:             1,
-			FuelTankCapacityGal: 1,
-			FuelType:            "gas",
-			Base_MSRP:           1,
-			DrivenWheels:        "1",
-			NumberOfDoors:       1,
-			EPAClass:            "class",
-			VehicleType:         "Vehicle",
-		},
-		//Metadata: dd.Metadata,
+		Model:    model,
+		Year:     int32(year),
 		Verified: true,
 	}
 	if integration != nil {
-		rp.DeviceIntegrations = integrationsToAdd
+		rp.DeviceIntegrations = integrationsToAdd //nolint
 	}
 
 	rp.DeviceAttributes = append(rp.DeviceAttributes, &ddgrpc.DeviceTypeAttribute{

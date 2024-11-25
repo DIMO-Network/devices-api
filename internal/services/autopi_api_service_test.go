@@ -166,11 +166,12 @@ func TestUpdateState(t *testing.T) {
 func TestBuildCallName(t *testing.T) {
 	callName := "supercar"
 	dd := &ddgrpc.GetDeviceDefinitionItemResponse{
-		Type: &ddgrpc.DeviceType{
-			Year:      2024,
-			MakeSlug:  "ford",
-			ModelSlug: "escape",
+		Year: 2024,
+		Make: &ddgrpc.DeviceMake{
+			Name:     "Ford",
+			NameSlug: "ford",
 		},
+		Model: "escape",
 	}
 	type args struct {
 		callName *string

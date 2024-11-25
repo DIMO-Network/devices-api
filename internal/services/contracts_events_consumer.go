@@ -285,8 +285,8 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 			Device: UserDeviceEventDevice{
 				ID:           ud.ID,
 				Make:         dd.Make.Name,
-				Model:        dd.Type.Model,
-				Year:         int(dd.Type.Year),
+				Model:        dd.Model,
+				Year:         int(dd.Year),
 				VIN:          ud.VinIdentifier.String,
 				DefinitionID: dd.NameSlug,
 			},

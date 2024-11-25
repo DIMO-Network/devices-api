@@ -110,7 +110,7 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 		return shared.GrpcErrorToFiber(err, "failed to get device definition")
 	}
 
-	description := fmt.Sprintf("%s %s %d", def.Make.Name, def.Type.Model, def.Type.Year)
+	description := fmt.Sprintf("%s %s %d", def.Make.Name, def.Model, def.Year)
 
 	var name string
 	if ud.Name.Valid {
@@ -130,8 +130,8 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 		Image:       imageURI,
 		Attributes: []NFTAttribute{
 			{TraitType: "Make", Value: def.Make.Name},
-			{TraitType: "Model", Value: def.Type.Model},
-			{TraitType: "Year", Value: strconv.Itoa(int(def.Type.Year))},
+			{TraitType: "Model", Value: def.Model},
+			{TraitType: "Year", Value: strconv.Itoa(int(def.Year))},
 		},
 	})
 }

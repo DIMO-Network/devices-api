@@ -905,10 +905,8 @@ func TestBurnSyntheticDevice(t *testing.T) {
 		Make: &ddgrpc.DeviceMake{
 			Name: "Tesla",
 		},
-		Type: &ddgrpc.DeviceType{
-			Model: "Model X",
-			Year:  2024,
-		},
+		Model: "Model X",
+		Year:  2024,
 	}, nil)
 
 	udai := models.UserDeviceAPIIntegration{
