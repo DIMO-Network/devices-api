@@ -953,6 +953,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		return fiber.NewError(fiber.StatusFailedDependency, "failed to decode vin")
 	}
 	// attach smartcar integration to device definition
+	// todo can we remove this
 	_, err = udc.DeviceDefIntSvc.CreateDeviceDefinitionIntegration(c.Context(), smartCarIntegrationID,
 		decodeVIN.DeviceDefinitionId, country.Region) //nolint
 	if err != nil {
