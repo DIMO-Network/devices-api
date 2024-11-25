@@ -32,7 +32,7 @@ func NewDeviceDefinitionFromGRPC(dd *grpc.GetDeviceDefinitionItemResponse) (serv
 		},
 		DeviceAttributes: deviceAttributes,
 		Type: services.DeviceType{
-			Type:  "vehicle",
+			Type:  "Vehicle",
 			Make:  dd.Make.Name,
 			Model: dd.Model,
 			Year:  int(dd.Year),

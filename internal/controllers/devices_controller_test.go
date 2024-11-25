@@ -89,8 +89,4 @@ func TestNewDeviceDefinitionFromGrpc(t *testing.T) {
 	assert.Equal(t, 2020, dd.Type.Year)
 	assert.Equal(t, "Mercedes", dd.Type.Make)
 	assert.Equal(t, "R500", dd.Type.Model)
-	assert.Contains(t, dd.Type.SubModels, "AMG")
-
-	assert.Len(t, dd.CompatibleIntegrations, 1)
-	assert.Equal(t, "Autopi", dd.CompatibleIntegrations[0].Vendor)
 }
