@@ -742,11 +742,11 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 			localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle")
 			return shared.GrpcErrorToFiber(err, "unable to decode vin: "+vin)
 		}
-		if len(decodeVIN.DeviceDefinitionId) == 0 {
+		if len(decodeVIN.DefinitionId) == 0 {
 			localLog.Warn().Msg("unable to decode vin for customer request to create vehicle")
 			return fiber.NewError(fiber.StatusFailedDependency, "unable to decode vin")
 		}
-		deviceDefinitionID = decodeVIN.DeviceDefinitionId
+		deviceDefinitionID = decodeVIN.DeviceDefinitionId //nolint // todo move to definition id
 
 		udFull, err = udc.createUserDevice(c.Context(), deviceDefinitionID, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, &reg.CANProtocol)
 		if err != nil {
@@ -948,20 +948,21 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	}
 
 	// in case err is nil but we don't get a valid decode
-	if len(decodeVIN.DeviceDefinitionId) == 0 {
+	if len(decodeVIN.DefinitionId) == 0 {
 		localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle")
 		return fiber.NewError(fiber.StatusFailedDependency, "failed to decode vin")
 	}
 	// attach smartcar integration to device definition
 	_, err = udc.DeviceDefIntSvc.CreateDeviceDefinitionIntegration(c.Context(), smartCarIntegrationID,
-		decodeVIN.DeviceDefinitionId, country.Region)
+		decodeVIN.DeviceDefinitionId, country.Region) //nolint
 	if err != nil {
 		localLog.Err(err).
-			Msgf("unable to CreateDeviceDefinitionIntegration for dd_id: %s", decodeVIN.DeviceDefinitionId)
+			Msgf("unable to CreateDeviceDefinitionIntegration for dd_id: %s", decodeVIN.DefinitionId)
 		return fiber.NewError(fiber.StatusConflict, errors.Wrap(err, "unable to attach smartcar integration to device definition id").Error())
 	}
 
 	// attach device def to user
+	//nolint
 	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, nil)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
@@ -1405,7 +1406,7 @@ func (udc *UserDevicesController) GetMintDevice(c *fiber.Ctx) error {
 		Owner:              mvs.Owner,
 		Attributes:         mvs.Attributes,
 		Infos:              mvs.Infos,
-		DeviceDefinitionID: dd.NameSlug,
+		DeviceDefinitionID: dd.Id,
 	}
 
 	return c.JSON(client.GetPayload(&mvdds))
@@ -1479,7 +1480,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		Owner:              mvs.Owner,
 		Attributes:         mvs.Attributes,
 		Infos:              mvs.Infos,
-		DeviceDefinitionID: dd.NameSlug,
+		DeviceDefinitionID: dd.Id,
 	}
 
 	logger.Info().
@@ -1644,7 +1645,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
 				ManufacturerNode:     mvs.ManufacturerNode,
 				Owner:                mvs.Owner,
-				DeviceDefinitionId:   dd.NameSlug,
+				DeviceDefinitionId:   dd.Id,
 				IntegrationNode:      new(big.Int).SetUint64(intID),
 				VehicleOwnerSig:      sigBytes,
 				SyntheticDeviceSig:   sign,
@@ -1661,7 +1662,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	logger.Info().Msgf("Submitted metatransaction request %s", requestID)
 
-	return client.MintVehicleWithDeviceDefinitionSign(requestID, mvs.ManufacturerNode, mvs.Owner, dd.NameSlug, attrListsToAttrPairs(mvs.Attributes, mvs.Infos), sigBytes)
+	return client.MintVehicleWithDeviceDefinitionSign(requestID, mvs.ManufacturerNode, mvs.Owner, dd.Id, attrListsToAttrPairs(mvs.Attributes, mvs.Infos), sigBytes)
 }
 
 func attrListsToAttrPairs(attrs []string, infos []string) []contracts.AttributeInfoPair {
@@ -1946,7 +1947,7 @@ func (udc *UserDevicesController) checkVehicleMint(c *fiber.Ctx, userDevice *mod
 		return nil, nil, fmt.Errorf("user does not have an Ethereum address on file")
 	}
 
-	if dd.NameSlug == "" {
+	if dd.Id == "" {
 		return nil, nil, fmt.Errorf("invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
 	}
 

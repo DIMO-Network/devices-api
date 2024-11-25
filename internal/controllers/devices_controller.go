@@ -44,8 +44,6 @@ func NewDeviceDefinitionFromGRPC(dd *grpc.GetDeviceDefinitionItemResponse) (serv
 	//var vi map[string]services.DeviceVehicleInfo
 	//rp.VehicleInfo = vi[vehicleInfoJSONNode]
 
-	// compatible integrations
-	rp.CompatibleIntegrations = DeviceCompatibilityFromDB(dd.DeviceIntegrations)
 	// sub_models
 	for _, style := range dd.DeviceStyles {
 		rp.Type.SubModels = append(rp.Type.SubModels, style.SubModel)

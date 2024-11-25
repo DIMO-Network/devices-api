@@ -55,16 +55,11 @@ func TestDevicesControllerTestSuite(t *testing.T) {
 /* Actual tests*/
 
 func TestNewDeviceDefinitionFromGrpc(t *testing.T) {
-	subModels := []string{"AMG"}
 	dbDevice := &grpc.GetDeviceDefinitionItemResponse{
 		DeviceDefinitionId: "123",
-		Type: &grpc.DeviceType{
-			Type:      "Vehicle",
-			Model:     "R500",
-			Year:      2020,
-			Make:      "Mercedes",
-			SubModels: subModels,
-		},
+		Model:              "R500",
+		Year:               2020,
+
 		DeviceAttributes: []*grpc.DeviceTypeAttribute{
 			{Name: "fuel_type", Value: "gas"},
 			{Name: "driven_wheels", Value: "4"},
@@ -98,17 +93,4 @@ func TestNewDeviceDefinitionFromGrpc(t *testing.T) {
 
 	assert.Len(t, dd.CompatibleIntegrations, 1)
 	assert.Equal(t, "Autopi", dd.CompatibleIntegrations[0].Vendor)
-}
-
-func TestNewDeviceDefinitionFromDatabase_Error(t *testing.T) {
-	dbDevice := &grpc.GetDeviceDefinitionItemResponse{
-		DeviceDefinitionId: "123",
-		VehicleData: &grpc.VehicleInfo{
-			FuelType:      "gas",
-			DrivenWheels:  "4",
-			NumberOfDoors: 5,
-		},
-	}
-	_, err := NewDeviceDefinitionFromGRPC(dbDevice)
-	assert.Error(t, err)
 }

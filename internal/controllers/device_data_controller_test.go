@@ -115,11 +115,12 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 			EXPECT().
 			GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).
 			Return(&grpc.GetDeviceDefinitionItemResponse{
-				Type: &grpc.DeviceType{
-					Make:  "Toyota",
-					Model: "Camry",
-					Year:  2023,
+				Make: &grpc.DeviceMake{
+					Name:     "Toyota",
+					NameSlug: "toyota",
 				},
+				Model: "Camry",
+				Year:  2023,
 			}, nil).
 			AnyTimes()
 
@@ -194,11 +195,12 @@ func TestUserDevicesController_ShouldErrorOnTooManyErrorCodes(t *testing.T) {
 			EXPECT().
 			GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).
 			Return(&grpc.GetDeviceDefinitionItemResponse{
-				Type: &grpc.DeviceType{
-					Make:  "Toyota",
-					Model: "Camry",
-					Year:  2023,
+				Make: &grpc.DeviceMake{
+					Name:     "Toyota",
+					NameSlug: "toyota",
 				},
+				Model: "Camry",
+				Year:  2023,
 			}, nil).
 			AnyTimes()
 
@@ -263,11 +265,12 @@ func TestUserDevicesController_ShouldErrorInvalidErrorCodes(t *testing.T) {
 			EXPECT().
 			GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).
 			Return(&grpc.GetDeviceDefinitionItemResponse{
-				Type: &grpc.DeviceType{
-					Make:  "Toyota",
-					Model: "Camry",
-					Year:  2023,
+				Make: &grpc.DeviceMake{
+					Name:     "Toyota",
+					NameSlug: "toyota",
 				},
+				Model: "Camry",
+				Year:  2023,
 			}, nil).
 			AnyTimes()
 
@@ -332,11 +335,12 @@ func TestUserDevicesController_ShouldErrorOnEmptyErrorCodes(t *testing.T) {
 			EXPECT().
 			GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).
 			Return(&grpc.GetDeviceDefinitionItemResponse{
-				Type: &grpc.DeviceType{
-					Make:  "Toyota",
-					Model: "Camry",
-					Year:  2023,
+				Make: &grpc.DeviceMake{
+					Name:     "Toyota",
+					NameSlug: "toyota",
 				},
+				Model: "Camry",
+				Year:  2023,
 			}, nil).
 			AnyTimes()
 
@@ -401,11 +405,12 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 			EXPECT().
 			GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).
 			Return(&grpc.GetDeviceDefinitionItemResponse{
-				Type: &grpc.DeviceType{
-					Make:  "Toyota",
-					Model: "Camry",
-					Year:  2023,
+				Make: &grpc.DeviceMake{
+					Name:     "Toyota",
+					NameSlug: "toyota",
 				},
+				Model: "Camry",
+				Year:  2023,
 			}, nil).
 			AnyTimes()
 

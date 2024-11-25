@@ -99,12 +99,12 @@ func remakeDeviceDefinitionTopics(ctx context.Context, settings *config.Settings
 			UserDeviceID:       userDeviceID,
 			DeviceDefinitionID: ddInfo.DeviceDefinitionId,
 			IntegrationID:      apiInt.IntegrationID,
-			Make:               ddInfo.Type.Make,
-			Model:              ddInfo.Type.Model,
-			Year:               int(ddInfo.Type.Year),
+			Make:               ddInfo.Make.Name,
+			Model:              ddInfo.Model,
+			Year:               int(ddInfo.Year),
 			Region:             region,
-			MakeSlug:           ddInfo.Type.MakeSlug,
-			ModelSlug:          ddInfo.Type.ModelSlug,
+			MakeSlug:           ddInfo.Make.NameSlug,
+			ModelSlug:          shared.SlugString(ddInfo.Model),
 		}
 
 		err = reg.Register(ddReg)

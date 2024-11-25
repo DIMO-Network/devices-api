@@ -245,8 +245,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 
 			assert.Equal(s.T(), dd[0].DeviceDefinitionId, data.Device.DeviceDefinitionID)
 			assert.Equal(s.T(), dd[0].Make.Name, data.Device.Make)
-			assert.Equal(s.T(), dd[0].Type.Model, data.Device.Model)
-			assert.Equal(s.T(), int(dd[0].Type.Year), data.Device.Year)
+			assert.Equal(s.T(), dd[0].Model, data.Device.Model)
+			assert.Equal(s.T(), int(dd[0].Year), data.Device.Year)
 			assert.Equal(s.T(), "CARVIN", data.Device.VIN)
 			assert.Equal(s.T(), ud.ID, data.Device.ID)
 
@@ -261,8 +261,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 		UserDeviceID:       ud.ID,
 		DeviceDefinitionID: ud.DeviceDefinitionID,
 		Make:               dd[0].Make.Name,
-		Model:              dd[0].Type.Model,
-		Year:               int(dd[0].Type.Year),
+		Model:              dd[0].Model,
+		Year:               int(dd[0].Year),
 		Region:             "Americas",
 	}).Return(nil)
 
@@ -374,8 +374,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 
 			assert.Equal(s.T(), dd[0].DeviceDefinitionId, data.Device.DeviceDefinitionID)
 			assert.Equal(s.T(), dd[0].Make.Name, data.Device.Make)
-			assert.Equal(s.T(), dd[0].Type.Model, data.Device.Model)
-			assert.Equal(s.T(), int(dd[0].Type.Year), data.Device.Year)
+			assert.Equal(s.T(), dd[0].Model, data.Device.Model)
+			assert.Equal(s.T(), int(dd[0].Year), data.Device.Year)
 			assert.Equal(s.T(), "CARVIN", data.Device.VIN)
 			assert.Equal(s.T(), ud.ID, data.Device.ID)
 
@@ -390,8 +390,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 		UserDeviceID:       ud.ID,
 		DeviceDefinitionID: ud.DeviceDefinitionID,
 		Make:               dd[0].Make.Name,
-		Model:              dd[0].Type.Model,
-		Year:               int(dd[0].Type.Year),
+		Model:              dd[0].Model,
+		Year:               int(dd[0].Year),
 		Region:             "Americas",
 	}).Return(nil)
 
@@ -440,8 +440,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
 			data := event.Data.(services.UserDeviceIntegrationEvent)
 
 			assert.Equal(s.T(), dd[0].Make.Name, data.Device.Make)
-			assert.Equal(s.T(), dd[0].Type.Model, data.Device.Model)
-			assert.Equal(s.T(), int(dd[0].Type.Year), data.Device.Year)
+			assert.Equal(s.T(), dd[0].Model, data.Device.Model)
+			assert.Equal(s.T(), int(dd[0].Year), data.Device.Year)
 			assert.Equal(s.T(), "5YJYGDEF9NF010423", data.Device.VIN)
 			assert.Equal(s.T(), ud.ID, data.Device.ID)
 
@@ -456,8 +456,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
 		UserDeviceID:       ud.ID,
 		DeviceDefinitionID: ud.DeviceDefinitionID,
 		Make:               dd[0].Make.Name,
-		Model:              dd[0].Type.Model,
-		Year:               int(dd[0].Type.Year),
+		Model:              dd[0].Model,
+		Year:               int(dd[0].Year),
 		Region:             "Americas",
 	}).Return(nil)
 
@@ -866,8 +866,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 			data := event.Data.(services.UserDeviceIntegrationEvent)
 
 			assert.Equal(s.T(), dd[0].Make.Name, data.Device.Make)
-			assert.Equal(s.T(), dd[0].Type.Model, data.Device.Model)
-			assert.Equal(s.T(), int(dd[0].Type.Year), data.Device.Year)
+			assert.Equal(s.T(), dd[0].Model, data.Device.Model)
+			assert.Equal(s.T(), int(dd[0].Year), data.Device.Year)
 			assert.Equal(s.T(), "5YJYGDEF9NF010423", data.Device.VIN)
 			assert.Equal(s.T(), ud.ID, data.Device.ID)
 
@@ -882,8 +882,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 		UserDeviceID:       ud.ID,
 		DeviceDefinitionID: ud.DeviceDefinitionID,
 		Make:               dd[0].Make.Name,
-		Model:              dd[0].Type.Model,
-		Year:               int(dd[0].Type.Year),
+		Model:              dd[0].Model,
+		Year:               int(dd[0].Year),
 		Region:             "Americas",
 	}).Return(nil)
 

@@ -288,7 +288,7 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 				Model:        dd.Model,
 				Year:         int(dd.Year),
 				VIN:          ud.VinIdentifier.String,
-				DefinitionID: dd.NameSlug,
+				DefinitionID: dd.Id,
 			},
 			Integration: UserDeviceEventIntegration{
 				ID:     integ.Id,
@@ -810,7 +810,7 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 		DeviceDefinitionID: dDef.DeviceDefinitionId,
 		OwnerAddress:       null.BytesFrom(args.Owner.Bytes()),
 		TokenID:            dbtypes.NullIntToDecimal(args.VehicleId),
-		DefinitionID:       dDef.NameSlug,
+		DefinitionID:       dDef.Id,
 	}
 
 	if err := ud.Insert(ctx, tx, boil.Infer()); err != nil {
@@ -828,7 +828,7 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 				ID:                 ud.ID,
 				VIN:                ud.VinIdentifier.String,
 				DeviceDefinitionID: ud.DeviceDefinitionID,
-				DefinitionID:       dDef.NameSlug,
+				DefinitionID:       dDef.Id,
 			},
 			NFT: UserDeviceEventNFT{
 				TokenID: args.VehicleId,

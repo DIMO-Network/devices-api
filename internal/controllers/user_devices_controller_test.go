@@ -171,7 +171,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 		DeviceMakeId:       dd[0].Make.Id,
 		DeviceDefinitionId: dd[0].DeviceDefinitionId,
 		DeviceStyleId:      "",
-		Year:               dd[0].Type.Year,
+		Year:               dd[0].Year,
 	}, nil)
 	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), "22N2xaPOq2WW2gAHBHd0Ikn4Zob", dd[0].DeviceDefinitionId, "Americas").Times(1).
 		Return(nil, nil)
@@ -321,7 +321,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 		DeviceMakeId:       dd[0].Make.Id,
 		DeviceDefinitionId: dd[0].DeviceDefinitionId,
 		DeviceStyleId:      deviceStyleID,
-		Year:               dd[0].Type.Year,
+		Year:               dd[0].Year,
 	}, nil)
 
 	apInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 10)

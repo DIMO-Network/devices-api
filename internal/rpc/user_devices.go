@@ -270,7 +270,7 @@ func (s *userDeviceRPCServer) RegisterUserDeviceFromVIN(ctx context.Context, req
 		return nil, status.Errorf(codes.InvalidArgument, "VIN %s from year %v is too old", vin, resp.Year)
 	}
 
-	if len(resp.DeviceDefinitionId) == 0 {
+	if len(resp.DefinitionId) == 0 {
 		s.logger.Warn().
 			Str("vin", vin).
 			Str("user_id", req.UserDeviceId).
@@ -279,18 +279,14 @@ func (s *userDeviceRPCServer) RegisterUserDeviceFromVIN(ctx context.Context, req
 	}
 
 	// attach device def to user
-	dd, err := s.deviceDefSvc.GetDeviceDefinitionByID(ctx, resp.DeviceDefinitionId)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
 	tx, err := s.dbs().Writer.DB.BeginTx(ctx, nil)
 	defer tx.Rollback() // nolint
 	if err != nil {
 		return nil, err
 	}
 
-	_, _, err = s.userDeviceSvc.CreateUserDevice(ctx, dd.DeviceDefinitionId, resp.DeviceStyleId, req.CountryCode, req.UserDeviceId, &vin, nil, req.VinConfirmed)
+	//nolint // todo move to definition id
+	_, _, err = s.userDeviceSvc.CreateUserDevice(ctx, resp.DeviceDefinitionId, resp.DeviceStyleId, req.CountryCode, req.UserDeviceId, &vin, nil, req.VinConfirmed)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
