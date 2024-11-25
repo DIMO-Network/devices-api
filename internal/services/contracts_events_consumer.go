@@ -790,7 +790,7 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 		return fmt.Errorf("failed to convert address to user id: %w", err)
 	}
 
-	dDef, err := c.ddSvc.GetDeviceDefinitionBySlugName(ctx, args.DeviceDefinitionId)
+	dDef, err := c.ddSvc.GetDeviceDefinitionBySlug(ctx, args.DeviceDefinitionId)
 	if err != nil {
 		return fmt.Errorf("failed to get device definition: %s error: %w", args.DeviceDefinitionId, err)
 	}

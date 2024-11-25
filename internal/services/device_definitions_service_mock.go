@@ -5,6 +5,8 @@
 //
 //	mockgen -source device_definitions_service.go -destination mocks/device_definitions_service_mock.go
 //
+
+// Package mock_services is a generated GoMock package.
 package services
 
 import (
@@ -100,19 +102,19 @@ func (mr *MockDeviceDefinitionServiceMockRecorder) GetDeviceDefinitionByID(ctx, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeviceDefinitionByID", reflect.TypeOf((*MockDeviceDefinitionService)(nil).GetDeviceDefinitionByID), ctx, id)
 }
 
-// GetDeviceDefinitionBySlugName mocks base method.
-func (m *MockDeviceDefinitionService) GetDeviceDefinitionBySlugName(ctx context.Context, definitionID string) (*grpc.GetDeviceDefinitionItemResponse, error) {
+// GetDeviceDefinitionBySlug mocks base method.
+func (m *MockDeviceDefinitionService) GetDeviceDefinitionBySlug(ctx context.Context, definitionID string) (*grpc.GetDeviceDefinitionItemResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDeviceDefinitionBySlugName", ctx, definitionID)
+	ret := m.ctrl.Call(m, "GetDeviceDefinitionBySlug", ctx, definitionID)
 	ret0, _ := ret[0].(*grpc.GetDeviceDefinitionItemResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetDeviceDefinitionBySlugName indicates an expected call of GetDeviceDefinitionBySlugName.
-func (mr *MockDeviceDefinitionServiceMockRecorder) GetDeviceDefinitionBySlugName(ctx, definitionID any) *gomock.Call {
+// GetDeviceDefinitionBySlug indicates an expected call of GetDeviceDefinitionBySlug.
+func (mr *MockDeviceDefinitionServiceMockRecorder) GetDeviceDefinitionBySlug(ctx, definitionID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeviceDefinitionBySlugName", reflect.TypeOf((*MockDeviceDefinitionService)(nil).GetDeviceDefinitionBySlugName), ctx, definitionID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeviceDefinitionBySlug", reflect.TypeOf((*MockDeviceDefinitionService)(nil).GetDeviceDefinitionBySlug), ctx, definitionID)
 }
 
 // GetDeviceDefinitionsByIDs mocks base method.

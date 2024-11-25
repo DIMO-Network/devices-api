@@ -33,7 +33,7 @@ type DeviceDefinitionService interface {
 	DecodeVIN(ctx context.Context, vin string, model string, year int, countryCode string) (*ddgrpc.DecodeVinResponse, error)
 	GetIntegrationByTokenID(ctx context.Context, tokenID uint64) (*ddgrpc.Integration, error)
 	GetDeviceStyleByID(ctx context.Context, id string) (*ddgrpc.DeviceStyle, error)
-	GetDeviceDefinitionBySlugName(ctx context.Context, definitionID string) (*ddgrpc.GetDeviceDefinitionItemResponse, error)
+	GetDeviceDefinitionBySlug(ctx context.Context, definitionID string) (*ddgrpc.GetDeviceDefinitionItemResponse, error)
 	//go:generate mockgen -source device_definitions_service.go -destination ./device_definition_service_mock_test.go -package=services
 }
 
@@ -235,14 +235,14 @@ func (d *deviceDefinitionService) GetIntegrationByVendor(ctx context.Context, ve
 	return integration, nil
 }
 
-func (d *deviceDefinitionService) GetDeviceDefinitionBySlugName(ctx context.Context, definitionID string) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
+func (d *deviceDefinitionService) GetDeviceDefinitionBySlug(ctx context.Context, definitionID string) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
 	definitionsClient, conn, err := d.getDeviceDefsGrpcClient()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	return definitionsClient.GetDeviceDefinitionBySlugName(ctx, &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+	return definitionsClient.GetDeviceDefinitionBySlug(ctx, &ddgrpc.GetDeviceDefinitionBySlugRequest{
 		Slug: definitionID,
 	})
 }

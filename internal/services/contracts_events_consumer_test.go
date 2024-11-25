@@ -829,7 +829,7 @@ func Test_VehicleNodeMintedWithDeviceDefinition_NoMtx(t *testing.T) {
 	))
 	require.NoError(err)
 
-	deviceDefSvc.EXPECT().GetDeviceDefinitionBySlugName(gomock.Any(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
+	deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
 		Slug: ddSlug,
 	}).Return(&ddgrpc.GetDeviceDefinitionItemResponse{
 		DeviceDefinitionId: deviceDefID,

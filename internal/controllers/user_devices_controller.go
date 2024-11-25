@@ -1440,7 +1440,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	// This actually makes no database calls!
 	mvs, dd, err := udc.checkVehicleMint(c, userDevice)
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, errors.Wrapf(err, "failed to checkVehicleMint. user device id: %s", userDeviceID).Error())
 	}
 
 	var mr VehicleMintRequest
@@ -1922,9 +1922,13 @@ func (udc *UserDevicesController) checkVehicleMint(c *fiber.Ctx, userDevice *mod
 		return nil, nil, fmt.Errorf("VIN not confirmed")
 	}
 
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlugName(c.Context(), userDevice.DefinitionID)
+	if len(userDevice.DefinitionID) == 0 {
+		return nil, nil, fmt.Errorf("vehcile definition_id not set")
+	}
+
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), userDevice.DefinitionID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error querying for device definition id: %s ", userDevice.DefinitionID)
+		return nil, nil, fmt.Errorf("error querying for definition by slug id: %s ", userDevice.DefinitionID)
 	}
 
 	if dd.Make.TokenId == 0 {

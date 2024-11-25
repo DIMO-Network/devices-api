@@ -76,8 +76,8 @@ github.com/DIMO-Network/clickhouse-infra v0.0.3 h1:B6/4IY9IxLcyydET14IjHUT+A5SDE
 github.com/DIMO-Network/clickhouse-infra v0.0.3/go.mod h1:NtpQ1btkPzebDvpYYygeqiiBmJ/q5oJb/T/JWzUVRlk=
 github.com/DIMO-Network/device-data-api v0.9.10 h1:ORyxDSKPCEPFGG5S593+2OkLzWFsy4ZO0o90TPebQN4=
 github.com/DIMO-Network/device-data-api v0.9.10/go.mod h1:tjR1bA9sw2sj5GNi88dqpGsGLjYHjQzSfv2lcCYLjqQ=
-github.com/DIMO-Network/device-definitions-api v1.2.65 h1:/5cMk1dHwjxHnvhtOGo+H6xgW+uc6kJt1ZYZ3PFnMAE=
-github.com/DIMO-Network/device-definitions-api v1.2.65/go.mod h1:6k8KSNzSh6svRWEG6EkGtZqttiHESW92OsLPNQ0nnsY=
+github.com/DIMO-Network/device-definitions-api v1.2.66-0.20241125194326-a4a2d67792f2 h1:wmsKXIBIPsUdhDg+R1CK2biv9m5JbTfq4brPsxaC9qo=
+github.com/DIMO-Network/device-definitions-api v1.2.66-0.20241125194326-a4a2d67792f2/go.mod h1:6k8KSNzSh6svRWEG6EkGtZqttiHESW92OsLPNQ0nnsY=
 github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c h1:sKuB4i3m/5NpLjO6tKyc2gSqQHmRe02sMP+pQqJNTuQ=
 github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c/go.mod h1:K5a/Iqh9iZYdMSh3UE3J+tc4aV1PxHe4Fz0ZEhZMPbg=
 github.com/DIMO-Network/meta-transaction-processor v0.3.2 h1:eSf34mSmiRilMbQx+4Iyu6aNm/WWJjbopIGYNjz/Z6w=
