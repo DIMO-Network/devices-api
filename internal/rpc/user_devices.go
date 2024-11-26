@@ -285,9 +285,7 @@ func (s *userDeviceRPCServer) RegisterUserDeviceFromVIN(ctx context.Context, req
 		return nil, err
 	}
 
-	//nolint // todo move to definition id
-	//resp.DefinitionId
-	_, _, err = s.userDeviceSvc.CreateUserDevice(ctx, resp.DeviceDefinitionId, resp.DeviceStyleId, req.CountryCode, req.UserDeviceId, &vin, nil, req.VinConfirmed)
+	_, _, err = s.userDeviceSvc.CreateUserDevice(ctx, resp.DefinitionId, resp.DeviceStyleId, req.CountryCode, req.UserDeviceId, &vin, nil, req.VinConfirmed)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

@@ -168,11 +168,10 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 	s.scClient.EXPECT().GetInfo(gomock.Any(), "AA", "123").Times(1).Return(nil, nil)
 
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&ddgrpc.DecodeVinResponse{
-		DeviceMakeId:       dd[0].Make.Id,
-		DefinitionId:       "ford_f150_2020",
-		DeviceDefinitionId: dd[0].Ksuid,
-		DeviceStyleId:      "",
-		Year:               dd[0].Year,
+		DeviceMakeId:  dd[0].Make.Id,
+		DefinitionId:  "ford_f150_2020",
+		DeviceStyleId: "",
+		Year:          dd[0].Year,
 	}, nil)
 	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), "22N2xaPOq2WW2gAHBHd0Ikn4Zob", dd[0].DeviceDefinitionId, "Americas").Times(1).
 		Return(nil, nil)
@@ -316,11 +315,10 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	j, _ := json.Marshal(reg)
 
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&ddgrpc.DecodeVinResponse{
-		DeviceMakeId:       dd[0].Make.Id,
-		DefinitionId:       "ford_f150_2020",
-		DeviceDefinitionId: dd[0].Ksuid, //nolint //todo need to not require this
-		DeviceStyleId:      deviceStyleID,
-		Year:               dd[0].Year,
+		DeviceMakeId:  dd[0].Make.Id,
+		DefinitionId:  "ford_f150_2020",
+		DeviceStyleId: deviceStyleID,
+		Year:          dd[0].Year,
 	}, nil)
 
 	apInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 10)
