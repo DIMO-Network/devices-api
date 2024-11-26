@@ -108,7 +108,7 @@ func (i *Integration) Pair(ctx context.Context, amTokenID, vehicleTokenID *big.I
 		}
 	}
 
-	def, err := i.defs.GetDeviceDefinitionByID(ctx, ud.DeviceDefinitionID)
+	def, err := i.defs.GetDeviceDefinitionBySlug(ctx, ud.DefinitionID)
 	if err != nil {
 		return err
 	}
@@ -244,7 +244,7 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 		return err
 	}
 
-	def, err := i.defs.GetDeviceDefinitionByID(ctx, ud.DeviceDefinitionID)
+	def, err := i.defs.GetDeviceDefinitionBySlug(ctx, ud.DefinitionID)
 	if err != nil {
 		return err
 	}

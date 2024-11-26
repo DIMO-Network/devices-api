@@ -24,6 +24,7 @@ type DeviceDefinitionService interface {
 	GetOrCreateMake(ctx context.Context, tx boil.ContextExecutor, makeName string) (*ddgrpc.DeviceMake, error)
 	GetMakeByTokenID(ctx context.Context, tokenID *big.Int) (*ddgrpc.DeviceMake, error)
 	GetDeviceDefinitionsByIDs(ctx context.Context, ids []string) ([]*ddgrpc.GetDeviceDefinitionItemResponse, error)
+	// GetDeviceDefinitionByID get definition by legacy KSUID
 	GetDeviceDefinitionByID(ctx context.Context, id string) (*ddgrpc.GetDeviceDefinitionItemResponse, error)
 	GetIntegrations(ctx context.Context) ([]*ddgrpc.Integration, error)
 	GetIntegrationByID(ctx context.Context, id string) (*ddgrpc.Integration, error)
@@ -33,6 +34,7 @@ type DeviceDefinitionService interface {
 	DecodeVIN(ctx context.Context, vin string, model string, year int, countryCode string) (*ddgrpc.DecodeVinResponse, error)
 	GetIntegrationByTokenID(ctx context.Context, tokenID uint64) (*ddgrpc.Integration, error)
 	GetDeviceStyleByID(ctx context.Context, id string) (*ddgrpc.DeviceStyle, error)
+	// GetDeviceDefinitionBySlug get definition by new slug id. definitions api internally looks up info in tableland sqllite
 	GetDeviceDefinitionBySlug(ctx context.Context, definitionID string) (*ddgrpc.GetDeviceDefinitionItemResponse, error)
 	//go:generate mockgen -source device_definitions_service.go -destination ./device_definition_service_mock_test.go -package=services
 }
@@ -236,6 +238,9 @@ func (d *deviceDefinitionService) GetIntegrationByVendor(ctx context.Context, ve
 }
 
 func (d *deviceDefinitionService) GetDeviceDefinitionBySlug(ctx context.Context, definitionID string) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
+	if len(definitionID) == 0 {
+		return nil, errors.New("Definition ID is required")
+	}
 	definitionsClient, conn, err := d.getDeviceDefsGrpcClient()
 	if err != nil {
 		return nil, err

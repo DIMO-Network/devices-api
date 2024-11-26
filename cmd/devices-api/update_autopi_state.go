@@ -85,7 +85,7 @@ func updateState(ctx context.Context, pdb db.Store, logger *zerolog.Logger, auto
 		// also update the AP vehicle Call Name to make it easier to find in AP dashboard
 		autoPiDevice, err := autoPiSvc.GetDeviceByUnitID(apiInt.Serial.String)
 		if err == nil {
-			dd, _ := deviceDefSvc.GetDeviceDefinitionByID(ctx, apiInt.R.UserDevice.DeviceDefinitionID)
+			dd, _ := deviceDefSvc.GetDeviceDefinitionBySlug(ctx, apiInt.R.UserDevice.DefinitionID)
 			nm := services.BuildCallName(apiInt.R.UserDevice.Name.Ptr(), dd)
 			err = autoPiSvc.PatchVehicleProfile(autoPiDevice.Vehicle.ID, services.PatchVehicleProfile{
 				CallName: &nm,

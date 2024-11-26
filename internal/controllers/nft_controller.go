@@ -104,8 +104,7 @@ func (nc *NFTController) GetNFTMetadata(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
-	deviceDefinitionID := ud.DeviceDefinitionID
-	def, err := nc.deviceDefSvc.GetDeviceDefinitionByID(c.Context(), deviceDefinitionID)
+	def, err := nc.deviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), ud.DefinitionID)
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "failed to get device definition")
 	}

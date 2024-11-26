@@ -24,7 +24,7 @@ import (
 //go:generate mockgen -source user_device_service.go -destination mocks/user_device_service_mock.go -package mock_services
 
 type UserDeviceService interface {
-	CreateUserDevice(ctx context.Context, deviceDefID, styleID, countryCode, userID string, vin, canProtocol *string, vinConfirmed bool) (*models.UserDevice, *ddgrpc.GetDeviceDefinitionItemResponse, error)
+	CreateUserDevice(ctx context.Context, definitionID, styleID, countryCode, userID string, vin, canProtocol *string, vinConfirmed bool) (*models.UserDevice, *ddgrpc.GetDeviceDefinitionItemResponse, error)
 }
 
 type userDeviceService struct {
@@ -48,11 +48,15 @@ func NewUserDeviceService(deviceDefSvc DeviceDefinitionService, log zerolog.Logg
 var ErrEmailUnverified = fmt.Errorf("email not verified")
 
 // CreateUserDevice creates the user_device record with all the logic we manage, including setting the countryCode, setting the powertrain based on the def or style, and setting the protocol
-func (uds *userDeviceService) CreateUserDevice(ctx context.Context, deviceDefID, styleID, countryCode, userID string, vin, canProtocol *string, vinConfirmed bool) (*models.UserDevice, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
+func (uds *userDeviceService) CreateUserDevice(ctx context.Context, definitionID, styleID, countryCode, userID string, vin, canProtocol *string, vinConfirmed bool) (*models.UserDevice, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
+	if len(definitionID) == 0 {
+		return nil, nil, fiber.NewError(fiber.StatusBadRequest, "definitionID is empty")
+	}
+
 	// attach device def to user
-	dd, err2 := uds.deviceDefSvc.GetDeviceDefinitionByID(ctx, deviceDefID)
+	dd, err2 := uds.deviceDefSvc.GetDeviceDefinitionBySlug(ctx, definitionID)
 	if err2 != nil {
-		return nil, nil, errors.Wrap(err2, fmt.Sprintf("error querying for device definition id: %s ", deviceDefID))
+		return nil, nil, errors.Wrap(err2, fmt.Sprintf("error querying for device definition id: %s ", definitionID))
 	}
 	powertrainType := ICE // default
 	for _, attr := range dd.DeviceAttributes {

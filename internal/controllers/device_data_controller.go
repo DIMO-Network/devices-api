@@ -125,9 +125,9 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 		return err
 	}
 
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), ud.DeviceDefinitionID)
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), ud.DefinitionID)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ud.DeviceDefinitionID)
+		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ud.DefinitionID)
 	}
 
 	req := &QueryDeviceErrorCodesReq{}

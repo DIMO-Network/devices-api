@@ -62,18 +62,18 @@ func populateESRegionData(ctx context.Context, settings *config.Settings, e es.E
 
 	for _, apiInt := range uAPIInt {
 		ud := apiInt.R.UserDevice
-		d, err := ddSvc.GetDeviceDefinitionByID(ctx, apiInt.R.UserDevice.DeviceDefinitionID)
+		d, err := ddSvc.GetDeviceDefinitionBySlug(ctx, apiInt.R.UserDevice.DefinitionID)
 		if err != nil {
 			logger.Err(err).
 				Str("userDeviceId", apiInt.UserDeviceID).
-				Str("deviceDefinitionId", apiInt.R.UserDevice.DeviceDefinitionID).
+				Str("deviceDefinitionId", apiInt.R.UserDevice.DefinitionID).
 				Msg("Failed to retrieve device definition.")
 			continue
 		}
 
 		if ud.CountryCode.IsZero() {
 			logger.Error().Str("userDeviceId", ud.ID).
-				Str("deviceDefinitionId", ud.DeviceDefinitionID).
+				Str("deviceDefinitionId", ud.DefinitionID).
 				Msg("Device missing country.")
 			continue
 		}

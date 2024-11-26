@@ -42,9 +42,9 @@ func (m *MockUserDeviceService) EXPECT() *MockUserDeviceServiceMockRecorder {
 }
 
 // CreateUserDevice mocks base method.
-func (m *MockUserDeviceService) CreateUserDevice(ctx context.Context, deviceDefID, styleID, countryCode, userID string, vin, canProtocol *string, vinConfirmed bool) (*models.UserDevice, *grpc.GetDeviceDefinitionItemResponse, error) {
+func (m *MockUserDeviceService) CreateUserDevice(ctx context.Context, definitionID, styleID, countryCode, userID string, vin, canProtocol *string, vinConfirmed bool) (*models.UserDevice, *grpc.GetDeviceDefinitionItemResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateUserDevice", ctx, deviceDefID, styleID, countryCode, userID, vin, canProtocol, vinConfirmed)
+	ret := m.ctrl.Call(m, "CreateUserDevice", ctx, definitionID, styleID, countryCode, userID, vin, canProtocol, vinConfirmed)
 	ret0, _ := ret[0].(*models.UserDevice)
 	ret1, _ := ret[1].(*grpc.GetDeviceDefinitionItemResponse)
 	ret2, _ := ret[2].(error)
@@ -52,7 +52,7 @@ func (m *MockUserDeviceService) CreateUserDevice(ctx context.Context, deviceDefI
 }
 
 // CreateUserDevice indicates an expected call of CreateUserDevice.
-func (mr *MockUserDeviceServiceMockRecorder) CreateUserDevice(ctx, deviceDefID, styleID, countryCode, userID, vin, canProtocol, vinConfirmed any) *gomock.Call {
+func (mr *MockUserDeviceServiceMockRecorder) CreateUserDevice(ctx, definitionID, styleID, countryCode, userID, vin, canProtocol, vinConfirmed any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUserDevice", reflect.TypeOf((*MockUserDeviceService)(nil).CreateUserDevice), ctx, deviceDefID, styleID, countryCode, userID, vin, canProtocol, vinConfirmed)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUserDevice", reflect.TypeOf((*MockUserDeviceService)(nil).CreateUserDevice), ctx, definitionID, styleID, countryCode, userID, vin, canProtocol, vinConfirmed)
 }

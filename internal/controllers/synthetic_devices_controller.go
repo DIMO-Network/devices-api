@@ -168,7 +168,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 	}
 
 	if in.Vendor == constants.SmartCarVendor {
-		dd, err := sdc.deviceDefSvc.GetDeviceDefinitionByID(c.Context(), ud.DeviceDefinitionID)
+		dd, err := sdc.deviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), ud.DefinitionID)
 		if err != nil {
 			return shared.GrpcErrorToFiber(err, "failed to get integration")
 		}

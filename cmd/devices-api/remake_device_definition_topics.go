@@ -75,11 +75,11 @@ func remakeDeviceDefinitionTopics(ctx context.Context, settings *config.Settings
 
 	// For each of these, register the device's device definition with the data pipeline.
 	for _, apiInt := range apiInts {
-		ddInfo, err := ddSvc.GetDeviceDefinitionByID(ctx, apiInt.R.UserDevice.DeviceDefinitionID)
+		ddInfo, err := ddSvc.GetDeviceDefinitionBySlug(ctx, apiInt.R.UserDevice.DefinitionID)
 		if err != nil {
 			logger.Err(err).
 				Str("userDeviceId", apiInt.UserDeviceID).
-				Str("deviceDefinitionId", apiInt.R.UserDevice.DeviceDefinitionID).
+				Str("deviceDefinitionId", apiInt.R.UserDevice.DefinitionID).
 				Msg("Failed to retrieve device definition.")
 			continue
 		}

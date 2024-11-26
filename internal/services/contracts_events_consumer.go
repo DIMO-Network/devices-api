@@ -269,7 +269,7 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 	}
 
 	// Need this for the event.
-	dd, err := c.ddSvc.GetDeviceDefinitionByID(ctx, ud.DeviceDefinitionID)
+	dd, err := c.ddSvc.GetDeviceDefinitionBySlug(ctx, ud.DefinitionID)
 	if err != nil {
 		return err
 	}

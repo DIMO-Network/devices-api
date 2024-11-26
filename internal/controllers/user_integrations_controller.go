@@ -117,7 +117,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 					if keyPaired {
 						vks = Paired
 					} else {
-						dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), apiIntegration.R.UserDevice.DeviceDefinitionID)
+						dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), apiIntegration.R.UserDevice.DefinitionID)
 						if err != nil {
 							return err
 						}
@@ -344,7 +344,7 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	}
 
 	// Need this for activity log.
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), device.DeviceDefinitionID)
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), device.DefinitionID)
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+device.DeviceDefinitionID)
 	}
@@ -1618,10 +1618,10 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 	}
 	logger = logger.With().Str("region", countryRecord.Region).Logger()
 
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionByID(c.Context(), ud.DeviceDefinitionID)
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), ud.DefinitionID)
 	if err != nil {
-		logger.Err(err).Msg("grpc error searching for device definition")
-		return shared.GrpcErrorToFiber(err, "failed to get device definition with id: "+ud.DeviceDefinitionID)
+		logger.Err(err).Msg("grpc error searching for definition")
+		return shared.GrpcErrorToFiber(err, "failed to get definition with id: "+ud.DefinitionID)
 	}
 
 	// filter out the desired integration from the compatible ones
@@ -1710,9 +1710,9 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 
 	ud := udai.R.UserDevice
 	// pull dd info again - don't pass it in, as it may have changed
-	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionByID(ctx, ud.DeviceDefinitionID)
+	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(ctx, ud.DefinitionID)
 	if err2 != nil {
-		logger.Err(err2).Str("deviceDefinitionId", ud.DeviceDefinitionID).Msg("failed to retrieve device defintion")
+		logger.Err(err2).Str("deviceDefinitionId", ud.DefinitionID).Msg("failed to retrieve device defintion")
 	}
 
 	err = udc.eventService.Emit(
