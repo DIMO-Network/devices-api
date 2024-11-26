@@ -829,9 +829,7 @@ func Test_VehicleNodeMintedWithDeviceDefinition_NoMtx(t *testing.T) {
 	))
 	require.NoError(err)
 
-	deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), &ddgrpc.GetDeviceDefinitionBySlugNameRequest{
-		Slug: ddSlug,
-	}).Return(&ddgrpc.GetDeviceDefinitionItemResponse{
+	deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ddSlug).Return(&ddgrpc.GetDeviceDefinitionItemResponse{
 		DeviceDefinitionId: deviceDefID,
 		Make: &ddgrpc.DeviceMake{
 			TokenId: 7,
@@ -901,7 +899,7 @@ func TestBurnSyntheticDevice(t *testing.T) {
 	require.NoError(t, err)
 
 	deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(teslaIntID)).Return(teslaInteg, nil)
-	deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).Return(&ddgrpc.GetDeviceDefinitionItemResponse{
+	deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Return(&ddgrpc.GetDeviceDefinitionItemResponse{
 		Make: &ddgrpc.DeviceMake{
 			Name: "Tesla",
 		},

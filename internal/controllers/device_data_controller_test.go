@@ -113,7 +113,7 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 
 		mockDeps.deviceDefSvc.
 			EXPECT().
-			GetDeviceDefinitionByID(gomock.Any(), ud.DeviceDefinitionID).
+			GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).
 			Return(&grpc.GetDeviceDefinitionItemResponse{
 				Make: &grpc.DeviceMake{
 					Name:     "Toyota",
