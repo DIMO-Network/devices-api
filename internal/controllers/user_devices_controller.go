@@ -949,7 +949,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 
 	// attach device def to user
 	//nolint
-	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DeviceDefinitionId, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, nil)
+	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DefinitionId, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, nil)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}

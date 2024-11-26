@@ -24,8 +24,6 @@ type DeviceDefinitionService interface {
 	GetOrCreateMake(ctx context.Context, tx boil.ContextExecutor, makeName string) (*ddgrpc.DeviceMake, error)
 	GetMakeByTokenID(ctx context.Context, tokenID *big.Int) (*ddgrpc.DeviceMake, error)
 	GetDeviceDefinitionsByIDs(ctx context.Context, ids []string) ([]*ddgrpc.GetDeviceDefinitionItemResponse, error)
-	// GetDeviceDefinitionByID get definition by legacy KSUID
-	GetDeviceDefinitionByID(ctx context.Context, id string) (*ddgrpc.GetDeviceDefinitionItemResponse, error)
 	GetIntegrations(ctx context.Context) ([]*ddgrpc.Integration, error)
 	GetIntegrationByID(ctx context.Context, id string) (*ddgrpc.Integration, error)
 	GetIntegrationByVendor(ctx context.Context, vendor string) (*ddgrpc.Integration, error)
