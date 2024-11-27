@@ -61,15 +61,13 @@ func populateESDDData(ctx context.Context, settings *config.Settings, e es.Elast
 		return fmt.Errorf("failed to retrieve all API integrations with external IDs: %w", err)
 	}
 
-	ids := make([]string, len(apiInts))
-	for _, d := range apiInts {
-		ids = append(ids, d.R.UserDevice.DeviceDefinitionID)
-	}
-
-	deviceDefinitionResponse, err := ddSvc.GetDeviceDefinitionsByIDs(ctx, ids)
-
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to retrieve all devices and definitions for event generation from grpc")
+	deviceDefinitionResponse := make([]*ddgrpc.GetDeviceDefinitionItemResponse, len(apiInts))
+	for i, d := range apiInts {
+		dd, err := ddSvc.GetDeviceDefinitionBySlug(ctx, d.R.UserDevice.DefinitionID)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("Failed to retrieve all devices and definitions for event generation from grpc")
+		}
+		deviceDefinitionResponse[i] = dd
 	}
 
 	filterDeviceDefinition := func(id string, items []*ddgrpc.GetDeviceDefinitionItemResponse) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
@@ -83,7 +81,7 @@ func populateESDDData(ctx context.Context, settings *config.Settings, e es.Elast
 
 	for _, apiInt := range apiInts {
 
-		dd, err := filterDeviceDefinition(apiInt.R.UserDevice.DeviceDefinitionID, deviceDefinitionResponse)
+		dd, err := filterDeviceDefinition(apiInt.R.UserDevice.DefinitionID, deviceDefinitionResponse)
 		if err != nil {
 			logger.Fatal().Err(err)
 			continue

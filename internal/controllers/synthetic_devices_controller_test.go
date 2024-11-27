@@ -126,8 +126,9 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), "ddID                       ").Return(&grpc.GetDeviceDefinitionItemResponse{
-		DeviceDefinitionId: "ddID",
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), "ford_escape_2020").Return(&grpc.GetDeviceDefinitionItemResponse{
+		DeviceDefinitionId: "ford_escape_2020",
+		Id:                 "ford_escape_2020",
 		Make: &grpc.DeviceMake{
 			Name: "Ford",
 			Id:   ksuid.New().String(),
@@ -379,8 +380,10 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), "ddID                       ").Return(&grpc.GetDeviceDefinitionItemResponse{
-		DeviceDefinitionId: "ddID",
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), "ford_escape_2020").Return(&grpc.GetDeviceDefinitionItemResponse{
+		DeviceDefinitionId: "ford_escape_2020",
+		Id:                 "ford_escape_2020",
+		Year:               2020,
 		Make: &grpc.DeviceMake{
 			Name: "Kia",
 			Id:   "2681cSm2zmTmGHzqK3ldzoTLZIw",
@@ -388,7 +391,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 		Verified: true,
 	}, nil)
 
-	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Kia", "Soul", 2022, nil)
+	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Escape", 2020, nil)
 
 	udID := ksuid.New().String()
 	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, 57, s.pdb)

@@ -140,7 +140,7 @@ func (s *UserDevicesControllerTestSuite) TestUpdateVINV2_setCountryAndProtocol()
 	//email := "some@email.com"
 	//eth := addr.Hex()
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Escape", 2020, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].DeviceDefinitionId).Return(dd[0], nil)
 
 	userDevice := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	_ = test.SetupCreateVehicleNFT(s.T(), userDevice, big.NewInt(1), null.BytesFrom(addr.Bytes()), s.pdb)

@@ -43,7 +43,7 @@ package services
 //	can := "7"
 //	apInt := test.BuildIntegrationGRPC("autopi", 10, 12)
 //	dd := test.BuildDeviceDefinitionGRPC(ddID, "Ford", "Escaped", 2023, apInt)
-//	deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), ddID).Times(1).Return(dd[0], nil)
+//	deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ddID).Times(1).Return(dd[0], nil)
 //	//style will have hybrid name in it and powertrain attr HEV
 //	deviceDefSvc.EXPECT().GetDeviceStyleByID(gomock.Any(), styleID).Times(1).Return(&ddgrpc.DeviceStyle{
 //		ID:                 ksuid.New().String(),

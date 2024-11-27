@@ -62,20 +62,18 @@ func generateEvents(logger zerolog.Logger, pdb db.Store, eventService services.E
 		logger.Fatal().Err(err).Msg("Failed to retrieve all devices and definitions for event generation")
 	}
 
-	ids := make([]string, len(devices))
-	for _, d := range devices {
-		ids = append(ids, d.DeviceDefinitionID)
-	}
-
-	deviceDefinitionResponse, err := ddSvc.GetDeviceDefinitionsByIDs(ctx, ids)
-
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to retrieve all devices and definitions for event generation from grpc")
+	deviceDefinitionResponse := make([]*ddgrpc.GetDeviceDefinitionItemResponse, len(devices))
+	for i, d := range devices {
+		dd, err := ddSvc.GetDeviceDefinitionBySlug(ctx, d.DefinitionID)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("Failed to retrieve all devices and definitions for event generation from grpc")
+		}
+		deviceDefinitionResponse[i] = dd
 	}
 
 	filterDeviceDefinition := func(id string, items []*ddgrpc.GetDeviceDefinitionItemResponse) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
 		for _, dd := range items {
-			if id == dd.DeviceDefinitionId {
+			if id == dd.Id {
 				return dd, nil
 			}
 		}
@@ -84,7 +82,7 @@ func generateEvents(logger zerolog.Logger, pdb db.Store, eventService services.E
 
 	for _, device := range devices {
 
-		dd, err := filterDeviceDefinition(device.DeviceDefinitionID, deviceDefinitionResponse)
+		dd, err := filterDeviceDefinition(device.DefinitionID, deviceDefinitionResponse)
 
 		if err != nil {
 			logger.Fatal().Err(err)
@@ -121,12 +119,6 @@ func generateEvents(logger zerolog.Logger, pdb db.Store, eventService services.E
 		logger.Fatal().Err(err).Msg("Failed to retrieve all active integrations")
 	}
 
-	deviceDefinitionResponse, err = ddSvc.GetDeviceDefinitionsByIDs(ctx, ids)
-
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to retrieve all devices and definitions for event generation from grpc")
-	}
-
 	for _, scInteg := range scIntegs {
 		if !scInteg.R.UserDevice.VinIdentifier.Valid {
 			logger.Warn().Msgf("Device %s has an active integration but no VIN", scInteg.UserDeviceID)
@@ -137,7 +129,7 @@ func generateEvents(logger zerolog.Logger, pdb db.Store, eventService services.E
 			continue
 		}
 
-		dd, err := filterDeviceDefinition(scInteg.R.UserDevice.DeviceDefinitionID, deviceDefinitionResponse)
+		dd, err := filterDeviceDefinition(scInteg.R.UserDevice.DefinitionID, deviceDefinitionResponse)
 
 		if err != nil {
 			logger.Fatal().Err(err)
