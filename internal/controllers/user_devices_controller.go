@@ -667,7 +667,7 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 
 	definitionId := reg.DefinitionId
 	if definitionId == "" {
-		req, err := http.NewRequest("GET", udc.Settings.DeviceDefinitionsGetByKSUIDEndpoint, nil)
+		req, err := http.NewRequest("GET", udc.Settings.DeviceDefinitionsGetByKSUIDEndpoint+*reg.DeviceDefinitionID, nil)
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, errors.Wrap(err, "failed to create request for get device definition").Error())
 		}
@@ -688,7 +688,7 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 		definitionId = gjson.GetBytes(body, "nameSlug").String()
 
 		if definitionId == "" {
-			udc.log.Error().Msg("Failed to get device definition nameSlug from dd api response. request body: +" + string(body))
+			udc.log.Error().Msg("Failed to get device definition nameSlug from dd api response. response body: +" + string(body))
 		}
 	}
 
