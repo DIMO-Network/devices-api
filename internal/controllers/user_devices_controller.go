@@ -681,8 +681,15 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 
 		// Read the response body
 		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, errors.Wrap(err, "failed to read body to get device definition").Error())
+		}
 		// use gjson to get the new id
 		definitionId = gjson.GetBytes(body, "nameSlug").String()
+
+		if definitionId == "" {
+			udc.log.Error().Msg("Failed to get device definition nameSlug from dd api response. request body: +" + string(body))
+		}
 	}
 
 	udFull, err := udc.createUserDevice(c.Context(), definitionId, "", reg.CountryCode, userID, nil, nil)
