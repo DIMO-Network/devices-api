@@ -190,7 +190,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 
 	filterDeviceDefinition := func(id string, items []*ddgrpc.GetDeviceDefinitionItemResponse) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
 		for _, dd := range items {
-			if id == dd.DeviceDefinitionId {
+			if id == dd.Id {
 				return dd, nil
 			}
 		}
@@ -203,7 +203,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 	}
 
 	for _, d := range devices {
-		deviceDefinition, err := filterDeviceDefinition(d.DeviceDefinitionID, deviceDefinitionResponse)
+		deviceDefinition, err := filterDeviceDefinition(d.DefinitionID, deviceDefinitionResponse)
 		if err != nil {
 			return nil, fmt.Errorf("user device %s has unknown device definition %s", d.ID, d.DeviceDefinitionID)
 		}
@@ -1937,7 +1937,7 @@ func (udc *UserDevicesController) checkVehicleMint(c *fiber.Ctx, userDevice *mod
 	}
 
 	if dd.Id == "" {
-		return nil, nil, fmt.Errorf("invalid on-chain name slug for device definition id: %s", userDevice.DeviceDefinitionID)
+		return nil, nil, fmt.Errorf("invalid on-chain name slug for device definition id: %s", userDevice.DefinitionID)
 	}
 
 	mvs := &registry.MintVehicleSign{

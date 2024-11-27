@@ -329,11 +329,11 @@ func TestUserDevicesController_ShouldErrorOnEmptyErrorCodes(t *testing.T) {
 
 		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
-		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
+		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].Id, nil, "", pdb)
 
 		mockDeps.deviceDefSvc.
 			EXPECT().
-			GetDeviceDefinitionBySlug(gomock.Any(), ud.DeviceDefinitionID).
+			GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).
 			Return(&grpc.GetDeviceDefinitionItemResponse{
 				Make: &grpc.DeviceMake{
 					Name:     "Toyota",
