@@ -124,18 +124,19 @@ func (d *deviceDefinitionService) DecodeVIN(ctx context.Context, vin string, mod
 	return resp, nil
 }
 
-// GetDeviceDefinitionByID is a helper for calling GetDeviceDefinitionsByIDs with one id.
-func (d *deviceDefinitionService) GetDeviceDefinitionByID(ctx context.Context, id string) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
-	resp, err := d.GetDeviceDefinitionsByIDs(ctx, []string{id})
+// GetDeviceDefinitionByID is a helper for calling GetDeviceDefinitionsByIDs with one id. deprecated
+func (d *deviceDefinitionService) GetDeviceDefinitionByID(ctx context.Context, definitionId string) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
+	// todo delete this method
+	resp, err := d.GetDeviceDefinitionBySlug(ctx, definitionId)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(resp) == 0 {
+	if resp == nil {
 		return nil, status.Error(codes.NotFound, "No definition with that id.")
 	}
 
-	return resp[0], nil
+	return resp, nil
 }
 
 // GetIntegrations calls device definitions integrations api via GRPC to get the definition. idea for testing: http://www.inanzzz.com/index.php/post/w9qr/unit-testing-golang-grpc-client-and-server-application-with-bufconn-package

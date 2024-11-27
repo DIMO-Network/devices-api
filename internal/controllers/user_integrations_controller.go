@@ -1618,30 +1618,9 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 	}
 	logger = logger.With().Str("region", countryRecord.Region).Logger()
 
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), ud.DefinitionID)
+	integration, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
 	if err != nil {
-		logger.Err(err).Msg("grpc error searching for definition")
-		return shared.GrpcErrorToFiber(err, "failed to get definition with id: "+ud.DefinitionID)
-	}
-
-	// filter out the desired integration from the compatible ones
-	var deviceInteg *ddgrpc.Integration
-	for _, integration := range dd.DeviceIntegrations { //nolint
-		if integration.Integration.Id == integrationID {
-			deviceInteg = &ddgrpc.Integration{
-				Id:     integration.Integration.Id,
-				Type:   integration.Integration.Type,
-				Style:  integration.Integration.Style,
-				Vendor: integration.Integration.Vendor,
-			}
-			break
-		}
-	}
-
-	if deviceInteg == nil {
-		// todo need a test for this
-		return fiber.NewError(fiber.StatusBadRequest,
-			fmt.Sprintf("deviceDefinitionId %s does not support integrationId %s for region %s", ud.DeviceDefinitionID, integrationID, countryRecord.Region))
+		return shared.GrpcErrorToFiber(err, "failed to get integration with id: "+integrationID)
 	}
 
 	if exists, err := models.UserDeviceAPIIntegrationExists(c.Context(), tx, userDeviceID, integrationID); err != nil {
@@ -1654,11 +1633,11 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 	var regErr error
 	// The per-integration handler is responsible for handling the fiber context and committing the
 	// transaction.
-	switch vendor := deviceInteg.Vendor; vendor {
+	switch vendor := integration.Vendor; vendor {
 	case constants.SmartCarVendor:
-		regErr = udc.registerSmartcarIntegration(c, &logger, tx, deviceInteg, ud)
+		regErr = udc.registerSmartcarIntegration(c, &logger, tx, integration, ud)
 	case constants.TeslaVendor:
-		regErr = udc.registerDeviceTesla(c, &logger, tx, userDeviceID, deviceInteg, ud)
+		regErr = udc.registerDeviceTesla(c, &logger, tx, userDeviceID, integration, ud)
 	case constants.AutoPiVendor:
 		logger.Error().Msg("autopi register request via invalid route: /user/devices/:userDeviceID/integrations/:integrationID")
 		return errors.New("this route cannot be used to register an autopi anymore - update your client")
@@ -1671,7 +1650,7 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 		return regErr
 	}
 
-	udc.runPostRegistration(c.Context(), &logger, userDeviceID, integrationID, deviceInteg)
+	udc.runPostRegistration(c.Context(), &logger, userDeviceID, integrationID, integration)
 
 	return nil
 }

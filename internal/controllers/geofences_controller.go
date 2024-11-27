@@ -253,9 +253,13 @@ func (g *GeofencesController) GetAll(c *fiber.Ctx) error {
 			"geofences": []GetGeofence{},
 		})
 	}
-	dds, err := g.deviceDefSvc.GetDeviceDefinitionsByIDs(c.Context(), ddIDs)
-	if err != nil {
-		return shared.GrpcErrorToFiber(err, "failed to pull device definitions")
+	dds := make([]*ddgrpc.GetDeviceDefinitionItemResponse, len(ddIDs))
+	for i, ddID := range ddIDs {
+		dd, err := g.deviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), ddID)
+		if err != nil {
+			return shared.GrpcErrorToFiber(err, "failed to pull device definitions")
+		}
+		dds[i] = dd
 	}
 
 	fences := make([]GetGeofence, len(items))
