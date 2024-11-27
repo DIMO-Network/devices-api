@@ -103,6 +103,8 @@ type Settings struct {
 
 	Clickhouse          config.Settings `yaml:",inline"`
 	RuptelaConnectionID string          `yaml:"RUPTELA_CONNECTION_ID"`
+
+	DeviceDefinitionsGetByKSUIDEndpoint string `yaml:"DEVICE_DEFINITIONS_GET_BY_KSUID_ENDPOINT"`
 }
 
 func (s *Settings) IsProduction() bool {

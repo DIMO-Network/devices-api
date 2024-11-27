@@ -8,7 +8,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/tidwall/gjson"
+	"io"
 	"math/big"
+	"net/http"
 	"regexp"
 	"slices"
 	"strconv"
@@ -662,7 +665,27 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	udFull, err := udc.createUserDevice(c.Context(), *reg.DeviceDefinitionID, "", reg.CountryCode, userID, nil, nil)
+	definitionId := reg.DefinitionId
+	if definitionId == "" {
+		req, err := http.NewRequest("GET", udc.Settings.DeviceDefinitionsGetByKSUIDEndpoint, nil)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, errors.Wrap(err, "failed to create request for get device definition").Error())
+		}
+		req.Header.Set("Accept", "application/json")
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			return fmt.Errorf("failed to send request: %v", err)
+		}
+		defer resp.Body.Close()
+
+		// Read the response body
+		body, err := io.ReadAll(resp.Body)
+		// use gjson to get the new id
+		definitionId = gjson.GetBytes(body, "nameSlug").String()
+	}
+
+	udFull, err := udc.createUserDevice(c.Context(), definitionId, "", reg.CountryCode, userID, nil, nil)
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "")
 	}
@@ -1755,6 +1778,8 @@ type NFTImageData struct {
 type RegisterUserDevice struct {
 	DeviceDefinitionID *string `json:"deviceDefinitionId"`
 	CountryCode        string  `json:"countryCode"`
+	// DefinitionId new slug id
+	DefinitionId string `json:"definitionId"`
 }
 
 type RegisterUserDeviceResponse struct {
