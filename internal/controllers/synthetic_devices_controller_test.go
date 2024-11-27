@@ -126,7 +126,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), "ddID                       ").Return(&grpc.GetDeviceDefinitionItemResponse{
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), "ddID                       ").Return(&grpc.GetDeviceDefinitionItemResponse{
 		DeviceDefinitionId: "ddID",
 		Make: &grpc.DeviceMake{
 			Name: "Ford",
@@ -379,7 +379,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), "ddID                       ").Return(&grpc.GetDeviceDefinitionItemResponse{
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), "ddID                       ").Return(&grpc.GetDeviceDefinitionItemResponse{
 		DeviceDefinitionId: "ddID",
 		Make: &grpc.DeviceMake{
 			Name: "Kia",

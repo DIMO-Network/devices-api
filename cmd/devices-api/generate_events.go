@@ -62,15 +62,13 @@ func generateEvents(logger zerolog.Logger, pdb db.Store, eventService services.E
 		logger.Fatal().Err(err).Msg("Failed to retrieve all devices and definitions for event generation")
 	}
 
-	ids := make([]string, len(devices))
-	for _, d := range devices {
-		ids = append(ids, d.DeviceDefinitionID)
-	}
-
-	deviceDefinitionResponse, err := ddSvc.GetDeviceDefinitionsByIDs(ctx, ids)
-
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to retrieve all devices and definitions for event generation from grpc")
+	deviceDefinitionResponse := make([]*ddgrpc.GetDeviceDefinitionItemResponse, len(devices))
+	for i, d := range devices {
+		dd, err := ddSvc.GetDeviceDefinitionBySlug(ctx, d.DefinitionID)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("Failed to retrieve all devices and definitions for event generation from grpc")
+		}
+		deviceDefinitionResponse[i] = dd
 	}
 
 	filterDeviceDefinition := func(id string, items []*ddgrpc.GetDeviceDefinitionItemResponse) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
@@ -119,12 +117,6 @@ func generateEvents(logger zerolog.Logger, pdb db.Store, eventService services.E
 	).All(ctx, tx)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to retrieve all active integrations")
-	}
-
-	deviceDefinitionResponse, err = ddSvc.GetDeviceDefinitionsByIDs(ctx, ids)
-
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to retrieve all devices and definitions for event generation from grpc")
 	}
 
 	for _, scInteg := range scIntegs {

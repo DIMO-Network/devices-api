@@ -12,9 +12,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -23,7 +21,6 @@ type DeviceDefinitionService interface {
 	FindDeviceDefinitionByMMY(ctx context.Context, mk, model string, year int) (*ddgrpc.GetDeviceDefinitionItemResponse, error)
 	GetOrCreateMake(ctx context.Context, tx boil.ContextExecutor, makeName string) (*ddgrpc.DeviceMake, error)
 	GetMakeByTokenID(ctx context.Context, tokenID *big.Int) (*ddgrpc.DeviceMake, error)
-	GetDeviceDefinitionsByIDs(ctx context.Context, ids []string) ([]*ddgrpc.GetDeviceDefinitionItemResponse, error)
 	GetIntegrations(ctx context.Context) ([]*ddgrpc.Integration, error)
 	GetIntegrationByID(ctx context.Context, id string) (*ddgrpc.Integration, error)
 	GetIntegrationByVendor(ctx context.Context, vendor string) (*ddgrpc.Integration, error)
@@ -74,31 +71,6 @@ func (d *deviceDefinitionService) CreateIntegration(ctx context.Context, integra
 	return &ddgrpc.Integration{Id: integration.Id, Vendor: vendor, Type: integrationType, Style: style}, nil
 }
 
-// GetDeviceDefinitionsByIDs calls device definitions api via GRPC to get the definition. idea for testing: http://www.inanzzz.com/index.php/post/w9qr/unit-testing-golang-grpc-client-and-server-application-with-bufconn-package
-// if not found or other error from server, the error contains the grpc status code that can be interpreted for different conditions. example in api.GrpcErrorToFiber
-func (d *deviceDefinitionService) GetDeviceDefinitionsByIDs(ctx context.Context, ids []string) ([]*ddgrpc.GetDeviceDefinitionItemResponse, error) {
-
-	if len(ids) == 0 {
-		return nil, errors.New("Device Definition Ids is required")
-	}
-
-	definitionsClient, conn, err := d.getDeviceDefsGrpcClient()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	definitions, err2 := definitionsClient.GetDeviceDefinitionByID(ctx, &ddgrpc.GetDeviceDefinitionRequest{
-		Ids: ids,
-	})
-
-	if err2 != nil {
-		return nil, err2
-	}
-
-	return definitions.GetDeviceDefinitions(), nil
-}
-
 func (d *deviceDefinitionService) DecodeVIN(ctx context.Context, vin string, model string, year int, countryCode string) (*ddgrpc.DecodeVinResponse, error) {
 	if len(vin) != 17 {
 		return nil, errors.New("VIN must be 17 chars")
@@ -119,21 +91,6 @@ func (d *deviceDefinitionService) DecodeVIN(ctx context.Context, vin string, mod
 
 	if err2 != nil {
 		return nil, err2
-	}
-
-	return resp, nil
-}
-
-// GetDeviceDefinitionByID is a helper for calling GetDeviceDefinitionsByIDs with one id. deprecated
-func (d *deviceDefinitionService) GetDeviceDefinitionByID(ctx context.Context, definitionId string) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
-	// todo delete this method
-	resp, err := d.GetDeviceDefinitionBySlug(ctx, definitionId)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp == nil {
-		return nil, status.Error(codes.NotFound, "No definition with that id.")
 	}
 
 	return resp, nil

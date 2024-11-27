@@ -176,7 +176,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), "22N2xaPOq2WW2gAHBHd0Ikn4Zob", dd[0].DeviceDefinitionId, "Americas").Times(1).
 		Return(nil, nil)
 	s.redisClient.EXPECT().Set(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID), gomock.Any(), time.Hour*2).Return(nil)
-	//s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
+	//s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
 	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].DeviceDefinitionId, "", "USA", testUserID, &vinny, nil, false).
 		Return(&models.UserDevice{
 			ID:                 ksuid.New().String(),
@@ -259,7 +259,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_SameUser
 	}, nil)
 	s.scClient.EXPECT().GetExternalID(gomock.Any(), "AA").Times(1).Return("123", nil)
 	s.scClient.EXPECT().GetVIN(gomock.Any(), "AA", "123").Times(1).Return(vinny, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
 	s.redisClient.EXPECT().Set(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID), gomock.Any(), time.Hour*2).Return(nil)
 
 	request := test.BuildRequest("POST", "/user/devices/fromsmartcar", string(j))
@@ -401,10 +401,10 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_SameUser_Dupl
 	reg := RegisterUserDeviceVIN{VIN: vinny, CountryCode: "USA", CANProtocol: "06"}
 	j, _ := json.Marshal(reg)
 	// existing UserDevice with same VIN
-	existingUD := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, vinny, s.pdb)
+	existingUD := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, vinny, s.pdb)
 	// if the vin already exists for this user, do not expect decode request
 
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].Id).Times(1).Return(dd[0], nil)
 	apInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 10)
 	s.deviceDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Times(1).Return(apInteg, nil)
 	// we always call this just in case
@@ -554,7 +554,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId, dd[0].DeviceDefinitionId}).Times(1).Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].Id).Times(2).Return(dd, nil)
 
 	s.controller.Settings.Environment = "dev"
 	request := test.BuildRequest("GET", "/user/devices/me", "")
@@ -598,7 +598,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Times(1).Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd, nil)
 
 	request := test.BuildRequest("GET", "/user/devices/me", "")
 	response, err := s.app.Test(request)
@@ -642,9 +642,9 @@ func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 	// validates that if country=USA we update the powertrain based on what the NHTSA vin decoder says
 
 	// seperate request to validate info persisted to user_device table
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionsByIDs(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Times(1).
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Times(1).
 		Return(dd, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionByID(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).
 		Return(dd[0], nil)
 
 	payload := `{ "vin": "5YJYGDEE5MF085533" }`
