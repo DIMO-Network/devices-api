@@ -179,14 +179,13 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 		return apiDevices, nil
 	}
 
-	ddIDs := make([]string, len(devices))
-	for i, d := range devices {
-		ddIDs[i] = d.DeviceDefinitionID
-	}
-
-	deviceDefinitionResponse, err := udc.DeviceDefSvc.GetDeviceDefinitionsByIDs(ctx, ddIDs)
-	if err != nil {
-		return nil, shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ddIDs[0])
+	deviceDefinitionResponse := make([]*ddgrpc.GetDeviceDefinitionItemResponse, len(devices))
+	for i, userDevice := range devices {
+		def, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(ctx, userDevice.DefinitionID)
+		if err != nil {
+			return nil, shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DefinitionID)
+		}
+		deviceDefinitionResponse[i] = def
 	}
 
 	filterDeviceDefinition := func(id string, items []*ddgrpc.GetDeviceDefinitionItemResponse) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
@@ -948,7 +947,6 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	}
 
 	// attach device def to user
-	//nolint
 	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DefinitionId, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, nil)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
@@ -972,7 +970,8 @@ func buildSmartcarTokenKey(vin, userID string) string {
 	return fmt.Sprintf("sc-temp-tok-%s-%s", vin, userID)
 }
 
-func (udc *UserDevicesController) createUserDevice(ctx context.Context, definitionID, styleID, countryCode, userID string, vin, canProtocol *string) (*UserDeviceFull, error) {
+func (udc *UserDevicesController) createUserDevice(ctx context.Context, definitionID, styleID, countryCode, userID string,
+	vin, canProtocol *string) (*UserDeviceFull, error) {
 	ud, dd, err := udc.userDeviceSvc.CreateUserDevice(ctx, definitionID, styleID, countryCode, userID, vin, canProtocol, false)
 	if err != nil {
 		if errors.Is(err, services.ErrEmailUnverified) {

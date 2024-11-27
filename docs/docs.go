@@ -1214,7 +1214,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Submit credentials for registering a device with a given integration.",
+                "description": "Submit credentials for registering a device with a given integration. This must be called for any new pairing as well as eg. /fromsmartcar",
                 "consumes": [
                     "application/json"
                 ],

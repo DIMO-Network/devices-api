@@ -1579,6 +1579,7 @@ paths:
       consumes:
       - application/json
       description: Submit credentials for registering a device with a given integration.
+        This must be called for any new pairing as well as eg. /fromsmartcar
       parameters:
       - description: Integration credentials
         in: body

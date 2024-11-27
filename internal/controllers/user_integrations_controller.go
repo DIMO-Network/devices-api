@@ -1677,7 +1677,7 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 }
 
 // RegisterDeviceIntegration godoc
-// @Description Submit credentials for registering a device with a given integration.
+// @Description Submit credentials for registering a device with a given integration. This must be called for any new pairing as well as eg. /fromsmartcar
 // @Tags        integrations
 // @Accept      json
 // @Param       userDeviceIntegrationRegistration body controllers.RegisterDeviceIntegrationRequest true "Integration credentials"
