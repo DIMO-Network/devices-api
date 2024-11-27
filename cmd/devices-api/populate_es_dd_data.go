@@ -81,7 +81,7 @@ func populateESDDData(ctx context.Context, settings *config.Settings, e es.Elast
 
 	for _, apiInt := range apiInts {
 
-		dd, err := filterDeviceDefinition(apiInt.R.UserDevice.DeviceDefinitionID, deviceDefinitionResponse)
+		dd, err := filterDeviceDefinition(apiInt.R.UserDevice.DefinitionID, deviceDefinitionResponse)
 		if err != nil {
 			logger.Fatal().Err(err)
 			continue

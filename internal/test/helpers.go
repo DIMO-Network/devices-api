@@ -239,14 +239,13 @@ func SetupCreateUserDevice(t *testing.T, testUserID string, ddID string, metadat
 	return ud
 }
 
-func SetupCreateUserDeviceWithDeviceID(t *testing.T, testUserID string, deviceID string, ddID string, metadata *[]byte, vin string, pdb db.Store) models.UserDevice {
+func SetupCreateUserDeviceWithDeviceID(t *testing.T, testUserID string, deviceID string, definitionID string, metadata *[]byte, vin string, pdb db.Store) models.UserDevice {
 	ud := models.UserDevice{
-		ID:                 deviceID,
-		UserID:             testUserID,
-		DeviceDefinitionID: ddID,
-		DefinitionID:       "ford_escape_2020",
-		CountryCode:        null.StringFrom("USA"),
-		Name:               null.StringFrom("Chungus"),
+		ID:           deviceID,
+		UserID:       testUserID,
+		DefinitionID: definitionID,
+		CountryCode:  null.StringFrom("USA"),
+		Name:         null.StringFrom("Chungus"),
 	}
 	if len(vin) == 17 {
 		ud.VinIdentifier = null.StringFrom(vin)

@@ -544,17 +544,17 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
-	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].Id, nil, "", s.pdb)
 	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, nil, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
 
 	addr := "67B94473D81D0cd00849D563C94d0432Ac988B49"
-	ud2 := test.SetupCreateUserDeviceWithDeviceID(s.T(), userID2, deviceID2, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud2 := test.SetupCreateUserDeviceWithDeviceID(s.T(), userID2, deviceID2, dd[0].Id, nil, "", s.pdb)
 	_ = test.SetupCreateVehicleNFT(s.T(), ud2, big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].Id).Times(2).Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].Id).Times(2).Return(dd[0], nil)
 
 	s.controller.Settings.Environment = "dev"
 	request := test.BuildRequest("GET", "/user/devices/me", "")
@@ -588,7 +588,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
 
 	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
-	ud := test.SetupCreateUserDeviceWithDeviceID(s.T(), userID, deviceID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud := test.SetupCreateUserDeviceWithDeviceID(s.T(), userID, deviceID, dd[0].Id, nil, "", s.pdb)
 	_ = test.SetupCreateAftermarketDevice(s.T(), userID, nil, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
 	_ = test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
 
@@ -598,7 +598,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd, nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
 
 	request := test.BuildRequest("GET", "/user/devices/me", "")
 	response, err := s.app.Test(request)

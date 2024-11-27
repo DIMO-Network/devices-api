@@ -240,8 +240,8 @@ func (g *GeofencesController) GetAll(c *fiber.Ctx) error {
 	var ddIDs []string
 	for _, item := range items {
 		for _, udtg := range item.R.UserDeviceToGeofences {
-			if !slices.Contains(ddIDs, udtg.R.UserDevice.DeviceDefinitionID) {
-				ddIDs = append(ddIDs, udtg.R.UserDevice.DeviceDefinitionID)
+			if !slices.Contains(ddIDs, udtg.R.UserDevice.DefinitionID) {
+				ddIDs = append(ddIDs, udtg.R.UserDevice.DefinitionID)
 			}
 		}
 	}

@@ -73,7 +73,7 @@ func generateEvents(logger zerolog.Logger, pdb db.Store, eventService services.E
 
 	filterDeviceDefinition := func(id string, items []*ddgrpc.GetDeviceDefinitionItemResponse) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
 		for _, dd := range items {
-			if id == dd.DeviceDefinitionId {
+			if id == dd.Id {
 				return dd, nil
 			}
 		}
@@ -82,7 +82,7 @@ func generateEvents(logger zerolog.Logger, pdb db.Store, eventService services.E
 
 	for _, device := range devices {
 
-		dd, err := filterDeviceDefinition(device.DeviceDefinitionID, deviceDefinitionResponse)
+		dd, err := filterDeviceDefinition(device.DefinitionID, deviceDefinitionResponse)
 
 		if err != nil {
 			logger.Fatal().Err(err)
@@ -129,7 +129,7 @@ func generateEvents(logger zerolog.Logger, pdb db.Store, eventService services.E
 			continue
 		}
 
-		dd, err := filterDeviceDefinition(scInteg.R.UserDevice.DeviceDefinitionID, deviceDefinitionResponse)
+		dd, err := filterDeviceDefinition(scInteg.R.UserDevice.DefinitionID, deviceDefinitionResponse)
 
 		if err != nil {
 			logger.Fatal().Err(err)
