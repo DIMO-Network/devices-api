@@ -186,7 +186,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 	for i, userDevice := range devices {
 		def, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(ctx, userDevice.DefinitionID)
 		if err != nil {
-			udc.log.Err(err).Str("userDeviceId", userDevice.ID).Str("definitionId", userDevice.DefinitionID).Msg("Couldn't get resolve device definition for vehicle.")
+			udc.log.Err(err).Str("userDeviceId", userDevice.ID).Str("definitionId", userDevice.DefinitionID).Msg("Couldn't resolve device definition for vehicle.")
 			return nil, shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DefinitionID)
 		}
 		deviceDefinitionResponse[i] = def
