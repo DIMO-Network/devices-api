@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/tidwall/gjson"
 	"io"
 	"math/big"
 	"net/http"
@@ -48,6 +47,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
 	smartcar "github.com/smartcar/go-sdk"
+	"github.com/tidwall/gjson"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/drivers"
@@ -186,6 +186,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 	for i, userDevice := range devices {
 		def, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(ctx, userDevice.DefinitionID)
 		if err != nil {
+			udc.log.Err(err).Str("userDeviceId", userDevice.ID).Str("definitionId", userDevice.DefinitionID).Msg("Couldn't get resolve device definition for vehicle.")
 			return nil, shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DefinitionID)
 		}
 		deviceDefinitionResponse[i] = def
