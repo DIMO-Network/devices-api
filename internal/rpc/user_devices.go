@@ -264,7 +264,7 @@ func (s *userDeviceRPCServer) RegisterUserDeviceFromVIN(ctx context.Context, req
 		s.logger.Warn().
 			Str("vin", vin).
 			Str("year", fmt.Sprint(resp.Year)).
-			Str("user_id", req.UserDeviceId).
+			Str("user_id", common.BytesToAddress(req.OwnerAddress).Hex()).
 			Msg("VIN is too old")
 
 		return nil, status.Errorf(codes.InvalidArgument, "VIN %s from year %v is too old", vin, resp.Year)
@@ -273,7 +273,7 @@ func (s *userDeviceRPCServer) RegisterUserDeviceFromVIN(ctx context.Context, req
 	if len(resp.DefinitionId) == 0 {
 		s.logger.Warn().
 			Str("vin", vin).
-			Str("user_id", req.UserDeviceId).
+			Str("user_id", common.BytesToAddress(req.OwnerAddress).Hex()).
 			Msg("unable to decode vin for customer request to create vehicle")
 		return nil, status.Error(codes.Internal, "Unable to decode VIN")
 	}
@@ -285,7 +285,7 @@ func (s *userDeviceRPCServer) RegisterUserDeviceFromVIN(ctx context.Context, req
 		return nil, err
 	}
 
-	_, _, err = s.userDeviceSvc.CreateUserDevice(ctx, resp.DefinitionId, resp.DeviceStyleId, req.CountryCode, req.UserDeviceId, &vin, nil, req.VinConfirmed)
+	_, _, err = s.userDeviceSvc.CreateUserDeviceByOwner(ctx, resp.DefinitionId, resp.DeviceStyleId, req.CountryCode, vin, req.OwnerAddress)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

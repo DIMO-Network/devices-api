@@ -56,3 +56,19 @@ func (mr *MockUserDeviceServiceMockRecorder) CreateUserDevice(ctx, definitionID,
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUserDevice", reflect.TypeOf((*MockUserDeviceService)(nil).CreateUserDevice), ctx, definitionID, styleID, countryCode, userID, vin, canProtocol, vinConfirmed)
 }
+
+// CreateUserDeviceByOwner mocks base method.
+func (m *MockUserDeviceService) CreateUserDeviceByOwner(ctx context.Context, definitionID, styleID, countryCode, vin string, ownerAddress []byte) (*models.UserDevice, *grpc.GetDeviceDefinitionItemResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateUserDeviceByOwner", ctx, definitionID, styleID, countryCode, vin, ownerAddress)
+	ret0, _ := ret[0].(*models.UserDevice)
+	ret1, _ := ret[1].(*grpc.GetDeviceDefinitionItemResponse)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// CreateUserDeviceByOwner indicates an expected call of CreateUserDeviceByOwner.
+func (mr *MockUserDeviceServiceMockRecorder) CreateUserDeviceByOwner(ctx, definitionID, styleID, countryCode, vin, ownerAddress any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUserDeviceByOwner", reflect.TypeOf((*MockUserDeviceService)(nil).CreateUserDeviceByOwner), ctx, definitionID, styleID, countryCode, vin, ownerAddress)
+}

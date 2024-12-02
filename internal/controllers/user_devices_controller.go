@@ -666,8 +666,8 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	definitionId := reg.DefinitionId
-	if definitionId == "" {
+	definitionID := reg.DefinitionID
+	if definitionID == "" {
 		url := fmt.Sprintf("%s%s", udc.Settings.DeviceDefinitionsGetByKSUIDEndpoint, *reg.DeviceDefinitionID)
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
@@ -687,14 +687,14 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusInternalServerError, errors.Wrap(err, "failed to read body to get device definition").Error())
 		}
 		// use gjson to get the new id
-		definitionId = gjson.GetBytes(body, "nameSlug").String()
+		definitionID = gjson.GetBytes(body, "nameSlug").String()
 
-		if definitionId == "" {
+		if definitionID == "" {
 			udc.log.Error().Msgf("Failed to get device definition nameSlug from dd api response. url: %s response body: %s", url, string(body))
 		}
 	}
 
-	udFull, err := udc.createUserDevice(c.Context(), definitionId, "", reg.CountryCode, userID, nil, nil)
+	udFull, err := udc.createUserDevice(c.Context(), definitionID, "", reg.CountryCode, userID, nil, nil)
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "")
 	}
@@ -1787,8 +1787,8 @@ type NFTImageData struct {
 type RegisterUserDevice struct {
 	DeviceDefinitionID *string `json:"deviceDefinitionId"`
 	CountryCode        string  `json:"countryCode"`
-	// DefinitionId new slug id
-	DefinitionId string `json:"definitionId"`
+	// DefinitionID new slug id
+	DefinitionID string `json:"definitionId"`
 }
 
 type RegisterUserDeviceResponse struct {

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	pb "github.com/DIMO-Network/shared/api/users"
 
 	"github.com/DIMO-Network/shared"
@@ -25,6 +27,7 @@ import (
 
 type UserDeviceService interface {
 	CreateUserDevice(ctx context.Context, definitionID, styleID, countryCode, userID string, vin, canProtocol *string, vinConfirmed bool) (*models.UserDevice, *ddgrpc.GetDeviceDefinitionItemResponse, error)
+	CreateUserDeviceByOwner(ctx context.Context, definitionID, styleID, countryCode, vin string, ownerAddress []byte) (*models.UserDevice, *ddgrpc.GetDeviceDefinitionItemResponse, error)
 }
 
 type userDeviceService struct {
@@ -46,6 +49,108 @@ func NewUserDeviceService(deviceDefSvc DeviceDefinitionService, log zerolog.Logg
 }
 
 var ErrEmailUnverified = fmt.Errorf("email not verified")
+
+// CreateUserDeviceByOwner same as below but uses owner wallet address. Currently only being used by admin.
+func (uds *userDeviceService) CreateUserDeviceByOwner(ctx context.Context, definitionID, styleID, countryCode, vin string, ownerAddress []byte) (*models.UserDevice, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
+	if len(definitionID) == 0 {
+		return nil, nil, fiber.NewError(fiber.StatusBadRequest, "definitionID is empty")
+	}
+
+	// attach device def to user
+	dd, err2 := uds.deviceDefSvc.GetDeviceDefinitionBySlug(ctx, definitionID)
+	if err2 != nil {
+		return nil, nil, errors.Wrap(err2, fmt.Sprintf("error querying for device definition id: %s ", definitionID))
+	}
+	powertrainType := ICE // default
+	for _, attr := range dd.DeviceAttributes {
+		if attr.Name == constants.PowerTrainTypeKey {
+			powertrainType = PowertrainType(attr.Value) // todo does this work? validat with test
+			break
+		}
+	}
+	// check if style exists to get powertrain
+	if len(styleID) > 0 {
+		ds, err := uds.deviceDefSvc.GetDeviceStyleByID(ctx, styleID)
+		if err != nil {
+			// just log warn
+			uds.log.Warn().Err(err).Msgf("failed to get device style %s - continuing", styleID)
+		}
+
+		if ds != nil && len(ds.DeviceAttributes) > 0 {
+			// Find device attribute (powertrain_type)
+			for _, item := range ds.DeviceAttributes {
+				if item.Name == constants.PowerTrainTypeKey {
+					powertrainType = ConvertPowerTrainStringToPowertrain(item.Value)
+					break
+				}
+			}
+		}
+	}
+
+	tx, err := uds.dbs().Writer.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer tx.Rollback() //nolint
+
+	userDeviceID := ksuid.New().String()
+	// validate country_code
+	if constants.FindCountry(countryCode) == nil {
+		return nil, nil, fiber.NewError(fiber.StatusBadRequest, "CountryCode does not exist: "+countryCode)
+	}
+	// register device for the user
+	ud := models.UserDevice{
+		ID:                 userDeviceID,
+		OwnerAddress:       null.BytesFrom(ownerAddress),
+		UserID:             "", // normally the dex user id but since lookup is by owner address hoping this can be blank
+		DeviceDefinitionID: dd.DeviceDefinitionId,
+		DefinitionID:       dd.Id,
+		CountryCode:        null.StringFrom(countryCode),
+		VinIdentifier:      null.StringFrom(vin),
+		VinConfirmed:       true,
+	}
+	// always instantiate metadata with powerTrain and CANProtocol
+	udMD := &UserDeviceMetadata{
+		PowertrainType: &powertrainType,
+	}
+	err = ud.Metadata.Marshal(udMD)
+	if err != nil {
+		uds.log.Warn().Str("func", "createUserDevice").Msg("failed to marshal user device metadata on create")
+	}
+
+	err = ud.Insert(ctx, tx, boil.Infer())
+	if err != nil {
+		return nil, nil, fiber.NewError(fiber.StatusInternalServerError, "could not create user device for definition_id: "+dd.Id)
+	}
+
+	err = tx.Commit() // commmit the transaction
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "error commiting transaction to create geofence")
+	}
+
+	// todo call devide definitions to check and pull image for this device in case don't have one
+
+	err = uds.eventService.Emit(&shared.CloudEvent[any]{
+		Type:    constants.UserDeviceCreationEventType,
+		Subject: common.BytesToAddress(ownerAddress).Hex(),
+		Source:  "devices-api",
+		Data: UserDeviceEvent{
+			Timestamp: time.Now(),
+			UserID:    common.BytesToAddress(ownerAddress).Hex(),
+			Device: UserDeviceEventDevice{
+				ID:           userDeviceID,
+				Make:         dd.Make.Name,
+				Model:        dd.Model,
+				Year:         int(dd.Year), // Odd.
+				DefinitionID: dd.Id,
+			},
+		},
+	})
+	if err != nil {
+		uds.log.Err(err).Msg("Failed emitting device creation event")
+	}
+	return &ud, dd, nil
+}
 
 // CreateUserDevice creates the user_device record with all the logic we manage, including setting the countryCode, setting the powertrain based on the def or style, and setting the protocol
 func (uds *userDeviceService) CreateUserDevice(ctx context.Context, definitionID, styleID, countryCode, userID string, vin, canProtocol *string, vinConfirmed bool) (*models.UserDevice, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
