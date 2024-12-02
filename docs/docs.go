@@ -3093,6 +3093,10 @@ const docTemplate = `{
                 "countryCode": {
                     "type": "string"
                 },
+                "definitionId": {
+                    "description": "DefinitionID new slug id",
+                    "type": "string"
+                },
                 "deviceDefinitionId": {
                     "type": "string"
                 }
