@@ -221,7 +221,7 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 		qm.Load(models.SyntheticDeviceRels.VehicleToken),
 	).One(ctx, c.db.DBS().Writer)
 	if err != nil {
-		return fmt.Errorf("couldn't find synthetic device %d to burn: %w", sd.TokenID, err)
+		return fmt.Errorf("couldn't find synthetic device %d to burn: %w", args.TokenId, err)
 	}
 
 	// The most important thing is to delete the database rows to free things up.
