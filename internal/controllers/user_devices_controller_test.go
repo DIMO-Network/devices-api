@@ -446,6 +446,45 @@ func (s *UserDevicesControllerTestSuite) TestPostWithExistingDefinitionID() {
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	// act request
 	reg := RegisterUserDevice{
+		DefinitionID: dd[0].Id,
+		CountryCode:  "USA",
+	}
+	j, _ := json.Marshal(reg)
+
+	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].Id, "", "USA", s.testUserID, nil, nil, false).Times(1).
+		Return(&models.UserDevice{
+			ID:                 ksuid.New().String(),
+			UserID:             testUserID,
+			DeviceDefinitionID: dd[0].DeviceDefinitionId,
+			DefinitionID:       dd[0].Id,
+			CountryCode:        null.StringFrom("USA"),
+			VinConfirmed:       true,
+			Metadata:           null.JSONFrom([]byte(`{ "powertrainType": "ICE" }`)),
+		}, dd[0], nil)
+
+	request := test.BuildRequest("POST", "/user/devices", string(j))
+	response, responseError := s.app.Test(request)
+	fmt.Println(responseError)
+	body, _ := io.ReadAll(response.Body)
+	// assert
+	if assert.Equal(s.T(), fiber.StatusCreated, response.StatusCode) == false {
+		fmt.Println("message: " + string(body))
+	}
+	regUserResp := UserDeviceFull{}
+	jsonUD := gjson.Get(string(body), "userDevice")
+	_ = json.Unmarshal([]byte(jsonUD.String()), &regUserResp)
+
+	assert.Len(s.T(), regUserResp.ID, 27)
+	assert.Len(s.T(), regUserResp.DeviceDefinition.DeviceDefinitionID, 27)
+	assert.Equal(s.T(), dd[0].Id, regUserResp.DeviceDefinition.DefinitionID)
+}
+
+func (s *UserDevicesControllerTestSuite) TestPostWithExistingDeviceDefinitionID() {
+	// arrange DB
+	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
+	// act request
+	reg := RegisterUserDevice{
 		DeviceDefinitionID: &dd[0].DeviceDefinitionId,
 		CountryCode:        "USA",
 	}
@@ -598,7 +637,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
 
 	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].Id).Times(1).Return(dd[0], nil)
 
 	request := test.BuildRequest("GET", "/user/devices/me", "")
 	response, err := s.app.Test(request)
@@ -631,7 +670,7 @@ func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 		}
 	}
 
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 	ud.TokenID = types.NewNullDecimal(new(decimal.Big).SetUint64(40))
 	_, err := ud.Update(context.TODO(), s.pdb.DBS().Writer, boil.Infer())
 	s.Require().NoError(err)
@@ -642,9 +681,9 @@ func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
 	// validates that if country=USA we update the powertrain based on what the NHTSA vin decoder says
 
 	// seperate request to validate info persisted to user_device table
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Times(1).
-		Return(dd, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).
+	//s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), []string{dd[0].Id}).Times(1).
+	//	Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].Id).Times(2).
 		Return(dd[0], nil)
 
 	payload := `{ "vin": "5YJYGDEE5MF085533" }`

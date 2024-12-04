@@ -667,7 +667,11 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 	}
 
 	definitionID := reg.DefinitionID
+	// if definitionID is blank, it means we need to use old DeviceDefinitionID to resolve
 	if definitionID == "" {
+		if reg.DeviceDefinitionID == nil {
+			return fiber.NewError(fiber.StatusBadRequest, "definitionId is required")
+		}
 		url := fmt.Sprintf("%s%s", udc.Settings.DeviceDefinitionsGetByKSUIDEndpoint, *reg.DeviceDefinitionID)
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
@@ -1785,6 +1789,7 @@ type NFTImageData struct {
 }
 
 type RegisterUserDevice struct {
+	// deprecated
 	DeviceDefinitionID *string `json:"deviceDefinitionId"`
 	CountryCode        string  `json:"countryCode"`
 	// DefinitionID new slug id
@@ -1834,7 +1839,7 @@ type UpdateImageURLReq struct {
 
 func (reg *RegisterUserDevice) Validate() error {
 	return validation.ValidateStruct(reg,
-		validation.Field(&reg.DeviceDefinitionID, validation.Required),
+		// todo add DefinitionId as validated after mobile app updates
 		validation.Field(&reg.CountryCode, validation.Required, validation.Length(3, 3)),
 	)
 }
