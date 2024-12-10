@@ -373,26 +373,40 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 	return apiDevices, nil
 }
 
-var dialect = drivers.Dialect{
-	LQ: '`',
-	RQ: '`',
-}
+const sourcePrefix = "dimo/integration/"
 
-const (
-	sourcePrefix         = "dimo/integration/"
-	ruptelaIntegrationID = "2lcaMFuCO0HJIUfdq8o780Kx5n3"
+var (
+	dialect = drivers.Dialect{
+		LQ: '`',
+		RQ: '`',
+	}
+	integrationIDToConnectionID = map[string]string{
+		"2lcaMFuCO0HJIUfdq8o780Kx5n3": "0x5a87788D90f0ded17A35E4BDaCb47f1993021630", // ruptela
+		// "27qftVRWQYpVDcO5DltO5Ojbjxk": "0x762Fd53c4973075a6fC0d17237BC65E183299980", // autopi
+		// "26A5Dk3vvvQutjSyF0Jka2DP5lg": "0x354574EC2cC27A29410df751e43723B1bC362Ce4", // tesla
+		// "2ULfuC8U9dOqRshZBAi0lMM1Rrx": "0xd3dA3efd882BA2357709328750Cf409A9131b820", // macaron
+		// "22N2xaPOq2WW2gAHBHd0Ikn4Zob": "0x25229D85599603351Ac4f7606DB92Cf85D7F6A1F", // smartcar
+	}
+	connectionIDToIntegrationID = func() map[string]string {
+		// reverse of integrationId2ConnectionId
+		out := make(map[string]string, len(integrationIDToConnectionID))
+		for k, v := range integrationIDToConnectionID {
+			out[v] = k
+		}
+		return out
+	}()
 )
 
-func (udc *UserDevicesController) chSourceToIntegrationID(s string) string {
-	if s == udc.Settings.RuptelaConnectionID {
-		return ruptelaIntegrationID
+func chSourceToIntegrationID(s string) string {
+	if integrationID, ok := connectionIDToIntegrationID[s]; ok {
+		return integrationID
 	}
 	return strings.TrimPrefix(s, sourcePrefix)
 }
 
-func (udc *UserDevicesController) integrationIDToCHSource(id string) string {
-	if id == ruptelaIntegrationID {
-		return udc.Settings.RuptelaConnectionID
+func integrationIDToCHSource(id string) string {
+	if connectionID, ok := integrationIDToConnectionID[id]; ok {
+		return connectionID
 	}
 	return sourcePrefix + id
 }
@@ -464,7 +478,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 			for key, udai := range toCheck {
 				clause := qm.Expr(
 					qmhelper.Where("token_id", qmhelper.EQ, key.TokenID),
-					qmhelper.Where("source", qmhelper.EQ, udc.integrationIDToCHSource(key.IntegrationID)),
+					qmhelper.Where("source", qmhelper.EQ, integrationIDToCHSource(key.IntegrationID)),
 					qmhelper.Where("timestamp", qmhelper.GT, udai.UpdatedAt))
 				if len(innerList) == 0 {
 					innerList = append(innerList, clause)
@@ -502,7 +516,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 				if err := rows.Scan(&tokenID, &source); err != nil {
 					return err
 				}
-				if udai, ok := toCheck[checkKey{tokenID, udc.chSourceToIntegrationID(source)}]; ok {
+				if udai, ok := toCheck[checkKey{tokenID, chSourceToIntegrationID(source)}]; ok {
 					toModify = append(toModify, udai)
 				} else {
 					return fmt.Errorf("signal activity query returned a token id %d not in the query", tokenID)
