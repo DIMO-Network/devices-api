@@ -445,12 +445,15 @@ func (udc *UserDevicesController) ClearUserDeviceErrorCodeQueryByTokenID(c *fibe
 		qm.Limit(1),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fiber.NewError(fiber.StatusNotFound, "Could not find user device")
+		}
 		logger.Err(err).Msg("error occurred when fetching error codes for device")
 		return fiber.NewError(fiber.StatusBadRequest, "error occurred fetching device error queries")
 	}
 
 	if errCodeQuery.ClearedAt.Valid {
-		return fiber.NewError(fiber.StatusBadRequest, "all error codes already cleared")
+		return fiber.NewError(fiber.StatusTooManyRequests, "all error codes already cleared")
 	}
 
 	errCodeQuery.ClearedAt = null.TimeFrom(time.Now().UTC().Truncate(time.Microsecond))
