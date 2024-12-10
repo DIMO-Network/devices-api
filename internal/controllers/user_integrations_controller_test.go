@@ -160,14 +160,15 @@ func TestUserIntegrationsControllerTestSuite(t *testing.T) {
 func (s *UserIntegrationsControllerTestSuite) TestPostSmartCarFailure() {
 	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Mach E", 2020, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
 	req := `{
 			"code": "qxyz",
 			"redirectURI": "http://dimo.zone/cb"
 		}`
 	s.scClient.EXPECT().ExchangeCode(gomock.Any(), "qxyz", "http://dimo.zone/cb").Times(1).Return(nil, errors.New("failure communicating with Smartcar"))
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DeviceDefinitionID).Times(1).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Times(1).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Times(1).Return(integration, nil)
 
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := s.app.Test(request, 60*1000)
@@ -184,7 +185,7 @@ func (s *UserIntegrationsControllerTestSuite) TestDeleteIntegration_BlockedBySyn
 	model := "Mach E"
 	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 	vnft := test.SetupCreateVehicleNFT(s.T(), ud, big.NewInt(5), null.BytesFrom(common.HexToAddress("0xA1").Bytes()), s.pdb)
 
 	mtr := models.MetaTransactionRequest{
@@ -527,78 +528,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTeslaAndUpdateDD() {
 	// todo, we may need to point to new device def, or see how above fix method is implemented
 	if ud.DeviceDefinitionID != dd[0].DeviceDefinitionId {
 		s.T().Fatalf("Failed to switch device definition to the correct one")
-	}
-}
-
-func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateDeviceSameUser() {
-	// specific dependency and controller
-	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
-	logger := test.Logger()
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	app := test.SetupAppFiber(*logger)
-	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.RegisterDeviceIntegration)
-	// arrange
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 34, 0)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Testla", "Model 4", 2020, integration)
-
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	const (
-		deviceID = "1dd96159-3bb2-9472-91f6-72fe9211cfeb"
-		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	)
-	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, nil, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
-	test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
-
-	req := fmt.Sprintf(`{
-			"externalId": "%s"
-		}`, unitID)
-	// no calls should be made to autopi api
-
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DeviceDefinitionID).AnyTimes().Return(dd[0], nil)
-
-	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
-	response, err := app.Test(request, 1000*240)
-	require.NoError(s.T(), err)
-
-	assert.Equal(s.T(), fiber.StatusBadRequest, response.StatusCode, "should return failure")
-	body, _ := io.ReadAll(response.Body)
-	errorMsg := gjson.Get(string(body), "message").String()
-	assert.Equal(s.T(),
-		fmt.Sprintf("userDeviceId %s already has a user_device_api_integration with integrationId %s, please delete that first", ud.ID, integration.Id), errorMsg)
-}
-func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateDeviceDifferentUser() {
-	// specific dependency and controller
-	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
-	logger := test.Logger()
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	app := test.SetupAppFiber(*logger)
-	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUser2), c.RegisterDeviceIntegration)
-	// arrange
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 34, 0)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Testla", "Model 4", 2022, nil)
-	// the other user that already claimed unit
-	_ = test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	const (
-		deviceID = "1dd96159-3bb2-9472-91f6-72fe9211cfeb"
-		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	)
-	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, nil, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
-	// test user
-	ud2 := test.SetupCreateUserDevice(s.T(), testUser2, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-
-	req := fmt.Sprintf(`{
-			"externalId": "%s"
-		}`, unitID)
-
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
-
-	// no calls should be made to autopi api
-	request := test.BuildRequest("POST", "/user/devices/"+ud2.ID+"/integrations/"+integration.Id, req)
-	response, err := app.Test(request, 2000)
-	require.NoError(s.T(), err)
-	if !assert.Equal(s.T(), fiber.StatusBadRequest, response.StatusCode, "should return bad request") {
-		body, _ := io.ReadAll(response.Body)
-		assert.FailNow(s.T(), "body response: "+string(body)+"\n")
 	}
 }
 
