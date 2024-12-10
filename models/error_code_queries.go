@@ -25,13 +25,13 @@ import (
 
 // ErrorCodeQuery is an object representing the database table.
 type ErrorCodeQuery struct {
-	ID                 string        `boil:"id" json:"id" toml:"id" yaml:"id"`
-	UserDeviceID       string        `boil:"user_device_id" json:"user_device_id" toml:"user_device_id" yaml:"user_device_id"`
-	CreatedAt          time.Time     `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt          time.Time     `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CodesQueryResponse null.JSON     `boil:"codes_query_response" json:"codes_query_response,omitempty" toml:"codes_query_response" yaml:"codes_query_response,omitempty"`
-	ClearedAt          null.Time     `boil:"cleared_at" json:"cleared_at,omitempty" toml:"cleared_at" yaml:"cleared_at,omitempty"`
-	UserDeviceTokenID  types.Decimal `boil:"user_device_token_id" json:"user_device_token_id" toml:"user_device_token_id" yaml:"user_device_token_id"`
+	ID                 string            `boil:"id" json:"id" toml:"id" yaml:"id"`
+	UserDeviceID       string            `boil:"user_device_id" json:"user_device_id" toml:"user_device_id" yaml:"user_device_id"`
+	CreatedAt          time.Time         `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt          time.Time         `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CodesQueryResponse null.JSON         `boil:"codes_query_response" json:"codes_query_response,omitempty" toml:"codes_query_response" yaml:"codes_query_response,omitempty"`
+	ClearedAt          null.Time         `boil:"cleared_at" json:"cleared_at,omitempty" toml:"cleared_at" yaml:"cleared_at,omitempty"`
+	UserDeviceTokenID  types.NullDecimal `boil:"user_device_token_id" json:"user_device_token_id,omitempty" toml:"user_device_token_id" yaml:"user_device_token_id,omitempty"`
 
 	R *errorCodeQueryR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L errorCodeQueryL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -82,7 +82,7 @@ var ErrorCodeQueryWhere = struct {
 	UpdatedAt          whereHelpertime_Time
 	CodesQueryResponse whereHelpernull_JSON
 	ClearedAt          whereHelpernull_Time
-	UserDeviceTokenID  whereHelpertypes_Decimal
+	UserDeviceTokenID  whereHelpertypes_NullDecimal
 }{
 	ID:                 whereHelperstring{field: "\"devices_api\".\"error_code_queries\".\"id\""},
 	UserDeviceID:       whereHelperstring{field: "\"devices_api\".\"error_code_queries\".\"user_device_id\""},
@@ -90,7 +90,7 @@ var ErrorCodeQueryWhere = struct {
 	UpdatedAt:          whereHelpertime_Time{field: "\"devices_api\".\"error_code_queries\".\"updated_at\""},
 	CodesQueryResponse: whereHelpernull_JSON{field: "\"devices_api\".\"error_code_queries\".\"codes_query_response\""},
 	ClearedAt:          whereHelpernull_Time{field: "\"devices_api\".\"error_code_queries\".\"cleared_at\""},
-	UserDeviceTokenID:  whereHelpertypes_Decimal{field: "\"devices_api\".\"error_code_queries\".\"user_device_token_id\""},
+	UserDeviceTokenID:  whereHelpertypes_NullDecimal{field: "\"devices_api\".\"error_code_queries\".\"user_device_token_id\""},
 }
 
 // ErrorCodeQueryRels is where relationship names are stored.
@@ -132,8 +132,8 @@ type errorCodeQueryL struct{}
 
 var (
 	errorCodeQueryAllColumns            = []string{"id", "user_device_id", "created_at", "updated_at", "codes_query_response", "cleared_at", "user_device_token_id"}
-	errorCodeQueryColumnsWithoutDefault = []string{"id", "user_device_id", "user_device_token_id"}
-	errorCodeQueryColumnsWithDefault    = []string{"created_at", "updated_at", "codes_query_response", "cleared_at"}
+	errorCodeQueryColumnsWithoutDefault = []string{"id", "user_device_id"}
+	errorCodeQueryColumnsWithDefault    = []string{"created_at", "updated_at", "codes_query_response", "cleared_at", "user_device_token_id"}
 	errorCodeQueryPrimaryKeyColumns     = []string{"id"}
 	errorCodeQueryGeneratedColumns      = []string{}
 )
@@ -800,6 +800,39 @@ func (o *ErrorCodeQuery) SetUserDeviceToken(ctx context.Context, exec boil.Conte
 		related.R.UserDeviceTokenErrorCodeQueries = append(related.R.UserDeviceTokenErrorCodeQueries, o)
 	}
 
+	return nil
+}
+
+// RemoveUserDeviceToken relationship.
+// Sets o.R.UserDeviceToken to nil.
+// Removes o from all passed in related items' relationships struct.
+func (o *ErrorCodeQuery) RemoveUserDeviceToken(ctx context.Context, exec boil.ContextExecutor, related *UserDevice) error {
+	var err error
+
+	queries.SetScanner(&o.UserDeviceTokenID, nil)
+	if _, err = o.Update(ctx, exec, boil.Whitelist("user_device_token_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.UserDeviceToken = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.UserDeviceTokenErrorCodeQueries {
+		if queries.Equal(o.UserDeviceTokenID, ri.UserDeviceTokenID) {
+			continue
+		}
+
+		ln := len(related.R.UserDeviceTokenErrorCodeQueries)
+		if ln > 1 && i < ln-1 {
+			related.R.UserDeviceTokenErrorCodeQueries[i] = related.R.UserDeviceTokenErrorCodeQueries[ln-1]
+		}
+		related.R.UserDeviceTokenErrorCodeQueries = related.R.UserDeviceTokenErrorCodeQueries[:ln-1]
+		break
+	}
 	return nil
 }
 

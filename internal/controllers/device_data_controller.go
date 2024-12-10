@@ -4,11 +4,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/ericlagergren/decimal"
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"math/big"
 	"regexp"
 	"time"
+
+	"github.com/ericlagergren/decimal"
+	"github.com/volatiletech/sqlboiler/v4/types"
 
 	"github.com/DIMO-Network/shared"
 
@@ -309,7 +310,7 @@ func (udc *UserDevicesController) GetUserDeviceErrorCodeQueriesByTokenID(c *fibe
 		return fiber.NewError(fiber.StatusInternalServerError, "error occurred fetching device error queries")
 	}
 
-	var queries []GetUserDeviceErrorCodeQueriesResponseItem
+	queries := []GetUserDeviceErrorCodeQueriesResponseItem{}
 
 	for _, erc := range userDevice.R.ErrorCodeQueries {
 		var ercJSON []services.ErrorCodesResponse
@@ -345,7 +346,6 @@ func (udc *UserDevicesController) QueryDeviceErrorCodesByTokenID(c *fiber.Ctx) e
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
 	}
 	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
-	tidNotNull := types.NewDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
 
 	logger := helpers.GetLogger(c, udc.log)
 	ud, err := models.UserDevices(models.UserDeviceWhere.TokenID.EQ(tid)).One(c.Context(), udc.DBS().Reader)
@@ -407,7 +407,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodesByTokenID(c *fiber.Ctx) e
 		return fiber.NewError(fiber.StatusInternalServerError, "Error occurred fetching description for error codes")
 	}
 
-	q := &models.ErrorCodeQuery{ID: ksuid.New().String(), UserDeviceID: ud.ID, UserDeviceTokenID: tidNotNull, CodesQueryResponse: null.JSONFrom(chtJSON)}
+	q := &models.ErrorCodeQuery{ID: ksuid.New().String(), UserDeviceID: ud.ID, UserDeviceTokenID: ud.TokenID, CodesQueryResponse: null.JSONFrom(chtJSON)}
 	err = q.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
 
 	if err != nil {
@@ -435,12 +435,12 @@ func (udc *UserDevicesController) ClearUserDeviceErrorCodeQueryByTokenID(c *fibe
 	if !ok {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
 	}
-	tidNotNull := types.NewDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
+	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
 
 	logger := helpers.GetLogger(c, udc.log)
 
 	errCodeQuery, err := models.ErrorCodeQueries(
-		models.ErrorCodeQueryWhere.UserDeviceTokenID.EQ(tidNotNull),
+		models.ErrorCodeQueryWhere.UserDeviceTokenID.EQ(tid),
 		qm.OrderBy(models.ErrorCodeQueryColumns.CreatedAt+" DESC"),
 		qm.Limit(1),
 	).One(c.Context(), udc.DBS().Reader)
