@@ -77,7 +77,6 @@ env:
     VJfn+Y6hzMyVYhAcbfzSwFPY1XtEbsNh
     -----END CERTIFICATE-----
   VEHICLE_DECODING_GRPC_ADDR: vehicle-signal-decoding-prod:8086
-  RUPTELA_CONNECTION_ID: '0x3A6603E1065C9b3142403b1b7e349a6Ae936E819'
   DEVICE_DEFINITIONS_GET_BY_KSUID_ENDPOINT: https://device-definitions-api.dimo.zone/device-definitions/
 ingress:
   enabled: true
