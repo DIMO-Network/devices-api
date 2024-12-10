@@ -940,14 +940,13 @@ func TestUserDevicesController_ErrorOnAllErrorCodesClearedByTokenID(t *testing.T
 		// actual clear
 		request := test.BuildRequest("POST", fmt.Sprintf("/user/vehicle/%d/error-codes/clear", ud.TokenID), "")
 		response, _ := app.Test(request)
-		body, _ := io.ReadAll(response.Body)
 
 		assert.Equal(t, response.StatusCode, fiber.StatusOK)
 
 		// all codes should be cleared
 		request = test.BuildRequest("POST", fmt.Sprintf("/user/vehicle/%d/error-codes/clear", ud.TokenID), "")
 		response, _ = app.Test(request)
-		body, _ = io.ReadAll(response.Body)
+		body, _ := io.ReadAll(response.Body)
 
 		assert.Equal(t, response.StatusCode, fiber.StatusTooManyRequests)
 		assert.Equal(t, "all error codes already cleared", string(body))
