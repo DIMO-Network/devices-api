@@ -275,7 +275,7 @@ func (g *GeofencesController) GetAll(c *fiber.Ctx) error {
 		for _, udtg := range item.R.UserDeviceToGeofences {
 			var deviceDef *ddgrpc.GetDeviceDefinitionItemResponse
 			for _, dd := range dds {
-				if dd.DeviceDefinitionId == udtg.R.UserDevice.DeviceDefinitionID {
+				if dd.Id == udtg.R.UserDevice.DefinitionID {
 					deviceDef = dd
 				}
 			}
