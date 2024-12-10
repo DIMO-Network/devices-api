@@ -380,17 +380,17 @@ var (
 		LQ: '`',
 		RQ: '`',
 	}
-	integrationIDToConnectionID = map[string]string{
-		"2lcaMFuCO0HJIUfdq8o780Kx5n3": "0x5a87788D90f0ded17A35E4BDaCb47f1993021630", // ruptela
-		// "27qftVRWQYpVDcO5DltO5Ojbjxk": "0x762Fd53c4973075a6fC0d17237BC65E183299980", // autopi
-		// "26A5Dk3vvvQutjSyF0Jka2DP5lg": "0x354574EC2cC27A29410df751e43723B1bC362Ce4", // tesla
-		// "2ULfuC8U9dOqRshZBAi0lMM1Rrx": "0xd3dA3efd882BA2357709328750Cf409A9131b820", // macaron
-		// "22N2xaPOq2WW2gAHBHd0Ikn4Zob": "0x25229D85599603351Ac4f7606DB92Cf85D7F6A1F", // smartcar
+	connectionIDToIntegrationID = map[string]string{
+		"0xF26421509Efe92861a587482100c6d728aBf1CD0": "2lcaMFuCO0HJIUfdq8o780Kx5n3", // ruptela
+		// "0x5e31bBc786D7bEd95216383787deA1ab0f1c1897": "27qftVRWQYpVDcO5DltO5Ojbjxk", // autopi
+		// "0xc4035Fecb1cc906130423EF05f9C20977F643722": "26A5Dk3vvvQutjSyF0Jka2DP5lg", // tesla
+		// "0x4c674ddE8189aEF6e3b58F5a36d7438b2b1f6Bc2": "2ULfuC8U9dOqRshZBAi0lMM1Rrx", // macaron
+		// "0xcd445F4c6bDAD32b68a2939b912150Fe3C88803E": "22N2xaPOq2WW2gAHBHd0Ikn4Zob", // smartcar
 	}
-	connectionIDToIntegrationID = func() map[string]string {
+	integrationIDToConnectionID = func() map[string]string {
 		// reverse of integrationId2ConnectionId
-		out := make(map[string]string, len(integrationIDToConnectionID))
-		for k, v := range integrationIDToConnectionID {
+		out := make(map[string]string, len(connectionIDToIntegrationID))
+		for k, v := range connectionIDToIntegrationID {
 			out[v] = k
 		}
 		return out
