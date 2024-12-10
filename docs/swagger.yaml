@@ -635,6 +635,7 @@ definitions:
         description: DefinitionID new slug id
         type: string
       deviceDefinitionId:
+        description: deprecated
         type: string
     type: object
   internal_controllers.RegisterUserDeviceResponse:
