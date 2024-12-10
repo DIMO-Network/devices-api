@@ -312,6 +312,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	vOwner := v1Auth.Group("/user/vehicle/:tokenID", vehicleOwnerMw)
 	vOwner.Get("/commands/burn", userDeviceController.GetBurnDevice)
 	vOwner.Post("/commands/burn", userDeviceController.PostBurnDevice)
+	vOwner.Get("/error-codes", userDeviceController.GetUserDeviceErrorCodeQueriesByTokenID)
+	vOwner.Post("/error-codes", userDeviceController.QueryDeviceErrorCodesByTokenID)
+	vOwner.Post("/error-codes/clear", userDeviceController.ClearUserDeviceErrorCodeQueryByTokenID)
 
 	syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, wallet, registryClient)
 

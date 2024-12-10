@@ -4,6 +4,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/ericlagergren/decimal"
+	"github.com/volatiletech/sqlboiler/v4/types"
+	"math/big"
 	"regexp"
 	"time"
 
@@ -267,6 +270,195 @@ func (udc *UserDevicesController) ClearUserDeviceErrorCodeQuery(c *fiber.Ctx) er
 	}
 
 	errorCodeResp := []services.ErrorCodesResponse{}
+	if err := errCodeQuery.CodesQueryResponse.Unmarshal(&errorCodeResp); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "error occurred updating device error queries")
+	}
+
+	return c.JSON(&QueryDeviceErrorCodesResponse{
+		ErrorCodes: errorCodeResp,
+		ClearedAt:  &errCodeQuery.ClearedAt.Time,
+	})
+}
+
+// GetUserDeviceErrorCodeQueriesByTokenID godoc
+// @Summary List all error code queries made for this vehicle.
+// @Tags        error-codes
+// @Param       tokenID path int true "vehicle token id"
+// @Success     200 {object} controllers.GetUserDeviceErrorCodeQueriesResponse
+// @Failure     404 {object} helpers.ErrorRes "Vehicle not found"
+// @Security    BearerAuth
+// @Router      /user/vehicle/{tokenID}/error-codes [get]
+func (udc *UserDevicesController) GetUserDeviceErrorCodeQueriesByTokenID(c *fiber.Ctx) error {
+	tis := c.Params("tokenID")
+	ti, ok := new(big.Int).SetString(tis, 10)
+	if !ok {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
+	}
+	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
+	logger := helpers.GetLogger(c, udc.log)
+
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(tid),
+		qm.Load(models.UserDeviceRels.ErrorCodeQueries, qm.OrderBy(models.ErrorCodeQueryColumns.CreatedAt+" DESC")),
+	).One(c.Context(), udc.DBS().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fiber.NewError(fiber.StatusNotFound, "Could not find user device")
+		}
+		logger.Err(err).Msg("error occurred when fetching error codes for device")
+		return fiber.NewError(fiber.StatusInternalServerError, "error occurred fetching device error queries")
+	}
+
+	var queries []GetUserDeviceErrorCodeQueriesResponseItem
+
+	for _, erc := range userDevice.R.ErrorCodeQueries {
+		var ercJSON []services.ErrorCodesResponse
+		if err := erc.CodesQueryResponse.Unmarshal(&ercJSON); err != nil {
+			return err
+		}
+
+		userDeviceresp := GetUserDeviceErrorCodeQueriesResponseItem{
+			ErrorCodes:  ercJSON,
+			RequestedAt: erc.CreatedAt,
+			ClearedAt:   erc.ClearedAt.Ptr(),
+		}
+
+		queries = append(queries, userDeviceresp)
+	}
+
+	return c.JSON(GetUserDeviceErrorCodeQueriesResponse{Queries: queries})
+}
+
+// QueryDeviceErrorCodesByTokenID godoc
+// @Summary     Obtain, store, and return descriptions for a list of error codes from this vehicle.
+// @Tags        error-codes
+// @Param       tokenID path int true "vehicle token id"
+// @Param       queryDeviceErrorCodes body controllers.QueryDeviceErrorCodesReq true "error codes"
+// @Success     200 {object} controllers.QueryDeviceErrorCodesResponse
+// @Failure     404 {object} helpers.ErrorRes "Vehicle not found"
+// @Security    BearerAuth
+// @Router      /user/vehicle/{tokenID}/error-codes [post]
+func (udc *UserDevicesController) QueryDeviceErrorCodesByTokenID(c *fiber.Ctx) error {
+	tis := c.Params("tokenID")
+	ti, ok := new(big.Int).SetString(tis, 10)
+	if !ok {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
+	}
+	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
+	tidNotNull := types.NewDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
+
+	logger := helpers.GetLogger(c, udc.log)
+	ud, err := models.UserDevices(models.UserDeviceWhere.TokenID.EQ(tid)).One(c.Context(), udc.DBS().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fiber.NewError(fiber.StatusNotFound, "No device with that id found.")
+		}
+		return err
+	}
+
+	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), ud.DefinitionID)
+	if err != nil {
+		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ud.DefinitionID)
+	}
+
+	req := &QueryDeviceErrorCodesReq{}
+	if err := c.BodyParser(req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
+	}
+
+	errorCodesLimit := 100
+	if len(req.ErrorCodes) > errorCodesLimit {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Too many error codes. Error codes list must be %d or below in length.", errorCodesLimit))
+	}
+
+	errorCodesCleaned := make([]string, 0, len(req.ErrorCodes))
+
+	for _, v := range req.ErrorCodes {
+		if v == "" {
+			logger.Warn().Msg("Client sent an empty error code.")
+			// The app is sending in a lot of these.
+			continue
+		}
+		if !errorCodeRegex.MatchString(v) {
+			logger.Error().Msgf("Got a weird error code list %v.", req.ErrorCodes)
+			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Invalid error code %q.", v))
+		}
+		errorCodesCleaned = append(errorCodesCleaned, v)
+	}
+
+	if len(errorCodesCleaned) == 0 {
+		logger.Warn().Msg("Client sent an empty list.")
+		return c.JSON(&QueryDeviceErrorCodesResponse{
+			ErrorCodes: []services.ErrorCodesResponse{},
+		})
+	}
+
+	appmetrics.OpenAITotalCallsOps.Inc() // record new total call to chatgpt
+	chtResp, err := udc.openAI.GetErrorCodesDescription(dd.Make.Name, dd.Model, errorCodesCleaned)
+	if err != nil {
+		appmetrics.OpenAITotalFailedCallsOps.Inc()
+		logger.Err(err).Interface("requestBody", req).Msg("Error occurred fetching description for error codes")
+		return err
+	}
+
+	chtJSON, err := json.Marshal(chtResp)
+	if err != nil {
+		logger.Err(err).Interface("requestBody", req).Msg("Error occurred fetching description for error codes")
+		return fiber.NewError(fiber.StatusInternalServerError, "Error occurred fetching description for error codes")
+	}
+
+	q := &models.ErrorCodeQuery{ID: ksuid.New().String(), UserDeviceID: ud.ID, UserDeviceTokenID: tidNotNull, CodesQueryResponse: null.JSONFrom(chtJSON)}
+	err = q.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
+
+	if err != nil {
+		// TODO - should we return an error for this or just log it
+		logger.Err(err).Msg("Could not save user query response")
+	}
+
+	return c.JSON(&QueryDeviceErrorCodesResponse{
+		ErrorCodes: chtResp,
+	})
+}
+
+// ClearUserDeviceErrorCodeQueryByTokenID godoc
+// @Summary     Mark the most recent set of error codes as having been cleared.
+// @Tags        error-codes
+// @Param       tokenID path int true "vehicle token id"
+// @Success     200 {object} controllers.QueryDeviceErrorCodesResponse
+// @Failure     429 {object} helpers.ErrorRes "Last query already cleared"
+// @Failure     404 {object} helpers.ErrorRes "Vehicle not found"
+// @Security    BearerAuth
+// @Router      /user/vehicle/{tokenID}/error-codes/clear [post]
+func (udc *UserDevicesController) ClearUserDeviceErrorCodeQueryByTokenID(c *fiber.Ctx) error {
+	tis := c.Params("tokenID")
+	ti, ok := new(big.Int).SetString(tis, 10)
+	if !ok {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
+	}
+	tidNotNull := types.NewDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
+
+	logger := helpers.GetLogger(c, udc.log)
+
+	errCodeQuery, err := models.ErrorCodeQueries(
+		models.ErrorCodeQueryWhere.UserDeviceTokenID.EQ(tidNotNull),
+		qm.OrderBy(models.ErrorCodeQueryColumns.CreatedAt+" DESC"),
+		qm.Limit(1),
+	).One(c.Context(), udc.DBS().Reader)
+	if err != nil {
+		logger.Err(err).Msg("error occurred when fetching error codes for device")
+		return fiber.NewError(fiber.StatusBadRequest, "error occurred fetching device error queries")
+	}
+
+	if errCodeQuery.ClearedAt.Valid {
+		return fiber.NewError(fiber.StatusBadRequest, "all error codes already cleared")
+	}
+
+	errCodeQuery.ClearedAt = null.TimeFrom(time.Now().UTC().Truncate(time.Microsecond))
+	if _, err = errCodeQuery.Update(c.Context(), udc.DBS().Writer, boil.Whitelist(models.ErrorCodeQueryColumns.ClearedAt)); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "error occurred updating device error queries")
+	}
+
+	var errorCodeResp []services.ErrorCodesResponse
 	if err := errCodeQuery.CodesQueryResponse.Unmarshal(&errorCodeResp); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "error occurred updating device error queries")
 	}
