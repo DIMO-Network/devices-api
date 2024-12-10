@@ -169,15 +169,13 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&ddgrpc.DecodeVinResponse{
 		DeviceMakeId:  dd[0].Make.Id,
-		DefinitionId:  "ford_f150_2020",
+		DefinitionId:  dd[0].Id,
 		DeviceStyleId: "",
 		Year:          dd[0].Year,
 	}, nil)
-	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), "22N2xaPOq2WW2gAHBHd0Ikn4Zob", dd[0].DeviceDefinitionId, "Americas").Times(1).
-		Return(nil, nil)
+
 	s.redisClient.EXPECT().Set(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID), gomock.Any(), time.Hour*2).Return(nil)
-	//s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
-	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].DeviceDefinitionId, "", "USA", testUserID, &vinny, nil, false).
+	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].Id, "", "USA", testUserID, &vinny, nil, false).
 		Return(&models.UserDevice{
 			ID:                 ksuid.New().String(),
 			UserID:             testUserID,
@@ -316,15 +314,14 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&ddgrpc.DecodeVinResponse{
 		DeviceMakeId:  dd[0].Make.Id,
-		DefinitionId:  "ford_f150_2020",
+		DefinitionId:  dd[0].Id,
 		DeviceStyleId: deviceStyleID,
 		Year:          dd[0].Year,
 	}, nil)
 
 	apInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 10)
 	s.deviceDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Times(1).Return(apInteg, nil)
-	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), apInteg.Id, dd[0].DeviceDefinitionId, "Americas")
-	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].DeviceDefinitionId, deviceStyleID, "USA", s.testUserID, &vinny, &canProtocol, false).Times(1).
+	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].Id, deviceStyleID, "USA", s.testUserID, &vinny, &canProtocol, false).Times(1).
 		Return(&models.UserDevice{
 			ID:                 ksuid.New().String(),
 			UserID:             s.testUserID,
@@ -407,9 +404,6 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_SameUser_Dupl
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].Id).Times(1).Return(dd[0], nil)
 	apInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 10)
 	s.deviceDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Times(1).Return(apInteg, nil)
-	// we always call this just in case
-	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), apInteg.Id, dd[0].DeviceDefinitionId, "Americas").
-		Times(1)
 
 	request := test.BuildRequest("POST", "/user/devices/fromvin", string(j))
 	response, responseError := s.app.Test(request, 10000)
@@ -485,12 +479,12 @@ func (s *UserDevicesControllerTestSuite) TestPostWithExistingDeviceDefinitionID(
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	// act request
 	reg := RegisterUserDevice{
-		DeviceDefinitionID: &dd[0].DeviceDefinitionId,
-		CountryCode:        "USA",
+		DefinitionID: dd[0].Id,
+		CountryCode:  "USA",
 	}
 	j, _ := json.Marshal(reg)
 
-	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].DeviceDefinitionId, "", "USA", s.testUserID, nil, nil, false).Times(1).
+	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].Id, "", "USA", s.testUserID, nil, nil, false).Times(1).
 		Return(&models.UserDevice{
 			ID:                 ksuid.New().String(),
 			UserID:             testUserID,
@@ -534,7 +528,7 @@ func (s *UserDevicesControllerTestSuite) TestPostWithoutDefinitionID_BadRequest(
 	require.NoError(s.T(), err)
 
 	errorMessage := gjson.Get(string(body), "message")
-	if assert.Equal(s.T(), "deviceDefinitionId: cannot be blank.", errorMessage.String()) == false {
+	if assert.Equal(s.T(), "definitionId is required", errorMessage.String()) == false {
 		fmt.Println(string(body))
 	}
 }
@@ -554,8 +548,8 @@ func (s *UserDevicesControllerTestSuite) TestPostInvalidDefinitionID() {
 	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), invalidDD, "", "USA", s.testUserID, nil, nil, false).
 		Return(nil, nil, grpcErr)
 	reg := RegisterUserDevice{
-		DeviceDefinitionID: &invalidDD,
-		CountryCode:        "USA",
+		CountryCode:  "USA",
+		DefinitionID: invalidDD,
 	}
 	j, _ := json.Marshal(reg)
 
