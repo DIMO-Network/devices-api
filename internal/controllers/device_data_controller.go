@@ -407,7 +407,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodesByTokenID(c *fiber.Ctx) e
 		return fiber.NewError(fiber.StatusInternalServerError, "Error occurred fetching description for error codes")
 	}
 
-	q := &models.ErrorCodeQuery{ID: ksuid.New().String(), UserDeviceID: ud.ID, UserDeviceTokenID: ud.TokenID, CodesQueryResponse: null.JSONFrom(chtJSON)}
+	q := &models.ErrorCodeQuery{ID: ksuid.New().String(), UserDeviceID: ud.ID, VehicleTokenID: ud.TokenID, CodesQueryResponse: null.JSONFrom(chtJSON)}
 	err = q.Insert(c.Context(), udc.DBS().Writer, boil.Infer())
 
 	if err != nil {
@@ -440,7 +440,7 @@ func (udc *UserDevicesController) ClearUserDeviceErrorCodeQueryByTokenID(c *fibe
 	logger := helpers.GetLogger(c, udc.log)
 
 	errCodeQuery, err := models.ErrorCodeQueries(
-		models.ErrorCodeQueryWhere.UserDeviceTokenID.EQ(tid),
+		models.ErrorCodeQueryWhere.VehicleTokenID.EQ(tid),
 		qm.OrderBy(models.ErrorCodeQueryColumns.CreatedAt+" DESC"),
 		qm.Limit(1),
 	).One(c.Context(), udc.DBS().Reader)

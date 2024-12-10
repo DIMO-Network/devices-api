@@ -927,7 +927,7 @@ func TestUserDevicesController_ErrorOnAllErrorCodesClearedByTokenID(t *testing.T
 			currTime := time.Now().UTC().Truncate(time.Microsecond)
 			erCodeQuery := models.ErrorCodeQuery{
 				ID:                 ksuid.New().String(),
-				UserDeviceTokenID:  ud.TokenID,
+				VehicleTokenID:     ud.TokenID,
 				UserDeviceID:       ud.ID,
 				CodesQueryResponse: null.JSONFrom(chtJSON),
 				CreatedAt:          currTime,

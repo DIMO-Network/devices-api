@@ -188,41 +188,41 @@ var UserDeviceWhere = struct {
 
 // UserDeviceRels is where relationship names are stored.
 var UserDeviceRels = struct {
-	BurnRequest                     string
-	MintRequest                     string
-	VehicleTokenAftermarketDevice   string
-	VehicleTokenSyntheticDevice     string
-	AutopiJobs                      string
-	DeviceCommandRequests           string
-	ErrorCodeQueries                string
-	UserDeviceTokenErrorCodeQueries string
-	UserDeviceAPIIntegrations       string
-	UserDeviceToGeofences           string
+	BurnRequest                   string
+	MintRequest                   string
+	VehicleTokenAftermarketDevice string
+	VehicleTokenSyntheticDevice   string
+	AutopiJobs                    string
+	DeviceCommandRequests         string
+	ErrorCodeQueries              string
+	VehicleTokenErrorCodeQueries  string
+	UserDeviceAPIIntegrations     string
+	UserDeviceToGeofences         string
 }{
-	BurnRequest:                     "BurnRequest",
-	MintRequest:                     "MintRequest",
-	VehicleTokenAftermarketDevice:   "VehicleTokenAftermarketDevice",
-	VehicleTokenSyntheticDevice:     "VehicleTokenSyntheticDevice",
-	AutopiJobs:                      "AutopiJobs",
-	DeviceCommandRequests:           "DeviceCommandRequests",
-	ErrorCodeQueries:                "ErrorCodeQueries",
-	UserDeviceTokenErrorCodeQueries: "UserDeviceTokenErrorCodeQueries",
-	UserDeviceAPIIntegrations:       "UserDeviceAPIIntegrations",
-	UserDeviceToGeofences:           "UserDeviceToGeofences",
+	BurnRequest:                   "BurnRequest",
+	MintRequest:                   "MintRequest",
+	VehicleTokenAftermarketDevice: "VehicleTokenAftermarketDevice",
+	VehicleTokenSyntheticDevice:   "VehicleTokenSyntheticDevice",
+	AutopiJobs:                    "AutopiJobs",
+	DeviceCommandRequests:         "DeviceCommandRequests",
+	ErrorCodeQueries:              "ErrorCodeQueries",
+	VehicleTokenErrorCodeQueries:  "VehicleTokenErrorCodeQueries",
+	UserDeviceAPIIntegrations:     "UserDeviceAPIIntegrations",
+	UserDeviceToGeofences:         "UserDeviceToGeofences",
 }
 
 // userDeviceR is where relationships are stored.
 type userDeviceR struct {
-	BurnRequest                     *MetaTransactionRequest       `boil:"BurnRequest" json:"BurnRequest" toml:"BurnRequest" yaml:"BurnRequest"`
-	MintRequest                     *MetaTransactionRequest       `boil:"MintRequest" json:"MintRequest" toml:"MintRequest" yaml:"MintRequest"`
-	VehicleTokenAftermarketDevice   *AftermarketDevice            `boil:"VehicleTokenAftermarketDevice" json:"VehicleTokenAftermarketDevice" toml:"VehicleTokenAftermarketDevice" yaml:"VehicleTokenAftermarketDevice"`
-	VehicleTokenSyntheticDevice     *SyntheticDevice              `boil:"VehicleTokenSyntheticDevice" json:"VehicleTokenSyntheticDevice" toml:"VehicleTokenSyntheticDevice" yaml:"VehicleTokenSyntheticDevice"`
-	AutopiJobs                      AutopiJobSlice                `boil:"AutopiJobs" json:"AutopiJobs" toml:"AutopiJobs" yaml:"AutopiJobs"`
-	DeviceCommandRequests           DeviceCommandRequestSlice     `boil:"DeviceCommandRequests" json:"DeviceCommandRequests" toml:"DeviceCommandRequests" yaml:"DeviceCommandRequests"`
-	ErrorCodeQueries                ErrorCodeQuerySlice           `boil:"ErrorCodeQueries" json:"ErrorCodeQueries" toml:"ErrorCodeQueries" yaml:"ErrorCodeQueries"`
-	UserDeviceTokenErrorCodeQueries ErrorCodeQuerySlice           `boil:"UserDeviceTokenErrorCodeQueries" json:"UserDeviceTokenErrorCodeQueries" toml:"UserDeviceTokenErrorCodeQueries" yaml:"UserDeviceTokenErrorCodeQueries"`
-	UserDeviceAPIIntegrations       UserDeviceAPIIntegrationSlice `boil:"UserDeviceAPIIntegrations" json:"UserDeviceAPIIntegrations" toml:"UserDeviceAPIIntegrations" yaml:"UserDeviceAPIIntegrations"`
-	UserDeviceToGeofences           UserDeviceToGeofenceSlice     `boil:"UserDeviceToGeofences" json:"UserDeviceToGeofences" toml:"UserDeviceToGeofences" yaml:"UserDeviceToGeofences"`
+	BurnRequest                   *MetaTransactionRequest       `boil:"BurnRequest" json:"BurnRequest" toml:"BurnRequest" yaml:"BurnRequest"`
+	MintRequest                   *MetaTransactionRequest       `boil:"MintRequest" json:"MintRequest" toml:"MintRequest" yaml:"MintRequest"`
+	VehicleTokenAftermarketDevice *AftermarketDevice            `boil:"VehicleTokenAftermarketDevice" json:"VehicleTokenAftermarketDevice" toml:"VehicleTokenAftermarketDevice" yaml:"VehicleTokenAftermarketDevice"`
+	VehicleTokenSyntheticDevice   *SyntheticDevice              `boil:"VehicleTokenSyntheticDevice" json:"VehicleTokenSyntheticDevice" toml:"VehicleTokenSyntheticDevice" yaml:"VehicleTokenSyntheticDevice"`
+	AutopiJobs                    AutopiJobSlice                `boil:"AutopiJobs" json:"AutopiJobs" toml:"AutopiJobs" yaml:"AutopiJobs"`
+	DeviceCommandRequests         DeviceCommandRequestSlice     `boil:"DeviceCommandRequests" json:"DeviceCommandRequests" toml:"DeviceCommandRequests" yaml:"DeviceCommandRequests"`
+	ErrorCodeQueries              ErrorCodeQuerySlice           `boil:"ErrorCodeQueries" json:"ErrorCodeQueries" toml:"ErrorCodeQueries" yaml:"ErrorCodeQueries"`
+	VehicleTokenErrorCodeQueries  ErrorCodeQuerySlice           `boil:"VehicleTokenErrorCodeQueries" json:"VehicleTokenErrorCodeQueries" toml:"VehicleTokenErrorCodeQueries" yaml:"VehicleTokenErrorCodeQueries"`
+	UserDeviceAPIIntegrations     UserDeviceAPIIntegrationSlice `boil:"UserDeviceAPIIntegrations" json:"UserDeviceAPIIntegrations" toml:"UserDeviceAPIIntegrations" yaml:"UserDeviceAPIIntegrations"`
+	UserDeviceToGeofences         UserDeviceToGeofenceSlice     `boil:"UserDeviceToGeofences" json:"UserDeviceToGeofences" toml:"UserDeviceToGeofences" yaml:"UserDeviceToGeofences"`
 }
 
 // NewStruct creates a new relationship struct
@@ -279,11 +279,11 @@ func (r *userDeviceR) GetErrorCodeQueries() ErrorCodeQuerySlice {
 	return r.ErrorCodeQueries
 }
 
-func (r *userDeviceR) GetUserDeviceTokenErrorCodeQueries() ErrorCodeQuerySlice {
+func (r *userDeviceR) GetVehicleTokenErrorCodeQueries() ErrorCodeQuerySlice {
 	if r == nil {
 		return nil
 	}
-	return r.UserDeviceTokenErrorCodeQueries
+	return r.VehicleTokenErrorCodeQueries
 }
 
 func (r *userDeviceR) GetUserDeviceAPIIntegrations() UserDeviceAPIIntegrationSlice {
@@ -702,15 +702,15 @@ func (o *UserDevice) ErrorCodeQueries(mods ...qm.QueryMod) errorCodeQueryQuery {
 	return ErrorCodeQueries(queryMods...)
 }
 
-// UserDeviceTokenErrorCodeQueries retrieves all the error_code_query's ErrorCodeQueries with an executor via user_device_token_id column.
-func (o *UserDevice) UserDeviceTokenErrorCodeQueries(mods ...qm.QueryMod) errorCodeQueryQuery {
+// VehicleTokenErrorCodeQueries retrieves all the error_code_query's ErrorCodeQueries with an executor via vehicle_token_id column.
+func (o *UserDevice) VehicleTokenErrorCodeQueries(mods ...qm.QueryMod) errorCodeQueryQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"devices_api\".\"error_code_queries\".\"user_device_token_id\"=?", o.TokenID),
+		qm.Where("\"devices_api\".\"error_code_queries\".\"vehicle_token_id\"=?", o.TokenID),
 	)
 
 	return ErrorCodeQueries(queryMods...)
@@ -1565,9 +1565,9 @@ func (userDeviceL) LoadErrorCodeQueries(ctx context.Context, e boil.ContextExecu
 	return nil
 }
 
-// LoadUserDeviceTokenErrorCodeQueries allows an eager lookup of values, cached into the
+// LoadVehicleTokenErrorCodeQueries allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userDeviceL) LoadUserDeviceTokenErrorCodeQueries(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUserDevice interface{}, mods queries.Applicator) error {
+func (userDeviceL) LoadVehicleTokenErrorCodeQueries(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUserDevice interface{}, mods queries.Applicator) error {
 	var slice []*UserDevice
 	var object *UserDevice
 
@@ -1621,7 +1621,7 @@ func (userDeviceL) LoadUserDeviceTokenErrorCodeQueries(ctx context.Context, e bo
 
 	query := NewQuery(
 		qm.From(`devices_api.error_code_queries`),
-		qm.WhereIn(`devices_api.error_code_queries.user_device_token_id in ?`, argsSlice...),
+		qm.WhereIn(`devices_api.error_code_queries.vehicle_token_id in ?`, argsSlice...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1652,24 +1652,24 @@ func (userDeviceL) LoadUserDeviceTokenErrorCodeQueries(ctx context.Context, e bo
 		}
 	}
 	if singular {
-		object.R.UserDeviceTokenErrorCodeQueries = resultSlice
+		object.R.VehicleTokenErrorCodeQueries = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
 				foreign.R = &errorCodeQueryR{}
 			}
-			foreign.R.UserDeviceToken = object
+			foreign.R.VehicleToken = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.TokenID, foreign.UserDeviceTokenID) {
-				local.R.UserDeviceTokenErrorCodeQueries = append(local.R.UserDeviceTokenErrorCodeQueries, foreign)
+			if queries.Equal(local.TokenID, foreign.VehicleTokenID) {
+				local.R.VehicleTokenErrorCodeQueries = append(local.R.VehicleTokenErrorCodeQueries, foreign)
 				if foreign.R == nil {
 					foreign.R = &errorCodeQueryR{}
 				}
-				foreign.R.UserDeviceToken = local
+				foreign.R.VehicleToken = local
 				break
 			}
 		}
@@ -2423,22 +2423,22 @@ func (o *UserDevice) AddErrorCodeQueries(ctx context.Context, exec boil.ContextE
 	return nil
 }
 
-// AddUserDeviceTokenErrorCodeQueries adds the given related objects to the existing relationships
+// AddVehicleTokenErrorCodeQueries adds the given related objects to the existing relationships
 // of the user_device, optionally inserting them as new records.
-// Appends related to o.R.UserDeviceTokenErrorCodeQueries.
-// Sets related.R.UserDeviceToken appropriately.
-func (o *UserDevice) AddUserDeviceTokenErrorCodeQueries(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*ErrorCodeQuery) error {
+// Appends related to o.R.VehicleTokenErrorCodeQueries.
+// Sets related.R.VehicleToken appropriately.
+func (o *UserDevice) AddVehicleTokenErrorCodeQueries(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*ErrorCodeQuery) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.UserDeviceTokenID, o.TokenID)
+			queries.Assign(&rel.VehicleTokenID, o.TokenID)
 			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"devices_api\".\"error_code_queries\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"user_device_token_id"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"vehicle_token_id"}),
 				strmangle.WhereClause("\"", "\"", 2, errorCodeQueryPrimaryKeyColumns),
 			)
 			values := []interface{}{o.TokenID, rel.ID}
@@ -2452,38 +2452,38 @@ func (o *UserDevice) AddUserDeviceTokenErrorCodeQueries(ctx context.Context, exe
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.UserDeviceTokenID, o.TokenID)
+			queries.Assign(&rel.VehicleTokenID, o.TokenID)
 		}
 	}
 
 	if o.R == nil {
 		o.R = &userDeviceR{
-			UserDeviceTokenErrorCodeQueries: related,
+			VehicleTokenErrorCodeQueries: related,
 		}
 	} else {
-		o.R.UserDeviceTokenErrorCodeQueries = append(o.R.UserDeviceTokenErrorCodeQueries, related...)
+		o.R.VehicleTokenErrorCodeQueries = append(o.R.VehicleTokenErrorCodeQueries, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &errorCodeQueryR{
-				UserDeviceToken: o,
+				VehicleToken: o,
 			}
 		} else {
-			rel.R.UserDeviceToken = o
+			rel.R.VehicleToken = o
 		}
 	}
 	return nil
 }
 
-// SetUserDeviceTokenErrorCodeQueries removes all previously related items of the
+// SetVehicleTokenErrorCodeQueries removes all previously related items of the
 // user_device replacing them completely with the passed
 // in related items, optionally inserting them as new records.
-// Sets o.R.UserDeviceToken's UserDeviceTokenErrorCodeQueries accordingly.
-// Replaces o.R.UserDeviceTokenErrorCodeQueries with related.
-// Sets related.R.UserDeviceToken's UserDeviceTokenErrorCodeQueries accordingly.
-func (o *UserDevice) SetUserDeviceTokenErrorCodeQueries(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*ErrorCodeQuery) error {
-	query := "update \"devices_api\".\"error_code_queries\" set \"user_device_token_id\" = null where \"user_device_token_id\" = $1"
+// Sets o.R.VehicleToken's VehicleTokenErrorCodeQueries accordingly.
+// Replaces o.R.VehicleTokenErrorCodeQueries with related.
+// Sets related.R.VehicleToken's VehicleTokenErrorCodeQueries accordingly.
+func (o *UserDevice) SetVehicleTokenErrorCodeQueries(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*ErrorCodeQuery) error {
+	query := "update \"devices_api\".\"error_code_queries\" set \"vehicle_token_id\" = null where \"vehicle_token_id\" = $1"
 	values := []interface{}{o.TokenID}
 	if boil.IsDebug(ctx) {
 		writer := boil.DebugWriterFrom(ctx)
@@ -2496,35 +2496,35 @@ func (o *UserDevice) SetUserDeviceTokenErrorCodeQueries(ctx context.Context, exe
 	}
 
 	if o.R != nil {
-		for _, rel := range o.R.UserDeviceTokenErrorCodeQueries {
-			queries.SetScanner(&rel.UserDeviceTokenID, nil)
+		for _, rel := range o.R.VehicleTokenErrorCodeQueries {
+			queries.SetScanner(&rel.VehicleTokenID, nil)
 			if rel.R == nil {
 				continue
 			}
 
-			rel.R.UserDeviceToken = nil
+			rel.R.VehicleToken = nil
 		}
-		o.R.UserDeviceTokenErrorCodeQueries = nil
+		o.R.VehicleTokenErrorCodeQueries = nil
 	}
 
-	return o.AddUserDeviceTokenErrorCodeQueries(ctx, exec, insert, related...)
+	return o.AddVehicleTokenErrorCodeQueries(ctx, exec, insert, related...)
 }
 
-// RemoveUserDeviceTokenErrorCodeQueries relationships from objects passed in.
-// Removes related items from R.UserDeviceTokenErrorCodeQueries (uses pointer comparison, removal does not keep order)
-// Sets related.R.UserDeviceToken.
-func (o *UserDevice) RemoveUserDeviceTokenErrorCodeQueries(ctx context.Context, exec boil.ContextExecutor, related ...*ErrorCodeQuery) error {
+// RemoveVehicleTokenErrorCodeQueries relationships from objects passed in.
+// Removes related items from R.VehicleTokenErrorCodeQueries (uses pointer comparison, removal does not keep order)
+// Sets related.R.VehicleToken.
+func (o *UserDevice) RemoveVehicleTokenErrorCodeQueries(ctx context.Context, exec boil.ContextExecutor, related ...*ErrorCodeQuery) error {
 	if len(related) == 0 {
 		return nil
 	}
 
 	var err error
 	for _, rel := range related {
-		queries.SetScanner(&rel.UserDeviceTokenID, nil)
+		queries.SetScanner(&rel.VehicleTokenID, nil)
 		if rel.R != nil {
-			rel.R.UserDeviceToken = nil
+			rel.R.VehicleToken = nil
 		}
-		if _, err = rel.Update(ctx, exec, boil.Whitelist("user_device_token_id")); err != nil {
+		if _, err = rel.Update(ctx, exec, boil.Whitelist("vehicle_token_id")); err != nil {
 			return err
 		}
 	}
@@ -2533,16 +2533,16 @@ func (o *UserDevice) RemoveUserDeviceTokenErrorCodeQueries(ctx context.Context, 
 	}
 
 	for _, rel := range related {
-		for i, ri := range o.R.UserDeviceTokenErrorCodeQueries {
+		for i, ri := range o.R.VehicleTokenErrorCodeQueries {
 			if rel != ri {
 				continue
 			}
 
-			ln := len(o.R.UserDeviceTokenErrorCodeQueries)
+			ln := len(o.R.VehicleTokenErrorCodeQueries)
 			if ln > 1 && i < ln-1 {
-				o.R.UserDeviceTokenErrorCodeQueries[i] = o.R.UserDeviceTokenErrorCodeQueries[ln-1]
+				o.R.VehicleTokenErrorCodeQueries[i] = o.R.VehicleTokenErrorCodeQueries[ln-1]
 			}
-			o.R.UserDeviceTokenErrorCodeQueries = o.R.UserDeviceTokenErrorCodeQueries[:ln-1]
+			o.R.VehicleTokenErrorCodeQueries = o.R.VehicleTokenErrorCodeQueries[:ln-1]
 			break
 		}
 	}

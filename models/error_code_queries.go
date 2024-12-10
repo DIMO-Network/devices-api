@@ -31,7 +31,7 @@ type ErrorCodeQuery struct {
 	UpdatedAt          time.Time         `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CodesQueryResponse null.JSON         `boil:"codes_query_response" json:"codes_query_response,omitempty" toml:"codes_query_response" yaml:"codes_query_response,omitempty"`
 	ClearedAt          null.Time         `boil:"cleared_at" json:"cleared_at,omitempty" toml:"cleared_at" yaml:"cleared_at,omitempty"`
-	UserDeviceTokenID  types.NullDecimal `boil:"user_device_token_id" json:"user_device_token_id,omitempty" toml:"user_device_token_id" yaml:"user_device_token_id,omitempty"`
+	VehicleTokenID     types.NullDecimal `boil:"vehicle_token_id" json:"vehicle_token_id,omitempty" toml:"vehicle_token_id" yaml:"vehicle_token_id,omitempty"`
 
 	R *errorCodeQueryR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L errorCodeQueryL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -44,7 +44,7 @@ var ErrorCodeQueryColumns = struct {
 	UpdatedAt          string
 	CodesQueryResponse string
 	ClearedAt          string
-	UserDeviceTokenID  string
+	VehicleTokenID     string
 }{
 	ID:                 "id",
 	UserDeviceID:       "user_device_id",
@@ -52,7 +52,7 @@ var ErrorCodeQueryColumns = struct {
 	UpdatedAt:          "updated_at",
 	CodesQueryResponse: "codes_query_response",
 	ClearedAt:          "cleared_at",
-	UserDeviceTokenID:  "user_device_token_id",
+	VehicleTokenID:     "vehicle_token_id",
 }
 
 var ErrorCodeQueryTableColumns = struct {
@@ -62,7 +62,7 @@ var ErrorCodeQueryTableColumns = struct {
 	UpdatedAt          string
 	CodesQueryResponse string
 	ClearedAt          string
-	UserDeviceTokenID  string
+	VehicleTokenID     string
 }{
 	ID:                 "error_code_queries.id",
 	UserDeviceID:       "error_code_queries.user_device_id",
@@ -70,7 +70,7 @@ var ErrorCodeQueryTableColumns = struct {
 	UpdatedAt:          "error_code_queries.updated_at",
 	CodesQueryResponse: "error_code_queries.codes_query_response",
 	ClearedAt:          "error_code_queries.cleared_at",
-	UserDeviceTokenID:  "error_code_queries.user_device_token_id",
+	VehicleTokenID:     "error_code_queries.vehicle_token_id",
 }
 
 // Generated where
@@ -82,7 +82,7 @@ var ErrorCodeQueryWhere = struct {
 	UpdatedAt          whereHelpertime_Time
 	CodesQueryResponse whereHelpernull_JSON
 	ClearedAt          whereHelpernull_Time
-	UserDeviceTokenID  whereHelpertypes_NullDecimal
+	VehicleTokenID     whereHelpertypes_NullDecimal
 }{
 	ID:                 whereHelperstring{field: "\"devices_api\".\"error_code_queries\".\"id\""},
 	UserDeviceID:       whereHelperstring{field: "\"devices_api\".\"error_code_queries\".\"user_device_id\""},
@@ -90,22 +90,22 @@ var ErrorCodeQueryWhere = struct {
 	UpdatedAt:          whereHelpertime_Time{field: "\"devices_api\".\"error_code_queries\".\"updated_at\""},
 	CodesQueryResponse: whereHelpernull_JSON{field: "\"devices_api\".\"error_code_queries\".\"codes_query_response\""},
 	ClearedAt:          whereHelpernull_Time{field: "\"devices_api\".\"error_code_queries\".\"cleared_at\""},
-	UserDeviceTokenID:  whereHelpertypes_NullDecimal{field: "\"devices_api\".\"error_code_queries\".\"user_device_token_id\""},
+	VehicleTokenID:     whereHelpertypes_NullDecimal{field: "\"devices_api\".\"error_code_queries\".\"vehicle_token_id\""},
 }
 
 // ErrorCodeQueryRels is where relationship names are stored.
 var ErrorCodeQueryRels = struct {
-	UserDevice      string
-	UserDeviceToken string
+	UserDevice   string
+	VehicleToken string
 }{
-	UserDevice:      "UserDevice",
-	UserDeviceToken: "UserDeviceToken",
+	UserDevice:   "UserDevice",
+	VehicleToken: "VehicleToken",
 }
 
 // errorCodeQueryR is where relationships are stored.
 type errorCodeQueryR struct {
-	UserDevice      *UserDevice `boil:"UserDevice" json:"UserDevice" toml:"UserDevice" yaml:"UserDevice"`
-	UserDeviceToken *UserDevice `boil:"UserDeviceToken" json:"UserDeviceToken" toml:"UserDeviceToken" yaml:"UserDeviceToken"`
+	UserDevice   *UserDevice `boil:"UserDevice" json:"UserDevice" toml:"UserDevice" yaml:"UserDevice"`
+	VehicleToken *UserDevice `boil:"VehicleToken" json:"VehicleToken" toml:"VehicleToken" yaml:"VehicleToken"`
 }
 
 // NewStruct creates a new relationship struct
@@ -120,20 +120,20 @@ func (r *errorCodeQueryR) GetUserDevice() *UserDevice {
 	return r.UserDevice
 }
 
-func (r *errorCodeQueryR) GetUserDeviceToken() *UserDevice {
+func (r *errorCodeQueryR) GetVehicleToken() *UserDevice {
 	if r == nil {
 		return nil
 	}
-	return r.UserDeviceToken
+	return r.VehicleToken
 }
 
 // errorCodeQueryL is where Load methods for each relationship are stored.
 type errorCodeQueryL struct{}
 
 var (
-	errorCodeQueryAllColumns            = []string{"id", "user_device_id", "created_at", "updated_at", "codes_query_response", "cleared_at", "user_device_token_id"}
+	errorCodeQueryAllColumns            = []string{"id", "user_device_id", "created_at", "updated_at", "codes_query_response", "cleared_at", "vehicle_token_id"}
 	errorCodeQueryColumnsWithoutDefault = []string{"id", "user_device_id"}
-	errorCodeQueryColumnsWithDefault    = []string{"created_at", "updated_at", "codes_query_response", "cleared_at", "user_device_token_id"}
+	errorCodeQueryColumnsWithDefault    = []string{"created_at", "updated_at", "codes_query_response", "cleared_at", "vehicle_token_id"}
 	errorCodeQueryPrimaryKeyColumns     = []string{"id"}
 	errorCodeQueryGeneratedColumns      = []string{}
 )
@@ -454,10 +454,10 @@ func (o *ErrorCodeQuery) UserDevice(mods ...qm.QueryMod) userDeviceQuery {
 	return UserDevices(queryMods...)
 }
 
-// UserDeviceToken pointed to by the foreign key.
-func (o *ErrorCodeQuery) UserDeviceToken(mods ...qm.QueryMod) userDeviceQuery {
+// VehicleToken pointed to by the foreign key.
+func (o *ErrorCodeQuery) VehicleToken(mods ...qm.QueryMod) userDeviceQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"token_id\" = ?", o.UserDeviceTokenID),
+		qm.Where("\"token_id\" = ?", o.VehicleTokenID),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -585,9 +585,9 @@ func (errorCodeQueryL) LoadUserDevice(ctx context.Context, e boil.ContextExecuto
 	return nil
 }
 
-// LoadUserDeviceToken allows an eager lookup of values, cached into the
+// LoadVehicleToken allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (errorCodeQueryL) LoadUserDeviceToken(ctx context.Context, e boil.ContextExecutor, singular bool, maybeErrorCodeQuery interface{}, mods queries.Applicator) error {
+func (errorCodeQueryL) LoadVehicleToken(ctx context.Context, e boil.ContextExecutor, singular bool, maybeErrorCodeQuery interface{}, mods queries.Applicator) error {
 	var slice []*ErrorCodeQuery
 	var object *ErrorCodeQuery
 
@@ -618,8 +618,8 @@ func (errorCodeQueryL) LoadUserDeviceToken(ctx context.Context, e boil.ContextEx
 		if object.R == nil {
 			object.R = &errorCodeQueryR{}
 		}
-		if !queries.IsNil(object.UserDeviceTokenID) {
-			args[object.UserDeviceTokenID] = struct{}{}
+		if !queries.IsNil(object.VehicleTokenID) {
+			args[object.VehicleTokenID] = struct{}{}
 		}
 
 	} else {
@@ -628,8 +628,8 @@ func (errorCodeQueryL) LoadUserDeviceToken(ctx context.Context, e boil.ContextEx
 				obj.R = &errorCodeQueryR{}
 			}
 
-			if !queries.IsNil(obj.UserDeviceTokenID) {
-				args[obj.UserDeviceTokenID] = struct{}{}
+			if !queries.IsNil(obj.VehicleTokenID) {
+				args[obj.VehicleTokenID] = struct{}{}
 			}
 
 		}
@@ -685,22 +685,22 @@ func (errorCodeQueryL) LoadUserDeviceToken(ctx context.Context, e boil.ContextEx
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.UserDeviceToken = foreign
+		object.R.VehicleToken = foreign
 		if foreign.R == nil {
 			foreign.R = &userDeviceR{}
 		}
-		foreign.R.UserDeviceTokenErrorCodeQueries = append(foreign.R.UserDeviceTokenErrorCodeQueries, object)
+		foreign.R.VehicleTokenErrorCodeQueries = append(foreign.R.VehicleTokenErrorCodeQueries, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.UserDeviceTokenID, foreign.TokenID) {
-				local.R.UserDeviceToken = foreign
+			if queries.Equal(local.VehicleTokenID, foreign.TokenID) {
+				local.R.VehicleToken = foreign
 				if foreign.R == nil {
 					foreign.R = &userDeviceR{}
 				}
-				foreign.R.UserDeviceTokenErrorCodeQueries = append(foreign.R.UserDeviceTokenErrorCodeQueries, local)
+				foreign.R.VehicleTokenErrorCodeQueries = append(foreign.R.VehicleTokenErrorCodeQueries, local)
 				break
 			}
 		}
@@ -756,10 +756,10 @@ func (o *ErrorCodeQuery) SetUserDevice(ctx context.Context, exec boil.ContextExe
 	return nil
 }
 
-// SetUserDeviceToken of the errorCodeQuery to the related item.
-// Sets o.R.UserDeviceToken to related.
-// Adds o to related.R.UserDeviceTokenErrorCodeQueries.
-func (o *ErrorCodeQuery) SetUserDeviceToken(ctx context.Context, exec boil.ContextExecutor, insert bool, related *UserDevice) error {
+// SetVehicleToken of the errorCodeQuery to the related item.
+// Sets o.R.VehicleToken to related.
+// Adds o to related.R.VehicleTokenErrorCodeQueries.
+func (o *ErrorCodeQuery) SetVehicleToken(ctx context.Context, exec boil.ContextExecutor, insert bool, related *UserDevice) error {
 	var err error
 	if insert {
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
@@ -769,7 +769,7 @@ func (o *ErrorCodeQuery) SetUserDeviceToken(ctx context.Context, exec boil.Conte
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"devices_api\".\"error_code_queries\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"user_device_token_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"vehicle_token_id"}),
 		strmangle.WhereClause("\"", "\"", 2, errorCodeQueryPrimaryKeyColumns),
 	)
 	values := []interface{}{related.TokenID, o.ID}
@@ -783,54 +783,54 @@ func (o *ErrorCodeQuery) SetUserDeviceToken(ctx context.Context, exec boil.Conte
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.UserDeviceTokenID, related.TokenID)
+	queries.Assign(&o.VehicleTokenID, related.TokenID)
 	if o.R == nil {
 		o.R = &errorCodeQueryR{
-			UserDeviceToken: related,
+			VehicleToken: related,
 		}
 	} else {
-		o.R.UserDeviceToken = related
+		o.R.VehicleToken = related
 	}
 
 	if related.R == nil {
 		related.R = &userDeviceR{
-			UserDeviceTokenErrorCodeQueries: ErrorCodeQuerySlice{o},
+			VehicleTokenErrorCodeQueries: ErrorCodeQuerySlice{o},
 		}
 	} else {
-		related.R.UserDeviceTokenErrorCodeQueries = append(related.R.UserDeviceTokenErrorCodeQueries, o)
+		related.R.VehicleTokenErrorCodeQueries = append(related.R.VehicleTokenErrorCodeQueries, o)
 	}
 
 	return nil
 }
 
-// RemoveUserDeviceToken relationship.
-// Sets o.R.UserDeviceToken to nil.
+// RemoveVehicleToken relationship.
+// Sets o.R.VehicleToken to nil.
 // Removes o from all passed in related items' relationships struct.
-func (o *ErrorCodeQuery) RemoveUserDeviceToken(ctx context.Context, exec boil.ContextExecutor, related *UserDevice) error {
+func (o *ErrorCodeQuery) RemoveVehicleToken(ctx context.Context, exec boil.ContextExecutor, related *UserDevice) error {
 	var err error
 
-	queries.SetScanner(&o.UserDeviceTokenID, nil)
-	if _, err = o.Update(ctx, exec, boil.Whitelist("user_device_token_id")); err != nil {
+	queries.SetScanner(&o.VehicleTokenID, nil)
+	if _, err = o.Update(ctx, exec, boil.Whitelist("vehicle_token_id")); err != nil {
 		return errors.Wrap(err, "failed to update local table")
 	}
 
 	if o.R != nil {
-		o.R.UserDeviceToken = nil
+		o.R.VehicleToken = nil
 	}
 	if related == nil || related.R == nil {
 		return nil
 	}
 
-	for i, ri := range related.R.UserDeviceTokenErrorCodeQueries {
-		if queries.Equal(o.UserDeviceTokenID, ri.UserDeviceTokenID) {
+	for i, ri := range related.R.VehicleTokenErrorCodeQueries {
+		if queries.Equal(o.VehicleTokenID, ri.VehicleTokenID) {
 			continue
 		}
 
-		ln := len(related.R.UserDeviceTokenErrorCodeQueries)
+		ln := len(related.R.VehicleTokenErrorCodeQueries)
 		if ln > 1 && i < ln-1 {
-			related.R.UserDeviceTokenErrorCodeQueries[i] = related.R.UserDeviceTokenErrorCodeQueries[ln-1]
+			related.R.VehicleTokenErrorCodeQueries[i] = related.R.VehicleTokenErrorCodeQueries[ln-1]
 		}
-		related.R.UserDeviceTokenErrorCodeQueries = related.R.UserDeviceTokenErrorCodeQueries[:ln-1]
+		related.R.VehicleTokenErrorCodeQueries = related.R.VehicleTokenErrorCodeQueries[:ln-1]
 		break
 	}
 	return nil
