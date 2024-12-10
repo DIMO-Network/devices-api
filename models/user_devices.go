@@ -2476,6 +2476,80 @@ func (o *UserDevice) AddUserDeviceTokenErrorCodeQueries(ctx context.Context, exe
 	return nil
 }
 
+// SetUserDeviceTokenErrorCodeQueries removes all previously related items of the
+// user_device replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.UserDeviceToken's UserDeviceTokenErrorCodeQueries accordingly.
+// Replaces o.R.UserDeviceTokenErrorCodeQueries with related.
+// Sets related.R.UserDeviceToken's UserDeviceTokenErrorCodeQueries accordingly.
+func (o *UserDevice) SetUserDeviceTokenErrorCodeQueries(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*ErrorCodeQuery) error {
+	query := "update \"devices_api\".\"error_code_queries\" set \"user_device_token_id\" = null where \"user_device_token_id\" = $1"
+	values := []interface{}{o.TokenID}
+	if boil.IsDebug(ctx) {
+		writer := boil.DebugWriterFrom(ctx)
+		fmt.Fprintln(writer, query)
+		fmt.Fprintln(writer, values)
+	}
+	_, err := exec.ExecContext(ctx, query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.UserDeviceTokenErrorCodeQueries {
+			queries.SetScanner(&rel.UserDeviceTokenID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.UserDeviceToken = nil
+		}
+		o.R.UserDeviceTokenErrorCodeQueries = nil
+	}
+
+	return o.AddUserDeviceTokenErrorCodeQueries(ctx, exec, insert, related...)
+}
+
+// RemoveUserDeviceTokenErrorCodeQueries relationships from objects passed in.
+// Removes related items from R.UserDeviceTokenErrorCodeQueries (uses pointer comparison, removal does not keep order)
+// Sets related.R.UserDeviceToken.
+func (o *UserDevice) RemoveUserDeviceTokenErrorCodeQueries(ctx context.Context, exec boil.ContextExecutor, related ...*ErrorCodeQuery) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.UserDeviceTokenID, nil)
+		if rel.R != nil {
+			rel.R.UserDeviceToken = nil
+		}
+		if _, err = rel.Update(ctx, exec, boil.Whitelist("user_device_token_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.UserDeviceTokenErrorCodeQueries {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.UserDeviceTokenErrorCodeQueries)
+			if ln > 1 && i < ln-1 {
+				o.R.UserDeviceTokenErrorCodeQueries[i] = o.R.UserDeviceTokenErrorCodeQueries[ln-1]
+			}
+			o.R.UserDeviceTokenErrorCodeQueries = o.R.UserDeviceTokenErrorCodeQueries[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
 // AddUserDeviceAPIIntegrations adds the given related objects to the existing relationships
 // of the user_device, optionally inserting them as new records.
 // Appends related to o.R.UserDeviceAPIIntegrations.
