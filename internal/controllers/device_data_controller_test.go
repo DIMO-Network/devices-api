@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"os"
 	"testing"
 	"time"
@@ -683,6 +684,117 @@ func TestUserDevicesController_ErrorOnAllErrorCodesCleared(t *testing.T) {
 
 		assert.Equal(t, response.StatusCode, fiber.StatusBadRequest)
 		assert.Equal(t, "all error codes already cleared", string(body))
+
+		//teardown
+		test.TruncateTables(pdb.DBS().Writer.DB, t)
+	})
+}
+
+// QueryErrorCodes by tokenID Test
+func TestUserDevicesController_QueryDeviceErrorCodesByTokenID(t *testing.T) {
+	mockDeps := createMockDependencies(t)
+	defer mockDeps.mockCtrl.Finish()
+
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	testUserID := "123123"
+	testTokenID := "321321"
+	ti, _ := new(big.Int).SetString(testTokenID, 10)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil, nil)
+	app := fiber.New()
+	app.Post("/user/vehicle/:tokenID/error-codes", test.AuthInjectorTestHandler(testUserID), c.QueryDeviceErrorCodesByTokenID)
+
+	t.Run("POST - get description for query codes", func(t *testing.T) {
+		req := QueryDeviceErrorCodesReq{
+			ErrorCodes: []string{"P0017", "P0016"},
+		}
+
+		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
+		ud := test.SetupCreateUserDeviceWithTokenID(t, testUserID, ti, dd[0].DeviceDefinitionId, nil, "", pdb)
+
+		mockDeps.deviceDefSvc.
+			EXPECT().
+			GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).
+			Return(&grpc.GetDeviceDefinitionItemResponse{
+				Make: &grpc.DeviceMake{
+					Name:     "Toyota",
+					NameSlug: "toyota",
+				},
+				Model: "Camry",
+				Year:  2023,
+			}, nil).
+			AnyTimes()
+
+		openAIResp := []services.ErrorCodesResponse{
+			{
+				Code:        "P0113",
+				Description: "Engine Coolant Temperature Circuit Malfunction: This code indicates that the engine coolant temperature sensor is sending a signal that is outside of the expected range, which may cause the engine to run poorly or overheat.",
+			},
+		}
+
+		mockDeps.openAISvc.
+			EXPECT().
+			GetErrorCodesDescription(gomock.Eq("Toyota"), gomock.Eq("Camry"), gomock.Eq(req.ErrorCodes)).
+			Return(openAIResp, nil).
+			AnyTimes()
+
+		j, _ := json.Marshal(req)
+
+		request := test.BuildRequest("POST", "/user/vehicle/"+ud.TokenID.String()+"/error-codes", string(j))
+		response, _ := app.Test(request)
+		body, _ := io.ReadAll(response.Body)
+
+		chatGptResp := QueryDeviceErrorCodesResponse{
+			ErrorCodes: openAIResp,
+		}
+		chtJSON, err := json.Marshal(chatGptResp)
+		assert.NoError(t, err)
+
+		assert.Equal(t, fiber.StatusOK, response.StatusCode)
+		assert.Equal(t,
+			chtJSON,
+			body,
+		)
+
+		//teardown
+		test.TruncateTables(pdb.DBS().Writer.DB, t)
+	})
+}
+
+func TestUserDevicesController_QueryDeviceErrorCodesByTokenID_WrongTokenID(t *testing.T) {
+	mockDeps := createMockDependencies(t)
+	defer mockDeps.mockCtrl.Finish()
+
+	ctx := context.Background()
+	pdb, container := test.StartContainerDatabase(ctx, t, migrationsDirRelPath)
+	defer func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	testUserID := "123123"
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil, nil)
+	app := fiber.New()
+	app.Post("/user/vehicle/:tokenID/error-codes", test.AuthInjectorTestHandler(testUserID), c.QueryDeviceErrorCodesByTokenID)
+
+	t.Run("POST - get description for query codes using invalid tokenID", func(t *testing.T) {
+		req := QueryDeviceErrorCodesReq{
+			ErrorCodes: []string{"P0017", "P0016"},
+		}
+
+		j, _ := json.Marshal(req)
+
+		request := test.BuildRequest("POST", "/user/vehicle/999/error-codes", string(j))
+		response, _ := app.Test(request)
+		assert.Equal(t, fiber.StatusNotFound, response.StatusCode)
 
 		//teardown
 		test.TruncateTables(pdb.DBS().Writer.DB, t)
