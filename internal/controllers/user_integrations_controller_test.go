@@ -87,7 +87,7 @@ const testUser2 = "someOtherUser2"
 const teslaFleetAuthCacheKey = "integration_credentials_%s"
 
 const smartCarIntegrationId = "smartcar123"
-const teslaIntegrationId = "tesla123"
+const teslaIntegrationId = "tesla123aaaaaaaaaaaaaaaaaaa"
 
 // SetupSuite starts container db
 func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
@@ -387,7 +387,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 	s.scClient.EXPECT().HasDoorControl(gomock.Any(), token.Access, "smartcar-idx").Return(false, nil)
 
 	// original device def
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Times(2).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Times(1).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
 
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := s.app.Test(request)
@@ -413,6 +414,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostUnknownDevice() {
 	response, _ := s.app.Test(request)
 	assert.Equal(s.T(), fiber.StatusBadRequest, response.StatusCode, "should fail")
 }
+
 func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
 	integration := test.BuildIntegrationGRPC(teslaIntegrationId, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2020, integration)
@@ -444,8 +446,9 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
 	}, nil)
 	s.teslaSvc.EXPECT().WakeUpVehicle("abc", 1145).Return(nil)
 	s.teslaSvc.EXPECT().GetAvailableCommands().Return(&services.UserDeviceAPIIntegrationsMetadataCommands{Enabled: []string{constants.DoorsUnlock, constants.DoorsLock}})
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Times(2).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Times(1).Return(dd[0], nil)
 	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
 
 	req := `{
 			"accessToken": "abc",
@@ -791,8 +794,9 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 		Enabled:  []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
 		Disabled: []string{constants.TelemetrySubscribe},
 	}, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Times(1).Return(dd[0], nil)
 	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Times(1).Return(integration, nil)
 
 	userEthAddr := common.HexToAddress("1").String()
 	s.userClient.EXPECT().GetUser(gomock.Any(), &pbuser.GetUserRequest{Id: testUserID}).Return(&pbuser.User{EthereumAddress: &userEthAddr}, nil).AnyTimes()
@@ -848,7 +852,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_PartialCredential
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DeviceDefinitionID).Return(dd[0], nil).AnyTimes()
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Return(dd[0], nil).AnyTimes()
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil).AnyTimes()
 
 	userEthAddr := common.HexToAddress("1").String()
 	s.userClient.EXPECT().GetUser(gomock.Any(), &pbuser.GetUserRequest{Id: testUserID}).Return(&pbuser.User{EthereumAddress: &userEthAddr}, nil).AnyTimes()
@@ -884,7 +889,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_MissingCredential
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DeviceDefinitionID).Return(dd[0], nil).AnyTimes()
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Return(dd[0], nil).AnyTimes()
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil).AnyTimes()
 
 	userEthAddr := common.HexToAddress("1").String()
 	s.userClient.EXPECT().GetUser(gomock.Any(), &pbuser.GetUserRequest{Id: testUserID}).Return(&pbuser.User{EthereumAddress: &userEthAddr}, nil).AnyTimes()
