@@ -275,8 +275,8 @@ func (s *GeofencesControllerTestSuite) TestPutGeofence() {
 	app.Put("/user/geofences/:geofenceID", test.AuthInjectorTestHandler(injectedUserID), c.Update)
 
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "escaped", 2020, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), []string{dd[0].DeviceDefinitionId}).Return(dd, nil)
-	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].Id).Return(dd[0], nil)
+	ud := test.SetupCreateUserDevice(s.T(), injectedUserID, dd[0].Id, nil, "", s.pdb)
 	ud.TokenID = types.NewNullDecimal(decimal.New(1, 0))
 	_, err := ud.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.Require().NoError(err)

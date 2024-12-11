@@ -13,7 +13,8 @@ import (
 
 //go:generate mockgen -source device_definition_registrar.go -destination mocks/device_definition_registrar_mock.go
 
-// DeviceDefinitionRegistrar
+// DeviceDefinitionRegistrar is used to send user device to MMY mappings to a kafka topic that is joined by device-definition-join-processor.
+// It was used to add MMY to elastic status index. Not really used anymore, should deprecate as possible.
 type DeviceDefinitionRegistrar interface {
 	Register(d DeviceDefinitionDTO) error
 }
@@ -116,6 +117,7 @@ func (s *deviceDefinitionRegistrar) emitKafka(topic, key string, value any) erro
 	return err
 }
 
+// Deprecated: Register processes a DeviceDefinitionDTO, emitting relevant events to the configured Kafka topics.
 func (s *deviceDefinitionRegistrar) Register(d DeviceDefinitionDTO) error {
 	err := s.emitDeviceDefinitionIDEvent(d)
 	if err != nil {
