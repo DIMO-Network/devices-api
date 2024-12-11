@@ -1723,28 +1723,6 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 	if err != nil {
 		logger.Err(err).Msg("Failed to emit integration event.")
 	}
-
-	region := ""
-	if ud.CountryCode.Valid {
-		countryRecord := constants.FindCountry(ud.CountryCode.String)
-		if countryRecord != nil {
-			region = countryRecord.Region
-		}
-	}
-	err = udc.deviceDefinitionRegistrar.Register(services.DeviceDefinitionDTO{
-		IntegrationID:      integ.Id,
-		UserDeviceID:       ud.ID,
-		DeviceDefinitionID: ud.DeviceDefinitionID, // this needs to be changed - can we change it, what does the registrar do
-		Make:               dd.Make.Name,
-		Model:              dd.Model,
-		Year:               int(dd.Year),
-		Region:             region,
-		MakeSlug:           dd.Make.NameSlug,
-		ModelSlug:          shared.SlugString(dd.Model),
-	})
-	if err != nil {
-		logger.Err(err).Msg("Failed to set values in device definition tables.")
-	}
 }
 
 var smartcarCallErr = fiber.NewError(fiber.StatusInternalServerError, "Error communicating with Smartcar.")

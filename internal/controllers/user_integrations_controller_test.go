@@ -260,17 +260,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 		},
 	)
 
-	s.deviceDefinitionRegistrar.EXPECT().Register(services.DeviceDefinitionDTO{
-		IntegrationID: integration.Id,
-		UserDeviceID:  ud.ID,
-		Make:          dd[0].Make.Name,
-		Model:         dd[0].Model,
-		Year:          int(dd[0].Year),
-		Region:        "Americas",
-		MakeSlug:      dd[0].Make.NameSlug,
-		ModelSlug:     shared.SlugString(dd[0].Model),
-	}).Return(nil)
-
 	// original device def
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Times(2).Return(dd[0], nil)
 	s.scClient.EXPECT().GetUserID(gomock.Any(), "myAccess").Return(smartCarUserID, nil)
@@ -392,18 +381,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 		},
 	)
 
-	s.deviceDefinitionRegistrar.EXPECT().Register(services.DeviceDefinitionDTO{
-		IntegrationID:      integration.Id,
-		UserDeviceID:       ud.ID,
-		DeviceDefinitionID: ud.DeviceDefinitionID,
-		Make:               dd[0].Make.Name,
-		Model:              dd[0].Model,
-		Year:               int(dd[0].Year),
-		Region:             "Americas",
-		MakeSlug:           dd[0].Make.NameSlug,
-		ModelSlug:          shared.SlugString(dd[0].Model),
-	}).Return(nil)
-
 	s.scClient.EXPECT().GetUserID(gomock.Any(), token.Access).Return(smartCarUserID, nil)
 	s.scClient.EXPECT().GetExternalID(gomock.Any(), token.Access).Return("smartcar-idx", nil)
 	s.scClient.EXPECT().GetEndpoints(gomock.Any(), token.Access, "smartcar-idx").Return([]string{"/", "/vin"}, nil)
@@ -459,18 +436,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
 			return nil
 		},
 	)
-
-	s.deviceDefinitionRegistrar.EXPECT().Register(services.DeviceDefinitionDTO{
-		IntegrationID:      integration.Id,
-		UserDeviceID:       ud.ID,
-		DeviceDefinitionID: ud.DeviceDefinitionID,
-		Make:               dd[0].Make.Name,
-		Model:              dd[0].Model,
-		Year:               int(dd[0].Year),
-		Region:             "Americas",
-		MakeSlug:           dd[0].Make.NameSlug,
-		ModelSlug:          shared.SlugString(dd[0].Model),
-	}).Return(nil)
 
 	s.teslaSvc.EXPECT().GetVehicle("abc", 1145).Return(&services.TeslaVehicle{
 		ID:        1145,
@@ -815,18 +780,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 			return nil
 		},
 	)
-
-	s.deviceDefinitionRegistrar.EXPECT().Register(services.DeviceDefinitionDTO{
-		IntegrationID:      integration.Id,
-		UserDeviceID:       ud.ID,
-		DeviceDefinitionID: ud.DeviceDefinitionID,
-		Make:               dd[0].Make.Name,
-		Model:              dd[0].Model,
-		Year:               int(dd[0].Year),
-		Region:             "Americas",
-		MakeSlug:           dd[0].Make.NameSlug,
-		ModelSlug:          shared.SlugString(dd[0].Model),
-	}).Return(nil)
 
 	s.teslaFleetAPISvc.EXPECT().GetVehicle(gomock.Any(), "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", 1145).Return(&services.TeslaVehicle{
 		ID:        1145,
