@@ -3098,6 +3098,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "deviceDefinitionId": {
+                    "description": "deprecated",
                     "type": "string"
                 }
             }

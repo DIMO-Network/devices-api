@@ -1734,7 +1734,7 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 	err = udc.deviceDefinitionRegistrar.Register(services.DeviceDefinitionDTO{
 		IntegrationID:      integ.Id,
 		UserDeviceID:       ud.ID,
-		DeviceDefinitionID: ud.DeviceDefinitionID,
+		DeviceDefinitionID: ud.DeviceDefinitionID, // this needs to be changed - can we change it, what does the registrar do
 		Make:               dd.Make.Name,
 		Model:              dd.Model,
 		Year:               int(dd.Year),

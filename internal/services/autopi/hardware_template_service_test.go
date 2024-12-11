@@ -79,8 +79,8 @@ func (s *HardwareTemplateServiceTestSuite) Test_GetTemplateID() {
 	)
 	def, _ := strconv.Atoi(tIDIntegrationDefault)
 	bev, _ := strconv.Atoi(tIDBEVPowertrainUD)
-	integration := test.BuildIntegrationDefaultGRPC(constants.AutoPiVendor, def, bev, true)
-	integrationWithoutAutoPiPowertrainTemplate := test.BuildIntegrationDefaultGRPC(constants.AutoPiVendor, def, 0, false)
+	integration := test.BuildIntegrationDefaultGRPC(ksuid.New().String(), constants.AutoPiVendor, def, bev, true)
+	integrationWithoutAutoPiPowertrainTemplate := test.BuildIntegrationDefaultGRPC(ksuid.New().String(), constants.AutoPiVendor, def, 0, false)
 
 	ddWithTID := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)[0]
 	ddWithDeviceStyleTID := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)[0]
