@@ -52,8 +52,9 @@ func (s *UserIntegrationAuthControllerTestSuite) SetupSuite() {
 	s.teslaFleetAPISvc = mock_services.NewMockTeslaFleetAPIService(mockCtrl)
 	s.testUserID = "123123"
 	c := NewUserIntegrationAuthController(&config.Settings{
-		Port:        "3000",
-		Environment: "prod",
+		Port:                "3000",
+		Environment:         "prod",
+		TeslaRequiredScopes: "vehicle_device_data",
 	}, s.pdb.DBS, logger, s.deviceDefSvc, s.teslaFleetAPISvc, s.credStore)
 	app := test.SetupAppFiber(*logger)
 	s.userAddr = common.HexToAddress("1")

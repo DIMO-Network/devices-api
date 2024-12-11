@@ -104,6 +104,8 @@ type Settings struct {
 	Clickhouse config.Settings `yaml:",inline"`
 
 	DeviceDefinitionsGetByKSUIDEndpoint string `yaml:"DEVICE_DEFINITIONS_GET_BY_KSUID_ENDPOINT"`
+
+	TeslaRequiredScopes string `json:"TESLA_REQUIRED_SCOPES"`
 }
 
 func (s *Settings) IsProduction() bool {

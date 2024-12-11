@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -27,12 +28,13 @@ import (
 )
 
 type UserIntegrationAuthController struct {
-	Settings         *config.Settings
-	DBS              func() *db.ReaderWriter
-	DeviceDefSvc     services.DeviceDefinitionService
-	log              *zerolog.Logger
-	teslaFleetAPISvc services.TeslaFleetAPIService
-	store            CredStore
+	Settings            *config.Settings
+	DBS                 func() *db.ReaderWriter
+	DeviceDefSvc        services.DeviceDefinitionService
+	log                 *zerolog.Logger
+	teslaFleetAPISvc    services.TeslaFleetAPIService
+	store               CredStore
+	teslaRequiredScopes []string
 }
 
 //go:generate mockgen -destination=cred_store_mock_test.go -package controllers . CredStore
@@ -49,13 +51,19 @@ func NewUserIntegrationAuthController(
 	credStore CredStore,
 ) UserIntegrationAuthController {
 
+	var teslaRequiredScopes []string
+	if settings.TeslaRequiredScopes != "" {
+		teslaRequiredScopes = strings.Split(settings.TeslaRequiredScopes, ",")
+	}
+
 	return UserIntegrationAuthController{
-		Settings:         settings,
-		DBS:              dbs,
-		DeviceDefSvc:     ddSvc,
-		log:              logger,
-		teslaFleetAPISvc: teslaFleetAPISvc,
-		store:            credStore,
+		Settings:            settings,
+		DBS:                 dbs,
+		DeviceDefSvc:        ddSvc,
+		log:                 logger,
+		teslaFleetAPISvc:    teslaFleetAPISvc,
+		store:               credStore,
+		teslaRequiredScopes: teslaRequiredScopes,
 	}
 }
 
@@ -162,9 +170,15 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 		return fiber.NewError(fiber.StatusBadRequest, "Code exchange returned an unparseable access token.")
 	}
 
-	if !slices.Contains(claims.Scopes, teslaDataScope) {
-		teslaCodeFailureCount.WithLabelValues("missing_scope").Inc()
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Missing scope %s.", teslaDataScope))
+	var missingScopes []string
+	for _, scope := range u.teslaRequiredScopes {
+		if !slices.Contains(claims.Scopes, scope) {
+			missingScopes = append(missingScopes, scope)
+		}
+	}
+
+	if len(missingScopes) != 0 {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Missing scopes %s.", strings.Join(missingScopes, ", ")))
 	}
 
 	// Save tesla oauth credentials in cache
