@@ -28,7 +28,7 @@ import (
 const migrationsDirRelPath = "../../migrations"
 
 func populateDB(ctx context.Context, pdb db.Store) (string, error) {
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC("autopi123", constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	vin := "W1N2539531F907299"
 	deviceStyleID := "24GE7Mlc4c9o4j5P4mcD1Fzinx1"
