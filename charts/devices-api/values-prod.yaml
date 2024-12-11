@@ -78,6 +78,7 @@ env:
     -----END CERTIFICATE-----
   VEHICLE_DECODING_GRPC_ADDR: vehicle-signal-decoding-prod:8086
   DEVICE_DEFINITIONS_GET_BY_KSUID_ENDPOINT: https://device-definitions-api.dimo.zone/device-definitions/
+  TESLA_REQUIRED_SCOPES: vehicle_device_data
 ingress:
   enabled: true
   className: nginx
