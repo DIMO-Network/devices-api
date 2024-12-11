@@ -101,8 +101,7 @@ type Settings struct {
 
 	VehicleDecodingGRPCAddr string `yaml:"VEHICLE_DECODING_GRPC_ADDR"`
 
-	Clickhouse          config.Settings `yaml:",inline"`
-	RuptelaConnectionID string          `yaml:"RUPTELA_CONNECTION_ID"`
+	Clickhouse config.Settings `yaml:",inline"`
 
 	DeviceDefinitionsGetByKSUIDEndpoint string `yaml:"DEVICE_DEFINITIONS_GET_BY_KSUID_ENDPOINT"`
 }
