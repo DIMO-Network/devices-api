@@ -101,8 +101,6 @@ type partialTeslaClaims struct {
 	OUCode string `json:"ou_code"`
 }
 
-var teslaDataScope = "vehicle_device_data"
-
 var teslaCodeFailureCount = promauto.NewCounterVec(
 	prometheus.CounterOpts{
 		Namespace: "devices_api",
