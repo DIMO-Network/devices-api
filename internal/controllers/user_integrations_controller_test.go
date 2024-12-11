@@ -86,8 +86,12 @@ const testUser2 = "someOtherUser2"
 // TODO(elffjs): This shouldn't be necessary anymore. Need to work with an interface.
 const teslaFleetAuthCacheKey = "integration_credentials_%s"
 
-const smartCarIntegrationId = "smartcar123"
-const teslaIntegrationId = "tesla123aaaaaaaaaaaaaaaaaaa"
+// integration ID's - must be 27 chars to match ksuid length
+const (
+	smartCarIntegrationID = "smartcar123aaaaaaaaaaaaaaaa"
+	teslaIntegrationID    = "tesla123aaaaaaaaaaaaaaaaaaa"
+	autoPiIntegrationID   = "autopi123aaaaaaaaaaaaaaaaaa"
+)
 
 // SetupSuite starts container db
 func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
@@ -161,7 +165,7 @@ func TestUserIntegrationsControllerTestSuite(t *testing.T) {
 /* Actual Tests */
 
 func (s *UserIntegrationsControllerTestSuite) TestPostSmartCarFailure() {
-	integration := test.BuildIntegrationGRPC(smartCarIntegrationId, constants.SmartCarVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(smartCarIntegrationID, constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Mach E", 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
@@ -186,7 +190,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCarFailure() {
 
 func (s *UserIntegrationsControllerTestSuite) TestDeleteIntegration_BlockedBySyntheticDevice() {
 	model := "Mach E"
-	integration := test.BuildIntegrationGRPC(smartCarIntegrationId, constants.SmartCarVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(smartCarIntegrationID, constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 	vnft := test.SetupCreateVehicleNFT(s.T(), ud, big.NewInt(5), null.BytesFrom(common.HexToAddress("0xA1").Bytes()), s.pdb)
@@ -222,7 +226,7 @@ func (s *UserIntegrationsControllerTestSuite) TestDeleteIntegration_BlockedBySyn
 func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken() {
 	model := "Mach E"
 	const vin = "CARVIN"
-	integration := test.BuildIntegrationGRPC(smartCarIntegrationId, constants.SmartCarVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(smartCarIntegrationID, constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
@@ -290,7 +294,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_FailureTestVIN() {
 	model := "Mach E"
 	const vin = "0SC12312312312312"
-	integration := test.BuildIntegrationGRPC(smartCarIntegrationId, constants.SmartCarVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(smartCarIntegrationID, constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
@@ -332,7 +336,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_FailureTestVIN() 
 func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToken() {
 	model := "Mach E"
 	const vin = "CARVIN"
-	integration := test.BuildIntegrationGRPC(smartCarIntegrationId, constants.SmartCarVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(smartCarIntegrationID, constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 	ud.VinIdentifier = null.StringFrom(vin)
@@ -416,7 +420,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostUnknownDevice() {
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
-	integration := test.BuildIntegrationGRPC(teslaIntegrationId, constants.TeslaVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
@@ -484,7 +488,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestPostTeslaAndUpdateDD() {
-	integration := test.BuildIntegrationGRPC(teslaIntegrationId, constants.TeslaVendor, 10, 20)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 20)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Mach E", 2020, integration)
 
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
@@ -761,7 +765,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 
 // Tesla Fleet API Tests
 func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
-	integration := test.BuildIntegrationGRPC(teslaIntegrationId, constants.TeslaVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
@@ -848,7 +852,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_PartialCredentials() {
-	integration := test.BuildIntegrationGRPC(teslaIntegrationId, constants.TeslaVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
@@ -885,7 +889,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_PartialCredential
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_MissingCredentials() {
-	integration := test.BuildIntegrationGRPC(teslaIntegrationId, constants.TeslaVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
@@ -912,7 +916,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_MissingCredential
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
-	integration := test.BuildIntegrationGRPC(teslaIntegrationId, constants.TeslaVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "5YJSA1CN0CFP02439", s.pdb)
 
@@ -963,7 +967,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestTelemetrySubscribe() {
-	integration := test.BuildIntegrationGRPC(teslaIntegrationId, constants.TeslaVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "5YJSA1CN0CFP02439", s.pdb)
 
@@ -1025,7 +1029,7 @@ func (s *UserIntegrationsControllerTestSuite) Test_NoUserDevice_TelemetrySubscri
 }
 
 func (s *UserIntegrationsControllerTestSuite) Test_InactiveIntegration_TelemetrySubscribe() {
-	integration := test.BuildIntegrationGRPC(teslaIntegrationId, constants.TeslaVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "5YJSA1CN0CFP02439", s.pdb)
 
@@ -1045,7 +1049,7 @@ func (s *UserIntegrationsControllerTestSuite) Test_InactiveIntegration_Telemetry
 }
 
 func (s *UserIntegrationsControllerTestSuite) Test_MissingRegionAndCapable_TelemetrySubscribe() {
-	integration := test.BuildIntegrationGRPC(teslaIntegrationId, constants.TeslaVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "5YJSA1CN0CFP02439", s.pdb)
 
@@ -1065,7 +1069,7 @@ func (s *UserIntegrationsControllerTestSuite) Test_MissingRegionAndCapable_Telem
 }
 
 func (s *UserIntegrationsControllerTestSuite) Test_TelemetrySubscribe_NotCapable() {
-	integration := test.BuildIntegrationGRPC(teslaIntegrationId, constants.TeslaVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "5YJSA1CN0CFP02439", s.pdb)
 

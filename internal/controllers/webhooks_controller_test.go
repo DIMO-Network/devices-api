@@ -115,7 +115,7 @@ func (s *WebHooksControllerTestSuite) TestPostWebhookSyncCommand() {
 	autoPiDeviceID := "123123"
 	autoPiTemplateID := 987
 	autoPiJobID := "AD111"
-	integ := test.BuildIntegrationGRPC("autopi123", constants.AutoPiVendor, autoPiTemplateID, 0)
+	integ := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, autoPiTemplateID, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model X", 2020, integ)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	autopiJob := test.SetupCreateAutoPiJob(s.T(), autoPiJobID, autoPiDeviceID, "state.sls pending", ud.ID, "COMMAND_EXECUTED", "", s.pdb)
@@ -184,7 +184,7 @@ func (s *WebHooksControllerTestSuite) TestPostWebhookRawCommand() {
 	autoPiDeviceID := "123123"
 	autoPiTemplateID := 987
 	autoPiJobID := "AD111"
-	integ := test.BuildIntegrationGRPC("autopi123", constants.AutoPiVendor, autoPiTemplateID, 0)
+	integ := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, autoPiTemplateID, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Testla", "Model X", 2020, integ)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	// create user device api integration
