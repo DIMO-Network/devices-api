@@ -1490,6 +1490,7 @@ paths:
       - user-devices
   /user/devices/{userDeviceID}/error-codes:
     get:
+      description: Deprecated. Use `/user/vehicle/{tokenID}/error-codes` instead
       parameters:
       - description: user device id
         in: path
@@ -1511,6 +1512,7 @@ paths:
       tags:
       - error-codes
     post:
+      description: Deprecated. Use `/user/vehicle/{tokenID}/error-codes` instead
       parameters:
       - description: user device id
         in: path
@@ -1540,6 +1542,7 @@ paths:
       - error-codes
   /user/devices/{userDeviceID}/error-codes/clear:
     post:
+      description: Deprecated. Use `/user/vehicle/{tokenID}/error-codes/clear` instead
       responses:
         "200":
           description: OK

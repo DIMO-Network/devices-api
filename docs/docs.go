@@ -1083,6 +1083,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "descript
                 "tags": [
                     "error-codes"
                 ],
@@ -1117,6 +1118,8 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+      {
+                 
                 "tags": [
                     "error-codes"
                 ],
@@ -1161,6 +1164,7 @@ const docTemplate = `{
                     {
                         "BearerAuth": []
                     }
+vices/{userDeviceI
                 ],
                 "tags": [
                     "error-codes"

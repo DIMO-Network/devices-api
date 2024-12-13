@@ -110,6 +110,7 @@ var errorCodeRegex = regexp.MustCompile(`^.{5,8}$`)
 
 // QueryDeviceErrorCodes godoc
 // @Summary     Obtain, store, and return descriptions for a list of error codes from this vehicle.
+// @Description Deprecated. Use `/user/vehicle/{tokenID}/error-codes` instead
 // @Tags        error-codes
 // @Param       userDeviceID path string true "user device id"
 // @Param       queryDeviceErrorCodes body controllers.QueryDeviceErrorCodesReq true "error codes"
@@ -117,6 +118,7 @@ var errorCodeRegex = regexp.MustCompile(`^.{5,8}$`)
 // @Failure     404 {object} helpers.ErrorRes "Vehicle not found"
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/error-codes [post]
+// Deprecated
 func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
 
@@ -195,12 +197,14 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 
 // GetUserDeviceErrorCodeQueries godoc
 // @Summary List all error code queries made for this vehicle.
+// @Description Deprecated. Use `/user/vehicle/{tokenID}/error-codes` instead
 // @Tags        error-codes
 // @Param       userDeviceID path string true "user device id"
 // @Success     200 {object} controllers.GetUserDeviceErrorCodeQueriesResponse
 // @Failure     404 {object} helpers.ErrorRes "Vehicle not found"
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/error-codes [get]
+// Deprecated
 func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) error {
 	logger := helpers.GetLogger(c, udc.log)
 
@@ -240,12 +244,14 @@ func (udc *UserDevicesController) GetUserDeviceErrorCodeQueries(c *fiber.Ctx) er
 
 // ClearUserDeviceErrorCodeQuery godoc
 // @Summary     Mark the most recent set of error codes as having been cleared.
+// @Description Deprecated. Use `/user/vehicle/{tokenID}/error-codes/clear` instead
 // @Tags        error-codes
 // @Success     200 {object} controllers.QueryDeviceErrorCodesResponse
 // @Failure     429 {object} helpers.ErrorRes "Last query already cleared"
 // @Failure     404 {object} helpers.ErrorRes "Vehicle not found"
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/error-codes/clear [post]
+// Deprecated
 func (udc *UserDevicesController) ClearUserDeviceErrorCodeQuery(c *fiber.Ctx) error {
 	udi := c.Params("userDeviceID")
 

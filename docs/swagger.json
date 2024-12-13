@@ -1075,6 +1075,7 @@
                         "BearerAuth": []
                     }
                 ],
+                "description": "Deprecated. Use `/user/vehicle/{tokenID}/error-codes` instead",
                 "tags": [
                     "error-codes"
                 ],
@@ -1109,6 +1110,7 @@
                         "BearerAuth": []
                     }
                 ],
+                "description": "Deprecated. Use `/user/vehicle/{tokenID}/error-codes` instead",
                 "tags": [
                     "error-codes"
                 ],
@@ -1154,6 +1156,7 @@
                         "BearerAuth": []
                     }
                 ],
+                "description": "Deprecated. Use `/user/vehicle/{tokenID}/error-codes/clear` instead",
                 "tags": [
                     "error-codes"
                 ],
