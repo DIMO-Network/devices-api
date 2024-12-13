@@ -86,6 +86,13 @@ const testUser2 = "someOtherUser2"
 // TODO(elffjs): This shouldn't be necessary anymore. Need to work with an interface.
 const teslaFleetAuthCacheKey = "integration_credentials_%s"
 
+// integration ID's - must be 27 chars to match ksuid length
+const (
+	smartCarIntegrationID = "smartcar123aaaaaaaaaaaaaaaa"
+	teslaIntegrationID    = "tesla123aaaaaaaaaaaaaaaaaaa"
+	autoPiIntegrationID   = "autopi123aaaaaaaaaaaaaaaaaa"
+)
+
 // SetupSuite starts container db
 func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 	s.ctx = context.Background()
@@ -158,16 +165,17 @@ func TestUserIntegrationsControllerTestSuite(t *testing.T) {
 /* Actual Tests */
 
 func (s *UserIntegrationsControllerTestSuite) TestPostSmartCarFailure() {
-	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(smartCarIntegrationID, constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Mach E", 2020, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
 	req := `{
 			"code": "qxyz",
 			"redirectURI": "http://dimo.zone/cb"
 		}`
 	s.scClient.EXPECT().ExchangeCode(gomock.Any(), "qxyz", "http://dimo.zone/cb").Times(1).Return(nil, errors.New("failure communicating with Smartcar"))
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DeviceDefinitionID).Times(1).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Times(1).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Times(1).Return(integration, nil)
 
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := s.app.Test(request, 60*1000)
@@ -182,9 +190,9 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCarFailure() {
 
 func (s *UserIntegrationsControllerTestSuite) TestDeleteIntegration_BlockedBySyntheticDevice() {
 	model := "Mach E"
-	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(smartCarIntegrationID, constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 	vnft := test.SetupCreateVehicleNFT(s.T(), ud, big.NewInt(5), null.BytesFrom(common.HexToAddress("0xA1").Bytes()), s.pdb)
 
 	mtr := models.MetaTransactionRequest{
@@ -218,9 +226,9 @@ func (s *UserIntegrationsControllerTestSuite) TestDeleteIntegration_BlockedBySyn
 func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken() {
 	model := "Mach E"
 	const vin = "CARVIN"
-	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(smartCarIntegrationID, constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
 	const smartCarUserID = "smartCarUserId"
 	req := `{
@@ -243,7 +251,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 
 			data := event.Data.(services.UserDeviceIntegrationEvent)
 
-			assert.Equal(s.T(), dd[0].DeviceDefinitionId, data.Device.DeviceDefinitionID)
+			assert.Equal(s.T(), dd[0].Id, data.Device.DefinitionID)
 			assert.Equal(s.T(), dd[0].Make.Name, data.Device.Make)
 			assert.Equal(s.T(), dd[0].Model, data.Device.Model)
 			assert.Equal(s.T(), int(dd[0].Year), data.Device.Year)
@@ -256,25 +264,14 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 		},
 	)
 
-	s.deviceDefinitionRegistrar.EXPECT().Register(services.DeviceDefinitionDTO{
-		IntegrationID:      integration.Id,
-		UserDeviceID:       ud.ID,
-		DeviceDefinitionID: ud.DeviceDefinitionID,
-		Make:               dd[0].Make.Name,
-		Model:              dd[0].Model,
-		Year:               int(dd[0].Year),
-		Region:             "Americas",
-		MakeSlug:           dd[0].Make.NameSlug,
-		ModelSlug:          shared.SlugString(dd[0].Model),
-	}).Return(nil)
-
 	// original device def
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Times(2).Return(dd[0], nil)
 	s.scClient.EXPECT().GetUserID(gomock.Any(), "myAccess").Return(smartCarUserID, nil)
 	s.scClient.EXPECT().GetExternalID(gomock.Any(), "myAccess").Return("smartcar-idx", nil)
 	s.scClient.EXPECT().GetVIN(gomock.Any(), "myAccess", "smartcar-idx").Return(vin, nil)
 	s.scClient.EXPECT().GetEndpoints(gomock.Any(), "myAccess", "smartcar-idx").Return([]string{"/", "/vin"}, nil)
 	s.scClient.EXPECT().HasDoorControl(gomock.Any(), "myAccess", "smartcar-idx").Return(false, nil)
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
 
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := s.app.Test(request)
@@ -297,9 +294,9 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_FailureTestVIN() {
 	model := "Mach E"
 	const vin = "0SC12312312312312"
-	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(smartCarIntegrationID, constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
 	const smartCarUserID = "smartCarUserId"
 	req := `{
@@ -307,7 +304,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_FailureTestVIN() 
 			"redirectURI": "http://dimo.zone/cb"
 		}`
 	expiry, _ := time.Parse(time.RFC3339, "2022-03-01T12:00:00Z")
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].DeviceDefinitionId).Return(dd[0], nil)
+	//s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].Id).Return(dd[0], nil)
 	s.scClient.EXPECT().ExchangeCode(gomock.Any(), "qxy", "http://dimo.zone/cb").Times(1).Return(&smartcar.Token{
 		Access:        "myAccess",
 		AccessExpiry:  expiry,
@@ -317,6 +314,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_FailureTestVIN() 
 	s.scClient.EXPECT().GetUserID(gomock.Any(), "myAccess").Return(smartCarUserID, nil)
 	s.scClient.EXPECT().GetExternalID(gomock.Any(), "myAccess").Return("smartcar-idx", nil)
 	s.scClient.EXPECT().GetVIN(gomock.Any(), "myAccess", "smartcar-idx").Return(vin, nil)
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
 
 	logger := test.Logger()
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, s.eventSvc, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), s.autopiAPISvc,
@@ -338,9 +336,9 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_FailureTestVIN() 
 func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToken() {
 	model := "Mach E"
 	const vin = "CARVIN"
-	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(smartCarIntegrationID, constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", model, 2020, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 	ud.VinIdentifier = null.StringFrom(vin)
 	ud.VinConfirmed = true
 	_, err := ud.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
@@ -387,25 +385,14 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 		},
 	)
 
-	s.deviceDefinitionRegistrar.EXPECT().Register(services.DeviceDefinitionDTO{
-		IntegrationID:      integration.Id,
-		UserDeviceID:       ud.ID,
-		DeviceDefinitionID: ud.DeviceDefinitionID,
-		Make:               dd[0].Make.Name,
-		Model:              dd[0].Model,
-		Year:               int(dd[0].Year),
-		Region:             "Americas",
-		MakeSlug:           dd[0].Make.NameSlug,
-		ModelSlug:          shared.SlugString(dd[0].Model),
-	}).Return(nil)
-
 	s.scClient.EXPECT().GetUserID(gomock.Any(), token.Access).Return(smartCarUserID, nil)
 	s.scClient.EXPECT().GetExternalID(gomock.Any(), token.Access).Return("smartcar-idx", nil)
 	s.scClient.EXPECT().GetEndpoints(gomock.Any(), token.Access, "smartcar-idx").Return([]string{"/", "/vin"}, nil)
 	s.scClient.EXPECT().HasDoorControl(gomock.Any(), token.Access, "smartcar-idx").Return(false, nil)
 
 	// original device def
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Times(1).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
 
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := s.app.Test(request)
@@ -431,10 +418,11 @@ func (s *UserIntegrationsControllerTestSuite) TestPostUnknownDevice() {
 	response, _ := s.app.Test(request)
 	assert.Equal(s.T(), fiber.StatusBadRequest, response.StatusCode, "should fail")
 }
+
 func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
-	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2020, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
 	s.eventSvc.EXPECT().Emit(gomock.Any()).Return(nil).Do(
 		func(event *shared.CloudEvent[any]) error {
@@ -455,18 +443,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
 		},
 	)
 
-	s.deviceDefinitionRegistrar.EXPECT().Register(services.DeviceDefinitionDTO{
-		IntegrationID:      integration.Id,
-		UserDeviceID:       ud.ID,
-		DeviceDefinitionID: ud.DeviceDefinitionID,
-		Make:               dd[0].Make.Name,
-		Model:              dd[0].Model,
-		Year:               int(dd[0].Year),
-		Region:             "Americas",
-		MakeSlug:           dd[0].Make.NameSlug,
-		ModelSlug:          shared.SlugString(dd[0].Model),
-	}).Return(nil)
-
 	s.teslaSvc.EXPECT().GetVehicle("abc", 1145).Return(&services.TeslaVehicle{
 		ID:        1145,
 		VehicleID: 223,
@@ -474,8 +450,9 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
 	}, nil)
 	s.teslaSvc.EXPECT().WakeUpVehicle("abc", 1145).Return(nil)
 	s.teslaSvc.EXPECT().GetAvailableCommands().Return(&services.UserDeviceAPIIntegrationsMetadataCommands{Enabled: []string{constants.DoorsUnlock, constants.DoorsLock}})
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Times(1).Return(dd[0], nil)
 	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
 
 	req := `{
 			"accessToken": "abc",
@@ -511,10 +488,10 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla() {
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestPostTeslaAndUpdateDD() {
-	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 20)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 20)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Mach E", 2020, integration)
 
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
 	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dd[0], nil)
 
@@ -525,80 +502,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTeslaAndUpdateDD() {
 
 	_ = ud.Reload(s.ctx, s.pdb.DBS().Writer.DB)
 	// todo, we may need to point to new device def, or see how above fix method is implemented
-	if ud.DeviceDefinitionID != dd[0].DeviceDefinitionId {
+	if ud.DefinitionID != dd[0].Id {
 		s.T().Fatalf("Failed to switch device definition to the correct one")
-	}
-}
-
-func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateDeviceSameUser() {
-	// specific dependency and controller
-	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
-	logger := test.Logger()
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	app := test.SetupAppFiber(*logger)
-	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.RegisterDeviceIntegration)
-	// arrange
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 34, 0)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Testla", "Model 4", 2020, integration)
-
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	const (
-		deviceID = "1dd96159-3bb2-9472-91f6-72fe9211cfeb"
-		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	)
-	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, nil, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
-	test.SetupCreateUserDeviceAPIIntegration(s.T(), unitID, deviceID, ud.ID, integration.Id, s.pdb)
-
-	req := fmt.Sprintf(`{
-			"externalId": "%s"
-		}`, unitID)
-	// no calls should be made to autopi api
-
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DeviceDefinitionID).AnyTimes().Return(dd[0], nil)
-
-	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
-	response, err := app.Test(request, 1000*240)
-	require.NoError(s.T(), err)
-
-	assert.Equal(s.T(), fiber.StatusBadRequest, response.StatusCode, "should return failure")
-	body, _ := io.ReadAll(response.Body)
-	errorMsg := gjson.Get(string(body), "message").String()
-	assert.Equal(s.T(),
-		fmt.Sprintf("userDeviceId %s already has a user_device_api_integration with integrationId %s, please delete that first", ud.ID, integration.Id), errorMsg)
-}
-func (s *UserIntegrationsControllerTestSuite) TestPostAutoPiBlockedForDuplicateDeviceDifferentUser() {
-	// specific dependency and controller
-	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
-	logger := test.Logger()
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	app := test.SetupAppFiber(*logger)
-	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUser2), c.RegisterDeviceIntegration)
-	// arrange
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 34, 0)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Testla", "Model 4", 2022, nil)
-	// the other user that already claimed unit
-	_ = test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	const (
-		deviceID = "1dd96159-3bb2-9472-91f6-72fe9211cfeb"
-		unitID   = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	)
-	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, nil, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
-	// test user
-	ud2 := test.SetupCreateUserDevice(s.T(), testUser2, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-
-	req := fmt.Sprintf(`{
-			"externalId": "%s"
-		}`, unitID)
-
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
-
-	// no calls should be made to autopi api
-	request := test.BuildRequest("POST", "/user/devices/"+ud2.ID+"/integrations/"+integration.Id, req)
-	response, err := app.Test(request, 2000)
-	require.NoError(s.T(), err)
-	if !assert.Equal(s.T(), fiber.StatusBadRequest, response.StatusCode, "should return bad request") {
-		body, _ := io.ReadAll(response.Body)
-		assert.FailNow(s.T(), "body response: "+string(body)+"\n")
 	}
 }
 
@@ -783,7 +688,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 	s.userClient.EXPECT().GetUser(gomock.Any(), &pbuser.GetUserRequest{Id: userID}).Return(&pbuser.User{EthereumAddress: &userAddrStr}, nil).AnyTimes()
 
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
-	ud := test.SetupCreateUserDevice(s.T(), userID, dd[0].DeviceDefinitionId, nil, "4Y1SL65848Z411439", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), userID, dd[0].Id, nil, "4Y1SL65848Z411439", s.pdb)
 	_ = *test.SetupCreateVehicleNFT(s.T(), ud, big.NewInt(4), null.BytesFrom(userAddr.Bytes()), s.pdb)
 
 	aftermarketDevice := test.SetupCreateAftermarketDevice(s.T(), testUserID, common.BigToAddress(big.NewInt(2)).Bytes(), unitID, &deviceID, s.pdb)
@@ -860,9 +765,9 @@ func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
 
 // Tesla Fleet API Tests
 func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
-	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2020, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
 	s.eventSvc.EXPECT().Emit(gomock.Any()).Return(nil).Do(
 		func(event *shared.CloudEvent[any]) error {
@@ -883,18 +788,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 		},
 	)
 
-	s.deviceDefinitionRegistrar.EXPECT().Register(services.DeviceDefinitionDTO{
-		IntegrationID:      integration.Id,
-		UserDeviceID:       ud.ID,
-		DeviceDefinitionID: ud.DeviceDefinitionID,
-		Make:               dd[0].Make.Name,
-		Model:              dd[0].Model,
-		Year:               int(dd[0].Year),
-		Region:             "Americas",
-		MakeSlug:           dd[0].Make.NameSlug,
-		ModelSlug:          shared.SlugString(dd[0].Model),
-	}).Return(nil)
-
 	s.teslaFleetAPISvc.EXPECT().GetVehicle(gomock.Any(), "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", 1145).Return(&services.TeslaVehicle{
 		ID:        1145,
 		VehicleID: 223,
@@ -905,8 +798,9 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 		Enabled:  []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
 		Disabled: []string{constants.TelemetrySubscribe},
 	}, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DeviceDefinitionID).Times(2).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Times(1).Return(dd[0], nil)
 	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dd[0], nil)
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Times(1).Return(integration, nil)
 
 	userEthAddr := common.HexToAddress("1").String()
 	s.userClient.EXPECT().GetUser(gomock.Any(), &pbuser.GetUserRequest{Id: testUserID}).Return(&pbuser.User{EthereumAddress: &userEthAddr}, nil).AnyTimes()
@@ -958,11 +852,12 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_PartialCredentials() {
-	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2020, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DeviceDefinitionID).Return(dd[0], nil).AnyTimes()
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Return(dd[0], nil).AnyTimes()
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil).AnyTimes()
 
 	userEthAddr := common.HexToAddress("1").String()
 	s.userClient.EXPECT().GetUser(gomock.Any(), &pbuser.GetUserRequest{Id: testUserID}).Return(&pbuser.User{EthereumAddress: &userEthAddr}, nil).AnyTimes()
@@ -994,11 +889,12 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_PartialCredential
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_MissingCredentials() {
-	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2020, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DeviceDefinitionID).Return(dd[0], nil).AnyTimes()
+	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Return(dd[0], nil).AnyTimes()
+	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil).AnyTimes()
 
 	userEthAddr := common.HexToAddress("1").String()
 	s.userClient.EXPECT().GetUser(gomock.Any(), &pbuser.GetUserRequest{Id: testUserID}).Return(&pbuser.User{EthereumAddress: &userEthAddr}, nil).AnyTimes()
@@ -1020,9 +916,9 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_MissingCredential
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
-	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "5YJSA1CN0CFP02439", s.pdb)
 
 	accessTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 	refreshTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw"
@@ -1071,9 +967,9 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestTelemetrySubscribe() {
-	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "5YJSA1CN0CFP02439", s.pdb)
 
 	accessTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 	accessTkEnc, _ := s.cipher.Encrypt(accessTk)
@@ -1133,9 +1029,9 @@ func (s *UserIntegrationsControllerTestSuite) Test_NoUserDevice_TelemetrySubscri
 }
 
 func (s *UserIntegrationsControllerTestSuite) Test_InactiveIntegration_TelemetrySubscribe() {
-	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "5YJSA1CN0CFP02439", s.pdb)
 
 	apIntd := models.UserDeviceAPIIntegration{
 		UserDeviceID:  ud.ID,
@@ -1153,9 +1049,9 @@ func (s *UserIntegrationsControllerTestSuite) Test_InactiveIntegration_Telemetry
 }
 
 func (s *UserIntegrationsControllerTestSuite) Test_MissingRegionAndCapable_TelemetrySubscribe() {
-	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "5YJSA1CN0CFP02439", s.pdb)
 
 	apIntd := models.UserDeviceAPIIntegration{
 		UserDeviceID:  ud.ID,
@@ -1173,9 +1069,9 @@ func (s *UserIntegrationsControllerTestSuite) Test_MissingRegionAndCapable_Telem
 }
 
 func (s *UserIntegrationsControllerTestSuite) Test_TelemetrySubscribe_NotCapable() {
-	integration := test.BuildIntegrationGRPC(constants.TeslaVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, "5YJSA1CN0CFP02439", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "5YJSA1CN0CFP02439", s.pdb)
 
 	mtd, err := json.Marshal(services.UserDeviceAPIIntegrationsMetadata{})
 	s.Require().NoError(err)

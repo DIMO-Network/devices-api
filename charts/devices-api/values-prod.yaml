@@ -2,7 +2,7 @@ replicaCount: 3
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 1.32.23
+  tag: 1.32.24
 cronJob:
   enabled: false
   schedule: 0 0 1 * *
@@ -77,8 +77,8 @@ env:
     VJfn+Y6hzMyVYhAcbfzSwFPY1XtEbsNh
     -----END CERTIFICATE-----
   VEHICLE_DECODING_GRPC_ADDR: vehicle-signal-decoding-prod:8086
-  RUPTELA_CONNECTION_ID: '0x3A6603E1065C9b3142403b1b7e349a6Ae936E819'
   DEVICE_DEFINITIONS_GET_BY_KSUID_ENDPOINT: https://device-definitions-api.dimo.zone/device-definitions/
+  TESLA_REQUIRED_SCOPES: vehicle_device_data
 ingress:
   enabled: true
   className: nginx

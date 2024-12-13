@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: b769a38
+  tag: 463855e
 imagePullSecrets: []
 nameOverride: ''
 fullnameOverride: ''
@@ -124,8 +124,8 @@ env:
   VEHICLE_DECODING_GRPC_ADDR: vehicle-signal-decoding-dev:8086
   CLICKHOUSE_TCP_PORT: 9440
   CLICKHOUSE_DATABASE: dimo
-  RUPTELA_CONNECTION_ID: '0x4Dc84a226102c08e911A5159e165e616e3A877A8'
   DEVICE_DEFINITIONS_GET_BY_KSUID_ENDPOINT: https://device-definitions-api.dev.dimo.zone/device-definitions/
+  TESLA_REQUIRED_SCOPES: vehicle_device_data,vehicle_location
 service:
   type: ClusterIP
   ports:

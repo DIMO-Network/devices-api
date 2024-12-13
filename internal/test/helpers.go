@@ -436,12 +436,12 @@ func SetupCreateGeofence(t *testing.T, userID, name string, ud *models.UserDevic
 }
 
 // BuildIntegrationDefaultGRPC depending on integration vendor, defines an integration object with typical settings. Smartcar refresh limit default is 100 seconds.
-func BuildIntegrationDefaultGRPC(integrationVendor string, autoPiDefaultTemplateID int, bevTemplateID int, includeAutoPiPowertrainTemplate bool) *ddgrpc.Integration {
+func BuildIntegrationDefaultGRPC(id, integrationVendor string, autoPiDefaultTemplateID int, bevTemplateID int, includeAutoPiPowertrainTemplate bool) *ddgrpc.Integration {
 	var integration *ddgrpc.Integration
 	switch integrationVendor {
 	case constants.AutoPiVendor:
 		integration = &ddgrpc.Integration{
-			Id:                      ksuid.New().String(),
+			Id:                      id,
 			Type:                    constants.IntegrationTypeHardware,
 			Style:                   constants.IntegrationStyleAddon,
 			Vendor:                  constants.AutoPiVendor,
@@ -458,7 +458,7 @@ func BuildIntegrationDefaultGRPC(integrationVendor string, autoPiDefaultTemplate
 		}
 	case constants.SmartCarVendor:
 		integration = &ddgrpc.Integration{
-			Id:               ksuid.New().String(),
+			Id:               id,
 			Type:             constants.IntegrationTypeAPI,
 			Style:            constants.IntegrationStyleWebhook,
 			Vendor:           constants.SmartCarVendor,
@@ -467,7 +467,7 @@ func BuildIntegrationDefaultGRPC(integrationVendor string, autoPiDefaultTemplate
 		}
 	case constants.TeslaVendor:
 		integration = &ddgrpc.Integration{
-			Id:      ksuid.New().String(),
+			Id:      id,
 			Type:    constants.IntegrationTypeAPI,
 			Style:   constants.IntegrationStyleOEM,
 			Vendor:  constants.TeslaVendor,
@@ -478,8 +478,8 @@ func BuildIntegrationDefaultGRPC(integrationVendor string, autoPiDefaultTemplate
 }
 
 // BuildIntegrationGRPC depending on integration vendor, defines an integration object with typical settings. Smartcar refresh limit default is 100 seconds.
-func BuildIntegrationGRPC(integrationVendor string, autoPiDefaultTemplateID int, bevTemplateID int) *ddgrpc.Integration {
-	return BuildIntegrationDefaultGRPC(integrationVendor, autoPiDefaultTemplateID, bevTemplateID, false)
+func BuildIntegrationGRPC(id, integrationVendor string, autoPiDefaultTemplateID int, bevTemplateID int) *ddgrpc.Integration {
+	return BuildIntegrationDefaultGRPC(id, integrationVendor, autoPiDefaultTemplateID, bevTemplateID, false)
 }
 
 // BuildDeviceDefinitionGRPC generates an array with single device definition, adds integration to response if integration passed in not nil. uses Americas region

@@ -149,7 +149,7 @@ func TestUserDevicesControllerTestSuite(t *testing.T) {
 /* Actual Tests */
 func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 	// arrange DB
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	// act request
 	vinny := "4T3R6RFVXMU023395"
@@ -169,15 +169,13 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&ddgrpc.DecodeVinResponse{
 		DeviceMakeId:  dd[0].Make.Id,
-		DefinitionId:  "ford_f150_2020",
+		DefinitionId:  dd[0].Id,
 		DeviceStyleId: "",
 		Year:          dd[0].Year,
 	}, nil)
-	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), "22N2xaPOq2WW2gAHBHd0Ikn4Zob", dd[0].DeviceDefinitionId, "Americas").Times(1).
-		Return(nil, nil)
+
 	s.redisClient.EXPECT().Set(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID), gomock.Any(), time.Hour*2).Return(nil)
-	//s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
-	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].DeviceDefinitionId, "", "USA", testUserID, &vinny, nil, false).
+	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].Id, "", "USA", testUserID, &vinny, nil, false).
 		Return(&models.UserDevice{
 			ID:                 ksuid.New().String(),
 			UserID:             testUserID,
@@ -210,7 +208,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 
 func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_Fail_Decode() {
 	// arrange DB
-	_ = test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	_ = test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
 	// act request
 	const vinny = "4T3R6RFVXMU023395"
 	reg := RegisterUserDeviceSmartcar{Code: "XX", RedirectURI: "https://mobile-app", CountryCode: "USA"}
@@ -241,7 +239,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_Fail_Dec
 
 func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_SameUser_DuplicateVIN() {
 	// arrange DB
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 
 	// act request
@@ -274,7 +272,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_SameUser
 
 func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_Fail_DuplicateVIN() {
 	// arrange DB
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 
 	// act request
@@ -305,7 +303,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_Fail_Dup
 
 func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	// arrange DB
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	// act request
 	const deviceStyleID = "24GE7Mlc4c9o4j5P4mcD1Fzinx1"
@@ -316,15 +314,14 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&ddgrpc.DecodeVinResponse{
 		DeviceMakeId:  dd[0].Make.Id,
-		DefinitionId:  "ford_f150_2020",
+		DefinitionId:  dd[0].Id,
 		DeviceStyleId: deviceStyleID,
 		Year:          dd[0].Year,
 	}, nil)
 
-	apInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 10)
+	apInteg := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 10)
 	s.deviceDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Times(1).Return(apInteg, nil)
-	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), apInteg.Id, dd[0].DeviceDefinitionId, "Americas")
-	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].DeviceDefinitionId, deviceStyleID, "USA", s.testUserID, &vinny, &canProtocol, false).Times(1).
+	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].Id, deviceStyleID, "USA", s.testUserID, &vinny, &canProtocol, false).Times(1).
 		Return(&models.UserDevice{
 			ID:                 ksuid.New().String(),
 			UserID:             s.testUserID,
@@ -366,7 +363,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 }
 
 func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_FailDecode() {
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
 	_ = test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 
 	vinny := "4T3R6RFVXMU023395"
@@ -379,7 +376,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_FailDecode() 
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).
 		Return(nil, grpcErr)
 
-	apInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 10)
+	apInteg := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 10)
 	s.deviceDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Times(1).Return(apInteg, nil)
 
 	request := test.BuildRequest("POST", "/user/devices/fromvin", string(j))
@@ -394,7 +391,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_FailDecode() 
 
 func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_SameUser_DuplicateVIN() {
 	// arrange DB
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	// act request
 	const vinny = "4T3R6RFVXMU023395"
@@ -405,11 +402,8 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_SameUser_Dupl
 	// if the vin already exists for this user, do not expect decode request
 
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].Id).Times(1).Return(dd[0], nil)
-	apInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 10)
+	apInteg := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 10)
 	s.deviceDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Times(1).Return(apInteg, nil)
-	// we always call this just in case
-	s.deviceDefIntSvc.EXPECT().CreateDeviceDefinitionIntegration(gomock.Any(), apInteg.Id, dd[0].DeviceDefinitionId, "Americas").
-		Times(1)
 
 	request := test.BuildRequest("POST", "/user/devices/fromvin", string(j))
 	response, responseError := s.app.Test(request, 10000)
@@ -442,7 +436,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_SameUser_Dupl
 
 func (s *UserDevicesControllerTestSuite) TestPostWithExistingDefinitionID() {
 	// arrange DB
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	// act request
 	reg := RegisterUserDevice{
@@ -481,16 +475,16 @@ func (s *UserDevicesControllerTestSuite) TestPostWithExistingDefinitionID() {
 
 func (s *UserDevicesControllerTestSuite) TestPostWithExistingDeviceDefinitionID() {
 	// arrange DB
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	// act request
 	reg := RegisterUserDevice{
-		DeviceDefinitionID: &dd[0].DeviceDefinitionId,
-		CountryCode:        "USA",
+		DefinitionID: dd[0].Id,
+		CountryCode:  "USA",
 	}
 	j, _ := json.Marshal(reg)
 
-	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].DeviceDefinitionId, "", "USA", s.testUserID, nil, nil, false).Times(1).
+	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].Id, "", "USA", s.testUserID, nil, nil, false).Times(1).
 		Return(&models.UserDevice{
 			ID:                 ksuid.New().String(),
 			UserID:             testUserID,
@@ -534,7 +528,7 @@ func (s *UserDevicesControllerTestSuite) TestPostWithoutDefinitionID_BadRequest(
 	require.NoError(s.T(), err)
 
 	errorMessage := gjson.Get(string(body), "message")
-	if assert.Equal(s.T(), "deviceDefinitionId: cannot be blank.", errorMessage.String()) == false {
+	if assert.Equal(s.T(), "definitionId is required", errorMessage.String()) == false {
 		fmt.Println(string(body))
 	}
 }
@@ -554,8 +548,8 @@ func (s *UserDevicesControllerTestSuite) TestPostInvalidDefinitionID() {
 	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), invalidDD, "", "USA", s.testUserID, nil, nil, false).
 		Return(nil, nil, grpcErr)
 	reg := RegisterUserDevice{
-		DeviceDefinitionID: &invalidDD,
-		CountryCode:        "USA",
+		CountryCode:  "USA",
+		DefinitionID: invalidDD,
 	}
 	j, _ := json.Marshal(reg)
 
@@ -581,7 +575,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 		deviceID2 = "device2"
 	)
 
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].Id, nil, "", s.pdb)
 	_ = test.SetupCreateAftermarketDevice(s.T(), testUserID, nil, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
@@ -625,7 +619,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
 	)
 	s.controller.Settings.Environment = "dev"
 
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
 	ud := test.SetupCreateUserDeviceWithDeviceID(s.T(), userID, deviceID, dd[0].Id, nil, "", s.pdb)
 	_ = test.SetupCreateAftermarketDevice(s.T(), userID, nil, unitID, func(s string) *string { return &s }(deviceID), s.pdb)
@@ -658,7 +652,7 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
 }
 
 func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
-	integration := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 4)
+	integration := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 4)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Escape", 2020, integration)
 
 	const powertrainType = "powertrain_type"
@@ -736,7 +730,7 @@ func (s *UserDevicesControllerTestSuite) TestVINValidate() {
 }
 
 func (s *UserDevicesControllerTestSuite) TestPostRefreshSmartCar() {
-	smartCarInt := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
+	smartCarInt := test.BuildIntegrationGRPC(smartCarIntegrationID, constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Escape", 2020, smartCarInt)
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	s.deviceDefSvc.EXPECT().GetIntegrationByVendor(gomock.Any(), constants.SmartCarVendor).Return(smartCarInt, nil)
@@ -786,7 +780,7 @@ func (s *UserDevicesControllerTestSuite) TestPostRefreshSmartCar() {
 }
 
 func (s *UserDevicesControllerTestSuite) TestPostRefreshSmartCarRateLimited() {
-	integration := test.BuildIntegrationGRPC(constants.SmartCarVendor, 10, 0)
+	integration := test.BuildIntegrationGRPC(smartCarIntegrationID, constants.SmartCarVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Mache", 2022, integration)
 	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
 	s.deviceDefSvc.EXPECT().GetIntegrationByVendor(gomock.Any(), constants.SmartCarVendor).Return(integration, nil)

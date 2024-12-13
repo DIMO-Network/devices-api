@@ -101,10 +101,11 @@ type Settings struct {
 
 	VehicleDecodingGRPCAddr string `yaml:"VEHICLE_DECODING_GRPC_ADDR"`
 
-	Clickhouse          config.Settings `yaml:",inline"`
-	RuptelaConnectionID string          `yaml:"RUPTELA_CONNECTION_ID"`
+	Clickhouse config.Settings `yaml:",inline"`
 
 	DeviceDefinitionsGetByKSUIDEndpoint string `yaml:"DEVICE_DEFINITIONS_GET_BY_KSUID_ENDPOINT"`
+
+	TeslaRequiredScopes string `json:"TESLA_REQUIRED_SCOPES"`
 }
 
 func (s *Settings) IsProduction() bool {

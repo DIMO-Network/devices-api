@@ -108,7 +108,7 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 			ErrorCodes: []string{"P0017", "P0016"},
 		}
 
-		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+		autoPiInteg := test.BuildIntegrationGRPC(ksuid.New().String(), constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
 		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
 
@@ -188,7 +188,7 @@ func TestUserDevicesController_ShouldErrorOnTooManyErrorCodes(t *testing.T) {
 			ErrorCodes: erCodes,
 		}
 
-		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+		autoPiInteg := test.BuildIntegrationGRPC(ksuid.New().String(), constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
 		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
 
@@ -258,7 +258,7 @@ func TestUserDevicesController_ShouldErrorInvalidErrorCodes(t *testing.T) {
 			ErrorCodes: []string{"P0010:30", "P33333339"},
 		}
 
-		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+		autoPiInteg := test.BuildIntegrationGRPC(ksuid.New().String(), constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
 		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].Id, nil, "", pdb)
 
@@ -328,7 +328,7 @@ func TestUserDevicesController_ShouldErrorOnEmptyErrorCodes(t *testing.T) {
 			ErrorCodes: []string{},
 		}
 
-		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+		autoPiInteg := test.BuildIntegrationGRPC(ksuid.New().String(), constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
 		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].Id, nil, "", pdb)
 
@@ -398,7 +398,7 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 			ErrorCodes: erCodeReq,
 		}
 
-		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+		autoPiInteg := test.BuildIntegrationGRPC(ksuid.New().String(), constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
 		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].Id, nil, "", pdb)
 
@@ -480,7 +480,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 
 	t.Run("GET - all saved error code response for current user devices", func(t *testing.T) {
 
-		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+		autoPiInteg := test.BuildIntegrationGRPC(ksuid.New().String(), constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
 		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
 
@@ -555,7 +555,7 @@ func TestUserDevicesController_ClearUserDeviceErrorCodeQuery(t *testing.T) {
 	app.Post("/user/devices/:userDeviceID/error-codes/clear", test.AuthInjectorTestHandler(testUserID), c.ClearUserDeviceErrorCodeQuery)
 
 	t.Run("POST - clear last saved error code response for current user devices", func(t *testing.T) {
-		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+		autoPiInteg := test.BuildIntegrationGRPC(ksuid.New().String(), constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
 		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
 
@@ -642,7 +642,7 @@ func TestUserDevicesController_ErrorOnAllErrorCodesCleared(t *testing.T) {
 	app.Post("/user/devices/:userDeviceID/error-codes/clear", test.AuthInjectorTestHandler(testUserID), c.ClearUserDeviceErrorCodeQuery)
 
 	t.Run("POST - clear last saved error code response for current user devices", func(t *testing.T) {
-		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+		autoPiInteg := test.BuildIntegrationGRPC(ksuid.New().String(), constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
 		ud := test.SetupCreateUserDevice(t, testUserID, dd[0].DeviceDefinitionId, nil, "", pdb)
 
