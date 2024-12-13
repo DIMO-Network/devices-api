@@ -714,7 +714,7 @@ func TestUserDevicesController_QueryDeviceErrorCodesByTokenID(t *testing.T) {
 			ErrorCodes: []string{"P0017", "P0016"},
 		}
 
-		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+		autoPiInteg := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
 		ud := test.SetupCreateUserDeviceWithTokenID(t, testUserID, ti, dd[0].DeviceDefinitionId, nil, "", pdb)
 
@@ -812,7 +812,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueriesByTokenID(t *testin
 
 	t.Run("GET - all saved error code response for current user devices by tokenID", func(t *testing.T) {
 
-		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+		autoPiInteg := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
 		ud := test.SetupCreateUserDeviceWithTokenID(t, testUserID, ti, dd[0].DeviceDefinitionId, nil, "", pdb)
 
@@ -901,7 +901,7 @@ func TestUserDevicesController_ErrorOnAllErrorCodesClearedByTokenID(t *testing.T
 	app.Post("/user/vehicle/:tokenID/error-codes/clear", test.AuthInjectorTestHandler(testUserID), c.ClearUserDeviceErrorCodeQueryByTokenID)
 
 	t.Run("POST - clear last saved error code response for current user device by tokenID", func(t *testing.T) {
-		autoPiInteg := test.BuildIntegrationGRPC(constants.AutoPiVendor, 10, 0)
+		autoPiInteg := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
 		dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Toyota", "Camry", 2023, autoPiInteg)
 		ud := test.SetupCreateUserDeviceWithTokenID(t, testUserID, ti, dd[0].DeviceDefinitionId, nil, "", pdb)
 
