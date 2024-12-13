@@ -1083,7 +1083,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "descript
+                "description": "Deprecated. Use ` + "`" + `/user/vehicle/{tokenID}/error-codes` + "`" + ` instead",
                 "tags": [
                     "error-codes"
                 ],
@@ -1118,8 +1118,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-      {
-                 
+                "description": "Deprecated. Use ` + "`" + `/user/vehicle/{tokenID}/error-codes` + "`" + ` instead",
                 "tags": [
                     "error-codes"
                 ],
@@ -1164,8 +1163,8 @@ const docTemplate = `{
                     {
                         "BearerAuth": []
                     }
-vices/{userDeviceI
                 ],
+                "description": "Deprecated. Use ` + "`" + `/user/vehicle/{tokenID}/error-codes/clear` + "`" + ` instead",
                 "tags": [
                     "error-codes"
                 ],
