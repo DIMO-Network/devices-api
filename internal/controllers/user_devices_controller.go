@@ -1035,6 +1035,8 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	if err != nil {
 		return err
 	}
+	// emit the event (also in register integration func), shouldn't get called again by other func since that one returns if finds existing udai record
+	udc.runPostRegistration(c.Context(), &localLog, udFull.ID, smartCarIntegrationID, integration)
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,
