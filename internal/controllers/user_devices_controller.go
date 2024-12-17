@@ -992,7 +992,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 
 	// in case err is nil but we don't get a valid decode
 	if len(decodeVIN.DefinitionId) == 0 {
-		localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle")
+		localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle via smartcar")
 		return fiber.NewError(fiber.StatusFailedDependency, "failed to decode vin")
 	}
 
@@ -1010,6 +1010,33 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		udc.requestValuation(vin, udFull.ID, tokenID)
 		udc.requestInstantOffer(udFull.ID, tokenID)
 	}
+
+	// prepare necessary paramters to pass into existing function to do the rest of smartcar integration steps
+	tx, err := udc.DBS().Writer.BeginTx(c.Context(), nil)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("failed to create transaction: %s", err))
+	}
+	defer tx.Rollback() //nolint
+	integration, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), smartCarIntegrationID)
+	if err != nil {
+		return shared.GrpcErrorToFiber(err, "failed to get integration with id: "+smartCarIntegrationID)
+	}
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(udFull.ID),
+	).One(c.Context(), tx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("could not find device with id %s for user %s", udFull.ID, userID))
+		}
+		localLog.Err(err).Msg("Unexpected database error searching for user device")
+		return err
+	}
+	err = udc.registerSmartcarIntegration(c, &localLog, tx, integration, ud)
+	if err != nil {
+		return err
+	}
+	// emit the event (also in register integration func), shouldn't get called again by other func since that one returns if finds existing udai record
+	udc.runPostRegistration(c.Context(), &localLog, udFull.ID, smartCarIntegrationID, integration)
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,
