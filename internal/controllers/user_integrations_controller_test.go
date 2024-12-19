@@ -88,7 +88,7 @@ const teslaFleetAuthCacheKey = "integration_credentials_%s"
 
 // integration ID's - must be 27 chars to match ksuid length
 const (
-	smartCarIntegrationID = "smartcar123aaaaaaaaaaaaaaaa"
+	smartCarIntegrationID = "22N2xaPOq2WW2gAHBHd0Ikn4Zob"
 	teslaIntegrationID    = "tesla123aaaaaaaaaaaaaaaaaaa"
 	autoPiIntegrationID   = "autopi123aaaaaaaaaaaaaaaaaa"
 )
