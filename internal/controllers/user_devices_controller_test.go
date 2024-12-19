@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"github.com/go-redis/redis/v8"
 	"io"
 	"math/big"
 	"testing"
@@ -156,7 +157,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 	reg := RegisterUserDeviceSmartcar{Code: "XX", RedirectURI: "https://mobile-app", CountryCode: "USA"}
 	j, _ := json.Marshal(reg)
 
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, vinny, s.pdb)
+	//ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, vinny, s.pdb)
 
 	s.scClient.EXPECT().ExchangeCode(gomock.Any(), reg.Code, reg.RedirectURI).Times(1).Return(&smartcar.Token{
 		Access:        "AA",
@@ -165,9 +166,9 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 		RefreshExpiry: time.Now().Add(time.Hour),
 		ExpiresIn:     3600,
 	}, nil)
-	s.scClient.EXPECT().GetExternalID(gomock.Any(), "AA").Times(1).Return("123", nil)
+	s.scClient.EXPECT().GetExternalID(gomock.Any(), "AA").Times(2).Return("123", nil)
 	s.scClient.EXPECT().GetVIN(gomock.Any(), "AA", "123").Times(1).Return(vinny, nil)
-	s.scClient.EXPECT().GetInfo(gomock.Any(), "AA", "123").Times(1).Return(nil, nil)
+	s.scClient.EXPECT().GetInfo(gomock.Any(), "AA", "123").Times(2).Return(nil, nil)
 
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&ddgrpc.DecodeVinResponse{
 		DeviceMakeId:  dd[0].Make.Id,
@@ -178,9 +179,23 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 
 	s.redisClient.EXPECT().Set(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID), gomock.Any(), time.Hour*2).Return(nil)
 	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].Id, "", "USA", testUserID, &vinny, nil, false).
-		Return(&ud, dd[0], nil)
+		Return(&models.UserDevice{
+			ID:                 ksuid.New().String(),
+			UserID:             testUserID,
+			DeviceDefinitionID: dd[0].DeviceDefinitionId,
+			VinIdentifier:      null.StringFrom(vinny),
+			CountryCode:        null.StringFrom(reg.CountryCode),
+			VinConfirmed:       false,
+			DefinitionID:       dd[0].Id,
+		}, dd[0], nil)
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), smartCarIntegrationID).Return(integration, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].Id).Return(dd[0], nil)
+	redisResponse := &redis.StringCmd{}
+	redisResponse.SetVal("AA")
+	s.redisClient.EXPECT().Get(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID)).Return(redisResponse)
+	s.redisClient.EXPECT().Del(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID)).Return(nil)
+
+	s.scClient.EXPECT().GetUserID(gomock.Any(), "AA").Return("123", nil)
 
 	request := test.BuildRequest("POST", "/user/devices/fromsmartcar", string(j))
 	response, responseError := s.app.Test(request, 10000)
