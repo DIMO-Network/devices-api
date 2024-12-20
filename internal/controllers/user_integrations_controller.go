@@ -1622,7 +1622,7 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "failed to get integration with id: "+integrationID)
 	}
-	
+
 	// if exists, likely means already handled from previous /fromsmartcar endpoint, just return nil but log warn in case
 	if exists, err := models.UserDeviceAPIIntegrationExists(c.Context(), tx, userDeviceID, integrationID); err != nil {
 		logger.Err(err).Msg("Unexpected database error looking for existing instance of integration")

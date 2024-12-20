@@ -1129,7 +1129,7 @@ func (udc *UserDevicesController) DeviceOptIn(c *fiber.Ctx) error {
 }
 
 // UpdateVIN godoc
-// @Description Deprecated. updates the VIN on the user device record
+// @Description Deprecated. updates the VIN on the user device record. Keeping this alive to not break mobile app. VIN's now come from attestations.
 // @Tags        user-devices
 // @Produce     json
 // @Accept      json
@@ -1140,6 +1140,7 @@ func (udc *UserDevicesController) DeviceOptIn(c *fiber.Ctx) error {
 // @Router      /user/devices/{userDeviceID}/vin [patch]
 func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 	// todo remove this endpoint on next mobile app release
+	// this has been replaced by nft_controller.go > UpdateVINV2
 	udi := c.Params("userDeviceID")
 	logger := helpers.GetLogger(c, udc.log).With().Str("route", c.Route().Name).Logger()
 	var req UpdateVINReq
@@ -1193,16 +1194,11 @@ func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
 		}
 		return err
 	}
-	if userDevice.VinConfirmed {
-		switch {
-		case req.Signature == "":
-			return fiber.NewError(fiber.StatusConflict, "Vehicle already has a confirmed VIN.")
-		case req.VIN != userDevice.VinIdentifier.String:
-			return fiber.NewError(fiber.StatusConflict, "Submitted VIN does not match confirmed VIN.")
-		default:
-			return c.SendStatus(fiber.StatusNoContent)
-		}
+	// no update if the same
+	if userDevice.VinIdentifier.String == req.VIN {
+		return c.SendStatus(fiber.StatusNoContent)
 	}
+
 	if req.Signature != "" {
 		existing, err := models.UserDevices(
 			models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(req.VIN)),

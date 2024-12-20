@@ -442,7 +442,8 @@ func validVINChar(r rune) bool {
 }
 
 // UpdateVINV2 godoc
-// @Description updates the VIN on the user device record. Can optionally also update the protocol and the country code
+// @Description updates the VIN on the user device record. Can optionally also update the protocol and the country code.
+// VIN now comes from attestations, no need for this soon
 // @Tags        user-devices
 // @Produce     json
 // @Accept      json
@@ -493,15 +494,9 @@ func (udc *UserDevicesController) UpdateVINV2(c *fiber.Ctx) error {
 		return opaqueInternalError
 	}
 
-	if userDevice.VinConfirmed {
-		switch {
-		case req.Signature == "":
-			return fiber.NewError(fiber.StatusConflict, "Vehicle already has a confirmed VIN.")
-		case req.VIN != userDevice.VinIdentifier.String:
-			return fiber.NewError(fiber.StatusConflict, "Submitted VIN does not match confirmed VIN.")
-		default:
-			return c.SendStatus(fiber.StatusNoContent)
-		}
+	// no update if the same
+	if userDevice.VinIdentifier.String == req.VIN {
+		return c.SendStatus(fiber.StatusNoContent)
 	}
 
 	// If signed, we should be able to set the VIN to validated.

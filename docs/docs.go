@@ -1650,7 +1650,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Deprecated. updates the VIN on the user device record",
+                "description": "Deprecated. updates the VIN on the user device record. Keeping this alive to not break mobile app. VIN's now come from attestations.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2142,7 +2142,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "updates the VIN on the user device record. Can optionally also update the protocol and the country code",
+                "description": "updates the VIN on the user device record. Can optionally also update the protocol and the country code.",
                 "consumes": [
                     "application/json"
                 ],
