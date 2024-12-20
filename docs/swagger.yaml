@@ -1874,7 +1874,8 @@ paths:
     patch:
       consumes:
       - application/json
-      description: Deprecated. updates the VIN on the user device record
+      description: Deprecated. updates the VIN on the user device record. Keeping
+        this alive to not break mobile app. VIN's now come from attestations.
       parameters:
       - description: VIN
         in: body
@@ -2283,7 +2284,7 @@ paths:
       consumes:
       - application/json
       description: updates the VIN on the user device record. Can optionally also
-        update the protocol and the country code
+        update the protocol and the country code.
       parameters:
       - description: token id
         in: path
