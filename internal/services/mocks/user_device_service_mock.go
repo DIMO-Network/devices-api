@@ -11,7 +11,9 @@ package mock_services
 
 import (
 	context "context"
+	sql "database/sql"
 	reflect "reflect"
+	time "time"
 
 	grpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	models "github.com/DIMO-Network/devices-api/models"
@@ -39,6 +41,20 @@ func NewMockUserDeviceService(ctrl *gomock.Controller) *MockUserDeviceService {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockUserDeviceService) EXPECT() *MockUserDeviceServiceMockRecorder {
 	return m.recorder
+}
+
+// CreateIntegration mocks base method.
+func (m *MockUserDeviceService) CreateIntegration(ctx context.Context, tx *sql.Tx, userDeviceID, integrationID, externalID, encryptedAccessToken string, accessExpiry time.Time, encryptedRefreshToken string, metadata []byte) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateIntegration", ctx, tx, userDeviceID, integrationID, externalID, encryptedAccessToken, accessExpiry, encryptedRefreshToken, metadata)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateIntegration indicates an expected call of CreateIntegration.
+func (mr *MockUserDeviceServiceMockRecorder) CreateIntegration(ctx, tx, userDeviceID, integrationID, externalID, encryptedAccessToken, accessExpiry, encryptedRefreshToken, metadata any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateIntegration", reflect.TypeOf((*MockUserDeviceService)(nil).CreateIntegration), ctx, tx, userDeviceID, integrationID, externalID, encryptedAccessToken, accessExpiry, encryptedRefreshToken, metadata)
 }
 
 // CreateUserDevice mocks base method.

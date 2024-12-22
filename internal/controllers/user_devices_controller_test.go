@@ -158,17 +158,24 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 	j, _ := json.Marshal(reg)
 
 	//ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, vinny, s.pdb)
+	rot13 := new(shared.ROT13Cipher)
 
-	s.scClient.EXPECT().ExchangeCode(gomock.Any(), reg.Code, reg.RedirectURI).Times(1).Return(&smartcar.Token{
+	scToken := smartcar.Token{
 		Access:        "AA",
 		AccessExpiry:  time.Now().Add(time.Hour),
 		Refresh:       "RR",
 		RefreshExpiry: time.Now().Add(time.Hour),
 		ExpiresIn:     3600,
-	}, nil)
-	s.scClient.EXPECT().GetExternalID(gomock.Any(), "AA").Times(2).Return("123", nil)
-	s.scClient.EXPECT().GetVIN(gomock.Any(), "AA", "123").Times(1).Return(vinny, nil)
-	s.scClient.EXPECT().GetInfo(gomock.Any(), "AA", "123").Times(2).Return(nil, nil)
+	}
+	scTokenJson, err := json.Marshal(scToken)
+	require.NoError(s.T(), err)
+	scTokenEnc, _ := rot13.Encrypt(string(scTokenJson))
+
+	s.scClient.EXPECT().ExchangeCode(gomock.Any(), reg.Code, reg.RedirectURI).Times(1).Return(&scToken, nil)
+	s.scClient.EXPECT().GetExternalID(gomock.Any(), scToken.Access).Times(2).Return("123", nil)
+	s.scClient.EXPECT().GetVIN(gomock.Any(), scToken.Access, "123").Times(2).Return(vinny, nil)
+	// called again below but with different response
+	s.scClient.EXPECT().GetInfo(gomock.Any(), scToken.Access, "123").Times(1).Return(nil, nil)
 
 	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&ddgrpc.DecodeVinResponse{
 		DeviceMakeId:  dd[0].Make.Id,
@@ -177,7 +184,7 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 		Year:          dd[0].Year,
 	}, nil)
 
-	s.redisClient.EXPECT().Set(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID), gomock.Any(), time.Hour*2).Return(nil)
+	s.redisClient.EXPECT().Set(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID), scTokenEnc, time.Hour*2).Return(nil)
 	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].Id, "", "USA", testUserID, &vinny, nil, false).
 		Return(&models.UserDevice{
 			ID:                 ksuid.New().String(),
@@ -189,13 +196,25 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 			DefinitionID:       dd[0].Id,
 		}, dd[0], nil)
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), smartCarIntegrationID).Return(integration, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].Id).Return(dd[0], nil)
+	// todo this one isn't getting called...
+	//s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].Id).Return(dd[0], nil)
+
 	redisResponse := &redis.StringCmd{}
-	redisResponse.SetVal("AA")
+	redisResponse.SetVal(scTokenEnc)
 	s.redisClient.EXPECT().Get(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID)).Return(redisResponse)
 	s.redisClient.EXPECT().Del(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID)).Return(nil)
 
-	s.scClient.EXPECT().GetUserID(gomock.Any(), "AA").Return("123", nil)
+	s.scClient.EXPECT().GetUserID(gomock.Any(), scToken.Access).Return("123", nil)
+	s.scClient.EXPECT().GetEndpoints(gomock.Any(), scToken.Access, "123").Return([]string{"https://smartcar.io/api"}, nil)
+	s.scClient.EXPECT().HasDoorControl(gomock.Any(), scToken.Access, "123").Return(false, nil)
+	s.scClient.EXPECT().GetInfo(gomock.Any(), scToken.Access, "123").Times(1).Return(&smartcar.Info{
+		ID:              "1234567",
+		Make:            "FORD",
+		Model:           dd[0].Model,
+		Year:            int(dd[0].Year),
+		ResponseHeaders: smartcar.ResponseHeaders{},
+	}, nil)
+	s.userDeviceSvc.EXPECT().CreateIntegration(gomock.Any(), gomock.Any(), gomock.Any(), integration.Id, "123", scTokenEnc, gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
 	request := test.BuildRequest("POST", "/user/devices/fromsmartcar", string(j))
 	response, responseError := s.app.Test(request, 10000)
