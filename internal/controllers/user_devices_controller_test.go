@@ -214,7 +214,9 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 		Year:            int(dd[0].Year),
 		ResponseHeaders: smartcar.ResponseHeaders{},
 	}, nil)
-	s.userDeviceSvc.EXPECT().CreateIntegration(gomock.Any(), gomock.Any(), gomock.Any(), integration.Id, "123", scTokenEnc, gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	encAccess, _ := rot13.Encrypt(scToken.Access)
+	encRefresh, _ := rot13.Encrypt(scToken.Refresh)
+	s.userDeviceSvc.EXPECT().CreateIntegration(gomock.Any(), gomock.Any(), gomock.Any(), integration.Id, "123", encAccess, gomock.Any(), encRefresh, gomock.Any()).Return(nil)
 
 	request := test.BuildRequest("POST", "/user/devices/fromsmartcar", string(j))
 	response, responseError := s.app.Test(request, 10000)
