@@ -5,11 +5,12 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"github.com/go-redis/redis/v8"
 	"io"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/go-redis/redis/v8"
 
 	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
 	"github.com/ericlagergren/decimal"
@@ -167,9 +168,9 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 		RefreshExpiry: time.Now().Add(time.Hour),
 		ExpiresIn:     3600,
 	}
-	scTokenJson, err := json.Marshal(scToken)
+	scTokenJSON, err := json.Marshal(scToken)
 	require.NoError(s.T(), err)
-	scTokenEnc, _ := rot13.Encrypt(string(scTokenJson))
+	scTokenEnc, _ := rot13.Encrypt(string(scTokenJSON))
 
 	s.scClient.EXPECT().ExchangeCode(gomock.Any(), reg.Code, reg.RedirectURI).Times(1).Return(&scToken, nil)
 	s.scClient.EXPECT().GetExternalID(gomock.Any(), scToken.Access).Times(2).Return("123", nil)
