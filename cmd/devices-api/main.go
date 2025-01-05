@@ -87,7 +87,6 @@ func main() {
 		startTaskStatusConsumer(logger, &settings, pdb)
 		startWebAPI(logger, &settings, pdb, eventService, deps.getKafkaProducer(), deps.getS3ServiceClient(ctx), deps.getS3NFTServiceClient(ctx))
 	} else {
-
 		subcommands.Register(&migrateDBCmd{logger: logger, settings: settings}, "database")
 		subcommands.Register(&findOldStyleTasks{logger: logger, settings: settings, pdb: pdb}, "events")
 
@@ -97,6 +96,18 @@ func main() {
 		subcommands.Register(&remakeAftermarketTopicCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&remakeUserDeviceTokenTableCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&remakeFenceTopicCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
+
+		{
+			var cipher shared.Cipher
+			if settings.Environment == "dev" || settings.IsProduction() {
+				cipher = createKMS(&settings, &logger)
+			} else {
+				logger.Warn().Msg("Using ROT13 encrypter. Only use this for testing!")
+				cipher = new(shared.ROT13Cipher)
+			}
+			subcommands.Register(&checkVirtualKeyCmd{logger: logger, settings: settings, pdb: pdb, cipher: cipher}, "device integrations")
+		}
+
 		subcommands.Register(&populateSDInfoTopicCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&populateTeslaTelemetryMapCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&populatePrivacyV2Topic{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
