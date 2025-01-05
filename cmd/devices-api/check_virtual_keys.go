@@ -119,39 +119,55 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 			return err
 		}
 
-		req := fleetStatusReq{
-			VINs: []string{udai.R.UserDevice.VinIdentifier.String},
-		}
-
-		outB, _ := json.Marshal(req)
-
-		hreq, _ := http.NewRequest("POST", ur.String(), bytes.NewBuffer(outB))
-		hreq.Header.Set("Authorization", "Bearer "+token)
-
-		resp, err := http.DefaultClient.Do(hreq)
+		vKeyGood, err := checkVehicle(ur.String(), udai.R.UserDevice.VinIdentifier.String, token)
 		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("status code %d", resp.StatusCode)
-		}
-
-		respB, _ := io.ReadAll(resp.Body)
-
-		var outBody fleetStatusResp
-		err = json.Unmarshal(respB, &outBody)
-		if err != nil {
-			return err
+			logger.Err(err).Str("userDeviceId", udai.UserDeviceID).Msg("Failed to check status.")
 		}
 
 		checked++
-		if len(outBody.Response.KeyPairedVINs) != 0 {
+		if vKeyGood {
 			worked++
 		}
 	}
 
-	fmt.Printf("Checked %d, with %d working\n", checked, worked)
+	logger.Info().Msgf("Checked %d, with %d working", checked, worked)
 
 	return nil
+}
+
+func checkVehicle(uri, vin, token string) (bool, error) {
+	reqBody := fleetStatusReq{
+		VINs: []string{vin},
+	}
+
+	reqBytes, err := json.Marshal(reqBody)
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal request body: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(reqBytes))
+	if err != nil {
+		return false, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("request failed: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("status code %d", res.StatusCode)
+	}
+
+	respBytes, err := io.ReadAll(res.Body)
+
+	var resBody fleetStatusResp
+
+	if err := json.Unmarshal(respBytes, &resBody); err != nil {
+		return false, fmt.Errorf("failed to unmarshal response body: %w", err)
+	}
+
+	return len(resBody.Response.KeyPairedVINs) != 0, nil
 }
