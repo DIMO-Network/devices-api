@@ -143,9 +143,9 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 			return err
 		}
 
-		checked += 1
+		checked++
 		if len(outBody.KeyPairedVINs) != 0 {
-			worked += 1
+			worked++
 		}
 	}
 
