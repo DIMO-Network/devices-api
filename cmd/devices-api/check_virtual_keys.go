@@ -58,12 +58,14 @@ type fleetStatusReq struct {
 }
 
 type fleetStatusResp struct {
-	KeyPairedVINs []string `json:"key_paired_vins"`
-	UnpairedVINs  []string `json:"unpaired_vins"`
-	VehicleInfo   map[string]struct {
-		FirmwareVersion                string `json:"firmware_version"`
-		VehicleCommandProtocolRequired bool   `json:"vehicle_command_protocol_required"`
-	} `json:"vehicle_info"`
+	Response struct {
+		KeyPairedVINs []string `json:"key_paired_vins"`
+		UnpairedVINs  []string `json:"unpaired_vins"`
+		VehicleInfo   map[string]struct {
+			FirmwareVersion                string `json:"firmware_version"`
+			VehicleCommandProtocolRequired bool   `json:"vehicle_command_protocol_required"`
+		} `json:"vehicle_info"`
+	} `json:"response"`
 }
 
 func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.Logger, cipher shared.Cipher) error {
