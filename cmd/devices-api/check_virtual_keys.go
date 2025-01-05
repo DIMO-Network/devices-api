@@ -73,6 +73,8 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 
 	udais, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ("26A5Dk3vvvQutjSyF0Jka2DP5lg"),
+		models.UserDeviceAPIIntegrationWhere.AccessToken.IsNotNull(),
+		models.UserDeviceAPIIntegrationWhere.Metadata.IsNotNull(),
 		models.UserDeviceAPIIntegrationWhere.AccessExpiresAt.GT(null.TimeFrom(time.Now())),
 		qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
 	).All(ctx, pdb.DBS().Reader)
