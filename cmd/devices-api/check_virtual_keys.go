@@ -162,6 +162,9 @@ func checkVehicle(uri, vin, token string) (bool, error) {
 	}
 
 	respBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		return false, fmt.Errorf("failed to read response body: %w", err)
+	}
 
 	var resBody fleetStatusResp
 
