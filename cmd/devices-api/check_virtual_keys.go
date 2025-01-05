@@ -67,7 +67,7 @@ type fleetStatusResp struct {
 }
 
 func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.Logger, cipher shared.Cipher) error {
-	logger.Info().Msgf("Starting synthetic device job enrichment, sending to topic %s.", settings.SDInfoTopic)
+	logger.Info().Msgf("Checking virtual key status.")
 
 	ctx := context.Background()
 
@@ -136,6 +136,8 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 		}
 
 		respB, _ := io.ReadAll(resp.Body)
+
+		fmt.Println(string(respB))
 
 		var outBody fleetStatusResp
 		err = json.Unmarshal(respB, &outBody)
