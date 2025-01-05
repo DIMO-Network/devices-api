@@ -139,8 +139,6 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 
 		respB, _ := io.ReadAll(resp.Body)
 
-		fmt.Println(string(respB))
-
 		var outBody fleetStatusResp
 		err = json.Unmarshal(respB, &outBody)
 		if err != nil {
@@ -148,7 +146,7 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 		}
 
 		checked++
-		if len(outBody.KeyPairedVINs) != 0 {
+		if len(outBody.Response.KeyPairedVINs) != 0 {
 			worked++
 		}
 	}
