@@ -88,7 +88,7 @@ const teslaFleetAuthCacheKey = "integration_credentials_%s"
 
 // integration ID's - must be 27 chars to match ksuid length
 const (
-	smartCarIntegrationID = "smartcar123aaaaaaaaaaaaaaaa"
+	smartCarIntegrationID = "22N2xaPOq2WW2gAHBHd0Ikn4Zob"
 	teslaIntegrationID    = "tesla123aaaaaaaaaaaaaaaaaaa"
 	autoPiIntegrationID   = "autopi123aaaaaaaaaaaaaaaaaa"
 )
@@ -237,12 +237,13 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 		}`
 	expiry, _ := time.Parse(time.RFC3339, "2022-03-01T12:00:00Z")
 
-	s.scClient.EXPECT().ExchangeCode(gomock.Any(), "qxy", "http://dimo.zone/cb").Times(1).Return(&smartcar.Token{
+	token := smartcar.Token{
 		Access:        "myAccess",
 		AccessExpiry:  expiry,
 		Refresh:       "myRefresh",
 		RefreshExpiry: expiry.Add(24 * time.Hour),
-	}, nil)
+	}
+	s.scClient.EXPECT().ExchangeCode(gomock.Any(), "qxy", "http://dimo.zone/cb").Times(1).Return(&token, nil)
 
 	s.eventSvc.EXPECT().Emit(gomock.Any()).Return(nil).Do(
 		func(event *shared.CloudEvent[any]) error {
@@ -273,6 +274,12 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 	s.scClient.EXPECT().HasDoorControl(gomock.Any(), "myAccess", "smartcar-idx").Return(false, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
 
+	rot13 := new(shared.ROT13Cipher)
+	encAccess, _ := rot13.Encrypt(token.Access)
+	encRefresh, _ := rot13.Encrypt(token.Refresh)
+	s.userDeviceSvc.EXPECT().CreateIntegration(gomock.Any(), gomock.Any(), gomock.Any(), integration.Id, "smartcar-idx",
+		encAccess, gomock.Any(), encRefresh, gomock.Any()).Return(nil)
+
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
@@ -280,15 +287,16 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 		body, _ := io.ReadAll(response.Body)
 		assert.FailNow(s.T(), "unexpected response: "+string(body))
 	}
-	apiInt, _ := models.FindUserDeviceAPIIntegration(s.ctx, s.pdb.DBS().Writer, ud.ID, integration.Id)
-	updatedUD, _ := models.FindUserDevice(s.ctx, s.pdb.DBS().Reader, ud.ID)
-
-	assert.Equal(s.T(), "zlNpprff", apiInt.AccessToken.String)
-	assert.True(s.T(), expiry.Equal(apiInt.AccessExpiresAt.Time))
-	assert.Equal(s.T(), "PendingFirstData", apiInt.Status)
-	assert.Equal(s.T(), "zlErserfu", apiInt.RefreshToken.String)
-	assert.Equal(s.T(), vin, updatedUD.VinIdentifier.String)
-	assert.Equal(s.T(), true, updatedUD.VinConfirmed)
+	// no actual db record gets created anymore
+	//apiInt, _ := models.FindUserDeviceAPIIntegration(s.ctx, s.pdb.DBS().Writer, ud.ID, integration.Id)
+	//updatedUD, _ := models.FindUserDevice(s.ctx, s.pdb.DBS().Reader, ud.ID)
+	//
+	//assert.Equal(s.T(), "zlNpprff", apiInt.AccessToken.String)
+	//assert.True(s.T(), expiry.Equal(apiInt.AccessExpiresAt.Time))
+	//assert.Equal(s.T(), "PendingFirstData", apiInt.Status)
+	//assert.Equal(s.T(), "zlErserfu", apiInt.RefreshToken.String)
+	//assert.Equal(s.T(), vin, updatedUD.VinIdentifier.String)
+	//assert.Equal(s.T(), true, updatedUD.VinConfirmed)
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_FailureTestVIN() {
@@ -394,6 +402,12 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Times(1).Return(dd[0], nil)
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
 
+	rot13 := new(shared.ROT13Cipher)
+	encAccess, _ := rot13.Encrypt(token.Access)
+	encRefresh, _ := rot13.Encrypt(token.Refresh)
+	s.userDeviceSvc.EXPECT().CreateIntegration(gomock.Any(), gomock.Any(), gomock.Any(), integration.Id, "smartcar-idx",
+		encAccess, gomock.Any(), encRefresh, gomock.Any()).Return(nil)
+
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := s.app.Test(request)
 	require.NoError(s.T(), err)
@@ -401,12 +415,13 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 		body, _ := io.ReadAll(response.Body)
 		assert.FailNow(s.T(), "unexpected response: "+string(body))
 	}
-	apiInt, _ := models.FindUserDeviceAPIIntegration(s.ctx, s.pdb.DBS().Writer, ud.ID, integration.Id)
-
-	assert.Equal(s.T(), "fbzr-npprff-pbqr", apiInt.AccessToken.String)
-	assert.True(s.T(), expiry.Equal(apiInt.AccessExpiresAt.Time))
-	assert.Equal(s.T(), "PendingFirstData", apiInt.Status)
-	assert.Equal(s.T(), "fbzr-erserfu-pbqr", apiInt.RefreshToken.String)
+	// no actual db record gets created anymore
+	//apiInt, _ := models.FindUserDeviceAPIIntegration(s.ctx, s.pdb.DBS().Writer, ud.ID, integration.Id)
+	//
+	//assert.Equal(s.T(), "fbzr-npprff-pbqr", apiInt.AccessToken.String)
+	//assert.True(s.T(), expiry.Equal(apiInt.AccessExpiresAt.Time))
+	//assert.Equal(s.T(), "PendingFirstData", apiInt.Status)
+	//assert.Equal(s.T(), "fbzr-erserfu-pbqr", apiInt.RefreshToken.String)
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestPostUnknownDevice() {

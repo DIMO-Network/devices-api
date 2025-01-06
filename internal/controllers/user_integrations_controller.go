@@ -1877,25 +1877,12 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 		return opaqueInternalError
 	}
 
-	taskID := ksuid.New().String()
-
-	integration := &models.UserDeviceAPIIntegration{
-		TaskID:          null.StringFrom(taskID),
-		ExternalID:      null.StringFrom(externalID),
-		UserDeviceID:    ud.ID,
-		IntegrationID:   integ.Id,
-		Status:          models.UserDeviceAPIIntegrationStatusPendingFirstData,
-		AccessToken:     null.StringFrom(encAccess),
-		AccessExpiresAt: null.TimeFrom(token.AccessExpiry),
-		RefreshToken:    null.StringFrom(encRefresh),
-		Metadata:        null.JSONFrom(b),
-	}
-
-	if err := integration.Insert(c.Context(), tx, boil.Infer()); err != nil {
+	err = udc.userDeviceSvc.CreateIntegration(c.Context(), tx, ud.ID, integ.Id, externalID, encAccess, token.AccessExpiry, encRefresh, b)
+	if err != nil {
 		localLog.Err(err).Msg("Unexpected database error inserting new Smartcar integration registration.")
 		return opaqueInternalError
 	}
-
+	// todo this may cause issues
 	if !ud.VinConfirmed {
 		ud.VinIdentifier = null.StringFrom(strings.ToUpper(vin))
 		ud.VinConfirmed = true

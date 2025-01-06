@@ -997,9 +997,17 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	}
 
 	// attach device def to user
-	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DefinitionId, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, nil)
+	ud, dd, err := udc.userDeviceSvc.CreateUserDevice(c.Context(), decodeVIN.DefinitionId, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, nil, false)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		if errors.Is(err, services.ErrEmailUnverified) {
+			return fiber.NewError(fiber.StatusBadRequest,
+				"Your email has not been verified. Please check your email for the DIMO verification email.")
+		}
+		return err
+	}
+	udFull, err := builUserDeviceFull(ud, dd, reg.CountryCode)
+	if err != nil {
+		return err
 	}
 
 	if udc.Settings.IsProduction() {
@@ -1007,8 +1015,8 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		if udFull.NFT != nil {
 			tokenID = udFull.NFT.TokenID.Int64()
 		}
-		udc.requestValuation(vin, udFull.ID, tokenID)
-		udc.requestInstantOffer(udFull.ID, tokenID)
+		udc.requestValuation(vin, ud.ID, tokenID)
+		udc.requestInstantOffer(ud.ID, tokenID)
 	}
 
 	// prepare necessary paramters to pass into existing function to do the rest of smartcar integration steps
@@ -1021,22 +1029,13 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "failed to get integration with id: "+smartCarIntegrationID)
 	}
-	ud, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(udFull.ID),
-	).One(c.Context(), tx)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("could not find device with id %s for user %s", udFull.ID, userID))
-		}
-		localLog.Err(err).Msg("Unexpected database error searching for user device")
-		return err
-	}
+
 	err = udc.registerSmartcarIntegration(c, &localLog, tx, integration, ud)
 	if err != nil {
 		return err
 	}
 	// emit the event (also in register integration func), shouldn't get called again by other func since that one returns if finds existing udai record
-	udc.runPostRegistration(c.Context(), &localLog, udFull.ID, smartCarIntegrationID, integration)
+	udc.runPostRegistration(c.Context(), &localLog, ud.ID, smartCarIntegrationID, integration)
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,

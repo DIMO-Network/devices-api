@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 type UserDeviceService interface {
 	CreateUserDevice(ctx context.Context, definitionID, styleID, countryCode, userID string, vin, canProtocol *string, vinConfirmed bool) (*models.UserDevice, *ddgrpc.GetDeviceDefinitionItemResponse, error)
 	CreateUserDeviceByOwner(ctx context.Context, definitionID, styleID, countryCode, vin string, ownerAddress []byte) (*models.UserDevice, *ddgrpc.GetDeviceDefinitionItemResponse, error)
+	CreateIntegration(ctx context.Context, tx *sql.Tx, userDeviceID string, integrationID string, externalID string, encryptedAccessToken string, accessExpiry time.Time, encryptedRefreshToken string, metadata []byte) error
 }
 
 type userDeviceService struct {
@@ -36,6 +38,28 @@ type userDeviceService struct {
 	dbs          func() *db.ReaderWriter
 	eventService EventService
 	usersClient  pb.UserServiceClient
+}
+
+func (uds *userDeviceService) CreateIntegration(ctx context.Context, tx *sql.Tx, userDeviceID, integrationID, externalID, encryptedAccessToken string,
+	accessExpiry time.Time, encryptedRefreshToken string, metadata []byte) error {
+
+	taskID := ksuid.New().String()
+	integration := &models.UserDeviceAPIIntegration{
+		TaskID:          null.StringFrom(taskID),
+		ExternalID:      null.StringFrom(externalID),
+		UserDeviceID:    userDeviceID,
+		IntegrationID:   integrationID,
+		Status:          models.UserDeviceAPIIntegrationStatusPendingFirstData,
+		AccessToken:     null.StringFrom(encryptedAccessToken),
+		AccessExpiresAt: null.TimeFrom(accessExpiry),
+		RefreshToken:    null.StringFrom(encryptedRefreshToken),
+		Metadata:        null.JSONFrom(metadata),
+	}
+
+	if err := integration.Insert(ctx, tx, boil.Infer()); err != nil {
+		return errors.Wrap(err, "unexpected database error inserting new Smartcar integration registration")
+	}
+	return nil
 }
 
 func NewUserDeviceService(deviceDefSvc DeviceDefinitionService, log zerolog.Logger, dbs func() *db.ReaderWriter, eventService EventService, usersClient pb.UserServiceClient) UserDeviceService {
