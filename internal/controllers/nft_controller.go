@@ -526,7 +526,7 @@ func (udc *UserDevicesController) UpdateVINV2(c *fiber.Ctx) error {
 		}
 	}
 
-	if req.Signature != "" && userDevice.VinConfirmed == false { // if the user_device already exists and is vin confirmed, likely somebody re-pairing the vehicle to different connection
+	if req.Signature != "" && !userDevice.VinConfirmed { // if the user_device already exists and is vin confirmed, likely somebody re-pairing the vehicle to different connection
 		existing, err := models.UserDevices(
 			models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(req.VIN)),
 			models.UserDeviceWhere.VinConfirmed.EQ(true),
