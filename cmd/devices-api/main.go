@@ -106,6 +106,7 @@ func main() {
 				cipher = new(shared.ROT13Cipher)
 			}
 			subcommands.Register(&checkVirtualKeyCmd{logger: logger, settings: settings, pdb: pdb, cipher: cipher}, "device integrations")
+			subcommands.Register(&enableTelemetryCmd{logger: logger, settings: settings, pdb: pdb, cipher: cipher}, "device integrations")
 		}
 
 		subcommands.Register(&populateSDInfoTopicCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")

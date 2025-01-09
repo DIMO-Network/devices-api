@@ -122,10 +122,12 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 		vKeyGood, err := checkVehicle(ur.String(), udai.R.UserDevice.VinIdentifier.String, token)
 		if err != nil {
 			logger.Err(err).Str("userDeviceId", udai.UserDeviceID).Msg("Failed to check status.")
+			continue
 		}
 
 		checked++
 		if vKeyGood {
+			logger.Info().Str("userDeviceId", udai.UserDeviceID).Msg("Virtual key present.")
 			worked++
 		}
 	}
