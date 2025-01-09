@@ -1137,7 +1137,7 @@ func (udc *UserDevicesController) DeviceOptIn(c *fiber.Ctx) error {
 // @Success     204
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/vin [patch]
-func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
+func (udc *UserDevicesController) UpdateVIN(_ *fiber.Ctx) error {
 	// todo remove this endpoint on next mobile app release
 	return fiber.NewError(fiber.StatusBadRequest, "this update vin endpoint is deprecated")
 
