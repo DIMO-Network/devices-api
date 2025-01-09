@@ -478,7 +478,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 			for key, udai := range toCheck {
 				clause := qm.Expr(
 					qmhelper.Where("token_id", qmhelper.EQ, key.TokenID),
-					qmhelper.Where("source", "IN", integrationIDToCHSource(key.IntegrationID)),
+					qm.WhereIn("source IN ?", integrationIDToCHSource(key.IntegrationID)),
 					qmhelper.Where("timestamp", qmhelper.GT, udai.UpdatedAt))
 				if len(innerList) == 0 {
 					innerList = append(innerList, clause)
