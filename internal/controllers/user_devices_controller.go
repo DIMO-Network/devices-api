@@ -381,10 +381,10 @@ var (
 	}
 	connectionIDToIntegrationID = map[string]string{
 		"0xF26421509Efe92861a587482100c6d728aBf1CD0": "2lcaMFuCO0HJIUfdq8o780Kx5n3", // ruptela
-		// "0x5e31bBc786D7bEd95216383787deA1ab0f1c1897": "27qftVRWQYpVDcO5DltO5Ojbjxk", // autopi
-		// "0xc4035Fecb1cc906130423EF05f9C20977F643722": "26A5Dk3vvvQutjSyF0Jka2DP5lg", // tesla
-		// "0x4c674ddE8189aEF6e3b58F5a36d7438b2b1f6Bc2": "2ULfuC8U9dOqRshZBAi0lMM1Rrx", // macaron
-		// "0xcd445F4c6bDAD32b68a2939b912150Fe3C88803E": "22N2xaPOq2WW2gAHBHd0Ikn4Zob", // smartcar
+		"0x5e31bBc786D7bEd95216383787deA1ab0f1c1897": "27qftVRWQYpVDcO5DltO5Ojbjxk", // autopi
+		"0xc4035Fecb1cc906130423EF05f9C20977F643722": "26A5Dk3vvvQutjSyF0Jka2DP5lg", // tesla
+		"0x4c674ddE8189aEF6e3b58F5a36d7438b2b1f6Bc2": "2ULfuC8U9dOqRshZBAi0lMM1Rrx", // macaron
+		"0xcd445F4c6bDAD32b68a2939b912150Fe3C88803E": "22N2xaPOq2WW2gAHBHd0Ikn4Zob", // smartcar
 	}
 	integrationIDToConnectionID = func() map[string]string {
 		// reverse of integrationId2ConnectionId
@@ -403,11 +403,12 @@ func chSourceToIntegrationID(s string) string {
 	return strings.TrimPrefix(s, sourcePrefix)
 }
 
-func integrationIDToCHSource(id string) string {
-	if connectionID, ok := integrationIDToConnectionID[id]; ok {
-		return connectionID
+func integrationIDToCHSource(id string) []string {
+	var sources []string
+	if chSources, ok := integrationIDToConnectionID[id]; ok {
+		sources = append(sources, chSources)
 	}
-	return sourcePrefix + id
+	return append(sources, sourcePrefix+id)
 }
 
 // GetUserDevices godoc
@@ -477,7 +478,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 			for key, udai := range toCheck {
 				clause := qm.Expr(
 					qmhelper.Where("token_id", qmhelper.EQ, key.TokenID),
-					qmhelper.Where("source", qmhelper.EQ, integrationIDToCHSource(key.IntegrationID)),
+					qmhelper.Where("source", "IN", integrationIDToCHSource(key.IntegrationID)),
 					qmhelper.Where("timestamp", qmhelper.GT, udai.UpdatedAt))
 				if len(innerList) == 0 {
 					innerList = append(innerList, clause)
