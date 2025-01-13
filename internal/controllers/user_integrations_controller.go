@@ -1511,6 +1511,17 @@ func (udc *UserDevicesController) PostAftermarketDeviceUnpair(c *fiber.Ctx) erro
 		return err
 	}
 
+	// if this is an autopi, mark it as unpaired on their end so they stop billing us
+	apiIntegration, err := models.UserDeviceAPIIntegrations(
+		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
+	).One(c.Context(), udc.DBS().Writer)
+	if err == nil && apiIntegration != nil {
+		// device Id is internal thing autopi uses
+		if apiIntegration.ExternalID.Valid {
+			udc.markAutoPiUnpaired(apiIntegration.ExternalID.String)
+		}
+	}
+
 	return client.UnPairAftermarketDeviceSign(requestID, apToken, vehicleToken, sigBytes)
 }
 

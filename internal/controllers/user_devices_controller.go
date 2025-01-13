@@ -1328,7 +1328,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-// markAutoPiUnpaired tells the AP cloud this device has been marked as unpaired in their metadata, only if id is not empty
+// markAutoPiUnpaired tells the AP cloud this device has been marked as unpaired in their metadata, only if id is not empty. Also stops invoicing.
 func (udc *UserDevicesController) markAutoPiUnpaired(autopiDeviceID string) {
 	// autopi would like it if we updated the state to unpaired for these cases
 	if autopiDeviceID != "" {
