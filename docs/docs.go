@@ -1083,6 +1083,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Deprecated. Use ` + "`" + `/user/vehicle/{tokenID}/error-codes` + "`" + ` instead",
                 "tags": [
                     "error-codes"
                 ],
@@ -1117,6 +1118,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Deprecated. Use ` + "`" + `/user/vehicle/{tokenID}/error-codes` + "`" + ` instead",
                 "tags": [
                     "error-codes"
                 ],
@@ -1162,6 +1164,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Deprecated. Use ` + "`" + `/user/vehicle/{tokenID}/error-codes/clear` + "`" + ` instead",
                 "tags": [
                     "error-codes"
                 ],
@@ -1942,6 +1945,127 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK"
+                    }
+                }
+            }
+        },
+        "/user/vehicle/{tokenID}/error-codes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "error-codes"
+                ],
+                "summary": "List all error code queries made for this vehicle.",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "vehicle token id",
+                        "name": "tokenID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.GetUserDeviceErrorCodeQueriesResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vehicle not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "error-codes"
+                ],
+                "summary": "Obtain, store, and return descriptions for a list of error codes from this vehicle.",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "vehicle token id",
+                        "name": "tokenID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "error codes",
+                        "name": "queryDeviceErrorCodes",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.QueryDeviceErrorCodesReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.QueryDeviceErrorCodesResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vehicle not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/vehicle/{tokenID}/error-codes/clear": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "error-codes"
+                ],
+                "summary": "Mark the most recent set of error codes as having been cleared.",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "vehicle token id",
+                        "name": "tokenID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.QueryDeviceErrorCodesResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vehicle not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
+                        }
+                    },
+                    "429": {
+                        "description": "Last query already cleared",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
+                        }
                     }
                 }
             }
