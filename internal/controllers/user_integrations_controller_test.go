@@ -15,11 +15,7 @@ import (
 	"github.com/DIMO-Network/shared/redis/mocks"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
-	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/go-redis/redis/v8"
-	"github.com/google/uuid"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/rs/zerolog"
 
@@ -29,16 +25,13 @@ import (
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/middleware/owner"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
-	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
-	smock "github.com/IBM/sarama/mocks"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/segmentio/ksuid"
@@ -674,108 +667,6 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	assert.Equal(s.T(), unitID, gjson.GetBytes(body, "unitId").String())
 	assert.Equal(s.T(), "v1.22.8", gjson.GetBytes(body, "releaseVersion").String())
 	assert.Equal(s.T(), false, gjson.GetBytes(body, "shouldUpdate").Bool()) // this because releaseVersion below 1.21.9
-}
-
-func (s *UserIntegrationsControllerTestSuite) TestPairAftermarketNoLegacy() {
-	privateKey, err := crypto.GenerateKey()
-	s.Require().NoError(err)
-
-	kprod := smock.NewSyncProducer(s.T(), nil)
-
-	var kb []byte
-
-	kprod.ExpectSendMessageWithCheckerFunctionAndSucceed(func(val []byte) error {
-		kb = val
-		return nil
-	})
-
-	userAddr := crypto.PubkeyToAddress(privateKey.PublicKey)
-
-	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
-	c := NewUserDevicesController(&config.Settings{Port: "3000", DIMORegistryChainID: 1337, DIMORegistryAddr: common.BigToAddress(big.NewInt(7)).Hex()}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, s.deviceDefinitionRegistrar, kprod, nil, nil, nil, s.userClient, nil, nil, nil, nil, nil, nil, nil)
-	s.deviceDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Return(&ddgrpc.Integration{Id: ksuid.New().String()}, nil).AnyTimes()
-
-	userID := "louxUser"
-	userAddrStr := userAddr.String()
-	unitID := uuid.New().String()
-	deviceID := uuid.New().String()
-
-	s.userClient.EXPECT().GetUser(gomock.Any(), &pbuser.GetUserRequest{Id: userID}).Return(&pbuser.User{EthereumAddress: &userAddrStr}, nil).AnyTimes()
-
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
-	ud := test.SetupCreateUserDevice(s.T(), userID, dd[0].Id, nil, "4Y1SL65848Z411439", s.pdb)
-	_ = *test.SetupCreateVehicleNFT(s.T(), ud, big.NewInt(4), null.BytesFrom(userAddr.Bytes()), s.pdb)
-
-	aftermarketDevice := test.SetupCreateAftermarketDevice(s.T(), testUserID, common.BigToAddress(big.NewInt(2)).Bytes(), unitID, &deviceID, s.pdb)
-	aftermarketDevice.TokenID = types.NewDecimal(decimal.New(5, 0))
-	aftermarketDevice.OwnerAddress = null.BytesFrom(userAddr.Bytes())
-	row, errAMD := aftermarketDevice.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
-	s.Assert().Equal(int64(1), row)
-	s.Require().NoError(errAMD)
-
-	app := fiber.New()
-	app.Use(test.AuthInjectorTestHandler(userID))
-	app.Get("/:userDeviceID/pair", c.GetAftermarketDevicePairMessage)
-	app.Post("/:userDeviceID/pair", c.PostAftermarketDevicePair)
-
-	req := test.BuildRequest("GET", "/"+ud.ID+"/pair?external_id="+aftermarketDevice.Serial, "")
-
-	res, err := app.Test(req)
-	s.Require().NoError(err)
-	s.Require().Equal(fiber.StatusOK, res.StatusCode) // todo issue - this is returning 409 instead of 200? due to change in how get unit?
-	defer res.Body.Close()
-
-	var td signer.TypedData
-	s.Require().NoError(json.NewDecoder(res.Body).Decode(&td))
-
-	b, _, err := signer.TypedDataAndHash(td)
-	s.Require().NoError(err)
-
-	userSig, err := crypto.Sign(b, privateKey)
-	s.Require().NoError(err)
-	userSig[64] += 27
-
-	in := map[string]any{
-		"externalId": aftermarketDevice.Serial,
-		"signature":  hexutil.Bytes(userSig).String(),
-	}
-
-	inp, err := json.Marshal(in)
-	s.Require().NoError(err)
-
-	req = test.BuildRequest("POST", "/"+ud.ID+"/pair", string(inp))
-	res, err = app.Test(req)
-	s.Require().NoError(err)
-	defer res.Body.Close()
-
-	s.Require().Equal(200, res.StatusCode)
-
-	kprod.Close()
-
-	var ce shared.CloudEvent[registry.RequestData]
-
-	err = json.Unmarshal(kb, &ce)
-	s.Require().NoError(err)
-
-	abi, err := contracts.RegistryMetaData.GetAbi()
-	s.Require().NoError(err)
-
-	method := abi.Methods["pairAftermarketDeviceSign0"]
-
-	callData := ce.Data.Data
-
-	s.EqualValues(method.ID, callData[:4])
-
-	o, err := method.Inputs.Unpack(callData[4:])
-	s.Require().NoError(err)
-
-	amID := o[0].(*big.Int)
-	vID := o[1].(*big.Int)
-	u2Sig := o[2].([]byte)
-
-	s.Equal(big.NewInt(5), amID)
-	s.Equal(big.NewInt(4), vID)
-	s.Equal(userSig, u2Sig)
 }
 
 // Tesla Fleet API Tests

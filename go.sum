@@ -78,8 +78,6 @@ github.com/DIMO-Network/device-data-api v0.9.10 h1:ORyxDSKPCEPFGG5S593+2OkLzWFsy
 github.com/DIMO-Network/device-data-api v0.9.10/go.mod h1:tjR1bA9sw2sj5GNi88dqpGsGLjYHjQzSfv2lcCYLjqQ=
 github.com/DIMO-Network/device-definitions-api v1.2.66 h1:WRKZ+4CPH3+8QzVPG/Cl7DUcZ2p4AjDFHNxRqc9Kjzk=
 github.com/DIMO-Network/device-definitions-api v1.2.66/go.mod h1:0br3QBs+fNH1WtC/VMTYk0ekwebCnRk5OrXivo96NwA=
-github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c h1:sKuB4i3m/5NpLjO6tKyc2gSqQHmRe02sMP+pQqJNTuQ=
-github.com/DIMO-Network/go-mnemonic v0.0.0-20230406181942-6ddfe6f8c21c/go.mod h1:K5a/Iqh9iZYdMSh3UE3J+tc4aV1PxHe4Fz0ZEhZMPbg=
 github.com/DIMO-Network/meta-transaction-processor v0.3.2 h1:eSf34mSmiRilMbQx+4Iyu6aNm/WWJjbopIGYNjz/Z6w=
 github.com/DIMO-Network/meta-transaction-processor v0.3.2/go.mod h1:qJW4pNqQ4kDeumuZJByjrfrCd8dlrCT3//5V4PVKRqA=
 github.com/DIMO-Network/shared v0.12.5 h1:+e1JjbGcGwJBb26HE7BSgI+V2cYGkor7GFQb0o2FHjE=
@@ -738,8 +736,6 @@ github.com/paulmach/protoscan v0.2.1/go.mod h1:SpcSwydNLrxUGSDvXvO0P7g7AuhJ7lcKf
 github.com/pelletier/go-toml v1.9.5/go.mod h1:u1nR/EPcESfeI/szUZKdtJ0xRNbUoANCkoOuaOx1Y+c=
 github.com/pelletier/go-toml/v2 v2.0.1/go.mod h1:r9LEWfGN8R5k0VXJ+0BkIe7MYkRdwZOjgMj2KwnJFUo=
 github.com/pelletier/go-toml/v2 v2.0.5/go.mod h1:OMHamSCAODeSsVrwwvcJOaoN0LIUIaFVNZzmWyNfXas=
-github.com/philhofer/fwd v1.1.2 h1:bnDivRJ1EWPjUIRXV5KfORO897HTbpFAQddBdE8t7Gw=
-github.com/philhofer/fwd v1.1.2/go.mod h1:qkPdfjR2SIEbspLqpe1tO4n5yICnr2DY7mqEx2tUTP0=
 github.com/pierrec/lz4/v4 v4.1.21 h1:yOVMLb6qSIDP67pl/5F7RepeKYu/VmTyEXvuMI5d9mQ=
 github.com/pierrec/lz4/v4 v4.1.21/go.mod h1:gZWDp/Ze/IJXGXf23ltt2EXimqmTUXEy0GFuRQyBid4=
 github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4/go.mod h1:N6UoU20jOqggOuDwUaBQpluzLNDqif3kq9z2wpdYEfQ=
@@ -885,8 +881,6 @@ github.com/tidwall/pretty v1.0.0/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhV
 github.com/tidwall/pretty v1.2.0/go.mod h1:ITEVvHYasfjBbM0u2Pg8T2nJnzm8xPwvNhhsoaGGjNU=
 github.com/tidwall/pretty v1.2.1 h1:qjsOFOWWQl+N3RsoF5/ssm1pHmJJwhjlSbZ51I6wMl4=
 github.com/tidwall/pretty v1.2.1/go.mod h1:ITEVvHYasfjBbM0u2Pg8T2nJnzm8xPwvNhhsoaGGjNU=
-github.com/tinylib/msgp v1.1.9 h1:SHf3yoO2sGA0veCJeCBYLHuttAVFHGm2RHgNodW7wQU=
-github.com/tinylib/msgp v1.1.9/go.mod h1:BCXGB54lDD8qUEPmiG0cQQUANC4IUQyB2ItS2UDlO/k=
 github.com/tklauser/go-sysconf v0.3.14 h1:g5vzr9iPFFz24v2KZXs/pvpvh8/V9Fw6vQK5ZZb78yU=
 github.com/tklauser/go-sysconf v0.3.14/go.mod h1:1ym4lWMLUOhuBOPGtRcJm7tEGX4SCYNEEEtghGG/8uY=
 github.com/tklauser/numcpus v0.8.0 h1:Mx4Wwe/FjZLeQsK/6kt2EOepwwSl7SmJrK5bV/dXYgY=

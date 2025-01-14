@@ -7,37 +7,6 @@
     },
     "basePath": "/v1",
     "paths": {
-        "/aftermarket/device/by-address/{address}": {
-            "get": {
-                "description": "Retrieves NFT metadata for a given aftermarket device, using the device's\nEthereum address.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "nfts"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Ethereum address for the device.",
-                        "name": "address",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.NFTMetadataResp"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    }
-                }
-            }
-        },
         "/aftermarket/device/by-serial/{serial}": {
             "get": {
                 "security": [
@@ -67,156 +36,6 @@
                         "schema": {
                             "$ref": "#/definitions/internal_controllers.AutoPiDeviceInfo"
                         }
-                    }
-                }
-            }
-        },
-        "/aftermarket/device/by-serial/{serial}/commands/claim": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Return the EIP-712 payload to be signed for Aftermarket device claiming.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "AutoPi unit id",
-                        "name": "serial",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apitypes.TypedData"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Return the EIP-712 payload to be signed for Aftermarket device claiming.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "AutoPi unit id",
-                        "name": "serial",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Signatures from the user and device.",
-                        "name": "claimRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.AftermarketDeviceClaimRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
-        "/aftermarket/device/by-serial/{serial}/commands/unclaim": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Dev-only endpoint for removing a claim. Removes the flag on-chain and clears\nthe owner in the database.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "AutoPi unit id",
-                        "name": "serial",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
-        "/aftermarket/device/{tokenId}": {
-            "get": {
-                "description": "Retrieves NFT metadata for a given aftermarket device.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "nfts"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.NFTMetadataResp"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    }
-                }
-            }
-        },
-        "/aftermarket/device/{tokenId}/image": {
-            "get": {
-                "description": "Returns the image for the given aftermarket device NFT.",
-                "produces": [
-                    "image/png"
-                ],
-                "tags": [
-                    "nfts"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    },
-                    "404": {
-                        "description": "Not Found"
                     }
                 }
             }
@@ -457,28 +276,6 @@
                 }
             }
         },
-        "/integration/{tokenID}": {
-            "get": {
-                "description": "gets an integration using its tokenID",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "integrations"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/internal_controllers.NFTMetadataResp"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/integration/{tokenID}/credentials": {
             "post": {
                 "security": [
@@ -523,37 +320,6 @@
                         "schema": {
                             "$ref": "#/definitions/internal_controllers.CompleteOAuthExchangeResponseWrapper"
                         }
-                    }
-                }
-            }
-        },
-        "/synthetic/device/{tokenId}": {
-            "get": {
-                "description": "Retrieves NFT metadata for a given synthetic device.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "nfts"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.NFTMetadataResp"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found"
                     }
                 }
             }
@@ -781,132 +547,6 @@
                         "description": "No Content"
                     }
                 }
-            }
-        },
-        "/user/devices/{userDeviceID}/aftermarket/commands/pair": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Return the EIP-712 payload to be signed for Aftermarket device pairing. The device must\neither already be integrated with the vehicle, or you must provide its unit id\nas a query parameter. In the latter case, the integration process will start\nonce the transaction confirms.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "External id, for now AutoPi unit id",
-                        "name": "external_id",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "EIP-712 message for pairing.",
-                        "schema": {
-                            "$ref": "#/definitions/apitypes.TypedData"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Submit the signature for pairing this device with its attached Aftermarket.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "User signature.",
-                        "name": "userSignature",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.AftermarketDevicePairRequest"
-                        }
-                    }
-                ],
-                "responses": {}
-            }
-        },
-        "/user/devices/{userDeviceID}/aftermarket/commands/unpair": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Return the EIP-712 payload to be signed for aftermarket device unpairing.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apitypes.TypedData"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Submit the signature for unpairing this user device from its attached aftermarket device.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "User signature.",
-                        "name": "userSignature",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.AftermarketDevicePairRequest"
-                        }
-                    }
-                ],
-                "responses": {}
             }
         },
         "/user/devices/{userDeviceID}/commands/mint": {
@@ -2062,71 +1702,6 @@
                 }
             }
         },
-        "/vehicle/{tokenId}": {
-            "get": {
-                "description": "retrieves NFT metadata for a given tokenID",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "nfts"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.NFTMetadataResp"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    }
-                }
-            }
-        },
-        "/vehicle/{tokenId}/image": {
-            "get": {
-                "description": "Returns the image for the given vehicle NFT.",
-                "produces": [
-                    "image/png"
-                ],
-                "tags": [
-                    "nfts"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "whether to remove the image background",
-                        "name": "transparent",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    }
-                }
-            }
-        },
         "/vehicle/{tokenId}/vin": {
             "patch": {
                 "security": [
@@ -2503,42 +2078,6 @@
                 },
                 "powertrainType": {
                     "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_services.PowertrainType"
-                }
-            }
-        },
-        "internal_controllers.AftermarketDeviceClaimRequest": {
-            "type": "object",
-            "properties": {
-                "aftermarketDeviceSignature": {
-                    "description": "AftermarketDeviceSignature is the signature from the aftermarket device.",
-                    "type": "string"
-                },
-                "userSignature": {
-                    "description": "UserSignature is the signature from the user, using their private key.",
-                    "type": "string"
-                }
-            }
-        },
-        "internal_controllers.AftermarketDevicePairRequest": {
-            "type": "object",
-            "properties": {
-                "aftermarketDeviceSignature": {
-                    "description": "AftermarketDeviceSignature is the 65-byte, hex-encoded Ethereum signature of\nthe pairing payload by the device. Only needed if the vehicle owner and aftermarket\ndevice owner are not the same.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "externalId": {
-                    "description": "ExternalID is the serial number of the aftermarket device.",
-                    "type": "string"
-                },
-                "signature": {
-                    "description": "Signature is the 65-byte, hex-encoded Ethereum signature of the pairing payload\nby the vehicle owner.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
                 }
             }
         },
@@ -2946,17 +2485,6 @@
                 }
             }
         },
-        "internal_controllers.NFTAttribute": {
-            "type": "object",
-            "properties": {
-                "trait_type": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
         "internal_controllers.NFTImageData": {
             "type": "object",
             "required": [
@@ -2969,26 +2497,6 @@
                 },
                 "imageDataTransparent": {
                     "description": "ImageDataTransparent contains the base64-encoded NFT PNG image\nwith a transparent background, for use in the app. For compatibility\nwith older versions it is not required.",
-                    "type": "string"
-                }
-            }
-        },
-        "internal_controllers.NFTMetadataResp": {
-            "type": "object",
-            "properties": {
-                "attributes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_controllers.NFTAttribute"
-                    }
-                },
-                "description": {
-                    "type": "string"
-                },
-                "image": {
-                    "type": "string"
-                },
-                "name": {
                     "type": "string"
                 }
             }
