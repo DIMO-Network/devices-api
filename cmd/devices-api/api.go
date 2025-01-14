@@ -12,7 +12,6 @@ import (
 
 	"github.com/DIMO-Network/clickhouse-infra/pkg/connect"
 	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/controllers/user/sd"
@@ -185,9 +184,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1.Get("/countries", countriesController.GetSupportedCountries)
 	v1.Get("/countries/:countryCode", countriesController.GetCountry)
 
-	// webhooks, performs signature validation
-	v1.Post(constants.AutoPiWebhookPath, webhooksController.ProcessCommand)
-
 	privilegeAuth := jwtware.New(jwtware.Config{
 		JWKSetURLs: []string{settings.TokenExchangeJWTKeySetURL},
 	})
@@ -228,15 +224,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	amdOwner := v1Auth.Group("/aftermarket/device/by-serial/:serial", amdOwnerMw)
 
 	amdOwner.Get("/", userDeviceController.GetAftermarketDeviceInfo)
-
-	// AftermarketDevice claiming, formerly AutoPi
-	amdOwner.Get("/commands/claim", userDeviceController.GetAftermarketDeviceClaimMessage)
-	amdOwner.Post("/commands/claim", userDeviceController.PostAftermarketDeviceClaim).Name("PostClaimAutoPi")
-
-	if !settings.IsProduction() {
-		// Used by mobile to test. Easy to misuse.
-		amdOwner.Post("/commands/unclaim", userDeviceController.PostUnclaimAutoPi)
-	}
 
 	// geofence
 	v1Auth.Post("/user/geofences", geofenceController.Create)
@@ -323,13 +310,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 
 	udOwner.Post("/commands/opt-in", userDeviceController.DeviceOptIn)
-
-	// AftermarketDevice pairing and unpairing.
-	// Routes were transitioned from /autopi to /aftermarket
-	udOwner.Get("/aftermarket/commands/pair", userDeviceController.GetAftermarketDevicePairMessage)
-	udOwner.Post("/aftermarket/commands/pair", userDeviceController.PostAftermarketDevicePair)
-	udOwner.Get("/aftermarket/commands/unpair", userDeviceController.GetAftermarketDeviceUnpairMessage)
-	udOwner.Post("/aftermarket/commands/unpair", userDeviceController.PostAftermarketDeviceUnpair)
 
 	logger.Info().Msg("Server started on port " + settings.Port)
 	// Start Server from a different go routine
