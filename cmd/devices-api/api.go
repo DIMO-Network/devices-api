@@ -180,17 +180,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	v1.Get("/swagger/*", swagger.HandlerDefault)
 	// Device Definitions
-	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc, ddaSvc, ipfsSvc)
-	v1.Get("/vehicle/:tokenID", nftController.GetNFTMetadata)
-	v1.Get("/vehicle/:tokenID/image", nftController.GetNFTImage)
-
-	v1.Get("/aftermarket/device/by-address/:address", nftController.GetAftermarketDeviceNFTMetadataByAddress)
-	v1.Get("/aftermarket/device/:tokenID", cacheHandler, nftController.GetAftermarketDeviceNFTMetadata)
-	v1.Get("/aftermarket/device/:tokenID/image", nftController.GetAftermarketDeviceNFTImage)
-
-	v1.Get("/synthetic/device/:tokenID", nftController.GetSyntheticDeviceNFTMetadata)
-
-	v1.Get("/integration/:tokenID", nftController.GetIntegrationNFTMetadata)
+	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc)
 
 	v1.Get("/countries", countriesController.GetSupportedCountries)
 	v1.Get("/countries/:countryCode", countriesController.GetCountry)
