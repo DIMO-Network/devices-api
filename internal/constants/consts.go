@@ -13,6 +13,7 @@ const (
 
 const (
 	AutoPiVendor      = "AutoPi"
+	AutoPiWebhookPath = "/webhooks/autopi-command"
 )
 
 const (
