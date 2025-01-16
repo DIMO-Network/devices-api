@@ -81,6 +81,7 @@ func validVINChar(r rune) bool {
 func (udc *UserDevicesController) UpdateVINV2(c *fiber.Ctx) error {
 	tis := c.Params("tokenID")
 	tokenID, ok := new(big.Int).SetString(tis, 10)
+	userEthAddr, _ := helpers.GetJWTEthAddr(c)
 	if !ok {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
 	}
@@ -152,10 +153,13 @@ func (udc *UserDevicesController) UpdateVINV2(c *fiber.Ctx) error {
 		}
 	}
 
-	if req.Signature != "" && !userDevice.VinConfirmed { // if the user_device already exists and is vin confirmed, likely somebody re-pairing the vehicle to different connection
+	if req.Signature != "" && !userDevice.VinConfirmed { // if the user_device already exists and vin is confirmed, skip b/c likely somebody re-pairing the vehicle to different connection
+		// check for existing vehicle from different user with same vin
 		existing, err := models.UserDevices(
 			models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(req.VIN)),
 			models.UserDeviceWhere.VinConfirmed.EQ(true),
+			models.UserDeviceWhere.TokenID.IsNotNull(),                                   // must be minted
+			models.UserDeviceWhere.OwnerAddress.NEQ(null.BytesFrom(userEthAddr.Bytes())), // ok if owned by same user
 		).Exists(c.Context(), tx)
 		if err != nil {
 			return err
