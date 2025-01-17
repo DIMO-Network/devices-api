@@ -122,13 +122,13 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 
 	app := test.SetupAppFiber(*logger)
 
-	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.RegisterDeviceIntegration)
-	app.Delete("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.DeleteUserDeviceIntegration)
+	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID, common.Address{}), c.RegisterDeviceIntegration)
+	app.Delete("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID, common.Address{}), c.DeleteUserDeviceIntegration)
 
-	app.Post("/user2/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUser2), c.RegisterDeviceIntegration)
-	app.Get("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.GetUserDeviceIntegration)
+	app.Post("/user2/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUser2, common.Address{}), c.RegisterDeviceIntegration)
+	app.Get("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID, common.Address{}), c.GetUserDeviceIntegration)
 	app.Post("/user/devices/:userDeviceID/integrations/:integrationID/commands/telemetry/subscribe",
-		test.AuthInjectorTestHandler(testUserID),
+		test.AuthInjectorTestHandler(testUserID, common.Address{}),
 		c.TelemetrySubscribe,
 	)
 
@@ -323,7 +323,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_FailureTestVIN() 
 
 	app := test.SetupAppFiber(*logger)
 
-	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID), c.RegisterDeviceIntegration)
+	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID, common.Address{}), c.RegisterDeviceIntegration)
 
 	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/integrations/"+integration.Id, req)
 	response, err := app.Test(request)
@@ -522,7 +522,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	logger := zerolog.Nop()
-	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAftermarketDeviceInfo)
+	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID, common.Address{}), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAftermarketDeviceInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
@@ -562,7 +562,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_UpToDate()
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	logger := zerolog.Nop()
-	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAftermarketDeviceInfo)
+	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID, common.Address{}), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAftermarketDeviceInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
@@ -599,7 +599,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_FutureUpda
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	logger := zerolog.Nop()
-	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAftermarketDeviceInfo)
+	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID, common.Address{}), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAftermarketDeviceInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
@@ -638,7 +638,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaSvc, s.teslaTaskService, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, s.deviceDefinitionRegistrar, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	logger := zerolog.Nop()
-	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAftermarketDeviceInfo)
+	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID, common.Address{}), owner.AftermarketDevice(s.pdb, s.userClient, &logger), c.GetAftermarketDeviceInfo)
 	// arrange
 	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
 	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)

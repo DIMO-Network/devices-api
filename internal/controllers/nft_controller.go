@@ -69,7 +69,7 @@ func validVINChar(r rune) bool {
 
 // UpdateVINV2 godoc
 // @Description updates the VIN on the user device record. Can optionally also update the protocol and the country code.
-// VIN now comes from attestations, no need for this soon
+// VIN now comes from attestations, no need for this soon.
 // @Tags        user-devices
 // @Produce     json
 // @Accept      json
@@ -81,7 +81,7 @@ func validVINChar(r rune) bool {
 func (udc *UserDevicesController) UpdateVINV2(c *fiber.Ctx) error {
 	tis := c.Params("tokenID")
 	tokenID, ok := new(big.Int).SetString(tis, 10)
-	userEthAddr, _ := helpers.GetJWTEthAddr(c)
+	userEthAddr, _ := helpers.GetJWTEthAddr(c) // we use privilege auth - need to test in dev this would still work
 	if !ok {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse token id %q.", tis))
 	}
