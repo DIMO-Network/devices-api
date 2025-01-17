@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/DIMO-Network/clickhouse-infra/pkg/connect"
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -42,7 +41,6 @@ import (
 	"github.com/goccy/go-json"
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cache"
 	fiberrecover "github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/swagger"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -165,14 +163,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		StackTraceHandler: nil,
 	}))
 
-	cacheHandler := cache.New(cache.Config{
-		Next: func(c *fiber.Ctx) bool {
-			return c.Query("refresh") == "true"
-		},
-		Expiration:   1 * time.Minute,
-		CacheControl: true,
-	})
-
 	// application routes
 	app.Get("/", healthCheck)
 
@@ -180,17 +170,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	v1.Get("/swagger/*", swagger.HandlerDefault)
 	// Device Definitions
-	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc, ddaSvc, ipfsSvc)
-	v1.Get("/vehicle/:tokenID", nftController.GetNFTMetadata)
-	v1.Get("/vehicle/:tokenID/image", nftController.GetNFTImage)
-
-	v1.Get("/aftermarket/device/by-address/:address", nftController.GetAftermarketDeviceNFTMetadataByAddress)
-	v1.Get("/aftermarket/device/:tokenID", cacheHandler, nftController.GetAftermarketDeviceNFTMetadata)
-	v1.Get("/aftermarket/device/:tokenID/image", nftController.GetAftermarketDeviceNFTImage)
-
-	v1.Get("/synthetic/device/:tokenID", nftController.GetSyntheticDeviceNFTMetadata)
-
-	v1.Get("/integration/:tokenID", nftController.GetIntegrationNFTMetadata)
+	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc)
 
 	v1.Get("/countries", countriesController.GetSupportedCountries)
 	v1.Get("/countries/:countryCode", countriesController.GetCountry)
@@ -239,15 +219,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	amdOwner.Get("/", userDeviceController.GetAftermarketDeviceInfo)
 
-	// AftermarketDevice claiming, formerly AutoPi
-	amdOwner.Get("/commands/claim", userDeviceController.GetAftermarketDeviceClaimMessage)
-	amdOwner.Post("/commands/claim", userDeviceController.PostAftermarketDeviceClaim).Name("PostClaimAutoPi")
-
-	if !settings.IsProduction() {
-		// Used by mobile to test. Easy to misuse.
-		amdOwner.Post("/commands/unclaim", userDeviceController.PostUnclaimAutoPi)
-	}
-
 	// geofence
 	v1Auth.Post("/user/geofences", geofenceController.Create)
 	v1Auth.Get("/user/geofences", geofenceController.GetAll)
@@ -287,7 +258,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// Vehicle owner routes.
 	vehicleOwnerMw := owner.VehicleToken(pdb, usersClient, &logger)
-
 	{
 		addr := address.New(usersClient, &logger)
 
@@ -333,13 +303,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 
 	udOwner.Post("/commands/opt-in", userDeviceController.DeviceOptIn)
-
-	// AftermarketDevice pairing and unpairing.
-	// Routes were transitioned from /autopi to /aftermarket
-	udOwner.Get("/aftermarket/commands/pair", userDeviceController.GetAftermarketDevicePairMessage)
-	udOwner.Post("/aftermarket/commands/pair", userDeviceController.PostAftermarketDevicePair)
-	udOwner.Get("/aftermarket/commands/unpair", userDeviceController.GetAftermarketDeviceUnpairMessage)
-	udOwner.Post("/aftermarket/commands/unpair", userDeviceController.PostAftermarketDeviceUnpair)
 
 	logger.Info().Msg("Server started on port " + settings.Port)
 	// Start Server from a different go routine
