@@ -3193,6 +3193,13 @@
                     "description": "APIVersion is the version of the Tesla API being used. There are currently two valid values:\n1 is the old \"Owner API\", 2 is the new \"Fleet API\".",
                     "type": "integer"
                 },
+                "missingRequiredScopes": {
+                    "description": "MissingRequiredScopes lists scopes required by DIMO that we're missing.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "telemetrySubscribed": {
                     "description": "TelemetrySubscribed is true if DIMO has subscribed to the vehicle's telemetry stream. Note that\nvirtual key pairing is required for this to work.",
                     "type": "boolean"

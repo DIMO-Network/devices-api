@@ -100,7 +100,8 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		}
 
 		resp.Tesla = &TeslaIntegrationInfo{
-			APIVersion: apiVersion,
+			APIVersion:            apiVersion,
+			MissingRequiredScopes: []string{},
 		}
 
 		if apiVersion == constants.TeslaAPIV2 {
@@ -124,8 +125,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 					// Yes, wasteful Split.
 					for _, scope := range strings.Split(udc.Settings.TeslaRequiredScopes, ",") {
 						if !slices.Contains(claims.Scopes, scope) {
-							resp.Tesla.MissingRequiredScope = true
-							break
+							resp.Tesla.MissingRequiredScopes = append(resp.Tesla.MissingRequiredScopes, scope)
 						}
 					}
 				}
@@ -2168,9 +2168,8 @@ type TeslaIntegrationInfo struct {
 	// VirtualKeyStatus indicates whether the Tesla can pair with DIMO's virtual key; and if it can,
 	// whether the key has indeed been paired.
 	VirtualKeyStatus VirtualKeyStatus `json:"virtualKeyStatus" swaggertype:"string" enums:"Paired,Unpaired,Incapable"`
-	// MissingRequiredScope indicates whether we're missing one of the two scopes we require: vehicle_data
-	// and vehicle_location.
-	MissingRequiredScope bool `json:"missingRequiredScope"`
+	// MissingRequiredScopes lists scopes required by DIMO that we're missing.
+	MissingRequiredScopes []string `json:"missingRequiredScopes"`
 }
 
 type VirtualKeyStatus int
