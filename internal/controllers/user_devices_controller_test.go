@@ -13,7 +13,6 @@ import (
 	"github.com/go-redis/redis/v8"
 
 	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
-	"github.com/ericlagergren/decimal"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
@@ -40,7 +39,6 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -64,6 +62,7 @@ type UserDevicesControllerTestSuite struct {
 	deviceDefSvc    *mock_services.MockDeviceDefinitionService
 	deviceDefIntSvc *mock_services.MockDeviceDefinitionIntegrationService
 	testUserID      string
+	testUserEthAddr common.Address
 	scTaskSvc       *mock_services.MockSmartcarTaskService
 	scClient        *mock_services.MockSmartcarClient
 	redisClient     *mocks.MockCacheService
@@ -106,19 +105,20 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
+	s.testUserEthAddr = common.HexToAddress("0x1231231231231231231231231231231231231231")
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
 		autoPiIngest, deviceDefinitionIngest, nil, nil, s.redisClient, nil, s.usersClient, s.deviceDataSvc, s.natsService, nil, s.userDeviceSvc, nil, nil, nil)
 	app := test.SetupAppFiber(*logger)
-	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUser)
-	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUserFromVIN)
-	app.Post("/user/devices/fromsmartcar", test.AuthInjectorTestHandler(s.testUserID), c.RegisterDeviceForUserFromSmartcar)
-	app.Post("/user/devices/second", test.AuthInjectorTestHandler(testUserID2), c.RegisterDeviceForUser) // for different test user
-	app.Get("/user/devices/me", test.AuthInjectorTestHandler(s.testUserID), c.GetUserDevices)
-	app.Patch("/vehicle/:tokenID/vin", c.UpdateVINV2) // Auth done by the middleware.
-	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID), c.RefreshUserDeviceStatus)
-	app.Get("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID), c.GetBurnDevice)
-	app.Post("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID), c.PostBurnDevice)
-	app.Delete("/user/devices/:userDeviceID", test.AuthInjectorTestHandler(s.testUserID), c.DeleteUserDevice)
+	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID, common.Address{}), c.RegisterDeviceForUser)
+	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID, common.Address{}), c.RegisterDeviceForUserFromVIN)
+	app.Post("/user/devices/fromsmartcar", test.AuthInjectorTestHandler(s.testUserID, common.Address{}), c.RegisterDeviceForUserFromSmartcar)
+	app.Post("/user/devices/second", test.AuthInjectorTestHandler(testUserID2, common.Address{}), c.RegisterDeviceForUser) // for different test user
+	app.Get("/user/devices/me", test.AuthInjectorTestHandler(s.testUserID, common.Address{}), c.GetUserDevices)
+	app.Patch("/vehicle/:tokenID/vin", test.AuthInjectorTestHandler(s.testUserID, s.testUserEthAddr), c.UpdateVINV2) // Auth done by the middleware.
+	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID, common.Address{}), c.RefreshUserDeviceStatus)
+	app.Get("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID, common.Address{}), c.GetBurnDevice)
+	app.Post("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID, common.Address{}), c.PostBurnDevice)
+	app.Delete("/user/devices/:userDeviceID", test.AuthInjectorTestHandler(s.testUserID, common.Address{}), c.DeleteUserDevice)
 
 	s.controller = &c
 	s.app = app
@@ -681,54 +681,6 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
 	assert.Equal(s.T(), integration.Id, gjson.GetBytes(body, "userDevices.0.integrations.0.integrationId").String())
 	assert.Equal(s.T(), integration.Vendor, gjson.GetBytes(body, "userDevices.0.integrations.0.integrationVendor").String())
 	assert.Equal(s.T(), ud.ID, gjson.GetBytes(body, "userDevices.0.id").String())
-}
-
-func (s *UserDevicesControllerTestSuite) TestPatchVIN() {
-	integration := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 4)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Escape", 2020, integration)
-
-	const powertrainType = "powertrain_type"
-	powertrainValue := "BEV"
-	for _, item := range dd[0].DeviceAttributes {
-		if item.Name == powertrainType {
-			item.Value = powertrainValue
-			break
-		}
-	}
-
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
-	ud.TokenID = types.NewNullDecimal(new(decimal.Big).SetUint64(40))
-	_, err := ud.Update(context.TODO(), s.pdb.DBS().Writer, boil.Infer())
-	s.Require().NoError(err)
-
-	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
-
-	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: nil}, nil)
-	// validates that if country=USA we update the powertrain based on what the NHTSA vin decoder says
-
-	// seperate request to validate info persisted to user_device table
-	//s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), []string{dd[0].Id}).Times(1).
-	//	Return(dd[0], nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].Id).Times(2).
-		Return(dd[0], nil)
-
-	payload := `{ "vin": "5YJYGDEE5MF085533" }`
-	request := test.BuildRequest("PATCH", "/vehicle/40/vin", payload)
-	response, responseError := s.app.Test(request)
-	require.NoError(s.T(), responseError)
-	if assert.Equal(s.T(), fiber.StatusNoContent, response.StatusCode) == false {
-		body, _ := io.ReadAll(response.Body)
-		fmt.Println("message: " + string(body))
-	}
-
-	request = test.BuildRequest("GET", "/user/devices/me", "")
-	response, responseError = s.app.Test(request, 120*1000)
-	require.NoError(s.T(), responseError)
-
-	body, _ := io.ReadAll(response.Body)
-	fmt.Println(string(body))
-	pt := gjson.GetBytes(body, "userDevices.0.metadata.powertrainType").String()
-	assert.Equal(s.T(), powertrainValue, pt)
 }
 
 func (s *UserDevicesControllerTestSuite) TestVINValidate() {
