@@ -49,7 +49,6 @@ type SyntheticDevicesControllerTestSuite struct {
 	sdc                   SyntheticDevicesController
 	syntheticDeviceSigSvc *mock_services.MockSyntheticWalletInstanceService
 	smartcarClient        *mock_services.MockSmartcarClient
-	teslaService          *mock_services.MockTeslaService
 }
 
 // SetupSuite starts container db
@@ -65,7 +64,6 @@ func (s *SyntheticDevicesControllerTestSuite) SetupTest() {
 	s.userClient = mock_services.NewMockUserServiceClient(s.mockCtrl)
 	s.syntheticDeviceSigSvc = mock_services.NewMockSyntheticWalletInstanceService(s.mockCtrl)
 	s.smartcarClient = mock_services.NewMockSmartcarClient(s.mockCtrl)
-	s.teslaService = mock_services.NewMockTeslaService(s.mockCtrl)
 
 	mockProducer = smock.NewSyncProducer(s.T(), nil)
 
