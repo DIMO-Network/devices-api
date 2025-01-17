@@ -35,6 +35,11 @@ import (
 	"golang.org/x/mod/semver"
 )
 
+func isVirtualKeyCapable(model string, year int) bool {
+	// Can we check this capability through their API somehow?
+	return model != "Model S" && model != "Model X" || year >= 2021
+}
+
 // GetUserDeviceIntegration godoc
 // @Description Receive status updates about a Smartcar integration
 // @Tags        integrations
@@ -61,7 +66,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("user device %s does not have integration %s", userDeviceID, integrationID))
+			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("User device %s does not have integration %s.", userDeviceID, integrationID))
 		}
 		return err
 	}
@@ -71,6 +76,8 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		ExternalID: apiIntegration.ExternalID,
 		CreatedAt:  apiIntegration.CreatedAt,
 	}
+
+	logger := udc.log.With().Str("userDeviceId", userDeviceID).Str("integrationId", integrationID).Logger()
 
 	// Handle fetching virtual key status
 	intd, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
@@ -101,11 +108,17 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 			}
 
 			if apiIntegration.AccessExpiresAt.Valid && apiIntegration.AccessExpiresAt.Time.After(time.Now()) {
-				// TODO(elfjjs): Graceful stuff if the access token gets invalidated before expiry.
-				keyPaired, err := udc.getDeviceVirtualKeyStatus(c.Context(), apiIntegration)
+				accessToken, err := udc.cipher.Decrypt(apiIntegration.AccessToken.String)
 				if err != nil {
-					udc.log.Err(err).Msg("Error checking virtual key status.")
+					return fmt.Errorf("failed to decrypt access token: %w", err)
+				}
+
+				// TODO(elfjjs): Graceful stuff if the access token gets invalidated before expiry.
+				keyPaired, err := udc.getDeviceVirtualKeyStatus(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
+				if err != nil {
+					logger.Err(err).Msg("Error checking virtual key status.")
 					if !errors.Is(err, services.ErrUnauthorized) {
+						// TODO(elffjs): Need to figure these out.
 						return fiber.NewError(fiber.StatusInternalServerError, "Error checking virtual key status.")
 					}
 				} else {
@@ -148,24 +161,9 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context, integration *models.UserDeviceAPIIntegration) (bool, error) {
-	if !integration.AccessExpiresAt.Valid || !integration.AccessExpiresAt.Time.After(time.Now()) {
-		// TODO(elffjs): Need to find a way to fail these eventually.
-		udc.log.Warn().Str("userDeviceId", integration.UserDeviceID).Msg("Tesla token expired.")
-		return false, nil
-	}
-
-	accessTk, err := udc.cipher.Decrypt(integration.AccessToken.String)
-	if err != nil {
-		return false, fmt.Errorf("couldn't decrypt access token: %w", err)
-	}
-
-	isConnected, err := udc.teslaFleetAPISvc.VirtualKeyConnectionStatus(ctx, accessTk, integration.R.UserDevice.VinIdentifier.String)
-	if err != nil {
-		return false, err
-	}
-
-	return isConnected, nil
+func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context, accessToken, vin string) (bool, error) {
+	// TODO(elffjs): Do we need this function at all?
+	return udc.teslaFleetAPISvc.VirtualKeyConnectionStatus(ctx, accessToken, vin)
 }
 
 func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Context, integration *models.UserDeviceAPIIntegration) (bool, error) {
@@ -2163,6 +2161,9 @@ type TeslaIntegrationInfo struct {
 	// VirtualKeyStatus indicates whether the Tesla can pair with DIMO's virtual key; and if it can,
 	// whether the key has indeed been paired.
 	VirtualKeyStatus VirtualKeyStatus `json:"virtualKeyStatus" swaggertype:"string" enums:"Paired,Unpaired,Incapable"`
+	// MissingRequiredScope indicates whether we're missing one of the two scopes we require: vehicle_data
+	// and vehicle_location.
+	MissingRequiredScope bool `json:"missingRequiredScope"`
 }
 
 type VirtualKeyStatus int
