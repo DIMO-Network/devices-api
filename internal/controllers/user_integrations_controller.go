@@ -1179,6 +1179,10 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		return fiber.NewError(fiber.StatusBadRequest, "Missing externalId field.")
 	}
 
+	if reqBody.AccessToken != "" {
+		return fiber.NewError(fiber.StatusBadRequest, "We no longer support connecting Teslas by submitting access and refresh tokens. Please submit an authorization code for the Fleet API.")
+	}
+
 	// We'll use this to kick off the job
 	teslaID, err := strconv.Atoi(reqBody.ExternalID)
 	if err != nil {
