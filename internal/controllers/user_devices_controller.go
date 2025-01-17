@@ -738,6 +738,7 @@ var opaqueInternalError = fiber.NewError(fiber.StatusInternalServerError, "Inter
 // @Router      /user/devices/fromvin [post]
 func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
+	userEthAddr, ethAddrFound := helpers.GetJWTEthAddr(c)
 	reg := &RegisterUserDeviceVIN{}
 	if err := c.BodyParser(reg); err != nil {
 		// Return status 400 and error message.
@@ -771,7 +772,9 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	}
 	var udFull *UserDeviceFull
 	if existingUD != nil {
-		if existingUD.UserID != userID {
+		if !ethAddrFound && existingUD.UserID != userID {
+			return fiber.NewError(fiber.StatusConflict, "VIN already exists for a different user: "+reg.VIN)
+		} else if ethAddrFound && !bytes.Equal(existingUD.OwnerAddress.Bytes, userEthAddr.Bytes()) {
 			return fiber.NewError(fiber.StatusConflict, "VIN already exists for a different user: "+reg.VIN)
 		}
 		slugID = existingUD.DefinitionID
@@ -1127,23 +1130,6 @@ func (udc *UserDevicesController) DeviceOptIn(c *fiber.Ctx) error {
 	return nil
 }
 
-// UpdateVIN godoc
-// @Description Deprecated. updates the VIN on the user device record. Keeping this alive to not break mobile app. VIN's now come from attestations.
-// @Tags        user-devices
-// @Produce     json
-// @Accept      json
-// @Param       vin          body controllers.UpdateVINReq true "VIN"
-// @Param       userDeviceID path string                   true "user id"
-// @Success     204
-// @Security    BearerAuth
-// @Router      /user/devices/{userDeviceID}/vin [patch]
-func (udc *UserDevicesController) UpdateVIN(_ *fiber.Ctx) error {
-	// todo remove this endpoint on next mobile app release
-	return fiber.NewError(fiber.StatusBadRequest, "this update vin endpoint is deprecated")
-
-	// this has been replaced by nft_controller.go > UpdateVINV2
-}
-
 const (
 	PowerTrainTypeKey = "powertrain_type"
 )
@@ -1178,47 +1164,6 @@ func (udc *UserDevicesController) updatePowerTrain(ctx context.Context, userDevi
 	}
 
 	return nil
-}
-
-// UpdateCountryCode godoc
-// @Description updates the CountryCode on the user device record
-// @Tags        user-devices
-// @Produce     json
-// @Accept      json
-// @Param       name body controllers.UpdateCountryCodeReq true "Country code"
-// @Success     204
-// @Security    BearerAuth
-// @Router      /user/devices/{userDeviceID}/country_code [patch]
-func (udc *UserDevicesController) UpdateCountryCode(c *fiber.Ctx) error {
-	udi := c.Params("userDeviceID")
-
-	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi)).One(c.Context(), udc.DBS().Writer)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, err.Error())
-		}
-		return err
-	}
-	countryCode := &UpdateCountryCodeReq{}
-	if err := c.BodyParser(countryCode); err != nil {
-		// Return status 400 and error message.
-		return helpers.ErrorResponseHandler(c, err, fiber.StatusBadRequest)
-	}
-	// validate country_code
-	if countryCode.CountryCode == nil {
-		return fiber.NewError(fiber.StatusBadRequest, "CountryCode is required")
-	}
-	if constants.FindCountry(*countryCode.CountryCode) == nil {
-		return fiber.NewError(fiber.StatusBadRequest, "CountryCode does not exist: "+*countryCode.CountryCode)
-	}
-
-	userDevice.CountryCode = null.StringFromPtr(countryCode.CountryCode)
-	_, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Infer())
-	if err != nil {
-		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
-	}
-
-	return c.SendStatus(fiber.StatusNoContent)
 }
 
 // DeleteUserDevice godoc
