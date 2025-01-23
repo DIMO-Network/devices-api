@@ -106,7 +106,7 @@ func TestUserDeviceOwnerMiddleware(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
 			app := test.SetupAppFiber(*logger)
-			app.Get("/:userDeviceID", test.AuthInjectorTestHandler(c.UserID, common.Address{}), middleware, func(c *fiber.Ctx) error {
+			app.Get("/:userDeviceID", test.AuthInjectorTestHandler(c.UserID, nil), middleware, func(c *fiber.Ctx) error {
 				logger := c.Locals("logger").(*zerolog.Logger)
 				logger.Info().Msg("Omega croggers.")
 				return nil
@@ -134,7 +134,7 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 	middleware := AftermarketDevice(pdb, usersClient, logger)
 
 	app := test.SetupAppFiber(*logger)
-	app.Get("/:serial", test.AuthInjectorTestHandler(userID, common.Address{}), middleware, func(c *fiber.Ctx) error {
+	app.Get("/:serial", test.AuthInjectorTestHandler(userID, nil), middleware, func(c *fiber.Ctx) error {
 		logger := c.Locals("logger").(*zerolog.Logger)
 		logger.Info().Msg("Omega croggers.")
 		return nil
@@ -265,7 +265,7 @@ func TestVehicleTokenOwnerMiddleware(t *testing.T) {
 	app := test.SetupAppFiber(*logger)
 
 	userID := ksuid.New().String()
-	app.Get("/user/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(userID, common.Address{}), middleware, func(c *fiber.Ctx) error {
+	app.Get("/user/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(userID, nil), middleware, func(c *fiber.Ctx) error {
 		logger := c.Locals("logger").(*zerolog.Logger)
 		logger.Info().Msg("Omega croggers.")
 		return nil

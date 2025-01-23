@@ -90,8 +90,8 @@ func (s *SyntheticDevicesControllerTestSuite) SetupTest() {
 
 	app := test.SetupAppFiber(*logger)
 
-	app.Post("/v1/user/devices/:userDeviceID/integrations/:integrationID/commands/mint", test.AuthInjectorTestHandler(mockUserID, common.Address{}), c.MintSyntheticDevice)
-	app.Get("/v1/user/devices/:userDeviceID/integrations/:integrationID/commands/mint", test.AuthInjectorTestHandler(mockUserID, common.Address{}), c.GetSyntheticDeviceMintingPayload)
+	app.Post("/v1/user/devices/:userDeviceID/integrations/:integrationID/commands/mint", test.AuthInjectorTestHandler(mockUserID, nil), c.MintSyntheticDevice)
+	app.Get("/v1/user/devices/:userDeviceID/integrations/:integrationID/commands/mint", test.AuthInjectorTestHandler(mockUserID, nil), c.GetSyntheticDeviceMintingPayload)
 
 	s.app = app
 }

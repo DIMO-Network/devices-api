@@ -109,16 +109,16 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
 		autoPiIngest, deviceDefinitionIngest, nil, nil, s.redisClient, nil, s.usersClient, s.deviceDataSvc, s.natsService, nil, s.userDeviceSvc, nil, nil, nil)
 	app := test.SetupAppFiber(*logger)
-	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID, common.Address{}), c.RegisterDeviceForUser)
-	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID, common.Address{}), c.RegisterDeviceForUserFromVIN)
-	app.Post("/user/devices/fromsmartcar", test.AuthInjectorTestHandler(s.testUserID, common.Address{}), c.RegisterDeviceForUserFromSmartcar)
-	app.Post("/user/devices/second", test.AuthInjectorTestHandler(testUserID2, common.Address{}), c.RegisterDeviceForUser) // for different test user
-	app.Get("/user/devices/me", test.AuthInjectorTestHandler(s.testUserID, common.Address{}), c.GetUserDevices)
-	app.Patch("/vehicle/:tokenID/vin", test.AuthInjectorTestHandler(s.testUserID, s.testUserEthAddr), c.UpdateVINV2) // Auth done by the middleware.
-	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID, common.Address{}), c.RefreshUserDeviceStatus)
-	app.Get("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID, common.Address{}), c.GetBurnDevice)
-	app.Post("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID, common.Address{}), c.PostBurnDevice)
-	app.Delete("/user/devices/:userDeviceID", test.AuthInjectorTestHandler(s.testUserID, common.Address{}), c.DeleteUserDevice)
+	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID, nil), c.RegisterDeviceForUser)
+	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID, nil), c.RegisterDeviceForUserFromVIN)
+	app.Post("/user/devices/fromsmartcar", test.AuthInjectorTestHandler(s.testUserID, nil), c.RegisterDeviceForUserFromSmartcar)
+	app.Post("/user/devices/second", test.AuthInjectorTestHandler(testUserID2, nil), c.RegisterDeviceForUser) // for different test user
+	app.Get("/user/devices/me", test.AuthInjectorTestHandler(s.testUserID, nil), c.GetUserDevices)
+	app.Patch("/vehicle/:tokenID/vin", test.AuthInjectorTestHandler(s.testUserID, &s.testUserEthAddr), c.UpdateVINV2) // Auth done by the middleware.
+	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID, nil), c.RefreshUserDeviceStatus)
+	app.Get("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID, nil), c.GetBurnDevice)
+	app.Post("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID, nil), c.PostBurnDevice)
+	app.Delete("/user/devices/:userDeviceID", test.AuthInjectorTestHandler(s.testUserID, nil), c.DeleteUserDevice)
 
 	s.controller = &c
 	s.app = app
