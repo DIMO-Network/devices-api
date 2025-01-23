@@ -185,12 +185,16 @@ func BuildRequest(method, url, body string) *http.Request {
 }
 
 // AuthInjectorTestHandler injects fake jwt with sub
-func AuthInjectorTestHandler(userID string) fiber.Handler {
+func AuthInjectorTestHandler(userID string, userEthAddr *common.Address) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		claims := jwt.MapClaims{
 			"sub": userID,
 			"nbf": time.Now().Unix(),
-		})
+		}
+		if userEthAddr != nil {
+			claims["ethereum_address"] = userEthAddr.Hex()
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 		c.Locals("user", token)
 		return c.Next()

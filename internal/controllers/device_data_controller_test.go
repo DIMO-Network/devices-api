@@ -100,7 +100,7 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 	testUserID := "123123"
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
-	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID), c.QueryDeviceErrorCodes)
+	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.QueryDeviceErrorCodes)
 
 	t.Run("POST - get description for query codes", func(t *testing.T) {
 		req := QueryDeviceErrorCodesReq{
@@ -175,7 +175,7 @@ func TestUserDevicesController_ShouldErrorOnTooManyErrorCodes(t *testing.T) {
 	testUserID := "123123"
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
-	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID), c.QueryDeviceErrorCodes)
+	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.QueryDeviceErrorCodes)
 
 	t.Run("POST - get description for query codes", func(t *testing.T) {
 
@@ -249,7 +249,7 @@ func TestUserDevicesController_ShouldErrorInvalidErrorCodes(t *testing.T) {
 	testUserID := "123123"
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
-	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID), c.QueryDeviceErrorCodes)
+	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.QueryDeviceErrorCodes)
 
 	t.Run("POST - get description for query codes", func(t *testing.T) {
 
@@ -319,7 +319,7 @@ func TestUserDevicesController_ShouldErrorOnEmptyErrorCodes(t *testing.T) {
 	testUserID := "123123"
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
-	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID), c.QueryDeviceErrorCodes)
+	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.QueryDeviceErrorCodes)
 
 	t.Run("POST - get description for query codes", func(t *testing.T) {
 
@@ -389,7 +389,7 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 	testUserID := "123123"
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
-	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID), c.QueryDeviceErrorCodes)
+	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.QueryDeviceErrorCodes)
 
 	t.Run("POST - get description for query codes", func(t *testing.T) {
 		erCodeReq := []string{"P0017", "P0016"}
@@ -475,7 +475,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 	testUserID := "123123"
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
-	app.Get("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID), c.GetUserDeviceErrorCodeQueries)
+	app.Get("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.GetUserDeviceErrorCodeQueries)
 
 	t.Run("GET - all saved error code response for current user devices", func(t *testing.T) {
 
@@ -551,7 +551,7 @@ func TestUserDevicesController_ClearUserDeviceErrorCodeQuery(t *testing.T) {
 	testUserID := "123123"
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
-	app.Post("/user/devices/:userDeviceID/error-codes/clear", test.AuthInjectorTestHandler(testUserID), c.ClearUserDeviceErrorCodeQuery)
+	app.Post("/user/devices/:userDeviceID/error-codes/clear", test.AuthInjectorTestHandler(testUserID, nil), c.ClearUserDeviceErrorCodeQuery)
 
 	t.Run("POST - clear last saved error code response for current user devices", func(t *testing.T) {
 		autoPiInteg := test.BuildIntegrationGRPC(ksuid.New().String(), constants.AutoPiVendor, 10, 0)
@@ -638,7 +638,7 @@ func TestUserDevicesController_ErrorOnAllErrorCodesCleared(t *testing.T) {
 	testUserID := "123123"
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
-	app.Post("/user/devices/:userDeviceID/error-codes/clear", test.AuthInjectorTestHandler(testUserID), c.ClearUserDeviceErrorCodeQuery)
+	app.Post("/user/devices/:userDeviceID/error-codes/clear", test.AuthInjectorTestHandler(testUserID, nil), c.ClearUserDeviceErrorCodeQuery)
 
 	t.Run("POST - clear last saved error code response for current user devices", func(t *testing.T) {
 		autoPiInteg := test.BuildIntegrationGRPC(ksuid.New().String(), constants.AutoPiVendor, 10, 0)

@@ -673,41 +673,6 @@
                 }
             }
         },
-        "/user/devices/{userDeviceID}/country_code": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "updates the CountryCode on the user device record",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "description": "Country code",
-                        "name": "name",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.UpdateCountryCodeReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
         "/user/devices/{userDeviceID}/error-codes": {
             "get": {
                 "security": [
@@ -1271,48 +1236,6 @@
                         "schema": {
                             "$ref": "#/definitions/internal_controllers.CommandRequestStatusResp"
                         }
-                    }
-                }
-            }
-        },
-        "/user/devices/{userDeviceID}/vin": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Deprecated. updates the VIN on the user device record. Keeping this alive to not break mobile app. VIN's now come from attestations.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "description": "VIN",
-                        "name": "vin",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.UpdateVINReq"
-                        }
-                    },
-                    {
-                        "type": "string",
-                        "description": "user id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
                     }
                 }
             }
@@ -2760,14 +2683,6 @@
                     "description": "UpdatedAt is the last time we updated the status of the transaction.",
                     "type": "string",
                     "example": "2022-10-01T09:22:26.337Z"
-                }
-            }
-        },
-        "internal_controllers.UpdateCountryCodeReq": {
-            "type": "object",
-            "properties": {
-                "countryCode": {
-                    "type": "string"
                 }
             }
         },
