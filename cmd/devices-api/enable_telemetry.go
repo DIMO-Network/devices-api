@@ -79,6 +79,12 @@ type fleetConfigResp struct {
 	} `json:"response"`
 }
 
+type deleteConfigResp struct {
+	Response struct {
+		UpdatedVehicles int `json:"updated_vehicles"`
+	} `json:"response"`
+}
+
 func enableTelemetry(settings *config.Settings, pdb db.Store, logger *zerolog.Logger, cipher shared.Cipher) error {
 	configName := os.Args[2]
 	userDeviceID := os.Args[3]
@@ -91,6 +97,8 @@ func enableTelemetry(settings *config.Settings, pdb db.Store, logger *zerolog.Lo
 		fieldsPayload = []byte(teslaAdvancedFields)
 	case "max":
 		fieldsPayload = []byte(teslaAllFields)
+	case "delete":
+		// Handle this elsewhere.
 	default:
 		return fmt.Errorf("unrecognized type %q", os.Args[3])
 	}
@@ -125,6 +133,46 @@ func enableTelemetry(settings *config.Settings, pdb db.Store, logger *zerolog.Lo
 	baseURL, err := url.ParseRequestURI(settings.TeslaFleetURL)
 	if err != nil {
 		return err
+	}
+
+	if configName == "delete" {
+		ur := baseURL.JoinPath("api/1/vehicles", udai.R.UserDevice.VinIdentifier.String, "fleet_telemetry_config")
+
+		req, err := http.NewRequest("DELETE", ur.String(), nil)
+		if err != nil {
+			return fmt.Errorf("failed to create request: %w", err)
+		}
+
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return fmt.Errorf("request failed: %w", err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusOK {
+			return fmt.Errorf("status code %d", res.StatusCode)
+		}
+
+		respBytes, err := io.ReadAll(res.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read response body: %w", err)
+		}
+
+		var resBody deleteConfigResp
+
+		if err := json.Unmarshal(respBytes, &resBody); err != nil {
+			return fmt.Errorf("failed to unmarshal response body: %w", err)
+		}
+
+		if resBody.Response.UpdatedVehicles == 1 {
+			logger.Info().Str("userDeviceId", udai.UserDeviceID).Msg("Successfully removed config.")
+		} else {
+			logger.Info().Str("userDeviceId", udai.UserDeviceID).Msg("Failed to remove config.")
+		}
+
+		return nil
 	}
 
 	ur := baseURL.JoinPath("api/1/vehicles/fleet_telemetry_config")
