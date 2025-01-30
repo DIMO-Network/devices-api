@@ -129,7 +129,8 @@ func (i *TaskStatusListener) processSmartcarPollStatusEvent(event *shared.CloudE
 
 	vehicleID, ok := udai.R.UserDevice.TokenID.Uint64()
 	if !ok {
-		i.log.Err(errors.New("failed to parse vehicle token id for cio event"))
+		err := errors.New("failed to parse vehicle token id for cio event")
+		i.log.Err(err).Str("userDeviceID", userDeviceID).Str("integrationID", integrationID).Msg("invalid vehicle id")
 	}
 
 	return i.cioSvc.SoftwareDisconnectionEvent(ctx, vehicleID, udai.R.UserDevice.OwnerAddress.Bytes, integrationID)

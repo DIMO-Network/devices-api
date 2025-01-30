@@ -40,11 +40,12 @@ func (s *Service) SoftwareDisconnectionEvent(ctx context.Context, vehicleID uint
 	})
 	if err != nil {
 		s.logger.Err(err).Str("wallet_address", common.Bytes2Hex(address)).Msg("failed to get account by wallet address from accounts api")
+		return err
 	}
 
 	return s.client.Enqueue(
 		analytics.Identify{
-			UserId: account.Id,
+			UserId: account.GetId(),
 			Traits: analytics.NewTraits().Set("integration_id", integrationID).Set("vehicle_id", vehicleID),
 		},
 	)
