@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/services/cio"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
@@ -29,6 +30,7 @@ type TaskStatusListener struct {
 	log          *zerolog.Logger
 	DeviceDefSvc DeviceDefinitionService
 	prod         sarama.SyncProducer
+	cioSvc       *cio.Service
 	settings     *config.Settings
 }
 
@@ -40,8 +42,8 @@ type TaskStatusData struct {
 	Status        string `json:"status"`
 }
 
-func NewTaskStatusListener(db func() *db.ReaderWriter, log *zerolog.Logger, ddSvc DeviceDefinitionService, prod sarama.SyncProducer, settings *config.Settings) *TaskStatusListener {
-	return &TaskStatusListener{db: db, log: log, DeviceDefSvc: ddSvc, prod: prod, settings: settings}
+func NewTaskStatusListener(db func() *db.ReaderWriter, log *zerolog.Logger, ddSvc DeviceDefinitionService, prod sarama.SyncProducer, cioSvc *cio.Service, settings *config.Settings) *TaskStatusListener {
+	return &TaskStatusListener{db: db, log: log, DeviceDefSvc: ddSvc, prod: prod, cioSvc: cioSvc, settings: settings}
 }
 
 func (i *TaskStatusListener) ProcessTaskUpdates(messages <-chan *message.Message) {
@@ -121,8 +123,16 @@ func (i *TaskStatusListener) processSmartcarPollStatusEvent(event *shared.CloudE
 	}
 
 	udai.Status = models.UserDeviceAPIIntegrationStatusAuthenticationFailure
-	_, err = udai.Update(context.Background(), i.db().Writer, boil.Infer())
-	return err
+	if _, err = udai.Update(context.Background(), i.db().Writer, boil.Infer()); err != nil {
+		i.log.Err(err).Str("userDeviceID", userDeviceID).Str("integrationID", integrationID).Msg("failed up update user device api integration with failure status")
+	}
+
+	vehicleID, ok := udai.R.UserDevice.TokenID.Uint64()
+	if !ok {
+		i.log.Err(errors.New("failed to parse vehicle token id for cio event"))
+	}
+
+	return i.cioSvc.SoftwareDisconnectionEvent(ctx, vehicleID, udai.R.UserDevice.OwnerAddress.Bytes, integrationID)
 }
 
 func (i *TaskStatusListener) processTeslaPollStatusEvent(event *shared.CloudEvent[TaskStatusData]) error {
@@ -167,9 +177,16 @@ func (i *TaskStatusListener) processTeslaPollStatusEvent(event *shared.CloudEven
 		}
 	}
 	udai.Status = models.UserDeviceAPIIntegrationStatusAuthenticationFailure
+	if _, err = udai.Update(context.Background(), i.db().Writer, boil.Infer()); err != nil {
+		i.log.Err(err).Str("userDeviceID", userDeviceID).Str("integrationID", integrationID).Msg("failed up update user device api integration with failure status")
+	}
 
-	_, err = udai.Update(context.Background(), i.db().Writer, boil.Infer())
-	return err
+	vehicleID, ok := udai.R.UserDevice.TokenID.Uint64()
+	if !ok {
+		i.log.Err(errors.New("failed to parse vehicle token id for cio event"))
+	}
+
+	return i.cioSvc.SoftwareDisconnectionEvent(ctx, vehicleID, udai.R.UserDevice.OwnerAddress.Bytes, integrationID)
 }
 
 func (i *TaskStatusListener) processCommandStatusEvent(event *shared.CloudEvent[TaskStatusData]) error {
