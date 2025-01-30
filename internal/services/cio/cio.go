@@ -34,7 +34,7 @@ func New(cioKey string, acctClient AccountsClient, logger *zerolog.Logger) (*Ser
 
 }
 
-func (s *Service) SoftwareDisconnectionEvent(ctx context.Context, vehicleID uint64, address []byte, integrationId string) error {
+func (s *Service) SoftwareDisconnectionEvent(ctx context.Context, vehicleID uint64, address []byte, integrationID string) error {
 	account, err := s.acctClient.GetAccount(ctx, &pb_accounts.GetAccountRequest{
 		WalletAddress: address,
 	})
@@ -45,7 +45,7 @@ func (s *Service) SoftwareDisconnectionEvent(ctx context.Context, vehicleID uint
 	return s.client.Enqueue(
 		analytics.Identify{
 			UserId: account.Id,
-			Traits: analytics.NewTraits().Set("integration_id", integrationId).Set("vehicle_id", vehicleID),
+			Traits: analytics.NewTraits().Set("integration_id", integrationID).Set("vehicle_id", vehicleID),
 		},
 	)
 }
