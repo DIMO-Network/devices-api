@@ -126,6 +126,7 @@ env:
   CLICKHOUSE_DATABASE: dimo
   DEVICE_DEFINITIONS_GET_BY_KSUID_ENDPOINT: https://device-definitions-api.dev.dimo.zone/device-definitions/
   TESLA_REQUIRED_SCOPES: vehicle_device_data,vehicle_location
+  ACCOUNTS_API_GRPC_ADDR: accounts-api-dev:8086
 service:
   type: ClusterIP
   ports:
