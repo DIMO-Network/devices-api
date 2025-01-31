@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/DIMO-Network/shared"
 
@@ -171,12 +170,6 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 		dd, err := sdc.deviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), ud.DefinitionID)
 		if err != nil {
 			return shared.GrpcErrorToFiber(err, "failed to get integration")
-		}
-
-		// block new kias from minting
-		if strings.ToLower(dd.Make.NameSlug) == "kia" || dd.Make.Id == "2681cSm2zmTmGHzqK3ldzoTLZIw" {
-			sdc.log.Warn().Msgf("new kias blocked from minting with smartcar connections")
-			return fiber.NewError(fiber.StatusFailedDependency, "Kia vehicles connected via smartcar cannot be manually minted.")
 		}
 
 		if dd.Make.Name == "Peugeot" && dd.Model == "2008" && dd.Year == 2024 {
