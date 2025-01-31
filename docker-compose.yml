@@ -1,9 +1,9 @@
 # db for local dev
-version: '3.9'
+version: "3.9"
 
 services:
   postgresql:
-    image: postgres:12.9-alpine # matches version used on aws environments
+    image: postgres:16.6-alpine # matches version used on aws environments
     container_name: pg-devices-api
     ports:
       - "5432:5432"
@@ -47,22 +47,22 @@ services:
       - EDGE_PORT=4566
       - SERVICES=lambda,s3
     ports:
-      - '4566-4583:4566-4583'
+      - "4566-4583:4566-4583"
     volumes:
       - "${TEMPDIR:-/tmp/localstack}:/tmp/localstack"
       - "/var/run/docker.sock:/var/run/docker.sock"
 
   zookeeper:
-    image: 'wurstmeister/zookeeper:latest'
+    image: "wurstmeister/zookeeper:latest"
     ports:
-      - '2181:2181'
+      - "2181:2181"
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
   # Does not persist anything!
   kafka:
-    image: 'wurstmeister/kafka:latest'
+    image: "wurstmeister/kafka:latest"
     ports:
-      - '9092:9092'
+      - "9092:9092"
     environment:
       - KAFKA_BROKER_ID=1
       - KAFKA_LISTENERS=PLAINTEXT://:9092
