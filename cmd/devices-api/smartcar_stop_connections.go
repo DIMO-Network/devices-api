@@ -10,7 +10,6 @@ import (
 	"github.com/DIMO-Network/shared/db"
 	"github.com/google/subcommands"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
@@ -57,4 +56,5 @@ func (p *smartcarStopConnectionsCmd) stopConnections(ctx context.Context, scInt 
 	if _, err := scInt.Update(ctx, p.pdb.DBS().Writer, boil.Infer()); err != nil {
 		return fmt.Errorf("failed to update integration table; task id: %s; %w", scInt.TaskID.String, err)
 	}
+	return nil
 }
