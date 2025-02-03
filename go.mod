@@ -8,7 +8,7 @@ require (
 	github.com/DIMO-Network/device-data-api v0.9.10
 	github.com/DIMO-Network/device-definitions-api v1.2.66
 	github.com/DIMO-Network/meta-transaction-processor v0.3.2
-	github.com/DIMO-Network/shared v0.12.5
+	github.com/DIMO-Network/shared v0.12.8
 	github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3
 	github.com/IBM/sarama v1.43.3
 	github.com/ThreeDotsLabs/watermill v1.3.5
