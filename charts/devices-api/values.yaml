@@ -33,6 +33,7 @@ env:
   DB_NAME: devices_api
   DB_MAX_OPEN_CONNECTIONS: '10'
   DB_MAX_IDLE_CONNECTIONS: '3'
+  DB_SSL_MODE: require
   SERVICE_NAME: devices-api
   JWT_KEY_SET_URL: https://auth.dev.dimo.zone/keys
   DEPLOYMENT_BASE_URL: https://devices-api.dev.dimo.zone
