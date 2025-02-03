@@ -3,6 +3,7 @@ package cio
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	pb_accounts "github.com/DIMO-Network/accounts-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/models"
@@ -44,9 +45,9 @@ func (s *Service) SoftwareDisconnectionEvent(ctx context.Context, udai *models.U
 		return errors.New("failed to parse vehicle token id")
 	}
 
-	userWallet := common.BytesToAddress(udai.R.UserDevice.OwnerAddress.Bytes)
-	if !common.IsHexAddress(userWallet.Hex()) {
-		return errors.New("failed to parse user wallet")
+	userMixAddr := common.NewMixedcaseAddress(common.BytesToAddress(udai.R.UserDevice.OwnerAddress.Bytes))
+	if !userMixAddr.ValidChecksum() {
+		return fmt.Errorf("invalid ethereum_address %s", common.BytesToAddress(udai.R.UserDevice.OwnerAddress.Bytes))
 	}
 
 	sd := udai.R.UserDevice.R.VehicleTokenSyntheticDevice
@@ -54,9 +55,9 @@ func (s *Service) SoftwareDisconnectionEvent(ctx context.Context, udai *models.U
 		return errors.New("no synthetic device associcated with api integration")
 	}
 
-	sdWallet := common.BytesToAddress(sd.WalletAddress)
-	if !common.IsHexAddress(sdWallet.Hex()) {
-		return errors.New("failed to parse synthetic device wallet")
+	sdWallet := common.NewMixedcaseAddress(common.BytesToAddress(sd.WalletAddress))
+	if !sdWallet.ValidChecksum() {
+		return errors.New("invalid synthetic device address")
 	}
 
 	integTokenID, ok := sd.IntegrationTokenID.Int64()
@@ -65,10 +66,10 @@ func (s *Service) SoftwareDisconnectionEvent(ctx context.Context, udai *models.U
 	}
 
 	account, err := s.acctClient.GetAccount(ctx, &pb_accounts.GetAccountRequest{
-		WalletAddress: userWallet.Bytes(),
+		WalletAddress: userMixAddr.Address().Bytes(),
 	})
 	if err != nil {
-		s.logger.Err(err).Str("user_address", userWallet.Hex()).Msg("failed to get account by wallet address from accounts api")
+		s.logger.Err(err).Str("user_address", userMixAddr.Address().Hex()).Msg("failed to get account by wallet address from accounts api")
 		return err
 	}
 
