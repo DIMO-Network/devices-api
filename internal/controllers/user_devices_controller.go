@@ -1496,12 +1496,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
-			// block new kias from minting
-			if (strings.ToLower(dd.Make.NameSlug) == "kia" || dd.Make.Id == "2681cSm2zmTmGHzqK3ldzoTLZIw") && in.Vendor == constants.SmartCarVendor {
-				udc.log.Warn().Msgf("new kias blocked from minting with smartcar connections")
-				return fiber.NewError(fiber.StatusFailedDependency, "Kia vehicles connected via smartcar cannot be manually minted for now.")
-			}
-
 			if dd.Make.Name == "Peugeot" && dd.Model == "2008" && dd.Year == 2024 {
 				return fiber.NewError(fiber.StatusBadRequest, "Certain Peugeot vehicles cannot be connected through Smartcar at this time.")
 			}
