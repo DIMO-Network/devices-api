@@ -232,7 +232,7 @@ func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, p
 
 	accountsConn, err := grpc.NewClient(settings.AccountsAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to create users API client.")
+		logger.Fatal().Err(err).Msg("Failed to create accounts API client.")
 	}
 	defer accountsConn.Close()
 
@@ -240,7 +240,7 @@ func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, p
 
 	cioSvc, err := cio.New(settings.CustomerIOAPIKey, acctClient, &logger)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to start customer io service")
+		logger.Fatal().Err(err).Msg("failed to create customer io service")
 	}
 
 	taskStatusService := services.NewTaskStatusListener(pdb.DBS, &logger, ddSvc, kp, cioSvc, settings)

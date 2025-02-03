@@ -17,6 +17,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 const (
@@ -100,6 +101,7 @@ func (i *TaskStatusListener) processSmartcarPollStatusEvent(event *shared.CloudE
 	udai, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID),
+		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.UserDevice, models.UserDeviceRels.VehicleTokenSyntheticDevice)),
 	).One(ctx, i.db().Writer)
 	if err != nil {
 		return fmt.Errorf("couldn't find device integration for device %s and integration %s: %w", userDeviceID, integrationID, err)
@@ -127,14 +129,12 @@ func (i *TaskStatusListener) processSmartcarPollStatusEvent(event *shared.CloudE
 		i.log.Err(err).Str("userDeviceID", userDeviceID).Str("integrationID", integrationID).Msg("failed up update user device api integration with failure status")
 	}
 
-	vehicleID, ok := udai.R.UserDevice.TokenID.Uint64()
-	if !ok {
-		err := errors.New("failed to parse vehicle token id for cio event")
-		i.log.Err(err).Str("userDeviceID", userDeviceID).Str("integrationID", integrationID).Msg("invalid vehicle id")
+	if err := i.cioSvc.SoftwareDisconnectionEvent(ctx, udai); err != nil {
+		i.log.Err(err).Str("userDeviceID", userDeviceID).Str("integrationID", integrationID).Msg("failed to send CIO software disconnection event")
 		return err
 	}
 
-	return i.cioSvc.SoftwareDisconnectionEvent(ctx, vehicleID, udai.R.UserDevice.OwnerAddress.Bytes, integrationID)
+	return nil
 }
 
 func (i *TaskStatusListener) processTeslaPollStatusEvent(event *shared.CloudEvent[TaskStatusData]) error {
@@ -157,6 +157,7 @@ func (i *TaskStatusListener) processTeslaPollStatusEvent(event *shared.CloudEven
 	udai, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID),
+		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.UserDevice, models.UserDeviceRels.VehicleTokenSyntheticDevice)),
 	).One(ctx, i.db().Writer)
 	if err != nil {
 		return fmt.Errorf("couldn't find device integration for device %s and integration %s: %w", userDeviceID, integrationID, err)
@@ -183,12 +184,12 @@ func (i *TaskStatusListener) processTeslaPollStatusEvent(event *shared.CloudEven
 		i.log.Err(err).Str("userDeviceID", userDeviceID).Str("integrationID", integrationID).Msg("failed up update user device api integration with failure status")
 	}
 
-	vehicleID, ok := udai.R.UserDevice.TokenID.Uint64()
-	if !ok {
-		i.log.Err(errors.New("failed to parse vehicle token id for cio event"))
+	if err := i.cioSvc.SoftwareDisconnectionEvent(ctx, udai); err != nil {
+		i.log.Err(err).Str("userDeviceID", userDeviceID).Str("integrationID", integrationID).Msg("failed to send CIO software disconnection event")
+		return err
 	}
 
-	return i.cioSvc.SoftwareDisconnectionEvent(ctx, vehicleID, udai.R.UserDevice.OwnerAddress.Bytes, integrationID)
+	return nil
 }
 
 func (i *TaskStatusListener) processCommandStatusEvent(event *shared.CloudEvent[TaskStatusData]) error {
