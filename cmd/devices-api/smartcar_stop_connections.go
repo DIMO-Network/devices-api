@@ -32,7 +32,7 @@ func (p *smartcarStopConnectionsCmd) SetFlags(_ *flag.FlagSet) {
 }
 
 func (p *smartcarStopConnectionsCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
-	const filename = "smartcar_stop_connections.csv"
+	const filename = "/tmp/smartcar_stop_connections.csv"
 	const smartcarIntegrationID = "22N2xaPOq2WW2gAHBHd0Ikn4Zob"
 
 	smartcarTaskSvc := services.NewSmartcarTaskService(p.container.settings, p.container.getKafkaProducer())
