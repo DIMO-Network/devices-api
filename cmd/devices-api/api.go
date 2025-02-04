@@ -170,7 +170,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	v1.Get("/swagger/*", swagger.HandlerDefault)
 	// temporary compass endpoint to query by vin
-	compassPSK := middleware.NewPSKAuthMiddleware(settings.CompassPreSharedKey)
+	compassPSK := middleware.NewPSKAuthMiddleware(settings.CompassPreSharedKey, &logger)
 	v1.Get("/compass/device-by-vin/:vin", compassPSK.Middleware, userDeviceController.GetCompassDeviceByVIN)
 
 	// Device Definitions
