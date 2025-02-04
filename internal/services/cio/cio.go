@@ -40,14 +40,17 @@ func New(cioKey string, acctClient AccountsClient, logger *zerolog.Logger) (*Ser
 }
 
 func (s *Service) SoftwareDisconnectionEvent(ctx context.Context, udai *models.UserDeviceAPIIntegration) error {
+	if udai.R.UserDevice.TokenID.IsZero() {
+		return errors.New("vehicle is not minted")
+	}
+
+	if udai.R.UserDevice.OwnerAddress.IsZero() {
+		return errors.New("no owner address")
+	}
+
 	vehicleTokenID, ok := udai.R.UserDevice.TokenID.Int64()
 	if !ok {
 		return errors.New("failed to parse vehicle token id")
-	}
-
-	userAddr := common.BytesToAddress(udai.R.UserDevice.OwnerAddress.Bytes)
-	if !common.IsHexAddress(userAddr.Hex()) {
-		return fmt.Errorf("invalid ethereum_address %s", userAddr.Hex())
 	}
 
 	sd := udai.R.UserDevice.R.VehicleTokenSyntheticDevice
@@ -65,6 +68,7 @@ func (s *Service) SoftwareDisconnectionEvent(ctx context.Context, udai *models.U
 		return errors.New("failed to parse integration token id")
 	}
 
+	userAddr := common.BytesToAddress(udai.R.UserDevice.OwnerAddress.Bytes)
 	account, err := s.acctClient.GetAccount(ctx, &pb_accounts.GetAccountRequest{
 		WalletAddress: userAddr.Bytes(),
 	})
