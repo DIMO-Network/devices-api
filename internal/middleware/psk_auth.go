@@ -23,7 +23,7 @@ func (p *PSKAuthMiddleware) Middleware(c *fiber.Ctx) error {
 	// Check if the header exists and matches the PSK
 	expected := "PSK " + p.preSharedKey
 	if strings.TrimSpace(authHeader) != expected {
-		p.logger.Warn().Msgf("PSK auth header is invalid. Received Header %s, Expected Header %s", authHeader, p.preSharedKey)
+		p.logger.Warn().Msgf("PSK auth header is invalid. Received Header %s, Expected Header %s", authHeader, expected)
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Unauthorized: Invalid PSK. " + authHeader,
 		})
