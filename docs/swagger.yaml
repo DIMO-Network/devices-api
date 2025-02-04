@@ -884,6 +884,29 @@ paths:
       - BearerAuth: []
       tags:
       - integrations
+  /compass/device-by-vin/{vin}:
+    get:
+      description: Temporary endpoint meant for compass-iot integration. Gets you
+        the token id's by the VIN
+      parameters:
+      - description: VIN
+        in: path
+        name: vin
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid VIN
+        "404":
+          description: user device with VIN not found
+        "500":
+          description: server error
+      security:
+      - PSK: []
+      tags:
+      - user-devices
   /countries:
     get:
       description: Returns all the supported countries

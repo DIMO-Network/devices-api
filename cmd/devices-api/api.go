@@ -301,6 +301,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	udOwner.Post("/commands/opt-in", userDeviceController.DeviceOptIn)
 
+	compassPSK := middleware.NewPSKAuthMiddleware(settings.CompassPreSharedKey)
+	v1.Get("/compass/device-by-vin/:vin", compassPSK.Middleware, userDeviceController.GetCompassDeviceByVIN)
+
 	logger.Info().Msg("Server started on port " + settings.Port)
 	// Start Server from a different go routine
 	go func() {
