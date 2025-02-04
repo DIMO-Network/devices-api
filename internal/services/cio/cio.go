@@ -45,9 +45,9 @@ func (s *Service) SoftwareDisconnectionEvent(ctx context.Context, udai *models.U
 		return errors.New("failed to parse vehicle token id")
 	}
 
-	userMixAddr := common.NewMixedcaseAddress(common.BytesToAddress(udai.R.UserDevice.OwnerAddress.Bytes))
-	if !userMixAddr.ValidChecksum() {
-		return fmt.Errorf("invalid ethereum_address %s", common.BytesToAddress(udai.R.UserDevice.OwnerAddress.Bytes))
+	userAddr := common.BytesToAddress(udai.R.UserDevice.OwnerAddress.Bytes)
+	if !common.IsHexAddress(userAddr.Hex()) {
+		return fmt.Errorf("invalid ethereum_address %s", userAddr.Hex())
 	}
 
 	sd := udai.R.UserDevice.R.VehicleTokenSyntheticDevice
@@ -55,9 +55,9 @@ func (s *Service) SoftwareDisconnectionEvent(ctx context.Context, udai *models.U
 		return errors.New("no synthetic device associcated with api integration")
 	}
 
-	sdWallet := common.NewMixedcaseAddress(common.BytesToAddress(sd.WalletAddress))
-	if !sdWallet.ValidChecksum() {
-		return errors.New("invalid synthetic device address")
+	sdWallet := common.BytesToAddress(sd.WalletAddress)
+	if !common.IsHexAddress(sdWallet.Hex()) {
+		return fmt.Errorf("invalid ethereum_address %s", sdWallet.Hex())
 	}
 
 	integTokenID, ok := sd.IntegrationTokenID.Int64()
@@ -66,26 +66,18 @@ func (s *Service) SoftwareDisconnectionEvent(ctx context.Context, udai *models.U
 	}
 
 	account, err := s.acctClient.GetAccount(ctx, &pb_accounts.GetAccountRequest{
-		WalletAddress: userMixAddr.Address().Bytes(),
+		WalletAddress: userAddr.Bytes(),
 	})
 	if err != nil {
-		s.logger.Err(err).Str("user_address", userMixAddr.Address().Hex()).Msg("failed to get account by wallet address from accounts api")
-		return err
-	}
-
-	if err := s.client.Enqueue(
-		analytics.Identify{
-			UserId: account.GetId(),
-			Traits: analytics.NewTraits().Set("integration_id", integTokenID).Set("vehicle_id", vehicleTokenID).Set("device_id", sdWallet),
-		},
-	); err != nil {
+		s.logger.Err(err).Str("user_address", userAddr.Hex()).Msg("failed to get account by wallet address from accounts api")
 		return err
 	}
 
 	return s.client.Enqueue(
 		analytics.Track{
-			UserId: account.GetId(),
-			Event:  SoftwareConnectionExpiredEvent,
+			UserId:     account.GetId(),
+			Event:      SoftwareConnectionExpiredEvent,
+			Properties: analytics.NewProperties().Set("integration_id", integTokenID).Set("vehicle_id", vehicleTokenID).Set("device_id", sdWallet),
 		},
 	)
 }
