@@ -49,7 +49,7 @@ func StartContainerDatabase(ctx context.Context, t *testing.T, migrationsDirRelP
 	settings := getTestDbSettings()
 	pgPort := "5432/tcp"
 	dbURL := func(_ string, port nat.Port) string {
-		return fmt.Sprintf("postgres://%s:%s@localhost:%s/%s?sslmode=prefer", settings.DB.User, settings.DB.Password, port.Port(), settings.DB.Name)
+		return fmt.Sprintf("postgres://%s:%s@localhost:%s/%s?sslmode=disable", settings.DB.User, settings.DB.Password, port.Port(), settings.DB.Name)
 	}
 	cr := testcontainers.ContainerRequest{
 		Image:        "postgres:16.6-alpine",

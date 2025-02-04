@@ -6,8 +6,6 @@ import (
 	"flag"
 	"fmt"
 
-	db2 "github.com/DIMO-Network/shared/db"
-
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/google/subcommands"
 	_ "github.com/lib/pq"
@@ -39,7 +37,7 @@ func (p *migrateDBCmd) SetFlags(f *flag.FlagSet) {
 func (p *migrateDBCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	var db *sql.DB
 	// setup database
-	db, err := sql.Open("postgres", p.settings.DB.BuildConnectionString(true, db2.SSLModeRequire))
+	db, err := sql.Open("postgres", p.settings.DB.BuildConnectionString(true))
 	defer func() {
 		if err := db.Close(); err != nil {
 			p.logger.Fatal().Msgf("goose: failed to close DB: %v\n", err)
