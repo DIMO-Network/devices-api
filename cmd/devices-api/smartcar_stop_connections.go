@@ -7,22 +7,16 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared/db"
 	"github.com/google/subcommands"
-	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type smartcarStopConnectionsCmd struct {
-	logger          zerolog.Logger
-	settings        config.Settings
-	pdb             db.Store
-	smartcarTaskSvc services.SmartcarTaskService
+	container dependencyContainer
 }
 
 func (*smartcarStopConnectionsCmd) Name() string { return "smartcar-stop-connections" }
@@ -40,6 +34,8 @@ func (p *smartcarStopConnectionsCmd) SetFlags(_ *flag.FlagSet) {
 func (p *smartcarStopConnectionsCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	const filename = "smartcar_stop_connections.csv"
 	const smartcarIntegrationID = "22N2xaPOq2WW2gAHBHd0Ikn4Zob"
+
+	smartcarTaskSvc := services.NewSmartcarTaskService(p.container.settings, p.container.getKafkaProducer())
 	// open csv file
 	// read VIN's, get the user device api integration filtered by smartcar and get the relation to userdevice
 	file, err := os.Open(filename)
@@ -85,7 +81,7 @@ func (p *smartcarStopConnectionsCmd) Execute(ctx context.Context, _ *flag.FlagSe
 
 			// get the user device api integration filtered by smartcar and get the relation to userdevice
 			ud, err := models.UserDevices(models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
-				models.UserDeviceWhere.VinConfirmed.EQ(true)).One(ctx, p.pdb.DBS().Reader)
+				models.UserDeviceWhere.VinConfirmed.EQ(true)).One(ctx, p.container.dbs().Reader)
 			if err != nil {
 				fmt.Println("Error getting user device, continuing:", err)
 				continue
@@ -94,37 +90,38 @@ func (p *smartcarStopConnectionsCmd) Execute(ctx context.Context, _ *flag.FlagSe
 			scInt, err := models.UserDeviceAPIIntegrations(
 				models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(ud.ID),
 				models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(smartcarIntegrationID),
-				qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice)).One(ctx, p.pdb.DBS().Reader)
+				qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice)).One(ctx, p.container.dbs().Reader)
 			if err != nil {
 				fmt.Println("Error getting user device api integration, continuing:", err)
 				continue
 			}
 
-			err = p.stopConnections(ctx, scInt)
+			err = p.stopConnections(ctx, scInt, smartcarTaskSvc)
 			if err != nil {
 				fmt.Println("Error stopping connections, continuing:", err)
 				continue
 			}
-			fmt.Println("Stopped connections for VIN:", vin)
+
+			p.container.logger.Info().Msgf("Stopped connections for VIN: %s", vin)
 		}
 	}
 	return subcommands.ExitSuccess
 }
 
-func (p *smartcarStopConnectionsCmd) stopConnections(ctx context.Context, scInt *models.UserDeviceAPIIntegration) error {
+func (p *smartcarStopConnectionsCmd) stopConnections(ctx context.Context, scInt *models.UserDeviceAPIIntegration, smartcarTaskSvc services.SmartcarTaskService) error {
 	if scInt.R.UserDevice == nil {
 		return fmt.Errorf("failed to find user device %s for integration %s", scInt.UserDeviceID, scInt.IntegrationID)
 	}
 	if !scInt.TaskID.Valid {
 		return fmt.Errorf("failed to stop device integration polling; invalid task id")
 	}
-	err := p.smartcarTaskSvc.StopPoll(scInt)
+	err := smartcarTaskSvc.StopPoll(scInt)
 	if err != nil {
 		return fmt.Errorf("failed to stop smartcar poll: %w", err)
 	}
 
 	scInt.Status = models.UserDeviceAPIIntegrationStatusAuthenticationFailure
-	if _, err := scInt.Update(ctx, p.pdb.DBS().Writer, boil.Infer()); err != nil {
+	if _, err := scInt.Update(ctx, p.container.dbs().Writer, boil.Infer()); err != nil {
 		return fmt.Errorf("failed to update integration table; task id: %s; %w", scInt.TaskID.String, err)
 	}
 	return nil
