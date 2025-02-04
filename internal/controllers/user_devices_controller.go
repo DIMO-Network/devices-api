@@ -1885,3 +1885,41 @@ func (udc *UserDevicesController) checkVehicleMint(c *fiber.Ctx, userDevice *mod
 
 	return mvs, dd, nil
 }
+
+// GetCompassDeviceByVIN godoc
+// @Description Temporary endpoint meant for compass-iot integration. Gets you the token id's by the VIN
+// @Tags        user-devices
+// @Param       vin path string                   true "VIN"
+// @Success     200
+// @Failure		404 "user device with VIN not found"
+// @Failure		400 "invalid VIN"
+// @Failure		500 "server error"
+// @Security    PSK
+// @Router      /compass/device-by-vin/{vin} [get]
+func (udc *UserDevicesController) GetCompassDeviceByVIN(c *fiber.Ctx) error {
+	vin := c.Params("vin")
+	if len(vin) != 17 {
+		return c.Status(fiber.StatusBadRequest).JSON(fmt.Errorf("vin should be 17 characters long"))
+	}
+
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
+	).One(c.Context(), udc.DBS().Reader)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "No device with that VIN found.")
+	}
+
+	tkID, _ := userDevice.TokenID.Uint64()
+	synthID := uint64(0)
+	if userDevice.R.VehicleTokenSyntheticDevice != nil {
+		synthID, _ = userDevice.R.VehicleTokenSyntheticDevice.TokenID.Uint64()
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"vin":                    userDevice.VinIdentifier.String,
+		"userDeviceId":           userDevice.ID,
+		"vehicleTokenId":         tkID,
+		"syntheticDeviceTokenId": synthID,
+	})
+}
