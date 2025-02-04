@@ -1555,7 +1555,21 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
-			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
+			if mr.SACDInput == nil {
+				return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
+					ManufacturerNode:     mvs.ManufacturerNode,
+					Owner:                mvs.Owner,
+					DeviceDefinitionId:   dd.Id,
+					IntegrationNode:      new(big.Int).SetUint64(intID),
+					VehicleOwnerSig:      sigBytes,
+					SyntheticDeviceSig:   sign,
+					SyntheticDeviceAddr:  common.BytesToAddress(addr),
+					AttrInfoPairsVehicle: attrListsToAttrPairs(mvs.Attributes, mvs.Infos),
+					AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
+				})
+			}
+
+			return client.MintVehicleAndSdWithDeviceDefinitionAndSACDSign(requestID, contracts.MintVehicleAndSdWithDdInput{
 				ManufacturerNode:     mvs.ManufacturerNode,
 				Owner:                mvs.Owner,
 				DeviceDefinitionId:   dd.Id,
@@ -1565,7 +1579,8 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				SyntheticDeviceAddr:  common.BytesToAddress(addr),
 				AttrInfoPairsVehicle: attrListsToAttrPairs(mvs.Attributes, mvs.Infos),
 				AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
-			})
+			}, *mr.SACDInput)
+
 		}
 	}
 
@@ -1668,7 +1683,8 @@ func (udc *UserDevicesController) UpdateNFTImage(c *fiber.Ctx) error {
 type VehicleMintRequest struct {
 	NFTImageData
 	// Signature is the hex encoding of the EIP-712 signature result.
-	Signature string `json:"signature" validate:"required"`
+	Signature string               `json:"signature" validate:"required"`
+	SACDInput *contracts.SacdInput `json:"sacd_input,omitempty"`
 }
 
 type NFTImageData struct {
