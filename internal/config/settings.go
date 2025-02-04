@@ -108,7 +108,7 @@ type Settings struct {
 	TeslaRequiredScopes string `json:"TESLA_REQUIRED_SCOPES"`
 
 	// Temporary until compass can have its own vin to tokens mapping
-	CompassPreSharedKey string `json:"COMPASS_PRE_SHARED_KEY"`
+	CompassPreSharedKey string `yaml:"COMPASS_PRE_SHARED_KEY"`
 }
 
 func (s *Settings) IsProduction() bool {
