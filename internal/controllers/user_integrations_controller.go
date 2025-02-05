@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	smartcar "github.com/smartcar/go-sdk"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
@@ -31,6 +32,11 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/mod/semver"
 )
+
+func isTeslaVirtualKeyCapable(model string, year int) bool {
+	// Can we check this capability through their API somehow?
+	return model != "Model S" && model != "Model X" || year >= 2021
+}
 
 // GetUserDeviceIntegration godoc
 // @Description Receive status updates about a Smartcar integration
@@ -58,7 +64,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("user device %s does not have integration %s", userDeviceID, integrationID))
+			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("User device %s does not have integration %s.", userDeviceID, integrationID))
 		}
 		return err
 	}
@@ -68,6 +74,8 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		ExternalID: apiIntegration.ExternalID,
 		CreatedAt:  apiIntegration.CreatedAt,
 	}
+
+	logger := udc.log.With().Str("userDeviceId", userDeviceID).Str("integrationId", integrationID).Logger()
 
 	// Handle fetching virtual key status
 	intd, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
@@ -89,7 +97,8 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		}
 
 		resp.Tesla = &TeslaIntegrationInfo{
-			APIVersion: apiVersion,
+			APIVersion:            apiVersion,
+			MissingRequiredScopes: []string{},
 		}
 
 		if apiVersion == constants.TeslaAPIV2 {
@@ -98,11 +107,32 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 			}
 
 			if apiIntegration.AccessExpiresAt.Valid && apiIntegration.AccessExpiresAt.Time.After(time.Now()) {
-				// TODO(elfjjs): Graceful stuff if the access token gets invalidated before expiry.
-				keyPaired, err := udc.getDeviceVirtualKeyStatus(c.Context(), apiIntegration)
+				accessToken, err := udc.cipher.Decrypt(apiIntegration.AccessToken.String)
 				if err != nil {
-					udc.log.Err(err).Msg("Error checking virtual key status.")
+					return fmt.Errorf("failed to decrypt access token: %w", err)
+				}
+
+				var claims partialTeslaClaims
+				_, _, err = jwt.NewParser().ParseUnverified(accessToken, &claims)
+				if err != nil {
+					return fiber.NewError(fiber.StatusInternalServerError, "Couldn't parse access token.")
+				}
+
+				if udc.Settings.TeslaRequiredScopes != "" {
+					// Yes, wasteful Split.
+					for _, scope := range strings.Split(udc.Settings.TeslaRequiredScopes, ",") {
+						if !slices.Contains(claims.Scopes, scope) {
+							resp.Tesla.MissingRequiredScopes = append(resp.Tesla.MissingRequiredScopes, scope)
+						}
+					}
+				}
+
+				// TODO(elfjjs): Graceful stuff if the access token gets invalidated before expiry.
+				keyPaired, err := udc.getDeviceVirtualKeyStatus(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
+				if err != nil {
+					logger.Err(err).Msg("Error checking virtual key status.")
 					if !errors.Is(err, services.ErrUnauthorized) {
+						// TODO(elffjs): Need to figure these out.
 						return fiber.NewError(fiber.StatusInternalServerError, "Error checking virtual key status.")
 					}
 				} else {
@@ -119,18 +149,18 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 							return err
 						}
 
-						if (dd.Model == "Model S" || dd.Model == "Model X") && dd.Year < 2021 {
-							vks = Incapable
-						} else {
+						if isTeslaVirtualKeyCapable(dd.Model, int(dd.Year)) {
 							vks = Unpaired
+						} else {
+							vks = Incapable
 						}
 					}
 
 					resp.Tesla.VirtualKeyStatus = vks
 
-					isSubscribed, err := udc.getTelemetrySubscriptionStatus(c.Context(), apiIntegration)
+					isSubscribed, err := udc.getTelemetrySubscriptionStatus(c.Context(), accessToken, apiIntegration.ExternalID.String)
 					if err != nil {
-						udc.log.Err(err).Msg("Error checking telemetry subscription status.")
+						logger.Err(err).Msg("Error checking telemetry subscription status.")
 						if !errors.Is(err, services.ErrUnauthorized) {
 							return fiber.NewError(fiber.StatusInternalServerError, "Error checking telemetry subscription status.")
 						}
@@ -145,45 +175,20 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context, integration *models.UserDeviceAPIIntegration) (bool, error) {
-	if !integration.AccessExpiresAt.Valid || !integration.AccessExpiresAt.Time.After(time.Now()) {
-		// TODO(elffjs): Need to find a way to fail these eventually.
-		udc.log.Warn().Str("userDeviceId", integration.UserDeviceID).Msg("Tesla token expired.")
-		return false, nil
-	}
-
-	accessTk, err := udc.cipher.Decrypt(integration.AccessToken.String)
-	if err != nil {
-		return false, fmt.Errorf("couldn't decrypt access token: %w", err)
-	}
-
-	isConnected, err := udc.teslaFleetAPISvc.VirtualKeyConnectionStatus(ctx, accessTk, integration.R.UserDevice.VinIdentifier.String)
-	if err != nil {
-		return false, err
-	}
-
-	return isConnected, nil
+func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context, accessToken, vin string) (bool, error) {
+	// TODO(elffjs): Do we need this function at all?
+	return udc.teslaFleetAPISvc.VirtualKeyConnectionStatus(ctx, accessToken, vin)
 }
 
-func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Context, integration *models.UserDeviceAPIIntegration) (bool, error) {
-	if !integration.AccessExpiresAt.Valid || !integration.AccessExpiresAt.Time.After(time.Now()) {
-		// TODO(elffjs): Need to find a way to fail these eventually.
-		return false, nil
-	}
-
-	accessTk, err := udc.cipher.Decrypt(integration.AccessToken.String)
+func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Context, accessToken, id string) (bool, error) {
+	teslaID, err := strconv.Atoi(id)
 	if err != nil {
-		return false, fmt.Errorf("couldn't decrypt access token: %w", err)
+		return false, fmt.Errorf("couldn't parse Tesla id as a number: %w", err)
 	}
 
-	teslaID, err := strconv.Atoi(integration.ExternalID.String)
+	isSubscribed, err := udc.teslaFleetAPISvc.GetTelemetrySubscriptionStatus(ctx, accessToken, teslaID)
 	if err != nil {
 		return false, err
-	}
-
-	isSubscribed, err := udc.teslaFleetAPISvc.GetTelemetrySubscriptionStatus(ctx, accessTk, teslaID)
-	if err != nil {
-		return false, fiber.NewError(fiber.StatusFailedDependency, err.Error())
 	}
 
 	return isSubscribed, nil
@@ -1091,10 +1096,6 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 		if info.Make == "TESLA" { // They always have this in ALL CAPS for some reason.
 			return fiber.NewError(fiber.StatusBadRequest, "Teslas should be connected using the official integration.")
 		}
-
-		if info.Make == "KIA" {
-			return fiber.NewError(fiber.StatusBadRequest, "The ability to create new Kia connections through Smartcar has been disabled.")
-		}
 	}
 
 	endpoints, err := udc.smartcarClient.GetEndpoints(c.Context(), token.Access, externalID)
@@ -1398,6 +1399,8 @@ type TeslaIntegrationInfo struct {
 	// VirtualKeyStatus indicates whether the Tesla can pair with DIMO's virtual key; and if it can,
 	// whether the key has indeed been paired.
 	VirtualKeyStatus VirtualKeyStatus `json:"virtualKeyStatus" swaggertype:"string" enums:"Paired,Unpaired,Incapable"`
+	// MissingRequiredScopes lists scopes required by DIMO that we're missing.
+	MissingRequiredScopes []string `json:"missingRequiredScopes"`
 }
 
 type VirtualKeyStatus int

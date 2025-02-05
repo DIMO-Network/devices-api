@@ -10,11 +10,15 @@ import (
 	"time"
 
 	"github.com/google/subcommands"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
+	pb_accounts "github.com/DIMO-Network/accounts-api/pkg/grpc"
 	_ "github.com/DIMO-Network/devices-api/docs"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/kafka"
 	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/internal/services/cio"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/IBM/sarama"
@@ -119,6 +123,7 @@ func main() {
 		subcommands.Register(&autoPiKTableDeleteCmd{logger: logger, container: deps}, "device integrations")
 		subcommands.Register(&startSDTask{logger: logger, container: deps, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&startIntegrationTask{logger: logger, container: deps, settings: settings, pdb: pdb}, "device integrations")
+		subcommands.Register(&smartcarStopConnectionsCmd{container: deps}, "device integrations")
 
 		subcommands.Register(&populateESDDDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: deps.getElasticSearchService(), ddSvc: deps.getDeviceDefinitionService()}, "populate data")
 		subcommands.Register(&populateESRegionDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: deps.getElasticSearchService(), ddSvc: deps.getDeviceDefinitionService()}, "populate data")
@@ -226,7 +231,20 @@ func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, p
 
 	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, settings)
 
-	taskStatusService := services.NewTaskStatusListener(pdb.DBS, &logger, ddSvc, kp, settings)
+	accountsConn, err := grpc.NewClient(settings.AccountsAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create accounts API client.")
+	}
+	defer accountsConn.Close()
+
+	acctClient := pb_accounts.NewAccountsClient(accountsConn)
+
+	cioSvc, err := cio.New(settings.CustomerIOAPIKey, acctClient, &logger)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to create customer io service")
+	}
+
+	taskStatusService := services.NewTaskStatusListener(pdb.DBS, &logger, ddSvc, kp, cioSvc, settings)
 	consumer.Start(context.Background(), taskStatusService.ProcessTaskUpdates)
 
 	logger.Info().Msg("Task status consumer started")

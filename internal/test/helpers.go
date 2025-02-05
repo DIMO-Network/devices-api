@@ -52,7 +52,7 @@ func StartContainerDatabase(ctx context.Context, t *testing.T, migrationsDirRelP
 		return fmt.Sprintf("postgres://%s:%s@localhost:%s/%s?sslmode=disable", settings.DB.User, settings.DB.Password, port.Port(), settings.DB.Name)
 	}
 	cr := testcontainers.ContainerRequest{
-		Image:        "postgres:12.9-alpine",
+		Image:        "postgres:16.6-alpine",
 		Env:          map[string]string{"POSTGRES_USER": settings.DB.User, "POSTGRES_PASSWORD": settings.DB.Password, "POSTGRES_DB": settings.DB.Name},
 		ExposedPorts: []string{pgPort},
 		Cmd:          []string{"postgres", "-c", "fsync=off"},
@@ -185,12 +185,16 @@ func BuildRequest(method, url, body string) *http.Request {
 }
 
 // AuthInjectorTestHandler injects fake jwt with sub
-func AuthInjectorTestHandler(userID string) fiber.Handler {
+func AuthInjectorTestHandler(userID string, userEthAddr *common.Address) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		claims := jwt.MapClaims{
 			"sub": userID,
 			"nbf": time.Now().Unix(),
-		})
+		}
+		if userEthAddr != nil {
+			claims["ethereum_address"] = userEthAddr.Hex()
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 		c.Locals("user", token)
 		return c.Next()

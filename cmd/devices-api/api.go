@@ -168,6 +168,10 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1 := app.Group("/v1")
 
 	v1.Get("/swagger/*", swagger.HandlerDefault)
+	// temporary compass endpoint to query by vin
+	compassPSK := middleware.NewPSKAuthMiddleware(settings.CompassPreSharedKey, &logger)
+	v1.Get("/compass/device-by-vin/:vin", compassPSK.Middleware, userDeviceController.GetCompassDeviceByVIN)
+
 	// Device Definitions
 	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc)
 
@@ -238,9 +242,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Delete("/", userDeviceController.DeleteUserDevice)
 	udOwner.Get("/commands/mint", userDeviceController.GetMintDevice)
 	udOwner.Post("/commands/mint", userDeviceController.PostMintDevice)
-
-	udOwner.Patch("/vin", userDeviceController.UpdateVIN)
-	udOwner.Patch("/country-code", userDeviceController.UpdateCountryCode)
 
 	udOwner.Post("/error-codes", userDeviceController.QueryDeviceErrorCodes)
 	udOwner.Get("/error-codes", userDeviceController.GetUserDeviceErrorCodeQueries)
