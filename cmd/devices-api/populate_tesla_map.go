@@ -18,6 +18,11 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 )
 
+const (
+	TeslaIntegrationID = "26A5Dk3vvvQutjSyF0Jka2DP5lg"
+	TeslaMappingTopic  = "topic.device.integration.mapping.tesla"
+)
+
 type populateTeslaTelemetryMapCmd struct {
 	logger    zerolog.Logger
 	settings  config.Settings
@@ -56,7 +61,7 @@ func remakeTeslaTelemTopic(settings *config.Settings, pdb db.Store, producer sar
 	ctx := context.Background()
 
 	udais, err := models.UserDeviceAPIIntegrations(
-		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ("26A5Dk3vvvQutjSyF0Jka2DP5lg"),
+		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(TeslaIntegrationID),
 		qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
 	).All(ctx, pdb.DBS().Reader)
 	if err != nil {
@@ -64,8 +69,9 @@ func remakeTeslaTelemTopic(settings *config.Settings, pdb db.Store, producer sar
 	}
 
 	type userDeviceIDData struct {
-		UserDeviceID string `json:"userDeviceId"`
-		Type         string `json:"type"`
+		UserDeviceID   string `json:"userDeviceId"`
+		VehicleTokenID int64  `json:"vehicleTokenID"`
+		Type           string `json:"type"`
 	}
 
 	for _, udai := range udais {
@@ -78,9 +84,23 @@ func remakeTeslaTelemTopic(settings *config.Settings, pdb db.Store, producer sar
 			continue
 		}
 
+		VIN := udai.R.UserDevice.VinIdentifier.String
+
+		if udai.R.UserDevice.TokenID.IsZero() {
+			logger.Warn().Str("userDeviceId", udai.UserDeviceID).Str("vin", VIN).Msg("invalid vehicle token id")
+			continue
+		}
+
+		vID, ok := udai.R.UserDevice.TokenID.Int64()
+		if !ok {
+			logger.Warn().Str("userDeviceId", udai.UserDeviceID).Str("vin", VIN).Msg("failed to parse vehicle token id")
+			continue
+		}
+
 		udid := userDeviceIDData{
-			UserDeviceID: udai.UserDeviceID,
-			Type:         "Add",
+			UserDeviceID:   udai.UserDeviceID,
+			VehicleTokenID: vID,
+			Type:           "Add",
 		}
 
 		b, err := json.Marshal(shared.CloudEvent[userDeviceIDData]{Data: udid})
@@ -89,12 +109,12 @@ func remakeTeslaTelemTopic(settings *config.Settings, pdb db.Store, producer sar
 		}
 
 		msg := &sarama.ProducerMessage{
-			Topic: "topic.device.integration.mapping.tesla",
-			Key:   sarama.StringEncoder(udai.R.UserDevice.VinIdentifier.String),
+			Topic: TeslaMappingTopic,
+			Key:   sarama.StringEncoder(VIN),
 			Value: sarama.ByteEncoder(b),
 		}
 		if _, _, err := producer.SendMessage(msg); err != nil {
-			return fmt.Errorf("couldn't send message for UD %s: %w", udai.UserDeviceID, err)
+			return fmt.Errorf("couldn't send message for vin %s; userDeviceID: %s: %w", VIN, udai.UserDeviceID, err)
 		}
 	}
 
