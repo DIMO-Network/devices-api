@@ -279,11 +279,13 @@ func (g *GeofencesController) GetAll(c *fiber.Ctx) error {
 					deviceDef = dd
 				}
 			}
-			f.UserDevices = append(f.UserDevices, GeoFenceUserDevice{
-				UserDeviceID: udtg.UserDeviceID,
-				Name:         udtg.R.UserDevice.Name.Ptr(),
-				MMY:          deviceDef.Name,
-			})
+			if deviceDef != nil {
+				f.UserDevices = append(f.UserDevices, GeoFenceUserDevice{
+					UserDeviceID: udtg.UserDeviceID,
+					Name:         udtg.R.UserDevice.Name.Ptr(),
+					MMY:          deviceDef.Name,
+				})
+			}
 		}
 		fences[i] = f
 	}
