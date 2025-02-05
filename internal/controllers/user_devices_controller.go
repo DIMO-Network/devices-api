@@ -1555,21 +1555,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
-			if mr.SACDInput == nil {
-				return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
-					ManufacturerNode:     mvs.ManufacturerNode,
-					Owner:                mvs.Owner,
-					DeviceDefinitionId:   dd.Id,
-					IntegrationNode:      new(big.Int).SetUint64(intID),
-					VehicleOwnerSig:      sigBytes,
-					SyntheticDeviceSig:   sign,
-					SyntheticDeviceAddr:  common.BytesToAddress(addr),
-					AttrInfoPairsVehicle: attrListsToAttrPairs(mvs.Attributes, mvs.Infos),
-					AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
-				})
-			}
-
-			return client.MintVehicleAndSdWithDeviceDefinitionAndSACDSign(requestID, contracts.MintVehicleAndSdWithDdInput{
+			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
 				ManufacturerNode:     mvs.ManufacturerNode,
 				Owner:                mvs.Owner,
 				DeviceDefinitionId:   dd.Id,
@@ -1579,7 +1565,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				SyntheticDeviceAddr:  common.BytesToAddress(addr),
 				AttrInfoPairsVehicle: attrListsToAttrPairs(mvs.Attributes, mvs.Infos),
 				AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
-			}, *mr.SACDInput)
+			})
 
 		}
 	}
@@ -1591,6 +1577,254 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	logger.Info().Msgf("Submitted metatransaction request %s", requestID)
 
 	return client.MintVehicleWithDeviceDefinitionSign(requestID, mvs.ManufacturerNode, mvs.Owner, dd.Id, attrListsToAttrPairs(mvs.Attributes, mvs.Infos), sigBytes)
+}
+
+// PostMintDeviceWithSACD godoc
+// @Description Sends a request to mint a device and synthetic device to the blockchain, includes SACD permissions
+// @Tags        user-devices
+// @Param       userDeviceID path string                  true "user device ID"
+// @Param       mintRequest  body controllers.VehicleMintRequest true "Signature and NFT data"
+// @Success     200
+// @Security    BearerAuth
+// @Router      /user/devices/{userDeviceID}/commands/mint [post]
+func (udc *UserDevicesController) PostMintDeviceWithSACD(c *fiber.Ctx) error {
+	userDeviceID := c.Params("userDeviceID")
+
+	logger := helpers.GetLogger(c, udc.log)
+
+	tx, err := udc.DBS().Writer.BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint
+
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.ID.EQ(userDeviceID),
+		qm.Load(models.UserDeviceRels.MintRequest),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
+	).One(c.Context(), tx)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fiber.NewError(fiber.StatusNotFound, "No device with that id found.")
+		}
+		return err
+	}
+
+	// This actually makes no database calls!
+	mvs, dd, err := udc.checkVehicleMint(c, userDevice)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, errors.Wrapf(err, "failed to checkVehicleMint. user device id: %s", userDeviceID).Error())
+	}
+
+	var mr VehicleMintRequest
+	if err := c.BodyParser(&mr); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
+	}
+
+	if mr.SACDInput == nil {
+		return fiber.NewError(fiber.StatusBadRequest, "signed sacd required to mint synthetic device")
+	}
+
+	// This may not be there, but if it is we should delete it.
+	imageData := strings.TrimPrefix(mr.ImageData, "data:image/png;base64,")
+
+	image, err := base64.StdEncoding.DecodeString(imageData)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Primary image not properly base64-encoded.")
+	}
+
+	client := registry.Client{
+		Producer:     udc.producer,
+		RequestTopic: "topic.transaction.request.send",
+		Contract: registry.Contract{
+			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
+			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
+			Name:    "DIMO",
+			Version: "1",
+		},
+	}
+
+	mvdds := registry.MintVehicleWithDeviceDefinitionSign{
+		ManufacturerNode:   mvs.ManufacturerNode,
+		Owner:              mvs.Owner,
+		Attributes:         mvs.Attributes,
+		Infos:              mvs.Infos,
+		DeviceDefinitionID: dd.Id,
+	}
+
+	logger.Info().
+		Interface("httpRequestBody", mr).
+		Interface("client", client).Interface("MintVehicleAndSdWithDeviceDefinitionSign", mvdds).
+		Interface("typedData", client.GetPayload(&mvdds)).
+		Msg("Got request.")
+
+	hash, err := client.Hash(&mvdds)
+	if err != nil {
+		return opaqueInternalError
+	}
+
+	sigBytes := common.FromHex(mr.Signature)
+
+	recAddr, origErr := helpers.Ecrecover(hash, sigBytes)
+	if origErr != nil || recAddr != mvs.Owner {
+		ethClient, err := ethclient.Dial(udc.Settings.MainRPCURL)
+		if err != nil {
+			return err
+		}
+
+		sigCon, err := sig2.NewErc1271(mvs.Owner, ethClient)
+		if err != nil {
+			return err
+		}
+
+		ret, err := sigCon.IsValidSignature(nil, common.BytesToHash(hash), sigBytes)
+		if err != nil {
+			return err
+		}
+
+		if ret != erc1271magicValue {
+			return fiber.NewError(fiber.StatusBadRequest, "Could not verify ERC-1271 signature.")
+		}
+	}
+
+	requestID := ksuid.New().String()
+
+	if len(image) == 0 {
+		if !userDevice.IpfsImageCid.Valid {
+			return fiber.NewError(fiber.StatusBadRequest, "No image in request body and none assigned previously.")
+		}
+	} else {
+		if userDevice.IpfsImageCid.Valid {
+			logger.Warn().Msg("Image provided in request body, but also one assigned previously.")
+		}
+		cid, err := udc.ipfsSvc.UploadImage(c.Context(), imageData)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "Failed to upload image to IPFS.")
+		}
+
+		userDevice.IpfsImageCid = null.StringFrom(cid)
+	}
+
+	// This may not be there, but if it is we should delete it.
+	imageDataTransp := strings.TrimPrefix(mr.ImageDataTransparent, "data:image/png;base64,")
+
+	imageTransp, err := base64.StdEncoding.DecodeString(imageDataTransp)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Transparent image not properly base64-encoded.")
+	}
+
+	if len(imageTransp) != 0 {
+		_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
+			Bucket: &udc.Settings.NFTS3Bucket,
+			Key:    aws.String(requestID + "_transparent.png"),
+			Body:   bytes.NewReader(imageTransp),
+		})
+		if err != nil {
+			logger.Err(err).Msg("Failed to save transparent image to S3.")
+			return opaqueInternalError
+		}
+	}
+
+	mtr := models.MetaTransactionRequest{
+		ID:     requestID,
+		Status: models.MetaTransactionRequestStatusUnsubmitted,
+	}
+	if err = mtr.Insert(c.Context(), tx, boil.Infer()); err != nil {
+		return err
+	}
+
+	userDevice.MintRequestID = null.StringFrom(requestID)
+	if _, err = userDevice.Update(c.Context(), tx, boil.Infer()); err != nil {
+		return err
+	}
+
+	if len(userDevice.R.UserDeviceAPIIntegrations) == 0 {
+		return errors.New("api connection required to mint synthetic device")
+	}
+
+	intID := uint64(0)
+	for _, udai := range userDevice.R.UserDeviceAPIIntegrations {
+		in, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), udai.IntegrationID)
+		if err != nil {
+			return err
+		}
+
+		if dd.Make.Name == "Peugeot" && dd.Model == "2008" && dd.Year == 2024 {
+			return fiber.NewError(fiber.StatusBadRequest, "Certain Peugeot vehicles cannot be connected through Smartcar at this time.")
+		}
+
+		if in.Vendor == constants.TeslaVendor {
+			intID = in.TokenId
+			break
+		} else if in.Vendor == constants.SmartCarVendor {
+			intID = in.TokenId
+		}
+	}
+
+	if intID != 0 {
+		return errors.New(fmt.Sprintf("invalid integration vendor id: %d", intID))
+	}
+
+	var seq struct {
+		NextVal int `boil:"nextval"`
+	}
+
+	qry := fmt.Sprintf("SELECT nextval('%s.synthetic_devices_serial_sequence');", udc.Settings.DB.Name)
+	err = queries.Raw(qry).Bind(c.Context(), tx, &seq)
+	if err != nil {
+		return err
+	}
+
+	childNum := seq.NextVal
+
+	addr, err := udc.wallet.GetAddress(c.Context(), uint32(childNum))
+	if err != nil {
+		return err
+	}
+
+	sd := models.SyntheticDevice{
+		IntegrationTokenID: types.NewDecimal(decimal.New(int64(intID), 0)),
+		MintRequestID:      requestID,
+		WalletChildNumber:  seq.NextVal,
+		WalletAddress:      addr,
+	}
+
+	if err := sd.Insert(c.Context(), tx, boil.Infer()); err != nil {
+		return err
+	}
+
+	mvss := registry.MintVehicleAndSdSign{
+		IntegrationNode: new(big.Int).SetUint64(intID),
+	}
+
+	hash, err = client.Hash(&mvss)
+	if err != nil {
+		return err
+	}
+
+	sign, err := udc.wallet.SignHash(c.Context(), uint32(childNum), hash)
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	logger.Info().Msgf("Submitted metatransaction request %s", requestID)
+
+	return client.MintVehicleAndSdWithDeviceDefinitionAndSACDSign(requestID, contracts.MintVehicleAndSdWithDdInput{
+		ManufacturerNode:     mvs.ManufacturerNode,
+		Owner:                mvs.Owner,
+		DeviceDefinitionId:   dd.Id,
+		IntegrationNode:      new(big.Int).SetUint64(intID),
+		VehicleOwnerSig:      sigBytes,
+		SyntheticDeviceSig:   sign,
+		SyntheticDeviceAddr:  common.BytesToAddress(addr),
+		AttrInfoPairsVehicle: attrListsToAttrPairs(mvs.Attributes, mvs.Infos),
+		AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
+	}, *mr.SACDInput)
+
 }
 
 func attrListsToAttrPairs(attrs []string, infos []string) []contracts.AttributeInfoPair {

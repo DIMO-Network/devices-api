@@ -409,7 +409,6 @@ func (c *Client) MintVehicleAndSdWithDeviceDefinitionSign(requestID string, data
 	return c.sendRequest(requestID, callData)
 }
 
-// TODO(ae): update once contract has been updated to reflect actual method & which methods have been depricated
 // function MintVehicleAndSdWithDeviceDefinitionSign(MintVehicleAndSdWithDdInput calldata data)
 func (c *Client) MintVehicleAndSdWithDeviceDefinitionAndSACDSign(requestID string, mintVehicleInput contracts.MintVehicleAndSdWithDdInput, sacdInput contracts.SacdInput) error {
 	abi, err := contracts.RegistryMetaData.GetAbi()
