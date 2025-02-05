@@ -712,7 +712,7 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 		}
 	}
 
-	udFull, err := udc.createUserDevice(c.Context(), definitionID, "", reg.CountryCode, userID, nil, nil)
+	udFull, err := udc.createUserDevice(c.Context(), definitionID, "", reg.CountryCode, userID, nil, nil, false)
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "")
 	}
@@ -764,6 +764,8 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 
 	slugID := ""
 
+	vinConfirmed := udc.Settings.CompassPreSharedKey == reg.PreApprovedPSK
+
 	// check if VIN already exists
 	existingUD, err := models.UserDevices(models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
 		models.UserDeviceWhere.VinConfirmed.EQ(true)).One(c.Context(), udc.DBS().Reader)
@@ -800,7 +802,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		}
 		slugID = decodeVIN.DefinitionId
 
-		udFull, err = udc.createUserDevice(c.Context(), slugID, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, &reg.CANProtocol)
+		udFull, err = udc.createUserDevice(c.Context(), slugID, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, &reg.CANProtocol, vinConfirmed)
 		if err != nil {
 			localLog.Err(err).Send()
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
@@ -1049,9 +1051,8 @@ func buildSmartcarTokenKey(vin, userID string) string {
 	return fmt.Sprintf("sc-temp-tok-%s-%s", vin, userID)
 }
 
-func (udc *UserDevicesController) createUserDevice(ctx context.Context, definitionID, styleID, countryCode, userID string,
-	vin, canProtocol *string) (*UserDeviceFull, error) {
-	ud, dd, err := udc.userDeviceSvc.CreateUserDevice(ctx, definitionID, styleID, countryCode, userID, vin, canProtocol, false)
+func (udc *UserDevicesController) createUserDevice(ctx context.Context, definitionID, styleID, countryCode, userID string, vin, canProtocol *string, vinConfirmed bool) (*UserDeviceFull, error) {
+	ud, dd, err := udc.userDeviceSvc.CreateUserDevice(ctx, definitionID, styleID, countryCode, userID, vin, canProtocol, vinConfirmed)
 	if err != nil {
 		if errors.Is(err, services.ErrEmailUnverified) {
 			return nil, fiber.NewError(fiber.StatusBadRequest,
@@ -1698,7 +1699,8 @@ type RegisterUserDeviceVIN struct {
 	VIN         string `json:"vin"`
 	CountryCode string `json:"countryCode"`
 	// CANProtocol is the protocol that was detected by edge-network from the autopi.
-	CANProtocol string `json:"canProtocol"`
+	CANProtocol    string `json:"canProtocol"`
+	PreApprovedPSK string `json:"preApprovedPSK"`
 }
 
 type RegisterUserDeviceSmartcar struct {
