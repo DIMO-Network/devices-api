@@ -130,7 +130,6 @@ func (i *TaskStatusListener) processSmartcarPollStatusEvent(event *shared.CloudE
 	}
 
 	if err := i.cioSvc.SoftwareDisconnectionEvent(ctx, udai); err != nil {
-		i.log.Err(err).Str("userDeviceID", userDeviceID).Str("integrationID", integrationID).Msg("failed to send CIO software disconnection event")
 		return err
 	}
 
@@ -185,7 +184,6 @@ func (i *TaskStatusListener) processTeslaPollStatusEvent(event *shared.CloudEven
 	}
 
 	if err := i.cioSvc.SoftwareDisconnectionEvent(ctx, udai); err != nil {
-		i.log.Err(err).Str("userDeviceID", userDeviceID).Str("integrationID", integrationID).Msg("failed to send CIO software disconnection event")
 		return err
 	}
 

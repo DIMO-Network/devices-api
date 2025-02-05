@@ -3,7 +3,6 @@ package cio
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	pb_accounts "github.com/DIMO-Network/accounts-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/models"
@@ -59,9 +58,6 @@ func (s *Service) SoftwareDisconnectionEvent(ctx context.Context, udai *models.U
 	}
 
 	sdWallet := common.BytesToAddress(sd.WalletAddress)
-	if !common.IsHexAddress(sdWallet.Hex()) {
-		return fmt.Errorf("invalid ethereum_address %s", sdWallet.Hex())
-	}
 
 	integTokenID, ok := sd.IntegrationTokenID.Int64()
 	if !ok {
