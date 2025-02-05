@@ -1762,7 +1762,7 @@ func (udc *UserDevicesController) PostMintDeviceWithSACD(c *fiber.Ctx) error {
 	}
 
 	if intID != 0 {
-		return errors.New(fmt.Sprintf("invalid integration vendor id: %d", intID))
+		return fmt.Errorf("invalid integration vendor id: %d", intID)
 	}
 
 	var seq struct {
