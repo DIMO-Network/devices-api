@@ -107,6 +107,9 @@ type Settings struct {
 
 	TeslaRequiredScopes string `json:"TESLA_REQUIRED_SCOPES"`
 
+	AccountsAPIGRPCAddr string `json:"ACCOUNTS_API_GRPC_ADDR"`
+	CustomerIOAPIKey    string `yaml:"CUSTOMER_IO_API_KEY"`
+
 	// Temporary until compass can have its own vin to tokens mapping
 	CompassPreSharedKey string `yaml:"COMPASS_PRE_SHARED_KEY"`
 }
