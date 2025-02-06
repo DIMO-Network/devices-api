@@ -2612,6 +2612,9 @@ const docTemplate = `{
                 "countryCode": {
                     "type": "string"
                 },
+                "preApprovedPSK": {
+                    "type": "string"
+                },
                 "vin": {
                     "type": "string"
                 }

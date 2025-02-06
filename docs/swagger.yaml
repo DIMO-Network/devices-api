@@ -616,6 +616,8 @@ definitions:
         type: string
       countryCode:
         type: string
+      preApprovedPSK:
+        type: string
       vin:
         type: string
     type: object
