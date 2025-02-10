@@ -169,6 +169,10 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1 := app.Group("/v1")
 
 	v1.Get("/swagger/*", swagger.HandlerDefault)
+	// temporary compass endpoint to query by vin
+	compassPSK := middleware.NewPSKAuthMiddleware(settings.CompassPreSharedKey, &logger)
+	v1.Get("/compass/device-by-vin/:vin", compassPSK.Middleware, userDeviceController.GetCompassDeviceByVIN)
+
 	// Device Definitions
 	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc)
 

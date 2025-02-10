@@ -106,11 +106,11 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
 	s.testUserEthAddr = common.HexToAddress("0x1231231231231231231231231231231231231231")
-	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
+	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod", CompassPreSharedKey: "psk-compass"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
 		autoPiIngest, deviceDefinitionIngest, nil, nil, s.redisClient, nil, s.usersClient, s.deviceDataSvc, s.natsService, nil, s.userDeviceSvc, nil, nil, nil)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID, nil), c.RegisterDeviceForUser)
-	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID, nil), c.RegisterDeviceForUserFromVIN)
+	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID, &s.testUserEthAddr), c.RegisterDeviceForUserFromVIN)
 	app.Post("/user/devices/fromsmartcar", test.AuthInjectorTestHandler(s.testUserID, nil), c.RegisterDeviceForUserFromSmartcar)
 	app.Post("/user/devices/second", test.AuthInjectorTestHandler(testUserID2, nil), c.RegisterDeviceForUser) // for different test user
 	app.Get("/user/devices/me", test.AuthInjectorTestHandler(s.testUserID, nil), c.GetUserDevices)
@@ -119,6 +119,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	app.Get("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID, nil), c.GetBurnDevice)
 	app.Post("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID, nil), c.PostBurnDevice)
 	app.Delete("/user/devices/:userDeviceID", test.AuthInjectorTestHandler(s.testUserID, nil), c.DeleteUserDevice)
+	app.Get("/compass/device-by-vin/:vin", c.GetCompassDeviceByVIN)
 
 	s.controller = &c
 	s.app = app
@@ -464,6 +465,23 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN_SameUser_Dupl
 	assert.Equal(s.T(), s.testUserID, userDevice.UserID)
 	assert.Equal(s.T(), vinny, userDevice.VinIdentifier.String)
 	// CAN Protocol to be updated on each request, assuming
+}
+
+func (s *UserDevicesControllerTestSuite) TestGetCompassDeviceByVIN_UnMinted() {
+	const vinny = "4T3R6RFVXMU023395"
+	existingUD := test.SetupCreateUserDevice(s.T(), testUserID, "jeep_compass_2024", nil, vinny, s.pdb)
+
+	request := test.BuildRequest("GET", "/compass/device-by-vin/"+vinny, "")
+	response, responseError := s.app.Test(request, 10000)
+	fmt.Println(responseError)
+	body, _ := io.ReadAll(response.Body)
+	// assert
+	if assert.Equal(s.T(), fiber.StatusOK, response.StatusCode) == false {
+		fmt.Println("message: " + string(body))
+	}
+	foundVIN := gjson.Get(string(body), "vin").String()
+	assert.Equal(s.T(), vinny, foundVIN)
+	assert.Equal(s.T(), existingUD.ID, gjson.Get(string(body), "userDeviceId").String())
 }
 
 func (s *UserDevicesControllerTestSuite) TestPostWithExistingDefinitionID() {
