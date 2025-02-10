@@ -624,14 +624,22 @@ definitions:
   internal_controllers.SACDInput:
     properties:
       expiration:
-        $ref: '#/definitions/big.Int'
+        allOf:
+        - $ref: '#/definitions/big.Int'
+        description: Expiration permissions granted are valid until this time.
       grantee:
+        description: Grantee is the Ethereum address permissions are being granted
+          to.
         items:
           type: integer
         type: array
       permissions:
-        $ref: '#/definitions/big.Int'
+        allOf:
+        - $ref: '#/definitions/big.Int'
+        description: Permissions are a numerical representation of what permissions
+          are being given to the grantee.
       source:
+        description: Source external link to signed permission document.
         type: string
     type: object
   internal_controllers.SyntheticDeviceStatus:

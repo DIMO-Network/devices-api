@@ -1695,10 +1695,14 @@ type VehicleMintRequest struct {
 }
 
 type SACDInput struct {
-	Grantee     common.Address `json:"grantee"`
-	Permissions *big.Int       `json:"permissions"`
-	Expiration  *big.Int       `json:"expiration"`
-	Source      string         `json:"source"`
+	// Grantee is the Ethereum address permissions are being granted to.
+	Grantee common.Address `json:"grantee"`
+	// Permissions are a numerical representation of what permissions are being given to the grantee.
+	Permissions *big.Int `json:"permissions"`
+	// Expiration permissions granted are valid until this time.
+	Expiration *big.Int `json:"expiration"`
+	// Source external link to signed permission document.
+	Source string `json:"source"`
 }
 
 type NFTImageData struct {

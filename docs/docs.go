@@ -2624,18 +2624,30 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "expiration": {
-                    "$ref": "#/definitions/big.Int"
+                    "description": "Expiration permissions granted are valid until this time.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/big.Int"
+                        }
+                    ]
                 },
                 "grantee": {
+                    "description": "Grantee is the Ethereum address permissions are being granted to.",
                     "type": "array",
                     "items": {
                         "type": "integer"
                     }
                 },
                 "permissions": {
-                    "$ref": "#/definitions/big.Int"
+                    "description": "Permissions are a numerical representation of what permissions are being given to the grantee.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/big.Int"
+                        }
+                    ]
                 },
                 "source": {
+                    "description": "Source external link to signed permission document.",
                     "type": "string"
                 }
             }
