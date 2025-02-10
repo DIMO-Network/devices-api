@@ -771,9 +771,9 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	}
 	var udFull *UserDeviceFull
 	if existingUD != nil {
-		if !ethAddrFound && existingUD.UserID != userID {
+		if existingUD.UserID != userID {
 			return fiber.NewError(fiber.StatusConflict, "VIN already exists for a different user: "+reg.VIN)
-		} else if ethAddrFound && !bytes.Equal(existingUD.OwnerAddress.Bytes, userEthAddr.Bytes()) {
+		} else if ethAddrFound && existingUD.OwnerAddress.Valid && !bytes.Equal(existingUD.OwnerAddress.Bytes, userEthAddr.Bytes()) {
 			return fiber.NewError(fiber.StatusConflict, "VIN already exists for a different user: "+reg.VIN)
 		}
 		slugID = existingUD.DefinitionID
@@ -1908,8 +1908,10 @@ func (udc *UserDevicesController) GetCompassDeviceByVIN(c *fiber.Ctx) error {
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "No device with that VIN found.")
 	}
-
-	tkID, _ := userDevice.TokenID.Uint64()
+	tkID := uint64(0)
+	if !userDevice.TokenID.IsZero() {
+		tkID, _ = userDevice.TokenID.Uint64()
+	}
 	synthID := uint64(0)
 	if userDevice.R.VehicleTokenSyntheticDevice != nil {
 		synthID, _ = userDevice.R.VehicleTokenSyntheticDevice.TokenID.Uint64()
