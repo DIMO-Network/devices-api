@@ -2612,6 +2612,26 @@
                 }
             }
         },
+        "internal_controllers.SACDInput": {
+            "type": "object",
+            "properties": {
+                "expiration": {
+                    "$ref": "#/definitions/big.Int"
+                },
+                "grantee": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "permissions": {
+                    "$ref": "#/definitions/big.Int"
+                },
+                "source": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_controllers.SyntheticDeviceStatus": {
             "type": "object",
             "properties": {
@@ -2844,6 +2864,14 @@
                 "imageDataTransparent": {
                     "description": "ImageDataTransparent contains the base64-encoded NFT PNG image\nwith a transparent background, for use in the app. For compatibility\nwith older versions it is not required.",
                     "type": "string"
+                },
+                "sacdInput": {
+                    "description": "SACDInput contains user signed permission grant, including grantee, permissions, expiration and link to signed document",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/internal_controllers.SACDInput"
+                        }
+                    ]
                 },
                 "signature": {
                     "description": "Signature is the hex encoding of the EIP-712 signature result.",

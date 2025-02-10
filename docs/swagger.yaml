@@ -621,6 +621,19 @@ definitions:
       vin:
         type: string
     type: object
+  internal_controllers.SACDInput:
+    properties:
+      expiration:
+        $ref: '#/definitions/big.Int'
+      grantee:
+        items:
+          type: integer
+        type: array
+      permissions:
+        $ref: '#/definitions/big.Int'
+      source:
+        type: string
+    type: object
   internal_controllers.SyntheticDeviceStatus:
     properties:
       address:
@@ -808,6 +821,11 @@ definitions:
           with a transparent background, for use in the app. For compatibility
           with older versions it is not required.
         type: string
+      sacdInput:
+        allOf:
+        - $ref: '#/definitions/internal_controllers.SACDInput'
+        description: SACDInput contains user signed permission grant, including grantee,
+          permissions, expiration and link to signed document
       signature:
         description: Signature is the hex encoding of the EIP-712 signature result.
         type: string
