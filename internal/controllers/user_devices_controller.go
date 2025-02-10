@@ -1570,7 +1570,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				})
 			}
 
-			return client.MintVehicleAndSdWithDeviceDefinitionAndSACDSign(requestID, contracts.MintVehicleAndSdWithDdInput{
+			return client.MintVehicleAndSdWithDeviceDefinitionSignAndSacd(requestID, contracts.MintVehicleAndSdWithDdInput{
 				ManufacturerNode:     mvs.ManufacturerNode,
 				Owner:                mvs.Owner,
 				DeviceDefinitionId:   dd.Id,

@@ -410,13 +410,13 @@ func (c *Client) MintVehicleAndSdWithDeviceDefinitionSign(requestID string, data
 }
 
 // function MintVehicleAndSdWithDeviceDefinitionSign(MintVehicleAndSdWithDdInput calldata data)
-func (c *Client) MintVehicleAndSdWithDeviceDefinitionAndSACDSign(requestID string, mintVehicleInput contracts.MintVehicleAndSdWithDdInput, sacdInput contracts.SacdInput) error {
+func (c *Client) MintVehicleAndSdWithDeviceDefinitionSignAndSacd(requestID string, mintVehicleInput contracts.MintVehicleAndSdWithDdInput, sacdInput contracts.SacdInput) error {
 	abi, err := contracts.RegistryMetaData.GetAbi()
 	if err != nil {
 		return err
 	}
 
-	callData, err := abi.Pack("mintVehicleAndSdWithDeviceDefinitionSign", mintVehicleInput, sacdInput)
+	callData, err := abi.Pack("mintVehicleAndSdWithDeviceDefinitionSignAndSacd", mintVehicleInput, sacdInput)
 	if err != nil {
 		return err
 	}
