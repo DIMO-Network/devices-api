@@ -41,7 +41,6 @@ type deps struct {
 	logger                 zerolog.Logger
 	mockCtrl               *gomock.Controller
 	credentialSvc          *mock_services.MockVCService
-	deviceDataSvc          *mock_services.MockDeviceDataService
 }
 
 func createMockDependencies(t *testing.T) deps {
@@ -50,7 +49,6 @@ func createMockDependencies(t *testing.T) deps {
 
 	deviceDefIntSvc := mock_services.NewMockDeviceDefinitionIntegrationService(mockCtrl)
 	deviceDefSvc := mock_services.NewMockDeviceDefinitionService(mockCtrl)
-	deviceDataSvc := mock_services.NewMockDeviceDataService(mockCtrl)
 	scClient := mock_services.NewMockSmartcarClient(mockCtrl)
 	scTaskSvc := mock_services.NewMockSmartcarTaskService(mockCtrl)
 	teslaSvc := mock_services.NewMockTeslaService(mockCtrl)
@@ -78,7 +76,6 @@ func createMockDependencies(t *testing.T) deps {
 		logger:                 logger,
 		mockCtrl:               mockCtrl,
 		credentialSvc:          credentialSvc,
-		deviceDataSvc:          deviceDataSvc,
 	}
 
 }

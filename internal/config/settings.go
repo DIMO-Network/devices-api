@@ -44,7 +44,6 @@ type Settings struct {
 	NFTAWSAccessKeyID                 string `yaml:"NFT_AWS_ACCESS_KEY_ID"`
 	NFTAWSSecretsAccessKey            string `yaml:"NFT_AWS_SECRET_ACCESS_KEY"`
 	DefinitionsGRPCAddr               string `yaml:"DEFINITIONS_GRPC_ADDR"`
-	DeviceDataGRPCAddr                string `yaml:"DEVICE_DATA_GRPC_ADDR"`
 	DeviceDefinitionTopic             string `yaml:"DEVICE_DEFINITION_TOPIC"`
 	DeviceDefinitionMetadataTopic     string `yaml:"DEVICE_DEFINITION_METADATA_TOPIC"`
 	ElasticDeviceStatusIndex          string `yaml:"ELASTIC_DEVICE_STATUS_INDEX"`
