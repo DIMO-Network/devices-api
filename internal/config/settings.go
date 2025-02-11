@@ -66,8 +66,6 @@ type Settings struct {
 	NATSDurableConsumer               string      `yaml:"NATS_DURABLE_CONSUMER"`
 	ValuationsAPIGRPCAddr             string      `yaml:"VALUATIONS_GRPC_ADDR"`
 
-	DIMOContractAPIURL string `yaml:"DIMO_CONTRACT_APIURL"`
-
 	MetaTransactionProcessorGRPCAddr string `yaml:"META_TRANSACTION_PROCESSOR_GRPC_ADDR"`
 
 	// IssuerPrivateKey is a base64-encoded secp256k1 private key, used to sign

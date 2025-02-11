@@ -71,7 +71,6 @@ env:
   VINCARIO_API_URL: https://api.vindecoder.eu/3.2
   CHATGPT_URL: https://api.openai.com/v1/chat/completions
   AFTERMARKET_DEVICE_CONTRACT_ADDRESS: '0x325b45949C833986bC98e98a49F3CA5C5c4643B5'
-  DIMO_CONTRACT_APIURL: https://contracts-api.dev.dimo.zone/
   NATS_URL: nats-dev:4222
   NATS_STREAM_NAME: DD_VALUATION_TASKS
   NATS_VALUATION_SUBJECT: dd_valuation_tasks
