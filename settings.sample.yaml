@@ -18,8 +18,6 @@ TASK_RUN_NOW_TOPIC: topic.task.run.now
 TASK_STOP_TOPIC: table.task.stop
 TASK_STATUS_TOPIC: topic.task.status
 TASK_CREDENTIAL_TOPIC: table.task.credential
-NFT_INPUT_TOPIC: topic.device.nft.mint
-NFT_OUTPUT_TOPIC: topic.device.nft.mint.result
 NFT_S3_BUCKET: dimo-network-nfts
 NFT_AWS_ACCESS_KEY_ID: test
 NFT_AWS_SECRET_ACCESS_KEY: test
