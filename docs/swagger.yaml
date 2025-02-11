@@ -338,27 +338,6 @@ definitions:
           $ref: '#/definitions/internal_controllers.CompleteOAuthExchangeResponse'
         type: array
     type: object
-  internal_controllers.CreateGeofence:
-    properties:
-      h3Indexes:
-        description: 'required: false'
-        items:
-          type: string
-        type: array
-      name:
-        description: 'required: true'
-        type: string
-      type:
-        description: |-
-          one of following: "PrivacyFence", "TriggerEntry", "TriggerExit"
-          required: true
-        type: string
-      userDeviceIds:
-        description: Optionally link the geofence with a list of user device ID
-        items:
-          type: string
-        type: array
-    type: object
   internal_controllers.DeviceDefinition:
     properties:
       id:
@@ -405,36 +384,6 @@ definitions:
     - VehicleInsurance
     - VehicleMaintenance
     - VehicleCustomImage
-  internal_controllers.GeoFenceUserDevice:
-    properties:
-      mmy:
-        type: string
-      name:
-        type: string
-      userDeviceId:
-        type: string
-    type: object
-  internal_controllers.GetGeofence:
-    properties:
-      createdAt:
-        type: string
-      h3Indexes:
-        items:
-          type: string
-        type: array
-      id:
-        type: string
-      name:
-        type: string
-      type:
-        type: string
-      updatedAt:
-        type: string
-      userDevices:
-        items:
-          $ref: '#/definitions/internal_controllers.GeoFenceUserDevice'
-        type: array
-    type: object
   internal_controllers.GetUserDeviceErrorCodeQueriesResponse:
     properties:
       queries:
@@ -1704,90 +1653,6 @@ paths:
       - BearerAuth: []
       tags:
       - user-devices
-  /user/geofences:
-    get:
-      description: gets all geofences for the current user
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/internal_controllers.GetGeofence'
-            type: array
-      security:
-      - ApiKeyAuth: []
-      - BearerAuth: []
-      tags:
-      - geofence
-    post:
-      consumes:
-      - application/json
-      description: adds a new geofence to the user's account, optionally attached
-        to specific user_devices
-      parameters:
-      - description: add geofence to user.
-        in: body
-        name: geofence
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.CreateGeofence'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.CreateResponse'
-      security:
-      - ApiKeyAuth: []
-      - BearerAuth: []
-      tags:
-      - geofence
-  /user/geofences/{geofenceID}:
-    delete:
-      description: hard deletes a geofence from db
-      parameters:
-      - description: geofence id
-        in: path
-        name: geofenceID
-        required: true
-        type: string
-      responses:
-        "204":
-          description: No Content
-      security:
-      - ApiKeyAuth: []
-      - BearerAuth: []
-      tags:
-      - geofence
-    put:
-      consumes:
-      - application/json
-      description: updates an existing geofence for the current user
-      parameters:
-      - description: geofence id
-        in: path
-        name: geofenceID
-        required: true
-        type: string
-      - description: add geofence to user.
-        in: body
-        name: geofence
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.CreateGeofence'
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-      security:
-      - ApiKeyAuth: []
-      - BearerAuth: []
-      tags:
-      - geofence
   /user/synthetic/device/{tokenID}/commands/reauthenticate:
     post:
       description: Restarts a synthetic device polling job with a new set of credentials.
