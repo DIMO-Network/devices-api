@@ -76,8 +76,6 @@ github.com/DIMO-Network/accounts-api v0.2.8 h1:lH6zYkZE7bZjdCWlL2RQBpE/fP1hOZAnt
 github.com/DIMO-Network/accounts-api v0.2.8/go.mod h1:wiFABiN1yjaEVnQNgad+MJPaAXmdpGTLp0lAl/Eypuk=
 github.com/DIMO-Network/clickhouse-infra v0.0.3 h1:B6/4IY9IxLcyydET14IjHUT+A5SDEis7p//DoFzrMk4=
 github.com/DIMO-Network/clickhouse-infra v0.0.3/go.mod h1:NtpQ1btkPzebDvpYYygeqiiBmJ/q5oJb/T/JWzUVRlk=
-github.com/DIMO-Network/device-data-api v0.9.10 h1:ORyxDSKPCEPFGG5S593+2OkLzWFsy4ZO0o90TPebQN4=
-github.com/DIMO-Network/device-data-api v0.9.10/go.mod h1:tjR1bA9sw2sj5GNi88dqpGsGLjYHjQzSfv2lcCYLjqQ=
 github.com/DIMO-Network/device-definitions-api v1.2.66 h1:WRKZ+4CPH3+8QzVPG/Cl7DUcZ2p4AjDFHNxRqc9Kjzk=
 github.com/DIMO-Network/device-definitions-api v1.2.66/go.mod h1:0br3QBs+fNH1WtC/VMTYk0ekwebCnRk5OrXivo96NwA=
 github.com/DIMO-Network/meta-transaction-processor v0.3.2 h1:eSf34mSmiRilMbQx+4Iyu6aNm/WWJjbopIGYNjz/Z6w=
