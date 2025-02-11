@@ -1,24 +1,20 @@
 package controllers
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"math/big"
 	"slices"
 	"strings"
 
-	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/shared"
-	"github.com/segmentio/ksuid"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
-	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/ericlagergren/decimal"
@@ -29,7 +25,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
@@ -372,185 +367,6 @@ func (nc *NFTController) handleEnqueueCommand(c *fiber.Ctx, commandPath string) 
 	logger.Info().Msg("Successfully enqueued command.")
 
 	return c.JSON(CommandResponse{RequestID: subTaskID})
-}
-
-// GetBurnDevice godoc
-// @Description Returns the data the user must sign in order to burn the device.
-// @Param       tokenID path int true "token id"
-// @Success     200          {object} apitypes.TypedData
-// @Security    BearerAuth
-// @Router     /user/vehicle/{tokenID}/commands/burn [get]
-func (udc *UserDevicesController) GetBurnDevice(c *fiber.Ctx) error {
-	tis := c.Params("tokenID")
-	ti, ok := new(big.Int).SetString(tis, 10)
-	if !ok {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("failed to parse token id %q", tis))
-	}
-	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
-
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
-	tx, err := udc.DBS().Reader.BeginTx(c.Context(), nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback() //nolint
-
-	userDevice, err := models.UserDevices(
-		models.UserDeviceWhere.TokenID.EQ(tid),
-		qm.Load(models.UserDeviceRels.BurnRequest),
-		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
-		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
-	).One(c.Context(), tx)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "No vehicle NFT with that token id.")
-		}
-		return err
-	}
-
-	bvs, _, err := udc.checkDeviceBurn(c.Context(), userDevice)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
-	}
-
-	return c.JSON(client.GetPayload(&bvs))
-}
-
-// PostBurnDevice godoc
-// @Description Sends a burn device request to the blockchain
-// @Param       tokenID path int true "token id"
-// @Param       burnRequest  body controllers.BurnRequest true "Signature"
-// @Success     200
-// @Security    BearerAuth
-// @Router      /user/vehicle/{tokenID}/commands/burn [post]
-func (udc *UserDevicesController) PostBurnDevice(c *fiber.Ctx) error {
-	tis := c.Params("tokenID")
-	ti, ok := new(big.Int).SetString(tis, 10)
-	if !ok {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("failed to parse token id %q", tis))
-	}
-	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(ti, 0))
-
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
-	tx, err := udc.DBS().Reader.BeginTx(c.Context(), nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback() //nolint
-
-	userDevice, err := models.UserDevices(
-		models.UserDeviceWhere.TokenID.EQ(tid),
-		qm.Load(models.UserDeviceRels.BurnRequest),
-		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
-		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
-	).One(c.Context(), tx)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "No vehicle NFT with that token id.")
-		}
-		return err
-	}
-
-	bvs, user, err := udc.checkDeviceBurn(c.Context(), userDevice)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
-	}
-
-	var br BurnRequest
-	if err := c.BodyParser(&br); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
-	}
-
-	udc.log.Info().
-		Interface("httpRequestBody", br).
-		Interface("client", client).
-		Interface("burnVehicleSign", bvs).
-		Interface("typedData", client.GetPayload(&bvs)).
-		Msg("Got request.")
-
-	hash, err := client.Hash(&bvs)
-	if err != nil {
-		return fmt.Errorf("could not hash bvs: %w", err)
-	}
-
-	sigBytes := common.FromHex(br.Signature)
-	recAddr, err := helpers.Ecrecover(hash, sigBytes)
-	if err != nil {
-		return fmt.Errorf("could not recover signature: %w", err)
-	}
-
-	realAddr := common.HexToAddress(*user.EthereumAddress)
-	if recAddr != realAddr {
-		return fiber.NewError(fiber.StatusBadRequest, "signature incorrect")
-	}
-
-	requestID := ksuid.New().String()
-
-	mtr := models.MetaTransactionRequest{
-		ID:     requestID,
-		Status: models.MetaTransactionRequestStatusUnsubmitted,
-	}
-
-	if err := mtr.Insert(c.Context(), tx, boil.Infer()); err != nil {
-		return fmt.Errorf("failed to insert metatransaction request: %w", err)
-	}
-
-	userDevice.BurnRequestID = null.StringFrom(requestID)
-	if _, err := userDevice.Update(c.Context(), tx, boil.Infer()); err != nil {
-		return fmt.Errorf("failed to update vehicle nft: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	udc.log.Info().Msgf("submitted metatransaction request %s", requestID)
-	return client.BurnVehicleSign(requestID, bvs.TokenID, sigBytes)
-}
-
-func (udc *UserDevicesController) checkDeviceBurn(ctx context.Context, userDevice *models.UserDevice) (registry.BurnVehicleSign, *pb.User, error) {
-	var bvs registry.BurnVehicleSign
-
-	if userDevice.R.BurnRequest != nil && userDevice.R.BurnRequest.Status != models.MetaTransactionRequestStatusFailed {
-		return bvs, nil, errors.New("burning already in progress")
-	}
-
-	if userDevice.R.VehicleTokenAftermarketDevice != nil || userDevice.R.VehicleTokenSyntheticDevice != nil {
-		return bvs, nil, errors.New("vehicle must be unpaired to burn")
-	}
-
-	user, err := udc.usersClient.GetUser(ctx, &pb.GetUserRequest{Id: userDevice.UserID})
-	if err != nil {
-		return bvs, nil, fmt.Errorf("failed to get user by id: %w", err)
-	}
-
-	if user.EthereumAddress == nil {
-		return bvs, nil, errors.New("user does not have an Ethereum address on file")
-	}
-
-	return registry.BurnVehicleSign{
-		TokenID: userDevice.TokenID.Int(nil),
-	}, user, nil
 }
 
 // BurnRequest contains the user's signature for the burn request.

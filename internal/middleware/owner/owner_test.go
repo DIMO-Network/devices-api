@@ -2,7 +2,6 @@ package owner
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -321,10 +320,6 @@ func TestVehicleTokenOwnerMiddleware(t *testing.T) {
 			}
 
 			usersClient.Store[userID] = u
-			request := test.BuildRequest("GET", fmt.Sprintf("/user/vehicle/%s/commands/burn", c.TokenID.String()), "")
-			res, err := app.Test(request)
-			require.Nil(t, err)
-			assert.Equal(t, c.ExpectedCode, res.StatusCode)
 		})
 	}
 

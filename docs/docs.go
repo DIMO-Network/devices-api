@@ -1345,64 +1345,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/vehicle/{tokenID}/commands/burn": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns the data the user must sign in order to burn the device.",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apitypes.TypedData"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Sends a burn device request to the blockchain",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Signature",
-                        "name": "burnRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.BurnRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                }
-            }
-        },
         "/vehicle/{tokenID}/commands/doors/lock": {
             "post": {
                 "description": "Lock the device's doors.",
@@ -1975,18 +1917,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_controllers.TransactionStatus"
                         }
                     ]
-                }
-            }
-        },
-        "internal_controllers.BurnRequest": {
-            "type": "object",
-            "required": [
-                "signature"
-            ],
-            "properties": {
-                "signature": {
-                    "description": "Signature is the hex encoding of the EIP-712 signature result.",
-                    "type": "string"
                 }
             }
         },

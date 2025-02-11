@@ -270,14 +270,6 @@ definitions:
         - $ref: '#/definitions/internal_controllers.TransactionStatus'
         description: Unpair contains the status of the on-chain unpairing meta-transaction.
     type: object
-  internal_controllers.BurnRequest:
-    properties:
-      signature:
-        description: Signature is the hex encoding of the EIP-712 signature result.
-        type: string
-    required:
-    - signature
-    type: object
   internal_controllers.BurnSyntheticDeviceRequest:
     properties:
       signature:
@@ -1664,41 +1656,6 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/internal_controllers_user_sd.Message'
-  /user/vehicle/{tokenID}/commands/burn:
-    get:
-      description: Returns the data the user must sign in order to burn the device.
-      parameters:
-      - description: token id
-        in: path
-        name: tokenID
-        required: true
-        type: integer
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/apitypes.TypedData'
-      security:
-      - BearerAuth: []
-    post:
-      description: Sends a burn device request to the blockchain
-      parameters:
-      - description: token id
-        in: path
-        name: tokenID
-        required: true
-        type: integer
-      - description: Signature
-        in: body
-        name: burnRequest
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.BurnRequest'
-      responses:
-        "200":
-          description: OK
-      security:
-      - BearerAuth: []
   /vehicle/{tokenID}/commands/doors/lock:
     post:
       description: Lock the device's doors.
