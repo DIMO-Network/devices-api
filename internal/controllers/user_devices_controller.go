@@ -78,7 +78,6 @@ type UserDevicesController struct {
 	redisCache                redis.CacheService
 	openAI                    services.OpenAI
 	usersClient               pb.UserServiceClient
-	deviceDataSvc             services.DeviceDataService
 	NATSSvc                   *services.NATSService
 	wallet                    services.SyntheticWalletInstanceService
 	userDeviceSvc             services.UserDeviceService
@@ -135,7 +134,6 @@ func NewUserDevicesController(settings *config.Settings,
 	cache redis.CacheService,
 	openAI services.OpenAI,
 	usersClient pb.UserServiceClient,
-	deviceDataSvc services.DeviceDataService,
 	natsSvc *services.NATSService,
 	wallet services.SyntheticWalletInstanceService,
 	userDeviceSvc services.UserDeviceService,
@@ -163,7 +161,6 @@ func NewUserDevicesController(settings *config.Settings,
 		redisCache:                cache,
 		openAI:                    openAI,
 		usersClient:               usersClient,
-		deviceDataSvc:             deviceDataSvc,
 		NATSSvc:                   natsSvc,
 		wallet:                    wallet,
 		userDeviceSvc:             userDeviceSvc,

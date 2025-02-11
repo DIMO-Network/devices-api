@@ -5,7 +5,6 @@ go 1.23
 toolchain go1.23.5
 
 require (
-	github.com/DIMO-Network/device-data-api v0.9.10
 	github.com/DIMO-Network/device-definitions-api v1.2.66
 	github.com/DIMO-Network/meta-transaction-processor v0.3.2
 	github.com/DIMO-Network/shared v0.12.9
