@@ -44,7 +44,6 @@ env:
   INGEST_SMARTCAR_TOPIC: topic.interface.ingest.smartcar
   TASK_RUN_NOW_TOPIC: topic.task.run.now
   KAFKA_BROKERS: kafka-dev-dimo-kafka-kafka-brokers:9092
-  DEVICE_STATUS_TOPIC: topic.device.status
   TASK_STOP_TOPIC: table.task.stop
   TASK_CREDENTIAL_TOPIC: table.task.credential
   TASK_STATUS_TOPIC: topic.task.status

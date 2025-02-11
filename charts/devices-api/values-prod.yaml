@@ -23,7 +23,6 @@ env:
   INGEST_SMARTCAR_URL: http://ingest-smartcar-prod:8080
   INGEST_SMARTCAR_TOPIC: topic.interface.ingest.smartcar
   KAFKA_BROKERS: kafka-prod-dimo-kafka-kafka-brokers:9092
-  DEVICE_STATUS_TOPIC: topic.device.status
   EVENTS_TOPIC: topic.event
   DEVICE_DATA_INDEX_NAME: device-status-prod*
   USERS_API_GRPC_ADDR: users-api-prod:8086
