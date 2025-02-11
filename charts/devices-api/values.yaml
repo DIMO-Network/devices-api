@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 2e79af7
+  tag: 472dda1
 imagePullSecrets: []
 nameOverride: ''
 fullnameOverride: ''
@@ -186,6 +186,12 @@ kafka:
         compression.type: producer
         cleanup.policy: compact,delete
         min.compaction.lag.ms: '3600000'
+    - name: topic.device.status.private
+      config:
+        segment.ms: '3600000'
+        compression.type: producer
+        cleanup.policy: compact,delete
+        min.compaction.lag.ms: '3600000'
     - name: table.device.integration.smartcar
       config:
         segment.ms: '3600000'
@@ -203,6 +209,14 @@ kafka:
         min.cleanable.dirty.ratio: '0.01'
         delete.retention.ms: '3600000'
     - name: table.aftermarket.device.integration
+      config:
+        segment.ms: '3600000'
+        compression.type: producer
+        cleanup.policy: compact
+        min.compaction.lag.ms: '3600000'
+        min.cleanable.dirty.ratio: '0.01'
+        delete.retention.ms: '3600000'
+    - name: devices-vin-fraud-table
       config:
         segment.ms: '3600000'
         compression.type: producer
