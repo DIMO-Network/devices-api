@@ -61,11 +61,6 @@ definitions:
       sub_region_code:
         type: integer
     type: object
-  github_com_DIMO-Network_devices-api_internal_controllers_helpers.CreateResponse:
-    properties:
-      id:
-        type: string
-    type: object
   github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes:
     properties:
       code:

@@ -1664,14 +1664,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_DIMO-Network_devices-api_internal_controllers_helpers.CreateResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
         "github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes": {
             "type": "object",
             "properties": {
