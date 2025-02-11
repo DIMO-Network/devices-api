@@ -146,7 +146,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, autoPiIngest,
 		deviceDefinitionRegistrar, producer, s3NFTServiceClient, redisCache, openAI, usersClient,
 		ddaSvc, natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc, ipfsSvc, chConn)
-	geofenceController := controllers.NewGeofencesController(settings, pdb.DBS, &logger, producer, ddSvc, usersClient)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
 	countriesController := controllers.NewCountriesController()
@@ -223,12 +222,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	amdOwner.Get("/", userDeviceController.GetAftermarketDeviceInfo)
 
-	// geofence
-	v1Auth.Post("/user/geofences", geofenceController.Create)
-	v1Auth.Get("/user/geofences", geofenceController.GetAll)
-	v1Auth.Delete("/user/geofences/:geofenceID", geofenceController.Delete)
-	v1Auth.Put("/user/geofences/:geofenceID", geofenceController.Update)
-
 	// documents
 	v1Auth.Get("/documents", documentsController.GetDocuments)
 	v1Auth.Get("/documents/:id", documentsController.GetDocumentByID)
@@ -256,9 +249,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Delete("/integrations/:integrationID", userDeviceController.DeleteUserDeviceIntegration)
 	udOwner.Post("/integrations/:integrationID", userDeviceController.RegisterDeviceIntegration)
 	udOwner.Post("/commands/refresh", userDeviceController.RefreshUserDeviceStatus)
-
-	// Vehicle owner routes.
-	vehicleOwnerMw := owner.VehicleToken(pdb, usersClient, &logger)
+	
 	{
 		addr := address.New(usersClient, &logger)
 
@@ -279,10 +270,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 		v1Auth.Post("/user/synthetic/device/:tokenID/commands/reauthenticate", addr, sdc.PostReauthenticate)
 	}
-
-	vOwner := v1Auth.Group("/user/vehicle/:tokenID", vehicleOwnerMw)
-	vOwner.Get("/commands/burn", userDeviceController.GetBurnDevice)
-	vOwner.Post("/commands/burn", userDeviceController.PostBurnDevice)
 
 	syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, wallet, registryClient)
 

@@ -149,7 +149,7 @@ func (uds *userDeviceService) CreateUserDeviceByOwner(ctx context.Context, defin
 
 	err = tx.Commit() // commmit the transaction
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "error commiting transaction to create geofence")
+		return nil, nil, errors.Wrapf(err, "error commiting transaction")
 	}
 
 	// todo call devide definitions to check and pull image for this device in case don't have one
@@ -253,7 +253,7 @@ func (uds *userDeviceService) CreateUserDevice(ctx context.Context, definitionID
 
 	err = tx.Commit() // commmit the transaction
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "error commiting transaction to create geofence")
+		return nil, nil, errors.Wrapf(err, "error commiting transaction")
 	}
 
 	// todo call devide definitions to check and pull image for this device in case don't have one

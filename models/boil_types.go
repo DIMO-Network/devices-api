@@ -66,21 +66,6 @@ func AllDeviceCommandRequestStatus() []string {
 	}
 }
 
-// Enum values for GeofenceType
-const (
-	GeofenceTypePrivacyFence string = "PrivacyFence"
-	GeofenceTypeTriggerEntry string = "TriggerEntry"
-	GeofenceTypeTriggerExit  string = "TriggerExit"
-)
-
-func AllGeofenceType() []string {
-	return []string{
-		GeofenceTypePrivacyFence,
-		GeofenceTypeTriggerEntry,
-		GeofenceTypeTriggerExit,
-	}
-}
-
 // Enum values for MetaTransactionRequestStatus
 const (
 	MetaTransactionRequestStatusUnsubmitted string = "Unsubmitted"

@@ -116,8 +116,6 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	app.Get("/user/devices/me", test.AuthInjectorTestHandler(s.testUserID, nil), c.GetUserDevices)
 	app.Patch("/vehicle/:tokenID/vin", test.AuthInjectorTestHandler(s.testUserID, &s.testUserEthAddr), c.UpdateVINV2) // Auth done by the middleware.
 	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID, nil), c.RefreshUserDeviceStatus)
-	app.Get("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID, nil), c.GetBurnDevice)
-	app.Post("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID, nil), c.PostBurnDevice)
 	app.Delete("/user/devices/:userDeviceID", test.AuthInjectorTestHandler(s.testUserID, nil), c.DeleteUserDevice)
 	app.Get("/compass/device-by-vin/:vin", c.GetCompassDeviceByVIN)
 
