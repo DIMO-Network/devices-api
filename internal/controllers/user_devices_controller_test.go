@@ -12,9 +12,6 @@ import (
 
 	"github.com/go-redis/redis/v8"
 
-	dagrpc "github.com/DIMO-Network/device-data-api/pkg/grpc"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -71,7 +68,6 @@ type UserDevicesControllerTestSuite struct {
 	natsService     *services.NATSService
 	natsServer      *server.Server
 	userDeviceSvc   *mock_services.MockUserDeviceService
-	deviceDataSvc   *mock_services.MockDeviceDataService
 }
 
 const natsStreamName = "test-stream"
@@ -97,7 +93,6 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.usersClient = mock_services.NewMockUserServiceClient(mockCtrl)
 	s.natsService, s.natsServer, err = mock_services.NewMockNATSService(natsStreamName)
 	s.userDeviceSvc = mock_services.NewMockUserDeviceService(mockCtrl)
-	s.deviceDataSvc = mock_services.NewMockDeviceDataService(mockCtrl)
 	if err != nil {
 		s.T().Fatal(err)
 	}
@@ -106,7 +101,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	testUserID2 := "3232451"
 	s.testUserEthAddr = common.HexToAddress("0x1231231231231231231231231231231231231231")
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod", CompassPreSharedKey: "psk-compass"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaTaskService, new(shared.ROT13Cipher), s.autoPiSvc,
-		autoPiIngest, deviceDefinitionIngest, nil, nil, s.redisClient, nil, s.usersClient, s.deviceDataSvc, s.natsService, nil, s.userDeviceSvc, nil, nil, nil)
+		autoPiIngest, deviceDefinitionIngest, nil, nil, s.redisClient, nil, s.usersClient, s.natsService, nil, s.userDeviceSvc, nil, nil, nil)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID, nil), c.RegisterDeviceForUser)
 	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID, &s.testUserEthAddr), c.RegisterDeviceForUserFromVIN)
@@ -115,8 +110,6 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	app.Get("/user/devices/me", test.AuthInjectorTestHandler(s.testUserID, nil), c.GetUserDevices)
 	app.Patch("/vehicle/:tokenID/vin", test.AuthInjectorTestHandler(s.testUserID, &s.testUserEthAddr), c.UpdateVINV2) // Auth done by the middleware.
 	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID, nil), c.RefreshUserDeviceStatus)
-	app.Get("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID, nil), c.GetBurnDevice)
-	app.Post("/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(s.testUserID, nil), c.PostBurnDevice)
 	app.Delete("/user/devices/:userDeviceID", test.AuthInjectorTestHandler(s.testUserID, nil), c.DeleteUserDevice)
 	app.Get("/compass/device-by-vin/:vin", c.GetCompassDeviceByVIN)
 
@@ -727,91 +720,6 @@ func (s *UserDevicesControllerTestSuite) TestVINValidate() {
 		} else {
 			assert.Error(s.T(), err, tc.reason)
 		}
-	}
-}
-
-func (s *UserDevicesControllerTestSuite) TestPostRefreshSmartCar() {
-	smartCarInt := test.BuildIntegrationGRPC(smartCarIntegrationID, constants.SmartCarVendor, 10, 0)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Escape", 2020, smartCarInt)
-	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	s.deviceDefSvc.EXPECT().GetIntegrationByVendor(gomock.Any(), constants.SmartCarVendor).Return(smartCarInt, nil)
-	s.deviceDataSvc.EXPECT().GetRawDeviceData(gomock.Any(), ud.ID, smartCarInt.Id).Return(&dagrpc.RawDeviceDataResponse{Items: []*dagrpc.RawDeviceDataResponseItem{
-		{
-			IntegrationId:   smartCarInt.Id,
-			SignalsJsonData: []byte(`{"odometer": { "value": 123.223, "timestamp": "2022-06-18T04:06:40.200Z" } }`),
-			RecordUpdatedAt: timestamppb.New(time.Now().UTC().Add(time.Hour * -4)),
-			UserDeviceId:    ud.ID,
-		},
-	}}, nil)
-
-	udiai := models.UserDeviceAPIIntegration{
-		UserDeviceID:    ud.ID,
-		IntegrationID:   smartCarInt.Id,
-		Status:          models.UserDeviceAPIIntegrationStatusActive,
-		AccessToken:     null.StringFrom("caca-token"),
-		AccessExpiresAt: null.TimeFrom(time.Now().Add(time.Duration(10) * time.Hour)),
-		RefreshToken:    null.StringFrom("caca-refresh"),
-		ExternalID:      null.StringFrom("caca-external-id"),
-		TaskID:          null.StringFrom(ksuid.New().String()),
-	}
-	err := udiai.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
-	require.NoError(s.T(), err)
-
-	var oUdai *models.UserDeviceAPIIntegration
-
-	// arrange mock
-	s.scTaskSvc.EXPECT().Refresh(gomock.AssignableToTypeOf(oUdai)).DoAndReturn(
-		func(udai *models.UserDeviceAPIIntegration) error {
-			oUdai = udai
-			return nil
-		},
-	)
-
-	payload := `{}`
-	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/commands/refresh", payload)
-	response, err := s.app.Test(request)
-	assert.NoError(s.T(), err)
-
-	assert.Equal(s.T(), ud.ID, oUdai.UserDeviceID)
-
-	if assert.Equal(s.T(), fiber.StatusNoContent, response.StatusCode) == false {
-		body, _ := io.ReadAll(response.Body)
-		fmt.Println("unexpected response: " + string(body))
-	}
-}
-
-func (s *UserDevicesControllerTestSuite) TestPostRefreshSmartCarRateLimited() {
-	integration := test.BuildIntegrationGRPC(smartCarIntegrationID, constants.SmartCarVendor, 10, 0)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Mache", 2022, integration)
-	ud := test.SetupCreateUserDevice(s.T(), s.testUserID, dd[0].DeviceDefinitionId, nil, "", s.pdb)
-	s.deviceDefSvc.EXPECT().GetIntegrationByVendor(gomock.Any(), constants.SmartCarVendor).Return(integration, nil)
-	// arrange data to cause condition
-	s.deviceDataSvc.EXPECT().GetRawDeviceData(gomock.Any(), ud.ID, integration.Id).Return(&dagrpc.RawDeviceDataResponse{Items: []*dagrpc.RawDeviceDataResponseItem{
-		{
-			IntegrationId:   integration.Id,
-			RecordUpdatedAt: timestamppb.New(time.Now().UTC()),
-			UserDeviceId:    ud.ID,
-		},
-	}}, nil)
-
-	udiai := models.UserDeviceAPIIntegration{
-		UserDeviceID:    ud.ID,
-		IntegrationID:   integration.Id,
-		Status:          models.UserDeviceAPIIntegrationStatusActive,
-		AccessToken:     null.StringFrom("caca-token"),
-		AccessExpiresAt: null.TimeFrom(time.Now().Add(time.Duration(10) * time.Hour)),
-		RefreshToken:    null.StringFrom("caca-refresh"),
-		ExternalID:      null.StringFrom("caca-external-id"),
-	}
-	err := udiai.Insert(s.ctx, s.pdb.DBS().Writer, boil.Infer())
-	require.NoError(s.T(), err)
-
-	payload := `{}`
-	request := test.BuildRequest("POST", "/user/devices/"+ud.ID+"/commands/refresh", payload)
-	response, _ := s.app.Test(request)
-	if assert.Equal(s.T(), fiber.StatusTooManyRequests, response.StatusCode) == false {
-		body, _ := io.ReadAll(response.Body)
-		fmt.Println("unexpected response: " + string(body))
 	}
 }
 

@@ -13,14 +13,10 @@ SERVICE_NAME: devices-api
 JWT_KEY_SET_URL: http://127.0.0.1:5556/dex/keys
 KAFKA_BROKERS: localhost:9092
 INGEST_SMARTCAR_TOPIC: topic.interface.ingest.smartcar
-DEVICE_STATUS_TOPIC: topic.device.status
 TASK_RUN_NOW_TOPIC: topic.task.run.now
 TASK_STOP_TOPIC: table.task.stop
 TASK_STATUS_TOPIC: topic.task.status
 TASK_CREDENTIAL_TOPIC: table.task.credential
-PRIVACY_FENCE_TOPIC: table.device.privacyfence
-NFT_INPUT_TOPIC: topic.device.nft.mint
-NFT_OUTPUT_TOPIC: topic.device.nft.mint.result
 NFT_S3_BUCKET: dimo-network-nfts
 NFT_AWS_ACCESS_KEY_ID: test
 NFT_AWS_SECRET_ACCESS_KEY: test
@@ -47,7 +43,6 @@ ELASTIC_SEARCH_ENRICH_STATUS_USERNAME:
 ELASTIC_SEARCH_ENRICH_STATUS_PASSWORD:
 TOKEN_EXCHANGE_JWK_KEY_SET_URL: http://127.0.0.1:5556/dex/keys
 CONTRACT_EVENT_TOPIC: topic.contract.event
-AUTOPI_NFT_IMAGE:
 
 VINCARIO_API_URL: https://api.vindecoder.eu/3.2
 VINCARIO_API_KEY: xxx
@@ -63,8 +58,6 @@ ISSUER_PRIVATE_KEY: -tnIhVt0Cgt-1MIh260PM6g6ScrWs_6NWBesg9OLahk
 
 SYNTHETIC_DEVICES_ENABLED: true
 SYNTHETIC_WALLET_GRPC_ADDR: localhost:9006
-
-DEVICE_DATA_GRPC_ADDR: localhost:8282
 
 DEVICE_FINGERPRINT_TOPIC: topic.device.fingerprint
 DEVICE_FINGERPRINT_CONSUMER_GROUP: device-fingerprint-vc-issuer

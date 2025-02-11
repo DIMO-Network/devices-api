@@ -393,28 +393,6 @@ func SetupCreateAutoPiJob(t *testing.T, jobID, deviceID, cmd, userDeviceID, stat
 	return &autopiJob
 }
 
-func SetupCreateGeofence(t *testing.T, userID, name string, ud *models.UserDevice, pdb db.Store) *models.Geofence {
-	gf := models.Geofence{
-		ID:     ksuid.New().String(),
-		UserID: userID,
-		Name:   name,
-		Type:   models.GeofenceTypePrivacyFence,
-	}
-	err := gf.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
-	assert.NoError(t, err)
-
-	if ud != nil {
-		udtgf := models.UserDeviceToGeofence{
-			UserDeviceID: ud.ID,
-			GeofenceID:   gf.ID,
-		}
-		err = udtgf.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
-		assert.NoError(t, err)
-	}
-
-	return &gf
-}
-
 // BuildIntegrationDefaultGRPC depending on integration vendor, defines an integration object with typical settings. Smartcar refresh limit default is 100 seconds.
 func BuildIntegrationDefaultGRPC(id, integrationVendor string, autoPiDefaultTemplateID int, bevTemplateID int, includeAutoPiPowertrainTemplate bool) *ddgrpc.Integration {
 	var integration *ddgrpc.Integration

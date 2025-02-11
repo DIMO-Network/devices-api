@@ -1320,148 +1320,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/geofences": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "gets all geofences for the current user",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "geofence"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/internal_controllers.GetGeofence"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "adds a new geofence to the user's account, optionally attached to specific user_devices",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "geofence"
-                ],
-                "parameters": [
-                    {
-                        "description": "add geofence to user.",
-                        "name": "geofence",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.CreateGeofence"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.CreateResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/geofences/{geofenceID}": {
-            "put": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "updates an existing geofence for the current user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "geofence"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "geofence id",
-                        "name": "geofenceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "add geofence to user.",
-                        "name": "geofence",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.CreateGeofence"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "hard deletes a geofence from db",
-                "tags": [
-                    "geofence"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "geofence id",
-                        "name": "geofenceID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
         "/user/synthetic/device/{tokenID}/commands/reauthenticate": {
             "post": {
                 "description": "Restarts a synthetic device polling job with a new set of credentials.",
@@ -1483,64 +1341,6 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/internal_controllers_user_sd.Message"
                         }
-                    }
-                }
-            }
-        },
-        "/user/vehicle/{tokenID}/commands/burn": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns the data the user must sign in order to burn the device.",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apitypes.TypedData"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Sends a burn device request to the blockchain",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Signature",
-                        "name": "burnRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.BurnRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
                     }
                 }
             }
@@ -1803,14 +1603,6 @@ const docTemplate = `{
                 },
                 "sub_region_code": {
                     "type": "integer"
-                }
-            }
-        },
-        "github_com_DIMO-Network_devices-api_internal_controllers_helpers.CreateResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
                 }
             }
         },
@@ -2128,18 +1920,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers.BurnRequest": {
-            "type": "object",
-            "required": [
-                "signature"
-            ],
-            "properties": {
-                "signature": {
-                    "description": "Signature is the hex encoding of the EIP-712 signature result.",
-                    "type": "string"
-                }
-            }
-        },
         "internal_controllers.BurnSyntheticDeviceRequest": {
             "type": "object",
             "properties": {
@@ -2222,33 +2002,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers.CreateGeofence": {
-            "type": "object",
-            "properties": {
-                "h3Indexes": {
-                    "description": "required: false",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "name": {
-                    "description": "required: true",
-                    "type": "string"
-                },
-                "type": {
-                    "description": "one of following: \"PrivacyFence\", \"TriggerEntry\", \"TriggerExit\"\nrequired: true",
-                    "type": "string"
-                },
-                "userDeviceIds": {
-                    "description": "Optionally link the geofence with a list of user device ID",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "internal_controllers.DeviceDefinition": {
             "type": "object",
             "properties": {
@@ -2312,52 +2065,6 @@ const docTemplate = `{
                 "VehicleMaintenance",
                 "VehicleCustomImage"
             ]
-        },
-        "internal_controllers.GeoFenceUserDevice": {
-            "type": "object",
-            "properties": {
-                "mmy": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "userDeviceId": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_controllers.GetGeofence": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "h3Indexes": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "userDevices": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_controllers.GeoFenceUserDevice"
-                    }
-                }
-            }
         },
         "internal_controllers.GetUserDeviceErrorCodeQueriesResponse": {
             "type": "object",
