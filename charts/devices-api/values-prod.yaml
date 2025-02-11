@@ -24,7 +24,6 @@ env:
   INGEST_SMARTCAR_TOPIC: topic.interface.ingest.smartcar
   KAFKA_BROKERS: kafka-prod-dimo-kafka-kafka-brokers:9092
   DEVICE_STATUS_TOPIC: topic.device.status
-  PRIVACY_FENCE_TOPIC: table.device.privacyfence
   EVENTS_TOPIC: topic.event
   DEVICE_DATA_INDEX_NAME: device-status-prod*
   USERS_API_GRPC_ADDR: users-api-prod:8086
@@ -46,7 +45,6 @@ env:
   NATS_DURABLE_CONSUMER: dd-valuation-task-consumer
   NATS_ACK_TIMEOUT: 2m
   SYNTHETIC_WALLET_GRPC_ADDR: synthetic-wallet-instance-prod:8086
-  DEVICE_DATA_GRPC_ADDR: device-data-api-prod:8086
   TESLA_TOKEN_URL: https://auth.tesla.com/oauth2/v3/token
   TESLA_FLEET_URL: http://tesla-command-api-prod.prod.svc.cluster.local:8080
   META_TRANSACTION_PROCESSOR_GRPC_ADDR: meta-transaction-processor-prod:8086

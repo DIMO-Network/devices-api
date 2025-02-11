@@ -50,7 +50,6 @@ env:
   TASK_STOP_TOPIC: table.task.stop
   TASK_CREDENTIAL_TOPIC: table.task.credential
   TASK_STATUS_TOPIC: topic.task.status
-  PRIVACY_FENCE_TOPIC: table.device.privacyfence
   EVENTS_TOPIC: topic.event
   DEVICE_DATA_INDEX_NAME: device-status-dev*
   AWS_REGION: us-east-2
@@ -69,8 +68,6 @@ env:
   TOKEN_EXCHANGE_JWK_KEY_SET_URL: http://dex-roles-rights.dev.svc.cluster.local:5556/keys
   CONTRACT_EVENT_TOPIC: topic.contract.event
   VEHICLE_NFT_ADDRESS: '0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8'
-  AUTOPI_NFT_IMAGE: autopi.png
-  MACARON_NFT_IMAGE: macaron.png
   VINCARIO_API_URL: https://api.vindecoder.eu/3.2
   CHATGPT_URL: https://api.openai.com/v1/chat/completions
   AFTERMARKET_DEVICE_CONTRACT_ADDRESS: '0x325b45949C833986bC98e98a49F3CA5C5c4643B5'
@@ -85,7 +82,6 @@ env:
   SYNTHETIC_WALLET_GRPC_ADDR: synthetic-wallet-instance-dev:8086
   DEVICE_FINGERPRINT_TOPIC: topic.device.fingerprint
   DEVICE_FINGERPRINT_CONSUMER_GROUP: device-fingerprint-vc-issuer
-  DEVICE_DATA_GRPC_ADDR: device-data-api-dev:8086
   SYNTHETIC_FINGERPRINT_TOPIC: topic.synthetic.fingerprint
   SYNTHETIC_FINGERPRINT_CONSUMER_GROUP: consumer.synthetic.fingerprint
   TESLA_TOKEN_URL: https://auth.tesla.com/oauth2/v3/token
@@ -121,7 +117,6 @@ env:
     -----END CERTIFICATE-----
   IPFS_URL: https://assets.dev.dimo.xyz/ipfs
   SD_INFO_TOPIC: table.task.synthetic.fill
-  PRIVACY_FENCE_TOPIC_V2: table.device.privacyfence.v2
   VEHICLE_DECODING_GRPC_ADDR: vehicle-signal-decoding-dev:8086
   CLICKHOUSE_TCP_PORT: 9440
   CLICKHOUSE_DATABASE: dimo
