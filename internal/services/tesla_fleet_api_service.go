@@ -22,6 +22,12 @@ import (
 	"golang.org/x/oauth2"
 )
 
+type TeslaVehicle struct {
+	ID        int    `json:"id"`
+	VehicleID int    `json:"vehicle_id"`
+	VIN       string `json:"vin"`
+}
+
 //go:generate mockgen -source tesla_fleet_api_service.go -destination mocks/tesla_fleet_api_service_mock.go
 type TeslaFleetAPIService interface {
 	CompleteTeslaAuthCodeExchange(ctx context.Context, authCode, redirectURI string) (*TeslaAuthCodeResponse, error)
