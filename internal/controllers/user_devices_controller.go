@@ -1553,7 +1553,21 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
-			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
+			if mr.SACDInput == nil {
+				return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
+					ManufacturerNode:     mvs.ManufacturerNode,
+					Owner:                mvs.Owner,
+					DeviceDefinitionId:   dd.Id,
+					IntegrationNode:      new(big.Int).SetUint64(intID),
+					VehicleOwnerSig:      sigBytes,
+					SyntheticDeviceSig:   sign,
+					SyntheticDeviceAddr:  common.BytesToAddress(addr),
+					AttrInfoPairsVehicle: attrListsToAttrPairs(mvs.Attributes, mvs.Infos),
+					AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
+				})
+			}
+
+			return client.MintVehicleAndSdWithDeviceDefinitionSignAndSacd(requestID, contracts.MintVehicleAndSdWithDdInput{
 				ManufacturerNode:     mvs.ManufacturerNode,
 				Owner:                mvs.Owner,
 				DeviceDefinitionId:   dd.Id,
@@ -1563,7 +1577,13 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				SyntheticDeviceAddr:  common.BytesToAddress(addr),
 				AttrInfoPairsVehicle: attrListsToAttrPairs(mvs.Attributes, mvs.Infos),
 				AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
+			}, contracts.SacdInput{
+				Grantee:     mr.SACDInput.Grantee,
+				Permissions: mr.SACDInput.Permissions,
+				Expiration:  mr.SACDInput.Expiration,
+				Source:      mr.SACDInput.Source,
 			})
+
 		}
 	}
 
@@ -1667,6 +1687,19 @@ type VehicleMintRequest struct {
 	NFTImageData
 	// Signature is the hex encoding of the EIP-712 signature result.
 	Signature string `json:"signature" validate:"required"`
+	// SACDInput contains user signed permission grant, including grantee, permissions, expiration and link to signed document
+	SACDInput *SACDInput `json:"sacdInput,omitempty"`
+}
+
+type SACDInput struct {
+	// Grantee is the Ethereum address permissions are being granted to.
+	Grantee common.Address `json:"grantee"`
+	// Permissions are a numerical representation of what permissions are being given to the grantee.
+	Permissions *big.Int `json:"permissions"`
+	// Expiration permissions granted are valid until this time.
+	Expiration *big.Int `json:"expiration"`
+	// Source external link to signed permission document.
+	Source string `json:"source"`
 }
 
 type NFTImageData struct {

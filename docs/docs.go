@@ -2327,6 +2327,38 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_controllers.SACDInput": {
+            "type": "object",
+            "properties": {
+                "expiration": {
+                    "description": "Expiration permissions granted are valid until this time.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/big.Int"
+                        }
+                    ]
+                },
+                "grantee": {
+                    "description": "Grantee is the Ethereum address permissions are being granted to.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "permissions": {
+                    "description": "Permissions are a numerical representation of what permissions are being given to the grantee.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/big.Int"
+                        }
+                    ]
+                },
+                "source": {
+                    "description": "Source external link to signed permission document.",
+                    "type": "string"
+                }
+            }
+        },
         "internal_controllers.SyntheticDeviceStatus": {
             "type": "object",
             "properties": {
@@ -2559,6 +2591,14 @@ const docTemplate = `{
                 "imageDataTransparent": {
                     "description": "ImageDataTransparent contains the base64-encoded NFT PNG image\nwith a transparent background, for use in the app. For compatibility\nwith older versions it is not required.",
                     "type": "string"
+                },
+                "sacdInput": {
+                    "description": "SACDInput contains user signed permission grant, including grantee, permissions, expiration and link to signed document",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/internal_controllers.SACDInput"
+                        }
+                    ]
                 },
                 "signature": {
                     "description": "Signature is the hex encoding of the EIP-712 signature result.",

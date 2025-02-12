@@ -409,6 +409,21 @@ func (c *Client) MintVehicleAndSdWithDeviceDefinitionSign(requestID string, data
 	return c.sendRequest(requestID, callData)
 }
 
+// function MintVehicleAndSdWithDeviceDefinitionSign(MintVehicleAndSdWithDdInput calldata data)
+func (c *Client) MintVehicleAndSdWithDeviceDefinitionSignAndSacd(requestID string, mintVehicleInput contracts.MintVehicleAndSdWithDdInput, sacdInput contracts.SacdInput) error {
+	abi, err := contracts.RegistryMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
+
+	callData, err := abi.Pack("mintVehicleAndSdWithDeviceDefinitionSignAndSacd", mintVehicleInput, sacdInput)
+	if err != nil {
+		return err
+	}
+
+	return c.sendRequest(requestID, callData)
+}
+
 func (c *Client) sendRequest(requestID string, data []byte) error {
 	event := shared.CloudEvent[RequestData]{
 		ID:          ksuid.New().String(),
