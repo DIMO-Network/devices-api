@@ -2324,30 +2324,23 @@
             "properties": {
                 "expiration": {
                     "description": "Expiration permissions granted are valid until this time.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/big.Int"
-                        }
-                    ]
+                    "type": "number",
+                    "example": 2933125200
                 },
                 "grantee": {
                     "description": "Grantee is the Ethereum address permissions are being granted to.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "type": "string",
+                    "example": "0xAb5801a7D398351b8bE11C439e05C5b3259aec9B"
                 },
                 "permissions": {
                     "description": "Permissions are a numerical representation of what permissions are being given to the grantee.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/big.Int"
-                        }
-                    ]
+                    "type": "number",
+                    "example": 262140
                 },
                 "source": {
                     "description": "Source external link to signed permission document.",
-                    "type": "string"
+                    "type": "string",
+                    "example": "ipfs://QmWfVnjhbJqAtGCp926jq13kDiszdM8LP15Z2ij5bY4eZD"
                 }
             }
         },
