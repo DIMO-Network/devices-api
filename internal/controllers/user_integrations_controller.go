@@ -905,6 +905,8 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 		regErr = udc.registerSmartcarIntegration(c, &logger, tx, integration, ud)
 	case constants.TeslaVendor:
 		regErr = udc.registerDeviceTesla(c, &logger, tx, userDeviceID, integration, ud)
+	case constants.CompassIotVendor:
+		regErr = udc.registerDeviceCompass(c, &logger, tx, userDeviceID, integration, ud)
 	case constants.AutoPiVendor:
 		logger.Error().Msg("autopi register request via invalid route: /user/devices/:userDeviceID/integrations/:integrationID")
 		return errors.New("this route cannot be used to register an autopi anymore - update your client")
@@ -1160,6 +1162,34 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 	localLog.Info().Msg("Finished Smartcar device registration.")
 
 	return c.SendStatus(fiber.StatusNoContent)
+}
+
+func (udc *UserDevicesController) registerDeviceCompass(c *fiber.Ctx, logger *zerolog.Logger, tx *sql.Tx, userDeviceID string, integ *ddgrpc.Integration, ud *models.UserDevice) error {
+	if existingIntegrations, err := models.UserDeviceAPIIntegrations(
+		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
+		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integ.Id),
+	).Count(c.Context(), tx); err != nil {
+		return err
+	} else if existingIntegrations > 0 {
+		return nil // integration already exists, continue
+	}
+	// err if no vin set
+	if ud.VinIdentifier.IsZero() {
+		return fiber.NewError(fiber.StatusConflict, "VIN identifier is not set.")
+	}
+
+	// insert record
+	integration := models.UserDeviceAPIIntegration{
+		UserDeviceID:  userDeviceID,
+		IntegrationID: integ.Id,
+		ExternalID:    null.StringFrom(ud.VinIdentifier.String),
+		Status:        models.UserDeviceAPIIntegrationStatusPendingFirstData,
+	}
+	if err := integration.Insert(c.Context(), tx, boil.Infer()); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zerolog.Logger, tx *sql.Tx, userDeviceID string, integ *ddgrpc.Integration, ud *models.UserDevice) error {
