@@ -560,22 +560,22 @@ definitions:
   internal_controllers.SACDInput:
     properties:
       expiration:
-        allOf:
-        - $ref: '#/definitions/big.Int'
         description: Expiration permissions granted are valid until this time.
+        example: 2933125200
+        type: number
       grantee:
         description: Grantee is the Ethereum address permissions are being granted
           to.
-        items:
-          type: integer
-        type: array
+        example: 0xAb5801a7D398351b8bE11C439e05C5b3259aec9B
+        type: string
       permissions:
-        allOf:
-        - $ref: '#/definitions/big.Int'
         description: Permissions are a numerical representation of what permissions
           are being given to the grantee.
+        example: 262140
+        type: number
       source:
         description: Source external link to signed permission document.
+        example: ipfs://QmWfVnjhbJqAtGCp926jq13kDiszdM8LP15Z2ij5bY4eZD
         type: string
     type: object
   internal_controllers.SyntheticDeviceStatus:
