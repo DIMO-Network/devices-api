@@ -2,7 +2,7 @@ replicaCount: 3
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 1.32.24
+  tag: 1.32.46
 cronJob:
   enabled: false
   schedule: 0 0 1 * *
@@ -23,8 +23,6 @@ env:
   INGEST_SMARTCAR_URL: http://ingest-smartcar-prod:8080
   INGEST_SMARTCAR_TOPIC: topic.interface.ingest.smartcar
   KAFKA_BROKERS: kafka-prod-dimo-kafka-kafka-brokers:9092
-  DEVICE_STATUS_TOPIC: topic.device.status
-  PRIVACY_FENCE_TOPIC: table.device.privacyfence
   EVENTS_TOPIC: topic.event
   DEVICE_DATA_INDEX_NAME: device-status-prod*
   USERS_API_GRPC_ADDR: users-api-prod:8086
@@ -38,7 +36,6 @@ env:
   TOKEN_EXCHANGE_JWK_KEY_SET_URL: http://dex-roles-rights-prod.prod.svc.cluster.local:5556/keys
   VEHICLE_NFT_ADDRESS: '0xba5738a18d83d41847dffbdc6101d37c69c9b0cf'
   AFTERMARKET_DEVICE_CONTRACT_ADDRESS: '0x9c94c395cbcbde662235e0a9d3bb87ad708561ba'
-  DIMO_CONTRACT_APIURL: https://contracts-api.dimo.zone/
   NATS_URL: nats-prod:4222
   NATS_STREAM_NAME: DD_VALUATION_TASKS
   NATS_VALUATION_SUBJECT: dd_valuation_tasks
@@ -46,7 +43,6 @@ env:
   NATS_DURABLE_CONSUMER: dd-valuation-task-consumer
   NATS_ACK_TIMEOUT: 2m
   SYNTHETIC_WALLET_GRPC_ADDR: synthetic-wallet-instance-prod:8086
-  DEVICE_DATA_GRPC_ADDR: device-data-api-prod:8086
   TESLA_TOKEN_URL: https://auth.tesla.com/oauth2/v3/token
   TESLA_FLEET_URL: http://tesla-command-api-prod.prod.svc.cluster.local:8080
   META_TRANSACTION_PROCESSOR_GRPC_ADDR: meta-transaction-processor-prod:8086
@@ -78,7 +74,8 @@ env:
     -----END CERTIFICATE-----
   VEHICLE_DECODING_GRPC_ADDR: vehicle-signal-decoding-prod:8086
   DEVICE_DEFINITIONS_GET_BY_KSUID_ENDPOINT: https://device-definitions-api.dimo.zone/device-definitions/
-  TESLA_REQUIRED_SCOPES: vehicle_device_data
+  TESLA_REQUIRED_SCOPES: vehicle_device_data,vehicle_location
+  ACCOUNTS_API_GRPC_ADDR: accounts-api-prod:8086
 ingress:
   enabled: true
   className: nginx

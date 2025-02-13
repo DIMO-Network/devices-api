@@ -61,9 +61,6 @@ const (
 	AftermarketDeviceNodeMinted           EventName = "AftermarketDeviceNodeMinted"
 	Transfer                              EventName = "Transfer"
 	BeneficiarySet                        EventName = "BeneficiarySet"
-	DCNNameChanged                        EventName = "NameChanged"
-	DCNNewNode                            EventName = "NewNode"
-	DCNNewExpiration                      EventName = "NewExpiration"
 	AftermarketDeviceClaimed              EventName = "AftermarketDeviceClaimed"
 	AftermarketDevicePaired               EventName = "AftermarketDevicePaired"
 	AftermarketDeviceUnpaired             EventName = "AftermarketDeviceUnpaired"
@@ -157,15 +154,6 @@ func (c *ContractsEventsConsumer) processEvent(ctx context.Context, event *share
 			c.log.Info().Str("event", data.EventName).Msg("Event received")
 			return c.beneficiarySet(&data)
 		}
-	case DCNNameChanged.String():
-		c.log.Info().Str("event", data.EventName).Msg("Event received")
-		return c.dcnNameChanged(&data)
-	case DCNNewNode.String():
-		c.log.Info().Str("event", data.EventName).Msg("Event received")
-		return c.dcnNewNode(&data)
-	case DCNNewExpiration.String():
-		c.log.Info().Str("event", data.EventName).Msg("Event received")
-		return c.dcnNewExpiration(&data)
 	case AftermarketDeviceClaimed.String():
 		return c.aftermarketDeviceClaimed(&data)
 	case AftermarketDevicePaired.String():
@@ -649,92 +637,6 @@ func (c *ContractsEventsConsumer) beneficiarySet(e *ContractEventData) error {
 	return nil
 }
 
-// dcnNameChanged processes an event of type NameChanged. Upserts DCN record, setting the Name
-func (c *ContractsEventsConsumer) dcnNameChanged(e *ContractEventData) error {
-	var args DCNNameChangedContract
-	if err := json.Unmarshal(e.Arguments, &args); err != nil {
-		return err
-	}
-	// see if it exists first
-	dcn, err := models.DCNS(models.DCNWhere.NFTNodeID.EQ(args.Node[:])).One(context.Background(), c.db.DBS().Reader)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return errors.Wrap(err, "failed to query for existing dcn")
-	}
-	if dcn == nil {
-		dcn = &models.DCN{
-			NFTNodeID: args.Node[:],
-		}
-	}
-	if len(args.Name) == 0 {
-		j, _ := e.Arguments.MarshalJSON()
-		c.log.Warn().Str("handler", "dcnNameChanged").Str("eventPayload", string(j)).Msg("DCN Name Change argument is empty")
-	}
-	dcn.Name = null.StringFrom(args.Name)
-
-	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{models.DCNColumns.NFTNodeID},
-		boil.Whitelist(models.DCNColumns.Name, models.DCNColumns.UpdatedAt), boil.Infer())
-	if err != nil {
-		return errors.Wrapf(err, "failed to upsert dcn with name: %s", args.Name)
-	}
-
-	return nil
-}
-
-// dcnNewNode processes an event of type NewNode. Upserts DCN record, setting the Owner Address and Block creation time
-func (c *ContractsEventsConsumer) dcnNewNode(e *ContractEventData) error {
-	var args contracts.DcnRegistryNewNode
-	if err := json.Unmarshal(e.Arguments, &args); err != nil {
-		return err
-	}
-	//question: should this be an insert always?
-	dcn, err := models.DCNS(models.DCNWhere.NFTNodeID.EQ(args.Node[:])).One(context.Background(), c.db.DBS().Reader)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return errors.Wrap(err, "failed to query for existing dcn")
-	}
-	if dcn == nil {
-		dcn = &models.DCN{
-			NFTNodeID: args.Node[:],
-		}
-	}
-	dcn.OwnerAddress = null.BytesFrom(args.Owner.Bytes())
-	dcn.NFTNodeBlockCreateTime = null.TimeFrom(e.Block.Time)
-
-	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{models.DCNColumns.NFTNodeID},
-		boil.Whitelist(models.DCNColumns.OwnerAddress, models.DCNColumns.NFTNodeBlockCreateTime, models.DCNColumns.UpdatedAt), boil.Infer())
-	if err != nil {
-		return errors.Wrapf(err, "failed to upsert dcn with node: %s", args.Node)
-	}
-
-	return nil
-}
-
-// dcnNewExpiration processes an event of type NewExpiration. Upserts DCN record, setting the Expiration
-func (c *ContractsEventsConsumer) dcnNewExpiration(e *ContractEventData) error {
-	var args contracts.DcnRegistryNewExpiration
-	if err := json.Unmarshal(e.Arguments, &args); err != nil {
-		return err
-	}
-	dcn, err := models.DCNS(models.DCNWhere.NFTNodeID.EQ(args.Node[:])).One(context.Background(), c.db.DBS().Reader)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return errors.Wrap(err, "failed to query for existing dcn")
-	}
-	if dcn == nil {
-		dcn = &models.DCN{
-			NFTNodeID: args.Node[:],
-		}
-	}
-	t := time.Unix(args.Expiration.Int64(), 0)
-	dcn.Expiration = null.TimeFrom(t)
-
-	err = dcn.Upsert(context.Background(), c.db.DBS().Writer, true, []string{models.DCNColumns.NFTNodeID},
-		boil.Whitelist(models.DCNColumns.Expiration, models.DCNColumns.UpdatedAt), boil.Infer())
-	if err != nil {
-		return errors.Wrapf(err, "failed to upsert dcn with node: %s", args.Node)
-	}
-
-	return nil
-}
-
 // aftermarketDeviceAddressReset handles the event of the same name from the registry contract.
 func (c *ContractsEventsConsumer) aftermarketDeviceAddressReset(e *ContractEventData) error {
 	if e.ChainID != c.settings.DIMORegistryChainID || e.Contract != common.HexToAddress(c.settings.DIMORegistryAddr) {
@@ -839,14 +741,6 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 
 	return tx.Commit()
 
-}
-
-// DCNNameChangedContract represents a NameChanged event raised by the FullAbi contract.
-// Could not use abigen struct because it did not consider the underscore in the name property for serialization
-type DCNNameChangedContract struct {
-	Node [32]byte
-	Name string `json:"name_"`
-	//Raw  types.Log // Blockchain specific contextual infos
 }
 
 func addressToUserID(addr common.Address) (string, error) {

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/services/cio"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
@@ -16,6 +17,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 const (
@@ -29,6 +31,7 @@ type TaskStatusListener struct {
 	log          *zerolog.Logger
 	DeviceDefSvc DeviceDefinitionService
 	prod         sarama.SyncProducer
+	cioSvc       *cio.Service
 	settings     *config.Settings
 }
 
@@ -40,8 +43,8 @@ type TaskStatusData struct {
 	Status        string `json:"status"`
 }
 
-func NewTaskStatusListener(db func() *db.ReaderWriter, log *zerolog.Logger, ddSvc DeviceDefinitionService, prod sarama.SyncProducer, settings *config.Settings) *TaskStatusListener {
-	return &TaskStatusListener{db: db, log: log, DeviceDefSvc: ddSvc, prod: prod, settings: settings}
+func NewTaskStatusListener(db func() *db.ReaderWriter, log *zerolog.Logger, ddSvc DeviceDefinitionService, prod sarama.SyncProducer, cioSvc *cio.Service, settings *config.Settings) *TaskStatusListener {
+	return &TaskStatusListener{db: db, log: log, DeviceDefSvc: ddSvc, prod: prod, cioSvc: cioSvc, settings: settings}
 }
 
 func (i *TaskStatusListener) ProcessTaskUpdates(messages <-chan *message.Message) {
@@ -98,6 +101,7 @@ func (i *TaskStatusListener) processSmartcarPollStatusEvent(event *shared.CloudE
 	udai, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID),
+		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.UserDevice, models.UserDeviceRels.VehicleTokenSyntheticDevice)),
 	).One(ctx, i.db().Writer)
 	if err != nil {
 		return fmt.Errorf("couldn't find device integration for device %s and integration %s: %w", userDeviceID, integrationID, err)
@@ -121,8 +125,15 @@ func (i *TaskStatusListener) processSmartcarPollStatusEvent(event *shared.CloudE
 	}
 
 	udai.Status = models.UserDeviceAPIIntegrationStatusAuthenticationFailure
-	_, err = udai.Update(context.Background(), i.db().Writer, boil.Infer())
-	return err
+	if _, err = udai.Update(context.Background(), i.db().Writer, boil.Infer()); err != nil {
+		i.log.Err(err).Str("userDeviceID", userDeviceID).Str("integrationID", integrationID).Msg("failed up update user device api integration with failure status")
+	}
+
+	if err := i.cioSvc.SoftwareDisconnectionEvent(ctx, udai); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (i *TaskStatusListener) processTeslaPollStatusEvent(event *shared.CloudEvent[TaskStatusData]) error {
@@ -145,6 +156,7 @@ func (i *TaskStatusListener) processTeslaPollStatusEvent(event *shared.CloudEven
 	udai, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID),
+		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.UserDevice, models.UserDeviceRels.VehicleTokenSyntheticDevice)),
 	).One(ctx, i.db().Writer)
 	if err != nil {
 		return fmt.Errorf("couldn't find device integration for device %s and integration %s: %w", userDeviceID, integrationID, err)
@@ -167,9 +179,15 @@ func (i *TaskStatusListener) processTeslaPollStatusEvent(event *shared.CloudEven
 		}
 	}
 	udai.Status = models.UserDeviceAPIIntegrationStatusAuthenticationFailure
+	if _, err = udai.Update(context.Background(), i.db().Writer, boil.Infer()); err != nil {
+		i.log.Err(err).Str("userDeviceID", userDeviceID).Str("integrationID", integrationID).Msg("failed up update user device api integration with failure status")
+	}
 
-	_, err = udai.Update(context.Background(), i.db().Writer, boil.Infer())
-	return err
+	if err := i.cioSvc.SoftwareDisconnectionEvent(ctx, udai); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (i *TaskStatusListener) processCommandStatusEvent(event *shared.CloudEvent[TaskStatusData]) error {

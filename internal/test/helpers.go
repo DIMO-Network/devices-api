@@ -52,7 +52,7 @@ func StartContainerDatabase(ctx context.Context, t *testing.T, migrationsDirRelP
 		return fmt.Sprintf("postgres://%s:%s@localhost:%s/%s?sslmode=disable", settings.DB.User, settings.DB.Password, port.Port(), settings.DB.Name)
 	}
 	cr := testcontainers.ContainerRequest{
-		Image:        "postgres:12.9-alpine",
+		Image:        "postgres:16.6-alpine",
 		Env:          map[string]string{"POSTGRES_USER": settings.DB.User, "POSTGRES_PASSWORD": settings.DB.Password, "POSTGRES_DB": settings.DB.Name},
 		ExposedPorts: []string{pgPort},
 		Cmd:          []string{"postgres", "-c", "fsync=off"},
@@ -185,12 +185,16 @@ func BuildRequest(method, url, body string) *http.Request {
 }
 
 // AuthInjectorTestHandler injects fake jwt with sub
-func AuthInjectorTestHandler(userID string) fiber.Handler {
+func AuthInjectorTestHandler(userID string, userEthAddr *common.Address) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		claims := jwt.MapClaims{
 			"sub": userID,
 			"nbf": time.Now().Unix(),
-		})
+		}
+		if userEthAddr != nil {
+			claims["ethereum_address"] = userEthAddr.Hex()
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 		c.Locals("user", token)
 		return c.Next()
@@ -411,28 +415,6 @@ func SetupCreateAutoPiJob(t *testing.T, jobID, deviceID, cmd, userDeviceID, stat
 	err := autopiJob.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
 	assert.NoError(t, err)
 	return &autopiJob
-}
-
-func SetupCreateGeofence(t *testing.T, userID, name string, ud *models.UserDevice, pdb db.Store) *models.Geofence {
-	gf := models.Geofence{
-		ID:     ksuid.New().String(),
-		UserID: userID,
-		Name:   name,
-		Type:   models.GeofenceTypePrivacyFence,
-	}
-	err := gf.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
-	assert.NoError(t, err)
-
-	if ud != nil {
-		udtgf := models.UserDeviceToGeofence{
-			UserDeviceID: ud.ID,
-			GeofenceID:   gf.ID,
-		}
-		err = udtgf.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
-		assert.NoError(t, err)
-	}
-
-	return &gf
 }
 
 // BuildIntegrationDefaultGRPC depending on integration vendor, defines an integration object with typical settings. Smartcar refresh limit default is 100 seconds.

@@ -10,11 +10,15 @@ import (
 	"time"
 
 	"github.com/google/subcommands"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
+	pb_accounts "github.com/DIMO-Network/accounts-api/pkg/grpc"
 	_ "github.com/DIMO-Network/devices-api/docs"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/kafka"
 	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/internal/services/cio"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/IBM/sarama"
@@ -87,7 +91,6 @@ func main() {
 		startTaskStatusConsumer(logger, &settings, pdb)
 		startWebAPI(logger, &settings, pdb, eventService, deps.getKafkaProducer(), deps.getS3ServiceClient(ctx), deps.getS3NFTServiceClient(ctx))
 	} else {
-
 		subcommands.Register(&migrateDBCmd{logger: logger, settings: settings}, "database")
 		subcommands.Register(&findOldStyleTasks{logger: logger, settings: settings, pdb: pdb}, "events")
 
@@ -96,10 +99,21 @@ func main() {
 		subcommands.Register(&remakeAutoPiTopicCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
 		subcommands.Register(&remakeAftermarketTopicCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&remakeUserDeviceTokenTableCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
-		subcommands.Register(&remakeFenceTopicCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
+
+		{
+			var cipher shared.Cipher
+			if settings.Environment == "dev" || settings.IsProduction() {
+				cipher = createKMS(&settings, &logger)
+			} else {
+				logger.Warn().Msg("Using ROT13 encrypter. Only use this for testing!")
+				cipher = new(shared.ROT13Cipher)
+			}
+			subcommands.Register(&checkVirtualKeyCmd{logger: logger, settings: settings, pdb: pdb, cipher: cipher}, "device integrations")
+			subcommands.Register(&enableTelemetryCmd{logger: logger, settings: settings, pdb: pdb, cipher: cipher}, "device integrations")
+		}
+
 		subcommands.Register(&populateSDInfoTopicCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&populateTeslaTelemetryMapCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
-		subcommands.Register(&populatePrivacyV2Topic{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&remakeDeviceDefinitionTopicsCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
 		subcommands.Register(&populateSDFingerprintTable{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&updateStateCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
@@ -107,6 +121,7 @@ func main() {
 		subcommands.Register(&autoPiKTableDeleteCmd{logger: logger, container: deps}, "device integrations")
 		subcommands.Register(&startSDTask{logger: logger, container: deps, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&startIntegrationTask{logger: logger, container: deps, settings: settings, pdb: pdb}, "device integrations")
+		subcommands.Register(&smartcarStopConnectionsCmd{container: deps}, "device integrations")
 
 		subcommands.Register(&populateESDDDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: deps.getElasticSearchService(), ddSvc: deps.getDeviceDefinitionService()}, "populate data")
 		subcommands.Register(&populateESRegionDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: deps.getElasticSearchService(), ddSvc: deps.getDeviceDefinitionService()}, "populate data")
@@ -214,7 +229,20 @@ func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, p
 
 	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, settings)
 
-	taskStatusService := services.NewTaskStatusListener(pdb.DBS, &logger, ddSvc, kp, settings)
+	accountsConn, err := grpc.NewClient(settings.AccountsAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create accounts API client.")
+	}
+	defer accountsConn.Close()
+
+	acctClient := pb_accounts.NewAccountsClient(accountsConn)
+
+	cioSvc, err := cio.New(settings.CustomerIOAPIKey, acctClient, &logger)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to create customer io service")
+	}
+
+	taskStatusService := services.NewTaskStatusListener(pdb.DBS, &logger, ddSvc, kp, cioSvc, settings)
 	consumer.Start(context.Background(), taskStatusService.ProcessTaskUpdates)
 
 	logger.Info().Msg("Task status consumer started")

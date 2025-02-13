@@ -17,7 +17,6 @@ import (
 	"github.com/segmentio/ksuid"
 
 	"github.com/DIMO-Network/devices-api/internal/appmetrics"
-	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/gofiber/fiber/v2"
@@ -57,53 +56,7 @@ type GetUserDeviceErrorCodeQueriesResponseItem struct {
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/commands/refresh [post]
 func (udc *UserDevicesController) RefreshUserDeviceStatus(c *fiber.Ctx) error {
-	udi := c.Params("userDeviceID")
-
-	ud, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(udi),
-	).One(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, err.Error())
-		}
-		return err
-	}
-
-	smartCarInteg, err := udc.DeviceDefSvc.GetIntegrationByVendor(c.Context(), constants.SmartCarVendor)
-	if err != nil {
-		return shared.GrpcErrorToFiber(err, "failed to get smartcar integration")
-	}
-
-	deviceData, err := udc.deviceDataSvc.GetRawDeviceData(c.Context(), ud.ID, smartCarInteg.Id)
-	if err != nil {
-		return errors.Wrapf(err, "failed to get device data to do smartcar refresh")
-	}
-
-	for _, deviceDatum := range deviceData.Items {
-		if deviceDatum.IntegrationId == smartCarInteg.Id {
-			nextAvailableTime := deviceDatum.RecordUpdatedAt.AsTime().UTC().Add(time.Second * time.Duration(smartCarInteg.RefreshLimitSecs))
-			if time.Now().UTC().Before(nextAvailableTime) {
-				helpers.SkipErrorLog(c)
-				return fiber.NewError(fiber.StatusTooManyRequests,
-					fmt.Sprintf("rate limit for integration refresh hit, next available: %s", nextAvailableTime.Format(time.RFC3339)))
-			}
-
-			udai, err := models.FindUserDeviceAPIIntegration(c.Context(), udc.DBS().Reader, ud.ID, smartCarInteg.Id)
-			if err != nil {
-				return err
-			}
-			if udai.Status == models.UserDeviceAPIIntegrationStatusActive && udai.TaskID.Valid {
-				err = udc.smartcarTaskSvc.Refresh(udai)
-				if err != nil {
-					return err
-				}
-				return c.SendStatus(204)
-			}
-			helpers.SkipErrorLog(c)
-			return fiber.NewError(fiber.StatusConflict, "Integration not active.")
-		}
-	}
-	return fiber.NewError(fiber.StatusBadRequest, "no active Smartcar integration found for this device")
+	return c.SendStatus(204)
 }
 
 var errorCodeRegex = regexp.MustCompile(`^.{5,8}$`)

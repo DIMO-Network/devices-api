@@ -38,7 +38,6 @@ import (
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -79,7 +78,6 @@ type UserDevicesController struct {
 	redisCache                redis.CacheService
 	openAI                    services.OpenAI
 	usersClient               pb.UserServiceClient
-	deviceDataSvc             services.DeviceDataService
 	NATSSvc                   *services.NATSService
 	wallet                    services.SyntheticWalletInstanceService
 	userDeviceSvc             services.UserDeviceService
@@ -136,7 +134,6 @@ func NewUserDevicesController(settings *config.Settings,
 	cache redis.CacheService,
 	openAI services.OpenAI,
 	usersClient pb.UserServiceClient,
-	deviceDataSvc services.DeviceDataService,
 	natsSvc *services.NATSService,
 	wallet services.SyntheticWalletInstanceService,
 	userDeviceSvc services.UserDeviceService,
@@ -164,7 +161,6 @@ func NewUserDevicesController(settings *config.Settings,
 		redisCache:                cache,
 		openAI:                    openAI,
 		usersClient:               usersClient,
-		deviceDataSvc:             deviceDataSvc,
 		NATSSvc:                   natsSvc,
 		wallet:                    wallet,
 		userDeviceSvc:             userDeviceSvc,
@@ -382,10 +378,10 @@ var (
 	}
 	connectionIDToIntegrationID = map[string]string{
 		"0xF26421509Efe92861a587482100c6d728aBf1CD0": "2lcaMFuCO0HJIUfdq8o780Kx5n3", // ruptela
-		// "0x5e31bBc786D7bEd95216383787deA1ab0f1c1897": "27qftVRWQYpVDcO5DltO5Ojbjxk", // autopi
-		// "0xc4035Fecb1cc906130423EF05f9C20977F643722": "26A5Dk3vvvQutjSyF0Jka2DP5lg", // tesla
-		// "0x4c674ddE8189aEF6e3b58F5a36d7438b2b1f6Bc2": "2ULfuC8U9dOqRshZBAi0lMM1Rrx", // macaron
-		// "0xcd445F4c6bDAD32b68a2939b912150Fe3C88803E": "22N2xaPOq2WW2gAHBHd0Ikn4Zob", // smartcar
+		"0x5e31bBc786D7bEd95216383787deA1ab0f1c1897": "27qftVRWQYpVDcO5DltO5Ojbjxk", // autopi
+		"0xc4035Fecb1cc906130423EF05f9C20977F643722": "26A5Dk3vvvQutjSyF0Jka2DP5lg", // tesla
+		"0x4c674ddE8189aEF6e3b58F5a36d7438b2b1f6Bc2": "2ULfuC8U9dOqRshZBAi0lMM1Rrx", // macaron
+		"0xcd445F4c6bDAD32b68a2939b912150Fe3C88803E": "22N2xaPOq2WW2gAHBHd0Ikn4Zob", // smartcar
 	}
 	integrationIDToConnectionID = func() map[string]string {
 		// reverse of integrationId2ConnectionId
@@ -404,11 +400,12 @@ func chSourceToIntegrationID(s string) string {
 	return strings.TrimPrefix(s, sourcePrefix)
 }
 
-func integrationIDToCHSource(id string) string {
-	if connectionID, ok := integrationIDToConnectionID[id]; ok {
-		return connectionID
+func integrationIDToCHSource(id string) []string {
+	var sources []string
+	if chSources, ok := integrationIDToConnectionID[id]; ok {
+		sources = append(sources, chSources)
 	}
-	return sourcePrefix + id
+	return append(sources, sourcePrefix+id)
 }
 
 // GetUserDevices godoc
@@ -478,7 +475,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 			for key, udai := range toCheck {
 				clause := qm.Expr(
 					qmhelper.Where("token_id", qmhelper.EQ, key.TokenID),
-					qmhelper.Where("source", qmhelper.EQ, integrationIDToCHSource(key.IntegrationID)),
+					qm.WhereIn("source IN ?", integrationIDToCHSource(key.IntegrationID)),
 					qmhelper.Where("timestamp", qmhelper.GT, udai.UpdatedAt))
 				if len(innerList) == 0 {
 					innerList = append(innerList, clause)
@@ -712,7 +709,7 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 		}
 	}
 
-	udFull, err := udc.createUserDevice(c.Context(), definitionID, "", reg.CountryCode, userID, nil, nil)
+	udFull, err := udc.createUserDevice(c.Context(), definitionID, "", reg.CountryCode, userID, nil, nil, false)
 	if err != nil {
 		return shared.GrpcErrorToFiber(err, "")
 	}
@@ -738,6 +735,7 @@ var opaqueInternalError = fiber.NewError(fiber.StatusInternalServerError, "Inter
 // @Router      /user/devices/fromvin [post]
 func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
+	userEthAddr, ethAddrFound := helpers.GetJWTEthAddr(c)
 	reg := &RegisterUserDeviceVIN{}
 	if err := c.BodyParser(reg); err != nil {
 		// Return status 400 and error message.
@@ -763,6 +761,8 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 
 	slugID := ""
 
+	vinConfirmed := udc.Settings.CompassPreSharedKey == reg.PreApprovedPSK
+
 	// check if VIN already exists
 	existingUD, err := models.UserDevices(models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
 		models.UserDeviceWhere.VinConfirmed.EQ(true)).One(c.Context(), udc.DBS().Reader)
@@ -772,6 +772,8 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	var udFull *UserDeviceFull
 	if existingUD != nil {
 		if existingUD.UserID != userID {
+			return fiber.NewError(fiber.StatusConflict, "VIN already exists for a different user: "+reg.VIN)
+		} else if ethAddrFound && existingUD.OwnerAddress.Valid && !bytes.Equal(existingUD.OwnerAddress.Bytes, userEthAddr.Bytes()) {
 			return fiber.NewError(fiber.StatusConflict, "VIN already exists for a different user: "+reg.VIN)
 		}
 		slugID = existingUD.DefinitionID
@@ -797,7 +799,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		}
 		slugID = decodeVIN.DefinitionId
 
-		udFull, err = udc.createUserDevice(c.Context(), slugID, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, &reg.CANProtocol)
+		udFull, err = udc.createUserDevice(c.Context(), slugID, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, &reg.CANProtocol, vinConfirmed)
 		if err != nil {
 			localLog.Err(err).Send()
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
@@ -992,14 +994,22 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 
 	// in case err is nil but we don't get a valid decode
 	if len(decodeVIN.DefinitionId) == 0 {
-		localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle")
+		localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle via smartcar")
 		return fiber.NewError(fiber.StatusFailedDependency, "failed to decode vin")
 	}
 
 	// attach device def to user
-	udFull, err := udc.createUserDevice(c.Context(), decodeVIN.DefinitionId, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, nil)
+	ud, dd, err := udc.userDeviceSvc.CreateUserDevice(c.Context(), decodeVIN.DefinitionId, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, nil, false)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		if errors.Is(err, services.ErrEmailUnverified) {
+			return fiber.NewError(fiber.StatusBadRequest,
+				"Your email has not been verified. Please check your email for the DIMO verification email.")
+		}
+		return err
+	}
+	udFull, err := builUserDeviceFull(ud, dd, reg.CountryCode)
+	if err != nil {
+		return err
 	}
 
 	if udc.Settings.IsProduction() {
@@ -1007,9 +1017,27 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx
 		if udFull.NFT != nil {
 			tokenID = udFull.NFT.TokenID.Int64()
 		}
-		udc.requestValuation(vin, udFull.ID, tokenID)
-		udc.requestInstantOffer(udFull.ID, tokenID)
+		udc.requestValuation(vin, ud.ID, tokenID)
+		udc.requestInstantOffer(ud.ID, tokenID)
 	}
+
+	// prepare necessary paramters to pass into existing function to do the rest of smartcar integration steps
+	tx, err := udc.DBS().Writer.BeginTx(c.Context(), nil)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("failed to create transaction: %s", err))
+	}
+	defer tx.Rollback() //nolint
+	integration, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), smartCarIntegrationID)
+	if err != nil {
+		return shared.GrpcErrorToFiber(err, "failed to get integration with id: "+smartCarIntegrationID)
+	}
+
+	err = udc.registerSmartcarIntegration(c, &localLog, tx, integration, ud)
+	if err != nil {
+		return err
+	}
+	// emit the event (also in register integration func), shouldn't get called again by other func since that one returns if finds existing udai record
+	udc.runPostRegistration(c.Context(), &localLog, ud.ID, smartCarIntegrationID, integration)
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,
@@ -1020,9 +1048,8 @@ func buildSmartcarTokenKey(vin, userID string) string {
 	return fmt.Sprintf("sc-temp-tok-%s-%s", vin, userID)
 }
 
-func (udc *UserDevicesController) createUserDevice(ctx context.Context, definitionID, styleID, countryCode, userID string,
-	vin, canProtocol *string) (*UserDeviceFull, error) {
-	ud, dd, err := udc.userDeviceSvc.CreateUserDevice(ctx, definitionID, styleID, countryCode, userID, vin, canProtocol, false)
+func (udc *UserDevicesController) createUserDevice(ctx context.Context, definitionID, styleID, countryCode, userID string, vin, canProtocol *string, vinConfirmed bool) (*UserDeviceFull, error) {
+	ud, dd, err := udc.userDeviceSvc.CreateUserDevice(ctx, definitionID, styleID, countryCode, userID, vin, canProtocol, vinConfirmed)
 	if err != nil {
 		if errors.Is(err, services.ErrEmailUnverified) {
 			return nil, fiber.NewError(fiber.StatusBadRequest,
@@ -1101,110 +1128,6 @@ func (udc *UserDevicesController) DeviceOptIn(c *fiber.Ctx) error {
 	return nil
 }
 
-// UpdateVIN godoc
-// @Description Deprecated. updates the VIN on the user device record
-// @Tags        user-devices
-// @Produce     json
-// @Accept      json
-// @Param       vin          body controllers.UpdateVINReq true "VIN"
-// @Param       userDeviceID path string                   true "user id"
-// @Success     204
-// @Security    BearerAuth
-// @Router      /user/devices/{userDeviceID}/vin [patch]
-func (udc *UserDevicesController) UpdateVIN(c *fiber.Ctx) error {
-	// todo remove this endpoint on next mobile app release
-	udi := c.Params("userDeviceID")
-	logger := helpers.GetLogger(c, udc.log).With().Str("route", c.Route().Name).Logger()
-	var req UpdateVINReq
-	if err := c.BodyParser(&req); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Could not parse request body.")
-	}
-	req.VIN = strings.TrimSpace(strings.ToUpper(req.VIN))
-	if len(req.VIN) != 17 {
-		return fiber.NewError(fiber.StatusBadRequest, "VIN is not 17 characters long.")
-	}
-	for _, r := range req.VIN {
-		if !validVINChar(r) {
-			return fiber.NewError(fiber.StatusBadRequest, "VIN contains a non-alphanumeric character.")
-		}
-	}
-	// If signed, we should be able to set the VIN to validated.
-	if req.Signature != "" {
-		vinByte := []byte(req.VIN)
-		sig := common.FromHex(req.Signature)
-		if len(sig) != 65 {
-			logger.Error().Str("rawSignature", req.Signature).Msg("Signature was not 65 bytes.")
-			return fiber.NewError(fiber.StatusBadRequest, "Signature is not 65 bytes long.")
-		}
-		hash := crypto.Keccak256(vinByte)
-		recAddr, err := helpers.Ecrecover(hash, sig)
-		if err != nil {
-			return fiber.NewError(fiber.StatusBadRequest, "Couldn't recover signer address.")
-		}
-		found, err := models.AftermarketDevices(
-			models.AftermarketDeviceWhere.EthereumAddress.EQ(recAddr.Bytes()),
-		).Exists(c.Context(), udc.DBS().Reader)
-		if err != nil {
-			return err
-		}
-		if !found {
-			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("VIN signature author %s does not match any known aftermarket device.", recAddr))
-		}
-	}
-	// Don't want phantom reads.
-	tx, err := udc.DBS().GetWriterConn().BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
-	if err != nil {
-		return opaqueInternalError
-	}
-	defer tx.Rollback() //nolint
-	userDevice, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(udi),
-	).One(c.Context(), tx)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "Vehicle not found.")
-		}
-		return err
-	}
-	if userDevice.VinConfirmed {
-		switch {
-		case req.Signature == "":
-			return fiber.NewError(fiber.StatusConflict, "Vehicle already has a confirmed VIN.")
-		case req.VIN != userDevice.VinIdentifier.String:
-			return fiber.NewError(fiber.StatusConflict, "Submitted VIN does not match confirmed VIN.")
-		default:
-			return c.SendStatus(fiber.StatusNoContent)
-		}
-	}
-	if req.Signature != "" {
-		existing, err := models.UserDevices(
-			models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(req.VIN)),
-			models.UserDeviceWhere.VinConfirmed.EQ(true),
-		).Exists(c.Context(), tx)
-		if err != nil {
-			return err
-		}
-		if udc.Settings.IsProduction() && existing {
-			return fiber.NewError(fiber.StatusConflict, "VIN already in use by another vehicle.")
-		}
-		userDevice.VinConfirmed = true
-	}
-	userDevice.VinIdentifier = null.StringFrom(req.VIN)
-	if _, err := userDevice.Update(c.Context(), tx, boil.Infer()); err != nil {
-		return err
-	}
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-	if userDevice.CountryCode.Valid {
-		if err := udc.updatePowerTrain(c.Context(), userDevice); err != nil {
-			logger.Err(err).Msg("Failed to update powertrain type.")
-		}
-	}
-	return c.SendStatus(fiber.StatusNoContent)
-}
-
 const (
 	PowerTrainTypeKey = "powertrain_type"
 )
@@ -1239,47 +1162,6 @@ func (udc *UserDevicesController) updatePowerTrain(ctx context.Context, userDevi
 	}
 
 	return nil
-}
-
-// UpdateCountryCode godoc
-// @Description updates the CountryCode on the user device record
-// @Tags        user-devices
-// @Produce     json
-// @Accept      json
-// @Param       name body controllers.UpdateCountryCodeReq true "Country code"
-// @Success     204
-// @Security    BearerAuth
-// @Router      /user/devices/{userDeviceID}/country_code [patch]
-func (udc *UserDevicesController) UpdateCountryCode(c *fiber.Ctx) error {
-	udi := c.Params("userDeviceID")
-
-	userDevice, err := models.UserDevices(models.UserDeviceWhere.ID.EQ(udi)).One(c.Context(), udc.DBS().Writer)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, err.Error())
-		}
-		return err
-	}
-	countryCode := &UpdateCountryCodeReq{}
-	if err := c.BodyParser(countryCode); err != nil {
-		// Return status 400 and error message.
-		return helpers.ErrorResponseHandler(c, err, fiber.StatusBadRequest)
-	}
-	// validate country_code
-	if countryCode.CountryCode == nil {
-		return fiber.NewError(fiber.StatusBadRequest, "CountryCode is required")
-	}
-	if constants.FindCountry(*countryCode.CountryCode) == nil {
-		return fiber.NewError(fiber.StatusBadRequest, "CountryCode does not exist: "+*countryCode.CountryCode)
-	}
-
-	userDevice.CountryCode = null.StringFromPtr(countryCode.CountryCode)
-	_, err = userDevice.Update(c.Context(), udc.DBS().Writer, boil.Infer())
-	if err != nil {
-		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
-	}
-
-	return c.SendStatus(fiber.StatusNoContent)
 }
 
 // DeleteUserDevice godoc
@@ -1612,12 +1494,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
-			// block new kias from minting
-			if (strings.ToLower(dd.Make.NameSlug) == "kia" || dd.Make.Id == "2681cSm2zmTmGHzqK3ldzoTLZIw") && in.Vendor == constants.SmartCarVendor {
-				udc.log.Warn().Msgf("new kias blocked from minting with smartcar connections")
-				return fiber.NewError(fiber.StatusFailedDependency, "Kia vehicles connected via smartcar cannot be manually minted for now.")
-			}
-
 			if dd.Make.Name == "Peugeot" && dd.Model == "2008" && dd.Year == 2024 {
 				return fiber.NewError(fiber.StatusBadRequest, "Certain Peugeot vehicles cannot be connected through Smartcar at this time.")
 			}
@@ -1677,7 +1553,21 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
-			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
+			if mr.SACDInput == nil {
+				return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
+					ManufacturerNode:     mvs.ManufacturerNode,
+					Owner:                mvs.Owner,
+					DeviceDefinitionId:   dd.Id,
+					IntegrationNode:      new(big.Int).SetUint64(intID),
+					VehicleOwnerSig:      sigBytes,
+					SyntheticDeviceSig:   sign,
+					SyntheticDeviceAddr:  common.BytesToAddress(addr),
+					AttrInfoPairsVehicle: attrListsToAttrPairs(mvs.Attributes, mvs.Infos),
+					AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
+				})
+			}
+
+			return client.MintVehicleAndSdWithDeviceDefinitionSignAndSacd(requestID, contracts.MintVehicleAndSdWithDdInput{
 				ManufacturerNode:     mvs.ManufacturerNode,
 				Owner:                mvs.Owner,
 				DeviceDefinitionId:   dd.Id,
@@ -1687,7 +1577,13 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				SyntheticDeviceAddr:  common.BytesToAddress(addr),
 				AttrInfoPairsVehicle: attrListsToAttrPairs(mvs.Attributes, mvs.Infos),
 				AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
+			}, contracts.SacdInput{
+				Grantee:     mr.SACDInput.Grantee,
+				Permissions: mr.SACDInput.Permissions,
+				Expiration:  mr.SACDInput.Expiration,
+				Source:      mr.SACDInput.Source,
 			})
+
 		}
 	}
 
@@ -1791,6 +1687,20 @@ type VehicleMintRequest struct {
 	NFTImageData
 	// Signature is the hex encoding of the EIP-712 signature result.
 	Signature string `json:"signature" validate:"required"`
+	// SACDInput contains user signed permission grant, including grantee, permissions, expiration and link to signed document
+	SACDInput *SACDInput `json:"sacdInput,omitempty"`
+}
+
+// SACDInput user signed permission grant
+type SACDInput struct {
+	// Grantee is the Ethereum address permissions are being granted to.
+	Grantee common.Address `json:"grantee" swaggertype:"string" example:"0xAb5801a7D398351b8bE11C439e05C5b3259aec9B"`
+	// Permissions are a numerical representation of what permissions are being given to the grantee.
+	Permissions *big.Int `json:"permissions" swaggertype:"number" example:"262140"`
+	// Expiration permissions granted are valid until this time.
+	Expiration *big.Int `json:"expiration" swaggertype:"number" example:"2933125200"`
+	// Source external link to signed permission document.
+	Source string `json:"source" example:"ipfs://QmWfVnjhbJqAtGCp926jq13kDiszdM8LP15Z2ij5bY4eZD"`
 }
 
 type NFTImageData struct {
@@ -1820,7 +1730,8 @@ type RegisterUserDeviceVIN struct {
 	VIN         string `json:"vin"`
 	CountryCode string `json:"countryCode"`
 	// CANProtocol is the protocol that was detected by edge-network from the autopi.
-	CANProtocol string `json:"canProtocol"`
+	CANProtocol    string `json:"canProtocol"`
+	PreApprovedPSK string `json:"preApprovedPSK"`
 }
 
 type RegisterUserDeviceSmartcar struct {
@@ -2006,4 +1917,44 @@ func (udc *UserDevicesController) checkVehicleMint(c *fiber.Ctx, userDevice *mod
 	}
 
 	return mvs, dd, nil
+}
+
+// GetCompassDeviceByVIN godoc
+// @Description Temporary endpoint meant for compass-iot integration. Gets you the token id's by the VIN
+// @Tags        user-devices
+// @Param       vin path string                   true "VIN"
+// @Success     200
+// @Failure		404 "user device with VIN not found"
+// @Failure		400 "invalid VIN"
+// @Failure		500 "server error"
+// @Security    PSK
+// @Router      /compass/device-by-vin/{vin} [get]
+func (udc *UserDevicesController) GetCompassDeviceByVIN(c *fiber.Ctx) error {
+	vin := c.Params("vin")
+	if len(vin) != 17 {
+		return c.Status(fiber.StatusBadRequest).JSON(fmt.Errorf("vin should be 17 characters long"))
+	}
+
+	userDevice, err := models.UserDevices(
+		models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
+	).One(c.Context(), udc.DBS().Reader)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "No device with that VIN found.")
+	}
+	tkID := uint64(0)
+	if !userDevice.TokenID.IsZero() {
+		tkID, _ = userDevice.TokenID.Uint64()
+	}
+	synthID := uint64(0)
+	if userDevice.R.VehicleTokenSyntheticDevice != nil {
+		synthID, _ = userDevice.R.VehicleTokenSyntheticDevice.TokenID.Uint64()
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"vin":                    userDevice.VinIdentifier.String,
+		"userDeviceId":           userDevice.ID,
+		"vehicleTokenId":         tkID,
+		"syntheticDeviceTokenId": synthID,
+	})
 }

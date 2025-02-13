@@ -15,37 +15,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/aftermarket/device/by-address/{address}": {
-            "get": {
-                "description": "Retrieves NFT metadata for a given aftermarket device, using the device's\nEthereum address.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "nfts"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Ethereum address for the device.",
-                        "name": "address",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.NFTMetadataResp"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    }
-                }
-            }
-        },
         "/aftermarket/device/by-serial/{serial}": {
             "get": {
                 "security": [
@@ -79,142 +48,22 @@ const docTemplate = `{
                 }
             }
         },
-        "/aftermarket/device/by-serial/{serial}/commands/claim": {
+        "/compass/device-by-vin/{vin}": {
             "get": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "PSK": []
                     }
                 ],
-                "description": "Return the EIP-712 payload to be signed for Aftermarket device claiming.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "AutoPi unit id",
-                        "name": "serial",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apitypes.TypedData"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Return the EIP-712 payload to be signed for Aftermarket device claiming.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "AutoPi unit id",
-                        "name": "serial",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Signatures from the user and device.",
-                        "name": "claimRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.AftermarketDeviceClaimRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
-        "/aftermarket/device/by-serial/{serial}/commands/unclaim": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Dev-only endpoint for removing a claim. Removes the flag on-chain and clears\nthe owner in the database.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "AutoPi unit id",
-                        "name": "serial",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
-        "/aftermarket/device/{tokenId}": {
-            "get": {
-                "description": "Retrieves NFT metadata for a given aftermarket device.",
-                "produces": [
-                    "application/json"
-                ],
+                "description": "Temporary endpoint meant for compass-iot integration. Gets you the token id's by the VIN",
                 "tags": [
-                    "nfts"
+                    "user-devices"
                 ],
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.NFTMetadataResp"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    }
-                }
-            }
-        },
-        "/aftermarket/device/{tokenId}/image": {
-            "get": {
-                "description": "Returns the image for the given aftermarket device NFT.",
-                "produces": [
-                    "image/png"
-                ],
-                "tags": [
-                    "nfts"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenId",
+                        "type": "string",
+                        "description": "VIN",
+                        "name": "vin",
                         "in": "path",
                         "required": true
                     }
@@ -223,8 +72,14 @@ const docTemplate = `{
                     "200": {
                         "description": "OK"
                     },
+                    "400": {
+                        "description": "invalid VIN"
+                    },
                     "404": {
-                        "description": "Not Found"
+                        "description": "user device with VIN not found"
+                    },
+                    "500": {
+                        "description": "server error"
                     }
                 }
             }
@@ -465,28 +320,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/integration/{tokenID}": {
-            "get": {
-                "description": "gets an integration using its tokenID",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "integrations"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/internal_controllers.NFTMetadataResp"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/integration/{tokenID}/credentials": {
             "post": {
                 "security": [
@@ -531,37 +364,6 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/internal_controllers.CompleteOAuthExchangeResponseWrapper"
                         }
-                    }
-                }
-            }
-        },
-        "/synthetic/device/{tokenId}": {
-            "get": {
-                "description": "Retrieves NFT metadata for a given synthetic device.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "nfts"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.NFTMetadataResp"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found"
                     }
                 }
             }
@@ -791,132 +593,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/devices/{userDeviceID}/aftermarket/commands/pair": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Return the EIP-712 payload to be signed for Aftermarket device pairing. The device must\neither already be integrated with the vehicle, or you must provide its unit id\nas a query parameter. In the latter case, the integration process will start\nonce the transaction confirms.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "External id, for now AutoPi unit id",
-                        "name": "external_id",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "EIP-712 message for pairing.",
-                        "schema": {
-                            "$ref": "#/definitions/apitypes.TypedData"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Submit the signature for pairing this device with its attached Aftermarket.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "User signature.",
-                        "name": "userSignature",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.AftermarketDevicePairRequest"
-                        }
-                    }
-                ],
-                "responses": {}
-            }
-        },
-        "/user/devices/{userDeviceID}/aftermarket/commands/unpair": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Return the EIP-712 payload to be signed for aftermarket device unpairing.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apitypes.TypedData"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Submit the signature for unpairing this user device from its attached aftermarket device.",
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "User signature.",
-                        "name": "userSignature",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.AftermarketDevicePairRequest"
-                        }
-                    }
-                ],
-                "responses": {}
-            }
-        },
         "/user/devices/{userDeviceID}/commands/mint": {
             "get": {
                 "security": [
@@ -1041,41 +717,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/devices/{userDeviceID}/country_code": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "updates the CountryCode on the user device record",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "description": "Country code",
-                        "name": "name",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.UpdateCountryCodeReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
         "/user/devices/{userDeviceID}/error-codes": {
             "get": {
                 "security": [
@@ -1083,7 +724,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Deprecated. Use ` + "`" + `/user/vehicle/{tokenID}/error-codes` + "`" + ` instead",
                 "tags": [
                     "error-codes"
                 ],
@@ -1118,7 +758,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Deprecated. Use ` + "`" + `/user/vehicle/{tokenID}/error-codes` + "`" + ` instead",
                 "tags": [
                     "error-codes"
                 ],
@@ -1164,7 +803,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Deprecated. Use ` + "`" + `/user/vehicle/{tokenID}/error-codes/clear` + "`" + ` instead",
                 "tags": [
                     "error-codes"
                 ],
@@ -1646,48 +1284,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/devices/{userDeviceID}/vin": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Deprecated. updates the VIN on the user device record",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "description": "VIN",
-                        "name": "vin",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.UpdateVINReq"
-                        }
-                    },
-                    {
-                        "type": "string",
-                        "description": "user id",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
         "/user/devices/{userDeviceId}/commands/update-nft-image": {
             "post": {
                 "security": [
@@ -1724,148 +1320,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/geofences": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "gets all geofences for the current user",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "geofence"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/internal_controllers.GetGeofence"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "adds a new geofence to the user's account, optionally attached to specific user_devices",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "geofence"
-                ],
-                "parameters": [
-                    {
-                        "description": "add geofence to user.",
-                        "name": "geofence",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.CreateGeofence"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.CreateResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/geofences/{geofenceID}": {
-            "put": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "updates an existing geofence for the current user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "geofence"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "geofence id",
-                        "name": "geofenceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "add geofence to user.",
-                        "name": "geofence",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.CreateGeofence"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "hard deletes a geofence from db",
-                "tags": [
-                    "geofence"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "geofence id",
-                        "name": "geofenceID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
         "/user/synthetic/device/{tokenID}/commands/reauthenticate": {
             "post": {
                 "description": "Restarts a synthetic device polling job with a new set of credentials.",
@@ -1886,185 +1340,6 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/internal_controllers_user_sd.Message"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/vehicle/{tokenID}/commands/burn": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns the data the user must sign in order to burn the device.",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apitypes.TypedData"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Sends a burn device request to the blockchain",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Signature",
-                        "name": "burnRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.BurnRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                }
-            }
-        },
-        "/user/vehicle/{tokenID}/error-codes": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "error-codes"
-                ],
-                "summary": "List all error code queries made for this vehicle.",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "vehicle token id",
-                        "name": "tokenID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.GetUserDeviceErrorCodeQueriesResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Vehicle not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "error-codes"
-                ],
-                "summary": "Obtain, store, and return descriptions for a list of error codes from this vehicle.",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "vehicle token id",
-                        "name": "tokenID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "error codes",
-                        "name": "queryDeviceErrorCodes",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.QueryDeviceErrorCodesReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.QueryDeviceErrorCodesResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Vehicle not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/vehicle/{tokenID}/error-codes/clear": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "error-codes"
-                ],
-                "summary": "Mark the most recent set of error codes as having been cleared.",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "vehicle token id",
-                        "name": "tokenID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.QueryDeviceErrorCodesResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Vehicle not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
-                        }
-                    },
-                    "429": {
-                        "description": "Last query already cleared",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
                         }
                     }
                 }
@@ -2194,71 +1469,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/vehicle/{tokenId}": {
-            "get": {
-                "description": "retrieves NFT metadata for a given tokenID",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "nfts"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.NFTMetadataResp"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    }
-                }
-            }
-        },
-        "/vehicle/{tokenId}/image": {
-            "get": {
-                "description": "Returns the image for the given vehicle NFT.",
-                "produces": [
-                    "image/png"
-                ],
-                "tags": [
-                    "nfts"
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token id",
-                        "name": "tokenId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "whether to remove the image background",
-                        "name": "transparent",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    }
-                }
-            }
-        },
         "/vehicle/{tokenId}/vin": {
             "patch": {
                 "security": [
@@ -2266,7 +1476,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "updates the VIN on the user device record. Can optionally also update the protocol and the country code",
+                "description": "updates the VIN on the user device record. Can optionally also update the protocol and the country code.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2393,14 +1603,6 @@ const docTemplate = `{
                 },
                 "sub_region_code": {
                     "type": "integer"
-                }
-            }
-        },
-        "github_com_DIMO-Network_devices-api_internal_controllers_helpers.CreateResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
                 }
             }
         },
@@ -2638,42 +1840,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers.AftermarketDeviceClaimRequest": {
-            "type": "object",
-            "properties": {
-                "aftermarketDeviceSignature": {
-                    "description": "AftermarketDeviceSignature is the signature from the aftermarket device.",
-                    "type": "string"
-                },
-                "userSignature": {
-                    "description": "UserSignature is the signature from the user, using their private key.",
-                    "type": "string"
-                }
-            }
-        },
-        "internal_controllers.AftermarketDevicePairRequest": {
-            "type": "object",
-            "properties": {
-                "aftermarketDeviceSignature": {
-                    "description": "AftermarketDeviceSignature is the 65-byte, hex-encoded Ethereum signature of\nthe pairing payload by the device. Only needed if the vehicle owner and aftermarket\ndevice owner are not the same.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "externalId": {
-                    "description": "ExternalID is the serial number of the aftermarket device.",
-                    "type": "string"
-                },
-                "signature": {
-                    "description": "Signature is the 65-byte, hex-encoded Ethereum signature of the pairing payload\nby the vehicle owner.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                }
-            }
-        },
         "internal_controllers.AutoPiDeviceInfo": {
             "type": "object",
             "properties": {
@@ -2751,18 +1917,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/internal_controllers.TransactionStatus"
                         }
                     ]
-                }
-            }
-        },
-        "internal_controllers.BurnRequest": {
-            "type": "object",
-            "required": [
-                "signature"
-            ],
-            "properties": {
-                "signature": {
-                    "description": "Signature is the hex encoding of the EIP-712 signature result.",
-                    "type": "string"
                 }
             }
         },
@@ -2848,33 +2002,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers.CreateGeofence": {
-            "type": "object",
-            "properties": {
-                "h3Indexes": {
-                    "description": "required: false",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "name": {
-                    "description": "required: true",
-                    "type": "string"
-                },
-                "type": {
-                    "description": "one of following: \"PrivacyFence\", \"TriggerEntry\", \"TriggerExit\"\nrequired: true",
-                    "type": "string"
-                },
-                "userDeviceIds": {
-                    "description": "Optionally link the geofence with a list of user device ID",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "internal_controllers.DeviceDefinition": {
             "type": "object",
             "properties": {
@@ -2938,52 +2065,6 @@ const docTemplate = `{
                 "VehicleMaintenance",
                 "VehicleCustomImage"
             ]
-        },
-        "internal_controllers.GeoFenceUserDevice": {
-            "type": "object",
-            "properties": {
-                "mmy": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "userDeviceId": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_controllers.GetGeofence": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "h3Indexes": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "userDevices": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_controllers.GeoFenceUserDevice"
-                    }
-                }
-            }
         },
         "internal_controllers.GetUserDeviceErrorCodeQueriesResponse": {
             "type": "object",
@@ -3078,17 +2159,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers.NFTAttribute": {
-            "type": "object",
-            "properties": {
-                "trait_type": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
         "internal_controllers.NFTImageData": {
             "type": "object",
             "required": [
@@ -3101,26 +2171,6 @@ const docTemplate = `{
                 },
                 "imageDataTransparent": {
                     "description": "ImageDataTransparent contains the base64-encoded NFT PNG image\nwith a transparent background, for use in the app. For compatibility\nwith older versions it is not required.",
-                    "type": "string"
-                }
-            }
-        },
-        "internal_controllers.NFTMetadataResp": {
-            "type": "object",
-            "properties": {
-                "attributes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_controllers.NFTAttribute"
-                    }
-                },
-                "description": {
-                    "type": "string"
-                },
-                "image": {
-                    "type": "string"
-                },
-                "name": {
                     "type": "string"
                 }
             }
@@ -3269,8 +2319,36 @@ const docTemplate = `{
                 "countryCode": {
                     "type": "string"
                 },
+                "preApprovedPSK": {
+                    "type": "string"
+                },
                 "vin": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_controllers.SACDInput": {
+            "type": "object",
+            "properties": {
+                "expiration": {
+                    "description": "Expiration permissions granted are valid until this time.",
+                    "type": "number",
+                    "example": 2933125200
+                },
+                "grantee": {
+                    "description": "Grantee is the Ethereum address permissions are being granted to.",
+                    "type": "string",
+                    "example": "0xAb5801a7D398351b8bE11C439e05C5b3259aec9B"
+                },
+                "permissions": {
+                    "description": "Permissions are a numerical representation of what permissions are being given to the grantee.",
+                    "type": "number",
+                    "example": 262140
+                },
+                "source": {
+                    "description": "Source external link to signed permission document.",
+                    "type": "string",
+                    "example": "ipfs://QmWfVnjhbJqAtGCp926jq13kDiszdM8LP15Z2ij5bY4eZD"
                 }
             }
         },
@@ -3325,6 +2403,13 @@ const docTemplate = `{
                     "description": "APIVersion is the version of the Tesla API being used. There are currently two valid values:\n1 is the old \"Owner API\", 2 is the new \"Fleet API\".",
                     "type": "integer"
                 },
+                "missingRequiredScopes": {
+                    "description": "MissingRequiredScopes lists scopes required by DIMO that we're missing.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "telemetrySubscribed": {
                     "description": "TelemetrySubscribed is true if DIMO has subscribed to the vehicle's telemetry stream. Note that\nvirtual key pairing is required for this to work.",
                     "type": "boolean"
@@ -3377,14 +2462,6 @@ const docTemplate = `{
                     "description": "UpdatedAt is the last time we updated the status of the transaction.",
                     "type": "string",
                     "example": "2022-10-01T09:22:26.337Z"
-                }
-            }
-        },
-        "internal_controllers.UpdateCountryCodeReq": {
-            "type": "object",
-            "properties": {
-                "countryCode": {
-                    "type": "string"
                 }
             }
         },
@@ -3507,6 +2584,14 @@ const docTemplate = `{
                 "imageDataTransparent": {
                     "description": "ImageDataTransparent contains the base64-encoded NFT PNG image\nwith a transparent background, for use in the app. For compatibility\nwith older versions it is not required.",
                     "type": "string"
+                },
+                "sacdInput": {
+                    "description": "SACDInput contains user signed permission grant, including grantee, permissions, expiration and link to signed document",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/internal_controllers.SACDInput"
+                        }
+                    ]
                 },
                 "signature": {
                     "description": "Signature is the hex encoding of the EIP-712 signature result.",

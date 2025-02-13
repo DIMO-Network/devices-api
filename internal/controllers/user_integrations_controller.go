@@ -11,20 +11,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	smartcar "github.com/smartcar/go-sdk"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
-	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	signer "github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -34,6 +32,11 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/mod/semver"
 )
+
+func isTeslaVirtualKeyCapable(model string, year int) bool {
+	// Can we check this capability through their API somehow?
+	return model != "Model S" && model != "Model X" || year >= 2021
+}
 
 // GetUserDeviceIntegration godoc
 // @Description Receive status updates about a Smartcar integration
@@ -61,7 +64,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("user device %s does not have integration %s", userDeviceID, integrationID))
+			return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("User device %s does not have integration %s.", userDeviceID, integrationID))
 		}
 		return err
 	}
@@ -71,6 +74,8 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		ExternalID: apiIntegration.ExternalID,
 		CreatedAt:  apiIntegration.CreatedAt,
 	}
+
+	logger := udc.log.With().Str("userDeviceId", userDeviceID).Str("integrationId", integrationID).Logger()
 
 	// Handle fetching virtual key status
 	intd, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
@@ -92,7 +97,8 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		}
 
 		resp.Tesla = &TeslaIntegrationInfo{
-			APIVersion: apiVersion,
+			APIVersion:            apiVersion,
+			MissingRequiredScopes: []string{},
 		}
 
 		if apiVersion == constants.TeslaAPIV2 {
@@ -101,11 +107,32 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 			}
 
 			if apiIntegration.AccessExpiresAt.Valid && apiIntegration.AccessExpiresAt.Time.After(time.Now()) {
-				// TODO(elfjjs): Graceful stuff if the access token gets invalidated before expiry.
-				keyPaired, err := udc.getDeviceVirtualKeyStatus(c.Context(), apiIntegration)
+				accessToken, err := udc.cipher.Decrypt(apiIntegration.AccessToken.String)
 				if err != nil {
-					udc.log.Err(err).Msg("Error checking virtual key status.")
+					return fmt.Errorf("failed to decrypt access token: %w", err)
+				}
+
+				var claims partialTeslaClaims
+				_, _, err = jwt.NewParser().ParseUnverified(accessToken, &claims)
+				if err != nil {
+					return fiber.NewError(fiber.StatusInternalServerError, "Couldn't parse access token.")
+				}
+
+				if udc.Settings.TeslaRequiredScopes != "" {
+					// Yes, wasteful Split.
+					for _, scope := range strings.Split(udc.Settings.TeslaRequiredScopes, ",") {
+						if !slices.Contains(claims.Scopes, scope) {
+							resp.Tesla.MissingRequiredScopes = append(resp.Tesla.MissingRequiredScopes, scope)
+						}
+					}
+				}
+
+				// TODO(elfjjs): Graceful stuff if the access token gets invalidated before expiry.
+				keyPaired, err := udc.getDeviceVirtualKeyStatus(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
+				if err != nil {
+					logger.Err(err).Msg("Error checking virtual key status.")
 					if !errors.Is(err, services.ErrUnauthorized) {
+						// TODO(elffjs): Need to figure these out.
 						return fiber.NewError(fiber.StatusInternalServerError, "Error checking virtual key status.")
 					}
 				} else {
@@ -122,18 +149,18 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 							return err
 						}
 
-						if (dd.Model == "Model S" || dd.Model == "Model X") && dd.Year < 2021 {
-							vks = Incapable
-						} else {
+						if isTeslaVirtualKeyCapable(dd.Model, int(dd.Year)) {
 							vks = Unpaired
+						} else {
+							vks = Incapable
 						}
 					}
 
 					resp.Tesla.VirtualKeyStatus = vks
 
-					isSubscribed, err := udc.getTelemetrySubscriptionStatus(c.Context(), apiIntegration)
+					isSubscribed, err := udc.getTelemetrySubscriptionStatus(c.Context(), accessToken, apiIntegration.ExternalID.String)
 					if err != nil {
-						udc.log.Err(err).Msg("Error checking telemetry subscription status.")
+						logger.Err(err).Msg("Error checking telemetry subscription status.")
 						if !errors.Is(err, services.ErrUnauthorized) {
 							return fiber.NewError(fiber.StatusInternalServerError, "Error checking telemetry subscription status.")
 						}
@@ -148,45 +175,20 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context, integration *models.UserDeviceAPIIntegration) (bool, error) {
-	if !integration.AccessExpiresAt.Valid || !integration.AccessExpiresAt.Time.After(time.Now()) {
-		// TODO(elffjs): Need to find a way to fail these eventually.
-		udc.log.Warn().Str("userDeviceId", integration.UserDeviceID).Msg("Tesla token expired.")
-		return false, nil
-	}
-
-	accessTk, err := udc.cipher.Decrypt(integration.AccessToken.String)
-	if err != nil {
-		return false, fmt.Errorf("couldn't decrypt access token: %w", err)
-	}
-
-	isConnected, err := udc.teslaFleetAPISvc.VirtualKeyConnectionStatus(ctx, accessTk, integration.R.UserDevice.VinIdentifier.String)
-	if err != nil {
-		return false, err
-	}
-
-	return isConnected, nil
+func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context, accessToken, vin string) (bool, error) {
+	// TODO(elffjs): Do we need this function at all?
+	return udc.teslaFleetAPISvc.VirtualKeyConnectionStatus(ctx, accessToken, vin)
 }
 
-func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Context, integration *models.UserDeviceAPIIntegration) (bool, error) {
-	if !integration.AccessExpiresAt.Valid || !integration.AccessExpiresAt.Time.After(time.Now()) {
-		// TODO(elffjs): Need to find a way to fail these eventually.
-		return false, nil
-	}
-
-	accessTk, err := udc.cipher.Decrypt(integration.AccessToken.String)
+func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Context, accessToken, id string) (bool, error) {
+	teslaID, err := strconv.Atoi(id)
 	if err != nil {
-		return false, fmt.Errorf("couldn't decrypt access token: %w", err)
+		return false, fmt.Errorf("couldn't parse Tesla id as a number: %w", err)
 	}
 
-	teslaID, err := strconv.Atoi(integration.ExternalID.String)
+	isSubscribed, err := udc.teslaFleetAPISvc.GetTelemetrySubscriptionStatus(ctx, accessToken, teslaID)
 	if err != nil {
 		return false, err
-	}
-
-	isSubscribed, err := udc.teslaFleetAPISvc.GetTelemetrySubscriptionStatus(ctx, accessTk, teslaID)
-	if err != nil {
-		return false, fiber.NewError(fiber.StatusFailedDependency, err.Error())
 	}
 
 	return isSubscribed, nil
@@ -845,744 +847,6 @@ func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
 	return c.JSON(adi)
 }
 
-// GetAftermarketDeviceClaimMessage godoc
-// @Description Return the EIP-712 payload to be signed for Aftermarket device claiming.
-// @Produce json
-// @Param serial path string true "AutoPi unit id"
-// @Success 200 {object} signer.TypedData
-// @Security BearerAuth
-// @Router /aftermarket/device/by-serial/{serial}/commands/claim [get]
-func (udc *UserDevicesController) GetAftermarketDeviceClaimMessage(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
-
-	unitID := c.Params("serial")
-
-	logger := udc.log.With().Str("userId", userID).Str("serial", unitID).Logger()
-	logger.Info().Msg("Got AutoPi claim request.")
-
-	unit, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.Serial.EQ(unitID),
-		qm.Load(models.AftermarketDeviceRels.ClaimMetaTransactionRequest),
-	).One(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			logger.Info().Msg("Unknown unit id.")
-			return fiber.NewError(fiber.StatusNotFound, "Aftermarket device not minted.")
-		}
-		logger.Err(err).Msg("Database failure searching for AutoPi.")
-		return fiber.NewError(fiber.StatusInternalServerError, "Internal error.")
-	}
-
-	if unit.OwnerAddress.Valid {
-		return fiber.NewError(fiber.StatusConflict, "Device already claimed.")
-	}
-
-	if unit.R.ClaimMetaTransactionRequest != nil && unit.R.ClaimMetaTransactionRequest.Status != "Failed" {
-		return fiber.NewError(fiber.StatusConflict, "Claiming transaction in progress.")
-	}
-
-	apToken := unit.TokenID.Int(nil)
-
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-	if err != nil {
-		udc.log.Err(err).Msg("Couldn't retrieve user record.")
-		return opaqueInternalError
-	}
-
-	if user.EthereumAddress == nil {
-		udc.log.Error().Msg("No Ethereum address on file for user.")
-		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
-	}
-
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
-	cads := &registry.ClaimAftermarketDeviceSign{
-		AftermarketDeviceNode: apToken,
-		Owner:                 common.HexToAddress(*user.EthereumAddress),
-	}
-
-	var out *signer.TypedData = client.GetPayload(cads)
-
-	return c.JSON(out)
-}
-
-// PostAftermarketDeviceClaim godoc
-// @Description Return the EIP-712 payload to be signed for Aftermarket device claiming.
-// @Produce json
-// @Param serial path string true "AutoPi unit id"
-// @Param claimRequest body controllers.AftermarketDeviceClaimRequest true "Signatures from the user and device."
-// @Success 204
-// @Security BearerAuth
-// @Router /aftermarket/device/by-serial/{serial}/commands/claim [post]
-func (udc *UserDevicesController) PostAftermarketDeviceClaim(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
-	unitID := c.Params("serial")
-
-	logger := udc.log.With().Str("userId", userID).Str("serial", unitID).Str("route", c.Route().Name).Logger()
-
-	reqBody := AftermarketDeviceClaimRequest{}
-	err := c.BodyParser(&reqBody)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
-	}
-
-	tx, err := udc.DBS().Writer.BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback() //nolint
-
-	udc.log.Info().Interface("payload", reqBody).Msg("Got claim request.")
-
-	unit, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.Serial.EQ(unitID),
-		qm.Load(models.AftermarketDeviceRels.ClaimMetaTransactionRequest),
-	).One(c.Context(), tx)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "Aftermarket device not minted.")
-		}
-		return fiber.NewError(fiber.StatusInternalServerError, "Internal error.")
-	}
-
-	if unit.OwnerAddress.Valid {
-		return fiber.NewError(fiber.StatusConflict, "Device already claimed.")
-	}
-
-	if unit.R.ClaimMetaTransactionRequest != nil && unit.R.ClaimMetaTransactionRequest.Status != "Failed" {
-		return fiber.NewError(fiber.StatusConflict, "Claiming transaction in progress.")
-	}
-
-	apToken := unit.TokenID.Int(nil)
-
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-	if err != nil {
-		udc.log.Err(err).Msg("Couldn't retrieve user record.")
-		return opaqueInternalError
-	}
-
-	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusBadRequest, "User does not have an Ethereum address.")
-	}
-
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
-	realUserAddr := common.HexToAddress(*user.EthereumAddress)
-
-	cads := &registry.ClaimAftermarketDeviceSign{
-		AftermarketDeviceNode: apToken,
-		Owner:                 realUserAddr,
-	}
-
-	hash, err := client.Hash(cads)
-	if err != nil {
-		return err
-	}
-
-	userSig := common.FromHex(reqBody.UserSignature)
-
-	if len(userSig) != 65 {
-		logger.Error().Str("rawSignature", reqBody.UserSignature).Msg("User signature was not 65 bytes.")
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("User signature has invalid length %d.", len(userSig)))
-	}
-
-	recUserAddr, err := helpers.Ecrecover(hash, userSig)
-	if err != nil {
-		return err
-	}
-
-	if recUserAddr != realUserAddr {
-		return fiber.NewError(fiber.StatusBadRequest, "User signature invalid.")
-	}
-
-	amSig := common.FromHex(reqBody.AftermarketDeviceSignature)
-
-	if len(amSig) != 65 {
-		logger.Error().Str("rawSignature", reqBody.AftermarketDeviceSignature).Msg("Device signature was not 65 bytes.")
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Device signature has invalid length %d.", len(amSig)))
-	}
-
-	recAmAddr, err := helpers.Ecrecover(hash, amSig)
-	if err != nil {
-		return err
-	}
-
-	realAmAddr := common.BytesToAddress(unit.EthereumAddress)
-
-	if recAmAddr != realAmAddr {
-		return fiber.NewError(fiber.StatusBadRequest, "Aftermarket device signature invalid.")
-	}
-
-	requestID := ksuid.New().String()
-
-	mtr := models.MetaTransactionRequest{
-		ID:     requestID,
-		Status: models.MetaTransactionRequestStatusUnsubmitted,
-	}
-	err = mtr.Insert(c.Context(), tx, boil.Infer())
-	if err != nil {
-		return err
-	}
-
-	unit.UserID = null.StringFrom(userID)
-	unit.ClaimMetaTransactionRequestID = null.StringFrom(requestID)
-	_, err = unit.Update(c.Context(), tx, boil.Infer())
-	if err != nil {
-		return err
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-
-	return client.ClaimAftermarketDeviceSign(requestID, apToken, realUserAddr, userSig, amSig)
-}
-
-// GetAftermarketDevicePairMessage godoc
-// @Description Return the EIP-712 payload to be signed for Aftermarket device pairing. The device must
-// @Description either already be integrated with the vehicle, or you must provide its unit id
-// @Description as a query parameter. In the latter case, the integration process will start
-// @Description once the transaction confirms.
-// @Produce json
-// @Param userDeviceID path string true "Device id"
-// @Param external_id query string false "External id, for now AutoPi unit id"
-// @Success 200 {object} signer.TypedData "EIP-712 message for pairing."
-// @Security BearerAuth
-// @Router /user/devices/{userDeviceID}/aftermarket/commands/pair [get]
-func (udc *UserDevicesController) GetAftermarketDevicePairMessage(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
-	userDeviceID := c.Params("userDeviceID")
-	logger := helpers.GetLogger(c, udc.log)
-
-	logger.Info().Msg("Got aftermarket device pair payload request.")
-
-	// This is only a query parameter because we want to maintain the path shape for POST.
-	// We also had a legacy mode for web2-paired devices. This was never used in production.
-	externalID := c.Query("external_id")
-
-	vnft, ad, err := udc.checkPairable(c.Context(), udc.DBS().Reader, userDeviceID, externalID)
-	if err != nil {
-		return err
-	}
-
-	vehicleToken := vnft.TokenID.Int(nil)
-	apToken := ad.TokenID.Int(nil)
-
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-	if err != nil {
-		udc.log.Err(err).Msg("Failed to retrieve user information.")
-		return opaqueInternalError
-	}
-
-	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
-	}
-
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
-	pads := &registry.PairAftermarketDeviceSign{
-		AftermarketDeviceNode: apToken,
-		VehicleNode:           vehicleToken,
-	}
-
-	return c.JSON(client.GetPayload(pads))
-}
-
-// PostAftermarketDevicePair godoc
-// @Description Submit the signature for pairing this device with its attached Aftermarket.
-// @Produce json
-// @Param userDeviceID path string true "Device id"
-// @Param userSignature body controllers.AftermarketDevicePairRequest true "User signature."
-// @Security BearerAuth
-// @Router /user/devices/{userDeviceID}/aftermarket/commands/pair [post]
-func (udc *UserDevicesController) PostAftermarketDevicePair(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
-	userDeviceID := c.Params("userDeviceID")
-	logger := helpers.GetLogger(c, udc.log)
-
-	logger.Info().Msg("Got aftermarket device pair submission request.")
-
-	var pairReq AftermarketDevicePairRequest
-	err := c.BodyParser(&pairReq)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
-	}
-
-	logger.Info().Interface("request", pairReq).Msg("Pairing request body.")
-
-	tx, err := udc.DBS().Writer.BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback() //nolint
-
-	vnft, ad, err := udc.checkPairable(c.Context(), tx, userDeviceID, pairReq.ExternalID)
-	if err != nil {
-		return err
-	}
-
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-	if err != nil {
-		udc.log.Err(err).Msg("Failed to retrieve user information.")
-		return opaqueInternalError
-	}
-
-	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
-	}
-
-	userAddr := common.HexToAddress(*user.EthereumAddress)
-
-	apToken := ad.TokenID.Int(nil)
-	vehicleToken := vnft.TokenID.Int(nil)
-
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
-	pads := registry.PairAftermarketDeviceSign{
-		AftermarketDeviceNode: apToken,
-		VehicleNode:           vehicleToken,
-	}
-
-	hash, err := client.Hash(&pads)
-	if err != nil {
-		return err
-	}
-
-	vehicleOwnerSig := pairReq.Signature
-
-	if len(vehicleOwnerSig) != 65 {
-		return fiber.NewError(fiber.StatusBadRequest, "User signature was not 65 bytes long.")
-	}
-
-	if recAddr, err := helpers.Ecrecover(hash, vehicleOwnerSig); err != nil {
-		return err
-	} else if recAddr != userAddr {
-		return fiber.NewError(fiber.StatusBadRequest, "Incorrect user signature.")
-	}
-
-	if common.BytesToAddress(ad.OwnerAddress.Bytes) != common.BytesToAddress(vnft.OwnerAddress.Bytes) {
-		// We must be trying to do a host pair.
-		aftermarketDeviceSig := pairReq.AftermarketDeviceSignature
-		if len(aftermarketDeviceSig) != 65 {
-			// Not great English.
-			return fiber.NewError(fiber.StatusBadRequest, "Aftermarket device signature was not 65 bytes long.")
-		}
-
-		if recAddr, err := helpers.Ecrecover(hash, aftermarketDeviceSig); err != nil {
-			return err
-		} else if recAddr != common.BytesToAddress(ad.EthereumAddress) {
-			return fiber.NewError(fiber.StatusBadRequest, "Incorrect aftermarket device signature.")
-		}
-
-		requestID := ksuid.New().String()
-
-		mtr := models.MetaTransactionRequest{
-			ID:     requestID,
-			Status: models.MetaTransactionRequestStatusUnsubmitted,
-		}
-		err = mtr.Insert(c.Context(), tx, boil.Infer())
-		if err != nil {
-			return err
-		}
-
-		ad.UnpairRequestID = null.String{}
-		ad.PairRequestID = null.StringFrom(requestID)
-		_, err = ad.Update(c.Context(), tx, boil.Whitelist(models.AftermarketDeviceColumns.UnpairRequestID, models.AftermarketDeviceColumns.PairRequestID, models.AftermarketDeviceColumns.UpdatedAt))
-		if err != nil {
-			return err
-		}
-
-		if err := tx.Commit(); err != nil {
-			return err
-		}
-
-		return client.PairAftermarketDeviceSignTwoOwners(requestID, apToken, vehicleToken, aftermarketDeviceSig, vehicleOwnerSig)
-	}
-
-	// Yes, this is ugly, we'll fix it.
-	requestID := ksuid.New().String()
-
-	mtr := models.MetaTransactionRequest{
-		ID:     requestID,
-		Status: models.MetaTransactionRequestStatusUnsubmitted,
-	}
-	err = mtr.Insert(c.Context(), tx, boil.Infer())
-	if err != nil {
-		return err
-	}
-
-	ad.UnpairRequestID = null.String{}
-	ad.PairRequestID = null.StringFrom(requestID)
-	_, err = ad.Update(c.Context(), tx, boil.Whitelist(models.AftermarketDeviceColumns.UnpairRequestID, models.AftermarketDeviceColumns.PairRequestID, models.AftermarketDeviceColumns.UpdatedAt))
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-
-	return client.PairAftermarketDeviceSignSameOwner(requestID, apToken, vehicleToken, vehicleOwnerSig)
-}
-
-func (udc *UserDevicesController) checkPairable(ctx context.Context, exec boil.ContextExecutor, userDeviceID, serial string) (*models.UserDevice, *models.AftermarketDevice, error) {
-	ud, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(models.UserDeviceRels.VehicleTokenAftermarketDevice),
-		qm.Load(models.UserDeviceRels.BurnRequest),
-	).One(ctx, exec)
-	if err != nil {
-		// Access middleware will catch "not found".
-		return nil, nil, err
-	}
-
-	if ud.TokenID.IsZero() {
-		return nil, nil, fiber.NewError(fiber.StatusConflict, "Vehicle not yet minted.")
-	}
-
-	if burn := ud.R.BurnRequest; burn != nil && burn.Status != models.MetaTransactionRequestStatusFailed {
-		return nil, nil, fiber.NewError(fiber.StatusConflict, "Vehicle is being burned.")
-	}
-
-	if serial == "" {
-		return nil, nil, fiber.NewError(fiber.StatusBadRequest, "Serial required.")
-	}
-
-	serial = strings.TrimSpace(strings.ToLower(serial))
-
-	ad, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.Serial.EQ(serial),
-		qm.Load(models.AftermarketDeviceRels.PairRequest),
-	).One(ctx, exec)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil, fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("No aftermarket device with serial %q known.", serial))
-		}
-		return nil, nil, err
-	}
-
-	if !ad.OwnerAddress.Valid {
-		return nil, nil, fiber.NewError(fiber.StatusConflict, "Aftermarket device not yet claimed.")
-	}
-
-	// TODO(elffjs): It's difficult to tell if the vehicle is in the process of being paired.
-	if vad := ud.R.VehicleTokenAftermarketDevice; vad != nil {
-		if ad.TokenID.Cmp(vad.TokenID.Big) == 0 {
-			return nil, nil, fiber.NewError(fiber.StatusConflict, "Specified vehicle and aftermarket device are already paired.")
-		}
-		return nil, nil, fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle already paired with aftermarket device %s.", vad.TokenID))
-	}
-
-	if !ad.VehicleTokenID.IsZero() {
-		return nil, nil, fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Aftermarket device already paired to vehicle %d.", ad.VehicleTokenID))
-	}
-
-	if ad.R.PairRequest != nil && ad.R.PairRequest.Status != models.MetaTransactionRequestStatusFailed {
-		return nil, nil, fiber.NewError(fiber.StatusConflict, "Aftermarket device already in the pairing process.")
-	}
-
-	return ud, ad, nil
-}
-
-func (udc *UserDevicesController) checkUnpairable(ctx context.Context, exec boil.ContextExecutor, userDeviceID string) (*models.UserDevice, *models.AftermarketDevice, error) {
-	ud, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(userDeviceID),
-		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenAftermarketDevice, models.AftermarketDeviceRels.UnpairRequest)),
-	).One(ctx, exec)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil, fiber.NewError(fiber.StatusNotFound, "No vehicle with that id found.")
-		}
-		return nil, nil, err
-	}
-
-	if ud.TokenID.IsZero() {
-		return nil, nil, fiber.NewError(fiber.StatusConflict, "Vehicle not yet minted.")
-	}
-
-	if ud.R.VehicleTokenAftermarketDevice == nil {
-		return nil, nil, fiber.NewError(fiber.StatusConflict, "Vehicle not paired with an aftermarket device.")
-	}
-
-	ad := ud.R.VehicleTokenAftermarketDevice
-
-	if ad.R.UnpairRequest != nil && ad.R.UnpairRequest.Status != models.MetaTransactionRequestStatusFailed {
-		return nil, nil, fiber.NewError(fiber.StatusConflict, "Unpairing already in progress.")
-	}
-
-	return ud, ad, nil
-}
-
-// GetAftermarketDeviceUnpairMessage godoc
-// @Description Return the EIP-712 payload to be signed for aftermarket device unpairing.
-// @Produce json
-// @Param userDeviceID path string true "Device id"
-// @Success 200 {object} signer.TypedData
-// @Security BearerAuth
-// @Router /user/devices/{userDeviceID}/aftermarket/commands/unpair [get]
-func (udc *UserDevicesController) GetAftermarketDeviceUnpairMessage(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
-
-	userDeviceID := c.Params("userDeviceID")
-	logger := helpers.GetLogger(c, udc.log)
-	logger.Info().Msg("Got Aftermarket unpair request.")
-
-	vnft, autoPiUnit, err := udc.checkUnpairable(c.Context(), udc.DBS().Writer, userDeviceID)
-	if err != nil {
-		return err
-	}
-
-	apToken := autoPiUnit.TokenID.Int(nil)
-	vehicleToken := vnft.TokenID.Int(nil)
-
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-	if err != nil {
-		udc.log.Err(err).Msg("Failed to retrieve user information.")
-		return opaqueInternalError
-	}
-
-	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
-	}
-
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
-	uads := &registry.UnPairAftermarketDeviceSign{
-		AftermarketDeviceNode: apToken,
-		VehicleNode:           vehicleToken,
-	}
-
-	var out *signer.TypedData = client.GetPayload(uads)
-
-	return c.JSON(out)
-}
-
-// PostAftermarketDeviceUnpair godoc
-// @Description Submit the signature for unpairing this user device from its attached aftermarket device.
-// @Produce json
-// @Param userDeviceID path string true "Device id"
-// @Param userSignature body controllers.AftermarketDevicePairRequest true "User signature."
-// @Security BearerAuth
-// @Router /user/devices/{userDeviceID}/aftermarket/commands/unpair [post]
-func (udc *UserDevicesController) PostAftermarketDeviceUnpair(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
-
-	user, err := udc.usersClient.GetUser(c.Context(), &pb.GetUserRequest{Id: userID})
-	if err != nil {
-		udc.log.Err(err).Msg("Failed to retrieve user information.")
-		return opaqueInternalError
-	}
-
-	if user.EthereumAddress == nil {
-		return fiber.NewError(fiber.StatusConflict, "User does not have an Ethereum address.")
-	}
-
-	realAddr := common.HexToAddress(*user.EthereumAddress)
-
-	userDeviceID := c.Params("userDeviceID")
-
-	logger := helpers.GetLogger(c, udc.log)
-	logger.Info().Msg("Got Aftermarket unpair request.")
-
-	// TODO(elffjs): Is SELECT ... FOR UPDATE better here?
-	tx, err := udc.DBS().Writer.BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback() //nolint
-
-	vnft, apnft, err := udc.checkUnpairable(c.Context(), tx, userDeviceID)
-	if err != nil {
-		return err
-	}
-
-	vehicleToken := vnft.TokenID.Int(nil)
-	apToken := apnft.TokenID.Int(nil)
-
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
-	uads := registry.UnPairAftermarketDeviceSign{
-		AftermarketDeviceNode: apToken,
-		VehicleNode:           vehicleToken,
-	}
-
-	// Re-using this struct. A bit lazy.
-	var pairReq AftermarketDevicePairRequest
-	err = c.BodyParser(&pairReq)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
-	}
-
-	hash, err := client.Hash(&uads)
-	if err != nil {
-		return err
-	}
-
-	sigBytes := pairReq.Signature
-	if len(sigBytes) != 65 {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Signature has length %d, not the required 65.", len(sigBytes)))
-	}
-
-	recAddr, err := helpers.Ecrecover(hash, sigBytes)
-	if err != nil {
-		return err
-	}
-
-	if recAddr != realAddr {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid signature.")
-	}
-
-	requestID := ksuid.New().String()
-
-	mtr := models.MetaTransactionRequest{
-		ID:     requestID,
-		Status: models.MetaTransactionRequestStatusUnsubmitted,
-	}
-	err = mtr.Insert(c.Context(), tx, boil.Infer())
-	if err != nil {
-		return err
-	}
-
-	apnft.UnpairRequestID = null.StringFrom(requestID)
-	_, err = apnft.Update(c.Context(), tx, boil.Whitelist(models.AftermarketDeviceColumns.UnpairRequestID, models.AftermarketDeviceColumns.UpdatedAt))
-	if err != nil {
-		return err
-	}
-
-	// This is a bit iffy, since we don't want to save this record and then fail to send to Kafka.
-	// But the opposite is worse, I think.
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-
-	return client.UnPairAftermarketDeviceSign(requestID, apToken, vehicleToken, sigBytes)
-}
-
-type AftermarketDeviceClaimRequest struct {
-	// UserSignature is the signature from the user, using their private key.
-	UserSignature string `json:"userSignature"`
-	// AftermarketDeviceSignature is the signature from the aftermarket device.
-	AftermarketDeviceSignature string `json:"aftermarketDeviceSignature"`
-}
-
-type AftermarketDevicePairRequest struct {
-	// ExternalID is the serial number of the aftermarket device.
-	ExternalID string `json:"externalId"`
-	// Signature is the 65-byte, hex-encoded Ethereum signature of the pairing payload
-	// by the vehicle owner.
-	Signature hexutil.Bytes `json:"signature"`
-	// AftermarketDeviceSignature is the 65-byte, hex-encoded Ethereum signature of
-	// the pairing payload by the device. Only needed if the vehicle owner and aftermarket
-	// device owner are not the same.
-	AftermarketDeviceSignature hexutil.Bytes `json:"aftermarketDeviceSignature"`
-}
-
-// PostUnclaimAutoPi godoc
-// @Description Dev-only endpoint for removing a claim. Removes the flag on-chain and clears
-// @Description the owner in the database.
-// @Produce json
-// @Param serial path string true "AutoPi unit id"
-// @Success 204
-// @Security BearerAuth
-// @Router /aftermarket/device/by-serial/{serial}/commands/unclaim [post]
-func (udc *UserDevicesController) PostUnclaimAutoPi(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
-	unitID := c.Params("serial")
-
-	logger := udc.log.With().Str("userId", userID).Str("serial", unitID).Str("route", c.Route().Name).Logger()
-
-	logger.Info().Msg("Got unclaim request.")
-
-	unit, err := models.AftermarketDevices(models.AftermarketDeviceWhere.Serial.EQ(unitID)).One(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return fiber.NewError(fiber.StatusNotFound, "Aftermarket device not minted.")
-		}
-		return err
-	}
-
-	apToken := unit.TokenID.Int(nil)
-
-	client := registry.Client{
-		Producer:     udc.producer,
-		RequestTopic: "topic.transaction.request.send",
-		Contract: registry.Contract{
-			ChainID: big.NewInt(udc.Settings.DIMORegistryChainID),
-			Address: common.HexToAddress(udc.Settings.DIMORegistryAddr),
-			Name:    "DIMO",
-			Version: "1",
-		},
-	}
-
-	requestID := ksuid.New().String()
-
-	unit.OwnerAddress = null.Bytes{}
-	unit.UserID = null.String{}
-	unit.ClaimMetaTransactionRequestID = null.String{}
-	unit.UnpairRequestID = null.String{}
-	if _, err := unit.Update(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
-		return err
-	}
-
-	return client.UnclaimAftermarketDeviceNode(requestID, []*big.Int{apToken})
-}
-
 func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, userID, userDeviceID, integrationID string) error {
 	logger := udc.log.With().
 		Str("userId", userID).
@@ -1623,11 +887,14 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 		return shared.GrpcErrorToFiber(err, "failed to get integration with id: "+integrationID)
 	}
 
+	// if exists, likely means already handled from previous /fromsmartcar endpoint, just return nil but log warn in case
 	if exists, err := models.UserDeviceAPIIntegrationExists(c.Context(), tx, userDeviceID, integrationID); err != nil {
 		logger.Err(err).Msg("Unexpected database error looking for existing instance of integration")
 		return err
 	} else if exists {
-		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("userDeviceId %s already has a user_device_api_integration with integrationId %s, please delete that first", userDeviceID, integrationID))
+		// if the user has already registered it from previous step, we can just log and return success
+		logger.Warn().Msgf("userDeviceId %s already has a user_device_api_integration with integrationId %s, continuing - but consider deleting if support issues", userDeviceID, integrationID)
+		return nil
 	}
 
 	var regErr error
@@ -1829,10 +1096,6 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 		if info.Make == "TESLA" { // They always have this in ALL CAPS for some reason.
 			return fiber.NewError(fiber.StatusBadRequest, "Teslas should be connected using the official integration.")
 		}
-
-		if info.Make == "KIA" {
-			return fiber.NewError(fiber.StatusBadRequest, "The ability to create new Kia connections through Smartcar has been disabled.")
-		}
 	}
 
 	endpoints, err := udc.smartcarClient.GetEndpoints(c.Context(), token.Access, externalID)
@@ -1874,25 +1137,12 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 		return opaqueInternalError
 	}
 
-	taskID := ksuid.New().String()
-
-	integration := &models.UserDeviceAPIIntegration{
-		TaskID:          null.StringFrom(taskID),
-		ExternalID:      null.StringFrom(externalID),
-		UserDeviceID:    ud.ID,
-		IntegrationID:   integ.Id,
-		Status:          models.UserDeviceAPIIntegrationStatusPendingFirstData,
-		AccessToken:     null.StringFrom(encAccess),
-		AccessExpiresAt: null.TimeFrom(token.AccessExpiry),
-		RefreshToken:    null.StringFrom(encRefresh),
-		Metadata:        null.JSONFrom(b),
-	}
-
-	if err := integration.Insert(c.Context(), tx, boil.Infer()); err != nil {
+	err = udc.userDeviceSvc.CreateIntegration(c.Context(), tx, ud.ID, integ.Id, externalID, encAccess, token.AccessExpiry, encRefresh, b)
+	if err != nil {
 		localLog.Err(err).Msg("Unexpected database error inserting new Smartcar integration registration.")
 		return opaqueInternalError
 	}
-
+	// todo this may cause issues
 	if !ud.VinConfirmed {
 		ud.VinIdentifier = null.StringFrom(strings.ToUpper(vin))
 		ud.VinConfirmed = true
@@ -2173,6 +1423,8 @@ type TeslaIntegrationInfo struct {
 	// VirtualKeyStatus indicates whether the Tesla can pair with DIMO's virtual key; and if it can,
 	// whether the key has indeed been paired.
 	VirtualKeyStatus VirtualKeyStatus `json:"virtualKeyStatus" swaggertype:"string" enums:"Paired,Unpaired,Incapable"`
+	// MissingRequiredScopes lists scopes required by DIMO that we're missing.
+	MissingRequiredScopes []string `json:"missingRequiredScopes"`
 }
 
 type VirtualKeyStatus int

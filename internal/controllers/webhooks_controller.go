@@ -7,17 +7,17 @@ import (
 	"strings"
 
 	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/models"
+	"github.com/gofiber/fiber/v2"
+	"github.com/tidwall/gjson"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services"
-	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
-	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
-	"github.com/tidwall/gjson"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type WebhooksController struct {

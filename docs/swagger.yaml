@@ -61,11 +61,6 @@ definitions:
       sub_region_code:
         type: integer
     type: object
-  github_com_DIMO-Network_devices-api_internal_controllers_helpers.CreateResponse:
-    properties:
-      id:
-        type: string
-    type: object
   github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes:
     properties:
       code:
@@ -226,38 +221,6 @@ definitions:
       powertrainType:
         $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.PowertrainType'
     type: object
-  internal_controllers.AftermarketDeviceClaimRequest:
-    properties:
-      aftermarketDeviceSignature:
-        description: AftermarketDeviceSignature is the signature from the aftermarket
-          device.
-        type: string
-      userSignature:
-        description: UserSignature is the signature from the user, using their private
-          key.
-        type: string
-    type: object
-  internal_controllers.AftermarketDevicePairRequest:
-    properties:
-      aftermarketDeviceSignature:
-        description: |-
-          AftermarketDeviceSignature is the 65-byte, hex-encoded Ethereum signature of
-          the pairing payload by the device. Only needed if the vehicle owner and aftermarket
-          device owner are not the same.
-        items:
-          type: integer
-        type: array
-      externalId:
-        description: ExternalID is the serial number of the aftermarket device.
-        type: string
-      signature:
-        description: |-
-          Signature is the 65-byte, hex-encoded Ethereum signature of the pairing payload
-          by the vehicle owner.
-        items:
-          type: integer
-        type: array
-    type: object
   internal_controllers.AutoPiDeviceInfo:
     properties:
       beneficiaryAddress:
@@ -306,14 +269,6 @@ definitions:
         allOf:
         - $ref: '#/definitions/internal_controllers.TransactionStatus'
         description: Unpair contains the status of the on-chain unpairing meta-transaction.
-    type: object
-  internal_controllers.BurnRequest:
-    properties:
-      signature:
-        description: Signature is the hex encoding of the EIP-712 signature result.
-        type: string
-    required:
-    - signature
     type: object
   internal_controllers.BurnSyntheticDeviceRequest:
     properties:
@@ -370,27 +325,6 @@ definitions:
           $ref: '#/definitions/internal_controllers.CompleteOAuthExchangeResponse'
         type: array
     type: object
-  internal_controllers.CreateGeofence:
-    properties:
-      h3Indexes:
-        description: 'required: false'
-        items:
-          type: string
-        type: array
-      name:
-        description: 'required: true'
-        type: string
-      type:
-        description: |-
-          one of following: "PrivacyFence", "TriggerEntry", "TriggerExit"
-          required: true
-        type: string
-      userDeviceIds:
-        description: Optionally link the geofence with a list of user device ID
-        items:
-          type: string
-        type: array
-    type: object
   internal_controllers.DeviceDefinition:
     properties:
       id:
@@ -437,36 +371,6 @@ definitions:
     - VehicleInsurance
     - VehicleMaintenance
     - VehicleCustomImage
-  internal_controllers.GeoFenceUserDevice:
-    properties:
-      mmy:
-        type: string
-      name:
-        type: string
-      userDeviceId:
-        type: string
-    type: object
-  internal_controllers.GetGeofence:
-    properties:
-      createdAt:
-        type: string
-      h3Indexes:
-        items:
-          type: string
-        type: array
-      id:
-        type: string
-      name:
-        type: string
-      type:
-        type: string
-      updatedAt:
-        type: string
-      userDevices:
-        items:
-          $ref: '#/definitions/internal_controllers.GeoFenceUserDevice'
-        type: array
-    type: object
   internal_controllers.GetUserDeviceErrorCodeQueriesResponse:
     properties:
       queries:
@@ -533,13 +437,6 @@ definitions:
           $ref: '#/definitions/internal_controllers.UserDeviceFull'
         type: array
     type: object
-  internal_controllers.NFTAttribute:
-    properties:
-      trait_type:
-        type: string
-      value:
-        type: string
-    type: object
   internal_controllers.NFTImageData:
     properties:
       imageData:
@@ -553,19 +450,6 @@ definitions:
         type: string
     required:
     - imageData
-    type: object
-  internal_controllers.NFTMetadataResp:
-    properties:
-      attributes:
-        items:
-          $ref: '#/definitions/internal_controllers.NFTAttribute'
-        type: array
-      description:
-        type: string
-      image:
-        type: string
-      name:
-        type: string
     type: object
   internal_controllers.Privilege:
     properties:
@@ -668,7 +552,30 @@ definitions:
         type: string
       countryCode:
         type: string
+      preApprovedPSK:
+        type: string
       vin:
+        type: string
+    type: object
+  internal_controllers.SACDInput:
+    properties:
+      expiration:
+        description: Expiration permissions granted are valid until this time.
+        example: 2933125200
+        type: number
+      grantee:
+        description: Grantee is the Ethereum address permissions are being granted
+          to.
+        example: 0xAb5801a7D398351b8bE11C439e05C5b3259aec9B
+        type: string
+      permissions:
+        description: Permissions are a numerical representation of what permissions
+          are being given to the grantee.
+        example: 262140
+        type: number
+      source:
+        description: Source external link to signed permission document.
+        example: ipfs://QmWfVnjhbJqAtGCp926jq13kDiszdM8LP15Z2ij5bY4eZD
         type: string
     type: object
   internal_controllers.SyntheticDeviceStatus:
@@ -714,6 +621,12 @@ definitions:
           APIVersion is the version of the Tesla API being used. There are currently two valid values:
           1 is the old "Owner API", 2 is the new "Fleet API".
         type: integer
+      missingRequiredScopes:
+        description: MissingRequiredScopes lists scopes required by DIMO that we're
+          missing.
+        items:
+          type: string
+        type: array
       telemetrySubscribed:
         description: |-
           TelemetrySubscribed is true if DIMO has subscribed to the vehicle's telemetry stream. Note that
@@ -763,11 +676,6 @@ definitions:
       updatedAt:
         description: UpdatedAt is the last time we updated the status of the transaction.
         example: "2022-10-01T09:22:26.337Z"
-        type: string
-    type: object
-  internal_controllers.UpdateCountryCodeReq:
-    properties:
-      countryCode:
         type: string
     type: object
   internal_controllers.UpdateVINReq:
@@ -857,6 +765,11 @@ definitions:
           with a transparent background, for use in the app. For compatibility
           with older versions it is not required.
         type: string
+      sacdInput:
+        allOf:
+        - $ref: '#/definitions/internal_controllers.SACDInput'
+        description: SACDInput contains user signed permission grant, including grantee,
+          permissions, expiration and link to signed document
       signature:
         description: Signature is the hex encoding of the EIP-712 signature result.
         type: string
@@ -915,66 +828,6 @@ info:
   title: DIMO Devices API
   version: "1.0"
 paths:
-  /aftermarket/device/{tokenId}:
-    get:
-      description: Retrieves NFT metadata for a given aftermarket device.
-      parameters:
-      - description: token id
-        in: path
-        name: tokenId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.NFTMetadataResp'
-        "404":
-          description: Not Found
-      tags:
-      - nfts
-  /aftermarket/device/{tokenId}/image:
-    get:
-      description: Returns the image for the given aftermarket device NFT.
-      parameters:
-      - description: token id
-        in: path
-        name: tokenId
-        required: true
-        type: integer
-      produces:
-      - image/png
-      responses:
-        "200":
-          description: OK
-        "404":
-          description: Not Found
-      tags:
-      - nfts
-  /aftermarket/device/by-address/{address}:
-    get:
-      description: |-
-        Retrieves NFT metadata for a given aftermarket device, using the device's
-        Ethereum address.
-      parameters:
-      - description: Ethereum address for the device.
-        in: path
-        name: address
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.NFTMetadataResp'
-        "404":
-          description: Not Found
-      tags:
-      - nfts
   /aftermarket/device/by-serial/{serial}:
     get:
       description: Gets the information about the aftermarket device by serial number.
@@ -995,65 +848,29 @@ paths:
       - BearerAuth: []
       tags:
       - integrations
-  /aftermarket/device/by-serial/{serial}/commands/claim:
+  /compass/device-by-vin/{vin}:
     get:
-      description: Return the EIP-712 payload to be signed for Aftermarket device
-        claiming.
+      description: Temporary endpoint meant for compass-iot integration. Gets you
+        the token id's by the VIN
       parameters:
-      - description: AutoPi unit id
+      - description: VIN
         in: path
-        name: serial
+        name: vin
         required: true
         type: string
-      produces:
-      - application/json
       responses:
         "200":
           description: OK
-          schema:
-            $ref: '#/definitions/apitypes.TypedData'
+        "400":
+          description: invalid VIN
+        "404":
+          description: user device with VIN not found
+        "500":
+          description: server error
       security:
-      - BearerAuth: []
-    post:
-      description: Return the EIP-712 payload to be signed for Aftermarket device
-        claiming.
-      parameters:
-      - description: AutoPi unit id
-        in: path
-        name: serial
-        required: true
-        type: string
-      - description: Signatures from the user and device.
-        in: body
-        name: claimRequest
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.AftermarketDeviceClaimRequest'
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-      security:
-      - BearerAuth: []
-  /aftermarket/device/by-serial/{serial}/commands/unclaim:
-    post:
-      description: |-
-        Dev-only endpoint for removing a claim. Removes the flag on-chain and clears
-        the owner in the database.
-      parameters:
-      - description: AutoPi unit id
-        in: path
-        name: serial
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-      security:
-      - BearerAuth: []
+      - PSK: []
+      tags:
+      - user-devices
   /countries:
     get:
       description: Returns all the supported countries
@@ -1203,20 +1020,6 @@ paths:
       - BearerAuth: []
       tags:
       - documents
-  /integration/{tokenID}:
-    get:
-      description: gets an integration using its tokenID
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/internal_controllers.NFTMetadataResp'
-            type: array
-      tags:
-      - integrations
   /integration/{tokenID}/credentials:
     post:
       consumes:
@@ -1246,26 +1049,6 @@ paths:
       - BearerAuth: []
       tags:
       - user-devices
-  /synthetic/device/{tokenId}:
-    get:
-      description: Retrieves NFT metadata for a given synthetic device.
-      parameters:
-      - description: token id
-        in: path
-        name: tokenId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.NFTMetadataResp'
-        "404":
-          description: Not Found
-      tags:
-      - nfts
   /user/devices:
     post:
       consumes:
@@ -1307,91 +1090,6 @@ paths:
       - BearerAuth: []
       tags:
       - user-devices
-  /user/devices/{userDeviceID}/aftermarket/commands/pair:
-    get:
-      description: |-
-        Return the EIP-712 payload to be signed for Aftermarket device pairing. The device must
-        either already be integrated with the vehicle, or you must provide its unit id
-        as a query parameter. In the latter case, the integration process will start
-        once the transaction confirms.
-      parameters:
-      - description: Device id
-        in: path
-        name: userDeviceID
-        required: true
-        type: string
-      - description: External id, for now AutoPi unit id
-        in: query
-        name: external_id
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: EIP-712 message for pairing.
-          schema:
-            $ref: '#/definitions/apitypes.TypedData'
-      security:
-      - BearerAuth: []
-    post:
-      description: Submit the signature for pairing this device with its attached
-        Aftermarket.
-      parameters:
-      - description: Device id
-        in: path
-        name: userDeviceID
-        required: true
-        type: string
-      - description: User signature.
-        in: body
-        name: userSignature
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.AftermarketDevicePairRequest'
-      produces:
-      - application/json
-      responses: {}
-      security:
-      - BearerAuth: []
-  /user/devices/{userDeviceID}/aftermarket/commands/unpair:
-    get:
-      description: Return the EIP-712 payload to be signed for aftermarket device
-        unpairing.
-      parameters:
-      - description: Device id
-        in: path
-        name: userDeviceID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/apitypes.TypedData'
-      security:
-      - BearerAuth: []
-    post:
-      description: Submit the signature for unpairing this user device from its attached
-        aftermarket device.
-      parameters:
-      - description: Device id
-        in: path
-        name: userDeviceID
-        required: true
-        type: string
-      - description: User signature.
-        in: body
-        name: userSignature
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.AftermarketDevicePairRequest'
-      produces:
-      - application/json
-      responses: {}
-      security:
-      - BearerAuth: []
   /user/devices/{userDeviceID}/commands/mint:
     get:
       description: Returns the data the user must sign in order to mint this device.
@@ -1467,30 +1165,8 @@ paths:
       - BearerAuth: []
       tags:
       - user-devices
-  /user/devices/{userDeviceID}/country_code:
-    patch:
-      consumes:
-      - application/json
-      description: updates the CountryCode on the user device record
-      parameters:
-      - description: Country code
-        in: body
-        name: name
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.UpdateCountryCodeReq'
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-      security:
-      - BearerAuth: []
-      tags:
-      - user-devices
   /user/devices/{userDeviceID}/error-codes:
     get:
-      description: Deprecated. Use `/user/vehicle/{tokenID}/error-codes` instead
       parameters:
       - description: user device id
         in: path
@@ -1512,7 +1188,6 @@ paths:
       tags:
       - error-codes
     post:
-      description: Deprecated. Use `/user/vehicle/{tokenID}/error-codes` instead
       parameters:
       - description: user device id
         in: path
@@ -1542,7 +1217,6 @@ paths:
       - error-codes
   /user/devices/{userDeviceID}/error-codes/clear:
     post:
-      description: Deprecated. Use `/user/vehicle/{tokenID}/error-codes/clear` instead
       responses:
         "200":
           description: OK
@@ -1873,32 +1547,6 @@ paths:
       - device
       - integration
       - command
-  /user/devices/{userDeviceID}/vin:
-    patch:
-      consumes:
-      - application/json
-      description: Deprecated. updates the VIN on the user device record
-      parameters:
-      - description: VIN
-        in: body
-        name: vin
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.UpdateVINReq'
-      - description: user id
-        in: path
-        name: userDeviceID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-      security:
-      - BearerAuth: []
-      tags:
-      - user-devices
   /user/devices/{userDeviceId}/commands/update-nft-image:
     post:
       description: Updates a user's NFT image.
@@ -2018,90 +1666,6 @@ paths:
       - BearerAuth: []
       tags:
       - user-devices
-  /user/geofences:
-    get:
-      description: gets all geofences for the current user
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/internal_controllers.GetGeofence'
-            type: array
-      security:
-      - ApiKeyAuth: []
-      - BearerAuth: []
-      tags:
-      - geofence
-    post:
-      consumes:
-      - application/json
-      description: adds a new geofence to the user's account, optionally attached
-        to specific user_devices
-      parameters:
-      - description: add geofence to user.
-        in: body
-        name: geofence
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.CreateGeofence'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.CreateResponse'
-      security:
-      - ApiKeyAuth: []
-      - BearerAuth: []
-      tags:
-      - geofence
-  /user/geofences/{geofenceID}:
-    delete:
-      description: hard deletes a geofence from db
-      parameters:
-      - description: geofence id
-        in: path
-        name: geofenceID
-        required: true
-        type: string
-      responses:
-        "204":
-          description: No Content
-      security:
-      - ApiKeyAuth: []
-      - BearerAuth: []
-      tags:
-      - geofence
-    put:
-      consumes:
-      - application/json
-      description: updates an existing geofence for the current user
-      parameters:
-      - description: geofence id
-        in: path
-        name: geofenceID
-        required: true
-        type: string
-      - description: add geofence to user.
-        in: body
-        name: geofence
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.CreateGeofence'
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-      security:
-      - ApiKeyAuth: []
-      - BearerAuth: []
-      tags:
-      - geofence
   /user/synthetic/device/{tokenID}/commands/reauthenticate:
     post:
       description: Restarts a synthetic device polling job with a new set of credentials.
@@ -2118,117 +1682,6 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/internal_controllers_user_sd.Message'
-  /user/vehicle/{tokenID}/commands/burn:
-    get:
-      description: Returns the data the user must sign in order to burn the device.
-      parameters:
-      - description: token id
-        in: path
-        name: tokenID
-        required: true
-        type: integer
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/apitypes.TypedData'
-      security:
-      - BearerAuth: []
-    post:
-      description: Sends a burn device request to the blockchain
-      parameters:
-      - description: token id
-        in: path
-        name: tokenID
-        required: true
-        type: integer
-      - description: Signature
-        in: body
-        name: burnRequest
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.BurnRequest'
-      responses:
-        "200":
-          description: OK
-      security:
-      - BearerAuth: []
-  /user/vehicle/{tokenID}/error-codes:
-    get:
-      parameters:
-      - description: vehicle token id
-        in: path
-        name: tokenID
-        required: true
-        type: integer
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.GetUserDeviceErrorCodeQueriesResponse'
-        "404":
-          description: Vehicle not found
-          schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes'
-      security:
-      - BearerAuth: []
-      summary: List all error code queries made for this vehicle.
-      tags:
-      - error-codes
-    post:
-      parameters:
-      - description: vehicle token id
-        in: path
-        name: tokenID
-        required: true
-        type: integer
-      - description: error codes
-        in: body
-        name: queryDeviceErrorCodes
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesReq'
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesResponse'
-        "404":
-          description: Vehicle not found
-          schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes'
-      security:
-      - BearerAuth: []
-      summary: Obtain, store, and return descriptions for a list of error codes from
-        this vehicle.
-      tags:
-      - error-codes
-  /user/vehicle/{tokenID}/error-codes/clear:
-    post:
-      parameters:
-      - description: vehicle token id
-        in: path
-        name: tokenID
-        required: true
-        type: integer
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesResponse'
-        "404":
-          description: Vehicle not found
-          schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes'
-        "429":
-          description: Last query already cleared
-          schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes'
-      security:
-      - BearerAuth: []
-      summary: Mark the most recent set of error codes as having been cleared.
-      tags:
-      - error-codes
   /vehicle/{tokenID}/commands/doors/lock:
     post:
       description: Lock the device's doors.
@@ -2315,54 +1768,12 @@ paths:
       - device
       - integration
       - command
-  /vehicle/{tokenId}:
-    get:
-      description: retrieves NFT metadata for a given tokenID
-      parameters:
-      - description: token id
-        in: path
-        name: tokenId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.NFTMetadataResp'
-        "404":
-          description: Not Found
-      tags:
-      - nfts
-  /vehicle/{tokenId}/image:
-    get:
-      description: Returns the image for the given vehicle NFT.
-      parameters:
-      - description: token id
-        in: path
-        name: tokenId
-        required: true
-        type: integer
-      - description: whether to remove the image background
-        in: query
-        name: transparent
-        type: boolean
-      produces:
-      - image/png
-      responses:
-        "200":
-          description: OK
-        "404":
-          description: Not Found
-      tags:
-      - nfts
   /vehicle/{tokenId}/vin:
     patch:
       consumes:
       - application/json
       description: updates the VIN on the user device record. Can optionally also
-        update the protocol and the country code
+        update the protocol and the country code.
       parameters:
       - description: token id
         in: path

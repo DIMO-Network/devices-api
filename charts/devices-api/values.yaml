@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 463855e
+  tag: 49b2953
 imagePullSecrets: []
 nameOverride: ''
 fullnameOverride: ''
@@ -33,23 +33,20 @@ env:
   DB_NAME: devices_api
   DB_MAX_OPEN_CONNECTIONS: '10'
   DB_MAX_IDLE_CONNECTIONS: '3'
+  DB_SSL_MODE: require
   SERVICE_NAME: devices-api
   JWT_KEY_SET_URL: https://auth.dev.dimo.zone/keys
   DEPLOYMENT_BASE_URL: https://devices-api.dev.dimo.zone
   REDIS_USER: default
   REDIS_PORT: '6379'
   REDIS_TLS: true
-  NFT_INPUT_TOPIC: topic.device.nft.mint
-  NFT_OUTPUT_TOPIC: topic.device.nft.mint.result
   INGEST_SMARTCAR_URL: http://ingest-smartcar-dev:8080
   INGEST_SMARTCAR_TOPIC: topic.interface.ingest.smartcar
   TASK_RUN_NOW_TOPIC: topic.task.run.now
   KAFKA_BROKERS: kafka-dev-dimo-kafka-kafka-brokers:9092
-  DEVICE_STATUS_TOPIC: topic.device.status
   TASK_STOP_TOPIC: table.task.stop
   TASK_CREDENTIAL_TOPIC: table.task.credential
   TASK_STATUS_TOPIC: topic.task.status
-  PRIVACY_FENCE_TOPIC: table.device.privacyfence
   EVENTS_TOPIC: topic.event
   DEVICE_DATA_INDEX_NAME: device-status-dev*
   AWS_REGION: us-east-2
@@ -68,12 +65,9 @@ env:
   TOKEN_EXCHANGE_JWK_KEY_SET_URL: http://dex-roles-rights.dev.svc.cluster.local:5556/keys
   CONTRACT_EVENT_TOPIC: topic.contract.event
   VEHICLE_NFT_ADDRESS: '0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8'
-  AUTOPI_NFT_IMAGE: autopi.png
-  MACARON_NFT_IMAGE: macaron.png
   VINCARIO_API_URL: https://api.vindecoder.eu/3.2
   CHATGPT_URL: https://api.openai.com/v1/chat/completions
   AFTERMARKET_DEVICE_CONTRACT_ADDRESS: '0x325b45949C833986bC98e98a49F3CA5C5c4643B5'
-  DIMO_CONTRACT_APIURL: https://contracts-api.dev.dimo.zone/
   NATS_URL: nats-dev:4222
   NATS_STREAM_NAME: DD_VALUATION_TASKS
   NATS_VALUATION_SUBJECT: dd_valuation_tasks
@@ -84,7 +78,6 @@ env:
   SYNTHETIC_WALLET_GRPC_ADDR: synthetic-wallet-instance-dev:8086
   DEVICE_FINGERPRINT_TOPIC: topic.device.fingerprint
   DEVICE_FINGERPRINT_CONSUMER_GROUP: device-fingerprint-vc-issuer
-  DEVICE_DATA_GRPC_ADDR: device-data-api-dev:8086
   SYNTHETIC_FINGERPRINT_TOPIC: topic.synthetic.fingerprint
   SYNTHETIC_FINGERPRINT_CONSUMER_GROUP: consumer.synthetic.fingerprint
   TESLA_TOKEN_URL: https://auth.tesla.com/oauth2/v3/token
@@ -120,12 +113,12 @@ env:
     -----END CERTIFICATE-----
   IPFS_URL: https://assets.dev.dimo.xyz/ipfs
   SD_INFO_TOPIC: table.task.synthetic.fill
-  PRIVACY_FENCE_TOPIC_V2: table.device.privacyfence.v2
   VEHICLE_DECODING_GRPC_ADDR: vehicle-signal-decoding-dev:8086
   CLICKHOUSE_TCP_PORT: 9440
   CLICKHOUSE_DATABASE: dimo
   DEVICE_DEFINITIONS_GET_BY_KSUID_ENDPOINT: https://device-definitions-api.dev.dimo.zone/device-definitions/
   TESLA_REQUIRED_SCOPES: vehicle_device_data,vehicle_location
+  ACCOUNTS_API_GRPC_ADDR: accounts-api-dev:8086
 service:
   type: ClusterIP
   ports:
@@ -193,12 +186,6 @@ kafka:
         compression.type: producer
         cleanup.policy: compact,delete
         min.compaction.lag.ms: '3600000'
-    - name: topic.device.status.private
-      config:
-        segment.ms: '3600000'
-        compression.type: producer
-        cleanup.policy: compact,delete
-        min.compaction.lag.ms: '3600000'
     - name: table.device.integration.smartcar
       config:
         segment.ms: '3600000'
@@ -216,30 +203,6 @@ kafka:
         min.cleanable.dirty.ratio: '0.01'
         delete.retention.ms: '3600000'
     - name: table.aftermarket.device.integration
-      config:
-        segment.ms: '3600000'
-        compression.type: producer
-        cleanup.policy: compact
-        min.compaction.lag.ms: '3600000'
-        min.cleanable.dirty.ratio: '0.01'
-        delete.retention.ms: '3600000'
-    - name: table.device.privacyfence
-      config:
-        segment.ms: '3600000'
-        compression.type: producer
-        cleanup.policy: compact
-        min.compaction.lag.ms: '3600000'
-        min.cleanable.dirty.ratio: '0.01'
-        delete.retention.ms: '3600000'
-    - name: table.device.privacyfence.v2
-      config:
-        segment.ms: '3600000'
-        compression.type: producer
-        cleanup.policy: compact
-        min.compaction.lag.ms: '3600000'
-        min.cleanable.dirty.ratio: '0.01'
-        delete.retention.ms: '3600000'
-    - name: devices-vin-fraud-table
       config:
         segment.ms: '3600000'
         compression.type: producer
