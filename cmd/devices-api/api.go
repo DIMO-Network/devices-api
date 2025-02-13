@@ -249,9 +249,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Post("/integrations/:integrationID", userDeviceController.RegisterDeviceIntegration)
 	udOwner.Post("/commands/refresh", userDeviceController.RefreshUserDeviceStatus)
 
-	// Vehicle owner routes.
-	vehicleOwnerMw := owner.VehicleToken(pdb, usersClient, &logger)
-
 	{
 		addr := address.New(usersClient, &logger)
 
@@ -272,6 +269,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 		v1Auth.Post("/user/synthetic/device/:tokenID/commands/reauthenticate", addr, sdc.PostReauthenticate)
 	}
+
+	// Vehicle owner routes.
+	vehicleOwnerMw := owner.VehicleToken(pdb, usersClient, &logger)
 
 	vOwner := v1Auth.Group("/user/vehicle/:tokenID", vehicleOwnerMw)
 	vOwner.Get("/error-codes", userDeviceController.GetUserDeviceErrorCodeQueriesByTokenID)
