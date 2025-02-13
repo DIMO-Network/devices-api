@@ -1189,7 +1189,9 @@ func (udc *UserDevicesController) registerDeviceCompass(c *fiber.Ctx, logger *ze
 		return err
 	}
 
-	return nil
+	logger.Info().Msg("Finished CompassIot registration")
+
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zerolog.Logger, tx *sql.Tx, userDeviceID string, integ *ddgrpc.Integration, ud *models.UserDevice) error {
