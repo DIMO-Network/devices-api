@@ -112,6 +112,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 					return fmt.Errorf("failed to decrypt access token: %w", err)
 				}
 
+				logger.Debug().Str("accessToken", accessToken).Msg("retrieved access token")
 				var claims partialTeslaClaims
 				_, _, err = jwt.NewParser().ParseUnverified(accessToken, &claims)
 				if err != nil {
@@ -120,11 +121,15 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 
 				if udc.Settings.TeslaRequiredScopes != "" {
 					// Yes, wasteful Split.
-					for _, scope := range strings.Split(udc.Settings.TeslaRequiredScopes, ",") {
+					scopes := strings.Split(udc.Settings.TeslaRequiredScopes, ",")
+					logger.Debug().Strs("requiredScopes", scopes).Strs("userScopes", claims.Scopes).Msg("checking required scopes")
+					for _, scope := range scopes {
 						if !slices.Contains(claims.Scopes, scope) {
 							resp.Tesla.MissingRequiredScopes = append(resp.Tesla.MissingRequiredScopes, scope)
 						}
 					}
+				} else {
+					logger.Warn().Msg("No required scopes set.")
 				}
 
 				// TODO(elfjjs): Graceful stuff if the access token gets invalidated before expiry.
@@ -168,6 +173,8 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 						resp.Tesla.TelemetrySubscribed = isSubscribed
 					}
 				}
+			} else {
+				logger.Warn().Msg("Access token expired.")
 			}
 		}
 	}
