@@ -1685,82 +1685,6 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/internal_controllers_user_sd.Message'
-  /user/vehicle/{tokenID}/error-codes:
-    get:
-      parameters:
-      - description: vehicle token id
-        in: path
-        name: tokenID
-        required: true
-        type: integer
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.GetUserDeviceErrorCodeQueriesResponse'
-        "404":
-          description: Vehicle not found
-          schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes'
-      security:
-      - BearerAuth: []
-      summary: List all error code queries made for this vehicle.
-      tags:
-      - error-codes
-    post:
-      parameters:
-      - description: vehicle token id
-        in: path
-        name: tokenID
-        required: true
-        type: integer
-      - description: error codes
-        in: body
-        name: queryDeviceErrorCodes
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesReq'
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesResponse'
-        "404":
-          description: Vehicle not found
-          schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes'
-      security:
-      - BearerAuth: []
-      summary: Obtain, store, and return descriptions for a list of error codes from
-        this vehicle.
-      tags:
-      - error-codes
-  /user/vehicle/{tokenID}/error-codes/clear:
-    post:
-      parameters:
-      - description: vehicle token id
-        in: path
-        name: tokenID
-        required: true
-        type: integer
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesResponse'
-        "404":
-          description: Vehicle not found
-          schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes'
-        "429":
-          description: Last query already cleared
-          schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes'
-      security:
-      - BearerAuth: []
-      summary: Mark the most recent set of error codes as having been cleared.
-      tags:
-      - error-codes
   /vehicle/{tokenID}/commands/doors/lock:
     post:
       description: Lock the device's doors.
@@ -1847,6 +1771,82 @@ paths:
       - device
       - integration
       - command
+  /vehicle/{tokenID}/error-codes:
+    get:
+      parameters:
+      - description: vehicle token id
+        in: path
+        name: tokenID
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.GetUserDeviceErrorCodeQueriesResponse'
+        "404":
+          description: Vehicle not found
+          schema:
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes'
+      security:
+      - BearerAuth: []
+      summary: List all error code queries made for this vehicle.
+      tags:
+      - error-codes
+    post:
+      parameters:
+      - description: vehicle token id
+        in: path
+        name: tokenID
+        required: true
+        type: integer
+      - description: error codes
+        in: body
+        name: queryDeviceErrorCodes
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesReq'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesResponse'
+        "404":
+          description: Vehicle not found
+          schema:
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes'
+      security:
+      - BearerAuth: []
+      summary: Obtain, store, and return descriptions for a list of error codes from
+        this vehicle.
+      tags:
+      - error-codes
+  /vehicle/{tokenID}/error-codes/clear:
+    post:
+      parameters:
+      - description: vehicle token id
+        in: path
+        name: tokenID
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.QueryDeviceErrorCodesResponse'
+        "404":
+          description: Vehicle not found
+          schema:
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes'
+        "429":
+          description: Last query already cleared
+          schema:
+            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes'
+      security:
+      - BearerAuth: []
+      summary: Mark the most recent set of error codes as having been cleared.
+      tags:
+      - error-codes
   /vehicle/{tokenId}/vin:
     patch:
       consumes:

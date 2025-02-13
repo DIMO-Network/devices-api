@@ -704,7 +704,7 @@ func TestUserDevicesController_QueryDeviceErrorCodesByTokenID(t *testing.T) {
 	ti, _ := new(big.Int).SetString(testTokenID, 10)
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
-	app.Post("/user/vehicle/:tokenID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.QueryDeviceErrorCodesByTokenID)
+	app.Post("/vehicle/:tokenID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.QueryDeviceErrorCodesByTokenID)
 
 	t.Run("POST - get description for query codes by tokenID", func(t *testing.T) {
 		req := QueryDeviceErrorCodesReq{
@@ -743,7 +743,7 @@ func TestUserDevicesController_QueryDeviceErrorCodesByTokenID(t *testing.T) {
 
 		j, _ := json.Marshal(req)
 
-		request := test.BuildRequest("POST", fmt.Sprintf("/user/vehicle/%d/error-codes", ud.TokenID), string(j))
+		request := test.BuildRequest("POST", fmt.Sprintf("/vehicle/%d/error-codes", ud.TokenID), string(j))
 		response, _ := app.Test(request)
 		body, _ := io.ReadAll(response.Body)
 
@@ -770,7 +770,7 @@ func TestUserDevicesController_QueryDeviceErrorCodesByTokenID(t *testing.T) {
 
 		j, _ := json.Marshal(req)
 
-		request := test.BuildRequest("POST", "/user/vehicle/999/error-codes", string(j))
+		request := test.BuildRequest("POST", "/vehicle/999/error-codes", string(j))
 		response, _ := app.Test(request)
 		assert.Equal(t, fiber.StatusNotFound, response.StatusCode)
 	})
@@ -782,7 +782,7 @@ func TestUserDevicesController_QueryDeviceErrorCodesByTokenID(t *testing.T) {
 
 		j, _ := json.Marshal(req)
 
-		request := test.BuildRequest("POST", "/user/vehicle/foobar/error-codes", string(j))
+		request := test.BuildRequest("POST", "/vehicle/foobar/error-codes", string(j))
 		response, _ := app.Test(request)
 		assert.Equal(t, fiber.StatusBadRequest, response.StatusCode)
 	})
@@ -805,7 +805,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueriesByTokenID(t *testin
 	ti, _ := new(big.Int).SetString(testTokenID, 10)
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
-	app.Get("/user/vehicle/:tokenID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.GetUserDeviceErrorCodeQueriesByTokenID)
+	app.Get("/vehicle/:tokenID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.GetUserDeviceErrorCodeQueriesByTokenID)
 
 	t.Run("GET - all saved error code response for current user devices by tokenID", func(t *testing.T) {
 
@@ -837,7 +837,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueriesByTokenID(t *testin
 		err = erCodeQuery.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 		assert.NoError(t, err)
 
-		request := test.BuildRequest("GET", fmt.Sprintf("/user/vehicle/%d/error-codes", ud.TokenID), "")
+		request := test.BuildRequest("GET", fmt.Sprintf("/vehicle/%d/error-codes", ud.TokenID), "")
 		response, _ := app.Test(request)
 		body, _ := io.ReadAll(response.Body)
 
@@ -866,13 +866,13 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueriesByTokenID(t *testin
 	})
 
 	t.Run("GET - all saved error code response for current user devices by tokenID with not existing tokenID", func(t *testing.T) {
-		request := test.BuildRequest("GET", "/user/vehicle/999/error-codes", "")
+		request := test.BuildRequest("GET", "/vehicle/999/error-codes", "")
 		response, _ := app.Test(request)
 		assert.Equal(t, fiber.StatusNotFound, response.StatusCode)
 	})
 
 	t.Run("GET - all saved error code response for current user devices by tokenID with invalid tokenID", func(t *testing.T) {
-		request := test.BuildRequest("GET", "/user/vehicle/foobar/error-codes", "")
+		request := test.BuildRequest("GET", "/vehicle/foobar/error-codes", "")
 		response, _ := app.Test(request)
 		assert.Equal(t, fiber.StatusBadRequest, response.StatusCode)
 	})
@@ -895,7 +895,7 @@ func TestUserDevicesController_ErrorOnAllErrorCodesClearedByTokenID(t *testing.T
 	ti, _ := new(big.Int).SetString(testTokenID, 10)
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
-	app.Post("/user/vehicle/:tokenID/error-codes/clear", test.AuthInjectorTestHandler(testUserID, nil), c.ClearUserDeviceErrorCodeQueryByTokenID)
+	app.Post("/vehicle/:tokenID/error-codes/clear", test.AuthInjectorTestHandler(testUserID, nil), c.ClearUserDeviceErrorCodeQueryByTokenID)
 
 	t.Run("POST - clear last saved error code response for current user device by tokenID", func(t *testing.T) {
 		autoPiInteg := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
@@ -935,13 +935,13 @@ func TestUserDevicesController_ErrorOnAllErrorCodesClearedByTokenID(t *testing.T
 		}
 
 		// actual clear
-		request := test.BuildRequest("POST", fmt.Sprintf("/user/vehicle/%d/error-codes/clear", ud.TokenID), "")
+		request := test.BuildRequest("POST", fmt.Sprintf("/vehicle/%d/error-codes/clear", ud.TokenID), "")
 		response, _ := app.Test(request)
 
 		assert.Equal(t, response.StatusCode, fiber.StatusOK)
 
 		// all codes should be cleared
-		request = test.BuildRequest("POST", fmt.Sprintf("/user/vehicle/%d/error-codes/clear", ud.TokenID), "")
+		request = test.BuildRequest("POST", fmt.Sprintf("/vehicle/%d/error-codes/clear", ud.TokenID), "")
 		response, _ = app.Test(request)
 		body, _ := io.ReadAll(response.Body)
 
@@ -953,13 +953,13 @@ func TestUserDevicesController_ErrorOnAllErrorCodesClearedByTokenID(t *testing.T
 	})
 
 	t.Run("POST - clear last saved error code response for current user device by tokenID with not existing tokenID", func(t *testing.T) {
-		request := test.BuildRequest("POST", "/user/vehicle/999/error-codes/clear", "")
+		request := test.BuildRequest("POST", "/vehicle/999/error-codes/clear", "")
 		response, _ := app.Test(request)
 		assert.Equal(t, fiber.StatusNotFound, response.StatusCode)
 	})
 
 	t.Run("POST - clear last saved error code response for current user device by tokenID with invalid tokenID", func(t *testing.T) {
-		request := test.BuildRequest("POST", "/user/vehicle/foobar/error-codes/clear", "")
+		request := test.BuildRequest("POST", "/vehicle/foobar/error-codes/clear", "")
 		response, _ := app.Test(request)
 		assert.Equal(t, fiber.StatusBadRequest, response.StatusCode)
 	})

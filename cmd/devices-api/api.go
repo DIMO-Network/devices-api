@@ -197,6 +197,11 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	vPriv.Post("/commands/trunk/open", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.OpenTrunk)
 	vPriv.Post("/commands/frunk/open", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.OpenFrunk)
 
+	// Vehicle owner routes.
+	vPriv.Get("/error-codes", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleNonLocationData}), userDeviceController.GetUserDeviceErrorCodeQueriesByTokenID)
+	vPriv.Post("/error-codes", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleNonLocationData}), userDeviceController.QueryDeviceErrorCodesByTokenID)
+	vPriv.Post("/error-codes/clear", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleNonLocationData}), userDeviceController.ClearUserDeviceErrorCodeQueryByTokenID)
+
 	// Traditional tokens
 
 	jwtAuth := jwtware.New(jwtware.Config{
@@ -269,14 +274,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 		v1Auth.Post("/user/synthetic/device/:tokenID/commands/reauthenticate", addr, sdc.PostReauthenticate)
 	}
-
-	// Vehicle owner routes.
-	vehicleOwnerMw := owner.VehicleToken(pdb, usersClient, &logger)
-
-	vOwner := v1Auth.Group("/user/vehicle/:tokenID", vehicleOwnerMw)
-	vOwner.Get("/error-codes", userDeviceController.GetUserDeviceErrorCodeQueriesByTokenID)
-	vOwner.Post("/error-codes", userDeviceController.QueryDeviceErrorCodesByTokenID)
-	vOwner.Post("/error-codes/clear", userDeviceController.ClearUserDeviceErrorCodeQueryByTokenID)
 
 	syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, wallet, registryClient)
 

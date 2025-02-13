@@ -247,7 +247,7 @@ func (udc *UserDevicesController) ClearUserDeviceErrorCodeQuery(c *fiber.Ctx) er
 // @Success     200 {object} controllers.GetUserDeviceErrorCodeQueriesResponse
 // @Failure     404 {object} helpers.ErrorRes "Vehicle not found"
 // @Security    BearerAuth
-// @Router      /user/vehicle/{tokenID}/error-codes [get]
+// @Router      /vehicle/{tokenID}/error-codes [get]
 func (udc *UserDevicesController) GetUserDeviceErrorCodeQueriesByTokenID(c *fiber.Ctx) error {
 	tis := c.Params("tokenID")
 	ti, ok := new(big.Int).SetString(tis, 10)
@@ -297,7 +297,7 @@ func (udc *UserDevicesController) GetUserDeviceErrorCodeQueriesByTokenID(c *fibe
 // @Success     200 {object} controllers.QueryDeviceErrorCodesResponse
 // @Failure     404 {object} helpers.ErrorRes "Vehicle not found"
 // @Security    BearerAuth
-// @Router      /user/vehicle/{tokenID}/error-codes [post]
+// @Router      /vehicle/{tokenID}/error-codes [post]
 func (udc *UserDevicesController) QueryDeviceErrorCodesByTokenID(c *fiber.Ctx) error {
 	tis := c.Params("tokenID")
 	ti, ok := new(big.Int).SetString(tis, 10)
@@ -387,7 +387,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodesByTokenID(c *fiber.Ctx) e
 // @Failure     429 {object} helpers.ErrorRes "Last query already cleared"
 // @Failure     404 {object} helpers.ErrorRes "Vehicle not found"
 // @Security    BearerAuth
-// @Router      /user/vehicle/{tokenID}/error-codes/clear [post]
+// @Router      /vehicle/{tokenID}/error-codes/clear [post]
 func (udc *UserDevicesController) ClearUserDeviceErrorCodeQueryByTokenID(c *fiber.Ctx) error {
 	tis := c.Params("tokenID")
 	ti, ok := new(big.Int).SetString(tis, 10)
