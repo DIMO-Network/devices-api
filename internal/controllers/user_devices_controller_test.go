@@ -5,6 +5,8 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"github.com/ericlagergren/decimal"
+	"github.com/volatiletech/sqlboiler/v4/types"
 	"io"
 	"math/big"
 	"testing"
@@ -474,6 +476,71 @@ func (s *UserDevicesControllerTestSuite) TestGetCompassDeviceByVIN_UnMinted() {
 	}
 	foundVIN := gjson.Get(string(body), "vin").String()
 	assert.Equal(s.T(), vinny, foundVIN)
+	assert.Equal(s.T(), existingUD.ID, gjson.Get(string(body), "userDeviceId").String())
+}
+
+func (s *UserDevicesControllerTestSuite) TestGetCompassDeviceByVIN_Minted() {
+	const vinny = "4T3R6RFVXMU023395"
+	tokenIdBig := big.NewInt(int64(100))
+	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenIdBig, 0))
+	existingUD := test.SetupCreateUserDevice(s.T(), testUserID, "jeep_compass_2024", nil, vinny, s.pdb)
+	existingUD.TokenID = tid
+	_, err := existingUD.Update(s.ctx, s.pdb.DBS().Reader, boil.Infer())
+	require.NoError(s.T(), err)
+
+	request := test.BuildRequest("GET", "/compass/device-by-vin/"+vinny, "")
+	response, responseError := s.app.Test(request, 10000)
+	fmt.Println(responseError)
+	body, _ := io.ReadAll(response.Body)
+	// assert
+	if assert.Equal(s.T(), fiber.StatusOK, response.StatusCode) == false {
+		fmt.Println("message: " + string(body))
+	}
+	assert.Equal(s.T(), vinny, gjson.Get(string(body), "vin").String())
+	assert.Equal(s.T(), int64(100), gjson.Get(string(body), "vehicleTokenId").Int())
+	assert.Equal(s.T(), existingUD.ID, gjson.Get(string(body), "userDeviceId").String())
+}
+
+func (s *UserDevicesControllerTestSuite) TestGetCompassDeviceByVIN_SyntheticMinted() {
+	const vinny = "4T3R6RFVXMU023395"
+	tokenIdBig := big.NewInt(int64(100))
+	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenIdBig, 0))
+
+	existingUD := test.SetupCreateUserDevice(s.T(), testUserID, "jeep_compass_2024", nil, vinny, s.pdb)
+	existingUD.TokenID = tid
+	_, err := existingUD.Update(s.ctx, s.pdb.DBS().Reader, boil.Infer())
+	require.NoError(s.T(), err)
+
+	vnft := test.SetupCreateVehicleNFT(s.T(), existingUD, tokenIdBig, null.BytesFrom(common.HexToAddress("0xA1").Bytes()), s.pdb)
+
+	mtr := models.MetaTransactionRequest{
+		ID:     ksuid.New().String(),
+		Status: models.MetaTransactionRequestStatusConfirmed,
+	}
+	s.Require().NoError(mtr.Insert(context.TODO(), s.pdb.DBS().Writer, boil.Infer()))
+
+	sd := models.SyntheticDevice{
+		VehicleTokenID:     vnft.TokenID,
+		IntegrationTokenID: types.NewDecimal(decimal.New(int64(3), 0)),
+		MintRequestID:      mtr.ID,
+		WalletChildNumber:  4,
+		WalletAddress:      common.HexToAddress("0xB").Bytes(),
+		TokenID:            types.NewNullDecimal(decimal.New(6, 0)),
+	}
+	s.Require().NoError(sd.Insert(context.TODO(), s.pdb.DBS().Writer, boil.Infer()))
+
+	request := test.BuildRequest("GET", "/compass/device-by-vin/"+vinny, "")
+	response, responseError := s.app.Test(request, 10000)
+	fmt.Println(responseError)
+	body, _ := io.ReadAll(response.Body)
+	// assert
+	if assert.Equal(s.T(), fiber.StatusOK, response.StatusCode) == false {
+		fmt.Println("message: " + string(body))
+	}
+
+	assert.Equal(s.T(), vinny, gjson.Get(string(body), "vin").String())
+	assert.Equal(s.T(), int64(100), gjson.Get(string(body), "vehicleTokenId").Int())
+	assert.Equal(s.T(), int64(6), gjson.Get(string(body), "syntheticDeviceTokenId").Int())
 	assert.Equal(s.T(), existingUD.ID, gjson.Get(string(body), "userDeviceId").String())
 }
 
