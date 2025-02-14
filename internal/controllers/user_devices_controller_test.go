@@ -5,12 +5,13 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"github.com/ericlagergren/decimal"
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"io"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/ericlagergren/decimal"
+	"github.com/volatiletech/sqlboiler/v4/types"
 
 	"github.com/go-redis/redis/v8"
 
@@ -481,8 +482,8 @@ func (s *UserDevicesControllerTestSuite) TestGetCompassDeviceByVIN_UnMinted() {
 
 func (s *UserDevicesControllerTestSuite) TestGetCompassDeviceByVIN_Minted() {
 	const vinny = "4T3R6RFVXMU023395"
-	tokenIdBig := big.NewInt(int64(100))
-	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenIdBig, 0))
+	tokenIDBig := big.NewInt(int64(100))
+	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenIDBig, 0))
 	existingUD := test.SetupCreateUserDevice(s.T(), testUserID, "jeep_compass_2024", nil, vinny, s.pdb)
 	existingUD.TokenID = tid
 	_, err := existingUD.Update(s.ctx, s.pdb.DBS().Reader, boil.Infer())
@@ -503,15 +504,15 @@ func (s *UserDevicesControllerTestSuite) TestGetCompassDeviceByVIN_Minted() {
 
 func (s *UserDevicesControllerTestSuite) TestGetCompassDeviceByVIN_SyntheticMinted() {
 	const vinny = "4T3R6RFVXMU023395"
-	tokenIdBig := big.NewInt(int64(100))
-	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenIdBig, 0))
+	tokenIDBig := big.NewInt(int64(100))
+	tid := types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenIDBig, 0))
 
 	existingUD := test.SetupCreateUserDevice(s.T(), testUserID, "jeep_compass_2024", nil, vinny, s.pdb)
 	existingUD.TokenID = tid
 	_, err := existingUD.Update(s.ctx, s.pdb.DBS().Reader, boil.Infer())
 	require.NoError(s.T(), err)
 
-	vnft := test.SetupCreateVehicleNFT(s.T(), existingUD, tokenIdBig, null.BytesFrom(common.HexToAddress("0xA1").Bytes()), s.pdb)
+	vnft := test.SetupCreateVehicleNFT(s.T(), existingUD, tokenIDBig, null.BytesFrom(common.HexToAddress("0xA1").Bytes()), s.pdb)
 
 	mtr := models.MetaTransactionRequest{
 		ID:     ksuid.New().String(),
