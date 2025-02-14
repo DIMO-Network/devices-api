@@ -1189,6 +1189,10 @@ func (udc *UserDevicesController) registerDeviceCompass(c *fiber.Ctx, logger *ze
 		return err
 	}
 
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
 	logger.Info().Msg("Finished CompassIot registration")
 
 	return c.SendStatus(fiber.StatusNoContent)
