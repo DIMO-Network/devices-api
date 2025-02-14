@@ -1943,12 +1943,15 @@ func (udc *UserDevicesController) GetCompassDeviceByVIN(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "No device with that VIN found.")
 	}
 	tkID := uint64(0)
+	synthID := uint64(0)
 	if !userDevice.TokenID.IsZero() {
 		tkID, _ = userDevice.TokenID.Uint64()
-	}
-	synthID := uint64(0)
-	if userDevice.R.VehicleTokenSyntheticDevice != nil {
-		synthID, _ = userDevice.R.VehicleTokenSyntheticDevice.TokenID.Uint64()
+		// loading the relation above wasn't working
+		syntheticDevice, err := models.SyntheticDevices(
+			models.SyntheticDeviceWhere.TokenID.EQ(userDevice.TokenID)).One(c.Context(), udc.DBS().Reader)
+		if err == nil && syntheticDevice != nil {
+			synthID, _ = syntheticDevice.TokenID.Uint64()
+		}
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
