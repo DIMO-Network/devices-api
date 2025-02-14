@@ -382,6 +382,7 @@ var (
 		"0xc4035Fecb1cc906130423EF05f9C20977F643722": "26A5Dk3vvvQutjSyF0Jka2DP5lg", // tesla
 		"0x4c674ddE8189aEF6e3b58F5a36d7438b2b1f6Bc2": "2ULfuC8U9dOqRshZBAi0lMM1Rrx", // macaron
 		"0xcd445F4c6bDAD32b68a2939b912150Fe3C88803E": "22N2xaPOq2WW2gAHBHd0Ikn4Zob", // smartcar
+		"0x55BF1c27d468314Ea119CF74979E2b59F962295c": "2szgr5WqMQtK2ZFM8F8qW8WUfJa", // compass
 	}
 	integrationIDToConnectionID = func() map[string]string {
 		// reverse of integrationId2ConnectionId
