@@ -1956,5 +1956,6 @@ func (udc *UserDevicesController) GetCompassDeviceByVIN(c *fiber.Ctx) error {
 		"userDeviceId":           userDevice.ID,
 		"vehicleTokenId":         tkID,
 		"syntheticDeviceTokenId": synthID,
+		"definitionId":           userDevice.DefinitionID,
 	})
 }
