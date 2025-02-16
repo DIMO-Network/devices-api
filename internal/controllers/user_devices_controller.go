@@ -1936,7 +1936,7 @@ func (udc *UserDevicesController) GetCompassDeviceByVIN(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fmt.Errorf("vin should be 17 characters long"))
 	}
 
-	userDevice, err := models.UserDevices(
+	ud, err := models.UserDevices(
 		models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
 		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(c.Context(), udc.DBS().Reader)
@@ -1945,21 +1945,21 @@ func (udc *UserDevicesController) GetCompassDeviceByVIN(c *fiber.Ctx) error {
 	}
 	tkID := uint64(0)
 	synthID := uint64(0)
-	if !userDevice.TokenID.IsZero() {
-		tkID, _ = userDevice.TokenID.Uint64()
-		// loading the relation above wasn't working
-		syntheticDevice, err := models.SyntheticDevices(
-			models.SyntheticDeviceWhere.TokenID.EQ(userDevice.TokenID)).One(c.Context(), udc.DBS().Reader)
-		if err == nil && syntheticDevice != nil {
-			synthID, _ = syntheticDevice.TokenID.Uint64()
+	if !ud.TokenID.IsZero() {
+		tkID, _ = ud.TokenID.Uint64()
+
+		if sd := ud.R.VehicleTokenSyntheticDevice; sd != nil {
+			if !sd.TokenID.IsZero() {
+				synthID, _ = sd.TokenID.Uint64()
+			}
 		}
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"vin":                    userDevice.VinIdentifier.String,
-		"userDeviceId":           userDevice.ID,
+		"vin":                    ud.VinIdentifier.String,
+		"userDeviceId":           ud.ID,
 		"vehicleTokenId":         tkID,
 		"syntheticDeviceTokenId": synthID,
-		"definitionId":           userDevice.DefinitionID,
+		"definitionId":           ud.DefinitionID,
 	})
 }
