@@ -237,6 +237,8 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					if err != nil {
 						return err
 					}
+				case constants.CompassIotVendor:
+					// do not start polling for compass iot, we just want to emit the event
 				default:
 					return fmt.Errorf("unexpected integration vendor %s", integ.Vendor)
 				}
