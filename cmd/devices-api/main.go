@@ -79,6 +79,12 @@ func main() {
 
 	deps := newDependencyContainer(&settings, logger, pdb.DBS)
 
+	accountsConn, err := grpc.NewClient(settings.AccountsAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create accounts API client.")
+	}
+	defer accountsConn.Close()
+
 	subcommands.Register(subcommands.HelpCommand(), "")
 	subcommands.Register(subcommands.FlagsCommand(), "")
 	subcommands.Register(subcommands.CommandsCommand(), "")
@@ -88,7 +94,7 @@ func main() {
 		startMonitoringServer(logger, &settings)
 		eventService := services.NewEventService(&logger, &settings, deps.getKafkaProducer())
 		startCredentialConsumer(logger, &settings, pdb)
-		startTaskStatusConsumer(logger, &settings, pdb)
+		startTaskStatusConsumer(logger, &settings, pdb, accountsConn)
 		startWebAPI(logger, &settings, pdb, eventService, deps.getKafkaProducer(), deps.getS3ServiceClient(ctx), deps.getS3NFTServiceClient(ctx))
 	} else {
 		subcommands.Register(&migrateDBCmd{logger: logger, settings: settings}, "database")
@@ -200,7 +206,7 @@ func startCredentialConsumer(logger zerolog.Logger, settings *config.Settings, p
 	logger.Info().Msg("Credential update consumer started")
 }
 
-func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store) {
+func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store, accountsConn *grpc.ClientConn) {
 	clusterConfig := sarama.NewConfig()
 	clusterConfig.Version = sarama.V3_6_0_0
 	clusterConfig.Consumer.Offsets.Initial = sarama.OffsetNewest
@@ -229,14 +235,7 @@ func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, p
 
 	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, settings)
 
-	accountsConn, err := grpc.NewClient(settings.AccountsAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to create accounts API client.")
-	}
-	defer accountsConn.Close()
-
 	acctClient := pb_accounts.NewAccountsClient(accountsConn)
-
 	cioSvc, err := cio.New(settings.CustomerIOAPIKey, acctClient, &logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to create customer io service")
