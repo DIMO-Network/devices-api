@@ -121,7 +121,7 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 		teslafleetStatusReq{
 			VINs: []string{vin},
 		},
-		&tgvRes,
+		&tfsRes,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to check virtual key status: %w", err)
