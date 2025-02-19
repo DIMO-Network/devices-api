@@ -115,7 +115,7 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 
 	var tfsRes teslaFleetStatusRes
 	err = submitTeslaReq(
-		"GET",
+		"POST",
 		baseURL.JoinPath("api/1/vehicles/fleet_status").String(),
 		token,
 		teslafleetStatusReq{
