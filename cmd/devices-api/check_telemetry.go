@@ -10,9 +10,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/subcommands"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
@@ -52,11 +54,11 @@ func (p *checkTelemetryCmd) Execute(_ context.Context, _ *flag.FlagSet, _ ...int
 	return subcommands.ExitSuccess
 }
 
-type teslaGetVehicleRes struct {
-	Response struct {
-		VIN string `json:"vin"`
-	}
-}
+// type teslaGetVehicleRes struct {
+// 	Response struct {
+// 		VIN string `json:"vin"`
+// 	}
+// }
 
 type teslafleetStatusReq struct {
 	VINs []string `json:"vins"`
@@ -87,29 +89,47 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 		return fmt.Errorf("failed to retrieve Tesla jobs: %w", err)
 	}
 
-	baseURL, err := url.ParseRequestURI(settings.TeslaFleetURL)
-	if err != nil {
-		panic(err)
+	if !udai.R.UserDevice.VinConfirmed || len(udai.R.UserDevice.VinIdentifier.String) != 17 {
+		return errors.New("weird VIN situation")
 	}
+
+	vin := udai.R.UserDevice.VinIdentifier.String
 
 	token, err := cipher.Decrypt(udai.AccessToken.String)
 	if err != nil {
 		return fmt.Errorf("couldn't decrypt access token: %w", err)
 	}
 
-	var tgvRes teslaGetVehicleRes
-	err = submitTeslaReq(
-		"GET",
-		baseURL.JoinPath("api/1/vehicles", udai.ExternalID.String).String(),
-		token,
-		nil,
-		&tgvRes,
-	)
+	var claims partialTeslaClaims
+	_, _, err = jwt.NewParser().ParseUnverified(token, &claims)
 	if err != nil {
-		return fmt.Errorf("failed to double-check VIN: %w", err)
+		return fmt.Errorf("couldn't parse JWT: %w", err)
 	}
 
-	vin := tgvRes.Response.VIN
+	logger.Info().Interface("scopes", claims.Scopes).Msg("Checked scopes.")
+	if !slices.Contains(claims.Scopes, "vehicle_location") {
+		// Bail early to avoid network.
+		return nil
+	}
+
+	baseURL, err := url.ParseRequestURI(settings.TeslaFleetURL)
+	if err != nil {
+		panic(err)
+	}
+
+	// var tgvRes teslaGetVehicleRes
+	// err = submitTeslaReq(
+	// 	"GET",
+	// 	baseURL.JoinPath("api/1/vehicles", udai.ExternalID.String).String(),
+	// 	token,
+	// 	nil,
+	// 	&tgvRes,
+	// )
+	// if err != nil {
+	// 	return fmt.Errorf("failed to double-check VIN: %w", err)
+	// }
+
+	// vin := tgvRes.Response.VIN
 
 	logger.Info().Str("vin", vin).Msg("Retrieved VIN.")
 
@@ -128,14 +148,6 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 	}
 
 	logger.Info().Bool("keyPaired", len(tfsRes.Response.KeyPairedVINs) == 1).Str("firmwareVersion", tfsRes.Response.VehicleInfo[vin].FirmwareVersion).Bool("protocolRequired", tfsRes.Response.VehicleInfo[vin].VehicleCommandProtocolRequired).Msg("Checked virtual key status.")
-
-	var claims partialTeslaClaims
-	_, _, err = jwt.NewParser().ParseUnverified(token, &claims)
-	if err != nil {
-		return fmt.Errorf("couldn't parse JWT: %w", err)
-	}
-
-	logger.Info().Interface("scopes", claims.Scopes).Msg("Checked scopes.")
 
 	return nil
 }
