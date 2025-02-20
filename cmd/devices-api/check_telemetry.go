@@ -131,7 +131,10 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 
 	// vin := tgvRes.Response.VIN
 
-	logger.Info().Str("vin", vin).Msg("Retrieved VIN.")
+	if vinWrap := shared.VIN(vin); (vinWrap.TeslaModel() == "Model S" || vinWrap.TeslaModel() == "Model X") && vinWrap.Year() < 2021 {
+		logger.Info().Str("vin", vin).Msg("Can't use virtual key.")
+		return nil
+	}
 
 	var tfsRes teslaFleetStatusRes
 	err = submitTeslaReq(
