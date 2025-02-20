@@ -106,9 +106,9 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 		return fmt.Errorf("couldn't parse JWT: %w", err)
 	}
 
-	logger.Info().Interface("scopes", claims.Scopes).Msg("Checked scopes.")
 	if !slices.Contains(claims.Scopes, "vehicle_location") {
 		// Bail early to avoid network.
+		logger.Info().Interface("scopes", claims.Scopes).Msg("Missing location scope.")
 		return nil
 	}
 
@@ -132,7 +132,7 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 	// vin := tgvRes.Response.VIN
 
 	if vinWrap := shared.VIN(vin); (vinWrap.TeslaModel() == "Model S" || vinWrap.TeslaModel() == "Model X") && vinWrap.Year() < 2021 {
-		logger.Info().Str("vin", vin).Msg("Can't use virtual key.")
+		logger.Info().Msg("All checks passed.")
 		return nil
 	}
 
@@ -150,7 +150,12 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 		return fmt.Errorf("failed to check virtual key status: %w", err)
 	}
 
-	logger.Info().Bool("keyPaired", len(tfsRes.Response.KeyPairedVINs) == 1).Str("firmwareVersion", tfsRes.Response.VehicleInfo[vin].FirmwareVersion).Bool("protocolRequired", tfsRes.Response.VehicleInfo[vin].VehicleCommandProtocolRequired).Msg("Checked virtual key status.")
+	if len(tfsRes.Response.KeyPairedVINs) == 0 {
+		logger.Info().Str("firmwareVersion", tfsRes.Response.VehicleInfo[vin].FirmwareVersion).Bool("protocolRequired", tfsRes.Response.VehicleInfo[vin].VehicleCommandProtocolRequired).Msg("Virtual key missing.")
+		return nil
+	}
+
+	logger.Info().Msg("All checks passed.")
 
 	return nil
 }
