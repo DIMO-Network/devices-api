@@ -699,7 +699,7 @@ func TestUserDevicesController_QueryDeviceErrorCodesByTokenID(t *testing.T) {
 	testUserID := "123123"
 	testTokenID := "321321"
 	ti, _ := new(big.Int).SetString(testTokenID, 10)
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	app.Post("/vehicle/:tokenID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.QueryDeviceErrorCodesByTokenID)
 
@@ -800,7 +800,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueriesByTokenID(t *testin
 	testUserID := "123123"
 	testTokenID := "321321"
 	ti, _ := new(big.Int).SetString(testTokenID, 10)
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	app.Get("/vehicle/:tokenID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.GetUserDeviceErrorCodeQueriesByTokenID)
 
@@ -890,7 +890,7 @@ func TestUserDevicesController_ErrorOnAllErrorCodesClearedByTokenID(t *testing.T
 	testUserID := "123123"
 	testTokenID := "321321"
 	ti, _ := new(big.Int).SetString(testTokenID, 10)
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scClient, mockDeps.scTaskSvc, mockDeps.teslaTaskService, nil, nil, mockDeps.autoPiIngest, mockDeps.deviceDefinitionIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	app.Post("/vehicle/:tokenID/error-codes/clear", test.AuthInjectorTestHandler(testUserID, nil), c.ClearUserDeviceErrorCodeQueryByTokenID)
 
