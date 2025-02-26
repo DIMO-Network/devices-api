@@ -40,6 +40,36 @@ func (m *MockTeslaTaskService) EXPECT() *MockTeslaTaskServiceMockRecorder {
 	return m.recorder
 }
 
+// ChargeStart mocks base method.
+func (m *MockTeslaTaskService) ChargeStart(udai *models.UserDeviceAPIIntegration) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChargeStart", udai)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChargeStart indicates an expected call of ChargeStart.
+func (mr *MockTeslaTaskServiceMockRecorder) ChargeStart(udai any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChargeStart", reflect.TypeOf((*MockTeslaTaskService)(nil).ChargeStart), udai)
+}
+
+// ChargeStop mocks base method.
+func (m *MockTeslaTaskService) ChargeStop(udai *models.UserDeviceAPIIntegration) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChargeStop", udai)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChargeStop indicates an expected call of ChargeStop.
+func (mr *MockTeslaTaskServiceMockRecorder) ChargeStop(udai any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChargeStop", reflect.TypeOf((*MockTeslaTaskService)(nil).ChargeStop), udai)
+}
+
 // LockDoors mocks base method.
 func (m *MockTeslaTaskService) LockDoors(udai *models.UserDeviceAPIIntegration) (string, error) {
 	m.ctrl.T.Helper()

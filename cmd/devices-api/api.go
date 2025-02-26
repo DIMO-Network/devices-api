@@ -195,6 +195,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	vPriv.Post("/commands/doors/lock", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.LockDoors)
 	vPriv.Post("/commands/trunk/open", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.OpenTrunk)
 	vPriv.Post("/commands/frunk/open", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.OpenFrunk)
+	vPriv.Post("/commands/charge/start", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.ChargeStart)
+	vPriv.Post("/commands/charge/stop", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.ChargeStop)
 
 	// Vehicle owner routes.
 	vPriv.Get("/error-codes", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleNonLocationData}), userDeviceController.GetUserDeviceErrorCodeQueriesByTokenID)

@@ -1138,6 +1138,68 @@
                 }
             }
         },
+        "/vehicle/{tokenID}/commands/charging/start": {
+            "post": {
+                "description": "Start the vehicle charging.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "device",
+                    "integration",
+                    "command"
+                ],
+                "summary": "Start the vehicle charging.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Token ID",
+                        "name": "tokenID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.CommandResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vehicle/{tokenID}/commands/charging/stop": {
+            "post": {
+                "description": "Stop the vehicle charging.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "device",
+                    "integration",
+                    "command"
+                ],
+                "summary": "Stop the vehicle charging.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Token ID",
+                        "name": "tokenID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.CommandResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/vehicle/{tokenID}/commands/doors/lock": {
             "post": {
                 "description": "Lock the device's doors.",
