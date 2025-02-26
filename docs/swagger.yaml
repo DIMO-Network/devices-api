@@ -1521,6 +1521,48 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/internal_controllers_user_sd.Message'
+  /vehicle/{tokenID}/commands/charging/start:
+    post:
+      description: Start the vehicle charging.
+      parameters:
+      - description: Token ID
+        in: path
+        name: tokenID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.CommandResponse'
+      summary: Start the vehicle charging.
+      tags:
+      - device
+      - integration
+      - command
+  /vehicle/{tokenID}/commands/charging/stop:
+    post:
+      description: Stop the vehicle charging.
+      parameters:
+      - description: Token ID
+        in: path
+        name: tokenID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers.CommandResponse'
+      summary: Stop the vehicle charging.
+      tags:
+      - device
+      - integration
+      - command
   /vehicle/{tokenID}/commands/doors/lock:
     post:
       description: Lock the device's doors.
