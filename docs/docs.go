@@ -724,6 +724,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Deprecated. Use ` + "`" + `/user/vehicle/{tokenID}/error-codes` + "`" + ` instead",
                 "tags": [
                     "error-codes"
                 ],
@@ -758,6 +759,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Deprecated. Use ` + "`" + `/user/vehicle/{tokenID}/error-codes` + "`" + ` instead",
                 "tags": [
                     "error-codes"
                 ],
@@ -803,6 +805,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Deprecated. Use ` + "`" + `/user/vehicle/{tokenID}/error-codes/clear` + "`" + ` instead",
                 "tags": [
                     "error-codes"
                 ],
@@ -973,123 +976,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/doors/lock": {
-            "post": {
-                "description": "Lock the device's doors.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "device",
-                    "integration",
-                    "command"
-                ],
-                "summary": "Lock the device's doors",
-                "operationId": "lock-doors",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device ID",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Integration ID",
-                        "name": "integrationID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.CommandResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/doors/unlock": {
-            "post": {
-                "description": "Unlock the device's doors.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "device",
-                    "integration",
-                    "command"
-                ],
-                "summary": "Unlock the device's doors",
-                "operationId": "unlock-doors",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device ID",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Integration ID",
-                        "name": "integrationID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.CommandResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/frunk/open": {
-            "post": {
-                "description": "Open the device's front trunk. Currently, this only works for Teslas connected through Tesla.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "device",
-                    "integration",
-                    "command"
-                ],
-                "summary": "Open the device's front trunk",
-                "operationId": "open-frunk",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device ID",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Integration ID",
-                        "name": "integrationID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.CommandResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/mint": {
             "get": {
                 "description": "Produces the payload that the user signs and submits to mint a synthetic device for\nthe given vehicle and integration.",
@@ -1197,91 +1083,6 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {}
-            }
-        },
-        "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/trunk/open": {
-            "post": {
-                "description": "Open the device's front trunk. Currently, this only works for Teslas connected through Tesla.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "device",
-                    "integration",
-                    "command"
-                ],
-                "summary": "Open the device's rear trunk",
-                "operationId": "open-trunk",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device ID",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Integration ID",
-                        "name": "integrationID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.CommandResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/{requestID}": {
-            "get": {
-                "description": "Get the status of a submitted command by request id.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "device",
-                    "integration",
-                    "command"
-                ],
-                "summary": "Get the status of a submitted command.",
-                "operationId": "get-command-request-status",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device ID",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Integration ID",
-                        "name": "integrationID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Command request ID",
-                        "name": "requestID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.CommandRequestStatusResp"
-                        }
-                    }
-                }
             }
         },
         "/user/devices/{userDeviceId}/commands/update-nft-image": {
@@ -1464,6 +1265,127 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/internal_controllers.CommandResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vehicle/{tokenID}/error-codes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "error-codes"
+                ],
+                "summary": "List all error code queries made for this vehicle.",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "vehicle token id",
+                        "name": "tokenID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.GetUserDeviceErrorCodeQueriesResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vehicle not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "error-codes"
+                ],
+                "summary": "Obtain, store, and return descriptions for a list of error codes from this vehicle.",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "vehicle token id",
+                        "name": "tokenID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "error codes",
+                        "name": "queryDeviceErrorCodes",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.QueryDeviceErrorCodesReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.QueryDeviceErrorCodesResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vehicle not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/vehicle/{tokenID}/error-codes/clear": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "error-codes"
+                ],
+                "summary": "Mark the most recent set of error codes as having been cleared.",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "vehicle token id",
+                        "name": "tokenID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.QueryDeviceErrorCodesResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vehicle not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
+                        }
+                    },
+                    "429": {
+                        "description": "Last query already cleared",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes"
                         }
                     }
                 }
@@ -1928,36 +1850,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers.CommandRequestStatusResp": {
-            "type": "object",
-            "properties": {
-                "command": {
-                    "type": "string",
-                    "example": "doors/unlock"
-                },
-                "createdAt": {
-                    "type": "string",
-                    "example": "2022-08-09T19:38:39Z"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "2D8LqUHQtaMHH6LYPqznmJMBeZm"
-                },
-                "status": {
-                    "type": "string",
-                    "enum": [
-                        "Pending",
-                        "Complete",
-                        "Failed"
-                    ],
-                    "example": "Complete"
-                },
-                "updatedAt": {
-                    "type": "string",
-                    "example": "2022-08-09T19:39:22Z"
-                }
-            }
-        },
         "internal_controllers.CommandResponse": {
             "type": "object",
             "properties": {
@@ -2327,6 +2219,31 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_controllers.SACDInput": {
+            "type": "object",
+            "properties": {
+                "expiration": {
+                    "description": "Expiration permissions granted are valid until this time.",
+                    "type": "number",
+                    "example": 2933125200
+                },
+                "grantee": {
+                    "description": "Grantee is the Ethereum address permissions are being granted to.",
+                    "type": "string",
+                    "example": "0xAb5801a7D398351b8bE11C439e05C5b3259aec9B"
+                },
+                "permissions": {
+                    "description": "Permissions are a numerical representation of what permissions are being given to the grantee.",
+                    "type": "number",
+                    "example": 262140
+                },
+                "source": {
+                    "description": "Source external link to signed permission document.",
+                    "type": "string",
+                    "example": "ipfs://QmWfVnjhbJqAtGCp926jq13kDiszdM8LP15Z2ij5bY4eZD"
+                }
+            }
+        },
         "internal_controllers.SyntheticDeviceStatus": {
             "type": "object",
             "properties": {
@@ -2559,6 +2476,14 @@ const docTemplate = `{
                 "imageDataTransparent": {
                     "description": "ImageDataTransparent contains the base64-encoded NFT PNG image\nwith a transparent background, for use in the app. For compatibility\nwith older versions it is not required.",
                     "type": "string"
+                },
+                "sacdInput": {
+                    "description": "SACDInput contains user signed permission grant, including grantee, permissions, expiration and link to signed document",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/internal_controllers.SACDInput"
+                        }
+                    ]
                 },
                 "signature": {
                     "description": "Signature is the hex encoding of the EIP-712 signature result.",

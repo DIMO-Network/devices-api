@@ -7,8 +7,9 @@ const (
 )
 
 const (
-	SmartCarVendor = "SmartCar"
-	TeslaVendor    = "Tesla"
+	SmartCarVendor   = "SmartCar"
+	TeslaVendor      = "Tesla"
+	CompassIotVendor = "CompassIot"
 )
 
 const (

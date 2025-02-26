@@ -379,6 +379,7 @@ var (
 		"0xc4035Fecb1cc906130423EF05f9C20977F643722": "26A5Dk3vvvQutjSyF0Jka2DP5lg", // tesla
 		"0x4c674ddE8189aEF6e3b58F5a36d7438b2b1f6Bc2": "2ULfuC8U9dOqRshZBAi0lMM1Rrx", // macaron
 		"0xcd445F4c6bDAD32b68a2939b912150Fe3C88803E": "22N2xaPOq2WW2gAHBHd0Ikn4Zob", // smartcar
+		"0x55BF1c27d468314Ea119CF74979E2b59F962295c": "2szgr5WqMQtK2ZFM8F8qW8WUfJa", // compass
 	}
 	integrationIDToConnectionID = func() map[string]string {
 		// reverse of integrationId2ConnectionId
@@ -1550,7 +1551,21 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
-			return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
+			if mr.SACDInput == nil {
+				return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
+					ManufacturerNode:     mvs.ManufacturerNode,
+					Owner:                mvs.Owner,
+					DeviceDefinitionId:   dd.Id,
+					IntegrationNode:      new(big.Int).SetUint64(intID),
+					VehicleOwnerSig:      sigBytes,
+					SyntheticDeviceSig:   sign,
+					SyntheticDeviceAddr:  common.BytesToAddress(addr),
+					AttrInfoPairsVehicle: attrListsToAttrPairs(mvs.Attributes, mvs.Infos),
+					AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
+				})
+			}
+
+			return client.MintVehicleAndSdWithDeviceDefinitionSignAndSacd(requestID, contracts.MintVehicleAndSdWithDdInput{
 				ManufacturerNode:     mvs.ManufacturerNode,
 				Owner:                mvs.Owner,
 				DeviceDefinitionId:   dd.Id,
@@ -1560,7 +1575,13 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				SyntheticDeviceAddr:  common.BytesToAddress(addr),
 				AttrInfoPairsVehicle: attrListsToAttrPairs(mvs.Attributes, mvs.Infos),
 				AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
+			}, contracts.SacdInput{
+				Grantee:     mr.SACDInput.Grantee,
+				Permissions: mr.SACDInput.Permissions,
+				Expiration:  mr.SACDInput.Expiration,
+				Source:      mr.SACDInput.Source,
 			})
+
 		}
 	}
 
@@ -1664,6 +1685,20 @@ type VehicleMintRequest struct {
 	NFTImageData
 	// Signature is the hex encoding of the EIP-712 signature result.
 	Signature string `json:"signature" validate:"required"`
+	// SACDInput contains user signed permission grant, including grantee, permissions, expiration and link to signed document
+	SACDInput *SACDInput `json:"sacdInput,omitempty"`
+}
+
+// SACDInput user signed permission grant
+type SACDInput struct {
+	// Grantee is the Ethereum address permissions are being granted to.
+	Grantee common.Address `json:"grantee" swaggertype:"string" example:"0xAb5801a7D398351b8bE11C439e05C5b3259aec9B"`
+	// Permissions are a numerical representation of what permissions are being given to the grantee.
+	Permissions *big.Int `json:"permissions" swaggertype:"number" example:"262140"`
+	// Expiration permissions granted are valid until this time.
+	Expiration *big.Int `json:"expiration" swaggertype:"number" example:"2933125200"`
+	// Source external link to signed permission document.
+	Source string `json:"source" example:"ipfs://QmWfVnjhbJqAtGCp926jq13kDiszdM8LP15Z2ij5bY4eZD"`
 }
 
 type NFTImageData struct {
@@ -1898,7 +1933,7 @@ func (udc *UserDevicesController) GetCompassDeviceByVIN(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fmt.Errorf("vin should be 17 characters long"))
 	}
 
-	userDevice, err := models.UserDevices(
+	ud, err := models.UserDevices(
 		models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
 		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
 	).One(c.Context(), udc.DBS().Reader)
@@ -1906,18 +1941,22 @@ func (udc *UserDevicesController) GetCompassDeviceByVIN(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "No device with that VIN found.")
 	}
 	tkID := uint64(0)
-	if !userDevice.TokenID.IsZero() {
-		tkID, _ = userDevice.TokenID.Uint64()
-	}
 	synthID := uint64(0)
-	if userDevice.R.VehicleTokenSyntheticDevice != nil {
-		synthID, _ = userDevice.R.VehicleTokenSyntheticDevice.TokenID.Uint64()
+	if !ud.TokenID.IsZero() {
+		tkID, _ = ud.TokenID.Uint64()
+
+		if sd := ud.R.VehicleTokenSyntheticDevice; sd != nil {
+			if !sd.TokenID.IsZero() {
+				synthID, _ = sd.TokenID.Uint64()
+			}
+		}
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"vin":                    userDevice.VinIdentifier.String,
-		"userDeviceId":           userDevice.ID,
+		"vin":                    ud.VinIdentifier.String,
+		"userDeviceId":           ud.ID,
 		"vehicleTokenId":         tkID,
 		"syntheticDeviceTokenId": synthID,
+		"definitionId":           ud.DefinitionID,
 	})
 }

@@ -365,219 +365,8 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-// GetCommandRequestStatus godoc
-// @Summary     Get the status of a submitted command.
-// @Description Get the status of a submitted command by request id.
-// @ID          get-command-request-status
-// @Tags        device,integration,command
-// @Success 200 {object} controllers.CommandRequestStatusResp
-// @Produce     json
-// @Param       userDeviceID  path string true "Device ID"
-// @Param       integrationID path string true "Integration ID"
-// @Param       requestID path string true "Command request ID"
-// @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/{requestID} [get]
-func (udc *UserDevicesController) GetCommandRequestStatus(c *fiber.Ctx) error {
-	requestID := c.Params("requestID")
-
-	// Don't actually validate userDeviceID or integrationID, just following a URL pattern.
-	// Is this beyond the pale?
-	cr, err := models.DeviceCommandRequests(
-		models.DeviceCommandRequestWhere.ID.EQ(requestID),
-		qm.Load(models.DeviceCommandRequestRels.UserDevice),
-	).One(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "No command request with that id found.")
-		}
-		udc.log.Err(err).Msg("Failed to search for command status.")
-		return opaqueInternalError
-	}
-
-	dcr := CommandRequestStatusResp{
-		ID:        requestID,
-		Command:   cr.Command,
-		Status:    cr.Status,
-		CreatedAt: cr.CreatedAt,
-		UpdatedAt: cr.UpdatedAt,
-	}
-
-	return c.JSON(dcr)
-}
-
-type CommandRequestStatusResp struct {
-	ID        string    `json:"id" example:"2D8LqUHQtaMHH6LYPqznmJMBeZm"`
-	Command   string    `json:"command" example:"doors/unlock"`
-	Status    string    `json:"status" enums:"Pending,Complete,Failed" example:"Complete"`
-	CreatedAt time.Time `json:"createdAt" example:"2022-08-09T19:38:39Z"`
-	UpdatedAt time.Time `json:"updatedAt" example:"2022-08-09T19:39:22Z"`
-}
-
-// handleEnqueueCommand enqueues the command specified by commandPath with the
-// appropriate task service.
-//
-// Grabs user ID, device ID, and integration ID from Ctx.
-func (udc *UserDevicesController) handleEnqueueCommand(c *fiber.Ctx, commandPath string) error {
-	userDeviceID := c.Params("userDeviceID")
-	integrationID := c.Params("integrationID")
-
-	logger := helpers.GetLogger(c, udc.log)
-
-	logger.Info().Msg("Received command request.")
-
-	// Checking both that the device exists and that the user owns it.
-	deviceOK, err := models.UserDevices(
-		models.UserDeviceWhere.ID.EQ(userDeviceID),
-	).Exists(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		logger.Err(err).Msg("Failed to search for device.")
-		return opaqueInternalError
-	}
-
-	if !deviceOK {
-		return fiber.NewError(fiber.StatusNotFound, "Device not found.")
-	}
-
-	udai, err := models.UserDeviceAPIIntegrations(
-		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
-		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID),
-	).One(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fiber.NewError(fiber.StatusNotFound, "Integration not found for this device.")
-		}
-		logger.Err(err).Msg("Failed to search for device integration record.")
-		return opaqueInternalError
-	}
-
-	if udai.Status != models.UserDeviceAPIIntegrationStatusActive {
-		return fiber.NewError(fiber.StatusConflict, "Integration is not active for this device.")
-	}
-
-	md := new(services.UserDeviceAPIIntegrationsMetadata)
-	if err := udai.Metadata.Unmarshal(md); err != nil {
-		logger.Err(err).Msg("Couldn't parse metadata JSON.")
-		return opaqueInternalError
-	}
-
-	// TODO(elffjs): This map is ugly. Surely we interface our way out of this?
-	commandMap := map[string]map[string]func(udai *models.UserDeviceAPIIntegration) (string, error){
-		constants.SmartCarVendor: {
-			constants.DoorsUnlock: udc.smartcarTaskSvc.UnlockDoors,
-			constants.DoorsLock:   udc.smartcarTaskSvc.LockDoors,
-		},
-		constants.TeslaVendor: {
-			constants.DoorsUnlock: udc.teslaTaskService.UnlockDoors,
-			constants.DoorsLock:   udc.teslaTaskService.LockDoors,
-			constants.TrunkOpen:   udc.teslaTaskService.OpenTrunk,
-			constants.FrunkOpen:   udc.teslaTaskService.OpenFrunk,
-		},
-	}
-
-	integration, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), udai.IntegrationID)
-
-	if err != nil {
-		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting integration id: "+udai.IntegrationID)
-	}
-
-	vendorCommandMap, ok := commandMap[integration.Vendor]
-	if !ok {
-		return fiber.NewError(fiber.StatusConflict, "Integration is not capable of this command.")
-	}
-
-	// This correctly handles md.Commands.Enabled being nil.
-	if !slices.Contains(md.Commands.Enabled, commandPath) {
-		return fiber.NewError(fiber.StatusConflict, "Integration is not capable of this command with this device.")
-	}
-
-	commandFunc, ok := vendorCommandMap[commandPath]
-	if !ok {
-		// Should never get here.
-		logger.Error().Msg("Command was enabled for this device, but there is no function to execute it.")
-		return fiber.NewError(fiber.StatusConflict, "Integration is not capable of this command.")
-	}
-
-	subTaskID, err := commandFunc(udai)
-	if err != nil {
-		logger.Err(err).Msg("Failed to start command task.")
-		return opaqueInternalError
-	}
-
-	comRow := &models.DeviceCommandRequest{
-		ID:            subTaskID,
-		UserDeviceID:  userDeviceID,
-		IntegrationID: integrationID,
-		Command:       commandPath,
-		Status:        models.DeviceCommandRequestStatusPending,
-	}
-
-	if err := comRow.Insert(c.Context(), udc.DBS().Writer, boil.Infer()); err != nil {
-		logger.Err(err).Msg("Couldn't insert device command request record.")
-		return opaqueInternalError
-	}
-
-	logger.Info().Msg("Successfully enqueued command.")
-
-	return c.JSON(CommandResponse{RequestID: subTaskID})
-}
-
 type CommandResponse struct {
 	RequestID string `json:"requestId"`
-}
-
-// UnlockDoors godoc
-// @Summary     Unlock the device's doors
-// @Description Unlock the device's doors.
-// @ID          unlock-doors
-// @Tags        device,integration,command
-// @Success 200 {object} controllers.CommandResponse
-// @Produce     json
-// @Param       userDeviceID  path string true "Device ID"
-// @Param       integrationID path string true "Integration ID"
-// @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/doors/unlock [post]
-func (udc *UserDevicesController) UnlockDoors(c *fiber.Ctx) error {
-	return udc.handleEnqueueCommand(c, constants.DoorsUnlock)
-}
-
-// LockDoors godoc
-// @Summary     Lock the device's doors
-// @Description Lock the device's doors.
-// @ID          lock-doors
-// @Tags        device,integration,command
-// @Success 200 {object} controllers.CommandResponse
-// @Produce     json
-// @Param       userDeviceID  path string true "Device ID"
-// @Param       integrationID path string true "Integration ID"
-// @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/doors/lock [post]
-func (udc *UserDevicesController) LockDoors(c *fiber.Ctx) error {
-	return udc.handleEnqueueCommand(c, constants.DoorsLock)
-}
-
-// OpenTrunk godoc
-// @Summary     Open the device's rear trunk
-// @Description Open the device's front trunk. Currently, this only works for Teslas connected through Tesla.
-// @ID          open-trunk
-// @Tags        device,integration,command
-// @Success 200 {object} controllers.CommandResponse
-// @Produce     json
-// @Param       userDeviceID  path string true "Device ID"
-// @Param       integrationID path string true "Integration ID"
-// @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/trunk/open [post]
-func (udc *UserDevicesController) OpenTrunk(c *fiber.Ctx) error {
-	return udc.handleEnqueueCommand(c, constants.TrunkOpen)
-}
-
-// OpenFrunk godoc
-// @Summary     Open the device's front trunk
-// @Description Open the device's front trunk. Currently, this only works for Teslas connected through Tesla.
-// @ID          open-frunk
-// @Tags        device,integration,command
-// @Success 200 {object} controllers.CommandResponse
-// @Produce     json
-// @Param       userDeviceID  path string true "Device ID"
-// @Param       integrationID path string true "Integration ID"
-// @Router      /user/devices/{userDeviceID}/integrations/{integrationID}/commands/frunk/open [post]
-func (udc *UserDevicesController) OpenFrunk(c *fiber.Ctx) error {
-	return udc.handleEnqueueCommand(c, constants.FrunkOpen)
 }
 
 // TelemetrySubscribe godoc
@@ -905,6 +694,8 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 		regErr = udc.registerSmartcarIntegration(c, &logger, tx, integration, ud)
 	case constants.TeslaVendor:
 		regErr = udc.registerDeviceTesla(c, &logger, tx, userDeviceID, integration, ud)
+	case constants.CompassIotVendor:
+		regErr = udc.registerDeviceCompass(c, &logger, tx, userDeviceID, integration, ud)
 	case constants.AutoPiVendor:
 		logger.Error().Msg("autopi register request via invalid route: /user/devices/:userDeviceID/integrations/:integrationID")
 		return errors.New("this route cannot be used to register an autopi anymore - update your client")
@@ -1158,6 +949,40 @@ func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logg
 	}
 
 	localLog.Info().Msg("Finished Smartcar device registration.")
+
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+func (udc *UserDevicesController) registerDeviceCompass(c *fiber.Ctx, logger *zerolog.Logger, tx *sql.Tx, userDeviceID string, integ *ddgrpc.Integration, ud *models.UserDevice) error {
+	if existingIntegrations, err := models.UserDeviceAPIIntegrations(
+		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
+		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integ.Id),
+	).Count(c.Context(), tx); err != nil {
+		return err
+	} else if existingIntegrations > 0 {
+		return nil // integration already exists, continue
+	}
+	// err if no vin set
+	if ud.VinIdentifier.IsZero() {
+		return fiber.NewError(fiber.StatusConflict, "VIN identifier is not set.")
+	}
+
+	// insert record
+	integration := models.UserDeviceAPIIntegration{
+		UserDeviceID:  userDeviceID,
+		IntegrationID: integ.Id,
+		ExternalID:    null.StringFrom(ud.VinIdentifier.String),
+		Status:        models.UserDeviceAPIIntegrationStatusPendingFirstData,
+	}
+	if err := integration.Insert(c.Context(), tx, boil.Infer()); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	logger.Info().Msg("Finished CompassIot registration")
 
 	return c.SendStatus(fiber.StatusNoContent)
 }

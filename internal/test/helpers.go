@@ -266,6 +266,30 @@ func SetupCreateUserDeviceWithDeviceID(t *testing.T, testUserID string, deviceID
 	return ud
 }
 
+func SetupCreateUserDeviceWithTokenID(t *testing.T, testUserID string, tokenID *big.Int, definitionID string, metadata *[]byte, vin string, pdb db.Store) models.UserDevice {
+	ud := models.UserDevice{
+		ID:           ksuid.New().String(),
+		TokenID:      types.NewNullDecimal(new(decimal.Big).SetBigMantScale(tokenID, 0)),
+		UserID:       testUserID,
+		DefinitionID: definitionID,
+		CountryCode:  null.StringFrom("USA"),
+		Name:         null.StringFrom("Chungus"),
+	}
+	if len(vin) == 17 {
+		ud.VinIdentifier = null.StringFrom(vin)
+		ud.VinConfirmed = true
+	}
+	if metadata == nil {
+		// note cannot import enum from services
+		md := []byte(`{"powertrainType":"ICE"}`)
+		metadata = &md
+	}
+	ud.Metadata = null.JSONFrom(*metadata)
+	err := ud.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
+	assert.NoError(t, err)
+	return ud
+}
+
 func SetupCreateAftermarketDevice(t *testing.T, userID string, bytes []byte, unitID string, deviceID *string, pdb db.Store) *models.AftermarketDevice {
 	amd := models.AftermarketDevice{
 		EthereumAddress: bytes, // pkey

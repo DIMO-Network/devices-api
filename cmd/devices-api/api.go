@@ -196,6 +196,11 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	vPriv.Post("/commands/trunk/open", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.OpenTrunk)
 	vPriv.Post("/commands/frunk/open", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.OpenFrunk)
 
+	// Vehicle owner routes.
+	vPriv.Get("/error-codes", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleNonLocationData}), userDeviceController.GetUserDeviceErrorCodeQueriesByTokenID)
+	vPriv.Post("/error-codes", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleNonLocationData}), userDeviceController.QueryDeviceErrorCodesByTokenID)
+	vPriv.Post("/error-codes/clear", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleNonLocationData}), userDeviceController.ClearUserDeviceErrorCodeQueryByTokenID)
+
 	// Traditional tokens
 
 	jwtAuth := jwtware.New(jwtware.Config{
@@ -276,13 +281,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	udOwner.Get("/integrations/:integrationID/commands/burn", syntheticController.GetSyntheticDeviceBurnPayload)
 	udOwner.Post("/integrations/:integrationID/commands/burn", syntheticController.BurnSyntheticDevice)
-
-	// Vehicle commands.
-	udOwner.Post("/integrations/:integrationID/commands/doors/unlock", userDeviceController.UnlockDoors)
-	udOwner.Post("/integrations/:integrationID/commands/doors/lock", userDeviceController.LockDoors)
-	udOwner.Post("/integrations/:integrationID/commands/trunk/open", userDeviceController.OpenTrunk)
-	udOwner.Post("/integrations/:integrationID/commands/frunk/open", userDeviceController.OpenFrunk)
-	udOwner.Get("/integrations/:integrationID/commands/:requestID", userDeviceController.GetCommandRequestStatus)
 
 	if !settings.IsProduction() {
 		udOwner.Post("/integrations/:integrationID/commands/telemetry/subscribe", userDeviceController.TelemetrySubscribe)
