@@ -20,6 +20,7 @@ import (
 type MockTeslaTaskService struct {
 	ctrl     *gomock.Controller
 	recorder *MockTeslaTaskServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockTeslaTaskServiceMockRecorder is the mock recorder for MockTeslaTaskService.

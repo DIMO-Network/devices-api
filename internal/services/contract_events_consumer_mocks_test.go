@@ -22,6 +22,7 @@ import (
 type MockIntegration struct {
 	ctrl     *gomock.Controller
 	recorder *MockIntegrationMockRecorder
+	isgomock struct{}
 }
 
 // MockIntegrationMockRecorder is the mock recorder for MockIntegration.
@@ -73,6 +74,7 @@ func (mr *MockIntegrationMockRecorder) Unpair(ctx, autoPiTokenID, vehicleTokenID
 type MockSyntheticTaskService struct {
 	ctrl     *gomock.Controller
 	recorder *MockSyntheticTaskServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockSyntheticTaskServiceMockRecorder is the mock recorder for MockSyntheticTaskService.

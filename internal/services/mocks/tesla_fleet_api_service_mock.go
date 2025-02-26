@@ -21,6 +21,7 @@ import (
 type MockTeslaFleetAPIService struct {
 	ctrl     *gomock.Controller
 	recorder *MockTeslaFleetAPIServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockTeslaFleetAPIServiceMockRecorder is the mock recorder for MockTeslaFleetAPIService.
