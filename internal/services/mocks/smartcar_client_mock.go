@@ -22,6 +22,7 @@ import (
 type MockSmartcarClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockSmartcarClientMockRecorder
+	isgomock struct{}
 }
 
 // MockSmartcarClientMockRecorder is the mock recorder for MockSmartcarClient.
