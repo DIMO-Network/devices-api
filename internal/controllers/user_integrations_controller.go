@@ -1001,14 +1001,12 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
 	}
 
-	// Flag for which api version should be used
-	apiVersion := constants.TeslaAPIV1
-	if reqBody.Version != 0 {
-		apiVersion = reqBody.Version
-	}
-
 	if reqBody.ExternalID == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "Missing externalId field.")
+	}
+
+	if reqBody.AccessToken != "" {
+		return fiber.NewError(fiber.StatusBadRequest, "We no longer support connecting Teslas by submitting access and refresh tokens. Please submit an authorization code for the Fleet API.")
 	}
 
 	// We'll use this to kick off the job
@@ -1017,35 +1015,33 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse externalId %q as an integer.", teslaID))
 	}
 
-	if apiVersion == constants.TeslaAPIV2 { // If version is 2, we are using fleet api which has token stored in cache
-		userAddr, hasAddr, err := udc.userAddrGetter.GetEthAddr(c)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "Couldn't retrieve user Ethereum address.")
-		}
-		if !hasAddr {
-			return fiber.NewError(fiber.StatusBadRequest, "No Ethereum address for user.")
-		}
-
-		// Yes, yes.
-		store := &tmpcred.Store{
-			Redis:  udc.redisCache,
-			Cipher: udc.cipher,
-		}
-
-		cred, err := store.Retrieve(c.Context(), userAddr)
-		if err != nil {
-			if errors.Is(err, tmpcred.ErrNotFound) {
-				return fiber.NewError(fiber.StatusBadRequest, "No credentials found for user.")
-			}
-			return err
-		}
-
-		reqBody.RefreshToken = cred.RefreshToken
-		reqBody.AccessToken = cred.AccessToken
-		reqBody.ExpiresIn = int(time.Until(cred.Expiry).Seconds())
+	userAddr, hasAddr, err := udc.userAddrGetter.GetEthAddr(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Couldn't retrieve user Ethereum address.")
+	}
+	if !hasAddr {
+		return fiber.NewError(fiber.StatusBadRequest, "No Ethereum address for user.")
 	}
 
-	v, err := udc.getTeslaVehicle(c.Context(), reqBody.AccessToken, teslaID, apiVersion)
+	// Yes, yes.
+	store := &tmpcred.Store{
+		Redis:  udc.redisCache,
+		Cipher: udc.cipher,
+	}
+
+	cred, err := store.Retrieve(c.Context(), userAddr)
+	if err != nil {
+		if errors.Is(err, tmpcred.ErrNotFound) {
+			return fiber.NewError(fiber.StatusBadRequest, "No credentials found for user.")
+		}
+		return err
+	}
+
+	reqBody.RefreshToken = cred.RefreshToken
+	reqBody.AccessToken = cred.AccessToken
+	reqBody.ExpiresIn = int(time.Until(cred.Expiry).Seconds())
+
+	v, err := udc.getTeslaVehicle(c.Context(), reqBody.AccessToken, teslaID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't retrieve vehicle from Tesla.")
 	}
@@ -1084,20 +1080,14 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		return err
 	}
 
-	var commands *services.UserDeviceAPIIntegrationsMetadataCommands
-	if apiVersion == constants.TeslaAPIV2 {
-		var err error
-		commands, err = udc.teslaFleetAPISvc.GetAvailableCommands(reqBody.AccessToken)
-		if err != nil {
-			return fiber.NewError(fiber.StatusBadRequest, "Couldn't determine available commands.")
-		}
-	} else {
-		commands = udc.teslaService.GetAvailableCommands()
+	commands, err := udc.teslaFleetAPISvc.GetAvailableCommands(reqBody.AccessToken)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Couldn't determine available commands.")
 	}
 
 	meta := services.UserDeviceAPIIntegrationsMetadata{
 		Commands:        commands,
-		TeslaAPIVersion: apiVersion,
+		TeslaAPIVersion: constants.TeslaAPIV2,
 		TeslaVehicleID:  v.VehicleID,
 	}
 
@@ -1131,7 +1121,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		return err
 	}
 
-	if err := udc.wakeupTeslaVehicle(c.Context(), reqBody.AccessToken, teslaID, apiVersion); err != nil {
+	if err := udc.wakeupTeslaVehicle(c.Context(), reqBody.AccessToken, teslaID); err != nil {
 		logger.Err(err).Msg("Couldn't wake up Tesla.")
 	}
 
@@ -1153,26 +1143,12 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-func (udc *UserDevicesController) wakeupTeslaVehicle(ctx context.Context, token string, vehicleID, version int) error {
-	var err error
-	if version == constants.TeslaAPIV2 {
-		err = udc.teslaFleetAPISvc.WakeUpVehicle(ctx, token, vehicleID)
-	} else {
-		err = udc.teslaService.WakeUpVehicle(token, vehicleID)
-	}
-	return err
+func (udc *UserDevicesController) wakeupTeslaVehicle(ctx context.Context, token string, vehicleID int) error {
+	return udc.teslaFleetAPISvc.WakeUpVehicle(ctx, token, vehicleID)
 }
 
-func (udc *UserDevicesController) getTeslaVehicle(ctx context.Context, token string, vehicleID, version int) (*services.TeslaVehicle, error) {
-	var vehicle *services.TeslaVehicle
-	var err error
-	if version == constants.TeslaAPIV2 {
-		vehicle, err = udc.teslaFleetAPISvc.GetVehicle(ctx, token, vehicleID)
-	} else {
-		vehicle, err = udc.teslaService.GetVehicle(token, vehicleID)
-	}
-
-	return vehicle, err
+func (udc *UserDevicesController) getTeslaVehicle(ctx context.Context, token string, vehicleID int) (*services.TeslaVehicle, error) {
+	return udc.teslaFleetAPISvc.GetVehicle(ctx, token, vehicleID)
 }
 
 // fixTeslaDeviceDefinition tries to use the VIN provided by Tesla to correct the device definition

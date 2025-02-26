@@ -67,7 +67,6 @@ type UserDevicesController struct {
 	eventService              services.EventService
 	smartcarClient            services.SmartcarClient
 	smartcarTaskSvc           services.SmartcarTaskService
-	teslaService              services.TeslaService
 	teslaTaskService          services.TeslaTaskService
 	cipher                    shared.Cipher
 	autoPiSvc                 services.AutoPiAPIService
@@ -123,7 +122,6 @@ func NewUserDevicesController(settings *config.Settings,
 	eventService services.EventService,
 	smartcarClient services.SmartcarClient,
 	smartcarTaskSvc services.SmartcarTaskService,
-	teslaService services.TeslaService,
 	teslaTaskService services.TeslaTaskService,
 	cipher shared.Cipher,
 	autoPiSvc services.AutoPiAPIService,
@@ -150,7 +148,6 @@ func NewUserDevicesController(settings *config.Settings,
 		eventService:              eventService,
 		smartcarClient:            smartcarClient,
 		smartcarTaskSvc:           smartcarTaskSvc,
-		teslaService:              teslaService,
 		teslaTaskService:          teslaTaskService,
 		cipher:                    cipher,
 		autoPiSvc:                 autoPiSvc,
