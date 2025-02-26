@@ -114,7 +114,7 @@ func main() {
 				logger.Warn().Msg("Using ROT13 encrypter. Only use this for testing!")
 				cipher = new(shared.ROT13Cipher)
 			}
-			subcommands.Register(&checkVirtualKeyCmd{logger: logger, settings: settings, pdb: pdb, cipher: cipher}, "device integrations")
+			subcommands.Register(&checkTelemetryCmd{logger: logger, settings: settings, pdb: pdb, cipher: cipher}, "device integrations")
 			subcommands.Register(&enableTelemetryCmd{logger: logger, settings: settings, pdb: pdb, cipher: cipher}, "device integrations")
 		}
 

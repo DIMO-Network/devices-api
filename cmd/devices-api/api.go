@@ -99,7 +99,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	scTaskSvc := services.NewSmartcarTaskService(settings, producer)
 	smartcarClient := services.NewSmartcarClient(settings)
 	teslaTaskService := services.NewTeslaTaskService(settings, producer)
-	teslaSvc := services.NewTeslaService(settings)
 	teslaFleetAPISvc, err := services.NewTeslaFleetAPIService(settings, &logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Error constructing Tesla Fleet API client.")
@@ -142,7 +141,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// controllers
 	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService,
-		smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, autoPiIngest,
+		smartcarClient, scTaskSvc, teslaTaskService, cipher, autoPiSvc, autoPiIngest,
 		deviceDefinitionRegistrar, producer, s3NFTServiceClient, redisCache, openAI, usersClient,
 		natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc, ipfsSvc, chConn)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
@@ -284,13 +283,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	udOwner.Get("/integrations/:integrationID/commands/burn", syntheticController.GetSyntheticDeviceBurnPayload)
 	udOwner.Post("/integrations/:integrationID/commands/burn", syntheticController.BurnSyntheticDevice)
-
-	// Vehicle commands.
-	udOwner.Post("/integrations/:integrationID/commands/doors/unlock", userDeviceController.UnlockDoors)
-	udOwner.Post("/integrations/:integrationID/commands/doors/lock", userDeviceController.LockDoors)
-	udOwner.Post("/integrations/:integrationID/commands/trunk/open", userDeviceController.OpenTrunk)
-	udOwner.Post("/integrations/:integrationID/commands/frunk/open", userDeviceController.OpenFrunk)
-	udOwner.Get("/integrations/:integrationID/commands/:requestID", userDeviceController.GetCommandRequestStatus)
 
 	if !settings.IsProduction() {
 		udOwner.Post("/integrations/:integrationID/commands/telemetry/subscribe", userDeviceController.TelemetrySubscribe)

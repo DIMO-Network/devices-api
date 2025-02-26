@@ -275,28 +275,6 @@ definitions:
       signature:
         type: string
     type: object
-  internal_controllers.CommandRequestStatusResp:
-    properties:
-      command:
-        example: doors/unlock
-        type: string
-      createdAt:
-        example: "2022-08-09T19:38:39Z"
-        type: string
-      id:
-        example: 2D8LqUHQtaMHH6LYPqznmJMBeZm
-        type: string
-      status:
-        enum:
-        - Pending
-        - Complete
-        - Failed
-        example: Complete
-        type: string
-      updatedAt:
-        example: "2022-08-09T19:39:22Z"
-        type: string
-    type: object
   internal_controllers.CommandResponse:
     properties:
       requestId:
@@ -1278,38 +1256,6 @@ paths:
       - BearerAuth: []
       tags:
       - integrations
-  /user/devices/{userDeviceID}/integrations/{integrationID}/commands/{requestID}:
-    get:
-      description: Get the status of a submitted command by request id.
-      operationId: get-command-request-status
-      parameters:
-      - description: Device ID
-        in: path
-        name: userDeviceID
-        required: true
-        type: string
-      - description: Integration ID
-        in: path
-        name: integrationID
-        required: true
-        type: string
-      - description: Command request ID
-        in: path
-        name: requestID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.CommandRequestStatusResp'
-      summary: Get the status of a submitted command.
-      tags:
-      - device
-      - integration
-      - command
   /user/devices/{userDeviceID}/integrations/{integrationID}/commands/burn:
     get:
       description: Produces the payload that the user signs and submits to burn a
@@ -1363,88 +1309,6 @@ paths:
             items:
               $ref: '#/definitions/apitypes.TypedData'
             type: array
-  /user/devices/{userDeviceID}/integrations/{integrationID}/commands/doors/lock:
-    post:
-      description: Lock the device's doors.
-      operationId: lock-doors
-      parameters:
-      - description: Device ID
-        in: path
-        name: userDeviceID
-        required: true
-        type: string
-      - description: Integration ID
-        in: path
-        name: integrationID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.CommandResponse'
-      summary: Lock the device's doors
-      tags:
-      - device
-      - integration
-      - command
-  /user/devices/{userDeviceID}/integrations/{integrationID}/commands/doors/unlock:
-    post:
-      description: Unlock the device's doors.
-      operationId: unlock-doors
-      parameters:
-      - description: Device ID
-        in: path
-        name: userDeviceID
-        required: true
-        type: string
-      - description: Integration ID
-        in: path
-        name: integrationID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.CommandResponse'
-      summary: Unlock the device's doors
-      tags:
-      - device
-      - integration
-      - command
-  /user/devices/{userDeviceID}/integrations/{integrationID}/commands/frunk/open:
-    post:
-      description: Open the device's front trunk. Currently, this only works for Teslas
-        connected through Tesla.
-      operationId: open-frunk
-      parameters:
-      - description: Device ID
-        in: path
-        name: userDeviceID
-        required: true
-        type: string
-      - description: Integration ID
-        in: path
-        name: integrationID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.CommandResponse'
-      summary: Open the device's front trunk
-      tags:
-      - device
-      - integration
-      - command
   /user/devices/{userDeviceID}/integrations/{integrationID}/commands/mint:
     get:
       description: |-
@@ -1518,34 +1382,6 @@ paths:
       - application/json
       responses: {}
       summary: Subscribe vehicle for Telemetry Data
-      tags:
-      - device
-      - integration
-      - command
-  /user/devices/{userDeviceID}/integrations/{integrationID}/commands/trunk/open:
-    post:
-      description: Open the device's front trunk. Currently, this only works for Teslas
-        connected through Tesla.
-      operationId: open-trunk
-      parameters:
-      - description: Device ID
-        in: path
-        name: userDeviceID
-        required: true
-        type: string
-      - description: Integration ID
-        in: path
-        name: integrationID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.CommandResponse'
-      summary: Open the device's rear trunk
       tags:
       - device
       - integration
