@@ -60,7 +60,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 	apiIntegration, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID),
-		qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
+		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.UserDevice, models.UserDeviceRels.VehicleTokenSyntheticDevice)),
 	).One(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -166,6 +166,17 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 						}
 					} else {
 						resp.Tesla.TelemetrySubscribed = isSubscribed
+
+						if sd := apiIntegration.R.UserDevice.R.VehicleTokenSyntheticDevice; !isSubscribed && sd != nil && !sd.TokenID.IsZero() {
+							vid, _ := apiIntegration.R.UserDevice.TokenID.Int64()
+							err := udc.teslaFleetAPISvc.SubscribeForTelemetryData(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
+							// TODO(elffjs): More SD information?
+							if err != nil {
+								udc.log.Err(err).Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Failed to configure Fleet Telemetry.")
+							} else {
+								udc.log.Info().Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Successfully configured Fleet Telemetry.")
+							}
+						}
 					}
 				}
 			}
