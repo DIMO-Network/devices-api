@@ -33,11 +33,6 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-func isTeslaVirtualKeyCapable(model string, year int) bool {
-	// Can we check this capability through their API somehow?
-	return model != "Model S" && model != "Model X" || year >= 2021
-}
-
 // GetUserDeviceIntegration godoc
 // @Description Receive status updates about a Smartcar integration
 // @Tags        integrations
