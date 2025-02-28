@@ -62,7 +62,7 @@ func (s *teslaRPCServer) CheckFleetTelemetryCapable(ctx context.Context, req *pb
 		return nil, status.Error(codes.FailedPrecondition, "Credentials invalid.")
 	}
 
-	if !udai.R.UserDevice.VinIdentifier.Valid || udai.R.UserDevice.VinConfirmed {
+	if !udai.R.UserDevice.VinIdentifier.Valid || !udai.R.UserDevice.VinConfirmed {
 		return nil, status.Error(codes.FailedPrecondition, "Credentials invalid.")
 	}
 
