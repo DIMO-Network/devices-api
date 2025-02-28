@@ -752,9 +752,11 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_MissingCredential
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
+	vin := "5YJSA1CN0CFP02439"
+
 	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model S", 2012, integration)
-	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "5YJSA1CN0CFP02439", s.pdb)
+	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, vin, s.pdb)
 
 	accessTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 	refreshTk := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.UWfqdcCvyzObpI2gaIGcx2r7CcDjlQ0IzGyk8N0_vqw"
@@ -781,8 +783,9 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
 	s.Require().NoError(err)
 
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
-	s.teslaFleetAPISvc.EXPECT().VirtualKeyConnectionStatus(gomock.Any(), accessTk, ud.VinIdentifier.String).Return(true, nil)
 	s.teslaFleetAPISvc.EXPECT().GetTelemetrySubscriptionStatus(gomock.Any(), accessTk, extID).Return(false, nil)
+
+	s.teslaFleetAPISvc.EXPECT().SubscribeForTelemetryData(gomock.Any(), accessTk, vin).Return(&services.TeslaSubscriptionError{Type: services.UnsupportedVehicle})
 
 	request := test.BuildRequest(http.MethodGet, fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), "")
 	res, err := s.app.Test(request, 60*1000)
@@ -796,7 +799,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
 	actual := GetUserDeviceIntegrationResponse{}
 	s.Require().NoError(json.Unmarshal(body, &actual))
 
-	s.Assert().True(actual.Tesla.VirtualKeyAdded)
+	s.Assert().False(actual.Tesla.VirtualKeyAdded)
 	s.Assert().False(actual.Tesla.TelemetrySubscribed)
 	s.Assert().Equal(models.UserDeviceAPIIntegrationStatusActive, actual.Status)
 	s.Assert().Equal(strconv.Itoa(extID), actual.ExternalID.String)

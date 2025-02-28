@@ -94,8 +94,10 @@ type TelemetryConfigRequest struct {
 }
 
 type TelemetryConfigStatusResponse struct {
-	Synced bool                    `json:"synced"`
-	Config *TelemetryConfigRequest `json:"config"`
+	Synced       bool                    `json:"synced"`
+	Config       *TelemetryConfigRequest `json:"config"`
+	LimitReached bool                    `json:"limit_reached"`
+	KeyPaired    bool                    `json:"key_paired"`
 }
 
 type SkippedVehicles struct {
@@ -431,7 +433,7 @@ func (t *teslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Contex
 		return false, err
 	}
 
-	return statResp.Response.Config != nil, nil
+	return statResp.Response.Config != nil && statResp.Response.KeyPaired, nil
 }
 
 var ErrUnauthorized = errors.New("unauthorized")
