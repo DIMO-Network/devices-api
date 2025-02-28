@@ -360,7 +360,7 @@ func startGRPCServer(
 	userDeviceSvc services.UserDeviceService,
 	teslaTaskSvc services.TeslaTaskService,
 	smartcarTaskSvc services.SmartcarTaskService,
-	ciper shared.Cipher,
+	cipher shared.Cipher,
 	teslaAPI services.TeslaFleetAPIService,
 ) {
 	lis, err := net.Listen("tcp", ":"+settings.GRPCPort)
@@ -383,7 +383,7 @@ func startGRPCServer(
 	pb.RegisterUserDeviceServiceServer(server, rpc.NewUserDeviceRPCService(dbs, settings, hardwareTemplateService, logger,
 		deviceDefSvc, eventService, userDeviceSvc, teslaTaskSvc, smartcarTaskSvc))
 	pb.RegisterAftermarketDeviceServiceServer(server, rpc.NewAftermarketDeviceService(dbs, logger))
-	pb.RegisterTeslaServiceServer(server, rpc.NewTeslaRPCService(dbs, settings, cipher, tesla, logger))
+	pb.RegisterTeslaServiceServer(server, rpc.NewTeslaRPCService(dbs, settings, cipher, teslaAPI, logger))
 
 	if err := server.Serve(lis); err != nil {
 		logger.Fatal().Err(err).Msg("gRPC server terminated unexpectedly")
