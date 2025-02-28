@@ -129,7 +129,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 
 				isSubscribed, err := udc.getTelemetrySubscriptionStatus(c.Context(), accessToken, apiIntegration.ExternalID.String)
 				if err != nil {
-					logger.Err(err).Msg("Error checking telemetry subscription status.")
+					logger.Err(err).Msg("Error checking Fleet Telemetry status.")
 					if !errors.Is(err, services.ErrUnauthorized) {
 						return fiber.NewError(fiber.StatusInternalServerError, "Error checking telemetry subscription status.")
 					}
@@ -174,69 +174,11 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 						}
 					}
 				}
-
-				// TODO(elfjjs): Graceful stuff if the access token gets invalidated before expiry.
-				keyPaired, err := udc.getDeviceVirtualKeyStatus(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
-				if err != nil {
-					logger.Err(err).Msg("Error checking virtual key status.")
-					if !errors.Is(err, services.ErrUnauthorized) {
-						// TODO(elffjs): Need to figure these out.
-						return fiber.NewError(fiber.StatusInternalServerError, "Error checking virtual key status.")
-					}
-				} else {
-					// Deprecated.
-					resp.Tesla.VirtualKeyAdded = keyPaired
-
-					var vks VirtualKeyStatus
-
-					if keyPaired {
-						vks = Paired
-					} else {
-						dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), apiIntegration.R.UserDevice.DefinitionID)
-						if err != nil {
-							return err
-						}
-
-						if isTeslaVirtualKeyCapable(dd.Model, int(dd.Year)) {
-							vks = Unpaired
-						} else {
-							vks = Incapable
-						}
-					}
-
-					resp.Tesla.VirtualKeyStatus = vks
-
-					isSubscribed, err := udc.getTelemetrySubscriptionStatus(c.Context(), accessToken, apiIntegration.ExternalID.String)
-					if err != nil {
-						logger.Err(err).Msg("Error checking telemetry subscription status.")
-						if !errors.Is(err, services.ErrUnauthorized) {
-							return fiber.NewError(fiber.StatusInternalServerError, "Error checking telemetry subscription status.")
-						}
-					} else {
-						resp.Tesla.TelemetrySubscribed = isSubscribed
-
-						if sd := apiIntegration.R.UserDevice.R.VehicleTokenSyntheticDevice; !isSubscribed && sd != nil && !sd.TokenID.IsZero() {
-							vid, _ := apiIntegration.R.UserDevice.TokenID.Int64()
-							err := udc.teslaFleetAPISvc.SubscribeForTelemetryData(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
-							// TODO(elffjs): More SD information?
-							if err != nil {
-								udc.log.Err(err).Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Failed to configure Fleet Telemetry.")
-							} else {
-								udc.log.Info().Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Successfully configured Fleet Telemetry.")
-							}
-						}
-					}
-				}
 			}
 		}
 	}
 
 	return c.JSON(resp)
-}
-
-func (udc *UserDevicesController) getDeviceVirtualKeyStatus(ctx context.Context, accessToken, vin string) (bool, error) {
-	// TODO(elffjs): Do we need this function at all?
-	return udc.teslaFleetAPISvc.VirtualKeyConnectionStatus(ctx, accessToken, vin)
 }
 
 func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Context, accessToken, id string) (bool, error) {
