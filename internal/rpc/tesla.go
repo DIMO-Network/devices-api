@@ -105,8 +105,11 @@ func (s *teslaRPCServer) CheckFleetTelemetryCapable(ctx context.Context, req *pb
 		return &pb.CheckFleetTelemetryCapableResponse{TelemetryCapable: true}, nil
 	}
 
+	vid, _ := udai.R.UserDevice.TokenID.Int64()
+
 	err = s.teslaAPI.SubscribeForTelemetryData(ctx, accessToken, udai.R.UserDevice.VinIdentifier.String)
 	if err != nil {
+		s.logger.Err(err).Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Failed to configure Fleet Telemetry.")
 		var subErr *services.TeslaSubscriptionError
 		if errors.As(err, &subErr) {
 			switch subErr.Type {
@@ -118,6 +121,8 @@ func (s *teslaRPCServer) CheckFleetTelemetryCapable(ctx context.Context, req *pb
 		}
 		return nil, err
 	}
+
+	s.logger.Info().Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Successfully configured Fleet Telemetry.")
 
 	return &pb.CheckFleetTelemetryCapableResponse{TelemetryCapable: true}, nil
 }
