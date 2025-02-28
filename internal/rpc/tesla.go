@@ -7,19 +7,16 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/DIMO-Network/shared"
-	"github.com/rs/zerolog"
-
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services"
-
+	"github.com/DIMO-Network/devices-api/models"
+	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
+	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
+	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	"github.com/DIMO-Network/devices-api/models"
-	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 )
 
 func NewTeslaRPCService(
