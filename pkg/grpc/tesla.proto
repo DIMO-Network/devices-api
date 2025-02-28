@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+option go_package = "github.com/DIMO-Network/devices-api/pkg/grpc";
+
+// more types here: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Empty
+
+// import "google/protobuf/timestamp.proto";
+// import "google/protobuf/empty.proto";
+// import "pkg/grpc/aftermarket_devices.proto";
+
+package tesla;
+
+service TeslaService {
+  // Tries to determine whether the vehicle with the given id is Fleet Telemetry-capable.
+  // Note that if the vehicle is not already enrolled then calling this function will
+  // attempt to enroll it.
+  //
+  // Will fail if the credentials are expired or if the device is not minted.
+  rpc CheckFleetTelemetryCapable(CheckFleetTelemetryCapableRequest) returns (CheckFleetTelemetryCapableResponse);
+}
+
+message CheckFleetTelemetryCapableRequest {
+  // This is an old-style KSUID.
+  string user_device_id = 1;
+}
+
+message CheckFleetTelemetryCapableResponse {
+  bool telemetry_capable = 1;
+}
