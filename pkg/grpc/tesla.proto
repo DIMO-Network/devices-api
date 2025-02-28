@@ -2,12 +2,6 @@ syntax = "proto3";
 
 option go_package = "github.com/DIMO-Network/devices-api/pkg/grpc";
 
-// more types here: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Empty
-
-// import "google/protobuf/timestamp.proto";
-// import "google/protobuf/empty.proto";
-// import "pkg/grpc/aftermarket_devices.proto";
-
 package tesla;
 
 service TeslaService {
