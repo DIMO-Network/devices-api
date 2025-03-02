@@ -1036,6 +1036,11 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't retrieve vehicle from Tesla.")
 	}
 
+	fs, err := udc.teslaFleetAPISvc.VirtualKeyConnectionStatus(c.Context(), reqBody.AccessToken, v.VIN)
+	if err != nil {
+		fmt.Errorf("couldn't retrieve fleet status from Tesla: %w", err)
+	}
+
 	// Prevent users from connecting a vehicle if it's already connected through another user
 	// device object. Disabled outside of prod for ease of testing.
 	if udc.Settings.IsProduction() {
@@ -1076,9 +1081,11 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	}
 
 	meta := services.UserDeviceAPIIntegrationsMetadata{
-		Commands:        commands,
-		TeslaAPIVersion: constants.TeslaAPIV2,
-		TeslaVehicleID:  v.VehicleID,
+		Commands:            commands,
+		TeslaAPIVersion:     constants.TeslaAPIV2,
+		TeslaVehicleID:      v.VehicleID,
+		TeslaVIN:            v.VIN,
+		TeslaDiscountedData: &fs.DiscountedDeviceData,
 	}
 
 	b, err := json.Marshal(meta)
