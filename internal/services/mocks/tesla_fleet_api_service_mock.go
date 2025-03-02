@@ -72,10 +72,10 @@ func (mr *MockTeslaFleetAPIServiceMockRecorder) GetAvailableCommands(token any) 
 }
 
 // GetTelemetrySubscriptionStatus mocks base method.
-func (m *MockTeslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Context, token string, tokenID int) (bool, error) {
+func (m *MockTeslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Context, token string, tokenID int) (*services.VehicleTelemetryStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetTelemetrySubscriptionStatus", ctx, token, tokenID)
-	ret0, _ := ret[0].(bool)
+	ret0, _ := ret[0].(*services.VehicleTelemetryStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -131,10 +131,10 @@ func (mr *MockTeslaFleetAPIServiceMockRecorder) SubscribeForTelemetryData(ctx, t
 }
 
 // VirtualKeyConnectionStatus mocks base method.
-func (m *MockTeslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, token, vin string) (bool, error) {
+func (m *MockTeslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, token, vin string) (*services.VehicleFleetStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VirtualKeyConnectionStatus", ctx, token, vin)
-	ret0, _ := ret[0].(bool)
+	ret0, _ := ret[0].(*services.VehicleFleetStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
