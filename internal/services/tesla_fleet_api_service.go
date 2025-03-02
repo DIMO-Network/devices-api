@@ -73,6 +73,9 @@ type VirtualKeyConnectionStatusResponse struct {
 type VirtualKeyConnectionStatus struct {
 	UnpairedVINs  []string `json:"unpaired_vins"`
 	KeyPairedVINs []string `json:"key_paired_vins"`
+	VehicleInfo   map[string]struct{
+		DiscountedDeviceData bool `json:"discounted_device_data"`
+	} `json:"vehicle_info"`
 }
 
 type SubscribeForTelemetryDataRequest struct {
