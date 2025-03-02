@@ -785,7 +785,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetUserDeviceIntegration() {
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
 	s.teslaFleetAPISvc.EXPECT().GetTelemetrySubscriptionStatus(gomock.Any(), accessTk, extID).Return(false, nil)
 
-	s.teslaFleetAPISvc.EXPECT().SubscribeForTelemetryData(gomock.Any(), accessTk, vin).Return(&services.TeslaSubscriptionError{Type: services.UnsupportedVehicle})
+	s.teslaFleetAPISvc.EXPECT().VirtualKeyConnectionStatus(gomock.Any(), accessTk, vin).Return(&services.VehicleFleetStatus{DiscountedDeviceData: true}, nil)
 
 	request := test.BuildRequest(http.MethodGet, fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), "")
 	res, err := s.app.Test(request, 60*1000)

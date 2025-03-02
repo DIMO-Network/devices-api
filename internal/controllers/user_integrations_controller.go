@@ -136,35 +136,44 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 						resp.Tesla.VirtualKeyAdded = true
 						resp.Tesla.VirtualKeyStatus = Paired
 					} else {
-						// Really don't want to subscribe if we're not minted.
-						// So this section is meaningless if we have problems doing the following.
-						if sd := apiIntegration.R.UserDevice.R.VehicleTokenSyntheticDevice; sd != nil && !sd.TokenID.IsZero() {
-							vid, _ := apiIntegration.R.UserDevice.TokenID.Int64()
-							err := udc.teslaFleetAPISvc.SubscribeForTelemetryData(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
-							// TODO(elffjs): More SD information in the logs?
-							if err != nil {
-								udc.log.Err(err).Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Failed to configure Fleet Telemetry.")
+						fs, err := udc.teslaFleetAPISvc.VirtualKeyConnectionStatus(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
+						if err != nil {
+							udc.log.Err(err).Str("userDeviceId", apiIntegration.UserDeviceID).Int64("integrationId", 2).Msg("Failed to check fleet status.")
+							return fiber.NewError(fiber.StatusInternalServerError, "Error checking fleet status.")
+						}
 
-								// Shouldn't be hitting unauthorized here.
-								var configErr *services.TeslaSubscriptionError
-								if errors.As(err, &configErr) {
-									switch configErr.Type {
-									case services.KeyUnpaired, services.UnsupportedFirmware:
-										resp.Tesla.VirtualKeyStatus = Unpaired
-									case services.UnsupportedVehicle:
-										resp.Tesla.VirtualKeyStatus = Incapable
-									default:
-										udc.log.Error().Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Unexpected Fleet Telemetry config setting error.")
+						if !fs.DiscountedDeviceData {
+							// Really don't want to subscribe if we're not minted.
+							if sd := apiIntegration.R.UserDevice.R.VehicleTokenSyntheticDevice; sd != nil && !sd.TokenID.IsZero() {
+								vid, _ := apiIntegration.R.UserDevice.TokenID.Int64()
+
+								err := udc.teslaFleetAPISvc.SubscribeForTelemetryData(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
+								// TODO(elffjs): More SD information in the logs?
+								if err != nil {
+									udc.log.Err(err).Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Failed to configure Fleet Telemetry.")
+
+									// Shouldn't be hitting unauthorized here.
+									var configErr *services.TeslaSubscriptionError
+									if errors.As(err, &configErr) {
+										switch configErr.Type {
+										case services.KeyUnpaired, services.UnsupportedFirmware:
+											resp.Tesla.VirtualKeyStatus = Unpaired
+										case services.UnsupportedVehicle:
+											// We really should not get here.
+										default:
+											udc.log.Error().Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Unexpected Fleet Telemetry config setting error.")
+											// This should be impossible.
+										}
+									} else {
+										return fiber.NewError(fiber.StatusInternalServerError, "Error setting Fleet Telemetry configuration.")
 									}
 								} else {
-									return fiber.NewError(fiber.StatusInternalServerError, "Error checking telemetry subscription status.")
-								}
-							} else {
-								resp.Tesla.VirtualKeyAdded = true // Deprecated.
-								resp.Tesla.VirtualKeyStatus = Paired
-								resp.Tesla.TelemetrySubscribed = true
+									resp.Tesla.VirtualKeyAdded = true // Deprecated.
+									resp.Tesla.VirtualKeyStatus = Paired
+									resp.Tesla.TelemetrySubscribed = true
 
-								udc.log.Info().Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Successfully configured Fleet Telemetry.")
+									udc.log.Info().Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Successfully configured Fleet Telemetry.")
+								}
 							}
 						}
 					}
