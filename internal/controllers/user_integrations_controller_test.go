@@ -634,6 +634,9 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 		Enabled:  []string{constants.DoorsUnlock, constants.DoorsLock, constants.TrunkOpen, constants.FrunkOpen, constants.ChargeLimit},
 		Disabled: []string{constants.TelemetrySubscribe},
 	}, nil)
+	s.teslaFleetAPISvc.EXPECT().VirtualKeyConnectionStatus(gomock.Any(), "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", "5YJYGDEF9NF010423").Return(&services.VehicleFleetStatus{
+		DiscountedDeviceData: false,
+	}, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Times(1).Return(dd[0], nil)
 	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dd[0], nil)
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Times(1).Return(integration, nil)
@@ -685,6 +688,8 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 	s.Assert().Equal(encAccessToken, intd.AccessToken.String)
 	s.Assert().Equal(encRefreshToken, intd.RefreshToken.String)
 	s.Assert().Equal(2, meta.TeslaAPIVersion)
+	s.Require().NotNil(meta.TeslaDiscountedData)
+	s.Assert().False(*meta.TeslaDiscountedData)
 }
 
 func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2_PartialCredentials() {
