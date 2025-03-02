@@ -1,27 +1,23 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
 	"os"
-	"slices"
+	"strconv"
+	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/subcommands"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
+	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
 )
 
@@ -54,29 +50,13 @@ func (p *checkTelemetryCmd) Execute(_ context.Context, _ *flag.FlagSet, _ ...int
 	return subcommands.ExitSuccess
 }
 
-// type teslaGetVehicleRes struct {
-// 	Response struct {
-// 		VIN string `json:"vin"`
-// 	}
-// }
-
-type teslafleetStatusReq struct {
-	VINs []string `json:"vins"`
-}
-
-type teslaFleetStatusRes struct {
-	Response struct {
-		KeyPairedVINs []string `json:"key_paired_vins"`
-		UnpairedVINs  []string `json:"unpaired_vins"`
-		VehicleInfo   map[string]struct {
-			FirmwareVersion                string `json:"firmware_version"`
-			VehicleCommandProtocolRequired bool   `json:"vehicle_command_protocol_required"`
-		} `json:"vehicle_info"`
-	} `json:"response"`
-}
-
 func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.Logger, cipher shared.Cipher) error {
 	userDeviceID := os.Args[2]
+
+	fleetAPI, err := services.NewTeslaFleetAPIService(settings, logger)
+	if err != nil {
+		return err
+	}
 
 	ctx := context.Background()
 
@@ -89,121 +69,54 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 		return fmt.Errorf("failed to retrieve Tesla jobs: %w", err)
 	}
 
-	if !udai.R.UserDevice.VinConfirmed || len(udai.R.UserDevice.VinIdentifier.String) != 17 {
-		return errors.New("weird VIN situation")
+	if udai.AccessExpiresAt.Time.Before(time.Now()) {
+		return fmt.Errorf("access token expired %s ago", time.Since(udai.AccessExpiresAt.Time))
 	}
 
-	vin := udai.R.UserDevice.VinIdentifier.String
+	var md services.UserDeviceAPIIntegrationsMetadata
+	err = udai.Metadata.Unmarshal(&md)
+	if err != nil {
+		return err
+	}
 
 	token, err := cipher.Decrypt(udai.AccessToken.String)
 	if err != nil {
 		return fmt.Errorf("couldn't decrypt access token: %w", err)
 	}
 
-	var claims partialTeslaClaims
-	_, _, err = jwt.NewParser().ParseUnverified(token, &claims)
+	teslaID, err := strconv.Atoi(udai.ExternalID.String)
 	if err != nil {
-		return fmt.Errorf("couldn't parse JWT: %w", err)
+		return err
 	}
 
-	if !slices.Contains(claims.Scopes, "vehicle_location") {
-		// Bail early to avoid network.
-		logger.Info().Interface("scopes", claims.Scopes).Msg("Missing location scope.")
-		return nil
-	}
-
-	baseURL, err := url.ParseRequestURI(settings.TeslaFleetURL)
+	v, err := fleetAPI.GetVehicle(ctx, token, teslaID)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	// var tgvRes teslaGetVehicleRes
-	// err = submitTeslaReq(
-	// 	"GET",
-	// 	baseURL.JoinPath("api/1/vehicles", udai.ExternalID.String).String(),
-	// 	token,
-	// 	nil,
-	// 	&tgvRes,
-	// )
-	// if err != nil {
-	// 	return fmt.Errorf("failed to double-check VIN: %w", err)
-	// }
-
-	// vin := tgvRes.Response.VIN
-
-	if vinWrap := shared.VIN(vin); (vinWrap.TeslaModel() == "Model S" || vinWrap.TeslaModel() == "Model X") && vinWrap.Year() < 2021 {
-		logger.Info().Msg("All checks passed.")
-		return nil
-	}
-
-	var tfsRes teslaFleetStatusRes
-	err = submitTeslaReq(
-		"POST",
-		baseURL.JoinPath("api/1/vehicles/fleet_status").String(),
-		token,
-		teslafleetStatusReq{
-			VINs: []string{vin},
-		},
-		&tfsRes,
-	)
+	ss, err := fleetAPI.GetTelemetrySubscriptionStatus(ctx, token, teslaID)
 	if err != nil {
-		return fmt.Errorf("failed to check virtual key status: %w", err)
+		return err
 	}
 
-	if len(tfsRes.Response.KeyPairedVINs) == 0 {
-		logger.Info().Str("firmwareVersion", tfsRes.Response.VehicleInfo[vin].FirmwareVersion).Bool("protocolRequired", tfsRes.Response.VehicleInfo[vin].VehicleCommandProtocolRequired).Msg("Virtual key missing.")
-		return nil
-	}
-
-	logger.Info().Msg("All checks passed.")
-
-	return nil
-}
-
-type partialTeslaClaims struct {
-	jwt.RegisteredClaims
-	Scopes []string `json:"scp"`
-}
-
-func submitTeslaReq(method, uri, token string, reqBody any, respObj any) error {
-	var buf io.Reader
-	if reqBody != nil {
-		b, err := json.Marshal(reqBody)
-		if err != nil {
-			return fmt.Errorf("failed to marshal request body: %w", err)
-		}
-		buf = bytes.NewBuffer(b)
-	}
-
-	req, err := http.NewRequest(method, uri, buf)
+	fs, err := fleetAPI.VirtualKeyConnectionStatus(ctx, token, v.VIN)
 	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-	if reqBody != nil {
-		req.Header.Set("Content-Type", "application/json")
+		return err
 	}
 
-	res, err := http.DefaultClient.Do(req)
+	md.TeslaVIN = v.VIN
+	md.TeslaDiscountedData = &fs.DiscountedDeviceData
+
+	if err := udai.Metadata.Marshal(md); err != nil {
+		return err
+	}
+
+	_, err = udai.Update(ctx, pdb.DBS().Writer, boil.Whitelist(models.UserDeviceAPIIntegrationColumns.Metadata, models.UserDeviceAPIIntegrationColumns.UpdatedAt))
 	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	respBytes, err := io.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
+		return err
 	}
 
-	if res.StatusCode >= http.StatusBadRequest {
-		return fmt.Errorf("status code %d", res.StatusCode)
-	}
-
-	if respObj != nil {
-		err = json.Unmarshal(respBytes, respObj)
-		if err != nil {
-			return fmt.Errorf("couldn't unmarshal response body: %w", err)
-		}
-	}
+	logger.Info().Interface("vehicle", v).Interface("telemetry", ss).Interface("fleet", fs).Msg("Returned information.")
 
 	return nil
 }
