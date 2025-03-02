@@ -75,7 +75,7 @@ type fleetStatusResponse struct {
 		DiscountedDeviceData           bool   `json:"discounted_device_data"`
 		FleetTelemetryVersion          string `json:"fleet_telemetry_version"`
 		TotalNumberOfKeys              int    `json:"total_number_of_keys"`
-	}
+	} `json:"vehicle_info"`
 }
 
 type VehicleFleetStatus struct {
