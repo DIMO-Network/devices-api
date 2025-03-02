@@ -1038,7 +1038,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 
 	fs, err := udc.teslaFleetAPISvc.VirtualKeyConnectionStatus(c.Context(), reqBody.AccessToken, v.VIN)
 	if err != nil {
-		fmt.Errorf("couldn't retrieve fleet status from Tesla: %w", err)
+		return fmt.Errorf("couldn't retrieve fleet status from Tesla: %w", err)
 	}
 
 	// Prevent users from connecting a vehicle if it's already connected through another user
