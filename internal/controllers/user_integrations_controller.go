@@ -181,12 +181,7 @@ func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Con
 		return nil, fmt.Errorf("couldn't parse Tesla id as a number: %w", err)
 	}
 
-	telemStat, err := udc.teslaFleetAPISvc.GetTelemetrySubscriptionStatus(ctx, accessToken, teslaID)
-	if err != nil {
-		return nil, err
-	}
-
-	return telemStat, nil
+	return udc.teslaFleetAPISvc.GetTelemetrySubscriptionStatus(ctx, accessToken, teslaID)
 }
 
 func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, userID, userDeviceID, integrationID string, dd *ddgrpc.GetDeviceDefinitionItemResponse, tx *sql.Tx) error {
