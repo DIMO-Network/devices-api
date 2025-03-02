@@ -462,9 +462,10 @@ func (t *teslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Contex
 	}
 
 	return &VehicleTelemetryStatus{
+		KeyPaired:    statResp.Response.KeyPaired,
 		Synced:       statResp.Response.Synced,
 		Configured:   statResp.Response.Config != nil,
-		LimitReached: statResp.Response.KeyPaired,
+		LimitReached: statResp.Response.LimitReached,
 	}, nil
 }
 
