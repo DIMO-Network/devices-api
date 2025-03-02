@@ -97,11 +97,11 @@ func (s *teslaRPCServer) CheckFleetTelemetryCapable(ctx context.Context, req *pb
 		return nil, err
 	}
 
-	isSubscribed, err := s.teslaAPI.GetTelemetrySubscriptionStatus(ctx, accessToken, teslaID)
+	fleetStatus, err := s.teslaAPI.GetTelemetrySubscriptionStatus(ctx, accessToken, teslaID)
 	if err != nil {
 		return nil, err
 	}
-	if isSubscribed {
+	if fleetStatus.Configured {
 		return &pb.CheckFleetTelemetryCapableResponse{TelemetryCapable: true}, nil
 	}
 

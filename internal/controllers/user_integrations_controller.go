@@ -78,125 +78,114 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		return shared.GrpcErrorToFiber(err, "invalid integration id")
 	}
 
-	if intd.Vendor == constants.TeslaVendor {
-		var meta services.UserDeviceAPIIntegrationsMetadata
-		err = apiIntegration.Metadata.Unmarshal(&meta)
+	if intd.Vendor != constants.TeslaVendor {
+		return c.JSON(resp)
+	}
+	var meta services.UserDeviceAPIIntegrationsMetadata
+	err = apiIntegration.Metadata.Unmarshal(&meta)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Integration metadata is corrupted.")
+	}
+
+	apiVersion := 1
+
+	if meta.TeslaAPIVersion != 0 {
+		apiVersion = meta.TeslaAPIVersion
+	}
+
+	minted := apiIntegration.R.UserDevice.R.VehicleTokenSyntheticDevice != nil && !apiIntegration.R.UserDevice.R.VehicleTokenSyntheticDevice.TokenID.IsZero()
+
+	resp.Tesla = &TeslaIntegrationInfo{
+		APIVersion:            apiVersion,
+		MissingRequiredScopes: []string{},
+	}
+
+	if apiVersion != constants.TeslaAPIV2 {
+		return c.JSON(resp)
+	}
+
+	if !apiIntegration.ExternalID.Valid || !apiIntegration.R.UserDevice.VinIdentifier.Valid {
+		return fiber.NewError(fiber.StatusInternalServerError, "Missing device or integration details.")
+	}
+
+	if apiIntegration.AccessExpiresAt.Valid && apiIntegration.AccessExpiresAt.Time.Before(time.Now()) {
+		return c.JSON(resp)
+	}
+
+	accessToken, err := udc.cipher.Decrypt(apiIntegration.AccessToken.String)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt access token: %w", err)
+	}
+
+	var claims partialTeslaClaims
+	_, _, err = jwt.NewParser().ParseUnverified(accessToken, &claims)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Couldn't parse access token.")
+	}
+
+	if udc.Settings.TeslaRequiredScopes != "" {
+		// Yes, wasteful Split.
+		for _, scope := range strings.Split(udc.Settings.TeslaRequiredScopes, ",") {
+			if !slices.Contains(claims.Scopes, scope) {
+				resp.Tesla.MissingRequiredScopes = append(resp.Tesla.MissingRequiredScopes, scope)
+			}
+		}
+	}
+
+	telemStatus, err := udc.getTelemetrySubscriptionStatus(c.Context(), accessToken, apiIntegration.ExternalID.String)
+	if err != nil {
+		logger.Err(err).Msg("Error checking Fleet Telemetry configuration.")
+		if errors.Is(err, services.ErrUnauthorized) {
+			// The task-worker should get this in the API soon.
+			return c.JSON(resp)
+		}
+		return fiber.NewError(fiber.StatusInternalServerError, "Error checking Fleet Telemetry configuration.")
+	}
+
+	resp.Tesla.TelemetrySubscribed = telemStatus.Configured && telemStatus.KeyPaired
+
+	// This is a bit wasteful if you are, indeed, subscribed.
+	fleetStatus, err := udc.teslaFleetAPISvc.VirtualKeyConnectionStatus(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
+	if err != nil {
+		udc.log.Err(err).Str("userDeviceId", apiIntegration.UserDeviceID).Int64("integrationId", 2).Msg("Failed to check fleet status.")
+		return fiber.NewError(fiber.StatusInternalServerError, "Error checking fleet status.")
+	}
+
+	resp.Tesla.VirtualKeyAdded = fleetStatus.KeyPaired
+	if fleetStatus.DiscountedDeviceData {
+		resp.Tesla.VirtualKeyStatus = Incapable
+	} else if fleetStatus.KeyPaired {
+		resp.Tesla.VirtualKeyStatus = Paired
+	} else {
+		resp.Tesla.VirtualKeyStatus = Unpaired
+	}
+
+	if !fleetStatus.DiscountedDeviceData && !telemStatus.Configured && fleetStatus.KeyPaired && minted {
+		vid, _ := apiIntegration.R.UserDevice.TokenID.Int64()
+		err := udc.teslaFleetAPISvc.SubscribeForTelemetryData(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
+		// TODO(elffjs): More SD information in the logs?
 		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "Integration metadata is corrupted.")
-		}
-
-		apiVersion := 1
-
-		if meta.TeslaAPIVersion != 0 {
-			apiVersion = meta.TeslaAPIVersion
-		}
-
-		resp.Tesla = &TeslaIntegrationInfo{
-			APIVersion:            apiVersion,
-			MissingRequiredScopes: []string{},
-		}
-
-		if apiVersion == constants.TeslaAPIV2 {
-			if !apiIntegration.ExternalID.Valid || !apiIntegration.R.UserDevice.VinIdentifier.Valid {
-				return fiber.NewError(fiber.StatusInternalServerError, "missing device or integration details")
-			}
-
-			if apiIntegration.AccessExpiresAt.Valid && apiIntegration.AccessExpiresAt.Time.After(time.Now()) {
-				accessToken, err := udc.cipher.Decrypt(apiIntegration.AccessToken.String)
-				if err != nil {
-					return fmt.Errorf("failed to decrypt access token: %w", err)
-				}
-
-				var claims partialTeslaClaims
-				_, _, err = jwt.NewParser().ParseUnverified(accessToken, &claims)
-				if err != nil {
-					return fiber.NewError(fiber.StatusInternalServerError, "Couldn't parse access token.")
-				}
-
-				if udc.Settings.TeslaRequiredScopes != "" {
-					// Yes, wasteful Split.
-					for _, scope := range strings.Split(udc.Settings.TeslaRequiredScopes, ",") {
-						if !slices.Contains(claims.Scopes, scope) {
-							resp.Tesla.MissingRequiredScopes = append(resp.Tesla.MissingRequiredScopes, scope)
-						}
-					}
-				}
-
-				isSubscribed, err := udc.getTelemetrySubscriptionStatus(c.Context(), accessToken, apiIntegration.ExternalID.String)
-				if err != nil {
-					logger.Err(err).Msg("Error checking Fleet Telemetry status.")
-					if !errors.Is(err, services.ErrUnauthorized) {
-						return fiber.NewError(fiber.StatusInternalServerError, "Error checking telemetry subscription status.")
-					}
-				} else {
-					resp.Tesla.TelemetrySubscribed = isSubscribed
-
-					if isSubscribed {
-						// Implicitly true.
-						resp.Tesla.VirtualKeyAdded = true
-						resp.Tesla.VirtualKeyStatus = Paired
-					} else {
-						fs, err := udc.teslaFleetAPISvc.VirtualKeyConnectionStatus(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
-						if err != nil {
-							udc.log.Err(err).Str("userDeviceId", apiIntegration.UserDeviceID).Int64("integrationId", 2).Msg("Failed to check fleet status.")
-							return fiber.NewError(fiber.StatusInternalServerError, "Error checking fleet status.")
-						}
-
-						if !fs.DiscountedDeviceData {
-							// Really don't want to subscribe if we're not minted.
-							if sd := apiIntegration.R.UserDevice.R.VehicleTokenSyntheticDevice; sd != nil && !sd.TokenID.IsZero() {
-								vid, _ := apiIntegration.R.UserDevice.TokenID.Int64()
-
-								err := udc.teslaFleetAPISvc.SubscribeForTelemetryData(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
-								// TODO(elffjs): More SD information in the logs?
-								if err != nil {
-									udc.log.Err(err).Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Failed to configure Fleet Telemetry.")
-
-									// Shouldn't be hitting unauthorized here.
-									var configErr *services.TeslaSubscriptionError
-									if errors.As(err, &configErr) {
-										switch configErr.Type {
-										case services.KeyUnpaired, services.UnsupportedFirmware:
-											resp.Tesla.VirtualKeyStatus = Unpaired
-										case services.UnsupportedVehicle:
-											// We really should not get here.
-										default:
-											udc.log.Error().Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Unexpected Fleet Telemetry config setting error.")
-											// This should be impossible.
-										}
-									} else {
-										return fiber.NewError(fiber.StatusInternalServerError, "Error setting Fleet Telemetry configuration.")
-									}
-								} else {
-									resp.Tesla.VirtualKeyAdded = true // Deprecated.
-									resp.Tesla.VirtualKeyStatus = Paired
-									resp.Tesla.TelemetrySubscribed = true
-
-									udc.log.Info().Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Successfully configured Fleet Telemetry.")
-								}
-							}
-						}
-					}
-				}
-			}
+			udc.log.Err(err).Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Failed to configure Fleet Telemetry.")
+		} else {
+			udc.log.Info().Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Successfully configured Fleet Telemetry.")
 		}
 	}
 
 	return c.JSON(resp)
 }
 
-func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Context, accessToken, id string) (bool, error) {
+func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Context, accessToken, id string) (*services.VehicleTelemetryStatus, error) {
 	teslaID, err := strconv.Atoi(id)
 	if err != nil {
-		return false, fmt.Errorf("couldn't parse Tesla id as a number: %w", err)
+		return nil, fmt.Errorf("couldn't parse Tesla id as a number: %w", err)
 	}
 
-	isSubscribed, err := udc.teslaFleetAPISvc.GetTelemetrySubscriptionStatus(ctx, accessToken, teslaID)
+	telemStat, err := udc.teslaFleetAPISvc.GetTelemetrySubscriptionStatus(ctx, accessToken, teslaID)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	return isSubscribed, nil
+	return telemStat, nil
 }
 
 func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, userID, userDeviceID, integrationID string, dd *ddgrpc.GetDeviceDefinitionItemResponse, tx *sql.Tx) error {

@@ -37,7 +37,7 @@ type TeslaFleetAPIService interface {
 	GetAvailableCommands(token string) (*UserDeviceAPIIntegrationsMetadataCommands, error)
 	VirtualKeyConnectionStatus(ctx context.Context, token, vin string) (*VehicleFleetStatus, error)
 	SubscribeForTelemetryData(ctx context.Context, token, vin string) error
-	GetTelemetrySubscriptionStatus(ctx context.Context, token string, tokenID int) (bool, error)
+	GetTelemetrySubscriptionStatus(ctx context.Context, token string, tokenID int) (*VehicleTelemetryStatus, error)
 }
 
 var teslaScopes = []string{"openid", "offline_access", "user_data", "vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds"}
@@ -86,6 +86,13 @@ type VehicleFleetStatus struct {
 	NumberOfKeys          int
 }
 
+type VehicleTelemetryStatus struct {
+	Synced       bool
+	Configured   bool
+	LimitReached bool
+	KeyPaired    bool
+}
+
 type SubscribeForTelemetryDataRequest struct {
 	VINs   []string               `json:"vins"`
 	Config TelemetryConfigRequest `json:"config"`
@@ -115,6 +122,7 @@ type SkippedVehicles struct {
 	MissingKey          []string `json:"missing_key"`
 	UnsupportedHardware []string `json:"unsupported_hardware"`
 	UnsupportedFirmware []string `json:"unsupported_firmware"`
+	MaxConfigs          []string `json:"max_configs"`
 }
 
 type SubscribeForTelemetryDataResponse struct {
@@ -373,6 +381,7 @@ const (
 	KeyUnpaired TeslaSubscriptionErrorType = iota
 	UnsupportedVehicle
 	UnsupportedFirmware
+	MaxConfigs
 )
 
 // TeslaSubscriptionError is an error containing text suitable for showing to the user.
@@ -431,24 +440,32 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 		return &TeslaSubscriptionError{internal: "vehicle firmware not supported", Type: UnsupportedFirmware}
 	}
 
+	if slices.Contains(subResp.Response.SkippedVehicles.MaxConfigs, vin) {
+		return &TeslaSubscriptionError{internal: "vehicle firmware not supported", Type: MaxConfigs}
+	}
+
 	return nil
 }
 
-func (t *teslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Context, token string, vehicleID int) (bool, error) {
+func (t *teslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Context, token string, vehicleID int) (*VehicleTelemetryStatus, error) {
 	u := t.FleetBase.JoinPath("api/1/vehicles", strconv.Itoa(vehicleID), "fleet_telemetry_config")
 
 	body, err := t.performRequest(ctx, u, token, http.MethodGet, nil)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	var statResp TeslaResponseWrapper[TelemetryConfigStatusResponse]
 	err = json.Unmarshal(body, &statResp)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	return statResp.Response.Config != nil && statResp.Response.KeyPaired, nil
+	return &VehicleTelemetryStatus{
+		Synced:       statResp.Response.Synced,
+		Configured:   statResp.Response.Config != nil,
+		LimitReached: statResp.Response.KeyPaired,
+	}, nil
 }
 
 var ErrUnauthorized = errors.New("unauthorized")
