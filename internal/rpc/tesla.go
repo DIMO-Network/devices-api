@@ -2,10 +2,6 @@ package rpc
 
 import (
 	"context"
-	"database/sql"
-	"errors"
-	"strconv"
-	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services"
@@ -14,9 +10,8 @@ import (
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/rs/zerolog"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"github.com/volatiletech/null/v8"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func NewTeslaRPCService(
@@ -45,84 +40,25 @@ type teslaRPCServer struct {
 	teslaAPI services.TeslaFleetAPIService
 }
 
-func (s *teslaRPCServer) CheckFleetTelemetryCapable(ctx context.Context, req *pb.CheckFleetTelemetryCapableRequest) (*pb.CheckFleetTelemetryCapableResponse, error) {
+func (s *teslaRPCServer) GetPollingInfo(ctx context.Context, req *pb.GetPollingInfoRequest) (*pb.GetPollingInfoResponse, error) {
 	udai, err := models.UserDeviceAPIIntegrations(
-		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(req.UserDeviceId),
+		models.UserDeviceAPIIntegrationWhere.TaskID.EQ(null.StringFrom(req.TaskId)),
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ("26A5Dk3vvvQutjSyF0Jka2DP5lg"),
-		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.UserDevice, models.UserDeviceRels.VehicleTokenSyntheticDevice)),
 	).One(ctx, s.dbs().Reader)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, status.Error(codes.NotFound, "No Tesla integration with that userDeviceId found.")
-		}
 		return nil, err
-	}
-
-	if !udai.ExternalID.Valid || !udai.AccessToken.Valid || !udai.AccessExpiresAt.Valid || udai.AccessExpiresAt.Time.Before(time.Now()) {
-		return nil, status.Error(codes.FailedPrecondition, "Credentials invalid.")
-	}
-
-	if !udai.R.UserDevice.VinIdentifier.Valid || !udai.R.UserDevice.VinConfirmed {
-		return nil, status.Error(codes.FailedPrecondition, "Credentials invalid.")
-	}
-
-	sd := udai.R.UserDevice
-
-	if sd == nil || sd.TokenID.IsZero() {
-		return nil, status.Error(codes.FailedPrecondition, "Synthetic device not minted.")
 	}
 
 	var meta services.UserDeviceAPIIntegrationsMetadata
-	err = udai.Metadata.Unmarshal(&meta)
-	if err != nil {
+	if err := udai.Metadata.Unmarshal(&meta); err != nil {
 		return nil, err
 	}
 
-	apiVersion := 1
-	if meta.TeslaAPIVersion != 0 {
-		apiVersion = meta.TeslaAPIVersion
+	var out *wrapperspb.BoolValue
+
+	if tdd := meta.TeslaDiscountedData; tdd != nil {
+		out = wrapperspb.Bool(*tdd)
 	}
 
-	if apiVersion != 2 {
-		return nil, status.Error(codes.FailedPrecondition, "Integration is not v2.")
-	}
-
-	accessToken, err := s.cipher.Decrypt(udai.AccessToken.String)
-	if err != nil {
-		return nil, err
-	}
-
-	teslaID, err := strconv.Atoi(udai.ExternalID.String)
-	if err != nil {
-		return nil, err
-	}
-
-	fleetStatus, err := s.teslaAPI.GetTelemetrySubscriptionStatus(ctx, accessToken, teslaID)
-	if err != nil {
-		return nil, err
-	}
-	if fleetStatus.Configured {
-		return &pb.CheckFleetTelemetryCapableResponse{TelemetryCapable: true}, nil
-	}
-
-	vid, _ := udai.R.UserDevice.TokenID.Int64()
-
-	err = s.teslaAPI.SubscribeForTelemetryData(ctx, accessToken, udai.R.UserDevice.VinIdentifier.String)
-	if err != nil {
-		s.logger.Err(err).Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Failed to configure Fleet Telemetry.")
-		var subErr *services.TeslaSubscriptionError
-		if errors.As(err, &subErr) {
-			switch subErr.Type {
-			case services.KeyUnpaired, services.UnsupportedFirmware:
-				return &pb.CheckFleetTelemetryCapableResponse{TelemetryCapable: true}, nil
-			case services.UnsupportedVehicle:
-				return &pb.CheckFleetTelemetryCapableResponse{TelemetryCapable: false}, nil
-			}
-		}
-		return nil, err
-	}
-
-	s.logger.Info().Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Successfully configured Fleet Telemetry.")
-
-	return &pb.CheckFleetTelemetryCapableResponse{TelemetryCapable: true}, nil
+	return &pb.GetPollingInfoResponse{DiscountedData: out}, nil
 }
