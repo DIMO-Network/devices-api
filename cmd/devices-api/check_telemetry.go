@@ -94,10 +94,10 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 		return err
 	}
 
-	ss, err := fleetAPI.GetTelemetrySubscriptionStatus(ctx, token, teslaID)
-	if err != nil {
-		return err
-	}
+	// ss, err := fleetAPI.GetTelemetrySubscriptionStatus(ctx, token, teslaID)
+	// if err != nil {
+	// 	return err
+	// }
 
 	fs, err := fleetAPI.VirtualKeyConnectionStatus(ctx, token, v.VIN)
 	if err != nil {
@@ -116,7 +116,7 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 		return err
 	}
 
-	logger.Info().Interface("vehicle", v).Interface("telemetry", ss).Interface("fleet", fs).Msg("Returned information.")
+	logger.Info().Str("userDeviceId", userDeviceID).Interface("vehicle", v).Interface("fleet", fs).Msg("Returned information.")
 
 	return nil
 }
