@@ -4,12 +4,6 @@
 // - protoc             v5.29.3
 // source: pkg/grpc/tesla.proto
 
-// more types here: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Empty
-
-// import "google/protobuf/timestamp.proto";
-// import "google/protobuf/empty.proto";
-// import "pkg/grpc/aftermarket_devices.proto";
-
 package grpc
 
 import (
@@ -25,19 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TeslaService_CheckFleetTelemetryCapable_FullMethodName = "/tesla.TeslaService/CheckFleetTelemetryCapable"
+	TeslaService_GetPollingInfo_FullMethodName = "/tesla.TeslaService/GetPollingInfo"
 )
 
 // TeslaServiceClient is the client API for TeslaService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TeslaServiceClient interface {
-	// Tries to determine whether the vehicle with the given id is Fleet Telemetry-capable.
-	// Note that if the vehicle is not already enrolled then calling this function will
-	// attempt to enroll it.
-	//
-	// Will fail if the credentials are expired or if the device is not minted.
-	CheckFleetTelemetryCapable(ctx context.Context, in *CheckFleetTelemetryCapableRequest, opts ...grpc.CallOption) (*CheckFleetTelemetryCapableResponse, error)
+	GetPollingInfo(ctx context.Context, in *GetPollingInfoRequest, opts ...grpc.CallOption) (*GetPollingInfoResponse, error)
 }
 
 type teslaServiceClient struct {
@@ -48,10 +37,10 @@ func NewTeslaServiceClient(cc grpc.ClientConnInterface) TeslaServiceClient {
 	return &teslaServiceClient{cc}
 }
 
-func (c *teslaServiceClient) CheckFleetTelemetryCapable(ctx context.Context, in *CheckFleetTelemetryCapableRequest, opts ...grpc.CallOption) (*CheckFleetTelemetryCapableResponse, error) {
+func (c *teslaServiceClient) GetPollingInfo(ctx context.Context, in *GetPollingInfoRequest, opts ...grpc.CallOption) (*GetPollingInfoResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CheckFleetTelemetryCapableResponse)
-	err := c.cc.Invoke(ctx, TeslaService_CheckFleetTelemetryCapable_FullMethodName, in, out, cOpts...)
+	out := new(GetPollingInfoResponse)
+	err := c.cc.Invoke(ctx, TeslaService_GetPollingInfo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -62,12 +51,7 @@ func (c *teslaServiceClient) CheckFleetTelemetryCapable(ctx context.Context, in 
 // All implementations must embed UnimplementedTeslaServiceServer
 // for forward compatibility.
 type TeslaServiceServer interface {
-	// Tries to determine whether the vehicle with the given id is Fleet Telemetry-capable.
-	// Note that if the vehicle is not already enrolled then calling this function will
-	// attempt to enroll it.
-	//
-	// Will fail if the credentials are expired or if the device is not minted.
-	CheckFleetTelemetryCapable(context.Context, *CheckFleetTelemetryCapableRequest) (*CheckFleetTelemetryCapableResponse, error)
+	GetPollingInfo(context.Context, *GetPollingInfoRequest) (*GetPollingInfoResponse, error)
 	mustEmbedUnimplementedTeslaServiceServer()
 }
 
@@ -78,8 +62,8 @@ type TeslaServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedTeslaServiceServer struct{}
 
-func (UnimplementedTeslaServiceServer) CheckFleetTelemetryCapable(context.Context, *CheckFleetTelemetryCapableRequest) (*CheckFleetTelemetryCapableResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CheckFleetTelemetryCapable not implemented")
+func (UnimplementedTeslaServiceServer) GetPollingInfo(context.Context, *GetPollingInfoRequest) (*GetPollingInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPollingInfo not implemented")
 }
 func (UnimplementedTeslaServiceServer) mustEmbedUnimplementedTeslaServiceServer() {}
 func (UnimplementedTeslaServiceServer) testEmbeddedByValue()                      {}
@@ -102,20 +86,20 @@ func RegisterTeslaServiceServer(s grpc.ServiceRegistrar, srv TeslaServiceServer)
 	s.RegisterService(&TeslaService_ServiceDesc, srv)
 }
 
-func _TeslaService_CheckFleetTelemetryCapable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CheckFleetTelemetryCapableRequest)
+func _TeslaService_GetPollingInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPollingInfoRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TeslaServiceServer).CheckFleetTelemetryCapable(ctx, in)
+		return srv.(TeslaServiceServer).GetPollingInfo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: TeslaService_CheckFleetTelemetryCapable_FullMethodName,
+		FullMethod: TeslaService_GetPollingInfo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TeslaServiceServer).CheckFleetTelemetryCapable(ctx, req.(*CheckFleetTelemetryCapableRequest))
+		return srv.(TeslaServiceServer).GetPollingInfo(ctx, req.(*GetPollingInfoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -128,8 +112,8 @@ var TeslaService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*TeslaServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "CheckFleetTelemetryCapable",
-			Handler:    _TeslaService_CheckFleetTelemetryCapable_Handler,
+			MethodName: "GetPollingInfo",
+			Handler:    _TeslaService_GetPollingInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
