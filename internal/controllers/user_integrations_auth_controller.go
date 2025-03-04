@@ -149,6 +149,13 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse JSON request body.")
 	}
 
+	if reqBody.AuthorizationCode == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "No authorization code provided.")
+	}
+	if reqBody.RedirectURI == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "No redirect URI provided.")
+	}
+
 	teslaAuth, err := u.teslaFleetAPISvc.CompleteTeslaAuthCodeExchange(c.Context(), reqBody.AuthorizationCode, reqBody.RedirectURI)
 	if err != nil {
 		if errors.Is(err, services.ErrInvalidAuthCode) {
