@@ -126,5 +126,7 @@ func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.L
 		return nil
 	}
 
+	log.Info().Msg("All checks passed.")
+
 	return nil
 }
