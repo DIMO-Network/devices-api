@@ -55,6 +55,7 @@ type TeslaTask struct {
 	IntegrationID      string           `json:"integrationId"`
 	Identifiers        TeslaIdentifiers `json:"identifiers"`
 	OnlineIdleLastPoll bool             `json:"onlineIdleLastPoll"`
+	DiscountedData     *bool            `json:"discountedData,omitempty"`
 }
 
 func (t *teslaTaskService) StartPoll(udai *models.UserDeviceAPIIntegration, sd *models.SyntheticDevice) error {
@@ -86,6 +87,7 @@ func (t *teslaTaskService) StartPoll(udai *models.UserDeviceAPIIntegration, sd *
 				VIN:       meta.TeslaVIN,
 			},
 			OnlineIdleLastPoll: false,
+			DiscountedData:     meta.TeslaDiscountedData,
 		},
 	}
 
