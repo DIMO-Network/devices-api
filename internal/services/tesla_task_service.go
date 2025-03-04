@@ -44,8 +44,9 @@ type teslaTaskService struct {
 }
 
 type TeslaIdentifiers struct {
-	ID        int `json:"id"`
-	VehicleID int `json:"vehicleId"`
+	ID        int    `json:"id"`
+	VehicleID int    `json:"vehicleId"`
+	VIN       string `json:"vin,omitempty"`
 }
 
 type TeslaTask struct {
@@ -82,6 +83,7 @@ func (t *teslaTaskService) StartPoll(udai *models.UserDeviceAPIIntegration, sd *
 			Identifiers: TeslaIdentifiers{
 				ID:        id,
 				VehicleID: meta.TeslaVehicleID,
+				VIN:       meta.TeslaVIN,
 			},
 			OnlineIdleLastPoll: false,
 		},
