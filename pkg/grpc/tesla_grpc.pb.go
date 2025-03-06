@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	TeslaService_GetPollingInfo_FullMethodName = "/tesla.TeslaService/GetPollingInfo"
+	TeslaService_GetFleetStatus_FullMethodName = "/tesla.TeslaService/GetFleetStatus"
 )
 
 // TeslaServiceClient is the client API for TeslaService service.
@@ -27,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TeslaServiceClient interface {
 	GetPollingInfo(ctx context.Context, in *GetPollingInfoRequest, opts ...grpc.CallOption) (*GetPollingInfoResponse, error)
+	GetFleetStatus(ctx context.Context, in *GetFleetStatusRequest, opts ...grpc.CallOption) (*GetFleetStatusResponse, error)
 }
 
 type teslaServiceClient struct {
@@ -47,11 +49,22 @@ func (c *teslaServiceClient) GetPollingInfo(ctx context.Context, in *GetPollingI
 	return out, nil
 }
 
+func (c *teslaServiceClient) GetFleetStatus(ctx context.Context, in *GetFleetStatusRequest, opts ...grpc.CallOption) (*GetFleetStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFleetStatusResponse)
+	err := c.cc.Invoke(ctx, TeslaService_GetFleetStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TeslaServiceServer is the server API for TeslaService service.
 // All implementations must embed UnimplementedTeslaServiceServer
 // for forward compatibility.
 type TeslaServiceServer interface {
 	GetPollingInfo(context.Context, *GetPollingInfoRequest) (*GetPollingInfoResponse, error)
+	GetFleetStatus(context.Context, *GetFleetStatusRequest) (*GetFleetStatusResponse, error)
 	mustEmbedUnimplementedTeslaServiceServer()
 }
 
@@ -64,6 +77,9 @@ type UnimplementedTeslaServiceServer struct{}
 
 func (UnimplementedTeslaServiceServer) GetPollingInfo(context.Context, *GetPollingInfoRequest) (*GetPollingInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPollingInfo not implemented")
+}
+func (UnimplementedTeslaServiceServer) GetFleetStatus(context.Context, *GetFleetStatusRequest) (*GetFleetStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFleetStatus not implemented")
 }
 func (UnimplementedTeslaServiceServer) mustEmbedUnimplementedTeslaServiceServer() {}
 func (UnimplementedTeslaServiceServer) testEmbeddedByValue()                      {}
@@ -104,6 +120,24 @@ func _TeslaService_GetPollingInfo_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TeslaService_GetFleetStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFleetStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TeslaServiceServer).GetFleetStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TeslaService_GetFleetStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TeslaServiceServer).GetFleetStatus(ctx, req.(*GetFleetStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TeslaService_ServiceDesc is the grpc.ServiceDesc for TeslaService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +148,10 @@ var TeslaService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPollingInfo",
 			Handler:    _TeslaService_GetPollingInfo_Handler,
+		},
+		{
+			MethodName: "GetFleetStatus",
+			Handler:    _TeslaService_GetFleetStatus_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
