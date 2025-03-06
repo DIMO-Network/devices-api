@@ -151,8 +151,10 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Error checking fleet status.")
 	}
 
+	fleetTelemetryCapable := IsFleetTelemetryCapable(fleetStatus)
+
 	resp.Tesla.VirtualKeyAdded = fleetStatus.KeyPaired
-	if fleetStatus.DiscountedDeviceData {
+	if !fleetTelemetryCapable {
 		resp.Tesla.VirtualKeyStatus = Incapable
 	} else if fleetStatus.KeyPaired {
 		resp.Tesla.VirtualKeyStatus = Paired
@@ -160,7 +162,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		resp.Tesla.VirtualKeyStatus = Unpaired
 	}
 
-	if !fleetStatus.DiscountedDeviceData && !telemStatus.Configured && fleetStatus.KeyPaired && minted {
+	if fleetTelemetryCapable && !telemStatus.Configured && fleetStatus.KeyPaired && minted {
 		vid, _ := apiIntegration.R.UserDevice.TokenID.Int64()
 		err := udc.teslaFleetAPISvc.SubscribeForTelemetryData(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
 		// TODO(elffjs): More SD information in the logs?
