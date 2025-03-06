@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/controllers"
 	"github.com/DIMO-Network/devices-api/internal/middleware/address"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/integration"
@@ -168,8 +169,11 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 			return err
 		}
 
+		fleetTelemetryCapable := controllers.IsFleetTelemetryCapable(fs)
+
 		md.TeslaVIN = v.VIN
 		md.TeslaDiscountedData = &fs.DiscountedDeviceData
+		md.TeslaFleetTelemetryCapable = &fleetTelemetryCapable
 		md.TeslaAPIVersion = constants.TeslaAPIV2
 		md.Commands, err = co.TeslaAPI.GetAvailableCommands(cred.AccessToken)
 		if err != nil {
