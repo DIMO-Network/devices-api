@@ -17,6 +17,7 @@ message GetPollingInfoRequest {
 
 message GetPollingInfoResponse {
   google.protobuf.BoolValue discounted_data = 1;
+  google.protobuf.BoolValue fleet_telemetry_capable = 2;
 }
 
 message GetFleetStatusRequest {
