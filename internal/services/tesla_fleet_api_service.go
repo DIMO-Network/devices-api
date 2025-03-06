@@ -79,11 +79,12 @@ type fleetStatusResponse struct {
 }
 
 type VehicleFleetStatus struct {
-	KeyPaired             bool
-	FirmwareVersion       string
-	DiscountedDeviceData  bool
-	FleetTelemetryVersion string
-	NumberOfKeys          int
+	KeyPaired                      bool
+	VehicleCommandProtocolRequired bool
+	FirmwareVersion                string
+	DiscountedDeviceData           bool
+	FleetTelemetryVersion          string
+	NumberOfKeys                   int
 }
 
 type VehicleTelemetryStatus struct {
@@ -318,11 +319,12 @@ func (t *teslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, t
 	vi := keyConn.Response.VehicleInfo[vin]
 
 	return &VehicleFleetStatus{
-		KeyPaired:             len(keyConn.Response.KeyPairedVINs) == 1,
-		FirmwareVersion:       vi.FirmwareVersion,
-		DiscountedDeviceData:  vi.DiscountedDeviceData,
-		FleetTelemetryVersion: vi.FleetTelemetryVersion,
-		NumberOfKeys:          vi.TotalNumberOfKeys,
+		KeyPaired:                      len(keyConn.Response.KeyPairedVINs) == 1,
+		FirmwareVersion:                vi.FirmwareVersion,
+		DiscountedDeviceData:           vi.DiscountedDeviceData,
+		FleetTelemetryVersion:          vi.FleetTelemetryVersion,
+		NumberOfKeys:                   vi.TotalNumberOfKeys,
+		VehicleCommandProtocolRequired: vi.VehicleCommandProtocolRequired,
 	}, nil
 }
 

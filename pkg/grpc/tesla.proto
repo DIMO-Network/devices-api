@@ -8,6 +8,7 @@ import "google/protobuf/wrappers.proto";
 
 service TeslaService {
   rpc GetPollingInfo(GetPollingInfoRequest) returns (GetPollingInfoResponse);
+  rpc GetFleetStatus(GetFleetStatusRequest) returns (GetFleetStatusResponse);
 }
 
 message GetPollingInfoRequest {
@@ -16,4 +17,16 @@ message GetPollingInfoRequest {
 
 message GetPollingInfoResponse {
   google.protobuf.BoolValue discounted_data = 1;
+}
+
+message GetFleetStatusRequest {
+  int64 vehicle_token_id = 1;
+}
+
+message GetFleetStatusResponse {
+  bool key_paired = 1;
+  string firmware_version = 2;
+  bool vehicle_command_protocol_required = 3;
+  bool discounted_device_data = 4;
+  string fleet_telemetry_version = 5;
 }
