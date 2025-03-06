@@ -977,6 +977,10 @@ func (udc *UserDevicesController) registerDeviceCompass(c *fiber.Ctx, logger *ze
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+func IsFleetTelemetryCapable(fs *services.VehicleFleetStatus) bool {
+	return fs.FleetTelemetryVersion != "" && fs.FleetTelemetryVersion != "unknown" || fs.VehicleCommandProtocolRequired || !fs.DiscountedDeviceData
+}
+
 func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zerolog.Logger, tx *sql.Tx, userDeviceID string, integ *ddgrpc.Integration, ud *models.UserDevice) error {
 	if existingIntegrations, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
@@ -1041,6 +1045,8 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		return fmt.Errorf("couldn't retrieve fleet status from Tesla: %w", err)
 	}
 
+	fleetTelemetryCapable := IsFleetTelemetryCapable(fs)
+
 	// Prevent users from connecting a vehicle if it's already connected through another user
 	// device object. Disabled outside of prod for ease of testing.
 	if udc.Settings.IsProduction() {
@@ -1081,11 +1087,12 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 	}
 
 	meta := services.UserDeviceAPIIntegrationsMetadata{
-		Commands:            commands,
-		TeslaAPIVersion:     constants.TeslaAPIV2,
-		TeslaVehicleID:      v.VehicleID,
-		TeslaVIN:            v.VIN,
-		TeslaDiscountedData: &fs.DiscountedDeviceData,
+		Commands:                   commands,
+		TeslaAPIVersion:            constants.TeslaAPIV2,
+		TeslaVehicleID:             v.VehicleID,
+		TeslaVIN:                   v.VIN,
+		TeslaDiscountedData:        &fs.DiscountedDeviceData,
+		TeslaFleetTelemetryCapable: &fleetTelemetryCapable,
 	}
 
 	b, err := json.Marshal(meta)

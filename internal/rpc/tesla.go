@@ -47,6 +47,13 @@ type teslaRPCServer struct {
 	teslaAPI services.TeslaFleetAPIService
 }
 
+func convertBoolRef(b *bool) *wrapperspb.BoolValue {
+	if b == nil {
+		return nil
+	}
+	return wrapperspb.Bool(*b)
+}
+
 func (s *teslaRPCServer) GetPollingInfo(ctx context.Context, req *pb.GetPollingInfoRequest) (*pb.GetPollingInfoResponse, error) {
 	udai, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.TaskID.EQ(null.StringFrom(req.TaskId)),
@@ -64,13 +71,10 @@ func (s *teslaRPCServer) GetPollingInfo(ctx context.Context, req *pb.GetPollingI
 		return nil, err
 	}
 
-	var out *wrapperspb.BoolValue
-
-	if tdd := meta.TeslaDiscountedData; tdd != nil {
-		out = wrapperspb.Bool(*tdd)
-	}
-
-	return &pb.GetPollingInfoResponse{DiscountedData: out}, nil
+	return &pb.GetPollingInfoResponse{
+		DiscountedData:        convertBoolRef(meta.TeslaDiscountedData),
+		FleetTelemetryCapable: convertBoolRef(meta.TeslaFleetTelemetryCapable),
+	}, nil
 }
 
 //   rpc GetFleetStatus(GetFleetStatusRequest) returns (GetFleetStatusResponse);
