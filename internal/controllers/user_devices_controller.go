@@ -242,6 +242,8 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			if !d.TokenID.IsZero() {
 				nft.TokenID = d.TokenID.Int(nil)
 
+				nft.Status = "Confirmed"
+
 				nft.TokenURI = fmt.Sprintf("%s/v1/vehicle/%s", udc.Settings.DeploymentBaseURL, nft.TokenID)
 
 				addr := common.BytesToAddress(d.OwnerAddress.Bytes)
