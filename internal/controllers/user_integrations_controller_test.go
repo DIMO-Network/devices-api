@@ -934,3 +934,28 @@ func (s *UserIntegrationsControllerTestSuite) Test_TelemetrySubscribe_NotCapable
 
 	s.Assert().True(res.StatusCode == fiber.StatusBadRequest)
 }
+
+func TestTeslaFirmewareCheck(t *testing.T) {
+	cases := []struct {
+		vs      string
+		capable bool
+	}{
+		{"2025.8", true},
+		{"2025.2.8", true},
+		{"2025.2.6.2", true},
+		{"2024.44.4", true},
+		{"2024.26", true},
+		{"2024.20.6", false},
+		{"2024.14.200.1", false},
+	}
+
+	for _, tc := range cases {
+		if b, _ := IsFirmwareFleetTelemetryCapable(tc.vs); b != tc.capable {
+			if tc.capable {
+				t.Errorf("expected %q to be capable", tc.vs)
+			} else {
+				t.Errorf("expected %q to be incapable", tc.vs)
+			}
+		}
+	}
+}
