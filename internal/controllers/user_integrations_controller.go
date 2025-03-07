@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -153,6 +154,12 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 
 	fleetTelemetryCapable := IsFleetTelemetryCapable(fleetStatus)
 
+	firmwareUpToDate, err := IsFirmwareFleetTelemetryCapable(fleetStatus.FleetTelemetryVersion)
+	if err != nil {
+		logger.Warn().Err(err).Msgf("Couldn't parse firmware version %q.", fleetStatus.FirmwareVersion)
+		firmwareUpToDate = false
+	}
+
 	resp.Tesla.VirtualKeyAdded = fleetStatus.KeyPaired
 	if !fleetTelemetryCapable {
 		resp.Tesla.VirtualKeyStatus = Incapable
@@ -162,7 +169,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		resp.Tesla.VirtualKeyStatus = Unpaired
 	}
 
-	if fleetTelemetryCapable && !telemStatus.Configured && fleetStatus.KeyPaired && minted {
+	if fleetTelemetryCapable && !telemStatus.Configured && fleetStatus.KeyPaired && minted && firmwareUpToDate {
 		vid, _ := apiIntegration.R.UserDevice.TokenID.Int64()
 		err := udc.teslaFleetAPISvc.SubscribeForTelemetryData(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
 		// TODO(elffjs): More SD information in the logs?
@@ -175,6 +182,27 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(resp)
+}
+
+var teslaFirmwareStart = regexp.MustCompile(`^(\d{4})\.(\d+)`)
+
+func IsFirmwareFleetTelemetryCapable(v string) (bool, error) {
+	m := teslaFirmwareStart.FindStringSubmatch(v)
+	if len(m) == 0 {
+		return false, fmt.Errorf("unexpected firmware version format %q", v)
+	}
+
+	year, err := strconv.Atoi(m[1])
+	if err != nil {
+		return false, fmt.Errorf("couldn't parse year %q", m[1])
+	}
+
+	week, err := strconv.Atoi(m[2])
+	if err != nil {
+		return false, fmt.Errorf("couldn't parse week %q", m[2])
+	}
+
+	return year > 2024 || year == 2024 && week >= 26, nil
 }
 
 func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Context, accessToken, id string) (*services.VehicleTelemetryStatus, error) {
