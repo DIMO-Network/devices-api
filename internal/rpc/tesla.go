@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strconv"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services"
@@ -77,8 +78,6 @@ func (s *teslaRPCServer) GetPollingInfo(ctx context.Context, req *pb.GetPollingI
 	}, nil
 }
 
-//   rpc GetFleetStatus(GetFleetStatusRequest) returns (GetFleetStatusResponse);
-
 func (s *teslaRPCServer) GetFleetStatus(ctx context.Context, req *pb.GetFleetStatusRequest) (*pb.GetFleetStatusResponse, error) {
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(req.VehicleTokenId, 0))),
@@ -125,4 +124,91 @@ func (s *teslaRPCServer) GetFleetStatus(ctx context.Context, req *pb.GetFleetSta
 		FleetTelemetryVersion:          res.FleetTelemetryVersion,
 		DiscountedDeviceData:           res.DiscountedDeviceData,
 	}, nil
+}
+
+func (s *teslaRPCServer) GetFleetTelemetryConfig(ctx context.Context, req *pb.GetFleetTelemetryConfigRequest) (*pb.GetFleetTelemetryConfigResponse, error) {
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(req.VehicleTokenId, 0))),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ("26A5Dk3vvvQutjSyF0Jka2DP5lg")),
+	).One(ctx, s.dbs().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, status.Error(codes.NotFound, "No Vehicle with that token id found.")
+		}
+		return nil, err
+	}
+
+	if len(ud.R.UserDeviceAPIIntegrations) == 0 {
+		return nil, status.Error(codes.FailedPrecondition, "No Tesla integration found.")
+	}
+
+	udai := ud.R.UserDeviceAPIIntegrations[0]
+
+	if !udai.ExternalID.Valid {
+		return nil, errors.New("no Tesla id attached")
+	}
+
+	teslaID, err := strconv.Atoi(udai.ExternalID.String)
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := s.cipher.Decrypt(ud.R.UserDeviceAPIIntegrations[0].AccessToken.String)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := s.teslaAPI.GetTelemetrySubscriptionStatus(ctx, token, teslaID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.GetFleetTelemetryConfigResponse{
+		Configured:   res.Configured,
+		Synced:       res.Synced,
+		KeyPaired:    res.KeyPaired,
+		LimitReached: res.LimitReached,
+	}, nil
+}
+
+func (s *teslaRPCServer) ConfigureFleetTelemetry(ctx context.Context, req *pb.ConfigureFleetTelemetryRequest) (*pb.ConfigureFleetTelemetryResponse, error) {
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(req.VehicleTokenId, 0))),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ("26A5Dk3vvvQutjSyF0Jka2DP5lg")),
+	).One(ctx, s.dbs().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, status.Error(codes.NotFound, "No Vehicle with that token id found.")
+		}
+		return nil, err
+	}
+
+	if len(ud.R.UserDeviceAPIIntegrations) == 0 {
+		return nil, status.Error(codes.FailedPrecondition, "No Tesla integration found.")
+	}
+
+	udai := ud.R.UserDeviceAPIIntegrations[0]
+
+	var metadata services.UserDeviceAPIIntegrationsMetadata
+	err = udai.Metadata.Unmarshal(&metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	if metadata.TeslaVIN == "" {
+		return nil, status.Error(codes.FailedPrecondition, "No VIN attached to integration.")
+	}
+	vin := metadata.TeslaVIN
+
+	token, err := s.cipher.Decrypt(ud.R.UserDeviceAPIIntegrations[0].AccessToken.String)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.teslaAPI.SubscribeForTelemetryData(ctx, token, vin)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.ConfigureFleetTelemetryResponse{}, nil
 }

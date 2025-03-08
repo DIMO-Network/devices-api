@@ -19,8 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TeslaService_GetPollingInfo_FullMethodName = "/tesla.TeslaService/GetPollingInfo"
-	TeslaService_GetFleetStatus_FullMethodName = "/tesla.TeslaService/GetFleetStatus"
+	TeslaService_GetPollingInfo_FullMethodName          = "/tesla.TeslaService/GetPollingInfo"
+	TeslaService_GetFleetStatus_FullMethodName          = "/tesla.TeslaService/GetFleetStatus"
+	TeslaService_GetFleetTelemetryConfig_FullMethodName = "/tesla.TeslaService/GetFleetTelemetryConfig"
+	TeslaService_ConfigureFleetTelemetry_FullMethodName = "/tesla.TeslaService/ConfigureFleetTelemetry"
 )
 
 // TeslaServiceClient is the client API for TeslaService service.
@@ -29,6 +31,8 @@ const (
 type TeslaServiceClient interface {
 	GetPollingInfo(ctx context.Context, in *GetPollingInfoRequest, opts ...grpc.CallOption) (*GetPollingInfoResponse, error)
 	GetFleetStatus(ctx context.Context, in *GetFleetStatusRequest, opts ...grpc.CallOption) (*GetFleetStatusResponse, error)
+	GetFleetTelemetryConfig(ctx context.Context, in *GetFleetTelemetryConfigRequest, opts ...grpc.CallOption) (*GetFleetTelemetryConfigResponse, error)
+	ConfigureFleetTelemetry(ctx context.Context, in *ConfigureFleetTelemetryRequest, opts ...grpc.CallOption) (*ConfigureFleetTelemetryResponse, error)
 }
 
 type teslaServiceClient struct {
@@ -59,12 +63,34 @@ func (c *teslaServiceClient) GetFleetStatus(ctx context.Context, in *GetFleetSta
 	return out, nil
 }
 
+func (c *teslaServiceClient) GetFleetTelemetryConfig(ctx context.Context, in *GetFleetTelemetryConfigRequest, opts ...grpc.CallOption) (*GetFleetTelemetryConfigResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFleetTelemetryConfigResponse)
+	err := c.cc.Invoke(ctx, TeslaService_GetFleetTelemetryConfig_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *teslaServiceClient) ConfigureFleetTelemetry(ctx context.Context, in *ConfigureFleetTelemetryRequest, opts ...grpc.CallOption) (*ConfigureFleetTelemetryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConfigureFleetTelemetryResponse)
+	err := c.cc.Invoke(ctx, TeslaService_ConfigureFleetTelemetry_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TeslaServiceServer is the server API for TeslaService service.
 // All implementations must embed UnimplementedTeslaServiceServer
 // for forward compatibility.
 type TeslaServiceServer interface {
 	GetPollingInfo(context.Context, *GetPollingInfoRequest) (*GetPollingInfoResponse, error)
 	GetFleetStatus(context.Context, *GetFleetStatusRequest) (*GetFleetStatusResponse, error)
+	GetFleetTelemetryConfig(context.Context, *GetFleetTelemetryConfigRequest) (*GetFleetTelemetryConfigResponse, error)
+	ConfigureFleetTelemetry(context.Context, *ConfigureFleetTelemetryRequest) (*ConfigureFleetTelemetryResponse, error)
 	mustEmbedUnimplementedTeslaServiceServer()
 }
 
@@ -80,6 +106,12 @@ func (UnimplementedTeslaServiceServer) GetPollingInfo(context.Context, *GetPolli
 }
 func (UnimplementedTeslaServiceServer) GetFleetStatus(context.Context, *GetFleetStatusRequest) (*GetFleetStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFleetStatus not implemented")
+}
+func (UnimplementedTeslaServiceServer) GetFleetTelemetryConfig(context.Context, *GetFleetTelemetryConfigRequest) (*GetFleetTelemetryConfigResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFleetTelemetryConfig not implemented")
+}
+func (UnimplementedTeslaServiceServer) ConfigureFleetTelemetry(context.Context, *ConfigureFleetTelemetryRequest) (*ConfigureFleetTelemetryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConfigureFleetTelemetry not implemented")
 }
 func (UnimplementedTeslaServiceServer) mustEmbedUnimplementedTeslaServiceServer() {}
 func (UnimplementedTeslaServiceServer) testEmbeddedByValue()                      {}
@@ -138,6 +170,42 @@ func _TeslaService_GetFleetStatus_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TeslaService_GetFleetTelemetryConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFleetTelemetryConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TeslaServiceServer).GetFleetTelemetryConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TeslaService_GetFleetTelemetryConfig_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TeslaServiceServer).GetFleetTelemetryConfig(ctx, req.(*GetFleetTelemetryConfigRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TeslaService_ConfigureFleetTelemetry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConfigureFleetTelemetryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TeslaServiceServer).ConfigureFleetTelemetry(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TeslaService_ConfigureFleetTelemetry_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TeslaServiceServer).ConfigureFleetTelemetry(ctx, req.(*ConfigureFleetTelemetryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TeslaService_ServiceDesc is the grpc.ServiceDesc for TeslaService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -152,6 +220,14 @@ var TeslaService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetFleetStatus",
 			Handler:    _TeslaService_GetFleetStatus_Handler,
+		},
+		{
+			MethodName: "GetFleetTelemetryConfig",
+			Handler:    _TeslaService_GetFleetTelemetryConfig_Handler,
+		},
+		{
+			MethodName: "ConfigureFleetTelemetry",
+			Handler:    _TeslaService_ConfigureFleetTelemetry_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
