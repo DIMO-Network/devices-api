@@ -154,7 +154,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 
 	fleetTelemetryCapable := IsFleetTelemetryCapable(fleetStatus)
 
-	firmwareUpToDate, err := IsFirmwareFleetTelemetryCapable(fleetStatus.FleetTelemetryVersion)
+	firmwareUpToDate, err := IsFirmwareFleetTelemetryCapable(fleetStatus.FirmwareVersion)
 	if err != nil {
 		logger.Warn().Err(err).Msgf("Couldn't parse firmware version %q.", fleetStatus.FirmwareVersion)
 		firmwareUpToDate = false
