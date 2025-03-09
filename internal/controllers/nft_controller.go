@@ -236,7 +236,7 @@ func (nc *NFTController) LockDoors(c *fiber.Ctx) error {
 // @Success 200 {object} controllers.CommandResponse
 // @Produce     json
 // @Param       tokenID  path string true "Token ID"
-// @Router      /vehicle/{tokenID}/commands/charging/stop [post]
+// @Router      /vehicle/{tokenID}/commands/charge/stop [post]
 func (nc *NFTController) ChargeStop(c *fiber.Ctx) error {
 	return nc.handleEnqueueCommand(c, constants.ChargeStop)
 }
@@ -248,7 +248,7 @@ func (nc *NFTController) ChargeStop(c *fiber.Ctx) error {
 // @Success 200 {object} controllers.CommandResponse
 // @Produce     json
 // @Param       tokenID  path string true "Token ID"
-// @Router      /vehicle/{tokenID}/commands/charging/start [post]
+// @Router      /vehicle/{tokenID}/commands/charge/start [post]
 func (nc *NFTController) ChargeStart(c *fiber.Ctx) error {
 	return nc.handleEnqueueCommand(c, constants.ChargeStart)
 }

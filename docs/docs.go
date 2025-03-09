@@ -1146,7 +1146,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/vehicle/{tokenID}/commands/charging/start": {
+        "/vehicle/{tokenID}/commands/charge/start": {
             "post": {
                 "description": "Start the vehicle charging.",
                 "produces": [
@@ -1177,7 +1177,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/vehicle/{tokenID}/commands/charging/stop": {
+        "/vehicle/{tokenID}/commands/charge/stop": {
             "post": {
                 "description": "Stop the vehicle charging.",
                 "produces": [

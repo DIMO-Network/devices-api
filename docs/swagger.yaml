@@ -1521,7 +1521,7 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/internal_controllers_user_sd.Message'
-  /vehicle/{tokenID}/commands/charging/start:
+  /vehicle/{tokenID}/commands/charge/start:
     post:
       description: Start the vehicle charging.
       parameters:
@@ -1542,7 +1542,7 @@ paths:
       - device
       - integration
       - command
-  /vehicle/{tokenID}/commands/charging/stop:
+  /vehicle/{tokenID}/commands/charge/stop:
     post:
       description: Stop the vehicle charging.
       parameters:
