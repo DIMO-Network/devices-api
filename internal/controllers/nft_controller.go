@@ -360,7 +360,7 @@ func (nc *NFTController) handleEnqueueCommand(c *fiber.Ctx, commandPath string) 
 	}
 
 	// This correctly handles md.Commands.Enabled being nil.
-	if !slices.Contains(md.Commands.Enabled, commandPath) {
+	if (integration.Vendor != constants.TeslaVendor || commandPath != "charge/start" && commandPath != "charge/stop") && !slices.Contains(md.Commands.Enabled, commandPath) {
 		return fiber.NewError(fiber.StatusConflict, "Integration is not capable of this command with this device.")
 	}
 
