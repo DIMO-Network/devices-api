@@ -37,7 +37,7 @@ type TeslaFleetAPIService interface {
 	GetAvailableCommands(token string) (*UserDeviceAPIIntegrationsMetadataCommands, error)
 	VirtualKeyConnectionStatus(ctx context.Context, token, vin string) (*VehicleFleetStatus, error)
 	SubscribeForTelemetryData(ctx context.Context, token, vin string) error
-	GetTelemetrySubscriptionStatus(ctx context.Context, token string, tokenID int) (*VehicleTelemetryStatus, error)
+	GetTelemetrySubscriptionStatus(ctx context.Context, token, vin string) (*VehicleTelemetryStatus, error)
 }
 
 var teslaScopes = []string{"openid", "offline_access", "user_data", "vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds"}
@@ -449,8 +449,8 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 	return nil
 }
 
-func (t *teslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Context, token string, vehicleID int) (*VehicleTelemetryStatus, error) {
-	u := t.FleetBase.JoinPath("api/1/vehicles", strconv.Itoa(vehicleID), "fleet_telemetry_config")
+func (t *teslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Context, token, vin string) (*VehicleTelemetryStatus, error) {
+	u := t.FleetBase.JoinPath("api/1/vehicles", vin, "fleet_telemetry_config")
 
 	body, err := t.performRequest(ctx, u, token, http.MethodGet, nil)
 	if err != nil {
