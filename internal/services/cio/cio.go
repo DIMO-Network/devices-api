@@ -4,19 +4,13 @@ import (
 	"context"
 	"errors"
 
-	pb_accounts "github.com/DIMO-Network/accounts-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/models"
 	analytics "github.com/customerio/cdp-analytics-go"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog"
-	"google.golang.org/grpc"
 )
 
 const SoftwareConnectionExpiredEvent = "software_connection_expired"
-
-type AccountsClient interface {
-	GetAccount(context.Context, *pb_accounts.GetAccountRequest, ...grpc.CallOption) (*pb_accounts.Account, error)
-}
 
 type Service struct {
 	client analytics.Client
