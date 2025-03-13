@@ -36,7 +36,7 @@ func New(cioKey string, logger *zerolog.Logger) (*Service, error) {
 
 }
 
-func (s *Service) SoftwareDisconnectionEvent(ctx context.Context, udai *models.UserDeviceAPIIntegration) error {
+func (s *Service) SoftwareDisconnectionEvent(_ context.Context, udai *models.UserDeviceAPIIntegration) error {
 	if udai.R.UserDevice.TokenID.IsZero() {
 		return errors.New("vehicle is not minted")
 	}
