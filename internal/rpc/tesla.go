@@ -13,6 +13,7 @@ import (
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -211,4 +212,39 @@ func (s *teslaRPCServer) ConfigureFleetTelemetry(ctx context.Context, req *pb.Co
 	}
 
 	return &pb.ConfigureFleetTelemetryResponse{}, nil
+}
+
+func (s *teslaRPCServer) GetScopes(ctx context.Context, req *pb.GetScopesRequest) (*pb.GetScopesResponse, error) {
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(req.VehicleTokenId, 0))),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ("26A5Dk3vvvQutjSyF0Jka2DP5lg")),
+	).One(ctx, s.dbs().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, status.Error(codes.NotFound, "No Vehicle with that token id found.")
+		}
+		return nil, err
+	}
+
+	if len(ud.R.UserDeviceAPIIntegrations) == 0 {
+		return nil, status.Error(codes.FailedPrecondition, "No Tesla integration found.")
+	}
+
+	token, err := s.cipher.Decrypt(ud.R.UserDeviceAPIIntegrations[0].AccessToken.String)
+	if err != nil {
+		return nil, err
+	}
+
+	var claims partialTeslaClaims
+	_, _, err = jwt.NewParser().ParseUnverified(token, &claims)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.GetScopesResponse{Scopes: claims.Scopes}, nil
+}
+
+type partialTeslaClaims struct {
+	jwt.RegisteredClaims
+	Scopes []string `json:"scp"`
 }
