@@ -133,7 +133,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		}
 	}
 
-	telemStatus, err := udc.getTelemetrySubscriptionStatus(c.Context(), accessToken, apiIntegration.ExternalID.String)
+	telemStatus, err := udc.teslaFleetAPISvc.GetTelemetrySubscriptionStatus(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
 	if err != nil {
 		logger.Err(err).Msg("Error checking Fleet Telemetry configuration.")
 		if errors.Is(err, services.ErrUnauthorized) {
@@ -203,15 +203,6 @@ func IsFirmwareFleetTelemetryCapable(v string) (bool, error) {
 	}
 
 	return year > 2024 || year == 2024 && week >= 26, nil
-}
-
-func (udc *UserDevicesController) getTelemetrySubscriptionStatus(ctx context.Context, accessToken, id string) (*services.VehicleTelemetryStatus, error) {
-	teslaID, err := strconv.Atoi(id)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't parse Tesla id as a number: %w", err)
-	}
-
-	return udc.teslaFleetAPISvc.GetTelemetrySubscriptionStatus(ctx, accessToken, teslaID)
 }
 
 func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, userID, userDeviceID, integrationID string, dd *ddgrpc.GetDeviceDefinitionItemResponse, tx *sql.Tx) error {
