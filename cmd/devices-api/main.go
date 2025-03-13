@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	pb_accounts "github.com/DIMO-Network/accounts-api/pkg/grpc"
 	_ "github.com/DIMO-Network/devices-api/docs"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/kafka"
@@ -94,7 +93,7 @@ func main() {
 		startMonitoringServer(logger, &settings)
 		eventService := services.NewEventService(&logger, &settings, deps.getKafkaProducer())
 		startCredentialConsumer(logger, &settings, pdb)
-		startTaskStatusConsumer(logger, &settings, pdb, accountsConn)
+		startTaskStatusConsumer(logger, &settings, pdb)
 		startWebAPI(logger, &settings, pdb, eventService, deps.getKafkaProducer(), deps.getS3ServiceClient(ctx), deps.getS3NFTServiceClient(ctx))
 	} else {
 		subcommands.Register(&migrateDBCmd{logger: logger, settings: settings}, "database")
@@ -206,7 +205,7 @@ func startCredentialConsumer(logger zerolog.Logger, settings *config.Settings, p
 	logger.Info().Msg("Credential update consumer started")
 }
 
-func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store, accountsConn *grpc.ClientConn) {
+func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store) {
 	clusterConfig := sarama.NewConfig()
 	clusterConfig.Version = sarama.V3_6_0_0
 	clusterConfig.Consumer.Offsets.Initial = sarama.OffsetNewest
@@ -235,8 +234,7 @@ func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, p
 
 	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, settings)
 
-	acctClient := pb_accounts.NewAccountsClient(accountsConn)
-	cioSvc, err := cio.New(settings.CustomerIOAPIKey, acctClient, &logger)
+	cioSvc, err := cio.New(settings.CustomerIOAPIKey, &logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to create customer io service")
 	}
