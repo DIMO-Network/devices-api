@@ -7,6 +7,10 @@ const (
 )
 
 const (
+	TeslaIntegrationTokenID = 2
+)
+
+const (
 	SmartCarVendor   = "SmartCar"
 	TeslaVendor      = "Tesla"
 	CompassIotVendor = "CompassIot"

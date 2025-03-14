@@ -99,6 +99,8 @@ type Settings struct {
 
 	TeslaRequiredScopes string `yaml:"TESLA_REQUIRED_SCOPES"`
 
+	TeslaOracleGRPCAddr string `yaml:"TESLA_ORACLE_GRPC_ADDR"`
+
 	AccountsAPIGRPCAddr string `yaml:"ACCOUNTS_API_GRPC_ADDR"`
 	CustomerIOAPIKey    string `yaml:"CUSTOMER_IO_API_KEY"`
 
