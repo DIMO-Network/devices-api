@@ -22,6 +22,12 @@ import (
 	"golang.org/x/oauth2"
 )
 
+type TeslaVehicle struct {
+	ID        int    `json:"id"`
+	VehicleID int    `json:"vehicle_id"`
+	VIN       string `json:"vin"`
+}
+
 //go:generate mockgen -source tesla_fleet_api_service.go -destination mocks/tesla_fleet_api_service_mock.go
 type TeslaFleetAPIService interface {
 	CompleteTeslaAuthCodeExchange(ctx context.Context, authCode, redirectURI string) (*TeslaAuthCodeResponse, error)
@@ -29,9 +35,9 @@ type TeslaFleetAPIService interface {
 	GetVehicle(ctx context.Context, token string, vehicleID int) (*TeslaVehicle, error)
 	WakeUpVehicle(ctx context.Context, token string, vehicleID int) error
 	GetAvailableCommands(token string) (*UserDeviceAPIIntegrationsMetadataCommands, error)
-	VirtualKeyConnectionStatus(ctx context.Context, token, vin string) (bool, error)
+	VirtualKeyConnectionStatus(ctx context.Context, token, vin string) (*VehicleFleetStatus, error)
 	SubscribeForTelemetryData(ctx context.Context, token, vin string) error
-	GetTelemetrySubscriptionStatus(ctx context.Context, token string, tokenID int) (bool, error)
+	GetTelemetrySubscriptionStatus(ctx context.Context, token, vin string) (*VehicleTelemetryStatus, error)
 }
 
 var teslaScopes = []string{"openid", "offline_access", "user_data", "vehicle_device_data", "vehicle_cmds", "vehicle_charging_cmds"}
@@ -60,13 +66,32 @@ type TeslaAuthCodeResponse struct {
 	Region       string    `json:"region"`
 }
 
-type VirtualKeyConnectionStatusResponse struct {
-	Response VirtualKeyConnectionStatus `json:"response"`
+type fleetStatusResponse struct {
+	KeyPairedVINs []string `json:"key_paired_vins"`
+	UnpairedVINs  []string `json:"unpaired_vins"`
+	VehicleInfo   map[string]struct {
+		FirmwareVersion                string `json:"firmware_version"`
+		VehicleCommandProtocolRequired bool   `json:"vehicle_command_protocol_required"`
+		DiscountedDeviceData           bool   `json:"discounted_device_data"`
+		FleetTelemetryVersion          string `json:"fleet_telemetry_version"`
+		TotalNumberOfKeys              int    `json:"total_number_of_keys"`
+	} `json:"vehicle_info"`
 }
 
-type VirtualKeyConnectionStatus struct {
-	UnpairedVINs  []string `json:"unpaired_vins"`
-	KeyPairedVINs []string `json:"key_paired_vins"`
+type VehicleFleetStatus struct {
+	KeyPaired                      bool
+	VehicleCommandProtocolRequired bool
+	FirmwareVersion                string
+	DiscountedDeviceData           bool
+	FleetTelemetryVersion          string
+	NumberOfKeys                   int
+}
+
+type VehicleTelemetryStatus struct {
+	Synced       bool
+	Configured   bool
+	LimitReached bool
+	KeyPaired    bool
 }
 
 type SubscribeForTelemetryDataRequest struct {
@@ -88,14 +113,17 @@ type TelemetryConfigRequest struct {
 }
 
 type TelemetryConfigStatusResponse struct {
-	Synced bool                    `json:"synced"`
-	Config *TelemetryConfigRequest `json:"config"`
+	Synced       bool                    `json:"synced"`
+	Config       *TelemetryConfigRequest `json:"config"`
+	LimitReached bool                    `json:"limit_reached"`
+	KeyPaired    bool                    `json:"key_paired"`
 }
 
 type SkippedVehicles struct {
 	MissingKey          []string `json:"missing_key"`
 	UnsupportedHardware []string `json:"unsupported_hardware"`
 	UnsupportedFirmware []string `json:"unsupported_firmware"`
+	MaxConfigs          []string `json:"max_configs"`
 }
 
 type SubscribeForTelemetryDataResponse struct {
@@ -270,9 +298,7 @@ func (t *teslaFleetAPIService) GetAvailableCommands(token string) (*UserDeviceAP
 	}, nil
 }
 
-// VirtualKeyConnectionStatus returns true if our virtual key (public key) has been added to the vehicle.
-// This is a prerequisite for issuing commands or subscribing to telemetry.
-func (t *teslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, token, vin string) (bool, error) {
+func (t *teslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, token, vin string) (*VehicleFleetStatus, error) {
 	url := t.FleetBase.JoinPath("api/1/vehicles/fleet_status")
 
 	jsonBody := fmt.Sprintf(`{"vins": [%q]}`, vin)
@@ -281,32 +307,74 @@ func (t *teslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, t
 	body, err := t.performRequest(ctx, url, token, http.MethodPost, inBody)
 	if err != nil {
 		t.log.Warn().Str("body", jsonBody).Msg("Virtual key status request failure.")
-		return false, fmt.Errorf("error requesting key status: %w", err)
+		return nil, fmt.Errorf("error requesting key status: %w", err)
 	}
 
-	var keyConn TeslaResponseWrapper[VirtualKeyConnectionStatus]
+	var keyConn TeslaResponseWrapper[fleetStatusResponse]
 	err = json.Unmarshal(body, &keyConn)
 	if err != nil {
-		return false, fmt.Errorf("error decoding key status %w", err)
+		return nil, fmt.Errorf("error decoding key status %w", err)
 	}
 
-	isConnected := slices.Contains(keyConn.Response.KeyPairedVINs, vin)
+	vi := keyConn.Response.VehicleInfo[vin]
 
-	return isConnected, nil
+	return &VehicleFleetStatus{
+		KeyPaired:                      len(keyConn.Response.KeyPairedVINs) == 1,
+		FirmwareVersion:                vi.FirmwareVersion,
+		DiscountedDeviceData:           vi.DiscountedDeviceData,
+		FleetTelemetryVersion:          vi.FleetTelemetryVersion,
+		NumberOfKeys:                   vi.TotalNumberOfKeys,
+		VehicleCommandProtocolRequired: vi.VehicleCommandProtocolRequired,
+	}, nil
 }
 
+// This is Jeremy's "Advanced" set of fields and intervals. We will get this out of Go soon.
 var fields = TelemetryFields{
-	"ChargeState":         {IntervalSeconds: 300},
-	"Location":            {IntervalSeconds: 10},
-	"OriginLocation":      {IntervalSeconds: 300},
-	"DestinationLocation": {IntervalSeconds: 300},
-	"DestinationName":     {IntervalSeconds: 300},
-	"EnergyRemaining":     {IntervalSeconds: 300},
-	"VehicleSpeed":        {IntervalSeconds: 60},
-	"Odometer":            {IntervalSeconds: 300},
-	"EstBatteryRange":     {IntervalSeconds: 300},
-	"Soc":                 {IntervalSeconds: 300},
-	"BatteryLevel":        {IntervalSeconds: 60},
+	"ACChargingEnergyIn":              {IntervalSeconds: 60},
+	"ACChargingPower":                 {IntervalSeconds: 60},
+	"AutomaticEmergencyBrakingOff":    {IntervalSeconds: 1},
+	"BlindSpotCollisionWarningChime":  {IntervalSeconds: 1},
+	"BrickVoltageMax":                 {IntervalSeconds: 300},
+	"BrickVoltageMin":                 {IntervalSeconds: 300},
+	"CarType":                         {IntervalSeconds: 21599},
+	"ChargeAmps":                      {IntervalSeconds: 60},
+	"ChargeLimitSoc":                  {IntervalSeconds: 3600},
+	"ChargerVoltage":                  {IntervalSeconds: 300},
+	"ChargingCableType":               {IntervalSeconds: 300},
+	"CruiseFollowDistance":            {IntervalSeconds: 60},
+	"CruiseSetSpeed":                  {IntervalSeconds: 60},
+	"CurrentLimitMph":                 {IntervalSeconds: 1},
+	"DCChargingEnergyIn":              {IntervalSeconds: 60},
+	"DCChargingPower":                 {IntervalSeconds: 60},
+	"DetailedChargeState":             {IntervalSeconds: 60},
+	"DoorState":                       {IntervalSeconds: 1},
+	"EmergencyLaneDepartureAvoidance": {IntervalSeconds: 1},
+	"EnergyRemaining":                 {IntervalSeconds: 60},
+	"EstBatteryRange":                 {IntervalSeconds: 300},
+	"FastChargerPresent":              {IntervalSeconds: 300},
+	"FdWindow":                        {IntervalSeconds: 1},
+	"ForwardCollisionWarning":         {IntervalSeconds: 1},
+	"FpWindow":                        {IntervalSeconds: 1},
+	"GuestModeEnabled":                {IntervalSeconds: 3600},
+	"IdealBatteryRange":               {IntervalSeconds: 20},
+	"LaneDepartureAvoidance":          {IntervalSeconds: 1},
+	"Location":                        {IntervalSeconds: 1},
+	"Locked":                          {IntervalSeconds: 300},
+	"Odometer":                        {IntervalSeconds: 300},
+	"OutsideTemp":                     {IntervalSeconds: 60},
+	"RdWindow":                        {IntervalSeconds: 1},
+	"RpWindow":                        {IntervalSeconds: 1},
+	"Soc":                             {IntervalSeconds: 60},
+	"SoftwareUpdateVersion":           {IntervalSeconds: 21599},
+	"SpeedLimitWarning":               {IntervalSeconds: 1},
+	"TpmsPressureFl":                  {IntervalSeconds: 300},
+	"TpmsPressureFr":                  {IntervalSeconds: 300},
+	"TpmsPressureRl":                  {IntervalSeconds: 300},
+	"TpmsPressureRr":                  {IntervalSeconds: 300},
+	"Trim":                            {IntervalSeconds: 21599},
+	"VehicleName":                     {IntervalSeconds: 21599},
+	"VehicleSpeed":                    {IntervalSeconds: 20},
+	"Version":                         {IntervalSeconds: 21599},
 }
 
 type TeslaSubscriptionErrorType int
@@ -315,6 +383,7 @@ const (
 	KeyUnpaired TeslaSubscriptionErrorType = iota
 	UnsupportedVehicle
 	UnsupportedFirmware
+	MaxConfigs
 )
 
 // TeslaSubscriptionError is an error containing text suitable for showing to the user.
@@ -373,24 +442,33 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 		return &TeslaSubscriptionError{internal: "vehicle firmware not supported", Type: UnsupportedFirmware}
 	}
 
+	if slices.Contains(subResp.Response.SkippedVehicles.MaxConfigs, vin) {
+		return &TeslaSubscriptionError{internal: "vehicle firmware not supported", Type: MaxConfigs}
+	}
+
 	return nil
 }
 
-func (t *teslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Context, token string, vehicleID int) (bool, error) {
-	u := t.FleetBase.JoinPath("api/1/vehicles", strconv.Itoa(vehicleID), "fleet_telemetry_config")
+func (t *teslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Context, token, vin string) (*VehicleTelemetryStatus, error) {
+	u := t.FleetBase.JoinPath("api/1/vehicles", vin, "fleet_telemetry_config")
 
 	body, err := t.performRequest(ctx, u, token, http.MethodGet, nil)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	var statResp TeslaResponseWrapper[TelemetryConfigStatusResponse]
 	err = json.Unmarshal(body, &statResp)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	return statResp.Response.Config != nil, nil
+	return &VehicleTelemetryStatus{
+		KeyPaired:    statResp.Response.KeyPaired,
+		Synced:       statResp.Response.Synced,
+		Configured:   statResp.Response.Config != nil,
+		LimitReached: statResp.Response.LimitReached,
+	}, nil
 }
 
 var ErrUnauthorized = errors.New("unauthorized")

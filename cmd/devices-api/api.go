@@ -106,7 +106,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	scTaskSvc := services.NewSmartcarTaskService(settings, producer)
 	smartcarClient := services.NewSmartcarClient(settings)
 	teslaTaskService := services.NewTeslaTaskService(settings, producer)
-	teslaSvc := services.NewTeslaService(settings)
 	teslaFleetAPISvc, err := services.NewTeslaFleetAPIService(settings, &logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Error constructing Tesla Fleet API client.")
@@ -203,6 +202,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	vPriv.Post("/commands/doors/lock", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.LockDoors)
 	vPriv.Post("/commands/trunk/open", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.OpenTrunk)
 	vPriv.Post("/commands/frunk/open", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.OpenFrunk)
+	vPriv.Post("/commands/charge/start", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.ChargeStart)
+	vPriv.Post("/commands/charge/stop", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.ChargeStop)
 
 	// Vehicle owner routes.
 	vPriv.Get("/error-codes", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleNonLocationData}), userDeviceController.GetUserDeviceErrorCodeQueriesByTokenID)
@@ -290,13 +291,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Get("/integrations/:integrationID/commands/burn", syntheticController.GetSyntheticDeviceBurnPayload)
 	udOwner.Post("/integrations/:integrationID/commands/burn", syntheticController.BurnSyntheticDevice)
 
-	// Vehicle commands.
-	udOwner.Post("/integrations/:integrationID/commands/doors/unlock", userDeviceController.UnlockDoors)
-	udOwner.Post("/integrations/:integrationID/commands/doors/lock", userDeviceController.LockDoors)
-	udOwner.Post("/integrations/:integrationID/commands/trunk/open", userDeviceController.OpenTrunk)
-	udOwner.Post("/integrations/:integrationID/commands/frunk/open", userDeviceController.OpenFrunk)
-	udOwner.Get("/integrations/:integrationID/commands/:requestID", userDeviceController.GetCommandRequestStatus)
-
 	if !settings.IsProduction() {
 		udOwner.Post("/integrations/:integrationID/commands/telemetry/subscribe", userDeviceController.TelemetrySubscribe)
 	}
@@ -336,7 +330,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		logger.Fatal().Err(err).Msg("Failed to create transaction listener")
 	}
 
-	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService, userDeviceSvc, teslaTaskService, scTaskSvc)
+	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService, userDeviceSvc, teslaTaskService, scTaskSvc, cipher, teslaFleetAPISvc)
 
 	c := make(chan os.Signal, 1)                    // Create channel to signify a signal being sent with length of 1
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM) // When an interrupt or termination signal is sent, notify the channel
@@ -373,6 +367,8 @@ func startGRPCServer(
 	userDeviceSvc services.UserDeviceService,
 	teslaTaskSvc services.TeslaTaskService,
 	smartcarTaskSvc services.SmartcarTaskService,
+	cipher shared.Cipher,
+	teslaAPI services.TeslaFleetAPIService,
 ) {
 	lis, err := net.Listen("tcp", ":"+settings.GRPCPort)
 	if err != nil {
@@ -394,6 +390,7 @@ func startGRPCServer(
 	pb.RegisterUserDeviceServiceServer(server, rpc.NewUserDeviceRPCService(dbs, settings, hardwareTemplateService, logger,
 		deviceDefSvc, eventService, userDeviceSvc, teslaTaskSvc, smartcarTaskSvc))
 	pb.RegisterAftermarketDeviceServiceServer(server, rpc.NewAftermarketDeviceService(dbs, logger))
+	pb.RegisterTeslaServiceServer(server, rpc.NewTeslaRPCService(dbs, settings, cipher, teslaAPI, logger))
 
 	if err := server.Serve(lis); err != nil {
 		logger.Fatal().Err(err).Msg("gRPC server terminated unexpectedly")

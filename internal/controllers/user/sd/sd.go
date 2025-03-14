@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/DIMO-Network/devices-api/internal/constants"
+	"github.com/DIMO-Network/devices-api/internal/controllers"
 	"github.com/DIMO-Network/devices-api/internal/middleware/address"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/integration"
@@ -138,7 +139,7 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 		}
 
 		// Make sure that these credentials have access to this particular vehicle.
-		_, err = co.TeslaAPI.GetVehicle(c.Context(), cred.AccessToken, teslaID)
+		v, err := co.TeslaAPI.GetVehicle(c.Context(), cred.AccessToken, teslaID)
 		if err != nil {
 			return err
 		}
@@ -163,6 +164,16 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 			return err
 		}
 
+		fs, err := co.TeslaAPI.VirtualKeyConnectionStatus(c.Context(), cred.AccessToken, v.VIN)
+		if err != nil {
+			return err
+		}
+
+		fleetTelemetryCapable := controllers.IsFleetTelemetryCapable(fs)
+
+		md.TeslaVIN = v.VIN
+		md.TeslaDiscountedData = &fs.DiscountedDeviceData
+		md.TeslaFleetTelemetryCapable = &fleetTelemetryCapable
 		md.TeslaAPIVersion = constants.TeslaAPIV2
 		md.Commands, err = co.TeslaAPI.GetAvailableCommands(cred.AccessToken)
 		if err != nil {

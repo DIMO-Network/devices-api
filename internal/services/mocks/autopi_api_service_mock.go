@@ -22,6 +22,7 @@ import (
 type MockAutoPiAPIService struct {
 	ctrl     *gomock.Controller
 	recorder *MockAutoPiAPIServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockAutoPiAPIServiceMockRecorder is the mock recorder for MockAutoPiAPIService.

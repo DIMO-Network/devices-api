@@ -976,123 +976,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/doors/lock": {
-            "post": {
-                "description": "Lock the device's doors.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "device",
-                    "integration",
-                    "command"
-                ],
-                "summary": "Lock the device's doors",
-                "operationId": "lock-doors",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device ID",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Integration ID",
-                        "name": "integrationID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.CommandResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/doors/unlock": {
-            "post": {
-                "description": "Unlock the device's doors.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "device",
-                    "integration",
-                    "command"
-                ],
-                "summary": "Unlock the device's doors",
-                "operationId": "unlock-doors",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device ID",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Integration ID",
-                        "name": "integrationID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.CommandResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/frunk/open": {
-            "post": {
-                "description": "Open the device's front trunk. Currently, this only works for Teslas connected through Tesla.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "device",
-                    "integration",
-                    "command"
-                ],
-                "summary": "Open the device's front trunk",
-                "operationId": "open-frunk",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device ID",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Integration ID",
-                        "name": "integrationID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.CommandResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/mint": {
             "get": {
                 "description": "Produces the payload that the user signs and submits to mint a synthetic device for\nthe given vehicle and integration.",
@@ -1202,91 +1085,6 @@ const docTemplate = `{
                 "responses": {}
             }
         },
-        "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/trunk/open": {
-            "post": {
-                "description": "Open the device's front trunk. Currently, this only works for Teslas connected through Tesla.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "device",
-                    "integration",
-                    "command"
-                ],
-                "summary": "Open the device's rear trunk",
-                "operationId": "open-trunk",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device ID",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Integration ID",
-                        "name": "integrationID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.CommandResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/devices/{userDeviceID}/integrations/{integrationID}/commands/{requestID}": {
-            "get": {
-                "description": "Get the status of a submitted command by request id.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "device",
-                    "integration",
-                    "command"
-                ],
-                "summary": "Get the status of a submitted command.",
-                "operationId": "get-command-request-status",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device ID",
-                        "name": "userDeviceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Integration ID",
-                        "name": "integrationID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Command request ID",
-                        "name": "requestID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.CommandRequestStatusResp"
-                        }
-                    }
-                }
-            }
-        },
         "/user/devices/{userDeviceId}/commands/update-nft-image": {
             "post": {
                 "security": [
@@ -1343,6 +1141,68 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/internal_controllers_user_sd.Message"
+                        }
+                    }
+                }
+            }
+        },
+        "/vehicle/{tokenID}/commands/charge/start": {
+            "post": {
+                "description": "Start the vehicle charging.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "device",
+                    "integration",
+                    "command"
+                ],
+                "summary": "Start the vehicle charging.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Token ID",
+                        "name": "tokenID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.CommandResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vehicle/{tokenID}/commands/charge/stop": {
+            "post": {
+                "description": "Stop the vehicle charging.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "device",
+                    "integration",
+                    "command"
+                ],
+                "summary": "Stop the vehicle charging.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Token ID",
+                        "name": "tokenID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers.CommandResponse"
                         }
                     }
                 }
@@ -2049,36 +1909,6 @@ const docTemplate = `{
             "properties": {
                 "signature": {
                     "type": "string"
-                }
-            }
-        },
-        "internal_controllers.CommandRequestStatusResp": {
-            "type": "object",
-            "properties": {
-                "command": {
-                    "type": "string",
-                    "example": "doors/unlock"
-                },
-                "createdAt": {
-                    "type": "string",
-                    "example": "2022-08-09T19:38:39Z"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "2D8LqUHQtaMHH6LYPqznmJMBeZm"
-                },
-                "status": {
-                    "type": "string",
-                    "enum": [
-                        "Pending",
-                        "Complete",
-                        "Failed"
-                    ],
-                    "example": "Complete"
-                },
-                "updatedAt": {
-                    "type": "string",
-                    "example": "2022-08-09T19:39:22Z"
                 }
             }
         },

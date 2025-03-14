@@ -123,9 +123,12 @@ type UserDeviceAPIIntegrationsMetadata struct {
 	SmartcarUserID          *string                                    `json:"smartcarUserId,omitempty"`
 	Commands                *UserDeviceAPIIntegrationsMetadataCommands `json:"commands,omitempty"`
 	// CANProtocol is the protocol that was detected by edge-network from the autopi.
-	CANProtocol     *string `json:"canProtocol,omitempty"`
-	TeslaVehicleID  int     `json:"teslaVehicleId,omitempty"`
-	TeslaAPIVersion int     `json:"teslaApiVersion,omitempty"`
+	CANProtocol                *string `json:"canProtocol,omitempty"`
+	TeslaVehicleID             int     `json:"teslaVehicleId,omitempty"`
+	TeslaAPIVersion            int     `json:"teslaApiVersion,omitempty"`
+	TeslaVIN                   string  `json:"teslaVin,omitempty"`
+	TeslaDiscountedData        *bool   `json:"teslaDiscountedData,omitempty"`
+	TeslaFleetTelemetryCapable *bool   `json:"teslaFleetTelemetryCapable,omitempty"`
 }
 
 type UserDeviceAPIIntegrationsMetadataCommands struct {

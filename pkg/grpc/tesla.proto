@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+option go_package = "github.com/DIMO-Network/devices-api/pkg/grpc";
+
+package tesla;
+
+import "google/protobuf/wrappers.proto";
+
+service TeslaService {
+  rpc GetPollingInfo(GetPollingInfoRequest) returns (GetPollingInfoResponse);
+  rpc GetFleetStatus(GetFleetStatusRequest) returns (GetFleetStatusResponse);
+  rpc GetFleetTelemetryConfig(GetFleetTelemetryConfigRequest) returns (GetFleetTelemetryConfigResponse);
+  rpc ConfigureFleetTelemetry(ConfigureFleetTelemetryRequest) returns (ConfigureFleetTelemetryResponse);
+  rpc GetScopes(GetScopesRequest) returns (GetScopesResponse);
+}
+
+message GetPollingInfoRequest {
+  string task_id = 1;
+}
+
+message GetPollingInfoResponse {
+  google.protobuf.BoolValue discounted_data = 1;
+  google.protobuf.BoolValue fleet_telemetry_capable = 2;
+}
+
+message GetFleetStatusRequest {
+  int64 vehicle_token_id = 1;
+}
+
+message GetFleetStatusResponse {
+  bool key_paired = 1;
+  string firmware_version = 2;
+  bool vehicle_command_protocol_required = 3;
+  bool discounted_device_data = 4;
+  string fleet_telemetry_version = 5;
+}
+
+message GetFleetTelemetryConfigRequest {
+  int64 vehicle_token_id = 1;
+}
+
+message GetFleetTelemetryConfigResponse {
+  bool synced = 1;
+  bool configured = 2;
+  bool limit_reached = 3;
+  bool key_paired = 4;
+}
+
+message ConfigureFleetTelemetryRequest {
+  int64 vehicle_token_id = 1;
+}
+
+message ConfigureFleetTelemetryResponse {
+}
+
+message GetScopesRequest {
+  int64 vehicle_token_id = 1;
+}
+
+message GetScopesResponse {
+  repeated string scopes = 1;
+}

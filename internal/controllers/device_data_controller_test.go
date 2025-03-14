@@ -34,7 +34,6 @@ type deps struct {
 	deviceDefSvc           *mock_services.MockDeviceDefinitionService
 	scClient               *mock_services.MockSmartcarClient
 	scTaskSvc              *mock_services.MockSmartcarTaskService
-	teslaSvc               *mock_services.MockTeslaService
 	teslaTaskService       *mock_services.MockTeslaTaskService
 	autoPiIngest           *mock_services.MockIngestRegistrar
 	deviceDefinitionIngest *mock_services.MockDeviceDefinitionRegistrar
@@ -52,7 +51,6 @@ func createMockDependencies(t *testing.T) deps {
 	deviceDefSvc := mock_services.NewMockDeviceDefinitionService(mockCtrl)
 	scClient := mock_services.NewMockSmartcarClient(mockCtrl)
 	scTaskSvc := mock_services.NewMockSmartcarTaskService(mockCtrl)
-	teslaSvc := mock_services.NewMockTeslaService(mockCtrl)
 	teslaTaskService := mock_services.NewMockTeslaTaskService(mockCtrl)
 	autoPiIngest := mock_services.NewMockIngestRegistrar(mockCtrl)
 	deviceDefinitionIngest := mock_services.NewMockDeviceDefinitionRegistrar(mockCtrl)
@@ -69,7 +67,6 @@ func createMockDependencies(t *testing.T) deps {
 		deviceDefSvc:           deviceDefSvc,
 		scClient:               scClient,
 		scTaskSvc:              scTaskSvc,
-		teslaSvc:               teslaSvc,
 		teslaTaskService:       teslaTaskService,
 		autoPiIngest:           autoPiIngest,
 		deviceDefinitionIngest: deviceDefinitionIngest,

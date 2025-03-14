@@ -68,7 +68,6 @@ type UserDevicesController struct {
 	eventService              services.EventService
 	smartcarClient            services.SmartcarClient
 	smartcarTaskSvc           services.SmartcarTaskService
-	teslaService              services.TeslaService
 	teslaTaskService          services.TeslaTaskService
 	teslaOracle               pb_oracle.TeslaOracleClient
 	cipher                    shared.Cipher
@@ -125,7 +124,6 @@ func NewUserDevicesController(settings *config.Settings,
 	eventService services.EventService,
 	smartcarClient services.SmartcarClient,
 	smartcarTaskSvc services.SmartcarTaskService,
-	teslaService services.TeslaService,
 	teslaTaskService services.TeslaTaskService,
 	teslaOracle pb_oracle.TeslaOracleClient,
 	cipher shared.Cipher,
@@ -153,7 +151,6 @@ func NewUserDevicesController(settings *config.Settings,
 		eventService:              eventService,
 		smartcarClient:            smartcarClient,
 		smartcarTaskSvc:           smartcarTaskSvc,
-		teslaService:              teslaService,
 		teslaTaskService:          teslaTaskService,
 		teslaOracle:               teslaOracle,
 		cipher:                    cipher,
@@ -248,6 +245,8 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 
 			if !d.TokenID.IsZero() {
 				nft.TokenID = d.TokenID.Int(nil)
+
+				nft.Status = "Confirmed"
 
 				nft.TokenURI = fmt.Sprintf("%s/v1/vehicle/%s", udc.Settings.DeploymentBaseURL, nft.TokenID)
 
@@ -1505,7 +1504,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 			if in.Vendor == constants.TeslaVendor {
 				intID = in.TokenId
-				break
+				break // Prefer Tesla if both Tesla and Smartcar are present.
 			} else if in.Vendor == constants.SmartCarVendor {
 				intID = in.TokenId
 			}

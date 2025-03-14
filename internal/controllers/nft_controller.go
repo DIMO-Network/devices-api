@@ -229,6 +229,30 @@ func (nc *NFTController) LockDoors(c *fiber.Ctx) error {
 	return nc.handleEnqueueCommand(c, constants.DoorsLock)
 }
 
+// StopCharging godoc
+// @Summary     Stop the vehicle charging.
+// @Description Stop the vehicle charging.
+// @Tags        device,integration,command
+// @Success 200 {object} controllers.CommandResponse
+// @Produce     json
+// @Param       tokenID  path string true "Token ID"
+// @Router      /vehicle/{tokenID}/commands/charge/stop [post]
+func (nc *NFTController) ChargeStop(c *fiber.Ctx) error {
+	return nc.handleEnqueueCommand(c, constants.ChargeStop)
+}
+
+// StartCharging godoc
+// @Summary     Start the vehicle charging.
+// @Description Start the vehicle charging.
+// @Tags        device,integration,command
+// @Success 200 {object} controllers.CommandResponse
+// @Produce     json
+// @Param       tokenID  path string true "Token ID"
+// @Router      /vehicle/{tokenID}/commands/charge/start [post]
+func (nc *NFTController) ChargeStart(c *fiber.Ctx) error {
+	return nc.handleEnqueueCommand(c, constants.ChargeStart)
+}
+
 // OpenTrunk godoc
 // @Summary     Open the device's rear trunk
 // @Description Open the device's front trunk. Currently, this only works for Teslas connected through Tesla.
@@ -320,6 +344,8 @@ func (nc *NFTController) handleEnqueueCommand(c *fiber.Ctx, commandPath string) 
 			"doors/lock":   nc.teslaTaskService.LockDoors,
 			"trunk/open":   nc.teslaTaskService.OpenTrunk,
 			"frunk/open":   nc.teslaTaskService.OpenFrunk,
+			"charge/start": nc.teslaTaskService.ChargeStart,
+			"charge/stop":  nc.teslaTaskService.ChargeStop,
 		},
 	}
 
@@ -334,7 +360,7 @@ func (nc *NFTController) handleEnqueueCommand(c *fiber.Ctx, commandPath string) 
 	}
 
 	// This correctly handles md.Commands.Enabled being nil.
-	if !slices.Contains(md.Commands.Enabled, commandPath) {
+	if (integration.Vendor != constants.TeslaVendor || commandPath != "charge/start" && commandPath != "charge/stop") && !slices.Contains(md.Commands.Enabled, commandPath) {
 		return fiber.NewError(fiber.StatusConflict, "Integration is not capable of this command with this device.")
 	}
 

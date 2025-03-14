@@ -21,6 +21,7 @@ import (
 type MockTeslaFleetAPIService struct {
 	ctrl     *gomock.Controller
 	recorder *MockTeslaFleetAPIServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockTeslaFleetAPIServiceMockRecorder is the mock recorder for MockTeslaFleetAPIService.
@@ -71,18 +72,18 @@ func (mr *MockTeslaFleetAPIServiceMockRecorder) GetAvailableCommands(token any) 
 }
 
 // GetTelemetrySubscriptionStatus mocks base method.
-func (m *MockTeslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Context, token string, tokenID int) (bool, error) {
+func (m *MockTeslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Context, token, vin string) (*services.VehicleTelemetryStatus, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTelemetrySubscriptionStatus", ctx, token, tokenID)
-	ret0, _ := ret[0].(bool)
+	ret := m.ctrl.Call(m, "GetTelemetrySubscriptionStatus", ctx, token, vin)
+	ret0, _ := ret[0].(*services.VehicleTelemetryStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetTelemetrySubscriptionStatus indicates an expected call of GetTelemetrySubscriptionStatus.
-func (mr *MockTeslaFleetAPIServiceMockRecorder) GetTelemetrySubscriptionStatus(ctx, token, tokenID any) *gomock.Call {
+func (mr *MockTeslaFleetAPIServiceMockRecorder) GetTelemetrySubscriptionStatus(ctx, token, vin any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTelemetrySubscriptionStatus", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).GetTelemetrySubscriptionStatus), ctx, token, tokenID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTelemetrySubscriptionStatus", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).GetTelemetrySubscriptionStatus), ctx, token, vin)
 }
 
 // GetVehicle mocks base method.
@@ -130,10 +131,10 @@ func (mr *MockTeslaFleetAPIServiceMockRecorder) SubscribeForTelemetryData(ctx, t
 }
 
 // VirtualKeyConnectionStatus mocks base method.
-func (m *MockTeslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, token, vin string) (bool, error) {
+func (m *MockTeslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, token, vin string) (*services.VehicleFleetStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VirtualKeyConnectionStatus", ctx, token, vin)
-	ret0, _ := ret[0].(bool)
+	ret0, _ := ret[0].(*services.VehicleFleetStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
