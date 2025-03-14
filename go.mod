@@ -2,6 +2,8 @@ module github.com/DIMO-Network/devices-api
 
 go 1.24.0
 
+toolchain go1.24.1
+
 require (
 	github.com/DIMO-Network/device-definitions-api v1.2.66
 	github.com/DIMO-Network/meta-transaction-processor v0.3.2
@@ -191,7 +193,7 @@ require (
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
-	golang.org/x/crypto v0.33.0 // indirect
+	golang.org/x/crypto v0.35.0 // indirect
 	google.golang.org/grpc v1.69.0
 	google.golang.org/protobuf v1.36.4
 )
@@ -226,7 +228,7 @@ require (
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/volatiletech/randomize v0.0.1 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
-	golang.org/x/net v0.35.0 // indirect
+	golang.org/x/net v0.36.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/tools v0.29.0 // indirect
