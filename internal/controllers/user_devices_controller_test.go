@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ericlagergren/decimal"
+	"github.com/testcontainers/testcontainers-go"
 	"github.com/volatiletech/sqlboiler/v4/types"
 
 	"github.com/go-redis/redis/v8"
@@ -35,7 +36,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"github.com/testcontainers/testcontainers-go"
 	"github.com/tidwall/gjson"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"

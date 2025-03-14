@@ -148,7 +148,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// controllers
 	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService,
-		smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, teslaOracle, cipher, autoPiSvc, autoPiIngest,
+		smartcarClient, scTaskSvc, teslaTaskService, teslaOracle, cipher, autoPiSvc, autoPiIngest,
 		deviceDefinitionRegistrar, producer, s3NFTServiceClient, redisCache, openAI, usersClient,
 		natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc, ipfsSvc, chConn)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)

@@ -50,7 +50,6 @@ require (
 )
 
 require (
-	github.com/DIMO-Network/accounts-api v0.2.8
 	github.com/DIMO-Network/tesla-oracle v0.1.1
 	github.com/DIMO-Network/vehicle-signal-decoding v0.10.17
 	github.com/customerio/cdp-analytics-go v0.0.0-20241122010508-c8b722f2b82c
