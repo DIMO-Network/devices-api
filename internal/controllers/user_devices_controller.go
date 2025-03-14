@@ -32,6 +32,7 @@ import (
 	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/DIMO-Network/shared/redis"
+	pb_oracle "github.com/DIMO-Network/tesla-oracle/pkg/grpc"
 	"github.com/IBM/sarama"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -69,6 +70,7 @@ type UserDevicesController struct {
 	smartcarTaskSvc           services.SmartcarTaskService
 	teslaService              services.TeslaService
 	teslaTaskService          services.TeslaTaskService
+	teslaOracle               pb_oracle.TeslaOracleClient
 	cipher                    shared.Cipher
 	autoPiSvc                 services.AutoPiAPIService
 	autoPiIngestRegistrar     services.IngestRegistrar
@@ -125,6 +127,7 @@ func NewUserDevicesController(settings *config.Settings,
 	smartcarTaskSvc services.SmartcarTaskService,
 	teslaService services.TeslaService,
 	teslaTaskService services.TeslaTaskService,
+	teslaOracle pb_oracle.TeslaOracleClient,
 	cipher shared.Cipher,
 	autoPiSvc services.AutoPiAPIService,
 	autoPiIngestRegistrar services.IngestRegistrar,
@@ -152,6 +155,7 @@ func NewUserDevicesController(settings *config.Settings,
 		smartcarTaskSvc:           smartcarTaskSvc,
 		teslaService:              teslaService,
 		teslaTaskService:          teslaTaskService,
+		teslaOracle:               teslaOracle,
 		cipher:                    cipher,
 		autoPiSvc:                 autoPiSvc,
 		autoPiIngestRegistrar:     autoPiIngestRegistrar,
@@ -1552,6 +1556,17 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 			if err := tx.Commit(); err != nil {
 				return err
+			}
+
+			// register synthetic device with tesla oracle
+			if intID == constants.TeslaIntegrationTokenID {
+				if _, err := udc.teslaOracle.RegisterNewSyntheticDevice(c.Context(), &pb_oracle.RegisterNewSyntheticDeviceRequest{
+					Vin:                    userDevice.VinIdentifier.String,
+					SyntheticDeviceAddress: sd.WalletAddress,
+					WalletChildNum:         uint64(sd.WalletChildNumber),
+				}); err != nil {
+					logger.Err(err).Msg("failed to register synthetic device with tesla oracle")
+				}
 			}
 
 			if mr.SACDInput == nil {

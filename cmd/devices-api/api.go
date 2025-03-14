@@ -35,6 +35,7 @@ import (
 	"github.com/DIMO-Network/shared/middleware/privilegetoken"
 	"github.com/DIMO-Network/shared/privileges"
 	"github.com/DIMO-Network/shared/redis"
+	pb_oracle "github.com/DIMO-Network/tesla-oracle/pkg/grpc"
 	"github.com/IBM/sarama"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/ethereum/go-ethereum/common"
@@ -89,6 +90,12 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 	usersClient := pbuser.NewUserServiceClient(gcon)
 
+	oracleConn, err := grpc.NewClient(settings.TeslaOracleGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed dialing tesla-oracle.")
+	}
+	teslaOracle := pb_oracle.NewTeslaOracleClient(oracleConn)
+
 	// services
 	ddIntSvc := services.NewDeviceDefinitionIntegrationService(pdb.DBS, settings)
 	ddSvc := services.NewDeviceDefinitionService(pdb.DBS, &logger, settings)
@@ -142,7 +149,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// controllers
 	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService,
-		smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, cipher, autoPiSvc, autoPiIngest,
+		smartcarClient, scTaskSvc, teslaSvc, teslaTaskService, teslaOracle, cipher, autoPiSvc, autoPiIngest,
 		deviceDefinitionRegistrar, producer, s3NFTServiceClient, redisCache, openAI, usersClient,
 		natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc, ipfsSvc, chConn)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
