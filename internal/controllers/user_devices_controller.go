@@ -1500,7 +1500,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 			if in.Vendor == constants.TeslaVendor {
 				intID = in.TokenId
-				break
+				break // Prefer Tesla if both Tesla and Smartcar are present.
 			} else if in.Vendor == constants.SmartCarVendor {
 				intID = in.TokenId
 			}
