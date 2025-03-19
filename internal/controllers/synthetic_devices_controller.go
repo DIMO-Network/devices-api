@@ -7,6 +7,7 @@ import (
 	"math/big"
 
 	"github.com/DIMO-Network/shared"
+	pb_oracle "github.com/DIMO-Network/tesla-oracle/pkg/grpc"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -41,6 +42,7 @@ type SyntheticDevicesController struct {
 	walletSvc      services.SyntheticWalletInstanceService
 	registryClient registry.Client
 	walletGetter   helpers.EthAddrGetter
+	teslaOracle    pb_oracle.TeslaOracleClient
 }
 
 type MintSyntheticDeviceRequest struct {
@@ -59,6 +61,7 @@ func NewSyntheticDevicesController(
 	usersClient pb.UserServiceClient,
 	walletSvc services.SyntheticWalletInstanceService,
 	registryClient registry.Client,
+	teslaOracle pb_oracle.TeslaOracleClient,
 ) SyntheticDevicesController {
 	return SyntheticDevicesController{
 		Settings:       settings,
@@ -68,6 +71,7 @@ func NewSyntheticDevicesController(
 		walletSvc:      walletSvc,
 		registryClient: registryClient,
 		walletGetter:   helpers.CreateUserAddrGetter(usersClient),
+		teslaOracle:    teslaOracle,
 	}
 }
 
@@ -371,6 +375,17 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	if err := sdc.registryClient.MintSyntheticDeviceSign(requestID, mvt); err != nil {
 		return err
+	}
+
+	// register synthetic device with tesla oracle
+	if in.TokenId == constants.TeslaIntegrationTokenID {
+		if _, err := sdc.teslaOracle.RegisterNewSyntheticDevice(c.Context(), &pb_oracle.RegisterNewSyntheticDeviceRequest{
+			Vin:                    ud.VinIdentifier.String,
+			SyntheticDeviceAddress: syntheticDeviceAddr,
+			WalletChildNum:         uint64(childKeyNumber),
+		}); err != nil {
+			sdc.log.Err(err).Msg("failed to register synthetic device with tesla oracle")
+		}
 	}
 
 	return c.JSON(fiber.Map{"message": "Submitted synthetic device mint request."})
