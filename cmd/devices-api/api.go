@@ -283,7 +283,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		v1Auth.Post("/user/synthetic/device/:tokenID/commands/reauthenticate", addr, sdc.PostReauthenticate)
 	}
 
-	syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, wallet, registryClient)
+	syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, wallet, registryClient, teslaOracle)
 
 	udOwner.Get("/integrations/:integrationID/commands/mint", syntheticController.GetSyntheticDeviceMintingPayload)
 	udOwner.Post("/integrations/:integrationID/commands/mint", syntheticController.MintSyntheticDevice)

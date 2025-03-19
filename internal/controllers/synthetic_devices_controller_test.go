@@ -83,7 +83,7 @@ func (s *SyntheticDevicesControllerTestSuite) SetupTest() {
 
 	logger := test.Logger()
 
-	c := NewSyntheticDevicesController(mockSettings, s.pdb.DBS, logger, s.deviceDefSvc, s.userClient, s.syntheticDeviceSigSvc, client)
+	c := NewSyntheticDevicesController(mockSettings, s.pdb.DBS, logger, s.deviceDefSvc, s.userClient, s.syntheticDeviceSigSvc, client, nil)
 	s.sdc = c
 
 	app := test.SetupAppFiber(*logger)
