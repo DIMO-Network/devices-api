@@ -76,6 +76,8 @@ github.com/DIMO-Network/clickhouse-infra v0.0.3 h1:B6/4IY9IxLcyydET14IjHUT+A5SDE
 github.com/DIMO-Network/clickhouse-infra v0.0.3/go.mod h1:NtpQ1btkPzebDvpYYygeqiiBmJ/q5oJb/T/JWzUVRlk=
 github.com/DIMO-Network/device-definitions-api v1.2.66 h1:WRKZ+4CPH3+8QzVPG/Cl7DUcZ2p4AjDFHNxRqc9Kjzk=
 github.com/DIMO-Network/device-definitions-api v1.2.66/go.mod h1:0br3QBs+fNH1WtC/VMTYk0ekwebCnRk5OrXivo96NwA=
+github.com/DIMO-Network/device-definitions-api v1.2.94 h1:YKuk2U5Gu/LqXR+VzUmvPdHlIAm4W6V5iuwnIdUDx84=
+github.com/DIMO-Network/device-definitions-api v1.2.94/go.mod h1:18CMNHMMZ5i/7sb34rv8BxoDK6QWOOQ7apzc7X90/XY=
 github.com/DIMO-Network/meta-transaction-processor v0.3.2 h1:eSf34mSmiRilMbQx+4Iyu6aNm/WWJjbopIGYNjz/Z6w=
 github.com/DIMO-Network/meta-transaction-processor v0.3.2/go.mod h1:qJW4pNqQ4kDeumuZJByjrfrCd8dlrCT3//5V4PVKRqA=
 github.com/DIMO-Network/shared v0.12.9 h1:I41R/d84WedhQERdT7Iu7Bq8OnmLLQormfQb9g+vl1M=
@@ -1246,6 +1248,7 @@ golang.org/x/time v0.0.0-20190308202827-9d24e82272b4/go.mod h1:tRJNPiyCQ0inRvYxb
 golang.org/x/time v0.0.0-20191024005414-555d28b269f0/go.mod h1:tRJNPiyCQ0inRvYxbN9jk5I+vvW/OXSQhTDSoE431IQ=
 golang.org/x/time v0.5.0 h1:o7cqy6amK/52YcAKIPlM3a+Fpj35zvRj2TP+e1xFSfk=
 golang.org/x/time v0.5.0/go.mod h1:3BpzKBy/shNhVucY/MWOyx10tF3SFh9QdLuxbVysPQM=
+golang.org/x/time v0.7.0/go.mod h1:3BpzKBy/shNhVucY/MWOyx10tF3SFh9QdLuxbVysPQM=
 golang.org/x/tools v0.0.0-20180917221912-90fa682c2a6e/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
 golang.org/x/tools v0.0.0-20190114222345-bf090417da8b/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
 golang.org/x/tools v0.0.0-20190226205152-f727befe758c/go.mod h1:9Yl7xja0Znq3iFh3HoIrodX9oNMXvdceNzlUR8zjMvY=

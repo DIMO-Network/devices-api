@@ -244,14 +244,14 @@ type decodeResult struct {
 }
 
 func (u *UserIntegrationAuthController) decodeTeslaVIN(ctx context.Context, vin string) (*decodeResult, error) {
-	teslaMake := "Tesla"
-	model := shared.VIN(vin).TeslaModel()
-	year := shared.VIN(vin).Year()
-
-	res, err := u.DeviceDefSvc.FindDeviceDefinitionByMMY(ctx, teslaMake, model, year)
+	// for Tesla, this does not call vendor to decode, uses same logic as below - advantage is it will create the DD if it doesn't exist
+	decodeVIN, err := u.DeviceDefSvc.DecodeVIN(ctx, vin, "", 0, "USA")
 	if err != nil {
 		return nil, err
 	}
 
-	return &decodeResult{ID: res.DeviceDefinitionId, Make: teslaMake, Model: model, Year: year}, nil
+	teslaMake := "Tesla"
+	model := shared.VIN(vin).TeslaModel()
+	// decode vin doesn't return Model, just the ID
+	return &decodeResult{ID: decodeVIN.DefinitionId, Make: teslaMake, Model: model, Year: int(decodeVIN.Year)}, nil
 }
