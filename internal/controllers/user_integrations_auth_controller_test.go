@@ -114,8 +114,16 @@ func (s *UserIntegrationAuthControllerTestSuite) TestCompleteOAuthExchanges() {
 	}, nil)
 	s.teslaFleetAPISvc.EXPECT().CompleteTeslaAuthCodeExchange(gomock.Any(), mockAuthCode, mockRedirectURI).Return(mockAuthCodeResp, nil)
 
-	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), "Tesla", "Model 3", 2022).Return(&ddgrpc.GetDeviceDefinitionItemResponse{DeviceDefinitionId: "someID-1"}, nil)
-	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), "Tesla", "Model Y", 2021).Return(&ddgrpc.GetDeviceDefinitionItemResponse{DeviceDefinitionId: "someID-2"}, nil)
+	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "5YJ3E1EB7NF145351", "", 0, "USA").Return(&ddgrpc.DecodeVinResponse{
+		Year:         2022,
+		Powertrain:   "BEV",
+		DefinitionId: "someID-1",
+	}, nil)
+	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), "5YJYGDED4MF107402", "", 0, "USA").Return(&ddgrpc.DecodeVinResponse{
+		Year:         2021,
+		Powertrain:   "BEV",
+		DefinitionId: "someID-2",
+	}, nil)
 
 	s.credStore.EXPECT().Store(gomock.Any(), s.userAddr, &tmpcred.Credential{
 		IntegrationID: 2,
