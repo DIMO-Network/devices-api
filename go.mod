@@ -3,7 +3,7 @@ module github.com/DIMO-Network/devices-api
 go 1.24.0
 
 require (
-	github.com/DIMO-Network/device-definitions-api v1.2.66
+	github.com/DIMO-Network/device-definitions-api v1.2.94
 	github.com/DIMO-Network/meta-transaction-processor v0.3.2
 	github.com/DIMO-Network/shared v0.12.9
 	github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3
@@ -130,7 +130,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.0.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/sync v0.11.0 // indirect
-	golang.org/x/time v0.5.0 // indirect
+	golang.org/x/time v0.7.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241202173237-19429a94021a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241202173237-19429a94021a // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
