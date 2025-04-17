@@ -115,7 +115,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	deviceDefinitionRegistrar := services.NewDeviceDefinitionRegistrar(producer, settings)
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, pdb.DBS, &logger)
 	genericADIntegration := genericad.NewIntegration(pdb.DBS, ddSvc, autoPiIngest, eventService, deviceDefinitionRegistrar, &logger)
-	userDeviceSvc := services.NewUserDeviceService(ddSvc, logger, pdb.DBS, eventService, usersClient)
+	userDeviceSvc := services.NewUserDeviceService(ddSvc, logger, pdb.DBS, eventService)
 
 	openAI := services.NewOpenAI(&logger, *settings)
 

@@ -8,8 +8,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 
-	pb "github.com/DIMO-Network/shared/api/users"
-
 	"github.com/DIMO-Network/shared"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
@@ -37,7 +35,6 @@ type userDeviceService struct {
 	log          zerolog.Logger
 	dbs          func() *db.ReaderWriter
 	eventService EventService
-	usersClient  pb.UserServiceClient
 }
 
 func (uds *userDeviceService) CreateIntegration(ctx context.Context, tx *sql.Tx, userDeviceID, integrationID, externalID, encryptedAccessToken string,
@@ -62,13 +59,12 @@ func (uds *userDeviceService) CreateIntegration(ctx context.Context, tx *sql.Tx,
 	return nil
 }
 
-func NewUserDeviceService(deviceDefSvc DeviceDefinitionService, log zerolog.Logger, dbs func() *db.ReaderWriter, eventService EventService, usersClient pb.UserServiceClient) UserDeviceService {
+func NewUserDeviceService(deviceDefSvc DeviceDefinitionService, log zerolog.Logger, dbs func() *db.ReaderWriter, eventService EventService) UserDeviceService {
 	return &userDeviceService{
 		deviceDefSvc: deviceDefSvc,
 		log:          log,
 		dbs:          dbs,
 		eventService: eventService,
-		usersClient:  usersClient,
 	}
 }
 
