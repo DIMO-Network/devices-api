@@ -30,7 +30,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 	"github.com/DIMO-Network/shared"
-	pbuser "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/DIMO-Network/shared/middleware/privilegetoken"
 	"github.com/DIMO-Network/shared/privileges"
@@ -83,12 +82,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 			Version: "1",
 		},
 	}
-
-	gcon, err := grpc.NewClient(settings.UsersAPIGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed dialing users-api.")
-	}
-	usersClient := pbuser.NewUserServiceClient(gcon)
 
 	oracleConn, err := grpc.NewClient(settings.TeslaOracleGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -149,7 +142,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// controllers
 	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService,
 		smartcarClient, scTaskSvc, teslaTaskService, teslaOracle, cipher, autoPiSvc, autoPiIngest,
-		deviceDefinitionRegistrar, producer, s3NFTServiceClient, redisCache, openAI, usersClient,
+		deviceDefinitionRegistrar, producer, s3NFTServiceClient, redisCache, openAI,
 		natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc, ipfsSvc, chConn)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
@@ -228,7 +221,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
 
 	// Autopi specific routes.
-	amdOwnerMw := owner.AftermarketDevice(pdb, usersClient, &logger)
+	amdOwnerMw := owner.AftermarketDevice(pdb, &logger)
 	// same as above but AftermarketDevice
 	amdOwner := v1Auth.Group("/aftermarket/device/by-serial/:serial", amdOwnerMw)
 
@@ -242,7 +235,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Get("/documents/:id/download", documentsController.DownloadDocument)
 
 	// Vehicle owner routes.
-	udOwnerMw := owner.UserDevice(pdb, usersClient, &logger)
+	udOwnerMw := owner.UserDevice(pdb, &logger)
 	udOwner := v1Auth.Group("/user/devices/:userDeviceID", udOwnerMw)
 
 	udOwner.Delete("/", userDeviceController.DeleteUserDevice)
@@ -263,7 +256,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Post("/commands/refresh", userDeviceController.RefreshUserDeviceStatus)
 
 	{
-		addr := address.New(usersClient, &logger)
+		addr := address.New(&logger)
 
 		v1Auth.Post("/integration/:tokenID/credentials", addr, userIntegrationAuthController.CompleteOAuthExchange)
 
@@ -283,7 +276,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		v1Auth.Post("/user/synthetic/device/:tokenID/commands/reauthenticate", addr, sdc.PostReauthenticate)
 	}
 
-	syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, usersClient, wallet, registryClient, teslaOracle)
+	syntheticController := controllers.NewSyntheticDevicesController(settings, pdb.DBS, &logger, ddSvc, wallet, registryClient, teslaOracle)
 
 	udOwner.Get("/integrations/:integrationID/commands/mint", syntheticController.GetSyntheticDeviceMintingPayload)
 	udOwner.Post("/integrations/:integrationID/commands/mint", syntheticController.MintSyntheticDevice)

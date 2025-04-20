@@ -17,7 +17,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/models"
-	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
@@ -58,7 +57,6 @@ func NewSyntheticDevicesController(
 	dbs func() *db.ReaderWriter,
 	logger *zerolog.Logger,
 	deviceDefSvc services.DeviceDefinitionService,
-	usersClient pb.UserServiceClient,
 	walletSvc services.SyntheticWalletInstanceService,
 	registryClient registry.Client,
 	teslaOracle pb_oracle.TeslaOracleClient,
@@ -70,7 +68,7 @@ func NewSyntheticDevicesController(
 		deviceDefSvc:   deviceDefSvc,
 		walletSvc:      walletSvc,
 		registryClient: registryClient,
-		walletGetter:   helpers.CreateUserAddrGetter(usersClient),
+		walletGetter:   helpers.EthAddrGetter{},
 		teslaOracle:    teslaOracle,
 	}
 }
@@ -114,11 +112,9 @@ func (sdc *SyntheticDevicesController) getEIP712Mint(integrationID, vehicleNode 
 // @Success     200 {array} signer.TypedData
 // @Router 	    /user/devices/{userDeviceID}/integrations/{integrationID}/commands/mint [get]
 func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber.Ctx) error {
-	userAddr, hasAddr, err := sdc.walletGetter.GetEthAddr(c)
+	userAddr, err := sdc.walletGetter.GetEthAddr(c)
 	if err != nil {
 		return err
-	} else if !hasAddr {
-		return fiber.NewError(fiber.StatusUnauthorized, "User does not have an Ethereum address.")
 	}
 
 	userDeviceID := c.Params("userDeviceID")
@@ -272,11 +268,9 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
 	}
 
-	userAddr, hasAddr, err := sdc.walletGetter.GetEthAddr(c)
+	userAddr, err := sdc.walletGetter.GetEthAddr(c)
 	if err != nil {
 		return err
-	} else if !hasAddr {
-		return fiber.NewError(fiber.StatusUnauthorized, "User does not have an Ethereum address.")
 	}
 
 	rawPayload := sdc.getEIP712Mint(int64(in.TokenId), vid)

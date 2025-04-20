@@ -31,8 +31,8 @@ var errNotFound = fiber.NewError(fiber.StatusNotFound, "Device not found.")
 //   - There must be a userDeviceID path parameter, and that device must exist.
 //   - Either the user owns the device, or the user's account has an Ethereum address that
 //     owns the corresponding NFT.
-func UserDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logger) fiber.Handler {
-	addrGett := helpers.CreateUserAddrGetter(usersClient)
+func UserDevice(dbs db.Store, logger *zerolog.Logger) fiber.Handler {
+	addrGett := helpers.EthAddrGetter{}
 
 	return func(c *fiber.Ctx) error {
 		userID := helpers.GetUserID(c)
@@ -54,11 +54,9 @@ func UserDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.
 			return c.Next()
 		}
 
-		userAddr, hasAddr, err := addrGett.GetEthAddr(c)
+		userAddr, err := addrGett.GetEthAddr(c)
 		if err != nil {
 			return err
-		} else if !hasAddr {
-			return errNotFound
 		}
 
 		if userAddrOwns, err := models.UserDevices(
@@ -82,8 +80,8 @@ func UserDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.
 //   - Either the device has not been paired on chain (anyone can access the endpoint) or
 //     the user has an address on file that is either the owner of the AftermarketDevice or the owner
 //     of the paired vehicle.
-func AftermarketDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *zerolog.Logger) fiber.Handler {
-	addrGett := helpers.CreateUserAddrGetter(usersClient)
+func AftermarketDevice(dbs db.Store, logger *zerolog.Logger) fiber.Handler {
+	addrGett := helpers.EthAddrGetter{}
 
 	return func(c *fiber.Ctx) error {
 		userID := helpers.GetUserID(c)
@@ -114,11 +112,9 @@ func AftermarketDevice(dbs db.Store, usersClient pb.UserServiceClient, logger *z
 			return c.Next()
 		}
 
-		userAddr, hasAddr, err := addrGett.GetEthAddr(c)
+		userAddr, err := addrGett.GetEthAddr(c)
 		if err != nil {
 			return err
-		} else if !hasAddr {
-			return fiber.NewError(fiber.StatusForbidden, "User has no Ethereum address on file.")
 		}
 
 		apOwner := common.BytesToAddress(aftermarketDevice.OwnerAddress.Bytes)

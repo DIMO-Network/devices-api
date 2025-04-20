@@ -29,7 +29,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
-	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/DIMO-Network/shared/redis"
 	pb_oracle "github.com/DIMO-Network/tesla-oracle/pkg/grpc"
@@ -78,7 +77,6 @@ type UserDevicesController struct {
 	deviceDefinitionRegistrar services.DeviceDefinitionRegistrar
 	redisCache                redis.CacheService
 	openAI                    services.OpenAI
-	usersClient               pb.UserServiceClient
 	NATSSvc                   *services.NATSService
 	wallet                    services.SyntheticWalletInstanceService
 	userDeviceSvc             services.UserDeviceService
@@ -134,7 +132,6 @@ func NewUserDevicesController(settings *config.Settings,
 	s3NFTClient *s3.Client,
 	cache redis.CacheService,
 	openAI services.OpenAI,
-	usersClient pb.UserServiceClient,
 	natsSvc *services.NATSService,
 	wallet services.SyntheticWalletInstanceService,
 	userDeviceSvc services.UserDeviceService,
@@ -161,13 +158,12 @@ func NewUserDevicesController(settings *config.Settings,
 		deviceDefinitionRegistrar: deviceDefinitionRegistrar,
 		redisCache:                cache,
 		openAI:                    openAI,
-		usersClient:               usersClient,
 		NATSSvc:                   natsSvc,
 		wallet:                    wallet,
 		userDeviceSvc:             userDeviceSvc,
 		teslaFleetAPISvc:          teslaFleetAPISvc,
 		ipfsSvc:                   ipfsSvc,
-		userAddrGetter:            helpers.CreateUserAddrGetter(usersClient),
+		userAddrGetter:            helpers.EthAddrGetter{},
 		clickHouseConn:            chConn,
 	}
 }
@@ -422,31 +418,21 @@ func integrationIDToCHSource(id string) []string {
 func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 
-	userAddr, hasAddr, err := udc.userAddrGetter.GetEthAddr(c)
+	userAddr, err := udc.userAddrGetter.GetEthAddr(c)
 	if err != nil {
-		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
+		return err
 	}
 
-	var query []qm.QueryMod
-
-	if !hasAddr {
-		query = []qm.QueryMod{
-			models.UserDeviceWhere.UserID.EQ(userID),
-		}
-	} else {
-		query = []qm.QueryMod{
-			models.UserDeviceWhere.UserID.EQ(userID),
-			qm.Or2(models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(userAddr.Bytes()))),
-		}
-	}
-
-	query = append(query,
+	query := []qm.QueryMod{
+		models.UserDeviceWhere.UserID.EQ(userID),
+		qm.Or2(models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(userAddr.Bytes()))),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
 		qm.Load(models.UserDeviceRels.MintRequest),
 		qm.Load(models.UserDeviceRels.BurnRequest),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
-		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" DESC"))
+		qm.OrderBy(models.UserDeviceColumns.CreatedAt + " DESC"),
+	}
 
 	devices, err := models.UserDevices(query...).All(c.Context(), udc.DBS().Reader)
 	if err != nil {
@@ -570,56 +556,53 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 	// todo grpc call out to grpc service endpoint in the deviceDefinitionsService udc.deviceDefSvc.GetDeviceDefinitionsByIDs(c.Context(), []string{ "todo"} )
 
-	userAddr, hasAddr, err := udc.userAddrGetter.GetEthAddr(c)
+	userAddr, err := udc.userAddrGetter.GetEthAddr(c)
 	if err != nil {
-		udc.log.Err(err).Msg("Couldn't retrieve user record.")
-		return opaqueInternalError
+		return err
 	}
 
 	var sharedVehicles []*models.UserDevice
 
-	if hasAddr {
-		// This is N+1 hell.
-		privs, err := models.NFTPrivileges(
-			models.NFTPrivilegeWhere.ContractAddress.EQ(common.FromHex(udc.Settings.VehicleNFTAddress)),
-			models.NFTPrivilegeWhere.UserAddress.EQ(userAddr.Bytes()),
-			models.NFTPrivilegeWhere.Expiry.GT(time.Now()),
-			qm.OrderBy(models.NFTPrivilegeColumns.UpdatedAt+" DESC, "+models.NFTPrivilegeColumns.TokenID+" DESC"),
-		).All(c.Context(), udc.DBS().Reader)
+	// This is N+1 hell.
+	privs, err := models.NFTPrivileges(
+		models.NFTPrivilegeWhere.ContractAddress.EQ(common.FromHex(udc.Settings.VehicleNFTAddress)),
+		models.NFTPrivilegeWhere.UserAddress.EQ(userAddr.Bytes()),
+		models.NFTPrivilegeWhere.Expiry.GT(time.Now()),
+		qm.OrderBy(models.NFTPrivilegeColumns.UpdatedAt+" DESC, "+models.NFTPrivilegeColumns.TokenID+" DESC"),
+	).All(c.Context(), udc.DBS().Reader)
+	if err != nil {
+		return err
+	}
+
+	var processedIDs []types.Decimal
+
+PrivLoop:
+	for _, priv := range privs {
+		for _, tok := range processedIDs {
+			if tok.Cmp(priv.TokenID.Big) == 0 {
+				continue PrivLoop
+			}
+		}
+
+		processedIDs = append(processedIDs, priv.TokenID)
+
+		ud, err := models.UserDevices(
+			models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(priv.TokenID.Big)),
+			qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
+			qm.Load(models.UserDeviceRels.MintRequest),
+			qm.Load(models.UserDeviceRels.BurnRequest),
+			qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
+			qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
+		).One(c.Context(), udc.DBS().Reader)
 		if err != nil {
+			if err == sql.ErrNoRows {
+				udc.log.Warn().Msgf("User %s has privileges on a vehicle %d of which we have no record.", userAddr, priv.TokenID)
+				continue
+			}
 			return err
 		}
 
-		var processedIDs []types.Decimal
-
-	PrivLoop:
-		for _, priv := range privs {
-			for _, tok := range processedIDs {
-				if tok.Cmp(priv.TokenID.Big) == 0 {
-					continue PrivLoop
-				}
-			}
-
-			processedIDs = append(processedIDs, priv.TokenID)
-
-			ud, err := models.UserDevices(
-				models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(priv.TokenID.Big)),
-				qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
-				qm.Load(models.UserDeviceRels.MintRequest),
-				qm.Load(models.UserDeviceRels.BurnRequest),
-				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
-				qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
-			).One(c.Context(), udc.DBS().Reader)
-			if err != nil {
-				if err == sql.ErrNoRows {
-					udc.log.Warn().Msgf("User %s has privileges on a vehicle %d of which we have no record.", userAddr, priv.TokenID)
-					continue
-				}
-				return err
-			}
-
-			sharedVehicles = append(sharedVehicles, ud)
-		}
+		sharedVehicles = append(sharedVehicles, ud)
 	}
 
 	apiSharedDevices, err := udc.dbDevicesToDisplay(c.Context(), sharedVehicles)
@@ -739,7 +722,10 @@ var opaqueInternalError = fiber.NewError(fiber.StatusInternalServerError, "Inter
 // @Router      /user/devices/fromvin [post]
 func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
-	userEthAddr, ethAddrFound := helpers.GetJWTEthAddr(c)
+	userEthAddr, err := helpers.GetJWTEthAddr(c)
+	if err != nil {
+		return err
+	}
 	reg := &RegisterUserDeviceVIN{}
 	if err := c.BodyParser(reg); err != nil {
 		// Return status 400 and error message.
@@ -777,7 +763,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 	if existingUD != nil {
 		if existingUD.UserID != userID {
 			return fiber.NewError(fiber.StatusConflict, "VIN already exists for a different user: "+reg.VIN)
-		} else if ethAddrFound && existingUD.OwnerAddress.Valid && !bytes.Equal(existingUD.OwnerAddress.Bytes, userEthAddr.Bytes()) {
+		} else if existingUD.OwnerAddress.Valid && !bytes.Equal(existingUD.OwnerAddress.Bytes, userEthAddr.Bytes()) {
 			return fiber.NewError(fiber.StatusConflict, "VIN already exists for a different user: "+reg.VIN)
 		}
 		slugID = existingUD.DefinitionID
@@ -1908,11 +1894,9 @@ func (udc *UserDevicesController) checkVehicleMint(c *fiber.Ctx, userDevice *mod
 	}
 	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
 
-	userAddr, hasAddr, err := udc.userAddrGetter.GetEthAddr(c)
+	userAddr, err := udc.userAddrGetter.GetEthAddr(c)
 	if err != nil {
 		return nil, nil, err
-	} else if !hasAddr {
-		return nil, nil, fmt.Errorf("user does not have an Ethereum address on file")
 	}
 
 	if dd.Id == "" {
