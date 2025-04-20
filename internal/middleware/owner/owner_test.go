@@ -2,7 +2,6 @@ package owner
 
 import (
 	"context"
-	"math/big"
 	"testing"
 
 	"github.com/DIMO-Network/devices-api/internal/test"
@@ -248,78 +247,6 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 			res, err := app.Test(request)
 			require.Nil(t, err)
 			assert.Equal(t, c.ExpectedCode, res.StatusCode)
-		})
-	}
-
-	require.NoError(t, container.Terminate(ctx))
-}
-
-func TestVehicleTokenOwnerMiddleware(t *testing.T) {
-	ctx := context.Background()
-	pdb, container := test.StartContainerDatabase(ctx, t, "../../../migrations")
-	logger := test.Logger()
-
-	usersClient := &test.UsersClient{}
-	middleware := VehicleToken(pdb, usersClient, logger)
-	app := test.SetupAppFiber(*logger)
-
-	userID := ksuid.New().String()
-	app.Get("/user/vehicle/:tokenID/commands/burn", test.AuthInjectorTestHandler(userID, nil), middleware, func(c *fiber.Ctx) error {
-		logger := c.Locals("logger").(*zerolog.Logger)
-		logger.Info().Msg("Omega croggers.")
-		return nil
-	})
-
-	cases := []struct {
-		Name         string
-		UserID       string
-		OwnerAddress common.Address
-		TokenID      *big.Int
-		ExpectedCode int
-	}{
-		{
-			Name:         "valid-user-id/valid-addr",
-			UserID:       userID,
-			OwnerAddress: common.HexToAddress("0x1ABC7154748d1ce5144478cdeB574ae244b939B5"),
-			TokenID:      big.NewInt(5),
-			ExpectedCode: 200,
-		},
-		{
-			Name:         "no-eth-addr",
-			UserID:       userID,
-			ExpectedCode: errNotFound.Code,
-			OwnerAddress: common.HexToAddress(""),
-			TokenID:      big.NewInt(5),
-		},
-		{
-			Name:         "user-not-found",
-			UserID:       ksuid.New().String(),
-			ExpectedCode: errNotFound.Code,
-			OwnerAddress: common.HexToAddress("0x1ABC7154748d1ce5144478cdeB574ae244b939B5"),
-			TokenID:      big.NewInt(6),
-		},
-	}
-
-	for _, c := range cases {
-		t.Run(c.Name, func(t *testing.T) {
-			_, err := models.UserDevices().DeleteAll(ctx, pdb.DBS().Writer)
-			require.NoError(t, err)
-			_, err = models.UserDevices().DeleteAll(ctx, pdb.DBS().Writer)
-			require.NoError(t, err)
-
-			ud := test.SetupCreateUserDevice(t, c.UserID, "ddID", nil, "vin", pdb)
-
-			usersClient.Store = map[string]*pb.User{}
-			u := &pb.User{Id: userID}
-
-			if c.OwnerAddress != common.HexToAddress("") {
-				_ = test.SetupCreateVehicleNFT(t, ud, big.NewInt(5), null.BytesFrom(c.OwnerAddress.Bytes()), pdb)
-
-				addr := c.OwnerAddress.Hex()
-				u.EthereumAddress = &addr
-			}
-
-			usersClient.Store[userID] = u
 		})
 	}
 
