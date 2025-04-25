@@ -120,6 +120,7 @@ env:
   TESLA_REQUIRED_SCOPES: vehicle_device_data,vehicle_location
   ACCOUNTS_API_GRPC_ADDR: accounts-api-dev:8086
   TESLA_ORACLE_GRPC_ADDR: tesla-oracle-dev:8086
+  ENABLE_SACD_MINT: true
 service:
   type: ClusterIP
   ports:
