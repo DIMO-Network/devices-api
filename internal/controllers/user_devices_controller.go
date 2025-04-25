@@ -1568,7 +1568,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				}
 			}
 
-			if mr.SACDInput == nil {
+			if mr.SACDInput == nil || !udc.Settings.EnableSACDMint {
 				return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
 					ManufacturerNode:     mvs.ManufacturerNode,
 					Owner:                mvs.Owner,
