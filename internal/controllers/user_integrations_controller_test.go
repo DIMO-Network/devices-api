@@ -68,6 +68,7 @@ type UserIntegrationsControllerTestSuite struct {
 	userDeviceSvc             *mock_services.MockUserDeviceService
 	cipher                    shared.Cipher
 	teslaFleetAPISvc          *mock_services.MockTeslaFleetAPIService
+	user1EthAddr              common.Address
 }
 
 const testUserID = "123123"
@@ -105,6 +106,7 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 	s.userDeviceSvc = mock_services.NewMockUserDeviceService(s.mockCtrl)
 	s.teslaFleetAPISvc = mock_services.NewMockTeslaFleetAPIService(s.mockCtrl)
 	s.cipher = new(shared.ROT13Cipher)
+	s.user1EthAddr = common.HexToAddress("1")
 
 	if err != nil {
 		s.T().Fatal(err)
@@ -117,11 +119,11 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 
 	app := test.SetupAppFiber(*logger)
 
-	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID, nil), c.RegisterDeviceIntegration)
-	app.Delete("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID, nil), c.DeleteUserDeviceIntegration)
+	app.Post("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID, &s.user1EthAddr), c.RegisterDeviceIntegration)
+	app.Delete("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID, &s.user1EthAddr), c.DeleteUserDeviceIntegration)
 
 	app.Post("/user2/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUser2, nil), c.RegisterDeviceIntegration)
-	app.Get("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID, nil), c.GetUserDeviceIntegration)
+	app.Get("/user/devices/:userDeviceID/integrations/:integrationID", test.AuthInjectorTestHandler(testUserID, &s.user1EthAddr), c.GetUserDeviceIntegration)
 	app.Post("/user/devices/:userDeviceID/integrations/:integrationID/commands/telemetry/subscribe",
 		test.AuthInjectorTestHandler(testUserID, nil),
 		c.TelemetrySubscribe,
@@ -638,8 +640,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dd[0], nil)
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Times(1).Return(integration, nil)
 
-	userEthAddr := common.HexToAddress("1").String()
-
 	expectedExpiry := time.Now().Add(10 * time.Minute)
 	teslaResp := tmpcred.Credential{
 		IntegrationID: 2,
@@ -653,7 +653,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 	encTeslaAuth, err := s.cipher.Encrypt(string(tokenStr))
 	s.Assert().NoError(err)
 
-	cacheKey := fmt.Sprintf(teslaFleetAuthCacheKey, userEthAddr)
+	cacheKey := fmt.Sprintf(teslaFleetAuthCacheKey, s.user1EthAddr.Hex())
 	s.redisClient.EXPECT().Get(gomock.Any(), cacheKey).Return(redis.NewStringResult(encTeslaAuth, nil))
 	s.redisClient.EXPECT().Del(gomock.Any(), cacheKey).AnyTimes().Return(redis.NewIntResult(1, nil))
 
