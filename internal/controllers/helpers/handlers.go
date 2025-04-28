@@ -43,10 +43,10 @@ func GetJWTEthAddr(c *fiber.Ctx) (common.Address, error) {
 	claims := token.Claims.(jwt.MapClaims) // These can't fail!
 	ethAddr, ok := claims[ethClaim].(string)
 	if !ok {
-		return zeroAddr, fmt.Errorf("claim %s had unexpected type %T", ethClaim, claims[ethClaim])
+		return zeroAddr, fmt.Errorf("claim %s has unexpected type %T", ethClaim, claims[ethClaim])
 	}
 	if !common.IsHexAddress(ethAddr) {
-		return zeroAddr, fmt.Errorf("claim %s was not a valid Ethereum address", ethClaim)
+		return zeroAddr, fmt.Errorf("claim %s is not a valid Ethereum address", ethClaim)
 	}
 	return common.HexToAddress(ethAddr), nil
 }
