@@ -35,9 +35,9 @@ func GetUserID(c *fiber.Ctx) string {
 
 const ethClaim = "ethereum_address"
 
-// GetJWTEthAddr tries to extract an Ethereum address out of the users's JWT.
-// If it fails to do so, then it returns a Fiber error that is safe to return
-// to the user.
+// GetJWTEthAddr tries to extract an Ethereum address out of the client's JWT.
+// If it fails to do so, then it returns a Fiber error that is safe and appropriate
+// to return to the client.
 func GetJWTEthAddr(c *fiber.Ctx) (common.Address, error) {
 	token := c.Locals("user").(*jwt.Token)
 	claims := token.Claims.(jwt.MapClaims) // These can't fail!
