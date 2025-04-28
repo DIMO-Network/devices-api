@@ -359,9 +359,10 @@ func (nc *NFTController) handleEnqueueCommand(c *fiber.Ctx, commandPath string) 
 		return fiber.NewError(fiber.StatusConflict, "Integration is not capable of this command.")
 	}
 
-	// This correctly handles md.Commands.Enabled being nil.
-	if (integration.Vendor != constants.TeslaVendor || commandPath != "charge/start" && commandPath != "charge/stop") && !slices.Contains(md.Commands.Enabled, commandPath) {
-		return fiber.NewError(fiber.StatusConflict, "Integration is not capable of this command with this device.")
+	if (md.Commands == nil || !slices.Contains(md.Commands.Enabled, commandPath)) &&
+		(integration.Vendor != constants.TeslaVendor || !slices.Contains([]string{"charge/start", "charge/stop"}, commandPath)) { // Ugly hack for Tesla charge being tacked on for a pilot.
+
+		return fiber.NewError(fiber.StatusBadRequest, "Integration is not capable of this command.")
 	}
 
 	commandFunc, ok := vendorCommandMap[commandPath]

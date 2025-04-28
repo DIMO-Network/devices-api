@@ -106,6 +106,8 @@ type Settings struct {
 
 	// Temporary until compass can have its own vin to tokens mapping
 	CompassPreSharedKey string `yaml:"COMPASS_PRE_SHARED_KEY"`
+
+	EnableSACDMint bool `yaml:"ENABLE_SACD_MINT"`
 }
 
 func (s *Settings) IsProduction() bool {

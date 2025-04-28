@@ -2,7 +2,7 @@ replicaCount: 3
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 1.33.11
+  tag: 1.33.13
 cronJob:
   enabled: false
   schedule: 0 0 1 * *
@@ -77,6 +77,7 @@ env:
   TESLA_REQUIRED_SCOPES: vehicle_device_data,vehicle_location
   ACCOUNTS_API_GRPC_ADDR: accounts-api-prod:8086
   TESLA_ORACLE_GRPC_ADDR: tesla-oracle-prod:8086
+  ENABLE_SACD_MINT: false
 ingress:
   enabled: true
   className: nginx
@@ -84,7 +85,7 @@ ingress:
     nginx.ingress.kubernetes.io/auth-tls-secret: ingress/cf-origin-ca
     nginx.ingress.kubernetes.io/auth-tls-verify-client: 'on'
     nginx.ingress.kubernetes.io/enable-cors: 'true'
-    nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.dimo.zone, https://login.dimo.org"
+    nginx.ingress.kubernetes.io/cors-allow-origin: https://app.dimo.zone, https://login.dimo.org
     nginx.ingress.kubernetes.io/limit-rps: '9'
     external-dns.alpha.kubernetes.io/hostname: devices-api.dimo.zone
   hosts:
