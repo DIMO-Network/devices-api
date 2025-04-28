@@ -421,7 +421,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 		return err
 	}
 
-	query := []qm.QueryMod{
+	devices, err := models.UserDevices(
 		models.UserDeviceWhere.UserID.EQ(userID),
 		qm.Or2(models.UserDeviceWhere.OwnerAddress.EQ(null.BytesFrom(userAddr.Bytes()))),
 		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations),
@@ -429,10 +429,8 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 		qm.Load(models.UserDeviceRels.BurnRequest),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.BurnRequest)),
-		qm.OrderBy(models.UserDeviceColumns.CreatedAt + " DESC"),
-	}
-
-	devices, err := models.UserDevices(query...).All(c.Context(), udc.DBS().Reader)
+		qm.OrderBy(models.UserDeviceColumns.CreatedAt+" DESC"),
+	).All(c.Context(), udc.DBS().Reader)
 	if err != nil {
 		return helpers.ErrorResponseHandler(c, err, fiber.StatusInternalServerError)
 	}
