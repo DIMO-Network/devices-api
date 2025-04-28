@@ -6,7 +6,6 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
-	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
@@ -117,7 +116,6 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 	pdb, container := test.StartContainerDatabase(ctx, t, "../../../migrations")
 	logger := test.Logger()
 
-	usersClient := &test.UsersClient{}
 	middleware := AftermarketDevice(pdb, logger)
 
 	app := test.SetupAppFiber(*logger)
@@ -226,11 +224,6 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 
 			err = c.AftermarketDevice.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 			require.NoError(t, err)
-
-			usersClient.Store = map[string]*pb.User{}
-			u := &pb.User{Id: userID}
-			u.EthereumAddress = c.UserEthAddr
-			usersClient.Store[userID] = u
 
 			t.Log(c.Name)
 			res, err := app.Test(request)
