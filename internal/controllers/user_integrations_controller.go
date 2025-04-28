@@ -1030,12 +1030,9 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse externalId %q as an integer.", teslaID))
 	}
 
-	userAddr, hasAddr, err := udc.userAddrGetter.GetEthAddr(c)
+	userAddr, err := helpers.GetJWTEthAddr(c)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Couldn't retrieve user Ethereum address.")
-	}
-	if !hasAddr {
-		return fiber.NewError(fiber.StatusBadRequest, "No Ethereum address for user.")
+		return err
 	}
 
 	// Yes, yes.

@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
-	"github.com/DIMO-Network/shared/api/users"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gofiber/fiber/v2"
@@ -13,8 +12,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	//d "github.com/dexidp/dex/api/v2"
 )
 
@@ -36,55 +33,22 @@ func GetUserID(c *fiber.Ctx) string {
 	return userID
 }
 
-// GetJWTEthAddr tries to extract an Ethereum address out of the users's JWT.
-// For non-WaaS users this may not be present, in which case the second return
-// value will be false.
-func GetJWTEthAddr(c *fiber.Ctx) (common.Address, bool) {
+const ethClaim = "ethereum_address"
+
+// GetJWTEthAddr tries to extract an Ethereum address out of the client's JWT.
+// If it fails to do so, then it returns a Fiber error that is safe and appropriate
+// to return to the client.
+func GetJWTEthAddr(c *fiber.Ctx) (common.Address, error) {
 	token := c.Locals("user").(*jwt.Token)
-	claims := token.Claims.(jwt.MapClaims)
-	ethAddr, ok := claims["ethereum_address"].(string)
-	if !ok || !common.IsHexAddress(ethAddr) {
-		return zeroAddr, false
+	claims := token.Claims.(jwt.MapClaims) // These can't fail!
+	ethAddr, ok := claims[ethClaim].(string)
+	if !ok {
+		return zeroAddr, fmt.Errorf("claim %s has unexpected type %T", ethClaim, claims[ethClaim])
 	}
-	return common.HexToAddress(ethAddr), true
-}
-
-type EthAddrGetter struct {
-	usersClient users.UserServiceClient
-}
-
-func (g *EthAddrGetter) GetEthAddr(c *fiber.Ctx) (common.Address, bool, error) {
-	addr, ok := GetJWTEthAddr(c)
-	if ok {
-		return addr, true, nil
+	if !common.IsHexAddress(ethAddr) {
+		return zeroAddr, fmt.Errorf("claim %s is not a valid Ethereum address", ethClaim)
 	}
-
-	userID := GetUserID(c)
-	user, err := g.usersClient.GetUser(c.Context(), &users.GetUserRequest{Id: userID})
-	if err != nil {
-		if s, ok := status.FromError(err); ok && s.Code() == codes.NotFound {
-			return zeroAddr, false, nil
-		}
-		return zeroAddr, false, err
-	}
-
-	if user.EthereumAddress == nil || !common.IsHexAddress(*user.EthereumAddress) {
-		return zeroAddr, false, nil
-	}
-
-	return common.HexToAddress(*user.EthereumAddress), true, nil
-}
-
-// GetUserEthAddr
-func CreateUserAddrGetter(usersClient users.UserServiceClient) EthAddrGetter {
-	return EthAddrGetter{
-		usersClient: usersClient,
-	}
-}
-
-// CreateResponse is a generic response with an ID of the created entity
-type CreateResponse struct {
-	ID string `json:"id"`
+	return common.HexToAddress(ethAddr), nil
 }
 
 func GetLogger(c *fiber.Ctx, d *zerolog.Logger) *zerolog.Logger {

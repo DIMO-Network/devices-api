@@ -16,7 +16,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
-	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	smock "github.com/IBM/sarama/mocks"
 	"github.com/ericlagergren/decimal"
@@ -33,9 +32,9 @@ import (
 )
 
 var signature = "0xa4438e5cb667dc63ebd694167ae3ad83585f2834c9b04895dd890f805c4c459a024ed9df1b03872536b4ac0c7720d02cb787884a093cfcde5c3bd7f94657e30c1b"
-var userEthAddress = "0xd64E249A06ee6263d989e43aBFe12748a2506f88"
 var mockProducer *smock.SyncProducer
 var mockUserID = ksuid.New().String()
+var userEthAddress = common.HexToAddress("0xd64E249A06ee6263d989e43aBFe12748a2506f88")
 
 type SyntheticDevicesControllerTestSuite struct {
 	suite.Suite
@@ -45,7 +44,6 @@ type SyntheticDevicesControllerTestSuite struct {
 	mockCtrl              *gomock.Controller
 	app                   *fiber.App
 	deviceDefSvc          *mock_services.MockDeviceDefinitionService
-	userClient            *mock_services.MockUserServiceClient
 	sdc                   SyntheticDevicesController
 	syntheticDeviceSigSvc *mock_services.MockSyntheticWalletInstanceService
 	smartcarClient        *mock_services.MockSmartcarClient
@@ -61,7 +59,6 @@ func (s *SyntheticDevicesControllerTestSuite) SetupTest() {
 	s.mockCtrl = gomock.NewController(s.T())
 
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(s.mockCtrl)
-	s.userClient = mock_services.NewMockUserServiceClient(s.mockCtrl)
 	s.syntheticDeviceSigSvc = mock_services.NewMockSyntheticWalletInstanceService(s.mockCtrl)
 	s.smartcarClient = mock_services.NewMockSmartcarClient(s.mockCtrl)
 
@@ -83,13 +80,13 @@ func (s *SyntheticDevicesControllerTestSuite) SetupTest() {
 
 	logger := test.Logger()
 
-	c := NewSyntheticDevicesController(mockSettings, s.pdb.DBS, logger, s.deviceDefSvc, s.userClient, s.syntheticDeviceSigSvc, client, nil)
+	c := NewSyntheticDevicesController(mockSettings, s.pdb.DBS, logger, s.deviceDefSvc, s.syntheticDeviceSigSvc, client, nil)
 	s.sdc = c
 
 	app := test.SetupAppFiber(*logger)
 
-	app.Post("/v1/user/devices/:userDeviceID/integrations/:integrationID/commands/mint", test.AuthInjectorTestHandler(mockUserID, nil), c.MintSyntheticDevice)
-	app.Get("/v1/user/devices/:userDeviceID/integrations/:integrationID/commands/mint", test.AuthInjectorTestHandler(mockUserID, nil), c.GetSyntheticDeviceMintingPayload)
+	app.Post("/v1/user/devices/:userDeviceID/integrations/:integrationID/commands/mint", test.AuthInjectorTestHandler(mockUserID, &userEthAddress), c.MintSyntheticDevice)
+	app.Get("/v1/user/devices/:userDeviceID/integrations/:integrationID/commands/mint", test.AuthInjectorTestHandler(mockUserID, &userEthAddress), c.GetSyntheticDeviceMintingPayload)
 
 	s.app = app
 }
@@ -113,15 +110,6 @@ func TestSyntheticDevicesControllerTestSuite(t *testing.T) {
 }
 
 func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload() {
-	_, addr, err := test.GenerateWallet()
-	s.Require().NoError(err)
-
-	email := "some@email.com"
-	eth := addr.Hex()
-
-	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &pb.UserReferrer{})
-	s.userClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: mockUserID}).Return(user, nil)
-
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), "ford_escape_2020").Return(&grpc.GetDeviceDefinitionItemResponse{
@@ -137,7 +125,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
 
 	udID := ksuid.New().String()
-	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, 57, s.pdb)
+	test.SetupCreateVehicleNFTForMiddleware(s.T(), userEthAddress, mockUserID, udID, 57, s.pdb)
 	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, integration.Id, s.pdb)
 
 	request := test.BuildRequest("GET", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, integration.Id), "")
@@ -155,74 +143,14 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 	s.JSONEq(string(body), string(expectedRespJSON))
 }
 
-func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload_UserDetailsError() {
-	_, addr, err := test.GenerateWallet()
-	s.Require().NoError(err)
-
-	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(nil, errors.New("User not found"))
-
-	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
-
-	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
-
-	udID := ksuid.New().String()
-	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, 57, s.pdb)
-	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, integration.Id, s.pdb)
-
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, integration.Id), "")
-	response, err := s.app.Test(request)
-	s.Require().NoError(err)
-
-	body, _ := io.ReadAll(response.Body)
-
-	assert.Equal(s.T(), fiber.StatusInternalServerError, response.StatusCode)
-	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"User not found"}`, fiber.StatusInternalServerError)), body)
-}
-
-func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload_NoEthereumAddressForUser() {
-	_, addr, err := test.GenerateWallet()
-	s.Require().NoError(err)
-
-	email := "some@email.com"
-
-	user := test.BuildGetUserGRPC(mockUserID, &email, nil, &pb.UserReferrer{})
-	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
-
-	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
-
-	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
-
-	udID := ksuid.New().String()
-	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, 57, s.pdb)
-	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, integration.Id, s.pdb)
-
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, integration.Id), "")
-	response, err := s.app.Test(request)
-	s.Require().NoError(err)
-
-	body, _ := io.ReadAll(response.Body)
-
-	s.Equal(fiber.StatusUnauthorized, response.StatusCode)
-	s.JSONEq(`{"code":401,"message":"User does not have an Ethereum address."}`, string(body))
-}
-
 func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload_GetIntegrationFailed() {
-	_, addr, err := test.GenerateWallet()
-	s.Require().NoError(err)
-
-	email := "some@email.com"
-	eth := addr.Hex()
-
-	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &pb.UserReferrer{})
-	s.userClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: mockUserID}).Return(user, nil)
-
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(nil, errors.New("could not find integration"))
 
 	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
 
 	udID := ksuid.New().String()
-	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, 57, s.pdb)
+	test.SetupCreateVehicleNFTForMiddleware(s.T(), userEthAddress, mockUserID, udID, 57, s.pdb)
 	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, integration.Id, s.pdb)
 
 	request := test.BuildRequest("GET", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, integration.Id), "")
@@ -236,15 +164,6 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 }
 
 func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload_VehicleNodeNotExist() {
-	_, addr, err := test.GenerateWallet()
-	s.Require().NoError(err)
-
-	email := "some@email.com"
-	eth := addr.Hex()
-
-	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &pb.UserReferrer{})
-	s.userClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: mockUserID}).Return(user, nil)
-
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 
 	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
@@ -258,20 +177,11 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 	body, _ := io.ReadAll(response.Body)
 
 	assert.Equal(s.T(), fiber.StatusNotFound, response.StatusCode)
-	assert.Equal(s.T(), []byte(fmt.Sprintf(`{"code":%d,"message":"No vehicle with that id found."}`, fiber.StatusNotFound)), body)
+	assert.Equal(s.T(), fmt.Sprintf(`{"code":%d,"message":"No vehicle with that id found."}`, fiber.StatusNotFound), string(body))
 }
 
 func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceSmartcar() {
-	_, addr, err := test.GenerateWallet()
-	s.Require().NoError(err)
-
-	email := "some@email.com"
-	eth := userEthAddress
-	// addr := common.HexToAddress(userEthAddress)
 	deviceEthAddr := common.HexToAddress("11")
-
-	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &pb.UserReferrer{})
-	s.userClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: mockUserID}).Return(user, nil)
 
 	integration := test.BuildIntegrationForGRPCRequest(1, "SmartCar")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
@@ -279,7 +189,7 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceSmartcar()
 	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
 
 	udID := ksuid.New().String()
-	test.SetupCreateVehicleNFTForMiddleware(s.T(), *addr, mockUserID, udID, 57, s.pdb)
+	test.SetupCreateVehicleNFTForMiddleware(s.T(), userEthAddress, mockUserID, udID, 57, s.pdb)
 	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, integration.Id, s.pdb)
 
 	vehicleSig := common.BytesToHash(common.HexToAddress("20").Bytes()).Bytes()
@@ -370,12 +280,6 @@ func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayl
 	s.T().Skip()
 	_, addr, err := test.GenerateWallet()
 	s.Require().NoError(err)
-
-	email := "some@email.com"
-	eth := addr.Hex()
-
-	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &pb.UserReferrer{})
-	s.userClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: mockUserID}).Return(user, nil)
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)

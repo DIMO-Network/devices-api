@@ -6,7 +6,6 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
-	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
@@ -26,22 +25,13 @@ func TestUserDeviceOwnerMiddleware(t *testing.T) {
 	userDeviceID1 := ksuid.New().String()
 	userDeviceID2 := ksuid.New().String()
 
+	addr := common.HexToAddress(userAddr)
+
 	ctx := context.Background()
 	pdb, container := test.StartContainerDatabase(ctx, t, "../../../migrations")
 	logger := test.Logger()
 
-	usersClient := &test.UsersClient{}
-	middleware := UserDevice(pdb, usersClient, logger)
-
-	usersClient.Store = map[string]*pb.User{}
-	usersClient.Store[userID] = &pb.User{
-		Id:              userID,
-		EthereumAddress: &userAddr,
-	}
-	usersClient.Store[otherUserID] = &pb.User{
-		Id:              otherUserID,
-		EthereumAddress: nil,
-	}
+	middleware := UserDevice(pdb, logger)
 
 	ud := []models.UserDevice{
 		{
@@ -104,7 +94,7 @@ func TestUserDeviceOwnerMiddleware(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
 			app := test.SetupAppFiber(*logger)
-			app.Get("/:userDeviceID", test.AuthInjectorTestHandler(c.UserID, nil), middleware, func(c *fiber.Ctx) error {
+			app.Get("/:userDeviceID", test.AuthInjectorTestHandler(c.UserID, &addr), middleware, func(c *fiber.Ctx) error {
 				logger := c.Locals("logger").(*zerolog.Logger)
 				logger.Info().Msg("Omega croggers.")
 				return nil
@@ -128,11 +118,12 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 	pdb, container := test.StartContainerDatabase(ctx, t, "../../../migrations")
 	logger := test.Logger()
 
-	usersClient := &test.UsersClient{}
-	middleware := AftermarketDevice(pdb, usersClient, logger)
+	middleware := AftermarketDevice(pdb, logger)
+
+	addr := common.HexToAddress(userAddr)
 
 	app := test.SetupAppFiber(*logger)
-	app.Get("/:serial", test.AuthInjectorTestHandler(userID, nil), middleware, func(c *fiber.Ctx) error {
+	app.Get("/:serial", test.AuthInjectorTestHandler(userID, &addr), middleware, func(c *fiber.Ctx) error {
 		logger := c.Locals("logger").(*zerolog.Logger)
 		logger.Info().Msg("Omega croggers.")
 		return nil
@@ -237,11 +228,6 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 
 			err = c.AftermarketDevice.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 			require.NoError(t, err)
-
-			usersClient.Store = map[string]*pb.User{}
-			u := &pb.User{Id: userID}
-			u.EthereumAddress = c.UserEthAddr
-			usersClient.Store[userID] = u
 
 			t.Log(c.Name)
 			res, err := app.Test(request)

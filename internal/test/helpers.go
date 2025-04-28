@@ -37,9 +37,6 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 const testDbName = "devices_api"
@@ -385,18 +382,6 @@ func SetupCreateUserDeviceAPIIntegration(t *testing.T, autoPiUnitID, externalID,
 
 var MkAddr = func(i int) common.Address {
 	return common.BigToAddress(big.NewInt(int64(i)))
-}
-
-type UsersClient struct {
-	Store map[string]*pb.User
-}
-
-func (c *UsersClient) GetUser(_ context.Context, in *pb.GetUserRequest, _ ...grpc.CallOption) (*pb.User, error) {
-	u, ok := c.Store[in.Id]
-	if !ok {
-		return nil, status.Error(codes.NotFound, "No user with that id found.")
-	}
-	return u, nil
 }
 
 func SetupCreateAutoPiJob(t *testing.T, jobID, deviceID, cmd, userDeviceID, state, commandResult string, pdb db.Store) *models.AutopiJob {
