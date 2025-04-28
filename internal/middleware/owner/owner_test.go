@@ -30,18 +30,7 @@ func TestUserDeviceOwnerMiddleware(t *testing.T) {
 	pdb, container := test.StartContainerDatabase(ctx, t, "../../../migrations")
 	logger := test.Logger()
 
-	usersClient := &test.UsersClient{}
-	middleware := UserDevice(pdb, usersClient, logger)
-
-	usersClient.Store = map[string]*pb.User{}
-	usersClient.Store[userID] = &pb.User{
-		Id:              userID,
-		EthereumAddress: &userAddr,
-	}
-	usersClient.Store[otherUserID] = &pb.User{
-		Id:              otherUserID,
-		EthereumAddress: nil,
-	}
+	middleware := UserDevice(pdb, logger)
 
 	ud := []models.UserDevice{
 		{
@@ -129,7 +118,7 @@ func TestAutoPiOwnerMiddleware(t *testing.T) {
 	logger := test.Logger()
 
 	usersClient := &test.UsersClient{}
-	middleware := AftermarketDevice(pdb, usersClient, logger)
+	middleware := AftermarketDevice(pdb, logger)
 
 	app := test.SetupAppFiber(*logger)
 	app.Get("/:serial", test.AuthInjectorTestHandler(userID, nil), middleware, func(c *fiber.Ctx) error {

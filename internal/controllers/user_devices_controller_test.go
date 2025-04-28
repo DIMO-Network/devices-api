@@ -24,7 +24,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
-	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/DIMO-Network/shared/redis/mocks"
 	"github.com/ethereum/go-ethereum/common"
@@ -67,7 +66,6 @@ type UserDevicesControllerTestSuite struct {
 	scClient        *mock_services.MockSmartcarClient
 	redisClient     *mocks.MockCacheService
 	autoPiSvc       *mock_services.MockAutoPiAPIService
-	usersClient     *mock_services.MockUserServiceClient
 	natsService     *services.NATSService
 	natsServer      *server.Server
 	userDeviceSvc   *mock_services.MockUserDeviceService
@@ -93,7 +91,6 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	deviceDefinitionIngest := mock_services.NewMockDeviceDefinitionRegistrar(mockCtrl)
 	s.redisClient = mocks.NewMockCacheService(mockCtrl)
 	s.autoPiSvc = mock_services.NewMockAutoPiAPIService(mockCtrl)
-	s.usersClient = mock_services.NewMockUserServiceClient(mockCtrl)
 	s.natsService, s.natsServer, err = mock_services.NewMockNATSService(natsStreamName)
 	s.userDeviceSvc = mock_services.NewMockUserDeviceService(mockCtrl)
 	if err != nil {
@@ -104,7 +101,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	testUserID2 := "3232451"
 	s.testUserEthAddr = common.HexToAddress("0x1231231231231231231231231231231231231231")
 	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod", CompassPreSharedKey: "psk-compass"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaTaskService, nil, new(shared.ROT13Cipher), s.autoPiSvc,
-		autoPiIngest, deviceDefinitionIngest, nil, nil, s.redisClient, nil, s.usersClient, s.natsService, nil, s.userDeviceSvc, nil, nil, nil)
+		autoPiIngest, deviceDefinitionIngest, nil, nil, s.redisClient, nil, s.natsService, nil, s.userDeviceSvc, nil, nil, nil)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID, nil), c.RegisterDeviceForUser)
 	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID, &s.testUserEthAddr), c.RegisterDeviceForUserFromVIN)
@@ -695,7 +692,6 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevices() {
 	ud2 := test.SetupCreateUserDeviceWithDeviceID(s.T(), userID2, deviceID2, dd[0].Id, nil, "", s.pdb)
 	_ = test.SetupCreateVehicleNFT(s.T(), ud2, big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
 
-	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].Id).Times(2).Return(dd[0], nil)
 
@@ -739,7 +735,6 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
 
 	_ = test.SetupCreateVehicleNFT(s.T(), ud, big.NewInt(1), null.BytesFrom(common.Hex2Bytes(addr)), s.pdb)
 
-	s.usersClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: s.testUserID}).Return(&pb.User{Id: s.testUserID, EthereumAddress: &addr}, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrations(gomock.Any()).Return([]*ddgrpc.Integration{integration}, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].Id).Times(1).Return(dd[0], nil)
 

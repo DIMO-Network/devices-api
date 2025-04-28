@@ -16,7 +16,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
-	pb "github.com/DIMO-Network/shared/api/users"
 	"github.com/DIMO-Network/shared/db"
 	smock "github.com/IBM/sarama/mocks"
 	"github.com/ericlagergren/decimal"
@@ -45,7 +44,6 @@ type SyntheticDevicesControllerTestSuite struct {
 	mockCtrl              *gomock.Controller
 	app                   *fiber.App
 	deviceDefSvc          *mock_services.MockDeviceDefinitionService
-	userClient            *mock_services.MockUserServiceClient
 	sdc                   SyntheticDevicesController
 	syntheticDeviceSigSvc *mock_services.MockSyntheticWalletInstanceService
 	smartcarClient        *mock_services.MockSmartcarClient
@@ -61,7 +59,6 @@ func (s *SyntheticDevicesControllerTestSuite) SetupTest() {
 	s.mockCtrl = gomock.NewController(s.T())
 
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(s.mockCtrl)
-	s.userClient = mock_services.NewMockUserServiceClient(s.mockCtrl)
 	s.syntheticDeviceSigSvc = mock_services.NewMockSyntheticWalletInstanceService(s.mockCtrl)
 	s.smartcarClient = mock_services.NewMockSmartcarClient(s.mockCtrl)
 
@@ -83,7 +80,7 @@ func (s *SyntheticDevicesControllerTestSuite) SetupTest() {
 
 	logger := test.Logger()
 
-	c := NewSyntheticDevicesController(mockSettings, s.pdb.DBS, logger, s.deviceDefSvc, s.userClient, s.syntheticDeviceSigSvc, client, nil)
+	c := NewSyntheticDevicesController(mockSettings, s.pdb.DBS, logger, s.deviceDefSvc, s.syntheticDeviceSigSvc, client, nil)
 	s.sdc = c
 
 	app := test.SetupAppFiber(*logger)
@@ -115,12 +112,6 @@ func TestSyntheticDevicesControllerTestSuite(t *testing.T) {
 func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload() {
 	_, addr, err := test.GenerateWallet()
 	s.Require().NoError(err)
-
-	email := "some@email.com"
-	eth := addr.Hex()
-
-	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &pb.UserReferrer{})
-	s.userClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: mockUserID}).Return(user, nil)
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
@@ -159,8 +150,6 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 	_, addr, err := test.GenerateWallet()
 	s.Require().NoError(err)
 
-	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(nil, errors.New("User not found"))
-
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 
 	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
@@ -182,11 +171,6 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload_NoEthereumAddressForUser() {
 	_, addr, err := test.GenerateWallet()
 	s.Require().NoError(err)
-
-	email := "some@email.com"
-
-	user := test.BuildGetUserGRPC(mockUserID, &email, nil, &pb.UserReferrer{})
-	s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 
@@ -210,12 +194,6 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 	_, addr, err := test.GenerateWallet()
 	s.Require().NoError(err)
 
-	email := "some@email.com"
-	eth := addr.Hex()
-
-	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &pb.UserReferrer{})
-	s.userClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: mockUserID}).Return(user, nil)
-
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(nil, errors.New("could not find integration"))
 
@@ -236,15 +214,6 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 }
 
 func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload_VehicleNodeNotExist() {
-	_, addr, err := test.GenerateWallet()
-	s.Require().NoError(err)
-
-	email := "some@email.com"
-	eth := addr.Hex()
-
-	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &pb.UserReferrer{})
-	s.userClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: mockUserID}).Return(user, nil)
-
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 
 	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
@@ -265,13 +234,8 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceSmartcar()
 	_, addr, err := test.GenerateWallet()
 	s.Require().NoError(err)
 
-	email := "some@email.com"
-	eth := userEthAddress
 	// addr := common.HexToAddress(userEthAddress)
 	deviceEthAddr := common.HexToAddress("11")
-
-	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &pb.UserReferrer{})
-	s.userClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: mockUserID}).Return(user, nil)
 
 	integration := test.BuildIntegrationForGRPCRequest(1, "SmartCar")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
@@ -370,12 +334,6 @@ func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayl
 	s.T().Skip()
 	_, addr, err := test.GenerateWallet()
 	s.Require().NoError(err)
-
-	email := "some@email.com"
-	eth := addr.Hex()
-
-	user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &pb.UserReferrer{})
-	s.userClient.EXPECT().GetUser(gomock.Any(), &pb.GetUserRequest{Id: mockUserID}).Return(user, nil)
 
 	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
