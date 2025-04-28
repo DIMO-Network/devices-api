@@ -83,7 +83,6 @@ type UserDevicesController struct {
 	teslaFleetAPISvc          services.TeslaFleetAPIService
 	ipfsSvc                   *ipfs.IPFS
 	clickHouseConn            clickhouse.Conn
-	userAddrGetter            helpers.EthAddrGetter
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -163,7 +162,6 @@ func NewUserDevicesController(settings *config.Settings,
 		userDeviceSvc:             userDeviceSvc,
 		teslaFleetAPISvc:          teslaFleetAPISvc,
 		ipfsSvc:                   ipfsSvc,
-		userAddrGetter:            helpers.EthAddrGetter{},
 		clickHouseConn:            chConn,
 	}
 }
@@ -418,7 +416,7 @@ func integrationIDToCHSource(id string) []string {
 func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 	userID := helpers.GetUserID(c)
 
-	userAddr, err := udc.userAddrGetter.GetEthAddr(c)
+	userAddr, err := helpers.GetJWTEthAddr(c)
 	if err != nil {
 		return err
 	}
@@ -556,7 +554,7 @@ func (udc *UserDevicesController) GetUserDevices(c *fiber.Ctx) error {
 func (udc *UserDevicesController) GetSharedDevices(c *fiber.Ctx) error {
 	// todo grpc call out to grpc service endpoint in the deviceDefinitionsService udc.deviceDefSvc.GetDeviceDefinitionsByIDs(c.Context(), []string{ "todo"} )
 
-	userAddr, err := udc.userAddrGetter.GetEthAddr(c)
+	userAddr, err := helpers.GetJWTEthAddr(c)
 	if err != nil {
 		return err
 	}
@@ -1894,7 +1892,7 @@ func (udc *UserDevicesController) checkVehicleMint(c *fiber.Ctx, userDevice *mod
 	}
 	makeTokenID := new(big.Int).SetUint64(dd.Make.TokenId)
 
-	userAddr, err := udc.userAddrGetter.GetEthAddr(c)
+	userAddr, err := helpers.GetJWTEthAddr(c)
 	if err != nil {
 		return nil, nil, err
 	}

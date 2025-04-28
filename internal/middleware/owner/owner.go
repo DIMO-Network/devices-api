@@ -25,8 +25,6 @@ var errNotFound = fiber.NewError(fiber.StatusNotFound, "Device not found.")
 //   - Either the user owns the device, or the user's account has an Ethereum address that
 //     owns the corresponding NFT.
 func UserDevice(dbs db.Store, logger *zerolog.Logger) fiber.Handler {
-	addrGett := helpers.EthAddrGetter{}
-
 	return func(c *fiber.Ctx) error {
 		userID := helpers.GetUserID(c)
 		udi := c.Params("userDeviceID")
@@ -47,7 +45,7 @@ func UserDevice(dbs db.Store, logger *zerolog.Logger) fiber.Handler {
 			return c.Next()
 		}
 
-		userAddr, err := addrGett.GetEthAddr(c)
+		userAddr, err := helpers.GetJWTEthAddr(c)
 		if err != nil {
 			return err
 		}
@@ -74,8 +72,6 @@ func UserDevice(dbs db.Store, logger *zerolog.Logger) fiber.Handler {
 //     the user has an address on file that is either the owner of the AftermarketDevice or the owner
 //     of the paired vehicle.
 func AftermarketDevice(dbs db.Store, logger *zerolog.Logger) fiber.Handler {
-	addrGett := helpers.EthAddrGetter{}
-
 	return func(c *fiber.Ctx) error {
 		userID := helpers.GetUserID(c)
 
@@ -105,7 +101,7 @@ func AftermarketDevice(dbs db.Store, logger *zerolog.Logger) fiber.Handler {
 			return c.Next()
 		}
 
-		userAddr, err := addrGett.GetEthAddr(c)
+		userAddr, err := helpers.GetJWTEthAddr(c)
 		if err != nil {
 			return err
 		}

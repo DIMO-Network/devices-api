@@ -1030,7 +1030,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Couldn't parse externalId %q as an integer.", teslaID))
 	}
 
-	userAddr, err := udc.userAddrGetter.GetEthAddr(c)
+	userAddr, err := helpers.GetJWTEthAddr(c)
 	if err != nil {
 		return err
 	}

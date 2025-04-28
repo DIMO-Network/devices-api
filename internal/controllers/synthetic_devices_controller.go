@@ -40,7 +40,6 @@ type SyntheticDevicesController struct {
 	deviceDefSvc   services.DeviceDefinitionService
 	walletSvc      services.SyntheticWalletInstanceService
 	registryClient registry.Client
-	walletGetter   helpers.EthAddrGetter
 	teslaOracle    pb_oracle.TeslaOracleClient
 }
 
@@ -68,7 +67,6 @@ func NewSyntheticDevicesController(
 		deviceDefSvc:   deviceDefSvc,
 		walletSvc:      walletSvc,
 		registryClient: registryClient,
-		walletGetter:   helpers.EthAddrGetter{},
 		teslaOracle:    teslaOracle,
 	}
 }
@@ -112,7 +110,7 @@ func (sdc *SyntheticDevicesController) getEIP712Mint(integrationID, vehicleNode 
 // @Success     200 {array} signer.TypedData
 // @Router 	    /user/devices/{userDeviceID}/integrations/{integrationID}/commands/mint [get]
 func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber.Ctx) error {
-	userAddr, err := sdc.walletGetter.GetEthAddr(c)
+	userAddr, err := helpers.GetJWTEthAddr(c)
 	if err != nil {
 		return err
 	}
@@ -268,7 +266,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request.")
 	}
 
-	userAddr, err := sdc.walletGetter.GetEthAddr(c)
+	userAddr, err := helpers.GetJWTEthAddr(c)
 	if err != nil {
 		return err
 	}

@@ -36,8 +36,8 @@ func GetUserID(c *fiber.Ctx) string {
 const ethClaim = "ethereum_address"
 
 // GetJWTEthAddr tries to extract an Ethereum address out of the users's JWT.
-// For non-WaaS users this may not be present, in which case the second return
-// value will be false.
+// If it fails to do so, then it returns a Fiber error that is safe to return
+// to the user.
 func GetJWTEthAddr(c *fiber.Ctx) (common.Address, error) {
 	token := c.Locals("user").(*jwt.Token)
 	claims := token.Claims.(jwt.MapClaims) // These can't fail!
@@ -49,18 +49,6 @@ func GetJWTEthAddr(c *fiber.Ctx) (common.Address, error) {
 		return zeroAddr, fmt.Errorf("claim %s was not a valid Ethereum address", ethClaim)
 	}
 	return common.HexToAddress(ethAddr), nil
-}
-
-type EthAddrGetter struct {
-}
-
-func (g *EthAddrGetter) GetEthAddr(c *fiber.Ctx) (common.Address, error) {
-	return GetJWTEthAddr(c)
-}
-
-// CreateResponse is a generic response with an ID of the created entity
-type CreateResponse struct {
-	ID string `json:"id"`
 }
 
 func GetLogger(c *fiber.Ctx, d *zerolog.Logger) *zerolog.Logger {
