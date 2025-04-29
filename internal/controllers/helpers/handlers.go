@@ -52,11 +52,11 @@ func GetJWTEthAddr(c *fiber.Ctx) (common.Address, error) {
 		return zeroAddr, fiber.NewError(fiber.StatusUnauthorized, fmt.Sprintf("Claim %s had unexpected type %T.", ethClaim, ethAddrAny))
 	}
 
-	if !common.IsHexAddress(ethAddr) {
+	if !common.IsHexAddress(ethAddrStr) {
 		return zeroAddr, fiber.NewError(fiber.StatusUnauthorized, fmt.Sprintf("Claim %s is not a valid Ethereum address.", ethClaim))
 	}
 
-	return common.HexToAddress(ethAddr), nil
+	return common.HexToAddress(ethAddrStr), nil
 }
 
 func GetLogger(c *fiber.Ctx, d *zerolog.Logger) *zerolog.Logger {
