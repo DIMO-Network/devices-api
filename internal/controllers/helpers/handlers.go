@@ -41,14 +41,22 @@ const ethClaim = "ethereum_address"
 func GetJWTEthAddr(c *fiber.Ctx) (common.Address, error) {
 	token := c.Locals("user").(*jwt.Token)
 	claims := token.Claims.(jwt.MapClaims) // These can't fail!
-	ethAddr, ok := claims[ethClaim].(string)
+
+	ethAddrAny, ok := claims[ethClaim]
 	if !ok {
-		return zeroAddr, fmt.Errorf("claim %s has unexpected type %T", ethClaim, claims[ethClaim])
+		return zeroAddr, fiber.NewError(fiber.StatusUnauthorized, fmt.Sprintf("Missing claim %s.", ethClaim))
 	}
-	if !common.IsHexAddress(ethAddr) {
-		return zeroAddr, fmt.Errorf("claim %s is not a valid Ethereum address", ethClaim)
+
+	ethAddrStr, ok := ethAddrAny.(string)
+	if !ok {
+		return zeroAddr, fiber.NewError(fiber.StatusUnauthorized, fmt.Sprintf("Claim %s had unexpected type %T.", ethClaim, ethAddrAny))
 	}
-	return common.HexToAddress(ethAddr), nil
+
+	if !common.IsHexAddress(ethAddrStr) {
+		return zeroAddr, fiber.NewError(fiber.StatusUnauthorized, fmt.Sprintf("Claim %s is not a valid Ethereum address.", ethClaim))
+	}
+
+	return common.HexToAddress(ethAddrStr), nil
 }
 
 func GetLogger(c *fiber.Ctx, d *zerolog.Logger) *zerolog.Logger {
