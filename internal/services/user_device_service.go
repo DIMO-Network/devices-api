@@ -107,7 +107,7 @@ func (uds *userDeviceService) CreateUserDeviceByOwner(ctx context.Context, defin
 		}
 	}
 
-	tx, err := uds.dbs().Writer.DB.BeginTx(ctx, nil)
+	tx, err := uds.dbs().Writer.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -209,7 +209,7 @@ func (uds *userDeviceService) CreateUserDevice(ctx context.Context, definitionID
 		}
 	}
 
-	tx, err := uds.dbs().Writer.DB.BeginTx(ctx, nil)
+	tx, err := uds.dbs().Writer.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, nil, err
 	}

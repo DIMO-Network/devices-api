@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"strconv"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -39,6 +40,7 @@ type deviceDefinitionService struct {
 	log                 *zerolog.Logger
 	definitionsGRPCAddr string
 	googleMapsAPIKey    string
+	identityAPI         IdentityAPI
 }
 
 func NewDeviceDefinitionService(DBS func() *db.ReaderWriter, log *zerolog.Logger, settings *config.Settings) DeviceDefinitionService {
@@ -47,6 +49,7 @@ func NewDeviceDefinitionService(DBS func() *db.ReaderWriter, log *zerolog.Logger
 		log:                 log,
 		definitionsGRPCAddr: settings.DefinitionsGRPCAddr,
 		googleMapsAPIKey:    settings.GoogleMapsAPIKey,
+		identityAPI:         NewIdentityAPIService(log, settings),
 	}
 }
 
@@ -72,7 +75,7 @@ func (d *deviceDefinitionService) CreateIntegration(ctx context.Context, integra
 }
 
 func (d *deviceDefinitionService) DecodeVIN(ctx context.Context, vin string, model string, year int, countryCode string) (*ddgrpc.DecodeVinResponse, error) {
-	if (len(vin) >= 13 && len(vin) <= 17) == false {
+	if len(vin) < 13 || len(vin) > 17 {
 		return nil, errors.New("VIN must be 17 chars")
 	}
 
@@ -193,19 +196,40 @@ func (d *deviceDefinitionService) GetIntegrationByVendor(ctx context.Context, ve
 	return integration, nil
 }
 
-func (d *deviceDefinitionService) GetDeviceDefinitionBySlug(ctx context.Context, definitionID string) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
+func (d *deviceDefinitionService) GetDeviceDefinitionBySlug(_ context.Context, definitionID string) (*ddgrpc.GetDeviceDefinitionItemResponse, error) {
 	if len(definitionID) == 0 {
 		return nil, errors.New("Definition ID is required")
 	}
-	definitionsClient, conn, err := d.getDeviceDefsGrpcClient()
+	def, err := d.identityAPI.GetDefinition(definitionID)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 
-	return definitionsClient.GetDeviceDefinitionBySlug(ctx, &ddgrpc.GetDeviceDefinitionBySlugRequest{
-		Slug: definitionID,
-	})
+	attrs := make([]*ddgrpc.DeviceTypeAttribute, len(def.Attributes))
+	for i, attribute := range def.Attributes {
+		attrs[i] = &ddgrpc.DeviceTypeAttribute{
+			Name:  attribute.Name,
+			Value: attribute.Value,
+		}
+	}
+
+	return &ddgrpc.GetDeviceDefinitionItemResponse{
+		DeviceDefinitionId: def.LegacyID,
+		Name:               def.Manufacturer.Name + " " + def.Model + strconv.Itoa(def.Year),
+		ImageUrl:           def.ImageURI,
+		Verified:           true,
+		DeviceIntegrations: nil,
+		Make: &ddgrpc.DeviceMake{
+			Name: def.Manufacturer.Name,
+		},
+		DeviceAttributes:   attrs,
+		HardwareTemplateId: "130",
+		NameSlug:           definitionID,
+		Year:               int32(def.Year),
+		Model:              def.Model,
+		Ksuid:              def.LegacyID,
+		Id:                 definitionID,
+	}, nil
 }
 
 // FindDeviceDefinitionByMMY builds and execs query to find device definition for MMY, calling out via gRPC. Includes compatible integrations.

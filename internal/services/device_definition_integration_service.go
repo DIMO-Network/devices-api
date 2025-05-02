@@ -137,7 +137,7 @@ func (d *deviceDefinitionIntegrationService) FindUserDeviceAutoPiIntegration(ctx
 			udai = apiInteg
 		}
 	}
-	if !(udai != nil && udai.ExternalID.Valid) {
+	if udai == nil || !udai.ExternalID.Valid {
 		return nil, nil, fiber.NewError(fiber.StatusBadRequest, "user does not have an autopi integration registered for userDeviceId: "+userDeviceID)
 	}
 	// get metadata for a little later
