@@ -279,7 +279,7 @@ func (s *userDeviceRPCServer) RegisterUserDeviceFromVIN(ctx context.Context, req
 	}
 
 	// attach device def to user
-	tx, err := s.dbs().Writer.DB.BeginTx(ctx, nil)
+	tx, err := s.dbs().Writer.BeginTx(ctx, nil)
 	defer tx.Rollback() // nolint
 	if err != nil {
 		return nil, err

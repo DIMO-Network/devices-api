@@ -1,6 +1,8 @@
 package config
 
 import (
+	"net/url"
+
 	"github.com/DIMO-Network/clickhouse-infra/pkg/connect/config"
 	"github.com/DIMO-Network/shared/db"
 )
@@ -108,6 +110,8 @@ type Settings struct {
 	CompassPreSharedKey string `yaml:"COMPASS_PRE_SHARED_KEY"`
 
 	EnableSACDMint bool `yaml:"ENABLE_SACD_MINT"`
+
+	IdentiyAPIURL url.URL `yaml:"IDENTITY_API_URL"`
 }
 
 func (s *Settings) IsProduction() bool {

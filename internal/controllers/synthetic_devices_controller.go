@@ -202,7 +202,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
 
-	tx, err := sdc.DBS().Writer.DB.BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
+	tx, err := sdc.DBS().Writer.BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return err
 	}

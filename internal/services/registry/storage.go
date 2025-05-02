@@ -105,7 +105,8 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 	if ud := mtr.R.MintRequestUserDevice; ud != nil {
 		for _, logs := range data.Transaction.Logs {
-			if logs.Topics[0] == vehicleNodeMintedWithDeviceDefinition.ID {
+			switch logs.Topics[0] {
+			case vehicleNodeMintedWithDeviceDefinition.ID:
 				var event contracts.RegistryVehicleNodeMintedWithDeviceDefinition
 				err := p.parseLog(&event, vehicleNodeMintedWithDeviceDefinition, logs)
 				if err != nil {
@@ -146,7 +147,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					Int64("vehicleTokenId", event.VehicleId.Int64()).
 					Str("owner", event.Owner.Hex()).
 					Msg("Vehicle minted.")
-			} else if logs.Topics[0] == vehicleNodeMinted.ID {
+			case vehicleNodeMinted.ID:
 				var event contracts.RegistryVehicleNodeMinted
 				err := p.parseLog(&event, vehicleNodeMinted, logs)
 				if err != nil {
