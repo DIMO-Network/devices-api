@@ -121,7 +121,7 @@ env:
   ACCOUNTS_API_GRPC_ADDR: accounts-api-dev:8086
   TESLA_ORACLE_GRPC_ADDR: tesla-oracle-dev:8086
   ENABLE_SACD_MINT: true
-  IDENTITY_API_URL: https://identity-api.dev.dimo.zone/query
+  IDENTITY_API_URL: http://identity-api-dev:8080/query
 service:
   type: ClusterIP
   ports:
