@@ -200,7 +200,6 @@ func (d *deviceDefinitionService) GetDeviceDefinitionBySlug(_ context.Context, d
 	if len(definitionID) == 0 {
 		return nil, errors.New("Definition ID is required")
 	}
-	// todo change this to use identity api
 	def, err := d.identityAPI.GetDefinition(definitionID)
 	if err != nil {
 		return nil, err
