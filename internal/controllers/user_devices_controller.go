@@ -1768,7 +1768,7 @@ func (reg *RegisterUserDevice) Validate() error {
 
 func (reg *RegisterUserDeviceVIN) Validate() error {
 	return validation.ValidateStruct(reg,
-		validation.Field(&reg.VIN, validation.Required, validation.Length(17, 17)),
+		validation.Field(&reg.VIN, validation.Required, validation.Length(13, 17)),
 		validation.Field(&reg.CountryCode, validation.Required, validation.Length(3, 3)),
 	)
 }

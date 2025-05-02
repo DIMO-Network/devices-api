@@ -72,7 +72,7 @@ func (d *deviceDefinitionService) CreateIntegration(ctx context.Context, integra
 }
 
 func (d *deviceDefinitionService) DecodeVIN(ctx context.Context, vin string, model string, year int, countryCode string) (*ddgrpc.DecodeVinResponse, error) {
-	if len(vin) != 17 {
+	if (len(vin) >= 13 && len(vin) <= 17) == false {
 		return nil, errors.New("VIN must be 17 chars")
 	}
 
