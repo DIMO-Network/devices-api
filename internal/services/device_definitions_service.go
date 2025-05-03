@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"github.com/DIMO-Network/shared"
 	"math/big"
 	"strconv"
 
@@ -220,7 +221,9 @@ func (d *deviceDefinitionService) GetDeviceDefinitionBySlug(_ context.Context, d
 		Verified:           true,
 		DeviceIntegrations: nil,
 		Make: &ddgrpc.DeviceMake{
-			Name: def.Manufacturer.Name,
+			Name:     def.Manufacturer.Name,
+			TokenId:  uint64(def.Manufacturer.TokenID),
+			NameSlug: shared.SlugString(def.Manufacturer.Name),
 		},
 		DeviceAttributes:   attrs,
 		HardwareTemplateId: "130",
