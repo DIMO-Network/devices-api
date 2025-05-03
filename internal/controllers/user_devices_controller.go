@@ -175,6 +175,11 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 
 	deviceDefinitionResponse := make([]*ddgrpc.GetDeviceDefinitionItemResponse, len(devices))
 	for i, userDevice := range devices {
+		if userDevice.DefinitionID == "" {
+			tid, _ := userDevice.TokenID.Uint64()
+			udc.log.Error().Str("userDeviceId", userDevice.ID).Uint64("tokenId", tid).Msgf("Device definition ID is empty. %s", userDevice.DefinitionID)
+			return nil, shared.GrpcErrorToFiber(errors.New("device definition ID is empty"), "")
+		}
 		def, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(ctx, userDevice.DefinitionID)
 		if err != nil {
 			udc.log.Err(err).Str("userDeviceId", userDevice.ID).Str("definitionId", userDevice.DefinitionID).Msg("Couldn't resolve device definition for vehicle.")
