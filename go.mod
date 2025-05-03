@@ -3,7 +3,7 @@ module github.com/DIMO-Network/devices-api
 go 1.24.0
 
 require (
-	github.com/DIMO-Network/device-definitions-api v1.2.66
+	github.com/DIMO-Network/device-definitions-api v1.2.94
 	github.com/DIMO-Network/meta-transaction-processor v0.3.2
 	github.com/DIMO-Network/shared v0.12.9
 	github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3
