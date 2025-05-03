@@ -252,6 +252,6 @@ func (u *UserIntegrationAuthController) decodeTeslaVIN(ctx context.Context, vin 
 
 	teslaMake := "Tesla"
 	model := shared.VIN(vin).TeslaModel()
-	// decode vin doesn't return Model, just the ID
+	// key thing that matters here is the ID, this is a reduce payload compared to the full DD payload
 	return &decodeResult{ID: decodeVIN.DefinitionId, Make: teslaMake, Model: model, Year: int(decodeVIN.Year)}, nil
 }
