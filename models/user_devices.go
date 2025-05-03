@@ -27,7 +27,7 @@ import (
 type UserDevice struct {
 	ID                 string            `boil:"id" json:"id" toml:"id" yaml:"id"`
 	UserID             string            `boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
-	DeviceDefinitionID string            `boil:"device_definition_id" json:"device_definition_id" toml:"device_definition_id" yaml:"device_definition_id"`
+	//DeviceDefinitionID string            `boil:"device_definition_id" json:"device_definition_id" toml:"device_definition_id" yaml:"device_definition_id"`
 	VinIdentifier      null.String       `boil:"vin_identifier" json:"vin_identifier,omitempty" toml:"vin_identifier" yaml:"vin_identifier,omitempty"`
 	Name               null.String       `boil:"name" json:"name,omitempty" toml:"name" yaml:"name,omitempty"`
 	CustomImageURL     null.String       `boil:"custom_image_url" json:"custom_image_url,omitempty" toml:"custom_image_url" yaml:"custom_image_url,omitempty"`

@@ -8,9 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"math/big"
-	"net/http"
 	"regexp"
 	"slices"
 	"strconv"
@@ -46,7 +44,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
 	smartcar "github.com/smartcar/go-sdk"
-	"github.com/tidwall/gjson"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/drivers"
@@ -208,7 +205,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 	for _, d := range devices {
 		deviceDefinition, err := filterDeviceDefinition(d.DefinitionID, deviceDefinitionResponse)
 		if err != nil {
-			return nil, fmt.Errorf("user device %s has unknown device definition %s", d.ID, d.DeviceDefinitionID)
+			return nil, fmt.Errorf("user device %s has unknown device definition %s", d.ID, d.DefinitionID)
 		}
 
 		dd, err := NewDeviceDefinitionFromGRPC(deviceDefinition)
@@ -674,29 +671,10 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 		if reg.DeviceDefinitionID == nil {
 			return fiber.NewError(fiber.StatusBadRequest, "definitionId is required")
 		}
-		url := fmt.Sprintf("%s%s", udc.Settings.DeviceDefinitionsGetByKSUIDEndpoint, *reg.DeviceDefinitionID)
-		req, err := http.NewRequest("GET", url, nil)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, errors.Wrap(err, "failed to create request for get device definition").Error())
-		}
-		req.Header.Set("Accept", "application/json")
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			return fmt.Errorf("failed to send request to %s: %v", url, err)
-		}
-		defer resp.Body.Close()
-
-		// Read the response body
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, errors.Wrap(err, "failed to read body to get device definition").Error())
-		}
-		// use gjson to get the new id
-		definitionID = gjson.GetBytes(body, "nameSlug").String()
-
-		if definitionID == "" {
-			udc.log.Error().Msgf("Failed to get device definition nameSlug from dd api response. url: %s response body: %s", url, string(body))
+		if len(strings.Split(*reg.DeviceDefinitionID, "_")) == 3 {
+			definitionID = *reg.DeviceDefinitionID
+		} else {
+			return fiber.NewError(fiber.StatusBadRequest, "invalid deviceDefinitionId, deprecated format:"+*reg.DeviceDefinitionID)
 		}
 	}
 

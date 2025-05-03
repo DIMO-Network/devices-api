@@ -432,7 +432,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTeslaAndUpdateDD() {
 
 	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dd[0], nil)
 
-	err := fixTeslaDeviceDefinition(s.ctx, test.Logger(), s.deviceDefSvc, s.pdb.DBS().Writer.DB, integration, &ud, "5YJRE1A31A1P01234")
+	err := fixTeslaDeviceDefinition(s.ctx, test.Logger(), s.pdb.DBS().Writer.DB, integration, &ud, "5YJRE1A31A1P01234")
 	if err != nil {
 		s.T().Fatalf("Got an error while fixing device definition: %v", err)
 	}

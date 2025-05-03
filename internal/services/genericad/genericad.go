@@ -180,7 +180,8 @@ func (i *Integration) Pair(ctx context.Context, amTokenID, vehicleTokenID *big.I
 	_ = i.ddRegistrar.Register(services.DeviceDefinitionDTO{
 		IntegrationID:      integ.Id,
 		UserDeviceID:       ud.ID,
-		DeviceDefinitionID: ud.DeviceDefinitionID,
+		DeviceDefinitionID: ud.DefinitionID,
+		DefinitionID:       ud.DefinitionID,
 		Make:               def.Make.Name,
 		Model:              def.Model,
 		Year:               int(def.Year),

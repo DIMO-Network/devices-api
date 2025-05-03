@@ -223,7 +223,7 @@ func (u *UserIntegrationAuthController) CompleteOAuthExchange(c *fiber.Ctx) erro
 				Make:               ddRes.Make,
 				Model:              ddRes.Model,
 				Year:               ddRes.Year,
-				DeviceDefinitionID: ddRes.ID,
+				DeviceDefinitionID: ddRes.ID, // this is the definitionId eg. tesla_model-3_2022
 			},
 		})
 	}

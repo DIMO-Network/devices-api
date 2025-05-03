@@ -181,13 +181,12 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
 	s.redisClient.EXPECT().Set(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID), scTokenEnc, time.Hour*2).Return(nil)
 	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].Id, "", "USA", testUserID, &vinny, nil, false).
 		Return(&models.UserDevice{
-			ID:                 ksuid.New().String(),
-			UserID:             testUserID,
-			DeviceDefinitionID: dd[0].DeviceDefinitionId,
-			VinIdentifier:      null.StringFrom(vinny),
-			CountryCode:        null.StringFrom(reg.CountryCode),
-			VinConfirmed:       false,
-			DefinitionID:       dd[0].Id,
+			ID:            ksuid.New().String(),
+			UserID:        testUserID,
+			VinIdentifier: null.StringFrom(vinny),
+			CountryCode:   null.StringFrom(reg.CountryCode),
+			VinConfirmed:  false,
+			DefinitionID:  dd[0].Id,
 		}, dd[0], nil)
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), smartCarIntegrationID).Return(integration, nil)
 	// todo this one isn't getting called...
@@ -348,15 +347,14 @@ func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	s.deviceDefIntSvc.EXPECT().GetAutoPiIntegration(gomock.Any()).Times(1).Return(apInteg, nil)
 	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].Id, deviceStyleID, "USA", s.testUserID, &vinny, &canProtocol, false).Times(1).
 		Return(&models.UserDevice{
-			ID:                 ksuid.New().String(),
-			UserID:             s.testUserID,
-			DeviceDefinitionID: dd[0].Ksuid,
-			DefinitionID:       dd[0].Id,
-			VinIdentifier:      null.StringFrom(vinny),
-			CountryCode:        null.StringFrom("USA"),
-			VinConfirmed:       true,
-			Metadata:           null.JSONFrom([]byte(`{ "powertrainType": "ICE", "canProtocol": "6" }`)),
-			DeviceStyleID:      null.StringFrom(deviceStyleID),
+			ID:            ksuid.New().String(),
+			UserID:        s.testUserID,
+			DefinitionID:  dd[0].Id,
+			VinIdentifier: null.StringFrom(vinny),
+			CountryCode:   null.StringFrom("USA"),
+			VinConfirmed:  true,
+			Metadata:      null.JSONFrom([]byte(`{ "powertrainType": "ICE", "canProtocol": "6" }`)),
+			DeviceStyleID: null.StringFrom(deviceStyleID),
 		}, dd[0], nil)
 
 	request := test.BuildRequest("POST", "/user/devices/fromvin", string(j))
@@ -554,13 +552,12 @@ func (s *UserDevicesControllerTestSuite) TestPostWithExistingDefinitionID() {
 
 	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].Id, "", "USA", s.testUserID, nil, nil, false).Times(1).
 		Return(&models.UserDevice{
-			ID:                 ksuid.New().String(),
-			UserID:             testUserID,
-			DeviceDefinitionID: dd[0].DeviceDefinitionId,
-			DefinitionID:       dd[0].Id,
-			CountryCode:        null.StringFrom("USA"),
-			VinConfirmed:       true,
-			Metadata:           null.JSONFrom([]byte(`{ "powertrainType": "ICE" }`)),
+			ID:           ksuid.New().String(),
+			UserID:       testUserID,
+			DefinitionID: dd[0].Id,
+			CountryCode:  null.StringFrom("USA"),
+			VinConfirmed: true,
+			Metadata:     null.JSONFrom([]byte(`{ "powertrainType": "ICE" }`)),
 		}, dd[0], nil)
 
 	request := test.BuildRequest("POST", "/user/devices", string(j))
@@ -593,13 +590,12 @@ func (s *UserDevicesControllerTestSuite) TestPostWithExistingDeviceDefinitionID(
 
 	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].Id, "", "USA", s.testUserID, nil, nil, false).Times(1).
 		Return(&models.UserDevice{
-			ID:                 ksuid.New().String(),
-			UserID:             testUserID,
-			DeviceDefinitionID: dd[0].DeviceDefinitionId,
-			DefinitionID:       dd[0].Id,
-			CountryCode:        null.StringFrom("USA"),
-			VinConfirmed:       true,
-			Metadata:           null.JSONFrom([]byte(`{ "powertrainType": "ICE" }`)),
+			ID:           ksuid.New().String(),
+			UserID:       testUserID,
+			DefinitionID: dd[0].Id,
+			CountryCode:  null.StringFrom("USA"),
+			VinConfirmed: true,
+			Metadata:     null.JSONFrom([]byte(`{ "powertrainType": "ICE" }`)),
 		}, dd[0], nil)
 
 	request := test.BuildRequest("POST", "/user/devices", string(j))
@@ -788,14 +784,13 @@ func (s *UserDevicesControllerTestSuite) TestDeleteUserDevice_ErrNFTNotBurned() 
 	s.Require().NoError(err)
 
 	ud := models.UserDevice{
-		ID:                 ksuid.New().String(),
-		UserID:             testUserID,
-		DeviceDefinitionID: ksuid.New().String(),
-		DefinitionID:       "ford_escape_2020",
-		CountryCode:        null.StringFrom("USA"),
-		Name:               null.StringFrom("Chungus"),
-		VinConfirmed:       true,
-		VinIdentifier:      null.StringFrom("4Y1SL65848Z411439"),
+		ID:            ksuid.New().String(),
+		UserID:        testUserID,
+		DefinitionID:  "ford_escape_2020",
+		CountryCode:   null.StringFrom("USA"),
+		Name:          null.StringFrom("Chungus"),
+		VinConfirmed:  true,
+		VinIdentifier: null.StringFrom("4Y1SL65848Z411439"),
 	}
 
 	err = ud.Insert(context.Background(), s.pdb.DBS().Writer, boil.Infer())

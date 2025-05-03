@@ -344,17 +344,16 @@ func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userI
 	assert.NoError(t, err)
 
 	ud := models.UserDevice{
-		ID:                 userDeviceID,
-		UserID:             userID,
-		DeviceDefinitionID: "ddID",
-		DefinitionID:       "ford_escape_2020",
-		CountryCode:        null.StringFrom("USA"),
-		Name:               null.StringFrom("Chungus"),
-		VinIdentifier:      null.StringFrom("00000000000000001"),
-		MintRequestID:      null.StringFrom(mint.ID),
-		OwnerAddress:       null.BytesFrom(common.FromHex(addr.String())),
-		VinConfirmed:       true,
-		TokenID:            types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0)),
+		ID:            userDeviceID,
+		UserID:        userID,
+		DefinitionID:  "ford_escape_2020",
+		CountryCode:   null.StringFrom("USA"),
+		Name:          null.StringFrom("Chungus"),
+		VinIdentifier: null.StringFrom("00000000000000001"),
+		MintRequestID: null.StringFrom(mint.ID),
+		OwnerAddress:  null.BytesFrom(common.FromHex(addr.String())),
+		VinConfirmed:  true,
+		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0)),
 	}
 	err = ud.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
 	assert.NoError(t, err)

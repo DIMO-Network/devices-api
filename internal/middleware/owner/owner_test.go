@@ -35,18 +35,16 @@ func TestUserDeviceOwnerMiddleware(t *testing.T) {
 
 	ud := []models.UserDevice{
 		{
-			ID:                 userDeviceID1,
-			UserID:             userID,
-			DeviceDefinitionID: ksuid.New().String(),
-			DefinitionID:       "ford_escape_2020",
-			OwnerAddress:       null.BytesFrom(common.HexToAddress(userAddr).Bytes()),
+			ID:           userDeviceID1,
+			UserID:       userID,
+			DefinitionID: "ford_escape_2020",
+			OwnerAddress: null.BytesFrom(common.HexToAddress(userAddr).Bytes()),
 		},
 		{
-			ID:                 userDeviceID2,
-			UserID:             otherUserID,
-			DeviceDefinitionID: ksuid.New().String(),
-			DefinitionID:       "ford_escape_2020",
-			OwnerAddress:       null.BytesFrom(common.HexToAddress(userAddr).Bytes()),
+			ID:           userDeviceID2,
+			UserID:       otherUserID,
+			DefinitionID: "ford_escape_2020",
+			OwnerAddress: null.BytesFrom(common.HexToAddress(userAddr).Bytes()),
 		},
 	}
 

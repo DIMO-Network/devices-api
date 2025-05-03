@@ -706,12 +706,11 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 	}
 
 	ud := models.UserDevice{
-		ID:                 ksuid.New().String(),
-		UserID:             userID,
-		DeviceDefinitionID: dDef.DeviceDefinitionId,
-		OwnerAddress:       null.BytesFrom(args.Owner.Bytes()),
-		TokenID:            dbtypes.NullIntToDecimal(args.VehicleId),
-		DefinitionID:       dDef.Id,
+		ID:           ksuid.New().String(),
+		UserID:       userID,
+		OwnerAddress: null.BytesFrom(args.Owner.Bytes()),
+		TokenID:      dbtypes.NullIntToDecimal(args.VehicleId),
+		DefinitionID: dDef.Id,
 	}
 
 	if err := ud.Insert(ctx, tx, boil.Infer()); err != nil {
@@ -726,10 +725,9 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 			Timestamp: time.Now(),
 			UserID:    ud.UserID,
 			Device: UserDeviceEventDevice{
-				ID:                 ud.ID,
-				VIN:                ud.VinIdentifier.String,
-				DeviceDefinitionID: ud.DeviceDefinitionID,
-				DefinitionID:       dDef.Id,
+				ID:           ud.ID,
+				VIN:          ud.VinIdentifier.String,
+				DefinitionID: dDef.Id,
 			},
 			NFT: UserDeviceEventNFT{
 				TokenID: args.VehicleId,
