@@ -3,9 +3,10 @@ package services
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/tidwall/gjson"
 	"io"
 	"time"
+
+	"github.com/tidwall/gjson"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/shared"
