@@ -175,18 +175,20 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 
 	deviceDefinitionResponse := make([]*ddgrpc.GetDeviceDefinitionItemResponse, len(devices))
 	for i, userDevice := range devices {
-		if userDevice.DefinitionID == "" {
-			tid := uint64(0)
-			if !userDevice.TokenID.IsZero() {
-				tid, _ = userDevice.TokenID.Uint64()
+		definitionID := userDevice.DefinitionID
+		if definitionID == "" {
+			if len(strings.Split(userDevice.DeviceDefinitionID, "_")) == 3 {
+				definitionID = userDevice.DeviceDefinitionID
 			}
-			udc.log.Error().Str("userDeviceId", userDevice.ID).Uint64("tokenId", tid).Msgf("Device definition ID is empty. %s", userDevice.DefinitionID)
-			return nil, shared.GrpcErrorToFiber(errors.New("device definition ID is empty"), "")
 		}
-		def, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(ctx, userDevice.DefinitionID)
+
+		def, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(ctx, definitionID)
 		if err != nil {
-			udc.log.Err(err).Str("userDeviceId", userDevice.ID).Str("definitionId", userDevice.DefinitionID).Msg("Couldn't resolve device definition for vehicle.")
-			return nil, shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DefinitionID)
+			udc.log.Err(err).Str("userDeviceId", userDevice.ID).
+				Str("definitionId", userDevice.DefinitionID).
+				Str("deviceDefinitionId", userDevice.DeviceDefinitionID).
+				Msg("failed to resolve device definition for vehicle.")
+			return nil, shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+definitionID)
 		}
 		deviceDefinitionResponse[i] = def
 	}
