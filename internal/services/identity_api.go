@@ -2,8 +2,11 @@ package services
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"time"
+
+	"github.com/tidwall/gjson"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/shared"
@@ -54,7 +57,7 @@ func (i *identityAPIService) GetManufacturer(name string) (*Manufacturer, error)
 			Manufacturer Manufacturer `json:"manufacturer"`
 		} `json:"data"`
 	}
-	_, err := i.fetchWithQuery(query, &wrapper)
+	err := i.fetchWithQuery(query, &wrapper)
 	if err != nil {
 		return nil, err
 	}
@@ -87,22 +90,22 @@ func (i *identityAPIService) GetDefinition(definitionID string) (*DeviceDefiniti
 			DeviceDefinition DeviceDefinitionIdentity `json:"deviceDefinition"`
 		} `json:"data"`
 	}
-	bodyBytes, err := i.fetchWithQuery(query, &wrapper)
+	err := i.fetchWithQuery(query, &wrapper)
 	if err != nil {
 		return nil, err
 	}
 	if wrapper.Data.DeviceDefinition.Model == "" {
-		return nil, errors.Wrapf(ErrNotFound, "identity-api did not find device definition with ID: %s. respone: %s", definitionID, string(bodyBytes))
+		return nil, errors.Wrapf(ErrNotFound, "identity-api did not find device definition with ID: %s", definitionID)
 	}
 	return &wrapper.Data.DeviceDefinition, nil
 }
 
-func (i *identityAPIService) fetchWithQuery(query string, result interface{}) ([]byte, error) {
+func (i *identityAPIService) fetchWithQuery(query string, result interface{}) error {
 	// GraphQL request
 	requestPayload := GraphQLRequest{Query: query}
 	payloadBytes, err := json.Marshal(requestPayload)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// POST request
@@ -110,28 +113,31 @@ func (i *identityAPIService) fetchWithQuery(query string, result interface{}) ([
 	if err != nil {
 		i.logger.Err(err).Str("func", "fetchWithQuery").Msgf("request payload: %s", string(payloadBytes))
 		if _, ok := err.(shared.HTTPResponseError); !ok {
-			return nil, errors.Wrapf(err, "error calling identity api from url %s", i.identityAPIURL)
+			return errors.Wrapf(err, "error calling identity api from url %s", i.identityAPIURL)
 		}
 	}
 	defer res.Body.Close() // nolint
 
 	if res.StatusCode == 404 {
-		return nil, ErrNotFound
+		return ErrNotFound
 	}
 	if res.StatusCode == 400 {
-		return nil, ErrBadRequest
+		return ErrBadRequest
 	}
 
 	bodyBytes, err := io.ReadAll(res.Body)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error reading response body from url %s", i.identityAPIURL)
+		return errors.Wrapf(err, "error reading response body from url %s", i.identityAPIURL)
+	}
+	// check for errors first
+	if gjson.ParseBytes(bodyBytes).Get("errors").Exists() {
+		return fmt.Errorf("graphql server error: %s", gjson.ParseBytes(bodyBytes).Get("errors.0.message").String())
 	}
 
 	if err := json.Unmarshal(bodyBytes, result); err != nil {
-		return bodyBytes, err
+		return err
 	}
-	// only reason to return body bytes is for use later on if can't find the information
-	return bodyBytes, nil
+	return nil
 }
 
 type Manufacturer struct {
