@@ -54,7 +54,7 @@ func (i *identityAPIService) GetManufacturer(name string) (*Manufacturer, error)
 			Manufacturer Manufacturer `json:"manufacturer"`
 		} `json:"data"`
 	}
-	err := i.fetchWithQuery(query, &wrapper)
+	_, err := i.fetchWithQuery(query, &wrapper)
 	if err != nil {
 		return nil, err
 	}
@@ -87,22 +87,22 @@ func (i *identityAPIService) GetDefinition(definitionID string) (*DeviceDefiniti
 			DeviceDefinition DeviceDefinitionIdentity `json:"deviceDefinition"`
 		} `json:"data"`
 	}
-	err := i.fetchWithQuery(query, &wrapper)
+	bodyBytes, err := i.fetchWithQuery(query, &wrapper)
 	if err != nil {
 		return nil, err
 	}
 	if wrapper.Data.DeviceDefinition.Model == "" {
-		return nil, errors.Wrapf(ErrNotFound, "identity-api did not find device definition with name: %s", definitionID)
+		return nil, errors.Wrapf(ErrNotFound, "identity-api did not find device definition with ID: %s. respone: %s", definitionID, string(bodyBytes))
 	}
 	return &wrapper.Data.DeviceDefinition, nil
 }
 
-func (i *identityAPIService) fetchWithQuery(query string, result interface{}) error {
+func (i *identityAPIService) fetchWithQuery(query string, result interface{}) ([]byte, error) {
 	// GraphQL request
 	requestPayload := GraphQLRequest{Query: query}
 	payloadBytes, err := json.Marshal(requestPayload)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// POST request
@@ -110,28 +110,28 @@ func (i *identityAPIService) fetchWithQuery(query string, result interface{}) er
 	if err != nil {
 		i.logger.Err(err).Str("func", "fetchWithQuery").Msgf("request payload: %s", string(payloadBytes))
 		if _, ok := err.(shared.HTTPResponseError); !ok {
-			return errors.Wrapf(err, "error calling identity api from url %s", i.identityAPIURL)
+			return nil, errors.Wrapf(err, "error calling identity api from url %s", i.identityAPIURL)
 		}
 	}
 	defer res.Body.Close() // nolint
 
 	if res.StatusCode == 404 {
-		return ErrNotFound
+		return nil, ErrNotFound
 	}
 	if res.StatusCode == 400 {
-		return ErrBadRequest
+		return nil, ErrBadRequest
 	}
 
 	bodyBytes, err := io.ReadAll(res.Body)
 	if err != nil {
-		return errors.Wrapf(err, "error reading response body from url %s", i.identityAPIURL)
+		return nil, errors.Wrapf(err, "error reading response body from url %s", i.identityAPIURL)
 	}
 
 	if err := json.Unmarshal(bodyBytes, result); err != nil {
-		return err
+		return bodyBytes, err
 	}
-
-	return nil
+	// only reason to return body bytes is for use later on if can't find the information
+	return bodyBytes, nil
 }
 
 type Manufacturer struct {
