@@ -92,7 +92,7 @@ func (i *identityAPIService) GetDefinition(definitionID string) (*DeviceDefiniti
 	}
 	err := i.fetchWithQuery(query, &wrapper)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to get %s", definitionID)
 	}
 	if wrapper.Data.DeviceDefinition.Model == "" {
 		return nil, errors.Wrapf(ErrNotFound, "identity-api did not find device definition with ID: %s", definitionID)
