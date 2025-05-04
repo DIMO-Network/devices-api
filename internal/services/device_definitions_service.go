@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"strings"
 
 	"github.com/DIMO-Network/shared"
 
@@ -202,7 +203,8 @@ func (d *deviceDefinitionService) GetDeviceDefinitionBySlug(_ context.Context, d
 	if len(definitionID) == 0 {
 		return nil, errors.New("Definition ID is required")
 	}
-	def, err := d.identityAPI.GetDefinition(definitionID)
+
+	def, err := d.identityAPI.GetDefinition(strings.TrimSpace(definitionID))
 	if err != nil {
 		return nil, err
 	}
