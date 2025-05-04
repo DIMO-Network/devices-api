@@ -760,7 +760,12 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 	// pull dd info again - don't pass it in, as it may have changed
 	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(ctx, ud.DefinitionID)
 	if err2 != nil {
-		logger.Err(err2).Str("deviceDefinitionId", ud.DefinitionID).Msg("failed to retrieve device defintion")
+		tid, _ := ud.TokenID.Uint64()
+		logger.Err(err2).Str("deviceDefinitionId", ud.DeviceDefinitionID).
+			Str("definitionId", ud.DefinitionID).
+			Str("userDeviceId", userDeviceID).
+			Uint64("tokenID", tid).
+			Msg("failed to retrieve device definition")
 	}
 
 	err = udc.eventService.Emit(
