@@ -86,16 +86,16 @@ func populateESRegionData(ctx context.Context, settings *config.Settings, e es.E
 		if !md.ElasticRegionSynced {
 			c := constants.FindCountry(ud.CountryCode.String)
 			if c == nil || c.Region == "" {
-				logger.Error().Msgf("Could not get region from country informaton for - userDeviceID: %s, deviceDefinition: %s", ud.ID, ud.DeviceDefinitionID)
+				logger.Error().Msgf("Could not get region from country informaton for - userDeviceID: %s, definition: %s", ud.ID, ud.DefinitionID)
 				continue
 			}
 
 			dd := services.DeviceDefinitionDTO{
-				DeviceDefinitionID: ud.DeviceDefinitionID,
-				UserDeviceID:       ud.ID,
-				MakeSlug:           d.Make.NameSlug,
-				ModelSlug:          shared.SlugString(d.Model),
-				Region:             c.Region,
+				DefinitionID: ud.DefinitionID,
+				UserDeviceID: ud.ID,
+				MakeSlug:     d.Make.NameSlug,
+				ModelSlug:    shared.SlugString(d.Model),
+				Region:       c.Region,
 			}
 
 			err = e.UpdateDeviceRegionsByQuery(dd, settings.ElasticDeviceStatusIndex)
@@ -107,18 +107,18 @@ func populateESRegionData(ctx context.Context, settings *config.Settings, e es.E
 
 			err = ud.Metadata.Marshal(&md)
 			if err != nil {
-				logger.Error().Msgf("Could not marshal device metadata for, DeviceDefinitionId: %s", ud.DeviceDefinitionID)
+				logger.Error().Msgf("Could not marshal device metadata for, DefinitionId: %s", ud.DefinitionID)
 				continue
 			}
 
 			if _, err := ud.Update(ctx, pdb.DBS().Writer, boil.Infer()); err != nil {
 				logger.Err(err).
-					Str("DeviceDefinitionId", ud.DeviceDefinitionID).
+					Str("DefinitionId", ud.DefinitionID).
 					Msg("Error updating device")
 				continue
 			}
 		} else {
-			logger.Debug().Msgf("Record has already been updated for, DeviceDefinitionId: %s", ud.DeviceDefinitionID)
+			logger.Debug().Msgf("Record has already been updated for, DefinitionId: %s", ud.DefinitionID)
 		}
 	}
 

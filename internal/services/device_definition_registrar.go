@@ -29,6 +29,7 @@ type DeviceDefinitionDTO struct {
 	Region             string
 	MakeSlug           string
 	ModelSlug          string
+	DefinitionID       string
 }
 
 type DeviceDefinitionIDEventData struct {

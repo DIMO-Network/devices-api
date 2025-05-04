@@ -515,11 +515,10 @@ func TestVehicleTransfer(t *testing.T) {
 	_ = mtr.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
 	ud := models.UserDevice{
-		ID:                 ksuid.New().String(),
-		MintRequestID:      null.StringFrom(mtr.ID),
-		OwnerAddress:       null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")),
-		TokenID:            types.NewNullDecimal(decimal.New(5, 0)),
-		DeviceDefinitionID: ksuid.New().String(),
+		ID:            ksuid.New().String(),
+		MintRequestID: null.StringFrom(mtr.ID),
+		OwnerAddress:  null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")),
+		TokenID:       types.NewNullDecimal(decimal.New(5, 0)),
 	}
 	_ = ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
@@ -581,11 +580,10 @@ func Test_NFTPrivileges_Cleared_On_Vehicle_Transfer(t *testing.T) {
 	_ = nftPriv.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
 	ud := models.UserDevice{
-		ID:                 ksuid.New().String(),
-		MintRequestID:      null.StringFrom(mtr.ID),
-		OwnerAddress:       null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")),
-		TokenID:            types.NewNullDecimal(decimal.New(5, 0)),
-		DeviceDefinitionID: ksuid.New().String(),
+		ID:            ksuid.New().String(),
+		MintRequestID: null.StringFrom(mtr.ID),
+		OwnerAddress:  null.BytesFrom(common.FromHex("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5")),
+		TokenID:       types.NewNullDecimal(decimal.New(5, 0)),
 	}
 	_ = ud.Insert(ctx, pdb.DBS().Writer, boil.Infer())
 
@@ -844,7 +842,7 @@ func Test_VehicleNodeMintedWithDeviceDefinition_NoMtx(t *testing.T) {
 	).One(ctx, pdb.DBS().Reader)
 	require.NoError(err)
 
-	require.Equal(deviceDefID, ud.DeviceDefinitionID)
+	require.Equal(deviceDefID, ud.DefinitionID)
 	require.Equal(owner.Hex(), common.BytesToAddress(ud.OwnerAddress.Bytes).Hex())
 
 	userID, err := proto.Marshal(&dex.IDTokenSubject{
@@ -890,10 +888,9 @@ func TestBurnSyntheticDevice(t *testing.T) {
 	}
 
 	ud := models.UserDevice{
-		ID:                 ksuid.New().String(),
-		UserID:             "xdd",
-		DeviceDefinitionID: ksuid.New().String(),
-		TokenID:            types.NewNullDecimal(decimal.New(int64(vehicleID), 0)),
+		ID:      ksuid.New().String(),
+		UserID:  "xdd",
+		TokenID: types.NewNullDecimal(decimal.New(int64(vehicleID), 0)),
 	}
 	err = ud.Insert(ctx, pdb.DBS().Reader, boil.Infer())
 	require.NoError(t, err)

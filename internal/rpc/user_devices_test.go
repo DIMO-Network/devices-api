@@ -38,18 +38,17 @@ func populateDB(ctx context.Context, pdb db.Store) (string, error) {
 	_, childWallet, _ := test.GenerateWallet()
 
 	ud := models.UserDevice{
-		ID:                 ksuid.New().String(),
-		UserID:             userID,
-		DeviceDefinitionID: dd[0].DeviceDefinitionId,
-		DefinitionID:       dd[0].Id,
-		VinIdentifier:      null.StringFrom(vin),
-		CountryCode:        null.StringFrom("USA"),
-		VinConfirmed:       true,
-		Metadata:           null.JSONFrom([]byte(`{ "powertrainType": "ICE", "canProtocol": "6" }`)),
-		DeviceStyleID:      null.StringFrom(deviceStyleID),
-		TokenID:            types.NewNullDecimal(decimal.New(4, 0)),
-		OwnerAddress:       null.BytesFrom(common.BigToAddress(big.NewInt(7)).Bytes()),
-		MintRequestID:      null.StringFrom(ksuid.New().String()),
+		ID:            ksuid.New().String(),
+		UserID:        userID,
+		DefinitionID:  dd[0].Id,
+		VinIdentifier: null.StringFrom(vin),
+		CountryCode:   null.StringFrom("USA"),
+		VinConfirmed:  true,
+		Metadata:      null.JSONFrom([]byte(`{ "powertrainType": "ICE", "canProtocol": "6" }`)),
+		DeviceStyleID: null.StringFrom(deviceStyleID),
+		TokenID:       types.NewNullDecimal(decimal.New(4, 0)),
+		OwnerAddress:  null.BytesFrom(common.BigToAddress(big.NewInt(7)).Bytes()),
+		MintRequestID: null.StringFrom(ksuid.New().String()),
 	}
 
 	ad := models.AftermarketDevice{

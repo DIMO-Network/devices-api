@@ -336,7 +336,7 @@ func (s *userDeviceRPCServer) GetUserDeviceByAutoPIUnitId(ctx context.Context, r
 
 	result := &pb.UserDeviceAutoPIUnitResponse{
 		UserDeviceId:       dbDevice.UserDeviceID,
-		DeviceDefinitionId: dbDevice.R.UserDevice.DeviceDefinitionID,
+		DeviceDefinitionId: dbDevice.R.UserDevice.DefinitionID,
 		UserId:             dbDevice.R.UserDevice.UserID,
 	}
 
@@ -388,7 +388,7 @@ func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDe
 	out := &pb.UserDevice{
 		Id:                 ud.ID,
 		UserId:             ud.UserID,
-		DeviceDefinitionId: ud.DeviceDefinitionID, //nolint
+		DeviceDefinitionId: ud.DefinitionID, //nolint
 		DeviceStyleId:      ud.DeviceStyleID.Ptr(),
 		OptedInAt:          nullTimeToPB(ud.OptedInAt),
 		Integrations:       make([]*pb.UserDeviceIntegration, len(ud.R.UserDeviceAPIIntegrations)),

@@ -131,7 +131,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 						Device: services.UserDeviceEventDevice{
 							ID:                 ud.ID,
 							VIN:                ud.VinIdentifier.String,
-							DeviceDefinitionID: ud.DeviceDefinitionID,
+							DeviceDefinitionID: ud.DefinitionID,
 							DefinitionID:       ud.DefinitionID,
 						},
 						NFT: services.UserDeviceEventNFT{
