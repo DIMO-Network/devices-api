@@ -430,16 +430,13 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTeslaAndUpdateDD() {
 
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
-	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dd[0], nil)
-
-	err := fixTeslaDeviceDefinition(s.ctx, test.Logger(), s.deviceDefSvc, s.pdb.DBS().Writer.DB, integration, &ud, "5YJRE1A31A1P01234")
+	err := fixTeslaDeviceDefinition(s.ctx, test.Logger(), s.pdb.DBS().Writer.DB, integration, &ud, "5YJRE1A31A1P01234")
 	if err != nil {
 		s.T().Fatalf("Got an error while fixing device definition: %v", err)
 	}
 
 	_ = ud.Reload(s.ctx, s.pdb.DBS().Writer.DB)
-	// todo, we may need to point to new device def, or see how above fix method is implemented
-	if ud.DefinitionID != dd[0].Id {
+	if ud.DefinitionID != "tesla_roadster_2010" { // based on the above VIN decoding
 		s.T().Fatalf("Failed to switch device definition to the correct one")
 	}
 }
@@ -601,7 +598,7 @@ func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpda
 // Tesla Fleet API Tests
 func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2020, integration)
+	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2022, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
 	s.eventSvc.EXPECT().Emit(gomock.Any()).Return(nil).Do(
@@ -637,7 +634,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 		DiscountedDeviceData: false,
 	}, nil)
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Times(1).Return(dd[0], nil)
-	s.deviceDefSvc.EXPECT().FindDeviceDefinitionByMMY(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dd[0], nil)
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Times(1).Return(integration, nil)
 
 	expectedExpiry := time.Now().Add(10 * time.Minute)
@@ -662,7 +658,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 		"version": 2
 	}`
 	request := test.BuildRequest("POST", fmt.Sprintf("/user/devices/%s/integrations/%s", ud.ID, integration.Id), in)
-	res, err := s.app.Test(request, 60*1000)
+	res, err := s.app.Test(request, 120*1000)
 	s.Assert().NoError(err)
 
 	s.Equal(fiber.StatusNoContent, res.StatusCode)

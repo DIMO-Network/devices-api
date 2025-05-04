@@ -757,8 +757,14 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 	}
 
 	ud := udai.R.UserDevice
+	definitionID := ud.DefinitionID
+	if definitionID == "" {
+		if len(strings.Split(ud.DeviceDefinitionID, "_")) == 3 {
+			definitionID = ud.DeviceDefinitionID
+		}
+	}
 	// pull dd info again - don't pass it in, as it may have changed
-	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(ctx, ud.DefinitionID)
+	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(ctx, definitionID)
 	if err2 != nil {
 		tid, _ := ud.TokenID.Uint64()
 		logger.Err(err2).Str("deviceDefinitionId", ud.DeviceDefinitionID).
@@ -1090,7 +1096,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		}
 	}
 
-	if err := fixTeslaDeviceDefinition(c.Context(), logger, udc.DeviceDefSvc, tx, integ, ud, v.VIN); err != nil {
+	if err := fixTeslaDeviceDefinition(c.Context(), logger, tx, integ, ud, v.VIN); err != nil {
 		return fmt.Errorf("correcting device definition: %w", err)
 	}
 
@@ -1183,23 +1189,19 @@ func (udc *UserDevicesController) getTeslaVehicle(ctx context.Context, token str
 //
 // We do not attempt to create any new entries in integrations, device_definitions, or
 // device_integrations. This should all be handled elsewhere for Tesla.
-func fixTeslaDeviceDefinition(ctx context.Context, logger *zerolog.Logger, ddSvc services.DeviceDefinitionService, exec boil.ContextExecutor, _ *ddgrpc.Integration, ud *models.UserDevice, vin string) error {
+func fixTeslaDeviceDefinition(ctx context.Context, logger *zerolog.Logger, exec boil.ContextExecutor, _ *ddgrpc.Integration, ud *models.UserDevice, vin string) error {
 	vinMake := "Tesla"
 	vinModel := shared.VIN(vin).TeslaModel()
 	vinYear := shared.VIN(vin).Year()
-	mmy, err := ddSvc.FindDeviceDefinitionByMMY(ctx, vinMake, vinModel, vinYear)
+	definitionID := fmt.Sprintf("%s_%s_%d", shared.SlugString(vinMake), shared.SlugString(vinModel), vinYear)
 
-	if err != nil {
-		return err
-	}
-
-	if mmy.DeviceDefinitionId != ud.DeviceDefinitionID {
+	if definitionID != ud.DefinitionID {
 		logger.Warn().Msgf(
-			"Device moving to new device definition from %s to %s", ud.DeviceDefinitionID, mmy.DeviceDefinitionId,
+			"Device moving to new device definition from %s to %s", ud.DefinitionID, definitionID,
 		)
-		ud.DeviceDefinitionID = mmy.DeviceDefinitionId
-		ud.DefinitionID = mmy.Id
-		_, err = ud.Update(ctx, exec, boil.Infer())
+		ud.DefinitionID = definitionID
+		ud.DeviceDefinitionID = definitionID
+		_, err := ud.Update(ctx, exec, boil.Infer())
 		if err != nil {
 			return err
 		}
