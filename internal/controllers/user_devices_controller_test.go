@@ -753,36 +753,6 @@ func (s *UserDevicesControllerTestSuite) TestGetMyUserDevicesNoDuplicates() {
 	assert.Equal(s.T(), ud.ID, gjson.GetBytes(body, "userDevices.0.id").String())
 }
 
-func (s *UserDevicesControllerTestSuite) TestVINValidate() {
-
-	type test struct {
-		vin    string
-		want   bool
-		reason string
-	}
-
-	tests := []test{
-		{vin: "5YJYGDEE5MF085533", want: true, reason: "valid vin number"},
-		{vin: "5YJYGDEE5MF08553", want: false, reason: "too short"},
-		{vin: "JA4AJ3AUXKU602608", want: true, reason: "valid vin number"},
-		{vin: "2T1BU4EE2DC071057", want: true, reason: "valid vin number"},
-		{vin: "5YJ3E1EA1NF156661", want: true, reason: "valid vin number"},
-		{vin: "7AJ3E1EB3JF110865", want: true, reason: "valid vin number"},
-		{vin: "", want: false, reason: "empty vin string"},
-		{vin: "7FJ3E1EB3JF1108651234", want: false, reason: "vin string too long"},
-	}
-
-	for _, tc := range tests {
-		vinReq := UpdateVINReq{VIN: tc.vin}
-		err := vinReq.validate()
-		if tc.want == true {
-			assert.NoError(s.T(), err, tc.reason)
-		} else {
-			assert.Error(s.T(), err, tc.reason)
-		}
-	}
-}
-
 func (s *UserDevicesControllerTestSuite) TestDeleteUserDevice_ErrNFTNotBurned() {
 	_, addr, err := test.GenerateWallet()
 	s.Require().NoError(err)

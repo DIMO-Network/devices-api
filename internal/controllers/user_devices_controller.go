@@ -11,7 +11,6 @@ import (
 	"io"
 	"math/big"
 	"net/http"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -1789,18 +1788,6 @@ func (reg *RegisterUserDeviceSmartcar) Validate() error {
 		validation.Field(&reg.RedirectURI, validation.Required),
 		validation.Field(&reg.CountryCode, validation.Required, validation.Length(3, 3)),
 	)
-}
-
-func (u *UpdateVINReq) validate() error {
-	validateLengthAndChars := validation.ValidateStruct(u,
-		// vin must be 17 characters in length, alphanumeric
-		validation.Field(&u.VIN, validation.Required, validation.Match(regexp.MustCompile("^[A-Z0-9]{17}$"))),
-	)
-	if validateLengthAndChars != nil {
-		return validateLengthAndChars
-	}
-
-	return nil
 }
 
 // PrivilegeUser represents set of privileges I've granted to a user
