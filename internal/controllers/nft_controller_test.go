@@ -82,3 +82,27 @@ func (s *UserDevicesControllerTestSuite) TestUpdateVINV2_japanChasisNumber() {
 		string(userDevice.Metadata.JSON))
 	s.Equal("AGH30-0397617", userDevice.VinIdentifier.String)
 }
+
+func (s *UserDevicesControllerTestSuite) TestUpdateVINV2_invalid() {
+	privKey, err := crypto.GenerateKey()
+	s.Require().NoError(err)
+	addr := crypto.PubkeyToAddress(privKey.PublicKey)
+	//email := "some@email.com"
+	//eth := addr.Hex()
+
+	userDevice := test.SetupCreateUserDevice(s.T(), testUserID, "ford_escape_2020", nil, "", s.pdb)
+	_ = test.SetupCreateVehicleNFT(s.T(), userDevice, big.NewInt(1), null.BytesFrom(addr.Bytes()), s.pdb)
+
+	input := &UpdateVINReq{
+		VIN:         "1234",
+		CountryCode: "JPN",
+		CANProtocol: "7",
+		Signature:   "",
+	}
+	marshal, _ := json.Marshal(input)
+	request := test.BuildRequest("PATCH", fmt.Sprintf("/vehicle/%s/vin", "1"), string(marshal))
+
+	response, err := s.app.Test(request)
+	s.Require().NoError(err)
+	s.Equal(400, response.StatusCode)
+}
