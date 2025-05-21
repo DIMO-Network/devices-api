@@ -163,6 +163,7 @@ func (udc *UserDevicesController) UpdateVINV2(c *fiber.Ctx) error {
 			return err
 		}
 		if udc.Settings.IsProduction() && existing {
+			logger.Warn().Msgf("VIN already in use by another vehicle: %s", req.VIN)
 			return fiber.NewError(fiber.StatusConflict, "VIN already in use by another vehicle.")
 		}
 		userDevice.VinConfirmed = true
