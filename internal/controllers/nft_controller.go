@@ -88,12 +88,12 @@ func (udc *UserDevicesController) UpdateVINV2(c *fiber.Ctx) error {
 	}
 
 	req.VIN = strings.TrimSpace(strings.ToUpper(req.VIN))
-	isJapanVIN := strings.Contains(req.VIN, "-") && len(req.VIN) > 11 && len(req.VIN) <= 17
+	isJapanVIN := strings.Contains(req.VIN, "-") && len(req.VIN) > 10 && len(req.VIN) <= 17
 
-	if !isJapanVIN && len(req.VIN) != 17 {
-		return fiber.NewError(fiber.StatusBadRequest, "VIN is not 17 characters long.")
-	}
 	if !isJapanVIN {
+		if len(req.VIN) != 17 {
+			return fiber.NewError(fiber.StatusBadRequest, "VIN must be 17 characters.")
+		}
 		for _, r := range req.VIN {
 			if !validVINChar(r) {
 				return fiber.NewError(fiber.StatusBadRequest, "VIN contains a non-alphanumeric character.")
