@@ -20,6 +20,7 @@ import (
 type MockIdentityAPI struct {
 	ctrl     *gomock.Controller
 	recorder *MockIdentityAPIMockRecorder
+	isgomock struct{}
 }
 
 // MockIdentityAPIMockRecorder is the mock recorder for MockIdentityAPI.
