@@ -130,6 +130,28 @@ func (m *MintVehicleAndSdSign) Message() signer.TypedDataMessage {
 	}
 }
 
+// MintVehicleAndSdSign(uint256 connectionID)
+// Only signed by the synthetic device's wallet. Replaces MintVehicleAndSdSign(uint256 integrationNode)
+type MintVehicleAndSdSignV2 struct {
+	ConnectionID *big.Int
+}
+
+func (m *MintVehicleAndSdSignV2) Name() string {
+	return "MintVehicleAndSdSign"
+}
+
+func (m *MintVehicleAndSdSignV2) Type() []signer.Type {
+	return []signer.Type{
+		{Name: "connectionId", Type: "uint256"},
+	}
+}
+
+func (m *MintVehicleAndSdSignV2) Message() signer.TypedDataMessage {
+	return signer.TypedDataMessage{
+		"connectionId": hexutil.EncodeBig(m.ConnectionID),
+	}
+}
+
 // BurnVehicleSign(uint256 tokenID)
 type BurnVehicleSign struct {
 	TokenID *big.Int

@@ -10,7 +10,6 @@ import (
 	pb_oracle "github.com/DIMO-Network/tesla-oracle/pkg/grpc"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	sig2 "github.com/DIMO-Network/devices-api/internal/contracts/signature"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
@@ -100,6 +99,35 @@ func (sdc *SyntheticDevicesController) getEIP712Mint(integrationID, vehicleNode 
 	}
 }
 
+func (sdc *SyntheticDevicesController) getEIP712MintV2(connectionID *big.Int, vehicleNode int64) *signer.TypedData {
+	return &signer.TypedData{
+		Types: signer.Types{
+			"EIP712Domain": []signer.Type{
+				{Name: "name", Type: "string"},
+				{Name: "version", Type: "string"},
+				{Name: "chainId", Type: "uint256"},
+				{Name: "verifyingContract", Type: "address"},
+			},
+			// Need to keep this name until the contract changes.
+			"MintSyntheticDeviceSign": []signer.Type{
+				{Name: "connectionId", Type: "uint256"},
+				{Name: "vehicleNode", Type: "uint256"},
+			},
+		},
+		PrimaryType: "MintSyntheticDeviceSign",
+		Domain: signer.TypedDataDomain{
+			Name:              "DIMO",
+			Version:           "1",
+			ChainId:           math.NewHexOrDecimal256(sdc.Settings.DIMORegistryChainID),
+			VerifyingContract: sdc.Settings.DIMORegistryAddr,
+		},
+		Message: signer.TypedDataMessage{
+			"connectionId": math.HexOrDecimal256(*connectionID),
+			"vehicleNode":  math.NewHexOrDecimal256(vehicleNode),
+		},
+	}
+}
+
 // GetSyntheticDeviceMintingPayload godoc
 // @Description Produces the payload that the user signs and submits to mint a synthetic device for
 // @Description the given vehicle and integration.
@@ -117,6 +145,12 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
+
+	newIntegIDs, ok := syntheticIntegrationKSUIDToOtherIDs[integrationID]
+	if !ok {
+		return fiber.NewError(fiber.StatusBadRequest, "Cannot mint this integration with devices-api.")
+	}
+
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.ID.EQ(userDeviceID),
 		qm.Load(qm.Rels(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceRels.MintRequest)),
@@ -155,36 +189,18 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 		return fiber.NewError(fiber.StatusConflict, "Vehicle does not have this kind of connection.")
 	}
 
-	in, err := sdc.deviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
-	if err != nil {
-		return shared.GrpcErrorToFiber(err, "failed to get integration")
-	}
-
-	if in.ManufacturerTokenId != 0 {
-		return fiber.NewError(fiber.StatusConflict, "This is not a software integration.")
-	}
-
-	if in.Vendor == constants.SmartCarVendor {
-		dd, err := sdc.deviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), ud.DefinitionID)
-		if err != nil {
-			return shared.GrpcErrorToFiber(err, "failed to get integration")
-		}
-
-		if dd.Make.Name == "Peugeot" && dd.Model == "2008" && dd.Year == 2024 {
-			return fiber.NewError(fiber.StatusBadRequest, "Certain Peugeot vehicles cannot be connected through Smartcar at this time.")
-		}
-	}
-
-	if in.TokenId == 0 {
-		return fiber.NewError(fiber.StatusConflict, "Integration not yet minted.")
-	}
-
 	vid, ok := ud.TokenID.Int64()
 	if !ok {
 		return fmt.Errorf("vehicle token id invalid, this should never happen %d", ud.TokenID)
 	}
 
-	response := sdc.getEIP712Mint(int64(in.TokenId), vid)
+	var response *signer.TypedData
+
+	if sdc.Settings.ConnectionsReplacedIntegrations {
+		response = sdc.getEIP712MintV2(newIntegIDs.ConnectionID, vid)
+	} else {
+		response = sdc.getEIP712Mint(newIntegIDs.IntegrationNode.Int64(), vid)
+	}
 
 	return c.JSON(response)
 }
@@ -201,6 +217,11 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
+
+	newIntegIDs, ok := syntheticIntegrationKSUIDToOtherIDs[integrationID]
+	if !ok {
+		return fiber.NewError(fiber.StatusBadRequest, "Cannot mint this integration with devices-api.")
+	}
 
 	tx, err := sdc.DBS().Writer.BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
@@ -243,19 +264,6 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "Vehicle does not have this kind of connection.")
 	}
 
-	in, err := sdc.deviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
-	if err != nil {
-		return shared.GrpcErrorToFiber(err, "failed to get integration")
-	}
-
-	if in.ManufacturerTokenId != 0 {
-		return fiber.NewError(fiber.StatusConflict, "This is not a software integration.")
-	}
-
-	if in.TokenId == 0 {
-		return fiber.NewError(fiber.StatusConflict, "Integration not yet minted.")
-	}
-
 	vid, ok := ud.TokenID.Int64()
 	if !ok {
 		return fmt.Errorf("vehicle token id invalid, this should never happen %d", ud.TokenID)
@@ -271,7 +279,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	rawPayload := sdc.getEIP712Mint(int64(in.TokenId), vid)
+	rawPayload := sdc.getEIP712Mint(newIntegIDs.IntegrationNode.Int64(), vid)
 
 	tdHash, _, err := signer.TypedDataAndHash(*rawPayload)
 	if err != nil {
@@ -342,7 +350,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	syntheticDevice := &models.SyntheticDevice{
 		VehicleTokenID:     types.NewNullDecimal(decimal.New(vid, 0)),
-		IntegrationTokenID: types.NewDecimal(decimal.New(int64(in.TokenId), 0)),
+		IntegrationTokenID: types.NewDecimal(new(decimal.Big).SetBigMantScale(newIntegIDs.IntegrationNode, 0)),
 		WalletChildNumber:  childKeyNumber,
 		WalletAddress:      syntheticDeviceAddr,
 		MintRequestID:      requestID,
@@ -358,7 +366,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	mvt := contracts.MintSyntheticDeviceInput{
-		IntegrationNode:     new(big.Int).SetUint64(in.TokenId),
+		IntegrationNode:     newIntegIDs.IntegrationNode,
 		VehicleNode:         new(big.Int).SetInt64(vid),
 		VehicleOwnerSig:     ownerSignature,
 		SyntheticDeviceAddr: common.BytesToAddress(syntheticDeviceAddr),
@@ -370,7 +378,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	// register synthetic device with tesla oracle
-	if in.TokenId == constants.TeslaIntegrationTokenID {
+	if newIntegIDs.Name == "Tesla" {
 		if _, err := sdc.teslaOracle.RegisterNewSyntheticDevice(c.Context(), &pb_oracle.RegisterNewSyntheticDeviceRequest{
 			Vin:                    ud.VinIdentifier.String,
 			SyntheticDeviceAddress: syntheticDeviceAddr,
@@ -382,6 +390,34 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{"message": "Submitted synthetic device mint request."})
 }
+
+func nameToConnectionID(name string) *big.Int {
+	paddedBytes := make([]byte, 32)
+	copy(paddedBytes, []byte(name))
+
+	return new(big.Int).SetBytes(paddedBytes)
+}
+
+type newIDs struct {
+	IntegrationNode *big.Int
+	ConnectionID    *big.Int
+	Name            string // LOL
+}
+
+var (
+	syntheticIntegrationKSUIDToOtherIDs = map[string]*newIDs{
+		"22N2xaPOq2WW2gAHBHd0Ikn4Zob": {
+			IntegrationNode: big.NewInt(1),
+			ConnectionID:    nameToConnectionID("Smartcar"),
+			Name:            "Smartcar",
+		},
+		"26A5Dk3vvvQutjSyF0Jka2DP5lg": {
+			IntegrationNode: big.NewInt(2),
+			ConnectionID:    nameToConnectionID("Tesla"),
+			Name:            "Tesla",
+		},
+	}
+)
 
 // GetSyntheticDeviceBurnPayload godoc
 // @Description Produces the payload that the user signs and submits to burn a synthetic device.
