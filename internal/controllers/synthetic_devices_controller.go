@@ -365,8 +365,15 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return err
 	}
 
+	var realID *big.Int
+	if sdc.Settings.ConnectionsReplacedIntegrations {
+		realID = newIntegIDs.ConnectionID
+	} else {
+		realID = newIntegIDs.IntegrationNode
+	}
+
 	mvt := contracts.MintSyntheticDeviceInput{
-		IntegrationNode:     newIntegIDs.IntegrationNode,
+		IntegrationNode:     realID,
 		VehicleNode:         new(big.Int).SetInt64(vid),
 		VehicleOwnerSig:     ownerSignature,
 		SyntheticDeviceAddr: common.BytesToAddress(syntheticDeviceAddr),
