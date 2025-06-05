@@ -79,7 +79,6 @@ func (sdc *SyntheticDevicesController) getEIP712Mint(integrationID, vehicleNode 
 				{Name: "chainId", Type: "uint256"},
 				{Name: "verifyingContract", Type: "address"},
 			},
-			// Need to keep this name until the contract changes.
 			"MintSyntheticDeviceSign": []signer.Type{
 				{Name: "integrationNode", Type: "uint256"},
 				{Name: "vehicleNode", Type: "uint256"},
@@ -108,7 +107,6 @@ func (sdc *SyntheticDevicesController) getEIP712MintV2(connectionID *big.Int, ve
 				{Name: "chainId", Type: "uint256"},
 				{Name: "verifyingContract", Type: "address"},
 			},
-			// Need to keep this name until the contract changes.
 			"MintSyntheticDeviceSign": []signer.Type{
 				{Name: "connectionId", Type: "uint256"},
 				{Name: "vehicleNode", Type: "uint256"},
