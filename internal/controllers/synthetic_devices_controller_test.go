@@ -8,7 +8,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
@@ -109,32 +108,22 @@ func TestSyntheticDevicesControllerTestSuite(t *testing.T) {
 	suite.Run(t, new(SyntheticDevicesControllerTestSuite))
 }
 
-func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload() {
-	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
-	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), "ford_escape_2020").Return(&grpc.GetDeviceDefinitionItemResponse{
-		DeviceDefinitionId: "ford_escape_2020",
-		Id:                 "ford_escape_2020",
-		Make: &grpc.DeviceMake{
-			Name: "Ford",
-			Id:   ksuid.New().String(),
-		},
-		Verified: true,
-	}, nil)
+const smartcarKSUID = "22N2xaPOq2WW2gAHBHd0Ikn4Zob"
 
+func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload() {
 	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
 
 	udID := ksuid.New().String()
 	test.SetupCreateVehicleNFTForMiddleware(s.T(), userEthAddress, mockUserID, udID, 57, s.pdb)
-	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, integration.Id, s.pdb)
+	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, smartcarKSUID, s.pdb)
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, integration.Id), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, smartcarKSUID), "")
 	response, err := s.app.Test(request)
 	s.Require().NoError(err)
 
 	body, _ := io.ReadAll(response.Body)
 
-	rawExpectedResp := s.sdc.getEIP712Mint(int64(10), int64(57))
+	rawExpectedResp := s.sdc.getEIP712Mint(1, 57)
 	expectedRespJSON, err := json.Marshal(rawExpectedResp)
 	s.NoError(err)
 
