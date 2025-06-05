@@ -98,6 +98,10 @@ func (sdc *SyntheticDevicesController) getEIP712Mint(integrationID, vehicleNode 
 	}
 }
 
+// getEIP712MintV2 produces the "new-style" EIP-712 payload for synthetic device minting, the
+// one that uses connection id (which is typically a very large number) instead of integration id
+// or node. Unlike in other places, this has a real effect at the byte level because EIP-712
+// type hashes include names.
 func (sdc *SyntheticDevicesController) getEIP712MintV2(connectionID *big.Int, vehicleNode int64) *signer.TypedData {
 	return &signer.TypedData{
 		Types: signer.Types{
