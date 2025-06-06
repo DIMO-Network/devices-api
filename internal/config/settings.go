@@ -112,6 +112,8 @@ type Settings struct {
 	EnableSACDMint bool `yaml:"ENABLE_SACD_MINT"`
 
 	IdentiyAPIURL url.URL `yaml:"IDENTITY_API_URL"`
+
+	ConnectionsReplacedIntegrations bool `yaml:"CONNECTIONS_REPLACED_INTEGRATIONS"`
 }
 
 func (s *Settings) IsProduction() bool {

@@ -1482,26 +1482,16 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}
 
 	if udais := userDevice.R.UserDeviceAPIIntegrations; len(udais) != 0 {
-		intID := uint64(0)
+		var newIdents *newIDs
+
 		for _, udai := range udais {
-			in, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), udai.IntegrationID)
-			if err != nil {
-				return err
-			}
-
-			if dd.Make.Name == "Peugeot" && dd.Model == "2008" && dd.Year == 2024 {
-				return fiber.NewError(fiber.StatusBadRequest, "Certain Peugeot vehicles cannot be connected through Smartcar at this time.")
-			}
-
-			if in.Vendor == constants.TeslaVendor {
-				intID = in.TokenId
-				break // Prefer Tesla if both Tesla and Smartcar are present.
-			} else if in.Vendor == constants.SmartCarVendor {
-				intID = in.TokenId
+			if info, ok := syntheticIntegrationKSUIDToOtherIDs[udai.IntegrationID]; ok {
+				newIdents = info
+				break
 			}
 		}
 
-		if intID != 0 {
+		if newIdents != nil {
 			var seq struct {
 				NextVal int `boil:"nextval"`
 			}
@@ -1520,7 +1510,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			}
 
 			sd := models.SyntheticDevice{
-				IntegrationTokenID: types.NewDecimal(decimal.New(int64(intID), 0)),
+				IntegrationTokenID: types.NewDecimal(decimal.New(newIdents.IntegrationNode.Int64(), 0)),
 				MintRequestID:      requestID,
 				WalletChildNumber:  seq.NextVal,
 				WalletAddress:      addr,
@@ -1530,11 +1520,19 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
-			mvss := registry.MintVehicleAndSdSign{
-				IntegrationNode: new(big.Int).SetUint64(intID),
+			var msg registry.Message
+
+			if udc.Settings.ConnectionsReplacedIntegrations {
+				msg = &registry.MintVehicleAndSdSignV2{
+					ConnectionID: newIdents.ConnectionID,
+				}
+			} else {
+				msg = &registry.MintVehicleAndSdSign{
+					IntegrationNode: newIdents.IntegrationNode,
+				}
 			}
 
-			hash, err := client.Hash(&mvss)
+			hash, err := client.Hash(msg)
 			if err != nil {
 				return err
 			}
@@ -1549,7 +1547,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 			}
 
 			// register synthetic device with tesla oracle
-			if intID == constants.TeslaIntegrationTokenID {
+			if newIdents.Name == "Tesla" {
 				if _, err := udc.teslaOracle.RegisterNewSyntheticDevice(c.Context(), &pb_oracle.RegisterNewSyntheticDeviceRequest{
 					Vin:                    userDevice.VinIdentifier.String,
 					SyntheticDeviceAddress: sd.WalletAddress,
@@ -1559,12 +1557,19 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				}
 			}
 
+			var maybeIntegrationNode *big.Int
+			if udc.Settings.ConnectionsReplacedIntegrations {
+				maybeIntegrationNode = newIdents.ConnectionID
+			} else {
+				maybeIntegrationNode = newIdents.IntegrationNode
+			}
+
 			if mr.SACDInput == nil || !udc.Settings.EnableSACDMint {
 				return client.MintVehicleAndSdWithDeviceDefinitionSign(requestID, contracts.MintVehicleAndSdWithDdInput{
 					ManufacturerNode:     mvs.ManufacturerNode,
 					Owner:                mvs.Owner,
 					DeviceDefinitionId:   dd.Id,
-					IntegrationNode:      new(big.Int).SetUint64(intID),
+					IntegrationNode:      maybeIntegrationNode,
 					VehicleOwnerSig:      sigBytes,
 					SyntheticDeviceSig:   sign,
 					SyntheticDeviceAddr:  common.BytesToAddress(addr),
@@ -1577,7 +1582,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				ManufacturerNode:     mvs.ManufacturerNode,
 				Owner:                mvs.Owner,
 				DeviceDefinitionId:   dd.Id,
-				IntegrationNode:      new(big.Int).SetUint64(intID),
+				IntegrationNode:      maybeIntegrationNode,
 				VehicleOwnerSig:      sigBytes,
 				SyntheticDeviceSig:   sign,
 				SyntheticDeviceAddr:  common.BytesToAddress(addr),
@@ -1597,6 +1602,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return err
 	}
 
+	// TODO(elffjs): No one should be hitting this.
 	logger.Info().Msgf("Submitted metatransaction request %s", requestID)
 
 	return client.MintVehicleWithDeviceDefinitionSign(requestID, mvs.ManufacturerNode, mvs.Owner, dd.Id, attrListsToAttrPairs(mvs.Attributes, mvs.Infos), sigBytes)
