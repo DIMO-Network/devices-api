@@ -15,6 +15,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/ericlagergren/decimal"
@@ -148,7 +149,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
 
-	newIntegIDs, ok := syntheticIntegrationKSUIDToOtherIDs[integrationID]
+	newIntegIDs, ok := utils.SyntheticIntegrationKSUIDToOtherIDs[integrationID]
 	if !ok {
 		return fiber.NewError(fiber.StatusBadRequest, "Cannot mint this integration with devices-api.")
 	}
@@ -220,7 +221,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
 
-	newIntegIDs, ok := syntheticIntegrationKSUIDToOtherIDs[integrationID]
+	newIntegIDs, ok := utils.SyntheticIntegrationKSUIDToOtherIDs[integrationID]
 	if !ok {
 		return fiber.NewError(fiber.StatusBadRequest, "Cannot mint this integration with devices-api.")
 	}
@@ -405,34 +406,6 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{"message": "Submitted synthetic device mint request."})
 }
-
-func nameToConnectionID(name string) *big.Int {
-	paddedBytes := make([]byte, 32)
-	copy(paddedBytes, []byte(name))
-
-	return new(big.Int).SetBytes(paddedBytes)
-}
-
-type newIDs struct {
-	IntegrationNode *big.Int
-	ConnectionID    *big.Int
-	Name            string // LOL
-}
-
-var (
-	syntheticIntegrationKSUIDToOtherIDs = map[string]*newIDs{
-		"22N2xaPOq2WW2gAHBHd0Ikn4Zob": {
-			IntegrationNode: big.NewInt(1),
-			ConnectionID:    nameToConnectionID("Smartcar"),
-			Name:            "Smartcar",
-		},
-		"26A5Dk3vvvQutjSyF0Jka2DP5lg": {
-			IntegrationNode: big.NewInt(2),
-			ConnectionID:    nameToConnectionID("Tesla"),
-			Name:            "Tesla",
-		},
-	}
-)
 
 // GetSyntheticDeviceBurnPayload godoc
 // @Description Produces the payload that the user signs and submits to burn a synthetic device.

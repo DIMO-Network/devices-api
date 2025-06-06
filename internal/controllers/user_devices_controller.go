@@ -26,6 +26,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/ipfs"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
+	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
@@ -1482,10 +1483,10 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}
 
 	if udais := userDevice.R.UserDeviceAPIIntegrations; len(udais) != 0 {
-		var newIdents *newIDs
+		var newIdents *utils.ConnectionChainIDs
 
 		for _, udai := range udais {
-			if info, ok := syntheticIntegrationKSUIDToOtherIDs[udai.IntegrationID]; ok {
+			if info, ok := utils.SyntheticIntegrationKSUIDToOtherIDs[udai.IntegrationID]; ok {
 				newIdents = info
 				break
 			}

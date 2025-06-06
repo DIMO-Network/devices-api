@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
@@ -201,10 +201,22 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return fmt.Errorf("failed to parse SyntheticDeviceNodeMinted event: %w", err)
 				}
 
-				integ, err := p.ddSvc.GetIntegrationByTokenID(ctx, event.IntegrationNode.Uint64())
-				if err != nil {
-					return fmt.Errorf("couldn't retrieve integration %d: %w", event.IntegrationNode, err)
+				integrationNode := mtr.R.MintRequestSyntheticDevice.IntegrationTokenID.Int(nil)
+
+				integrationKSUID := ""
+
+				for candidateIntegrationKSUID, idSet := range utils.SyntheticIntegrationKSUIDToOtherIDs {
+					if integrationNode.Cmp(idSet.IntegrationNode) == 0 {
+						integrationKSUID = candidateIntegrationKSUID
+						break
+					}
 				}
+
+				if integrationKSUID == "" {
+					return fmt.Errorf("we have a metatransaction for unrecognized integration %d", integrationNode)
+				}
+
+				integrationChainIDs := utils.SyntheticIntegrationKSUIDToOtherIDs[integrationKSUID]
 
 				cols := models.SyntheticDeviceColumns
 
@@ -217,7 +229,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 
 				ud, err := models.UserDevices(
 					models.UserDeviceWhere.TokenID.EQ(dbtypes.NullIntToDecimal(event.VehicleNode)),
-					qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integ.Id)),
+					qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationKSUID)),
 				).One(ctx, tx)
 				if err != nil {
 					return fmt.Errorf("couldn't retrieve vehicle %d: %w", event.VehicleNode, err)
@@ -227,21 +239,19 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return fmt.Errorf("vehicle %d does not have integration %d being minted", event.VehicleNode, event.IntegrationNode)
 				}
 
-				switch integ.Vendor {
-				case constants.SmartCarVendor:
+				switch integrationChainIDs.Name {
+				case "Smartcar":
 					err := p.smartcarTask.StartPoll(ud.R.UserDeviceAPIIntegrations[0], sd)
 					if err != nil {
 						return err
 					}
-				case constants.TeslaVendor:
+				case "Tesla":
 					err := p.teslaTask.StartPoll(ud.R.UserDeviceAPIIntegrations[0], sd)
 					if err != nil {
 						return err
 					}
-				case constants.CompassIotVendor:
-					// do not start polling for compass iot, we just want to emit the event
 				default:
-					return fmt.Errorf("unexpected integration vendor %s", integ.Vendor)
+					return fmt.Errorf("unexpected connection %s", integrationChainIDs.Name)
 				}
 
 				p.Eventer.Emit(&shared.CloudEvent[any]{ //nolint
@@ -254,7 +264,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					Data: sdmint.Data{
 						Integration: sdmint.Integration{
 							TokenID:       int(event.IntegrationNode.Int64()),
-							IntegrationID: integ.Id,
+							IntegrationID: integrationKSUID,
 						},
 						Vehicle: sdmint.Vehicle{
 							TokenID:      int(event.VehicleNode.Int64()),

@@ -21,3 +21,31 @@ func NullableBigToDecimal(x *big.Int) types.NullDecimal {
 	}
 	return types.NewNullDecimal(new(decimal.Big).SetBigMantScale(x, 0))
 }
+
+type ConnectionChainIDs struct {
+	IntegrationNode *big.Int
+	ConnectionID    *big.Int
+	Name            string // LOL
+}
+
+var (
+	SyntheticIntegrationKSUIDToOtherIDs = map[string]*ConnectionChainIDs{
+		"22N2xaPOq2WW2gAHBHd0Ikn4Zob": {
+			IntegrationNode: big.NewInt(1),
+			ConnectionID:    nameToConnectionID("Smartcar"),
+			Name:            "Smartcar",
+		},
+		"26A5Dk3vvvQutjSyF0Jka2DP5lg": {
+			IntegrationNode: big.NewInt(2),
+			ConnectionID:    nameToConnectionID("Tesla"),
+			Name:            "Tesla",
+		},
+	}
+)
+
+func nameToConnectionID(name string) *big.Int {
+	paddedBytes := make([]byte, 32)
+	copy(paddedBytes, []byte(name))
+
+	return new(big.Int).SetBytes(paddedBytes)
+}
