@@ -122,7 +122,7 @@ env:
   TESLA_ORACLE_GRPC_ADDR: tesla-oracle-dev:8086
   ENABLE_SACD_MINT: true
   IDENTITY_API_URL: http://identity-api-dev:8080/query
-  CONNECTIONS_REPLACED_INTEGRATIONS: false
+  CONNECTIONS_REPLACED_INTEGRATIONS: true
 service:
   type: ClusterIP
   ports:
