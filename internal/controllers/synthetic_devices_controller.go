@@ -199,11 +199,8 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceMintingPayload(c *fiber
 	var response *signer.TypedData
 
 	if sdc.Settings.ConnectionsReplacedIntegrations {
-		fmt.Println("XDD1")
 		response = sdc.getEIP712MintV2(newIntegIDs.ConnectionID, vid)
 	} else {
-		fmt.Println("XDD2")
-
 		response = sdc.getEIP712Mint(newIntegIDs.IntegrationNode.Int64(), vid)
 	}
 
