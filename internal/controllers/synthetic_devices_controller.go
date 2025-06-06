@@ -281,7 +281,13 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	rawPayload := sdc.getEIP712Mint(newIntegIDs.IntegrationNode.Int64(), vid)
+	var rawPayload *signer.TypedData
+
+	if sdc.Settings.ConnectionsReplacedIntegrations {
+		rawPayload = sdc.getEIP712MintV2(newIntegIDs.ConnectionID, vid)
+	} else {
+		rawPayload = sdc.getEIP712Mint(newIntegIDs.IntegrationNode.Int64(), vid)
+	}
 
 	tdHash, _, err := signer.TypedDataAndHash(*rawPayload)
 	if err != nil {
