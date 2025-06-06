@@ -124,7 +124,7 @@ func (sdc *SyntheticDevicesController) getEIP712MintV2(connectionID *big.Int, ve
 			VerifyingContract: sdc.Settings.DIMORegistryAddr,
 		},
 		Message: signer.TypedDataMessage{
-			"connectionId": math.HexOrDecimal256(*connectionID),
+			"connectionId": (*math.HexOrDecimal256)(connectionID),
 			"vehicleNode":  math.NewHexOrDecimal256(vehicleNode),
 		},
 	}
