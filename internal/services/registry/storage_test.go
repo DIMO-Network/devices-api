@@ -6,9 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
@@ -86,7 +84,7 @@ func (s *StorageTestSuite) Test_SyntheticMintSmartcar() {
 	syntheticDeviceAddr := common.HexToAddress("4")
 	cipher := new(shared.ROT13Cipher)
 	ownerAddr := common.HexToAddress("1000")
-	integrationID := ksuid.New().String()
+	integrationID := "22N2xaPOq2WW2gAHBHd0Ikn4Zob"
 
 	mtr := models.MetaTransactionRequest{
 		ID:     ksuid.New().String(),
@@ -132,11 +130,6 @@ func (s *StorageTestSuite) Test_SyntheticMintSmartcar() {
 		RefreshToken:    null.StringFrom(refToken),
 	}
 	s.MustInsert(&udi)
-
-	s.ddSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(1)).Return(&grpc.Integration{
-		Id:     integrationID,
-		Vendor: constants.SmartCarVendor,
-	}, nil)
 
 	s.scSvc.EXPECT().StartPoll(gomock.Any(), gomock.Any())
 
@@ -179,12 +172,12 @@ func (s *StorageTestSuite) Test_SyntheticMintSmartcar() {
 
 func (s *StorageTestSuite) Test_SyntheticMintTesla() {
 	vehicleID := int64(54)
-	integrationNode := int64(1)
+	integrationNode := int64(2)
 	childKeyNumber := 300
 	syntheticDeviceAddr := common.HexToAddress("4")
 	cipher := new(shared.ROT13Cipher)
 	ownerAddr := common.HexToAddress("1000")
-	integrationID := ksuid.New().String()
+	integrationID := "26A5Dk3vvvQutjSyF0Jka2DP5lg"
 
 	mtr := models.MetaTransactionRequest{
 		ID:     ksuid.New().String(),
@@ -232,11 +225,6 @@ func (s *StorageTestSuite) Test_SyntheticMintTesla() {
 	s.MustInsert(&udi)
 
 	s.eventSvc.EXPECT().Emit(gomock.Any())
-
-	s.ddSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(2)).Return(&grpc.Integration{
-		Id:     integrationID,
-		Vendor: constants.TeslaVendor,
-	}, nil)
 
 	s.teslaSvc.EXPECT().StartPoll(gomock.Any(), gomock.Any())
 
