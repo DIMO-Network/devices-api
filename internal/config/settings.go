@@ -114,6 +114,9 @@ type Settings struct {
 	IdentiyAPIURL url.URL `yaml:"IDENTITY_API_URL"`
 
 	ConnectionsReplacedIntegrations bool `yaml:"CONNECTIONS_REPLACED_INTEGRATIONS"`
+
+	// BlockMinting, if true, shuts off the synthetic minting endpoints
+	BlockMinting bool `yaml:"BLOCK_MINTING"`
 }
 
 func (s *Settings) IsProduction() bool {
