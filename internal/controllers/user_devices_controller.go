@@ -1338,6 +1338,10 @@ var erc1271magicValue = [4]byte{0x16, 0x26, 0xba, 0x7e}
 func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
 
+	if udc.Settings.BlockMinting {
+		return fiber.NewError(fiber.StatusInternalServerError, "Smartcar and Tesla device minting temporarily offline for a network upgrade.")
+	}
+
 	logger := helpers.GetLogger(c, udc.log)
 
 	tx, err := udc.DBS().Writer.BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
