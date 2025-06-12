@@ -1010,7 +1010,10 @@ func (udc *UserDevicesController) registerDeviceCompass(c *fiber.Ctx, logger *ze
 }
 
 func IsFleetTelemetryCapable(fs *services.VehicleFleetStatus) bool {
-	return fs.FleetTelemetryVersion != "" && fs.FleetTelemetryVersion != "unknown" || fs.VehicleCommandProtocolRequired || !fs.DiscountedDeviceData
+	// We used to check for the presence of a meaningful value (not ""
+	// or "unknown") for fleet_telemetry_version, but this started
+	// populating on old cars that are not capable of streaming.
+	return fs.VehicleCommandProtocolRequired || !fs.DiscountedDeviceData
 }
 
 func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zerolog.Logger, tx *sql.Tx, userDeviceID string, integ *ddgrpc.Integration, ud *models.UserDevice) error {
