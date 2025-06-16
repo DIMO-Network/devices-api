@@ -176,17 +176,11 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 	deviceDefinitionResponse := make([]*ddgrpc.GetDeviceDefinitionItemResponse, len(devices))
 	for i, userDevice := range devices {
 		definitionID := userDevice.DefinitionID
-		if definitionID == "" {
-			if len(strings.Split(userDevice.DeviceDefinitionID, "_")) == 3 {
-				definitionID = userDevice.DeviceDefinitionID
-			}
-		}
 
 		def, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(ctx, definitionID)
 		if err != nil {
 			udc.log.Err(err).Str("userDeviceId", userDevice.ID).
 				Str("definitionId", userDevice.DefinitionID).
-				Str("deviceDefinitionId", userDevice.DeviceDefinitionID).
 				Msg("failed to resolve device definition for vehicle.")
 			return nil, shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+definitionID)
 		}
@@ -210,7 +204,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 	for _, d := range devices {
 		deviceDefinition, err := filterDeviceDefinition(d.DefinitionID, deviceDefinitionResponse)
 		if err != nil {
-			return nil, fmt.Errorf("user device %s has unknown device definition %s", d.ID, d.DeviceDefinitionID)
+			return nil, fmt.Errorf("user device %s has unknown definition %s", d.ID, d.DefinitionID)
 		}
 
 		dd, err := NewDeviceDefinitionFromGRPC(deviceDefinition)

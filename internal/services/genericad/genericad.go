@@ -153,12 +153,12 @@ func (i *Integration) Pair(ctx context.Context, amTokenID, vehicleTokenID *big.I
 				Timestamp: time.Now(),
 				UserID:    ud.UserID,
 				Device: services.UserDeviceEventDevice{
-					ID:                 ud.ID,
-					DeviceDefinitionID: def.DeviceDefinitionId,
-					Make:               def.Make.Name,
-					Model:              def.Model,
-					Year:               int(def.Year),
-					VIN:                ud.VinIdentifier.String,
+					ID:           ud.ID,
+					DefinitionID: def.Id,
+					Make:         def.Make.Name,
+					Model:        def.Model,
+					Year:         int(def.Year),
+					VIN:          ud.VinIdentifier.String,
 				},
 				Integration: services.UserDeviceEventIntegration{
 					ID:     integ.Id,

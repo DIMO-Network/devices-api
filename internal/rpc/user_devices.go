@@ -335,9 +335,8 @@ func (s *userDeviceRPCServer) GetUserDeviceByAutoPIUnitId(ctx context.Context, r
 	}
 
 	result := &pb.UserDeviceAutoPIUnitResponse{
-		UserDeviceId:       dbDevice.UserDeviceID,
-		DeviceDefinitionId: dbDevice.R.UserDevice.DeviceDefinitionID,
-		UserId:             dbDevice.R.UserDevice.UserID,
+		UserDeviceId: dbDevice.UserDeviceID,
+		UserId:       dbDevice.R.UserDevice.UserID,
 	}
 
 	if dbDevice.R.UserDevice.DeviceStyleID.Valid {
@@ -386,14 +385,13 @@ func decimalToUint(x types.Decimal) uint64 {
 
 func (s *userDeviceRPCServer) deviceModelToAPI(ud *models.UserDevice) *pb.UserDevice {
 	out := &pb.UserDevice{
-		Id:                 ud.ID,
-		UserId:             ud.UserID,
-		DeviceDefinitionId: ud.DeviceDefinitionID, //nolint
-		DeviceStyleId:      ud.DeviceStyleID.Ptr(),
-		OptedInAt:          nullTimeToPB(ud.OptedInAt),
-		Integrations:       make([]*pb.UserDeviceIntegration, len(ud.R.UserDeviceAPIIntegrations)),
-		VinConfirmed:       ud.VinConfirmed,
-		DefinitionId:       ud.DefinitionID,
+		Id:            ud.ID,
+		UserId:        ud.UserID,
+		DeviceStyleId: ud.DeviceStyleID.Ptr(),
+		OptedInAt:     nullTimeToPB(ud.OptedInAt),
+		Integrations:  make([]*pb.UserDeviceIntegration, len(ud.R.UserDeviceAPIIntegrations)),
+		VinConfirmed:  ud.VinConfirmed,
+		DefinitionId:  ud.DefinitionID,
 	}
 
 	if !ud.TokenID.IsZero() {

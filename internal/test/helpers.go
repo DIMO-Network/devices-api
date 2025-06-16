@@ -450,7 +450,7 @@ func BuildIntegrationGRPC(id, integrationVendor string, autoPiDefaultTemplateID 
 
 // BuildDeviceDefinitionGRPC generates an array with single device definition, adds integration to response if integration passed in not nil. uses Americas region
 func BuildDeviceDefinitionGRPC(deviceDefinitionID string, mk string, model string, year int, integration *ddgrpc.Integration) []*ddgrpc.GetDeviceDefinitionItemResponse {
-	// todo can we get rid of deviceDefinitionID?
+	// todo change this grpc object to us the identity response object
 	// can we get rid of integrations?
 	integrationsToAdd := make([]*ddgrpc.DeviceIntegration, 2)
 	if integration != nil {
