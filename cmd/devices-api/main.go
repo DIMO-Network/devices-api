@@ -129,7 +129,6 @@ func main() {
 		subcommands.Register(&smartcarStopConnectionsCmd{container: deps}, "device integrations")
 
 		subcommands.Register(&populateESDDDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: deps.getElasticSearchService(), ddSvc: deps.getDeviceDefinitionService()}, "populate data")
-		subcommands.Register(&populateESRegionDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: deps.getElasticSearchService(), ddSvc: deps.getDeviceDefinitionService()}, "populate data")
 
 		subcommands.Register(&stopTaskByKeyCmd{logger: logger, settings: settings, container: deps, pdb: pdb}, "tasks")
 
