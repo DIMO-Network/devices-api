@@ -79,7 +79,8 @@ env:
   TESLA_ORACLE_GRPC_ADDR: tesla-oracle-prod:8086
   ENABLE_SACD_MINT: false
   IDENTITY_API_URL: http://identity-api-prod:8080/query
-  CONNECTIONS_REPLACED_INTEGRATIONS: false
+  CONNECTIONS_REPLACED_INTEGRATIONS: true
+  BLOCK_MINTING: true
 ingress:
   enabled: true
   className: nginx
