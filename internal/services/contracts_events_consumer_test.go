@@ -828,13 +828,6 @@ func Test_VehicleNodeMintedWithDeviceDefinition_NoMtx(t *testing.T) {
 	))
 	require.NoError(err)
 
-	deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ddSlug).Return(&ddgrpc.GetDeviceDefinitionItemResponse{
-		DeviceDefinitionId: ddSlug,
-		Make: &ddgrpc.DeviceMake{
-			TokenId: 7,
-		},
-	}, nil)
-
 	err = consumer.processEvent(ctx, event)
 	require.NoError(err)
 
