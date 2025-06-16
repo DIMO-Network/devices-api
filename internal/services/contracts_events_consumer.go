@@ -692,26 +692,12 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 		return fmt.Errorf("failed to convert address to user id: %w", err)
 	}
 
-	dDef, err := c.ddSvc.GetDeviceDefinitionBySlug(ctx, args.DeviceDefinitionId)
-	if err != nil {
-		return fmt.Errorf("failed to get device definition: %s error: %w", args.DeviceDefinitionId, err)
-	}
-
-	if dDef.Make.TokenId == 0 {
-		return fmt.Errorf("vehicle make not yet minted: %s", dDef.Make.Name)
-	}
-
-	if args.ManufacturerId.Cmp(big.NewInt(int64(dDef.Make.TokenId))) != 0 {
-		return fmt.Errorf("passed manufacturer id %d does not match manufacturer associated with device definition %s", args.ManufacturerId, dDef.DeviceDefinitionId)
-	}
-
 	ud := models.UserDevice{
-		ID:                 ksuid.New().String(),
-		UserID:             userID,
-		DeviceDefinitionID: dDef.DeviceDefinitionId,
-		OwnerAddress:       null.BytesFrom(args.Owner.Bytes()),
-		TokenID:            dbtypes.NullIntToDecimal(args.VehicleId),
-		DefinitionID:       dDef.Id,
+		ID:           ksuid.New().String(),
+		UserID:       userID,
+		OwnerAddress: null.BytesFrom(args.Owner.Bytes()),
+		TokenID:      dbtypes.NullIntToDecimal(args.VehicleId),
+		DefinitionID: args.DeviceDefinitionId,
 	}
 
 	if err := ud.Insert(ctx, tx, boil.Infer()); err != nil {
@@ -726,10 +712,9 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 			Timestamp: time.Now(),
 			UserID:    ud.UserID,
 			Device: UserDeviceEventDevice{
-				ID:                 ud.ID,
-				VIN:                ud.VinIdentifier.String,
-				DeviceDefinitionID: ud.DeviceDefinitionID,
-				DefinitionID:       dDef.Id,
+				ID:           ud.ID,
+				VIN:          ud.VinIdentifier.String,
+				DefinitionID: args.DeviceDefinitionId,
 			},
 			NFT: UserDeviceEventNFT{
 				TokenID: args.VehicleId,

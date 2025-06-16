@@ -359,7 +359,7 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	// Need this for activity log.
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), device.DefinitionID)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+device.DeviceDefinitionID)
+		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+device.DefinitionID)
 	}
 
 	err = udc.deleteDeviceIntegration(c.Context(), userID, userDeviceID, integrationID, dd, tx)
@@ -758,16 +758,12 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 
 	ud := udai.R.UserDevice
 	definitionID := ud.DefinitionID
-	if definitionID == "" {
-		if len(strings.Split(ud.DeviceDefinitionID, "_")) == 3 {
-			definitionID = ud.DeviceDefinitionID
-		}
-	}
+
 	// pull dd info again - don't pass it in, as it may have changed
 	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(ctx, definitionID)
 	if err2 != nil {
 		tid, _ := ud.TokenID.Uint64()
-		logger.Err(err2).Str("deviceDefinitionId", ud.DeviceDefinitionID).
+		logger.Err(err2).
 			Str("definitionId", ud.DefinitionID).
 			Str("userDeviceId", userDeviceID).
 			Uint64("tokenID", tid).
@@ -783,13 +779,12 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 				Timestamp: time.Now(),
 				UserID:    ud.UserID,
 				Device: services.UserDeviceEventDevice{
-					ID:                 userDeviceID,
-					DeviceDefinitionID: dd.DeviceDefinitionId,
-					Make:               dd.Make.Name,
-					Model:              dd.Model,
-					Year:               int(dd.Year),
-					VIN:                ud.VinIdentifier.String,
-					DefinitionID:       dd.Id,
+					ID:           userDeviceID,
+					Make:         dd.Make.Name,
+					Model:        dd.Model,
+					Year:         int(dd.Year),
+					VIN:          ud.VinIdentifier.String,
+					DefinitionID: dd.Id,
 				},
 				Integration: services.UserDeviceEventIntegration{
 					ID:     integ.Id,
@@ -1203,7 +1198,6 @@ func fixTeslaDeviceDefinition(ctx context.Context, logger *zerolog.Logger, exec 
 			"Device moving to new device definition from %s to %s", ud.DefinitionID, definitionID,
 		)
 		ud.DefinitionID = definitionID
-		ud.DeviceDefinitionID = definitionID
 		_, err := ud.Update(ctx, exec, boil.Infer())
 		if err != nil {
 			return err

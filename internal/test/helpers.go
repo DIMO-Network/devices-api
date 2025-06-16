@@ -344,17 +344,16 @@ func SetupCreateVehicleNFTForMiddleware(t *testing.T, addr common.Address, userI
 	assert.NoError(t, err)
 
 	ud := models.UserDevice{
-		ID:                 userDeviceID,
-		UserID:             userID,
-		DeviceDefinitionID: "ddID",
-		DefinitionID:       "ford_escape_2020",
-		CountryCode:        null.StringFrom("USA"),
-		Name:               null.StringFrom("Chungus"),
-		VinIdentifier:      null.StringFrom("00000000000000001"),
-		MintRequestID:      null.StringFrom(mint.ID),
-		OwnerAddress:       null.BytesFrom(common.FromHex(addr.String())),
-		VinConfirmed:       true,
-		TokenID:            types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0)),
+		ID:            userDeviceID,
+		UserID:        userID,
+		DefinitionID:  "ford_escape_2020",
+		CountryCode:   null.StringFrom("USA"),
+		Name:          null.StringFrom("Chungus"),
+		VinIdentifier: null.StringFrom("00000000000000001"),
+		MintRequestID: null.StringFrom(mint.ID),
+		OwnerAddress:  null.BytesFrom(common.FromHex(addr.String())),
+		VinConfirmed:  true,
+		TokenID:       types.NewNullDecimal(new(decimal.Big).SetBigMantScale(big.NewInt(tokenID), 0)),
 	}
 	err = ud.Insert(context.Background(), pdb.DBS().Writer, boil.Infer())
 	assert.NoError(t, err)
@@ -451,7 +450,7 @@ func BuildIntegrationGRPC(id, integrationVendor string, autoPiDefaultTemplateID 
 
 // BuildDeviceDefinitionGRPC generates an array with single device definition, adds integration to response if integration passed in not nil. uses Americas region
 func BuildDeviceDefinitionGRPC(deviceDefinitionID string, mk string, model string, year int, integration *ddgrpc.Integration) []*ddgrpc.GetDeviceDefinitionItemResponse {
-	// todo can we get rid of deviceDefinitionID?
+	// todo change this grpc object to us the identity response object
 	// can we get rid of integrations?
 	integrationsToAdd := make([]*ddgrpc.DeviceIntegration, 2)
 	if integration != nil {

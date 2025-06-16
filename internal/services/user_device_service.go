@@ -120,14 +120,13 @@ func (uds *userDeviceService) CreateUserDeviceByOwner(ctx context.Context, defin
 	}
 	// register device for the user
 	ud := models.UserDevice{
-		ID:                 userDeviceID,
-		OwnerAddress:       null.BytesFrom(ownerAddress),
-		UserID:             "", // normally the dex user id but since lookup is by owner address hoping this can be blank
-		DeviceDefinitionID: dd.DeviceDefinitionId,
-		DefinitionID:       dd.Id,
-		CountryCode:        null.StringFrom(countryCode),
-		VinIdentifier:      null.StringFrom(vin),
-		VinConfirmed:       true,
+		ID:            userDeviceID,
+		OwnerAddress:  null.BytesFrom(ownerAddress),
+		UserID:        "", // normally the dex user id but since lookup is by owner address hoping this can be blank
+		DefinitionID:  dd.Id,
+		CountryCode:   null.StringFrom(countryCode),
+		VinIdentifier: null.StringFrom(vin),
+		VinConfirmed:  true,
 	}
 	// always instantiate metadata with powerTrain and CANProtocol
 	udMD := &UserDeviceMetadata{
@@ -222,13 +221,12 @@ func (uds *userDeviceService) CreateUserDevice(ctx context.Context, definitionID
 	}
 	// register device for the user
 	ud := models.UserDevice{
-		ID:                 userDeviceID,
-		UserID:             userID,
-		DeviceDefinitionID: dd.DeviceDefinitionId,
-		CountryCode:        null.StringFrom(countryCode),
-		VinIdentifier:      null.StringFromPtr(vin),
-		VinConfirmed:       vinConfirmed,
-		DefinitionID:       dd.Id,
+		ID:            userDeviceID,
+		UserID:        userID,
+		CountryCode:   null.StringFrom(countryCode),
+		VinIdentifier: null.StringFromPtr(vin),
+		VinConfirmed:  vinConfirmed,
+		DefinitionID:  dd.Id,
 	}
 	// always instantiate metadata with powerTrain and CANProtocol
 	udMD := &UserDeviceMetadata{

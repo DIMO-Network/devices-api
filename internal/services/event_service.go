@@ -73,12 +73,11 @@ type UserDeviceEvent struct {
 }
 
 type UserDeviceEventDevice struct {
-	ID                 string `json:"id"`
-	DeviceDefinitionID string `json:"device_definition_id"`
-	Make               string `json:"make"`
-	Model              string `json:"model"`
-	Year               int    `json:"year"`
-	VIN                string `json:"vin"`
+	ID    string `json:"id"`
+	Make  string `json:"make"`
+	Model string `json:"model"`
+	Year  int    `json:"year"`
+	VIN   string `json:"vin"`
 	// new human readable definition id that can be queried from identity-api. tableland style id
 	DefinitionID string `json:"definition_id"`
 }
