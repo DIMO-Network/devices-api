@@ -191,9 +191,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 
 	app.Get("/v1/vehicle/:tokenID", func(c *fiber.Ctx) error {
-		tokenIDRaw := c.Params("tokenID")
-
-		tokenID, err := c.ParamsInt(tokenIDRaw)
+		tokenID, err := c.ParamsInt("tokenID")
 		if err != nil || tokenID <= 0 {
 			return fiber.NewError(fiber.StatusBadRequest, "Invalid token id.")
 		}
@@ -202,9 +200,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	})
 
 	app.Get("/v1/aftermarket/device/:tokenID", func(c *fiber.Ctx) error {
-		tokenIDRaw := c.Params("tokenID")
-
-		tokenID, err := c.ParamsInt(tokenIDRaw)
+		tokenID, err := c.ParamsInt("tokenID")
 		if err != nil || tokenID <= 0 {
 			return fiber.NewError(fiber.StatusBadRequest, "Invalid token id.")
 		}
