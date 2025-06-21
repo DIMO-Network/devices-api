@@ -1491,6 +1491,10 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		}
 
 		if newIdents != nil {
+			if newIdents.Name == "Smartcar" {
+				return fiber.NewError(fiber.StatusBadRequest, "Smartcar mints are no longer supported.")
+			}
+
 			var seq struct {
 				NextVal int `boil:"nextval"`
 			}
