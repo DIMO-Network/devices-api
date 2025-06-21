@@ -123,6 +123,7 @@ env:
   ENABLE_SACD_MINT: true
   IDENTITY_API_URL: http://identity-api-dev:8080/query
   CONNECTIONS_REPLACED_INTEGRATIONS: true
+  NEW_NFT_HOST: https://assets.dev.dimo.xyz
 service:
   type: ClusterIP
   ports:

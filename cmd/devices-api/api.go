@@ -4,8 +4,10 @@ import (
 	"context"
 	"math/big"
 	"net"
+	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -181,6 +183,33 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	privilegeAuth := jwtware.New(jwtware.Config{
 		JWKSetURLs: []string{settings.TokenExchangeJWTKeySetURL},
+	})
+
+	newNFTHost, err := url.ParseRequestURI(settings.NewNFTHost)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Couldn't parse the new NFT host.")
+	}
+
+	app.Get("/v1/vehicle/:tokenID", func(c *fiber.Ctx) error {
+		tokenIDRaw := c.Params("tokenID")
+
+		tokenID, err := c.ParamsInt(tokenIDRaw)
+		if err != nil || tokenID <= 0 {
+			return fiber.NewError(fiber.StatusBadRequest, "Invalid token id.")
+		}
+
+		return c.Redirect(newNFTHost.JoinPath("vehicle", strconv.Itoa(tokenID)).String(), fiber.StatusMovedPermanently)
+	})
+
+	app.Get("/v1/aftermarket/device/:tokenID", func(c *fiber.Ctx) error {
+		tokenIDRaw := c.Params("tokenID")
+
+		tokenID, err := c.ParamsInt(tokenIDRaw)
+		if err != nil || tokenID <= 0 {
+			return fiber.NewError(fiber.StatusBadRequest, "Invalid token id.")
+		}
+
+		return c.Redirect(newNFTHost.JoinPath("aftermarket", "device", strconv.Itoa(tokenID)).String(), fiber.StatusMovedPermanently)
 	})
 
 	vPriv := app.Group("/v1/vehicle/:tokenID", privilegeAuth)

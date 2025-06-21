@@ -117,6 +117,8 @@ type Settings struct {
 
 	// BlockMinting, if true, shuts off the synthetic minting endpoints
 	BlockMinting bool `yaml:"BLOCK_MINTING"`
+
+	NewNFTHost string `yaml:"NEW_NFT_HOST"`
 }
 
 func (s *Settings) IsProduction() bool {

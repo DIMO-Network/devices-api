@@ -81,6 +81,7 @@ env:
   IDENTITY_API_URL: http://identity-api-prod:8080/query
   CONNECTIONS_REPLACED_INTEGRATIONS: true
   BLOCK_MINTING: false
+  NEW_NFT_HOST: https://assets.dimo.xyz
 ingress:
   enabled: true
   className: nginx
