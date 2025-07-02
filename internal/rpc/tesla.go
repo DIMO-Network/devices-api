@@ -118,11 +118,12 @@ func (s *teslaRPCServer) GetFleetStatus(ctx context.Context, req *pb.GetFleetSta
 	}
 
 	return &pb.GetFleetStatusResponse{
-		KeyPaired:                      res.KeyPaired,
-		FirmwareVersion:                res.FirmwareVersion,
-		VehicleCommandProtocolRequired: res.VehicleCommandProtocolRequired,
-		FleetTelemetryVersion:          res.FleetTelemetryVersion,
-		DiscountedDeviceData:           res.DiscountedDeviceData,
+		KeyPaired:                          res.KeyPaired,
+		FirmwareVersion:                    res.FirmwareVersion,
+		VehicleCommandProtocolRequired:     res.VehicleCommandProtocolRequired,
+		FleetTelemetryVersion:              res.FleetTelemetryVersion,
+		DiscountedDeviceData:               res.DiscountedDeviceData,
+		SafetyScreenStreamingToggleEnabled: res.SafetyScreenStreamingToggleEnabled,
 	}, nil
 }
 
