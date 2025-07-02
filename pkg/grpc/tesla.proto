@@ -33,6 +33,7 @@ message GetFleetStatusResponse {
   bool vehicle_command_protocol_required = 3;
   bool discounted_device_data = 4;
   string fleet_telemetry_version = 5;
+  optional bool safety_screen_streaming_toggle_enabled = 6;
 }
 
 message GetFleetTelemetryConfigRequest {

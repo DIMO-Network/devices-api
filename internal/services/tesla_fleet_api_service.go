@@ -70,21 +70,23 @@ type fleetStatusResponse struct {
 	KeyPairedVINs []string `json:"key_paired_vins"`
 	UnpairedVINs  []string `json:"unpaired_vins"`
 	VehicleInfo   map[string]struct {
-		FirmwareVersion                string `json:"firmware_version"`
-		VehicleCommandProtocolRequired bool   `json:"vehicle_command_protocol_required"`
-		DiscountedDeviceData           bool   `json:"discounted_device_data"`
-		FleetTelemetryVersion          string `json:"fleet_telemetry_version"`
-		TotalNumberOfKeys              int    `json:"total_number_of_keys"`
+		FirmwareVersion                    string `json:"firmware_version"`
+		VehicleCommandProtocolRequired     bool   `json:"vehicle_command_protocol_required"`
+		DiscountedDeviceData               bool   `json:"discounted_device_data"`
+		FleetTelemetryVersion              string `json:"fleet_telemetry_version"`
+		TotalNumberOfKeys                  int    `json:"total_number_of_keys"`
+		SafetyScreenStreamingToggleEnabled *bool  `json:"safety_screen_streaming_toggle_enabled"`
 	} `json:"vehicle_info"`
 }
 
 type VehicleFleetStatus struct {
-	KeyPaired                      bool
-	VehicleCommandProtocolRequired bool
-	FirmwareVersion                string
-	DiscountedDeviceData           bool
-	FleetTelemetryVersion          string
-	NumberOfKeys                   int
+	KeyPaired                          bool
+	VehicleCommandProtocolRequired     bool
+	FirmwareVersion                    string
+	DiscountedDeviceData               bool
+	FleetTelemetryVersion              string
+	NumberOfKeys                       int
+	SafetyScreenStreamingToggleEnabled *bool
 }
 
 type VehicleTelemetryStatus struct {
@@ -319,12 +321,13 @@ func (t *teslaFleetAPIService) VirtualKeyConnectionStatus(ctx context.Context, t
 	vi := keyConn.Response.VehicleInfo[vin]
 
 	return &VehicleFleetStatus{
-		KeyPaired:                      len(keyConn.Response.KeyPairedVINs) == 1,
-		FirmwareVersion:                vi.FirmwareVersion,
-		DiscountedDeviceData:           vi.DiscountedDeviceData,
-		FleetTelemetryVersion:          vi.FleetTelemetryVersion,
-		NumberOfKeys:                   vi.TotalNumberOfKeys,
-		VehicleCommandProtocolRequired: vi.VehicleCommandProtocolRequired,
+		KeyPaired:                          len(keyConn.Response.KeyPairedVINs) == 1,
+		FirmwareVersion:                    vi.FirmwareVersion,
+		DiscountedDeviceData:               vi.DiscountedDeviceData,
+		FleetTelemetryVersion:              vi.FleetTelemetryVersion,
+		NumberOfKeys:                       vi.TotalNumberOfKeys,
+		VehicleCommandProtocolRequired:     vi.VehicleCommandProtocolRequired,
+		SafetyScreenStreamingToggleEnabled: vi.SafetyScreenStreamingToggleEnabled,
 	}, nil
 }
 
