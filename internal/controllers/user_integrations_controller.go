@@ -165,7 +165,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 	resp.Tesla.RequiredActions = make([]string, 0)
 
 	if fleetStatus.VehicleCommandProtocolRequired {
-		if fleetStatus.KeyPaired {
+		if !fleetStatus.KeyPaired {
 			resp.Tesla.RequiredActions = append(resp.Tesla.RequiredActions, "PairVirtualKey")
 		}
 	} else {
