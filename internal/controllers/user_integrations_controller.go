@@ -1285,7 +1285,10 @@ type TeslaIntegrationInfo struct {
 	VirtualKeyStatus VirtualKeyStatus `json:"virtualKeyStatus" swaggertype:"string" enums:"Paired,Unpaired,Incapable"`
 	// MissingRequiredScopes lists scopes required by DIMO that we're missing.
 	MissingRequiredScopes []string `json:"missingRequiredScopes"`
-	// RequiredActions
+	// RequiredActions is a list of actions that the user must take
+	// before the vehicle can transmit data to DIMO.
+	//
+	// The options are "PairVirtualKey", "UpdateFirmware", and "EnableStreaming".
 	RequiredActions []string
 }
 
