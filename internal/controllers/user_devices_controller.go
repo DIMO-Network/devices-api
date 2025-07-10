@@ -766,7 +766,7 @@ func (udc *UserDevicesController) requestInstantOffer(userDeviceID string, token
 // @Security    BearerAuth
 // @Router      /user/devices/fromsmartcar [post]
 // @Deprecated
-func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(c *fiber.Ctx) error {
+func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(_ *fiber.Ctx) error {
 	return fiber.NewError(fiber.StatusBadRequest, "Creating Smartcar devices is no longer supported.")
 }
 
