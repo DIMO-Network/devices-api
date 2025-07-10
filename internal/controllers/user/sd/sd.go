@@ -97,29 +97,6 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 
 	// TODO(elffjs): Yeah, yeah, this is bad.
 	switch integ.Vendor {
-	// In this case, the client should have redirected the user to [Smartcar Reauthentication]
-	// endpoint. The credentials we already have should start working again.
-	//
-	// [Smartcar Reauthentication]: https://smartcar.com/docs/connect/re-auth/redirect-to-connect.
-	case constants.SmartCarVendor:
-		if udai.Status != models.UserDeviceAPIIntegrationStatusAuthenticationFailure {
-			// TODO(elffjs): Can probably still "succeed" in this case.
-			return fiber.NewError(fiber.StatusBadRequest, "Device is not in authentication failure.")
-		}
-
-		udai.Status = models.UserDeviceAPIIntegrationStatusPendingFirstData
-		udai.TaskID = null.StringFrom(ksuid.New().String())
-
-		cols := models.UserDeviceAPIIntegrationColumns
-		_, err = udai.Update(c.Context(), co.DBS.DBS().Writer, boil.Whitelist(cols.Status, cols.TaskID, cols.UpdatedAt))
-		if err != nil {
-			return err
-		}
-
-		err = co.Smartcar.StartPoll(udai, sd)
-		if err != nil {
-			return err
-		}
 	case constants.TeslaVendor:
 		cred, err := co.Store.Retrieve(c.Context(), userAddr)
 		if err != nil {

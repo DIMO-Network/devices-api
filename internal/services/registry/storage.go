@@ -239,11 +239,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				}
 
 				switch integrationChainIDs.Name {
-				case "Smartcar":
-					err := p.smartcarTask.StartPoll(ud.R.UserDeviceAPIIntegrations[0], sd)
-					if err != nil {
-						return err
-					}
 				case "Tesla":
 					err := p.teslaTask.StartPoll(ud.R.UserDeviceAPIIntegrations[0], sd)
 					if err != nil {
