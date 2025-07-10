@@ -160,39 +160,6 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		firmwareUpToDate = false
 	}
 
-	vid, _ := apiIntegration.R.UserDevice.TokenID.Int64()
-
-	resp.Tesla.RequiredActions = make([]string, 0)
-
-	if fleetStatus.VehicleCommandProtocolRequired {
-		if !fleetStatus.KeyPaired {
-			resp.Tesla.RequiredActions = append(resp.Tesla.RequiredActions, "PairVirtualKey")
-		}
-	} else {
-		fwParts := strings.Split(fleetStatus.FirmwareVersion, ".")
-		if len(fwParts) >= 2 {
-			if year, err := strconv.Atoi(fwParts[0]); err != nil {
-				udc.log.Warn().Err(err).Int64("vehicleId", vid).Msgf("Couldn't extract year from Tesla firmware version %q.", fleetStatus.FirmwareVersion)
-			} else {
-				if week, err := strconv.Atoi(fwParts[1]); err != nil {
-					udc.log.Warn().Err(err).Int64("vehicleId", vid).Msgf("Couldn't extract week from Tesla firmware version %q.", fleetStatus.FirmwareVersion)
-				} else {
-					if year > 2025 || year == 2025 && week >= 20 {
-						if fleetStatus.SafetyScreenStreamingToggleEnabled == nil {
-							udc.log.Warn().Int64("vehicleId", vid).Msgf("This Tesla doesn't require a virtual key and its firmware is past 2025.20, but there is no streaming toggle status.")
-						} else if !*fleetStatus.SafetyScreenStreamingToggleEnabled {
-							resp.Tesla.RequiredActions = append(resp.Tesla.RequiredActions, "EnableStreaming")
-						}
-					} else {
-						resp.Tesla.RequiredActions = append(resp.Tesla.RequiredActions, "UpdateFirmware")
-					}
-				}
-			}
-		} else {
-			udc.log.Warn().Msgf("Tesla firmware version %q doesn't start with \"year.week\".", fleetStatus.FirmwareVersion)
-		}
-	}
-
 	resp.Tesla.VirtualKeyAdded = fleetStatus.KeyPaired
 	if !fleetTelemetryCapable {
 		resp.Tesla.VirtualKeyStatus = Incapable
@@ -1285,11 +1252,6 @@ type TeslaIntegrationInfo struct {
 	VirtualKeyStatus VirtualKeyStatus `json:"virtualKeyStatus" swaggertype:"string" enums:"Paired,Unpaired,Incapable"`
 	// MissingRequiredScopes lists scopes required by DIMO that we're missing.
 	MissingRequiredScopes []string `json:"missingRequiredScopes"`
-	// RequiredActions is a list of actions that the user must take
-	// before the vehicle can transmit data to DIMO.
-	//
-	// The options are "PairVirtualKey", "UpdateFirmware", and "EnableStreaming".
-	RequiredActions []string
 }
 
 type VirtualKeyStatus int
