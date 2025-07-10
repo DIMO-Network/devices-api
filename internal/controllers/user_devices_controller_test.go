@@ -8,13 +8,10 @@ import (
 	"io"
 	"math/big"
 	"testing"
-	"time"
 
 	"github.com/ericlagergren/decimal"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/volatiletech/sqlboiler/v4/types"
-
-	"github.com/go-redis/redis/v8"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -31,7 +28,6 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/segmentio/ksuid"
-	smartcar "github.com/smartcar/go-sdk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -142,189 +138,6 @@ func TestUserDevicesControllerTestSuite(t *testing.T) {
 }
 
 /* Actual Tests */
-func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar() {
-	// arrange DB
-	integration := test.BuildIntegrationGRPC(smartCarIntegrationID, constants.SmartCarVendor, 10, 0)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
-	// act request
-	vinny := "4T3R6RFVXMU023395"
-	reg := RegisterUserDeviceSmartcar{Code: "XX", RedirectURI: "https://mobile-app", CountryCode: "USA"}
-	j, _ := json.Marshal(reg)
-
-	//ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, vinny, s.pdb)
-	rot13 := new(shared.ROT13Cipher)
-
-	scToken := smartcar.Token{
-		Access:        "AA",
-		AccessExpiry:  time.Now().Add(time.Hour),
-		Refresh:       "RR",
-		RefreshExpiry: time.Now().Add(time.Hour),
-		ExpiresIn:     3600,
-	}
-	scTokenJSON, err := json.Marshal(scToken)
-	require.NoError(s.T(), err)
-	scTokenEnc, _ := rot13.Encrypt(string(scTokenJSON))
-
-	s.scClient.EXPECT().ExchangeCode(gomock.Any(), reg.Code, reg.RedirectURI).Times(1).Return(&scToken, nil)
-	s.scClient.EXPECT().GetExternalID(gomock.Any(), scToken.Access).Times(2).Return("123", nil)
-	s.scClient.EXPECT().GetVIN(gomock.Any(), scToken.Access, "123").Times(2).Return(vinny, nil)
-	// called again below but with different response
-	s.scClient.EXPECT().GetInfo(gomock.Any(), scToken.Access, "123").Times(1).Return(nil, nil)
-
-	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(&ddgrpc.DecodeVinResponse{
-		DeviceMakeId:  dd[0].Make.Id,
-		DefinitionId:  dd[0].Id,
-		DeviceStyleId: "",
-		Year:          dd[0].Year,
-	}, nil)
-
-	s.redisClient.EXPECT().Set(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID), scTokenEnc, time.Hour*2).Return(nil)
-	s.userDeviceSvc.EXPECT().CreateUserDevice(gomock.Any(), dd[0].Id, "", "USA", testUserID, &vinny, nil, false).
-		Return(&models.UserDevice{
-			ID:            ksuid.New().String(),
-			UserID:        testUserID,
-			VinIdentifier: null.StringFrom(vinny),
-			CountryCode:   null.StringFrom(reg.CountryCode),
-			VinConfirmed:  false,
-			DefinitionID:  dd[0].Id,
-		}, dd[0], nil)
-	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), smartCarIntegrationID).Return(integration, nil)
-	// todo this one isn't getting called...
-	//s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].Id).Return(dd[0], nil)
-
-	redisResponse := &redis.StringCmd{}
-	redisResponse.SetVal(scTokenEnc)
-	s.redisClient.EXPECT().Get(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID)).Return(redisResponse)
-	s.redisClient.EXPECT().Del(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID)).Return(nil)
-
-	s.scClient.EXPECT().GetUserID(gomock.Any(), scToken.Access).Return("123", nil)
-	s.scClient.EXPECT().GetEndpoints(gomock.Any(), scToken.Access, "123").Return([]string{"https://smartcar.io/api"}, nil)
-	s.scClient.EXPECT().HasDoorControl(gomock.Any(), scToken.Access, "123").Return(false, nil)
-	s.scClient.EXPECT().GetInfo(gomock.Any(), scToken.Access, "123").Times(1).Return(&smartcar.Info{
-		ID:              "1234567",
-		Make:            "FORD",
-		Model:           dd[0].Model,
-		Year:            int(dd[0].Year),
-		ResponseHeaders: smartcar.ResponseHeaders{},
-	}, nil)
-	encAccess, _ := rot13.Encrypt(scToken.Access)
-	encRefresh, _ := rot13.Encrypt(scToken.Refresh)
-	s.userDeviceSvc.EXPECT().CreateIntegration(gomock.Any(), gomock.Any(), gomock.Any(), integration.Id, "123", encAccess, gomock.Any(), encRefresh, gomock.Any()).Return(nil)
-
-	request := test.BuildRequest("POST", "/user/devices/fromsmartcar", string(j))
-	response, responseError := s.app.Test(request, 10000)
-	fmt.Println(responseError)
-	require.NoError(s.T(), responseError)
-	body, _ := io.ReadAll(response.Body)
-	// assert
-	if assert.Equal(s.T(), fiber.StatusCreated, response.StatusCode) == false {
-		fmt.Println("message: " + string(body))
-	}
-	regUserResp := UserDeviceFull{}
-	jsonUD := gjson.Get(string(body), "userDevice")
-	_ = json.Unmarshal([]byte(jsonUD.String()), &regUserResp)
-
-	assert.Len(s.T(), regUserResp.ID, 27)
-	assert.Equal(s.T(), dd[0].DeviceDefinitionId, regUserResp.DeviceDefinition.DeviceDefinitionID)
-	assert.Equal(s.T(), &vinny, regUserResp.VIN)
-	// note: have removed any requirements on device definition integrations
-}
-
-func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_Fail_Decode() {
-	// arrange DB
-	_ = test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
-	// act request
-	const vinny = "4T3R6RFVXMU023395"
-	reg := RegisterUserDeviceSmartcar{Code: "XX", RedirectURI: "https://mobile-app", CountryCode: "USA"}
-	j, _ := json.Marshal(reg)
-
-	s.scClient.EXPECT().ExchangeCode(gomock.Any(), reg.Code, reg.RedirectURI).Times(1).Return(&smartcar.Token{
-		Access:        "AA",
-		AccessExpiry:  time.Now().Add(time.Hour),
-		Refresh:       "RR",
-		RefreshExpiry: time.Now().Add(time.Hour),
-		ExpiresIn:     3600,
-	}, nil)
-	s.scClient.EXPECT().GetExternalID(gomock.Any(), "AA").Times(1).Return("123", nil)
-	s.scClient.EXPECT().GetVIN(gomock.Any(), "AA", "123").Times(1).Return(vinny, nil)
-	s.redisClient.EXPECT().Set(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID), gomock.Any(), time.Hour*2).Return(nil)
-	s.scClient.EXPECT().GetInfo(gomock.Any(), "AA", "123").Times(1).Return(nil, nil)
-	grpcErr := status.Error(codes.InvalidArgument, "failed to decode vin")
-	s.deviceDefSvc.EXPECT().DecodeVIN(gomock.Any(), vinny, "", 0, reg.CountryCode).Times(1).Return(nil,
-		grpcErr)
-
-	request := test.BuildRequest("POST", "/user/devices/fromsmartcar", string(j))
-	response, responseError := s.app.Test(request)
-	fmt.Println(responseError)
-
-	// assert we get bad request and not 500
-	assert.Equal(s.T(), fiber.StatusBadRequest, response.StatusCode)
-}
-
-func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_SameUser_DuplicateVIN() {
-	// arrange DB
-	integration := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
-
-	// act request
-	const vinny = "4T3R6RFVXMU023395"
-	reg := RegisterUserDeviceSmartcar{Code: "XX", RedirectURI: "https://mobile-app", CountryCode: "USA"}
-	j, _ := json.Marshal(reg)
-	test.SetupCreateUserDevice(s.T(), testUserID, dd[0].DeviceDefinitionId, nil, vinny, s.pdb)
-
-	s.scClient.EXPECT().ExchangeCode(gomock.Any(), reg.Code, reg.RedirectURI).Times(1).Return(&smartcar.Token{
-		Access:        "AA",
-		AccessExpiry:  time.Now().Add(time.Hour),
-		Refresh:       "RR",
-		RefreshExpiry: time.Now().Add(time.Hour),
-		ExpiresIn:     3600,
-	}, nil)
-	s.scClient.EXPECT().GetExternalID(gomock.Any(), "AA").Times(1).Return("123", nil)
-	s.scClient.EXPECT().GetVIN(gomock.Any(), "AA", "123").Times(1).Return(vinny, nil)
-	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), dd[0].DeviceDefinitionId).Times(1).Return(dd[0], nil)
-	s.redisClient.EXPECT().Set(gomock.Any(), buildSmartcarTokenKey(vinny, testUserID), gomock.Any(), time.Hour*2).Return(nil)
-
-	request := test.BuildRequest("POST", "/user/devices/fromsmartcar", string(j))
-	response, responseError := s.app.Test(request)
-	require.NoError(s.T(), responseError)
-	body, _ := io.ReadAll(response.Body)
-	// assert
-	if assert.Equal(s.T(), fiber.StatusOK, response.StatusCode) == false {
-		fmt.Println("message: " + string(body))
-	}
-}
-
-func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromSmartcar_Fail_DuplicateVIN() {
-	// arrange DB
-	integration := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
-	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "F150", 2020, integration)
-
-	// act request
-	const vinny = "4T3R6RFVXMU023395"
-	reg := RegisterUserDeviceSmartcar{Code: "XX", RedirectURI: "https://mobile-app", CountryCode: "USA"}
-	j, _ := json.Marshal(reg)
-	test.SetupCreateUserDevice(s.T(), "09098877", dd[0].DeviceDefinitionId, nil, vinny, s.pdb)
-
-	s.scClient.EXPECT().ExchangeCode(gomock.Any(), reg.Code, reg.RedirectURI).Times(1).Return(&smartcar.Token{
-		Access:        "AA",
-		AccessExpiry:  time.Now().Add(time.Hour),
-		Refresh:       "RR",
-		RefreshExpiry: time.Now().Add(time.Hour),
-		ExpiresIn:     3600,
-	}, nil)
-	s.scClient.EXPECT().GetExternalID(gomock.Any(), "AA").Times(1).Return("123", nil)
-	s.scClient.EXPECT().GetVIN(gomock.Any(), "AA", "123").Times(1).Return(vinny, nil)
-
-	request := test.BuildRequest("POST", "/user/devices/fromsmartcar", string(j))
-	response, responseError := s.app.Test(request)
-	require.NoError(s.T(), responseError)
-	body, _ := io.ReadAll(response.Body)
-	// assert
-	if assert.Equal(s.T(), fiber.StatusConflict, response.StatusCode) == false {
-		fmt.Println("message: " + string(body))
-	}
-}
-
 func (s *UserDevicesControllerTestSuite) TestPostUserDeviceFromVIN() {
 	// arrange DB
 	integration := test.BuildIntegrationGRPC(autoPiIntegrationID, constants.AutoPiVendor, 10, 0)
