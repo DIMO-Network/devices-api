@@ -605,15 +605,6 @@ definitions:
         items:
           type: string
         type: array
-      requiredActions:
-        description: |-
-          RequiredActions is a list of actions that the user must take
-          before the vehicle can transmit data to DIMO.
-
-          The options are "PairVirtualKey", "UpdateFirmware", and "EnableStreaming".
-        items:
-          type: string
-        type: array
       telemetrySubscribed:
         description: |-
           TelemetrySubscribed is true if DIMO has subscribed to the vehicle's telemetry stream. Note that

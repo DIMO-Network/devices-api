@@ -2356,13 +2356,6 @@
                         "type": "string"
                     }
                 },
-                "requiredActions": {
-                    "description": "RequiredActions is a list of actions that the user must take\nbefore the vehicle can transmit data to DIMO.\n\nThe options are \"PairVirtualKey\", \"UpdateFirmware\", and \"EnableStreaming\".",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
                 "telemetrySubscribed": {
                     "description": "TelemetrySubscribed is true if DIMO has subscribed to the vehicle's telemetry stream. Note that\nvirtual key pairing is required for this to work.",
                     "type": "boolean"
