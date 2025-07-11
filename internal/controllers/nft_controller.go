@@ -339,10 +339,6 @@ func (nc *NFTController) handleEnqueueCommand(c *fiber.Ctx, commandPath string) 
 
 	// TODO(elffjs): This map is ugly. Surely we interface our way out of this?
 	commandMap := map[string]map[string]func(udai *models.UserDeviceAPIIntegration) (string, error){
-		constants.SmartCarVendor: {
-			"doors/unlock": nc.smartcarTaskSvc.UnlockDoors,
-			"doors/lock":   nc.smartcarTaskSvc.LockDoors,
-		},
 		constants.TeslaVendor: {
 			"doors/unlock": nc.teslaTaskService.UnlockDoors,
 			"doors/lock":   nc.teslaTaskService.LockDoors,
