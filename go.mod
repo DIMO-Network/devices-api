@@ -16,7 +16,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.60.1
 	github.com/burdiyan/kafkautil v0.0.0-20240215092415-7e6d3d0fc870
 	github.com/docker/go-connections v0.5.0
-	github.com/elastic/go-elasticsearch/v8 v8.12.0
 	github.com/ericlagergren/decimal v0.0.0-20240411145413-00de7ca16731 // Do not touch.
 	github.com/friendsofgo/errors v0.9.2
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
@@ -74,7 +73,6 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/dnwe/otelsarama v0.0.0-20231212173111-631a0a53d5d4 // indirect
-	github.com/elastic/elastic-transport-go/v8 v8.4.0 // indirect
 	github.com/ethereum/c-kzg-4844 v1.0.3 // indirect
 	github.com/ethereum/go-verkle v0.2.2 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 
-	"github.com/DIMO-Network/devices-api/internal/elasticsearch"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/shared/db"
 	"github.com/IBM/sarama"
@@ -24,7 +23,6 @@ type dependencyContainer struct {
 	s3NFTServiceClient *s3.Client
 	ddSvc              services.DeviceDefinitionService
 	dbs                func() *db.ReaderWriter
-	elasticSearch      elasticsearch.ElasticSearch
 }
 
 func newDependencyContainer(settings *config.Settings, logger zerolog.Logger, dbs func() *db.ReaderWriter) dependencyContainer {
@@ -93,15 +91,4 @@ func (dc *dependencyContainer) getS3NFTServiceClient(ctx context.Context) *s3.Cl
 func (dc *dependencyContainer) getDeviceDefinitionService() services.DeviceDefinitionService {
 	dc.ddSvc = services.NewDeviceDefinitionService(dc.dbs, dc.logger, dc.settings)
 	return dc.ddSvc
-}
-
-func (dc *dependencyContainer) getElasticSearchService() elasticsearch.ElasticSearch {
-	esInstance, err := elasticsearch.NewElasticSearch(*dc.settings, dc.logger)
-	if err != nil {
-		dc.logger.Fatal().Err(err).Msgf("Couldn't instantiate Elasticsearch client.")
-	}
-
-	dc.elasticSearch = esInstance
-
-	return dc.elasticSearch
 }

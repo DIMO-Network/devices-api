@@ -119,7 +119,6 @@ func main() {
 
 		subcommands.Register(&populateSDInfoTopicCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&populateTeslaTelemetryMapCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
-		subcommands.Register(&remakeDeviceDefinitionTopicsCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
 		subcommands.Register(&populateSDFingerprintTable{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&updateStateCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&web2PairCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
@@ -127,8 +126,6 @@ func main() {
 		subcommands.Register(&startSDTask{logger: logger, container: deps, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&startIntegrationTask{logger: logger, container: deps, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&smartcarStopConnectionsCmd{container: deps}, "device integrations")
-
-		subcommands.Register(&populateESDDDataCmd{logger: logger, settings: settings, pdb: pdb, esInstance: deps.getElasticSearchService(), ddSvc: deps.getDeviceDefinitionService()}, "populate data")
 
 		subcommands.Register(&stopTaskByKeyCmd{logger: logger, settings: settings, container: deps, pdb: pdb}, "tasks")
 
