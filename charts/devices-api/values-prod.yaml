@@ -20,8 +20,6 @@ env:
   REDIS_USER: default
   REDIS_CLUSTER_MODE: true
   REDIS_TLS: true
-  INGEST_SMARTCAR_URL: http://ingest-smartcar-prod:8080
-  INGEST_SMARTCAR_TOPIC: topic.interface.ingest.smartcar
   KAFKA_BROKERS: kafka-prod-dimo-kafka-kafka-brokers:9092
   EVENTS_TOPIC: topic.event
   DEVICE_DATA_INDEX_NAME: device-status-prod*

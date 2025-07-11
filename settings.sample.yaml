@@ -12,7 +12,6 @@ DB:
 SERVICE_NAME: devices-api
 JWT_KEY_SET_URL: http://127.0.0.1:5556/dex/keys
 KAFKA_BROKERS: localhost:9092
-INGEST_SMARTCAR_TOPIC: topic.interface.ingest.smartcar
 TASK_RUN_NOW_TOPIC: topic.task.run.now
 TASK_STOP_TOPIC: table.task.stop
 TASK_STATUS_TOPIC: topic.task.status

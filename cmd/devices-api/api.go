@@ -285,7 +285,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 		sdc := sd.Controller{
 			DBS:         pdb,
-			Smartcar:    scTaskSvc,
 			Tesla:       teslaTaskService,
 			IntegClient: &integration.Client{Service: ddSvc},
 			Store: &tmpcred.Store{
@@ -337,7 +336,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	startContractEventsConsumer(logger, settings, pdb, genericADIntegration, ddSvc, eventService, scTaskSvc, teslaTaskService)
 
-	store, err := registry.NewProcessor(pdb.DBS, &logger, settings, eventService, scTaskSvc, teslaTaskService, ddSvc)
+	store, err := registry.NewProcessor(pdb.DBS, &logger, settings, eventService, teslaTaskService, ddSvc)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to create registry storage client")
 	}

@@ -124,7 +124,6 @@ func main() {
 		subcommands.Register(&web2PairCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&autoPiKTableDeleteCmd{logger: logger, container: deps}, "device integrations")
 		subcommands.Register(&startSDTask{logger: logger, container: deps, settings: settings, pdb: pdb}, "device integrations")
-		subcommands.Register(&startIntegrationTask{logger: logger, container: deps, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&smartcarStopConnectionsCmd{container: deps}, "device integrations")
 
 		subcommands.Register(&stopTaskByKeyCmd{logger: logger, settings: settings, container: deps, pdb: pdb}, "tasks")

@@ -23,8 +23,6 @@ securityContext:
 cronJob:
   enabled: false
   schedule: 0 0 * * 0
-deployJob:
-  enabled: false
 env:
   ENVIRONMENT: dev
   PORT: '8080'
@@ -40,8 +38,6 @@ env:
   REDIS_USER: default
   REDIS_PORT: '6379'
   REDIS_TLS: true
-  INGEST_SMARTCAR_URL: http://ingest-smartcar-dev:8080
-  INGEST_SMARTCAR_TOPIC: topic.interface.ingest.smartcar
   TASK_RUN_NOW_TOPIC: topic.task.run.now
   KAFKA_BROKERS: kafka-dev-dimo-kafka-kafka-brokers:9092
   TASK_STOP_TOPIC: table.task.stop
@@ -189,14 +185,6 @@ kafka:
         compression.type: producer
         cleanup.policy: compact,delete
         min.compaction.lag.ms: '3600000'
-    - name: table.device.integration.smartcar
-      config:
-        segment.ms: '3600000'
-        compression.type: producer
-        cleanup.policy: compact
-        min.compaction.lag.ms: '3600000'
-        min.cleanable.dirty.ratio: '0.01'
-        delete.retention.ms: '3600000'
     - name: table.device.integration.autopi
       config:
         segment.ms: '3600000'
