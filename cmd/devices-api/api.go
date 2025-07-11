@@ -99,7 +99,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		logger.Fatal().Err(err).Msg("Error creating IPFS client.")
 	}
 	scTaskSvc := services.NewSmartcarTaskService(settings, producer)
-	smartcarClient := services.NewSmartcarClient(settings)
 	teslaTaskService := services.NewTeslaTaskService(settings, producer)
 	teslaFleetAPISvc, err := services.NewTeslaFleetAPIService(settings, &logger)
 	if err != nil {
@@ -142,7 +141,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// controllers
 	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService,
-		smartcarClient, scTaskSvc, teslaTaskService, teslaOracle, cipher, autoPiSvc, autoPiIngest,
+		scTaskSvc, teslaTaskService, teslaOracle, cipher, autoPiSvc, autoPiIngest,
 		producer, s3NFTServiceClient, redisCache, openAI,
 		natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc, ipfsSvc, chConn)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
@@ -172,7 +171,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1.Get("/compass/device-by-vin/:vin", compassPSK.Middleware, userDeviceController.GetCompassDeviceByVIN)
 
 	// Device Definitions
-	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc)
+	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, teslaTaskService, ddIntSvc)
 
 	v1.Get("/countries", countriesController.GetSupportedCountries)
 	v1.Get("/countries/:countryCode", countriesController.GetCountry)

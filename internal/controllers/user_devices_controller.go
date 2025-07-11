@@ -64,7 +64,6 @@ type UserDevicesController struct {
 	DeviceDefIntSvc       services.DeviceDefinitionIntegrationService
 	log                   *zerolog.Logger
 	eventService          services.EventService
-	smartcarClient        services.SmartcarClient
 	smartcarTaskSvc       services.SmartcarTaskService
 	teslaTaskService      services.TeslaTaskService
 	teslaOracle           pb_oracle.TeslaOracleClient
@@ -117,7 +116,6 @@ func NewUserDevicesController(settings *config.Settings,
 	ddSvc services.DeviceDefinitionService,
 	ddIntSvc services.DeviceDefinitionIntegrationService,
 	eventService services.EventService,
-	smartcarClient services.SmartcarClient,
 	smartcarTaskSvc services.SmartcarTaskService,
 	teslaTaskService services.TeslaTaskService,
 	teslaOracle pb_oracle.TeslaOracleClient,
@@ -142,7 +140,6 @@ func NewUserDevicesController(settings *config.Settings,
 		DeviceDefSvc:          ddSvc,
 		DeviceDefIntSvc:       ddIntSvc,
 		eventService:          eventService,
-		smartcarClient:        smartcarClient,
 		smartcarTaskSvc:       smartcarTaskSvc,
 		teslaTaskService:      teslaTaskService,
 		teslaOracle:           teslaOracle,
@@ -870,10 +867,6 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(_ *fiber.Ctx
 	return fiber.NewError(fiber.StatusBadRequest, "Smartcar creation no longer supported.")
 }
 
-func buildSmartcarTokenKey(vin, userID string) string {
-	return fmt.Sprintf("sc-temp-tok-%s-%s", vin, userID)
-}
-
 func (udc *UserDevicesController) createUserDevice(ctx context.Context, definitionID, styleID, countryCode, userID string, vin, canProtocol *string, vinConfirmed bool) (*UserDeviceFull, error) {
 	ud, dd, err := udc.userDeviceSvc.CreateUserDevice(ctx, definitionID, styleID, countryCode, userID, vin, canProtocol, vinConfirmed)
 	if err != nil {
@@ -1585,13 +1578,6 @@ type RegisterUserDeviceVIN struct {
 	PreApprovedPSK string `json:"preApprovedPSK"`
 }
 
-type RegisterUserDeviceSmartcar struct {
-	// Code refers to the auth code provided by smartcar when user logs in
-	Code        string `json:"code"`
-	RedirectURI string `json:"redirectURI"`
-	CountryCode string `json:"countryCode"`
-}
-
 type UpdateVINReq struct {
 	// VIN is a vehicle identification number. At the very least, it must be
 	// 17 characters in length and contain only letters and numbers.
@@ -1623,14 +1609,6 @@ func (reg *RegisterUserDevice) Validate() error {
 func (reg *RegisterUserDeviceVIN) Validate() error {
 	return validation.ValidateStruct(reg,
 		validation.Field(&reg.VIN, validation.Required, validation.Length(13, 17)),
-		validation.Field(&reg.CountryCode, validation.Required, validation.Length(3, 3)),
-	)
-}
-
-func (reg *RegisterUserDeviceSmartcar) Validate() error {
-	return validation.ValidateStruct(reg,
-		validation.Field(&reg.Code, validation.Required),
-		validation.Field(&reg.RedirectURI, validation.Required),
 		validation.Field(&reg.CountryCode, validation.Required, validation.Length(3, 3)),
 	)
 }
