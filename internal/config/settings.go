@@ -68,19 +68,14 @@ type Settings struct {
 	// VIN verifiable credentials.
 	IssuerPrivateKey string `yaml:"ISSUER_PRIVATE_KEY"`
 
-	SyntheticWalletGRPCAddr string `yaml:"SYNTHETIC_WALLET_GRPC_ADDR"`
-	DeviceFingerprintTopic  string `yaml:"DEVICE_FINGERPRINT_TOPIC"`
-
-	DeviceFingerprintConsumerGroup    string `yaml:"DEVICE_FINGERPRINT_CONSUMER_GROUP"`
-	SyntheticFingerprintTopic         string `yaml:"SYNTHETIC_FINGERPRINT_TOPIC"`
-	SyntheticFingerprintConsumerGroup string `yaml:"SYNTHETIC_FINGERPRINT_CONSUMER_GROUP"`
-	TeslaClientID                     string `yaml:"TESLA_CLIENT_ID"`
-	TeslaClientSecret                 string `yaml:"TESLA_CLIENT_SECRET"`
-	TeslaTokenURL                     string `yaml:"TESLA_TOKEN_URL"`
-	TeslaFleetURL                     string `yaml:"TESLA_FLEET_URL"`
-	TeslaTelemetryHostName            string `yaml:"TESLA_TELEMETRY_HOST_NAME"`
-	TeslaTelemetryPort                int    `yaml:"TESLA_TELEMETRY_PORT"`
-	TeslaTelemetryCACertificate       string `yaml:"TESLA_TELEMETRY_CA_CERTIFICATE"`
+	SyntheticWalletGRPCAddr     string `yaml:"SYNTHETIC_WALLET_GRPC_ADDR"`
+	TeslaClientID               string `yaml:"TESLA_CLIENT_ID"`
+	TeslaClientSecret           string `yaml:"TESLA_CLIENT_SECRET"`
+	TeslaTokenURL               string `yaml:"TESLA_TOKEN_URL"`
+	TeslaFleetURL               string `yaml:"TESLA_FLEET_URL"`
+	TeslaTelemetryHostName      string `yaml:"TESLA_TELEMETRY_HOST_NAME"`
+	TeslaTelemetryPort          int    `yaml:"TESLA_TELEMETRY_PORT"`
+	TeslaTelemetryCACertificate string `yaml:"TESLA_TELEMETRY_CA_CERTIFICATE"`
 
 	IPFSURL string `yaml:"IPFS_URL"`
 

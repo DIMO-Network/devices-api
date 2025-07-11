@@ -24,7 +24,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/rpc"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
-	"github.com/DIMO-Network/devices-api/internal/services/fingerprint"
 	"github.com/DIMO-Network/devices-api/internal/services/genericad"
 	"github.com/DIMO-Network/devices-api/internal/services/integration"
 	"github.com/DIMO-Network/devices-api/internal/services/ipfs"
@@ -331,11 +330,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 
 	ctx := context.Background()
-
-	if err := fingerprint.RunConsumer(ctx, settings, &logger, pdb); err != nil {
-		logger.Fatal().Err(err).Msg("Failed to create vin credentialer listener")
-	}
-
 	startContractEventsConsumer(logger, settings, pdb, genericADIntegration, ddSvc, eventService, scTaskSvc, teslaTaskService)
 
 	store, err := registry.NewProcessor(pdb.DBS, &logger, settings, eventService, scTaskSvc, teslaTaskService, ddSvc)
