@@ -41,7 +41,6 @@ type proc struct {
 	settings        *config.Settings
 	Eventer         services.EventService
 	ErrorTranslator *ABIErrorTranslator
-	smartcarTask    services.SmartcarTaskService
 	teslaTask       services.TeslaTaskService
 	ddSvc           services.DeviceDefinitionService
 }
@@ -239,11 +238,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				}
 
 				switch integrationChainIDs.Name {
-				case "Smartcar":
-					err := p.smartcarTask.StartPoll(ud.R.UserDeviceAPIIntegrations[0], sd)
-					if err != nil {
-						return err
-					}
 				case "Tesla":
 					err := p.teslaTask.StartPoll(ud.R.UserDeviceAPIIntegrations[0], sd)
 					if err != nil {
@@ -312,7 +306,6 @@ func NewProcessor(
 	logger *zerolog.Logger,
 	settings *config.Settings,
 	eventer services.EventService,
-	smartcarTask services.SmartcarTaskService,
 	teslaTask services.TeslaTaskService,
 	ddSvc services.DeviceDefinitionService,
 ) (StatusProcessor, error) {
@@ -339,7 +332,6 @@ func NewProcessor(
 		settings:        settings,
 		Eventer:         eventer,
 		ErrorTranslator: errorTranslator,
-		smartcarTask:    smartcarTask,
 		teslaTask:       teslaTask,
 		ddSvc:           ddSvc,
 	}, nil

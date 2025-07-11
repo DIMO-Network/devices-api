@@ -40,49 +40,6 @@ func (m *MockSmartcarTaskService) EXPECT() *MockSmartcarTaskServiceMockRecorder 
 	return m.recorder
 }
 
-// LockDoors mocks base method.
-func (m *MockSmartcarTaskService) LockDoors(udai *models.UserDeviceAPIIntegration) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LockDoors", udai)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// LockDoors indicates an expected call of LockDoors.
-func (mr *MockSmartcarTaskServiceMockRecorder) LockDoors(udai any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockDoors", reflect.TypeOf((*MockSmartcarTaskService)(nil).LockDoors), udai)
-}
-
-// Refresh mocks base method.
-func (m *MockSmartcarTaskService) Refresh(udai *models.UserDeviceAPIIntegration) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Refresh", udai)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Refresh indicates an expected call of Refresh.
-func (mr *MockSmartcarTaskServiceMockRecorder) Refresh(udai any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Refresh", reflect.TypeOf((*MockSmartcarTaskService)(nil).Refresh), udai)
-}
-
-// StartPoll mocks base method.
-func (m *MockSmartcarTaskService) StartPoll(udai *models.UserDeviceAPIIntegration, sd *models.SyntheticDevice) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StartPoll", udai, sd)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// StartPoll indicates an expected call of StartPoll.
-func (mr *MockSmartcarTaskServiceMockRecorder) StartPoll(udai, sd any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartPoll", reflect.TypeOf((*MockSmartcarTaskService)(nil).StartPoll), udai, sd)
-}
-
 // StopPoll mocks base method.
 func (m *MockSmartcarTaskService) StopPoll(udai *models.UserDeviceAPIIntegration) error {
 	m.ctrl.T.Helper()
@@ -95,19 +52,4 @@ func (m *MockSmartcarTaskService) StopPoll(udai *models.UserDeviceAPIIntegration
 func (mr *MockSmartcarTaskServiceMockRecorder) StopPoll(udai any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopPoll", reflect.TypeOf((*MockSmartcarTaskService)(nil).StopPoll), udai)
-}
-
-// UnlockDoors mocks base method.
-func (m *MockSmartcarTaskService) UnlockDoors(udai *models.UserDeviceAPIIntegration) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UnlockDoors", udai)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// UnlockDoors indicates an expected call of UnlockDoors.
-func (mr *MockSmartcarTaskServiceMockRecorder) UnlockDoors(udai any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlockDoors", reflect.TypeOf((*MockSmartcarTaskService)(nil).UnlockDoors), udai)
 }
