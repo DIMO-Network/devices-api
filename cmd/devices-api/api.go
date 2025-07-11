@@ -107,9 +107,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 	autoPiSvc := services.NewAutoPiAPIService(settings, pdb.DBS)
 	autoPiIngest := services.NewIngestRegistrar(producer)
-	deviceDefinitionRegistrar := services.NewDeviceDefinitionRegistrar(producer, settings)
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, pdb.DBS, &logger)
-	genericADIntegration := genericad.NewIntegration(pdb.DBS, ddSvc, autoPiIngest, eventService, deviceDefinitionRegistrar, &logger)
+	genericADIntegration := genericad.NewIntegration(pdb.DBS, ddSvc, autoPiIngest, eventService, &logger)
 	userDeviceSvc := services.NewUserDeviceService(ddSvc, logger, pdb.DBS, eventService)
 
 	openAI := services.NewOpenAI(&logger, *settings)
@@ -144,7 +143,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// controllers
 	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService,
 		smartcarClient, scTaskSvc, teslaTaskService, teslaOracle, cipher, autoPiSvc, autoPiIngest,
-		deviceDefinitionRegistrar, producer, s3NFTServiceClient, redisCache, openAI,
+		producer, s3NFTServiceClient, redisCache, openAI,
 		natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc, ipfsSvc, chConn)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)

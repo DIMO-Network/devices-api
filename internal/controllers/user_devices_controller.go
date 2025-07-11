@@ -58,30 +58,29 @@ import (
 var _ = signer.TypedData{} // Use this package so that the swag command doesn't throw a fit.
 
 type UserDevicesController struct {
-	Settings                  *config.Settings
-	DBS                       func() *db.ReaderWriter
-	DeviceDefSvc              services.DeviceDefinitionService
-	DeviceDefIntSvc           services.DeviceDefinitionIntegrationService
-	log                       *zerolog.Logger
-	eventService              services.EventService
-	smartcarClient            services.SmartcarClient
-	smartcarTaskSvc           services.SmartcarTaskService
-	teslaTaskService          services.TeslaTaskService
-	teslaOracle               pb_oracle.TeslaOracleClient
-	cipher                    shared.Cipher
-	autoPiSvc                 services.AutoPiAPIService
-	autoPiIngestRegistrar     services.IngestRegistrar
-	s3                        *s3.Client
-	producer                  sarama.SyncProducer
-	deviceDefinitionRegistrar services.DeviceDefinitionRegistrar
-	redisCache                redis.CacheService
-	openAI                    services.OpenAI
-	NATSSvc                   *services.NATSService
-	wallet                    services.SyntheticWalletInstanceService
-	userDeviceSvc             services.UserDeviceService
-	teslaFleetAPISvc          services.TeslaFleetAPIService
-	ipfsSvc                   *ipfs.IPFS
-	clickHouseConn            clickhouse.Conn
+	Settings              *config.Settings
+	DBS                   func() *db.ReaderWriter
+	DeviceDefSvc          services.DeviceDefinitionService
+	DeviceDefIntSvc       services.DeviceDefinitionIntegrationService
+	log                   *zerolog.Logger
+	eventService          services.EventService
+	smartcarClient        services.SmartcarClient
+	smartcarTaskSvc       services.SmartcarTaskService
+	teslaTaskService      services.TeslaTaskService
+	teslaOracle           pb_oracle.TeslaOracleClient
+	cipher                shared.Cipher
+	autoPiSvc             services.AutoPiAPIService
+	autoPiIngestRegistrar services.IngestRegistrar
+	s3                    *s3.Client
+	producer              sarama.SyncProducer
+	redisCache            redis.CacheService
+	openAI                services.OpenAI
+	NATSSvc               *services.NATSService
+	wallet                services.SyntheticWalletInstanceService
+	userDeviceSvc         services.UserDeviceService
+	teslaFleetAPISvc      services.TeslaFleetAPIService
+	ipfsSvc               *ipfs.IPFS
+	clickHouseConn        clickhouse.Conn
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -125,7 +124,6 @@ func NewUserDevicesController(settings *config.Settings,
 	cipher shared.Cipher,
 	autoPiSvc services.AutoPiAPIService,
 	autoPiIngestRegistrar services.IngestRegistrar,
-	deviceDefinitionRegistrar services.DeviceDefinitionRegistrar,
 	producer sarama.SyncProducer,
 	s3NFTClient *s3.Client,
 	cache redis.CacheService,
@@ -138,30 +136,29 @@ func NewUserDevicesController(settings *config.Settings,
 	chConn clickhouse.Conn,
 ) UserDevicesController {
 	return UserDevicesController{
-		Settings:                  settings,
-		DBS:                       dbs,
-		log:                       logger,
-		DeviceDefSvc:              ddSvc,
-		DeviceDefIntSvc:           ddIntSvc,
-		eventService:              eventService,
-		smartcarClient:            smartcarClient,
-		smartcarTaskSvc:           smartcarTaskSvc,
-		teslaTaskService:          teslaTaskService,
-		teslaOracle:               teslaOracle,
-		cipher:                    cipher,
-		autoPiSvc:                 autoPiSvc,
-		autoPiIngestRegistrar:     autoPiIngestRegistrar,
-		s3:                        s3NFTClient,
-		producer:                  producer,
-		deviceDefinitionRegistrar: deviceDefinitionRegistrar,
-		redisCache:                cache,
-		openAI:                    openAI,
-		NATSSvc:                   natsSvc,
-		wallet:                    wallet,
-		userDeviceSvc:             userDeviceSvc,
-		teslaFleetAPISvc:          teslaFleetAPISvc,
-		ipfsSvc:                   ipfsSvc,
-		clickHouseConn:            chConn,
+		Settings:              settings,
+		DBS:                   dbs,
+		log:                   logger,
+		DeviceDefSvc:          ddSvc,
+		DeviceDefIntSvc:       ddIntSvc,
+		eventService:          eventService,
+		smartcarClient:        smartcarClient,
+		smartcarTaskSvc:       smartcarTaskSvc,
+		teslaTaskService:      teslaTaskService,
+		teslaOracle:           teslaOracle,
+		cipher:                cipher,
+		autoPiSvc:             autoPiSvc,
+		autoPiIngestRegistrar: autoPiIngestRegistrar,
+		s3:                    s3NFTClient,
+		producer:              producer,
+		redisCache:            cache,
+		openAI:                openAI,
+		NATSSvc:               natsSvc,
+		wallet:                wallet,
+		userDeviceSvc:         userDeviceSvc,
+		teslaFleetAPISvc:      teslaFleetAPISvc,
+		ipfsSvc:               ipfsSvc,
+		clickHouseConn:        chConn,
 	}
 }
 

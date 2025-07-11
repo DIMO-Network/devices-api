@@ -10,7 +10,6 @@ import (
 	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/shared"
 
-	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/devices-api/models"
@@ -25,12 +24,11 @@ import (
 )
 
 type Integration struct {
-	db          func() *db.ReaderWriter
-	defs        services.DeviceDefinitionService
-	apReg       services.IngestRegistrar
-	eventer     services.EventService
-	ddRegistrar services.DeviceDefinitionRegistrar
-	logger      *zerolog.Logger
+	db      func() *db.ReaderWriter
+	defs    services.DeviceDefinitionService
+	apReg   services.IngestRegistrar
+	eventer services.EventService
+	logger  *zerolog.Logger
 }
 
 func NewIntegration(
@@ -38,16 +36,14 @@ func NewIntegration(
 	defs services.DeviceDefinitionService,
 	apReg services.IngestRegistrar,
 	eventer services.EventService,
-	ddRegistrar services.DeviceDefinitionRegistrar,
 	logger *zerolog.Logger,
 ) *Integration {
 	return &Integration{
-		db:          db,
-		defs:        defs,
-		apReg:       apReg,
-		eventer:     eventer,
-		ddRegistrar: ddRegistrar,
-		logger:      logger,
+		db:      db,
+		defs:    defs,
+		apReg:   apReg,
+		eventer: eventer,
+		logger:  logger,
 	}
 }
 
@@ -169,24 +165,6 @@ func (i *Integration) Pair(ctx context.Context, amTokenID, vehicleTokenID *big.I
 			},
 		},
 	)
-
-	region := ""
-	if ud.CountryCode.Valid {
-		countryRecord := constants.FindCountry(ud.CountryCode.String)
-		if countryRecord != nil {
-			region = countryRecord.Region
-		}
-	}
-	_ = i.ddRegistrar.Register(services.DeviceDefinitionDTO{
-		IntegrationID: integ.Id,
-		UserDeviceID:  ud.ID,
-		Make:          def.Make.Name,
-		Model:         def.Model,
-		Year:          int(def.Year),
-		Region:        region,
-		MakeSlug:      def.Make.NameSlug,
-		ModelSlug:     shared.SlugString(def.Model),
-	})
 
 	return nil
 }
