@@ -119,7 +119,6 @@ func main() {
 
 		subcommands.Register(&populateSDInfoTopicCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&populateTeslaTelemetryMapCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
-		subcommands.Register(&populateSDFingerprintTable{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&updateStateCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&web2PairCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&autoPiKTableDeleteCmd{logger: logger, container: deps}, "device integrations")
