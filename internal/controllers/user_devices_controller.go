@@ -747,8 +747,6 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 
 	slugID := ""
 
-	vinConfirmed := udc.Settings.CompassPreSharedKey == reg.PreApprovedPSK
-
 	// check if VIN already exists
 	existingUD, err := models.UserDevices(models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
 		models.UserDeviceWhere.VinConfirmed.EQ(true)).One(c.Context(), udc.DBS().Reader)
@@ -785,7 +783,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		}
 		slugID = decodeVIN.DefinitionId
 
-		udFull, err = udc.createUserDevice(c.Context(), slugID, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, &reg.CANProtocol, vinConfirmed)
+		udFull, err = udc.createUserDevice(c.Context(), slugID, decodeVIN.DeviceStyleId, reg.CountryCode, userID, &vin, &reg.CANProtocol, false)
 		if err != nil {
 			localLog.Err(err).Send()
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
@@ -1581,8 +1579,7 @@ type RegisterUserDeviceVIN struct {
 	VIN         string `json:"vin"`
 	CountryCode string `json:"countryCode"`
 	// CANProtocol is the protocol that was detected by edge-network from the autopi.
-	CANProtocol    string `json:"canProtocol"`
-	PreApprovedPSK string `json:"preApprovedPSK"`
+	CANProtocol string `json:"canProtocol"`
 }
 
 type RegisterUserDeviceSmartcar struct {
@@ -1754,48 +1751,4 @@ func (udc *UserDevicesController) checkVehicleMint(c *fiber.Ctx, userDevice *mod
 	}
 
 	return mvs, dd, nil
-}
-
-// GetCompassDeviceByVIN godoc
-// @Description Temporary endpoint meant for compass-iot integration. Gets you the token id's by the VIN
-// @Tags        user-devices
-// @Param       vin path string                   true "VIN"
-// @Success     200
-// @Failure		404 "user device with VIN not found"
-// @Failure		400 "invalid VIN"
-// @Failure		500 "server error"
-// @Security    PSK
-// @Router      /compass/device-by-vin/{vin} [get]
-func (udc *UserDevicesController) GetCompassDeviceByVIN(c *fiber.Ctx) error {
-	vin := c.Params("vin")
-	if len(vin) != 17 {
-		return c.Status(fiber.StatusBadRequest).JSON(fmt.Errorf("vin should be 17 characters long"))
-	}
-
-	ud, err := models.UserDevices(
-		models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
-		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice),
-	).One(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		return fiber.NewError(fiber.StatusNotFound, "No device with that VIN found.")
-	}
-	tkID := uint64(0)
-	synthID := uint64(0)
-	if !ud.TokenID.IsZero() {
-		tkID, _ = ud.TokenID.Uint64()
-
-		if sd := ud.R.VehicleTokenSyntheticDevice; sd != nil {
-			if !sd.TokenID.IsZero() {
-				synthID, _ = sd.TokenID.Uint64()
-			}
-		}
-	}
-
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"vin":                    ud.VinIdentifier.String,
-		"userDeviceId":           ud.ID,
-		"vehicleTokenId":         tkID,
-		"syntheticDeviceTokenId": synthID,
-		"definitionId":           ud.DefinitionID,
-	})
 }

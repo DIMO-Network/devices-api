@@ -95,9 +95,6 @@ type Settings struct {
 	AccountsAPIGRPCAddr string `yaml:"ACCOUNTS_API_GRPC_ADDR"`
 	CustomerIOAPIKey    string `yaml:"CUSTOMER_IO_API_KEY"`
 
-	// Temporary until compass can have its own vin to tokens mapping
-	CompassPreSharedKey string `yaml:"COMPASS_PRE_SHARED_KEY"`
-
 	EnableSACDMint bool `yaml:"ENABLE_SACD_MINT"`
 
 	IdentiyAPIURL url.URL `yaml:"IDENTITY_API_URL"`
