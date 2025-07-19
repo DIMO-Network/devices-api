@@ -48,42 +48,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/compass/device-by-vin/{vin}": {
-            "get": {
-                "security": [
-                    {
-                        "PSK": []
-                    }
-                ],
-                "description": "Temporary endpoint meant for compass-iot integration. Gets you the token id's by the VIN",
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "VIN",
-                        "name": "vin",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    },
-                    "400": {
-                        "description": "invalid VIN"
-                    },
-                    "404": {
-                        "description": "user device with VIN not found"
-                    },
-                    "500": {
-                        "description": "server error"
-                    }
-                }
-            }
-        },
         "/countries": {
             "get": {
                 "description": "Returns all the supported countries",
@@ -2271,9 +2235,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "countryCode": {
-                    "type": "string"
-                },
-                "preApprovedPSK": {
                     "type": "string"
                 },
                 "vin": {
