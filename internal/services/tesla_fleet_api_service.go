@@ -108,10 +108,11 @@ type Interval struct {
 type TelemetryFields map[string]Interval
 
 type TelemetryConfigRequest struct {
-	HostName string          `json:"hostname"`
-	CA       string          `json:"ca"`
-	Fields   TelemetryFields `json:"fields"`
-	Port     int             `json:"port"`
+	HostName    string          `json:"hostname"`
+	CA          string          `json:"ca"`
+	Fields      TelemetryFields `json:"fields"`
+	Port        int             `json:"port"`
+	PreferTyped bool            `json:"prefer_typed"`
 }
 
 type TelemetryConfigStatusResponse struct {
@@ -406,10 +407,11 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 	r := SubscribeForTelemetryDataRequest{
 		VINs: []string{vin},
 		Config: TelemetryConfigRequest{
-			HostName: t.Settings.TeslaTelemetryHostName,
-			CA:       t.Settings.TeslaTelemetryCACertificate,
-			Port:     t.Settings.TeslaTelemetryPort,
-			Fields:   fields,
+			HostName:    t.Settings.TeslaTelemetryHostName,
+			CA:          t.Settings.TeslaTelemetryCACertificate,
+			Port:        t.Settings.TeslaTelemetryPort,
+			Fields:      fields,
+			PreferTyped: true,
 		},
 	}
 
