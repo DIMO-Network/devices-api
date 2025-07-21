@@ -47,7 +47,6 @@ require (
 	github.com/volatiletech/strmangle v0.0.8
 	go.uber.org/automaxprocs v1.5.3
 	go.uber.org/mock v0.4.0
-	golang.org/x/mod v0.22.0
 	golang.org/x/oauth2 v0.23.0
 )
 

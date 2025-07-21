@@ -828,49 +828,6 @@ info:
   title: DIMO Devices API
   version: "1.0"
 paths:
-  /aftermarket/device/by-serial/{serial}:
-    get:
-      description: Gets the information about the aftermarket device by serial number.
-      parameters:
-      - description: AutoPi unit id or Macaron serial number
-        in: path
-        name: serial
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.AutoPiDeviceInfo'
-      security:
-      - BearerAuth: []
-      tags:
-      - integrations
-  /compass/device-by-vin/{vin}:
-    get:
-      description: Temporary endpoint meant for compass-iot integration. Gets you
-        the token id's by the VIN
-      parameters:
-      - description: VIN
-        in: path
-        name: vin
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-        "400":
-          description: invalid VIN
-        "404":
-          description: user device with VIN not found
-        "500":
-          description: server error
-      security:
-      - PSK: []
-      tags:
-      - user-devices
   /countries:
     get:
       description: Returns all the supported countries
@@ -1644,20 +1601,6 @@ paths:
   /user/devices/me:
     get:
       description: gets all devices associated with current user - pulled from token
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.MyDevicesResp'
-      security:
-      - BearerAuth: []
-      tags:
-      - user-devices
-  /user/devices/shared:
-    get:
-      description: gets all devices shared with current user - pulled from token
       produces:
       - application/json
       responses:

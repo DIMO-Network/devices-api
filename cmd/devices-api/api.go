@@ -214,19 +214,11 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// List user's devices.
 	v1Auth.Get("/user/devices/me", userDeviceController.GetUserDevices)
-	v1Auth.Get("/user/devices/shared", userDeviceController.GetSharedDevices)
 
 	// Device creation.
 	v1Auth.Post("/user/devices/fromvin", userDeviceController.RegisterDeviceForUserFromVIN)
 	v1Auth.Post("/user/devices/fromsmartcar", userDeviceController.RegisterDeviceForUserFromSmartcar)
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
-
-	// Autopi specific routes.
-	amdOwnerMw := owner.AftermarketDevice(pdb, usersClient, &logger)
-	// same as above but AftermarketDevice
-	amdOwner := v1Auth.Group("/aftermarket/device/by-serial/:serial", amdOwnerMw)
-
-	amdOwner.Get("/", userDeviceController.GetAftermarketDeviceInfo)
 
 	// documents
 	v1Auth.Get("/documents", documentsController.GetDocuments)
@@ -246,9 +238,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Post("/error-codes", userDeviceController.QueryDeviceErrorCodes)
 	udOwner.Get("/error-codes", userDeviceController.GetUserDeviceErrorCodeQueries)
 	udOwner.Post("/error-codes/clear", userDeviceController.ClearUserDeviceErrorCodeQuery)
-
-	// New-style NFT mint, claim, pair.
-	udOwner.Post("/commands/update-nft-image", userDeviceController.UpdateNFTImage)
 
 	// device integrations
 	udOwner.Get("/integrations/:integrationID", userDeviceController.GetUserDeviceIntegration)
