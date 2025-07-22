@@ -804,26 +804,6 @@ info:
   title: DIMO Devices API
   version: "1.0"
 paths:
-  /aftermarket/device/by-serial/{serial}:
-    get:
-      description: Gets the information about the aftermarket device by serial number.
-      parameters:
-      - description: AutoPi unit id or Macaron serial number
-        in: path
-        name: serial
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.AutoPiDeviceInfo'
-      security:
-      - BearerAuth: []
-      tags:
-      - integrations
   /countries:
     get:
       description: Returns all the supported countries
@@ -1361,28 +1341,6 @@ paths:
       - device
       - integration
       - command
-  /user/devices/{userDeviceId}/commands/update-nft-image:
-    post:
-      description: Updates a user's NFT image.
-      parameters:
-      - description: user device id
-        in: path
-        name: userDeviceId
-        required: true
-        type: string
-      - description: base64-encoded NFT image data
-        in: body
-        name: nftIamges
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.NFTImageData'
-      responses:
-        "204":
-          description: No Content
-      security:
-      - BearerAuth: []
-      tags:
-      - user-devices
   /user/devices/fromsmartcar:
     post:
       consumes:
@@ -1455,20 +1413,6 @@ paths:
   /user/devices/me:
     get:
       description: gets all devices associated with current user - pulled from token
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.MyDevicesResp'
-      security:
-      - BearerAuth: []
-      tags:
-      - user-devices
-  /user/devices/shared:
-    get:
-      description: gets all devices shared with current user - pulled from token
       produces:
       - application/json
       responses:

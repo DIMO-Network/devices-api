@@ -15,39 +15,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/aftermarket/device/by-serial/{serial}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Gets the information about the aftermarket device by serial number.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "integrations"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "AutoPi unit id or Macaron serial number",
-                        "name": "serial",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.AutoPiDeviceInfo"
-                        }
-                    }
-                }
-            }
-        },
         "/countries": {
             "get": {
                 "description": "Returns all the supported countries",
@@ -490,30 +457,6 @@ const docTemplate = `{
                     }
                 ],
                 "description": "gets all devices associated with current user - pulled from token",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-devices"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.MyDevicesResp"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/devices/shared": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "gets all devices shared with current user - pulled from token",
                 "produces": [
                     "application/json"
                 ],
@@ -1047,42 +990,6 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {}
-            }
-        },
-        "/user/devices/{userDeviceId}/commands/update-nft-image": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Updates a user's NFT image.",
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "user device id",
-                        "name": "userDeviceId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "base64-encoded NFT image data",
-                        "name": "nftIamges",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.NFTImageData"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
             }
         },
         "/user/synthetic/device/{tokenID}/commands/reauthenticate": {
