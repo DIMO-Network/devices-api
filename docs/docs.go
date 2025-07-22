@@ -15,39 +15,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/aftermarket/device/by-serial/{serial}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Gets the information about the aftermarket device by serial number.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "integrations"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "AutoPi unit id or Macaron serial number",
-                        "name": "serial",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.AutoPiDeviceInfo"
-                        }
-                    }
-                }
-            }
-        },
         "/countries": {
             "get": {
                 "description": "Returns all the supported countries",
@@ -490,30 +457,6 @@ const docTemplate = `{
                     }
                 ],
                 "description": "gets all devices associated with current user - pulled from token",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-devices"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.MyDevicesResp"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/devices/shared": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "gets all devices shared with current user - pulled from token",
                 "produces": [
                     "application/json"
                 ],
@@ -1047,42 +990,6 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {}
-            }
-        },
-        "/user/devices/{userDeviceId}/commands/update-nft-image": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Updates a user's NFT image.",
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "user device id",
-                        "name": "userDeviceId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "base64-encoded NFT image data",
-                        "name": "nftIamges",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.NFTImageData"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
             }
         },
         "/user/synthetic/device/{tokenID}/commands/reauthenticate": {
@@ -1788,86 +1695,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers.AutoPiDeviceInfo": {
-            "type": "object",
-            "properties": {
-                "beneficiaryAddress": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "claim": {
-                    "description": "Claim contains the status of the on-chain claiming meta-transaction.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/internal_controllers.TransactionStatus"
-                        }
-                    ]
-                },
-                "deviceId": {
-                    "type": "string"
-                },
-                "dockerReleases": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "ethereumAddress": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "hwRevision": {
-                    "type": "string"
-                },
-                "isUpdated": {
-                    "type": "boolean"
-                },
-                "lastCommunication": {
-                    "type": "string"
-                },
-                "manufacturer": {
-                    "$ref": "#/definitions/internal_controllers.ManufacturerInfo"
-                },
-                "ownerAddress": {
-                    "type": "string"
-                },
-                "pair": {
-                    "description": "Pair contains the status of the on-chain pairing meta-transaction.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/internal_controllers.TransactionStatus"
-                        }
-                    ]
-                },
-                "releaseVersion": {
-                    "type": "string"
-                },
-                "shouldUpdate": {
-                    "type": "boolean"
-                },
-                "template": {
-                    "type": "integer"
-                },
-                "tokenId": {
-                    "$ref": "#/definitions/big.Int"
-                },
-                "unitId": {
-                    "type": "string"
-                },
-                "unpair": {
-                    "description": "Unpair contains the status of the on-chain unpairing meta-transaction.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/internal_controllers.TransactionStatus"
-                        }
-                    ]
-                }
-            }
-        },
         "internal_controllers.BurnSyntheticDeviceRequest": {
             "type": "object",
             "properties": {
@@ -2040,17 +1867,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers.ManufacturerInfo": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "tokenId": {
-                    "$ref": "#/definitions/big.Int"
-                }
-            }
-        },
         "internal_controllers.MintSyntheticDeviceRequest": {
             "type": "object",
             "properties": {
@@ -2074,22 +1890,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/internal_controllers.UserDeviceFull"
                     }
-                }
-            }
-        },
-        "internal_controllers.NFTImageData": {
-            "type": "object",
-            "required": [
-                "imageData"
-            ],
-            "properties": {
-                "imageData": {
-                    "description": "ImageData contains the base64-encoded NFT PNG image.",
-                    "type": "string"
-                },
-                "imageDataTransparent": {
-                    "description": "ImageDataTransparent contains the base64-encoded NFT PNG image\nwith a transparent background, for use in the app. For compatibility\nwith older versions it is not required.",
-                    "type": "string"
                 }
             }
         },
