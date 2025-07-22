@@ -221,55 +221,6 @@ definitions:
       powertrainType:
         $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.PowertrainType'
     type: object
-  internal_controllers.AutoPiDeviceInfo:
-    properties:
-      beneficiaryAddress:
-        items:
-          type: integer
-        type: array
-      claim:
-        allOf:
-        - $ref: '#/definitions/internal_controllers.TransactionStatus'
-        description: Claim contains the status of the on-chain claiming meta-transaction.
-      deviceId:
-        type: string
-      dockerReleases:
-        items:
-          type: integer
-        type: array
-      ethereumAddress:
-        items:
-          type: integer
-        type: array
-      hwRevision:
-        type: string
-      isUpdated:
-        type: boolean
-      lastCommunication:
-        type: string
-      manufacturer:
-        $ref: '#/definitions/internal_controllers.ManufacturerInfo'
-      ownerAddress:
-        type: string
-      pair:
-        allOf:
-        - $ref: '#/definitions/internal_controllers.TransactionStatus'
-        description: Pair contains the status of the on-chain pairing meta-transaction.
-      releaseVersion:
-        type: string
-      shouldUpdate:
-        type: boolean
-      template:
-        type: integer
-      tokenId:
-        $ref: '#/definitions/big.Int'
-      unitId:
-        type: string
-      unpair:
-        allOf:
-        - $ref: '#/definitions/internal_controllers.TransactionStatus'
-        description: Unpair contains the status of the on-chain unpairing meta-transaction.
-    type: object
   internal_controllers.BurnSyntheticDeviceRequest:
     properties:
       signature:
@@ -391,13 +342,6 @@ definitions:
         - $ref: '#/definitions/internal_controllers.TeslaIntegrationInfo'
         description: Contains further details about tesla integration status
     type: object
-  internal_controllers.ManufacturerInfo:
-    properties:
-      name:
-        type: string
-      tokenId:
-        $ref: '#/definitions/big.Int'
-    type: object
   internal_controllers.MintSyntheticDeviceRequest:
     properties:
       signature:
@@ -414,20 +358,6 @@ definitions:
         items:
           $ref: '#/definitions/internal_controllers.UserDeviceFull'
         type: array
-    type: object
-  internal_controllers.NFTImageData:
-    properties:
-      imageData:
-        description: ImageData contains the base64-encoded NFT PNG image.
-        type: string
-      imageDataTransparent:
-        description: |-
-          ImageDataTransparent contains the base64-encoded NFT PNG image
-          with a transparent background, for use in the app. For compatibility
-          with older versions it is not required.
-        type: string
-    required:
-    - imageData
     type: object
   internal_controllers.Privilege:
     properties:
