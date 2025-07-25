@@ -27,7 +27,6 @@ type startSDTask struct {
 	pdb       db.Store
 
 	producer  sarama.SyncProducer
-	scTask    services.SmartcarTaskService
 	teslaTask services.TeslaTaskService
 }
 
@@ -48,7 +47,6 @@ func (p *startSDTask) SetFlags(f *flag.FlagSet) {
 
 func (p *startSDTask) Execute(_ context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	p.producer = p.container.getKafkaProducer()
-	p.scTask = services.NewSmartcarTaskService(&p.settings, p.producer)
 	p.teslaTask = services.NewTeslaTaskService(&p.settings, p.producer)
 	err := p.startSDTaskGo()
 	if err != nil {
@@ -80,8 +78,6 @@ func (p *startSDTask) startSDTaskGo() error {
 	}
 
 	switch udai.IntegrationID {
-	case "22N2xaPOq2WW2gAHBHd0Ikn4Zob":
-		p.logger.Err(p.scTask.StartPoll(udai, sd)).Msg("xd")
 	case "26A5Dk3vvvQutjSyF0Jka2DP5lg":
 		p.logger.Err(p.teslaTask.StartPoll(udai, sd)).Msg("xd")
 	default:

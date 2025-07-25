@@ -50,7 +50,6 @@ type ContractsEventsConsumer struct {
 	ddSvc        DeviceDefinitionService
 	evtSvc       EventService
 
-	scTask    SyntheticTaskService
 	teslaTask SyntheticTaskService
 }
 
@@ -92,7 +91,7 @@ type Block struct {
 	Time   time.Time   `json:"time,omitempty"`
 }
 
-func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, genericInt Integration, ddSvc DeviceDefinitionService, evtSvc EventService, scTask SyntheticTaskService, teslaTask SyntheticTaskService) *ContractsEventsConsumer {
+func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, genericInt Integration, ddSvc DeviceDefinitionService, evtSvc EventService, teslaTask SyntheticTaskService) *ContractsEventsConsumer {
 	return &ContractsEventsConsumer{
 		db:           pdb,
 		log:          log,
@@ -101,7 +100,6 @@ func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *con
 		genericInt:   genericInt,
 		ddSvc:        ddSvc,
 		evtSvc:       evtSvc,
-		scTask:       scTask,
 		teslaTask:    teslaTask,
 	}
 }
@@ -241,11 +239,6 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 
 	if udai.TaskID.Valid {
 		switch integ.Vendor {
-		case constants.SmartCarVendor:
-			err := c.scTask.StopPoll(udai)
-			if err != nil {
-				return err
-			}
 		case constants.TeslaVendor:
 			err := c.teslaTask.StopPoll(udai)
 			if err != nil {

@@ -441,17 +441,6 @@ definitions:
       userDeviceId:
         type: string
     type: object
-  internal_controllers.RegisterUserDeviceSmartcar:
-    properties:
-      code:
-        description: Code refers to the auth code provided by smartcar when user logs
-          in
-        type: string
-      countryCode:
-        type: string
-      redirectURI:
-        type: string
-    type: object
   internal_controllers.RegisterUserDeviceVIN:
     properties:
       canProtocol:
@@ -1112,7 +1101,8 @@ paths:
       tags:
       - integrations
     get:
-      description: Receive status updates about a Smartcar integration
+      description: Receive status updates about a connection. At present this is only
+        meaningful for Teslas.
       responses:
         "200":
           description: OK
@@ -1126,7 +1116,7 @@ paths:
       consumes:
       - application/json
       description: Submit credentials for registering a device with a given integration.
-        This must be called for any new pairing as well as eg. /fromsmartcar
+        This must be called for any new pairing as well.
       parameters:
       - description: Integration credentials
         in: body
@@ -1275,16 +1265,10 @@ paths:
     post:
       consumes:
       - application/json
+      deprecated: true
       description: |-
         adds a device to a user by decoding VIN from Smartcar. If cannot decode returns 424 or 500 if error.
         If the user device already exists from a different integration, for the same user, this will return a 200 with the full user device object
-      parameters:
-      - description: add device to user. all fields required
-        in: body
-        name: user_device
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.RegisterUserDeviceSmartcar'
       produces:
       - application/json
       responses:

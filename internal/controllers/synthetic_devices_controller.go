@@ -222,7 +222,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	integrationID := c.Params("integrationID")
 
 	if sdc.Settings.BlockMinting {
-		return fiber.NewError(fiber.StatusInternalServerError, "Smartcar and Tesla device minting temporarily offline for a network upgrade.")
+		return fiber.NewError(fiber.StatusInternalServerError, "Tesla device minting temporarily offline for a network upgrade.")
 	}
 
 	newIntegIDs, ok := utils.SyntheticIntegrationKSUIDToOtherIDs[integrationID]

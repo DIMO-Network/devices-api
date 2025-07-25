@@ -360,17 +360,7 @@ const docTemplate = `{
                 "tags": [
                     "user-devices"
                 ],
-                "parameters": [
-                    {
-                        "description": "add device to user. all fields required",
-                        "name": "user_device",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.RegisterUserDeviceSmartcar"
-                        }
-                    }
-                ],
+                "deprecated": true,
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -746,7 +736,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Receive status updates about a Smartcar integration",
+                "description": "Receive status updates about a connection. At present this is only meaningful for Teslas.",
                 "tags": [
                     "integrations"
                 ],
@@ -765,7 +755,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Submit credentials for registering a device with a given integration. This must be called for any new pairing as well as eg. /fromsmartcar",
+                "description": "Submit credentials for registering a device with a given integration. This must be called for any new pairing as well.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2008,21 +1998,6 @@ const docTemplate = `{
                     }
                 },
                 "userDeviceId": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_controllers.RegisterUserDeviceSmartcar": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "description": "Code refers to the auth code provided by smartcar when user logs in",
-                    "type": "string"
-                },
-                "countryCode": {
-                    "type": "string"
-                },
-                "redirectURI": {
                     "type": "string"
                 }
             }

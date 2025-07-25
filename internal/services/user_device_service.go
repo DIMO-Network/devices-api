@@ -54,7 +54,7 @@ func (uds *userDeviceService) CreateIntegration(ctx context.Context, tx *sql.Tx,
 	}
 
 	if err := integration.Insert(ctx, tx, boil.Infer()); err != nil {
-		return errors.Wrap(err, "unexpected database error inserting new Smartcar integration registration")
+		return errors.Wrap(err, "unexpected database error inserting new user device integration")
 	}
 	return nil
 }
