@@ -21,9 +21,8 @@ import (
 )
 
 const (
-	teslaStatusEventType    = "zone.dimo.task.tesla.poll.status.update"
-	smartcarStatusEventType = "zone.dimo.task.smartcar.poll.status.update"
-	commandStatusEventType  = "zone.dimo.task.device.integration.command.status"
+	teslaStatusEventType   = "zone.dimo.task.tesla.poll.status.update"
+	commandStatusEventType = "zone.dimo.task.device.integration.command.status"
 )
 
 type TaskStatusListener struct {
@@ -70,8 +69,6 @@ func (i *TaskStatusListener) processMessage(msg *message.Message) error {
 
 func (i *TaskStatusListener) processEvent(event *shared.CloudEvent[TaskStatusData]) error {
 	switch event.Type {
-	case smartcarStatusEventType:
-		return i.processSmartcarPollStatusEvent(event)
 	case teslaStatusEventType:
 		return i.processTeslaPollStatusEvent(event)
 	case commandStatusEventType:
@@ -79,62 +76,6 @@ func (i *TaskStatusListener) processEvent(event *shared.CloudEvent[TaskStatusDat
 	default:
 		return fmt.Errorf("unexpected event type %s", event.Type)
 	}
-}
-
-func (i *TaskStatusListener) processSmartcarPollStatusEvent(event *shared.CloudEvent[TaskStatusData]) error {
-	var (
-		ctx          = context.Background()
-		userDeviceID = event.Subject
-	)
-
-	// Should we use data.integrationId instead?
-	if !strings.HasPrefix(event.Source, sourcePrefix) {
-		return fmt.Errorf("unexpected event source format: %s", event.Source)
-	}
-	integrationID := strings.TrimPrefix(event.Source, sourcePrefix)
-
-	// Just one case for now.
-	if event.Data.Status != models.UserDeviceAPIIntegrationStatusAuthenticationFailure {
-		return fmt.Errorf("unexpected task status %s", event.Data.Status)
-	}
-
-	udai, err := models.UserDeviceAPIIntegrations(
-		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
-		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID),
-		qm.Load(qm.Rels(models.UserDeviceAPIIntegrationRels.UserDevice, models.UserDeviceRels.VehicleTokenSyntheticDevice)),
-	).One(ctx, i.db().Writer)
-	if err != nil {
-		return fmt.Errorf("couldn't find device integration for device %s and integration %s: %w", userDeviceID, integrationID, err)
-	}
-
-	i.log.Info().Str("userDeviceId", userDeviceID).Msg("Setting Smartcar integration to failed because credentials have changed.")
-
-	if udai.TaskID.Valid && udai.TaskID.String == event.Data.TaskID {
-		// Maybe you've restarted the task with new credentials already.
-		// TODO: Delete credentials entry?
-		udai.TaskID = null.String{}
-
-		_, _, err := i.prod.SendMessage(&sarama.ProducerMessage{
-			Topic: i.settings.TaskCredentialTopic,
-			Key:   sarama.StringEncoder(event.Data.TaskID),
-			Value: nil,
-		})
-		if err != nil {
-			i.log.Err(err).Msg("Failed to null out credential message for failed job.")
-		}
-	}
-
-	udai.Status = models.UserDeviceAPIIntegrationStatusAuthenticationFailure
-	if _, err = udai.Update(context.Background(), i.db().Writer, boil.Infer()); err != nil {
-		i.log.Err(err).Str("userDeviceID", userDeviceID).Str("integrationID", integrationID).Msg("failed up update user device api integration with failure status")
-	}
-
-	if err := i.cioSvc.SoftwareDisconnectionEvent(ctx, udai); err != nil {
-		i.log.Err(err).Str("userDeviceID", userDeviceID).Str("integrationID", integrationID).Msg("failed up send status disconnection event to cio")
-		return err
-	}
-
-	return nil
 }
 
 func (i *TaskStatusListener) processTeslaPollStatusEvent(event *shared.CloudEvent[TaskStatusData]) error {

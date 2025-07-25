@@ -32,7 +32,7 @@ import (
 )
 
 // GetUserDeviceIntegration godoc
-// @Description Receive status updates about a Smartcar integration
+// @Description Receive status updates about a connection. At present this is only meaningful for Teslas.
 // @Tags        integrations
 // @Success     200 {object} controllers.GetUserDeviceIntegrationResponse
 // @Security    BearerAuth
@@ -545,7 +545,7 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 }
 
 // RegisterDeviceIntegration godoc
-// @Description Submit credentials for registering a device with a given integration. This must be called for any new pairing as well as eg. /fromsmartcar
+// @Description Submit credentials for registering a device with a given integration. This must be called for any new pairing as well.
 // @Tags        integrations
 // @Accept      json
 // @Param       userDeviceIntegrationRegistration body controllers.RegisterDeviceIntegrationRequest true "Integration credentials"

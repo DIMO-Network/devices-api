@@ -18,13 +18,9 @@ type Settings struct {
 	ServiceName                      string      `yaml:"SERVICE_NAME"`
 	JwtKeySetURL                     string      `yaml:"JWT_KEY_SET_URL"`
 	DeploymentBaseURL                string      `yaml:"DEPLOYMENT_BASE_URL"`
-	SmartcarClientID                 string      `yaml:"SMARTCAR_CLIENT_ID"`
-	SmartcarClientSecret             string      `yaml:"SMARTCAR_CLIENT_SECRET"`
 	RedisURL                         string      `yaml:"REDIS_URL"`
 	RedisPassword                    string      `yaml:"REDIS_PASSWORD"`
 	RedisTLS                         bool        `yaml:"REDIS_TLS"`
-	IngestSmartcarURL                string      `yaml:"INGEST_SMARTCAR_URL"`
-	IngestSmartcarTopic              string      `yaml:"INGEST_SMARTCAR_TOPIC"`
 	KafkaBrokers                     string      `yaml:"KAFKA_BROKERS"`
 	TaskRunNowTopic                  string      `yaml:"TASK_RUN_NOW_TOPIC"`
 	TaskStopTopic                    string      `yaml:"TASK_STOP_TOPIC"`

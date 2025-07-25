@@ -101,24 +101,9 @@ func main() {
 
 		subcommands.Register(&generateEventCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "events")
 		subcommands.Register(&setCommandCompatibilityCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
-		subcommands.Register(&remakeAutoPiTopicCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
 		subcommands.Register(&remakeAftermarketTopicCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&remakeUserDeviceTokenTableCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 
-		{
-			var cipher shared.Cipher
-			if settings.Environment == "dev" || settings.IsProduction() {
-				cipher = createKMS(&settings, &logger)
-			} else {
-				logger.Warn().Msg("Using ROT13 encrypter. Only use this for testing!")
-				cipher = new(shared.ROT13Cipher)
-			}
-			subcommands.Register(&checkTelemetryCmd{logger: logger, settings: settings, pdb: pdb, cipher: cipher}, "device integrations")
-			subcommands.Register(&enableTelemetryCmd{logger: logger, settings: settings, pdb: pdb, cipher: cipher}, "device integrations")
-		}
-
-		subcommands.Register(&populateSDInfoTopicCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
-		subcommands.Register(&populateTeslaTelemetryMapCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&updateStateCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&web2PairCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&autoPiKTableDeleteCmd{logger: logger, container: deps}, "device integrations")

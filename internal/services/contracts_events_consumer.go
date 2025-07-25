@@ -50,7 +50,6 @@ type ContractsEventsConsumer struct {
 	ddSvc        DeviceDefinitionService
 	evtSvc       EventService
 
-	scTask    SyntheticTaskService
 	teslaTask SyntheticTaskService
 }
 
@@ -240,11 +239,6 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 
 	if udai.TaskID.Valid {
 		switch integ.Vendor {
-		case constants.SmartCarVendor:
-			err := c.scTask.StopPoll(udai)
-			if err != nil {
-				return err
-			}
 		case constants.TeslaVendor:
 			err := c.teslaTask.StopPoll(udai)
 			if err != nil {
