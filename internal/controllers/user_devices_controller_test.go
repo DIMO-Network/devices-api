@@ -56,7 +56,6 @@ type UserDevicesControllerTestSuite struct {
 	deviceDefIntSvc *mock_services.MockDeviceDefinitionIntegrationService
 	testUserID      string
 	testUserEthAddr common.Address
-	scTaskSvc       *mock_services.MockSmartcarTaskService
 	redisClient     *mocks.MockCacheService
 	autoPiSvc       *mock_services.MockAutoPiAPIService
 	natsService     *services.NATSService
@@ -77,7 +76,6 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(mockCtrl)
 	s.deviceDefIntSvc = mock_services.NewMockDeviceDefinitionIntegrationService(mockCtrl)
-	s.scTaskSvc = mock_services.NewMockSmartcarTaskService(mockCtrl)
 	teslaTaskService := mock_services.NewMockTeslaTaskService(mockCtrl)
 	autoPiIngest := mock_services.NewMockIngestRegistrar(mockCtrl)
 	s.redisClient = mocks.NewMockCacheService(mockCtrl)
@@ -91,7 +89,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
 	s.testUserEthAddr = common.HexToAddress("0x1231231231231231231231231231231231231231")
-	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scTaskSvc, teslaTaskService, nil, new(shared.ROT13Cipher), s.autoPiSvc,
+	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, teslaTaskService, nil, new(shared.ROT13Cipher), s.autoPiSvc,
 		autoPiIngest, nil, nil, s.redisClient, nil, s.natsService, nil, s.userDeviceSvc, nil, nil, nil)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID, nil), c.RegisterDeviceForUser)

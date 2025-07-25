@@ -32,7 +32,6 @@ const migrationsDirRelPath = "../../migrations"
 type deps struct {
 	deviceDefIntSvc  *mock_services.MockDeviceDefinitionIntegrationService
 	deviceDefSvc     *mock_services.MockDeviceDefinitionService
-	scTaskSvc        *mock_services.MockSmartcarTaskService
 	teslaTaskService *mock_services.MockTeslaTaskService
 	autoPiIngest     *mock_services.MockIngestRegistrar
 	openAISvc        *mock_services.MockOpenAI
@@ -47,7 +46,6 @@ func createMockDependencies(t *testing.T) deps {
 
 	deviceDefIntSvc := mock_services.NewMockDeviceDefinitionIntegrationService(mockCtrl)
 	deviceDefSvc := mock_services.NewMockDeviceDefinitionService(mockCtrl)
-	scTaskSvc := mock_services.NewMockSmartcarTaskService(mockCtrl)
 	teslaTaskService := mock_services.NewMockTeslaTaskService(mockCtrl)
 	autoPiIngest := mock_services.NewMockIngestRegistrar(mockCtrl)
 	openAISvc := mock_services.NewMockOpenAI(mockCtrl)
@@ -61,7 +59,6 @@ func createMockDependencies(t *testing.T) deps {
 	return deps{
 		deviceDefIntSvc:  deviceDefIntSvc,
 		deviceDefSvc:     deviceDefSvc,
-		scTaskSvc:        scTaskSvc,
 		teslaTaskService: teslaTaskService,
 		autoPiIngest:     autoPiIngest,
 		openAISvc:        openAISvc,
@@ -87,7 +84,7 @@ func TestUserDevicesController_QueryDeviceErrorCodes(t *testing.T) {
 	}()
 
 	testUserID := "123123"
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scTaskSvc, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.QueryDeviceErrorCodes)
 
@@ -162,7 +159,7 @@ func TestUserDevicesController_ShouldErrorOnTooManyErrorCodes(t *testing.T) {
 	}()
 
 	testUserID := "123123"
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scTaskSvc, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.QueryDeviceErrorCodes)
 
@@ -236,7 +233,7 @@ func TestUserDevicesController_ShouldErrorInvalidErrorCodes(t *testing.T) {
 	}()
 
 	testUserID := "123123"
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scTaskSvc, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.QueryDeviceErrorCodes)
 
@@ -306,7 +303,7 @@ func TestUserDevicesController_ShouldErrorOnEmptyErrorCodes(t *testing.T) {
 	}()
 
 	testUserID := "123123"
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scTaskSvc, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.QueryDeviceErrorCodes)
 
@@ -376,7 +373,7 @@ func TestUserDevicesController_ShouldStoreErrorCodeResponse(t *testing.T) {
 	}()
 
 	testUserID := "123123"
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scTaskSvc, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	app.Post("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.QueryDeviceErrorCodes)
 
@@ -462,7 +459,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueries(t *testing.T) {
 	}()
 
 	testUserID := "123123"
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scTaskSvc, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	app.Get("/user/devices/:userDeviceID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.GetUserDeviceErrorCodeQueries)
 
@@ -538,7 +535,7 @@ func TestUserDevicesController_ClearUserDeviceErrorCodeQuery(t *testing.T) {
 	}()
 
 	testUserID := "123123"
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scTaskSvc, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	app.Post("/user/devices/:userDeviceID/error-codes/clear", test.AuthInjectorTestHandler(testUserID, nil), c.ClearUserDeviceErrorCodeQuery)
 
@@ -625,7 +622,7 @@ func TestUserDevicesController_ErrorOnAllErrorCodesCleared(t *testing.T) {
 	}()
 
 	testUserID := "123123"
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scTaskSvc, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	app.Post("/user/devices/:userDeviceID/error-codes/clear", test.AuthInjectorTestHandler(testUserID, nil), c.ClearUserDeviceErrorCodeQuery)
 
@@ -693,7 +690,7 @@ func TestUserDevicesController_QueryDeviceErrorCodesByTokenID(t *testing.T) {
 	testUserID := "123123"
 	testTokenID := "321321"
 	ti, _ := new(big.Int).SetString(testTokenID, 10)
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scTaskSvc, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	app.Post("/vehicle/:tokenID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.QueryDeviceErrorCodesByTokenID)
 
@@ -794,7 +791,7 @@ func TestUserDevicesController_GetUserDevicesErrorCodeQueriesByTokenID(t *testin
 	testUserID := "123123"
 	testTokenID := "321321"
 	ti, _ := new(big.Int).SetString(testTokenID, 10)
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scTaskSvc, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	app.Get("/vehicle/:tokenID/error-codes", test.AuthInjectorTestHandler(testUserID, nil), c.GetUserDeviceErrorCodeQueriesByTokenID)
 
@@ -884,7 +881,7 @@ func TestUserDevicesController_ErrorOnAllErrorCodesClearedByTokenID(t *testing.T
 	testUserID := "123123"
 	testTokenID := "321321"
 	ti, _ := new(big.Int).SetString(testTokenID, 10)
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.scTaskSvc, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, pdb.DBS, &mockDeps.logger, mockDeps.deviceDefSvc, mockDeps.deviceDefIntSvc, &fakeEventService{}, mockDeps.teslaTaskService, nil, nil, nil, mockDeps.autoPiIngest, nil, nil, nil, mockDeps.openAISvc, nil, nil, nil, nil, nil, nil)
 	app := fiber.New()
 	app.Post("/vehicle/:tokenID/error-codes/clear", test.AuthInjectorTestHandler(testUserID, nil), c.ClearUserDeviceErrorCodeQueryByTokenID)
 

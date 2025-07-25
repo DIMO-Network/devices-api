@@ -223,13 +223,6 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 	}
 
 	switch integ.Vendor {
-	case constants.SmartCarVendor:
-		if apiInt.TaskID.Valid {
-			err = udc.smartcarTaskSvc.StopPoll(apiInt)
-			if err != nil {
-				return err
-			}
-		}
 	case constants.TeslaVendor:
 		if apiInt.TaskID.Valid {
 			err = udc.teslaTaskService.StopPoll(apiInt)

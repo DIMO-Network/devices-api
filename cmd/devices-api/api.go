@@ -97,7 +97,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Error creating IPFS client.")
 	}
-	scTaskSvc := services.NewSmartcarTaskService(settings, producer)
 	teslaTaskService := services.NewTeslaTaskService(settings, producer)
 	teslaFleetAPISvc, err := services.NewTeslaFleetAPIService(settings, &logger)
 	if err != nil {
@@ -140,7 +139,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// controllers
 	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService,
-		scTaskSvc, teslaTaskService, teslaOracle, cipher, autoPiSvc, autoPiIngest,
+		teslaTaskService, teslaOracle, cipher, autoPiSvc, autoPiIngest,
 		producer, s3NFTServiceClient, redisCache, openAI,
 		natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc, ipfsSvc, chConn)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
@@ -167,7 +166,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1.Get("/swagger/*", swagger.HandlerDefault)
 
 	// Device Definitions
-	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc)
+	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, teslaTaskService, ddIntSvc)
 
 	v1.Get("/countries", countriesController.GetSupportedCountries)
 	v1.Get("/countries/:countryCode", countriesController.GetCountry)
@@ -261,7 +260,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 		sdc := sd.Controller{
 			DBS:         pdb,
-			Smartcar:    scTaskSvc,
 			Tesla:       teslaTaskService,
 			IntegClient: &integration.Client{Service: ddSvc},
 			Store: &tmpcred.Store{
@@ -306,9 +304,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 
 	ctx := context.Background()
-	startContractEventsConsumer(logger, settings, pdb, genericADIntegration, ddSvc, eventService, scTaskSvc, teslaTaskService)
+	startContractEventsConsumer(logger, settings, pdb, genericADIntegration, ddSvc, eventService, teslaTaskService)
 
-	store, err := registry.NewProcessor(pdb.DBS, &logger, settings, eventService, scTaskSvc, teslaTaskService, ddSvc)
+	store, err := registry.NewProcessor(pdb.DBS, &logger, settings, eventService, teslaTaskService, ddSvc)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to create registry storage client")
 	}
@@ -317,7 +315,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		logger.Fatal().Err(err).Msg("Failed to create transaction listener")
 	}
 
-	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService, userDeviceSvc, teslaTaskService, scTaskSvc, cipher, teslaFleetAPISvc)
+	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService, userDeviceSvc, teslaTaskService, cipher, teslaFleetAPISvc)
 
 	c := make(chan os.Signal, 1)                    // Create channel to signify a signal being sent with length of 1
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM) // When an interrupt or termination signal is sent, notify the channel
@@ -353,7 +351,6 @@ func startGRPCServer(
 	eventService services.EventService,
 	userDeviceSvc services.UserDeviceService,
 	teslaTaskSvc services.TeslaTaskService,
-	smartcarTaskSvc services.SmartcarTaskService,
 	cipher shared.Cipher,
 	teslaAPI services.TeslaFleetAPIService,
 ) {
@@ -375,7 +372,7 @@ func startGRPCServer(
 	)
 
 	pb.RegisterUserDeviceServiceServer(server, rpc.NewUserDeviceRPCService(dbs, settings, hardwareTemplateService, logger,
-		deviceDefSvc, eventService, userDeviceSvc, teslaTaskSvc, smartcarTaskSvc))
+		deviceDefSvc, eventService, userDeviceSvc, teslaTaskSvc))
 	pb.RegisterAftermarketDeviceServiceServer(server, rpc.NewAftermarketDeviceService(dbs, logger))
 	pb.RegisterTeslaServiceServer(server, rpc.NewTeslaRPCService(dbs, settings, cipher, teslaAPI, logger))
 

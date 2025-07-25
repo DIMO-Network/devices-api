@@ -46,7 +46,6 @@ type UserIntegrationsControllerTestSuite struct {
 	ctx              context.Context
 	mockCtrl         *gomock.Controller
 	app              *fiber.App
-	scTaskSvc        *mock_services.MockSmartcarTaskService
 	teslaTaskService *mock_services.MockTeslaTaskService
 	autopiAPISvc     *mock_services.MockAutoPiAPIService
 	autoPiIngest     *mock_services.MockIngestRegistrar
@@ -85,7 +84,6 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(s.mockCtrl)
 	s.deviceDefIntSvc = mock_services.NewMockDeviceDefinitionIntegrationService(s.mockCtrl)
-	s.scTaskSvc = mock_services.NewMockSmartcarTaskService(s.mockCtrl)
 	s.teslaTaskService = mock_services.NewMockTeslaTaskService(s.mockCtrl)
 	s.autopiAPISvc = mock_services.NewMockAutoPiAPIService(s.mockCtrl)
 	s.autoPiIngest = mock_services.NewMockIngestRegistrar(s.mockCtrl)
@@ -102,7 +100,7 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 	}
 
 	logger := test.Logger()
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, s.eventSvc, s.scTaskSvc, s.teslaTaskService, nil, s.cipher, s.autopiAPISvc,
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, s.eventSvc, s.teslaTaskService, nil, s.cipher, s.autopiAPISvc,
 		s.autoPiIngest, nil, nil, s.redisClient, nil, s.natsSvc, nil, s.userDeviceSvc,
 		s.teslaFleetAPISvc, nil, nil)
 

@@ -44,7 +44,6 @@ func NewUserDeviceRPCService(
 	eventService services.EventService,
 	userDeviceService services.UserDeviceService,
 	teslaTaskService services.TeslaTaskService,
-	smartcarTaskSvc services.SmartcarTaskService,
 ) pb.UserDeviceServiceServer {
 	return &userDeviceRPCServer{dbs: dbs,
 		logger:                  logger,
@@ -54,7 +53,6 @@ func NewUserDeviceRPCService(
 		eventService:            eventService,
 		userDeviceSvc:           userDeviceService,
 		teslaTaskService:        teslaTaskService,
-		smartcarTaskSvc:         smartcarTaskSvc,
 	}
 }
 
@@ -69,7 +67,6 @@ type userDeviceRPCServer struct {
 	eventService            services.EventService
 	userDeviceSvc           services.UserDeviceService
 	teslaTaskService        services.TeslaTaskService
-	smartcarTaskSvc         services.SmartcarTaskService
 }
 
 func (s *userDeviceRPCServer) GetUserDevice(ctx context.Context, req *pb.GetUserDeviceRequest) (*pb.UserDevice, error) {
@@ -712,12 +709,6 @@ func (s *userDeviceRPCServer) StopUserDeviceIntegration(ctx context.Context, req
 	}
 
 	switch integ.Vendor {
-	case constants.SmartCarVendor:
-		err = s.smartcarTaskSvc.StopPoll(apiInt)
-		if err != nil {
-			log.Err(err).Msg("failed to stop smartcar poll")
-			return nil, fmt.Errorf("failed to stop smartcar poll: %w", err)
-		}
 	case constants.TeslaVendor:
 		err = s.teslaTaskService.StopPoll(apiInt)
 		if err != nil {

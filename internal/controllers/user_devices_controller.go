@@ -64,7 +64,6 @@ type UserDevicesController struct {
 	DeviceDefIntSvc       services.DeviceDefinitionIntegrationService
 	log                   *zerolog.Logger
 	eventService          services.EventService
-	smartcarTaskSvc       services.SmartcarTaskService
 	teslaTaskService      services.TeslaTaskService
 	teslaOracle           pb_oracle.TeslaOracleClient
 	cipher                shared.Cipher
@@ -116,7 +115,6 @@ func NewUserDevicesController(settings *config.Settings,
 	ddSvc services.DeviceDefinitionService,
 	ddIntSvc services.DeviceDefinitionIntegrationService,
 	eventService services.EventService,
-	smartcarTaskSvc services.SmartcarTaskService,
 	teslaTaskService services.TeslaTaskService,
 	teslaOracle pb_oracle.TeslaOracleClient,
 	cipher shared.Cipher,
@@ -140,7 +138,6 @@ func NewUserDevicesController(settings *config.Settings,
 		DeviceDefSvc:          ddSvc,
 		DeviceDefIntSvc:       ddIntSvc,
 		eventService:          eventService,
-		smartcarTaskSvc:       smartcarTaskSvc,
 		teslaTaskService:      teslaTaskService,
 		teslaOracle:           teslaOracle,
 		cipher:                cipher,
