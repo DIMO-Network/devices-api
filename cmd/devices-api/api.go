@@ -98,7 +98,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		logger.Fatal().Err(err).Msg("Error creating IPFS client.")
 	}
 	scTaskSvc := services.NewSmartcarTaskService(settings, producer)
-	smartcarClient := services.NewSmartcarClient(settings)
 	teslaTaskService := services.NewTeslaTaskService(settings, producer)
 	teslaFleetAPISvc, err := services.NewTeslaFleetAPIService(settings, &logger)
 	if err != nil {
@@ -141,7 +140,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// controllers
 	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService,
-		smartcarClient, scTaskSvc, teslaTaskService, teslaOracle, cipher, autoPiSvc, autoPiIngest,
+		scTaskSvc, teslaTaskService, teslaOracle, cipher, autoPiSvc, autoPiIngest,
 		producer, s3NFTServiceClient, redisCache, openAI,
 		natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc, ipfsSvc, chConn)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
