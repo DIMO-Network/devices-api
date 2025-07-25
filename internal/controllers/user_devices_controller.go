@@ -781,7 +781,6 @@ func (udc *UserDevicesController) requestInstantOffer(userDeviceID string, token
 // @Tags        user-devices
 // @Produce     json
 // @Accept      json
-// @Param       user_device body controllers.RegisterUserDeviceSmartcar true "add device to user. all fields required"
 // @Security    ApiKeyAuth
 // @Failure		400 "validation failure"
 // @Failure		424 "unable to decode VIN"
