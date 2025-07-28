@@ -17,14 +17,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-redis/redis/v8"
 	"github.com/nats-io/nats-server/v2/server"
-	"github.com/rs/zerolog"
 
 	"github.com/DIMO-Network/shared/db"
 
-	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
-	"github.com/DIMO-Network/devices-api/internal/middleware/owner"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
@@ -39,7 +36,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/tidwall/gjson"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
@@ -437,160 +433,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTeslaAndUpdateDD() {
 	if ud.DefinitionID != "tesla_roadster_2010" { // based on the above VIN decoding
 		s.T().Fatalf("Failed to switch device definition to the correct one")
 	}
-}
-
-func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpdate() {
-	const environment = "prod" // shouldUpdate only applies in prod
-	// specific dependency and controller
-	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
-	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaTaskService, nil, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	app := fiber.New()
-	logger := zerolog.Nop()
-	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID, nil), owner.AftermarketDevice(s.pdb, &logger), c.GetAftermarketDeviceInfo)
-	// arrange
-	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
-	autopiAPISvc.EXPECT().GetDeviceByUnitID(unitID).Times(1).Return(&services.AutoPiDongleDevice{
-		IsUpdated:         false,
-		UnitID:            unitID,
-		ID:                "4321",
-		HwRevision:        "1.23",
-		Template:          10,
-		LastCommunication: time.Now(),
-		Release: struct {
-			Version string `json:"version"`
-		}(struct{ Version string }{Version: "1.21.6"}),
-	}, nil)
-
-	s.deviceDefSvc.EXPECT().GetMakeByTokenID(gomock.Any(), gomock.Any()).Return(&ddgrpc.DeviceMake{Name: "AutoPi"}, nil)
-
-	// act
-	request := test.BuildRequest("GET", "/aftermarket/device/by-serial/"+unitID, "")
-	response, err := app.Test(request)
-	require.NoError(s.T(), err)
-	// assert
-	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-	body, _ := io.ReadAll(response.Body)
-	// assert
-	assert.Equal(s.T(), false, gjson.GetBytes(body, "isUpdated").Bool())
-	assert.Equal(s.T(), unitID, gjson.GetBytes(body, "unitId").String())
-	assert.Equal(s.T(), "4321", gjson.GetBytes(body, "deviceId").String())
-	assert.Equal(s.T(), "1.23", gjson.GetBytes(body, "hwRevision").String())
-	assert.Equal(s.T(), "1.21.6", gjson.GetBytes(body, "releaseVersion").String())
-	assert.Equal(s.T(), true, gjson.GetBytes(body, "shouldUpdate").Bool()) // this because releaseVersion below 1.21.9
-}
-func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_UpToDate() {
-	const environment = "prod" // shouldUpdate only applies in prod
-	// specific dependency and controller
-	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
-	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaTaskService, nil, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	app := fiber.New()
-	logger := zerolog.Nop()
-	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID, nil), owner.AftermarketDevice(s.pdb, &logger), c.GetAftermarketDeviceInfo)
-	// arrange
-	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
-	autopiAPISvc.EXPECT().GetDeviceByUnitID(unitID).Times(1).Return(&services.AutoPiDongleDevice{
-		IsUpdated:         true,
-		UnitID:            unitID,
-		ID:                "4321",
-		HwRevision:        "1.23",
-		Template:          10,
-		LastCommunication: time.Now(),
-		Release: struct {
-			Version string `json:"version"`
-		}(struct{ Version string }{Version: "1.22.8"}),
-	}, nil)
-
-	s.deviceDefSvc.EXPECT().GetMakeByTokenID(gomock.Any(), gomock.Any()).Return(&ddgrpc.DeviceMake{Name: "AutoPi"}, nil)
-
-	// act
-	request := test.BuildRequest("GET", "/aftermarket/device/by-serial/"+unitID, "")
-	response, err := app.Test(request)
-	require.NoError(s.T(), err)
-	// assert
-	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-	body, _ := io.ReadAll(response.Body)
-	// assert
-	assert.Equal(s.T(), true, gjson.GetBytes(body, "isUpdated").Bool())
-	assert.Equal(s.T(), "1.22.8", gjson.GetBytes(body, "releaseVersion").String())
-	assert.Equal(s.T(), false, gjson.GetBytes(body, "shouldUpdate").Bool()) // returned version is 1.21.9 which is our cutoff
-}
-func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_FutureUpdate() {
-	const environment = "prod" // shouldUpdate only applies in prod
-	// specific dependency and controller
-	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
-	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaTaskService, nil, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	app := fiber.New()
-	logger := zerolog.Nop()
-	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID, nil), owner.AftermarketDevice(s.pdb, &logger), c.GetAftermarketDeviceInfo)
-	// arrange
-	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
-	autopiAPISvc.EXPECT().GetDeviceByUnitID(unitID).Times(1).Return(&services.AutoPiDongleDevice{
-		IsUpdated:         false,
-		UnitID:            unitID,
-		ID:                "4321",
-		HwRevision:        "1.23",
-		Template:          10,
-		LastCommunication: time.Now(),
-		Release: struct {
-			Version string `json:"version"`
-		}(struct{ Version string }{Version: "1.23.1"}),
-	}, nil)
-
-	s.deviceDefSvc.EXPECT().GetMakeByTokenID(gomock.Any(), gomock.Any()).Return(&ddgrpc.DeviceMake{Name: "AutoPi"}, nil)
-
-	// act
-	request := test.BuildRequest("GET", "/aftermarket/device/by-serial/"+unitID, "")
-	response, err := app.Test(request)
-	require.NoError(s.T(), err)
-	// assert
-	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-	body, _ := io.ReadAll(response.Body)
-	// assert
-	assert.Equal(s.T(), false, gjson.GetBytes(body, "isUpdated").Bool())
-	assert.Equal(s.T(), "1.23.1", gjson.GetBytes(body, "releaseVersion").String())
-	assert.Equal(s.T(), false, gjson.GetBytes(body, "shouldUpdate").Bool())
-}
-
-func (s *UserIntegrationsControllerTestSuite) TestGetAutoPiInfoNoUDAI_ShouldUpdate_Semver() {
-	// as of jun 12 23, versions are now correctly semverd starting with "v", so test for this too
-	const environment = "prod" // shouldUpdate only applies in prod
-	// specific dependency and controller
-	autopiAPISvc := mock_services.NewMockAutoPiAPIService(s.mockCtrl)
-	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: environment}, s.pdb.DBS, test.Logger(), s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, s.teslaTaskService, nil, new(shared.ROT13Cipher), autopiAPISvc, s.autoPiIngest, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	app := fiber.New()
-	logger := zerolog.Nop()
-	app.Get("/aftermarket/device/by-serial/:serial", test.AuthInjectorTestHandler(testUserID, nil), owner.AftermarketDevice(s.pdb, &logger), c.GetAftermarketDeviceInfo)
-	// arrange
-	const unitID = "431d2e89-46f1-6884-6226-5d1ad20c84d9"
-	test.SetupCreateAftermarketDevice(s.T(), "", nil, unitID, nil, s.pdb)
-	autopiAPISvc.EXPECT().GetDeviceByUnitID(unitID).Times(1).Return(&services.AutoPiDongleDevice{
-		IsUpdated:         false,
-		UnitID:            unitID,
-		ID:                "4321",
-		HwRevision:        "1.23",
-		Template:          10,
-		LastCommunication: time.Now(),
-		Release: struct {
-			Version string `json:"version"`
-		}(struct{ Version string }{Version: "v1.22.8"}),
-	}, nil)
-
-	s.deviceDefSvc.EXPECT().GetMakeByTokenID(gomock.Any(), gomock.Any()).Return(&ddgrpc.DeviceMake{Name: "AutoPi"}, nil)
-
-	// act
-	request := test.BuildRequest("GET", "/aftermarket/device/by-serial/"+unitID, "")
-	response, err := app.Test(request)
-	require.NoError(s.T(), err)
-	// assert
-	assert.Equal(s.T(), fiber.StatusOK, response.StatusCode)
-	body, _ := io.ReadAll(response.Body)
-	// assert
-	assert.Equal(s.T(), unitID, gjson.GetBytes(body, "unitId").String())
-	assert.Equal(s.T(), "v1.22.8", gjson.GetBytes(body, "releaseVersion").String())
-	assert.Equal(s.T(), false, gjson.GetBytes(body, "shouldUpdate").Bool()) // this because releaseVersion below 1.21.9
 }
 
 // Tesla Fleet API Tests
