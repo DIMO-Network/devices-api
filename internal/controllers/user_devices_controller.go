@@ -1201,14 +1201,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request body.")
 	}
 
-	// This may not be there, but if it is we should delete it.
-	imageData := strings.TrimPrefix(mr.ImageData, "data:image/png;base64,")
-
-	image, err := base64.StdEncoding.DecodeString(imageData)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Primary image not properly base64-encoded.")
-	}
-
 	client := registry.Client{
 		Producer:     udc.producer,
 		RequestTopic: "topic.transaction.request.send",
@@ -1264,42 +1256,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	}
 
 	requestID := ksuid.New().String()
-
-	if len(image) == 0 {
-		if !userDevice.IpfsImageCid.Valid {
-			return fiber.NewError(fiber.StatusBadRequest, "No image in request body and none assigned previously.")
-		}
-	} else {
-		if userDevice.IpfsImageCid.Valid {
-			logger.Warn().Msg("Image provided in request body, but also one assigned previously.")
-		}
-		cid, err := udc.ipfsSvc.UploadImage(c.Context(), imageData)
-		if err != nil {
-			return fiber.NewError(fiber.StatusBadRequest, "Failed to upload image to IPFS.")
-		}
-
-		userDevice.IpfsImageCid = null.StringFrom(cid)
-	}
-
-	// This may not be there, but if it is we should delete it.
-	imageDataTransp := strings.TrimPrefix(mr.ImageDataTransparent, "data:image/png;base64,")
-
-	imageTransp, err := base64.StdEncoding.DecodeString(imageDataTransp)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Transparent image not properly base64-encoded.")
-	}
-
-	if len(imageTransp) != 0 {
-		_, err = udc.s3.PutObject(c.Context(), &s3.PutObjectInput{
-			Bucket: &udc.Settings.NFTS3Bucket,
-			Key:    aws.String(requestID + "_transparent.png"),
-			Body:   bytes.NewReader(imageTransp),
-		})
-		if err != nil {
-			logger.Err(err).Msg("Failed to save transparent image to S3.")
-			return opaqueInternalError
-		}
-	}
 
 	mtr := models.MetaTransactionRequest{
 		ID:     requestID,
