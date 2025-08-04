@@ -23,7 +23,6 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -31,7 +30,6 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"golang.org/x/mod/semver"
 )
 
 // GetUserDeviceIntegration godoc
@@ -477,174 +475,6 @@ func (udc *UserDevicesController) TelemetrySubscribe(c *fiber.Ctx) error {
 	logger.Info().Msg("Successfully subscribed to telemetry")
 
 	return c.JSON(fiber.Map{"message": "Successfully subscribed to vehicle telemetry."})
-}
-
-// GetAftermarketDeviceInfo godoc
-// @Description Gets the information about the aftermarket device by serial number.
-// @Tags        integrations
-// @Produce     json
-// @Param       serial path     string true "AutoPi unit id or Macaron serial number"
-// @Success     200    {object} controllers.AutoPiDeviceInfo
-// @Security    BearerAuth
-// @Router      /aftermarket/device/by-serial/{serial} [get]
-func (udc *UserDevicesController) GetAftermarketDeviceInfo(c *fiber.Ctx) error {
-	const minimumAutoPiRelease = "v1.22.8" // correct semver has leading v
-
-	serial := c.Locals("serial").(string)
-
-	var claim, pair, unpair *TransactionStatus
-
-	var tokenID *big.Int
-	var ethereumAddress, beneficiaryAddress *common.Address
-	var ownerAddress *string // Frontend is doing a case-sensitive match.
-
-	var mfr *ManufacturerInfo
-
-	dbUnit, err := models.AftermarketDevices(
-		models.AftermarketDeviceWhere.Serial.EQ(serial),
-		qm.Load(models.AftermarketDeviceRels.ClaimMetaTransactionRequest),
-		qm.Load(models.AftermarketDeviceRels.PairRequest),
-		qm.Load(models.AftermarketDeviceRels.UnpairRequest),
-	).One(c.Context(), udc.DBS().Reader)
-	if err != nil {
-		if err != sql.ErrNoRows {
-			return err
-		}
-	} else {
-		tokenID = dbUnit.TokenID.Int(nil)
-
-		addr := common.BytesToAddress(dbUnit.EthereumAddress)
-		ethereumAddress = &addr
-
-		if dbUnit.OwnerAddress.Valid {
-			addr := common.BytesToAddress(dbUnit.OwnerAddress.Bytes)
-			addrStr := addr.Hex()
-			ownerAddress = &addrStr
-			beneficiaryAddress = &addr
-			// We do this because we're worried the claim originated in the chain and not our
-			// backend.
-			claim = &TransactionStatus{
-				Status: models.MetaTransactionRequestStatusConfirmed,
-			}
-		}
-
-		if dbUnit.Beneficiary.Valid {
-			addr := common.BytesToAddress(dbUnit.Beneficiary.Bytes)
-			beneficiaryAddress = &addr
-		}
-
-		if req := dbUnit.R.ClaimMetaTransactionRequest; req != nil {
-			claim = &TransactionStatus{
-				Status:        req.Status,
-				CreatedAt:     req.CreatedAt,
-				UpdatedAt:     req.UpdatedAt,
-				FailureReason: req.FailureReason.Ptr(),
-			}
-			if req.Hash.Valid {
-				hash := hexutil.Encode(req.Hash.Bytes)
-				claim.Hash = &hash
-			}
-		}
-
-		// Check for pair.
-		if req := dbUnit.R.PairRequest; req != nil {
-			pair = &TransactionStatus{
-				Status:        req.Status,
-				CreatedAt:     req.CreatedAt,
-				UpdatedAt:     req.UpdatedAt,
-				FailureReason: req.FailureReason.Ptr(),
-			}
-			if req.Status != models.MetaTransactionRequestStatusUnsubmitted {
-				hash := hexutil.Encode(req.Hash.Bytes)
-				pair.Hash = &hash
-			}
-		}
-
-		// Check for unpair.
-		if req := dbUnit.R.UnpairRequest; req != nil {
-			unpair = &TransactionStatus{
-				Status:        req.Status,
-				CreatedAt:     req.CreatedAt,
-				UpdatedAt:     req.UpdatedAt,
-				FailureReason: req.FailureReason.Ptr(),
-			}
-			if req.Status != models.MetaTransactionRequestStatusUnsubmitted {
-				hash := hexutil.Encode(req.Hash.Bytes)
-				unpair.Hash = &hash
-			}
-		}
-
-		tib := dbUnit.DeviceManufacturerTokenID.Int(nil)
-
-		dm, err := udc.DeviceDefSvc.GetMakeByTokenID(c.Context(), tib)
-		if err != nil {
-			return err
-		}
-
-		mfr = &ManufacturerInfo{
-			TokenID: tib,
-			Name:    dm.Name,
-		}
-	}
-
-	if mfr != nil && mfr.Name != constants.AutoPiVendor {
-		// Might be a Macaron
-		adi := AutoPiDeviceInfo{
-			IsUpdated:          true,
-			UnitID:             serial,
-			ShouldUpdate:       false,
-			TokenID:            tokenID,
-			EthereumAddress:    ethereumAddress,
-			OwnerAddress:       ownerAddress,
-			BeneficiaryAddress: beneficiaryAddress,
-			Claim:              claim,
-			Pair:               pair,
-			Unpair:             unpair,
-			Manufacturer:       mfr,
-		}
-
-		return c.JSON(adi)
-	}
-
-	// This is hitting AutoPi.
-	unit, err := udc.autoPiSvc.GetDeviceByUnitID(serial)
-	if err != nil {
-		if errors.Is(err, services.ErrNotFound) {
-			return fiber.NewError(fiber.StatusNotFound, fmt.Sprintf("Serial %s unknown to AutoPi.", serial))
-		}
-		return err
-	}
-
-	// Must be an AutoPi.
-	shouldUpdate := false
-	if udc.Settings.IsProduction() {
-		version := unit.Release.Version
-		if string(unit.Release.Version[0]) != "v" {
-			version = "v" + version
-		}
-		shouldUpdate = semver.Compare(version, minimumAutoPiRelease) < 0
-	}
-
-	adi := AutoPiDeviceInfo{
-		IsUpdated:          unit.IsUpdated,
-		DeviceID:           unit.ID,
-		UnitID:             unit.UnitID,
-		DockerReleases:     unit.DockerReleases,
-		HwRevision:         unit.HwRevision,
-		Template:           unit.Template,
-		LastCommunication:  unit.LastCommunication,
-		ReleaseVersion:     unit.Release.Version,
-		ShouldUpdate:       shouldUpdate,
-		TokenID:            tokenID,
-		EthereumAddress:    ethereumAddress,
-		OwnerAddress:       ownerAddress,
-		BeneficiaryAddress: beneficiaryAddress,
-		Claim:              claim,
-		Pair:               pair,
-		Unpair:             unpair,
-		Manufacturer:       mfr,
-	}
-	return c.JSON(adi)
 }
 
 func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, userID, userDeviceID, integrationID string) error {

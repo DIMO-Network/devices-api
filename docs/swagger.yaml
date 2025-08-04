@@ -221,55 +221,6 @@ definitions:
       powertrainType:
         $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_services.PowertrainType'
     type: object
-  internal_controllers.AutoPiDeviceInfo:
-    properties:
-      beneficiaryAddress:
-        items:
-          type: integer
-        type: array
-      claim:
-        allOf:
-        - $ref: '#/definitions/internal_controllers.TransactionStatus'
-        description: Claim contains the status of the on-chain claiming meta-transaction.
-      deviceId:
-        type: string
-      dockerReleases:
-        items:
-          type: integer
-        type: array
-      ethereumAddress:
-        items:
-          type: integer
-        type: array
-      hwRevision:
-        type: string
-      isUpdated:
-        type: boolean
-      lastCommunication:
-        type: string
-      manufacturer:
-        $ref: '#/definitions/internal_controllers.ManufacturerInfo'
-      ownerAddress:
-        type: string
-      pair:
-        allOf:
-        - $ref: '#/definitions/internal_controllers.TransactionStatus'
-        description: Pair contains the status of the on-chain pairing meta-transaction.
-      releaseVersion:
-        type: string
-      shouldUpdate:
-        type: boolean
-      template:
-        type: integer
-      tokenId:
-        $ref: '#/definitions/big.Int'
-      unitId:
-        type: string
-      unpair:
-        allOf:
-        - $ref: '#/definitions/internal_controllers.TransactionStatus'
-        description: Unpair contains the status of the on-chain unpairing meta-transaction.
-    type: object
   internal_controllers.BurnSyntheticDeviceRequest:
     properties:
       signature:
@@ -391,13 +342,6 @@ definitions:
         - $ref: '#/definitions/internal_controllers.TeslaIntegrationInfo'
         description: Contains further details about tesla integration status
     type: object
-  internal_controllers.ManufacturerInfo:
-    properties:
-      name:
-        type: string
-      tokenId:
-        $ref: '#/definitions/big.Int'
-    type: object
   internal_controllers.MintSyntheticDeviceRequest:
     properties:
       signature:
@@ -414,20 +358,6 @@ definitions:
         items:
           $ref: '#/definitions/internal_controllers.UserDeviceFull'
         type: array
-    type: object
-  internal_controllers.NFTImageData:
-    properties:
-      imageData:
-        description: ImageData contains the base64-encoded NFT PNG image.
-        type: string
-      imageDataTransparent:
-        description: |-
-          ImageDataTransparent contains the base64-encoded NFT PNG image
-          with a transparent background, for use in the app. For compatibility
-          with older versions it is not required.
-        type: string
-    required:
-    - imageData
     type: object
   internal_controllers.Privilege:
     properties:
@@ -804,26 +734,6 @@ info:
   title: DIMO Devices API
   version: "1.0"
 paths:
-  /aftermarket/device/by-serial/{serial}:
-    get:
-      description: Gets the information about the aftermarket device by serial number.
-      parameters:
-      - description: AutoPi unit id or Macaron serial number
-        in: path
-        name: serial
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.AutoPiDeviceInfo'
-      security:
-      - BearerAuth: []
-      tags:
-      - integrations
   /countries:
     get:
       description: Returns all the supported countries
@@ -1361,28 +1271,6 @@ paths:
       - device
       - integration
       - command
-  /user/devices/{userDeviceId}/commands/update-nft-image:
-    post:
-      description: Updates a user's NFT image.
-      parameters:
-      - description: user device id
-        in: path
-        name: userDeviceId
-        required: true
-        type: string
-      - description: base64-encoded NFT image data
-        in: body
-        name: nftIamges
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.NFTImageData'
-      responses:
-        "204":
-          description: No Content
-      security:
-      - BearerAuth: []
-      tags:
-      - user-devices
   /user/devices/fromsmartcar:
     post:
       consumes:
@@ -1455,20 +1343,6 @@ paths:
   /user/devices/me:
     get:
       description: gets all devices associated with current user - pulled from token
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.MyDevicesResp'
-      security:
-      - BearerAuth: []
-      tags:
-      - user-devices
-  /user/devices/shared:
-    get:
-      description: gets all devices shared with current user - pulled from token
       produces:
       - application/json
       responses:
