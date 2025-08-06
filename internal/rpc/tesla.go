@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services"
@@ -11,6 +12,7 @@ import (
 	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/db"
+	"github.com/IBM/sarama"
 	"github.com/ericlagergren/decimal"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog"
@@ -28,6 +30,7 @@ func NewTeslaRPCService(
 	cipher shared.Cipher,
 	teslaAPI services.TeslaFleetAPIService,
 	logger *zerolog.Logger,
+	producer sarama.SyncProducer,
 ) pb.TeslaServiceServer {
 	return &teslaRPCServer{
 		dbs:      dbs,
@@ -35,6 +38,7 @@ func NewTeslaRPCService(
 		settings: settings,
 		cipher:   cipher,
 		teslaAPI: teslaAPI,
+		taskSvc:  services.NewTeslaTaskService(settings, producer),
 	}
 }
 
@@ -46,6 +50,7 @@ type teslaRPCServer struct {
 	settings *config.Settings
 	cipher   shared.Cipher
 	teslaAPI services.TeslaFleetAPIService
+	taskSvc  services.TeslaTaskService
 }
 
 func convertBoolRef(b *bool) *wrapperspb.BoolValue {
@@ -244,6 +249,38 @@ func (s *teslaRPCServer) GetScopes(ctx context.Context, req *pb.GetScopesRequest
 	}
 
 	return &pb.GetScopesResponse{Scopes: claims.Scopes}, nil
+}
+
+// 	StopTask(ctx context.Context, in *StopTaskRequest, opts ...grpc.CallOption) (*StopTaskResponse, error)
+
+func (s *teslaRPCServer) StopTask(ctx context.Context, req *pb.StopTaskRequest) (*pb.StopTaskResponse, error) {
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(req.VehicleTokenId, 0))),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ("26A5Dk3vvvQutjSyF0Jka2DP5lg")),
+	).One(ctx, s.dbs().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, status.Error(codes.NotFound, fmt.Sprintf("No known vehicle with token id %d.", req.VehicleTokenId))
+		}
+		return nil, err
+	}
+
+	udais := ud.R.UserDeviceAPIIntegrations
+	if len(udais) == 0 {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("No known Tesla connection for vehicle %d.", req.VehicleTokenId))
+	}
+
+	udai := udais[0]
+	if !udai.TaskID.Valid {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("No known Tesla task for vehicle %d.", req.VehicleTokenId))
+	}
+
+	err = s.taskSvc.StopPoll(udais[0])
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.StopTaskResponse{}, nil
 }
 
 type partialTeslaClaims struct {

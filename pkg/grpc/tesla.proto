@@ -12,6 +12,9 @@ service TeslaService {
   rpc GetFleetTelemetryConfig(GetFleetTelemetryConfigRequest) returns (GetFleetTelemetryConfigResponse);
   rpc ConfigureFleetTelemetry(ConfigureFleetTelemetryRequest) returns (ConfigureFleetTelemetryResponse);
   rpc GetScopes(GetScopesRequest) returns (GetScopesResponse);
+
+  rpc StopTask(StopTaskRequest) returns (StopTaskResponse);
+  // rpc StartTask(StartTaskRequest) returns (StartTaskResponse);
 }
 
 message GetPollingInfoRequest {
@@ -60,4 +63,12 @@ message GetScopesRequest {
 
 message GetScopesResponse {
   repeated string scopes = 1;
+}
+
+message StopTaskRequest {
+  int64 vehicle_token_id = 1;
+}
+
+message StopTaskResponse {
+  // Maybe later.
 }
