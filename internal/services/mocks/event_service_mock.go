@@ -12,7 +12,7 @@ package mock_services
 import (
 	reflect "reflect"
 
-	"github.com/DIMO-Network/shared/pkg/payloads"
+	payloads "github.com/DIMO-Network/shared/pkg/payloads"
 	gomock "go.uber.org/mock/gomock"
 )
 
