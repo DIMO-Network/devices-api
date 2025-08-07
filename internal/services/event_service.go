@@ -23,8 +23,10 @@ import (
 //	Data    any
 //}
 
+type CloudEventAlias = payloads.CloudEvent[any]
+
 type EventService interface {
-	Emit(event *payloads.CloudEvent[any]) error
+	Emit(event *CloudEventAlias) error
 }
 
 type eventService struct {
