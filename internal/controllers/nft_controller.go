@@ -7,15 +7,15 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/DIMO-Network/devices-api/internal/utils"
-	"github.com/DIMO-Network/shared"
-
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/internal/services"
+	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
+	grpcfiber "github.com/DIMO-Network/shared/pkg/grpcfiber"
+	pb_oracle "github.com/DIMO-Network/tesla-oracle/pkg/grpc"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
@@ -37,6 +37,7 @@ type NFTController struct {
 	integSvc         services.DeviceDefinitionIntegrationService
 	smartcarTaskSvc  services.SmartcarTaskService
 	teslaTaskService services.TeslaTaskService
+	oracleClient     pb_oracle.TeslaOracleClient
 }
 
 // NewNFTController constructor
@@ -45,6 +46,7 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 	smartcarTaskSvc services.SmartcarTaskService,
 	teslaTaskService services.TeslaTaskService,
 	integSvc services.DeviceDefinitionIntegrationService,
+	oracleClient pb_oracle.TeslaOracleClient,
 ) NFTController {
 	return NFTController{
 		Settings:         settings,
@@ -55,6 +57,7 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 		smartcarTaskSvc:  smartcarTaskSvc,
 		teslaTaskService: teslaTaskService,
 		integSvc:         integSvc,
+		oracleClient:     oracleClient,
 	}
 }
 
@@ -351,7 +354,7 @@ func (nc *NFTController) handleEnqueueCommand(c *fiber.Ctx, commandPath string) 
 
 	integration, err := nc.deviceDefSvc.GetIntegrationByID(c.Context(), udai.IntegrationID)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting integration id: "+udai.IntegrationID)
+		return grpcfiber.GrpcErrorToFiber(err, "deviceDefSvc error getting integration id: "+udai.IntegrationID)
 	}
 
 	vendorCommandMap, ok := commandMap[integration.Vendor]
@@ -372,6 +375,24 @@ func (nc *NFTController) handleEnqueueCommand(c *fiber.Ctx, commandPath string) 
 		return fiber.NewError(fiber.StatusConflict, "Integration is not capable of this command.")
 	}
 
+	// we need to call tesla-oracle grpc endpoint to check if we should drop the command based on the subscription status : pending, active, inactive
+	resp, err := nc.oracleClient.GetSyntheticDevicesByVIN(c.Context(), &pb_oracle.GetSyntheticDevicesByVINRequest{Vin: nft.VinIdentifier.String})
+	if err != nil {
+		logger.Err(err).Msg("Failed to reach tesla-oracle service.")
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to reach tesla-oracle service.")
+	}
+
+	if len(resp.SyntheticDevices) == 0 {
+		logger.Warn().Msgf("No synthetic devices found for VIN %s, dropping command request.", nft.VinIdentifier.String)
+		return fiber.NewError(fiber.StatusNotFound, "No synthetic devices found for this VIN.")
+	}
+
+	sd := resp.SyntheticDevices[0] // is it ok to take first?
+	// Check if the subscription status is inactive or pending, and drop the command request if so.
+	if sd.SubscriptionStatus == "inactive" || sd.SubscriptionStatus == "pending" {
+		logger.Info().Str("subscriptionStatus", resp.SyntheticDevices[0].SubscriptionStatus).Msgf("Dropping command request for vehicle %s due to subscription status.", nft.VinIdentifier.String)
+		return fiber.NewError(fiber.StatusForbidden, "Vehicle subscription is not active.")
+	}
 	subTaskID, err := commandFunc(udai)
 	if err != nil {
 		logger.Err(err).Msg("Failed to start command task.")
