@@ -66,11 +66,6 @@ func NewDeviceDefinitionFromGRPC(dd *grpc.GetDeviceDefinitionItemResponse) (serv
 		rp.CompatibleIntegrations = append(rp.CompatibleIntegrations, buildCompatibleIntegration("Macaron", "Americas"))
 		rp.CompatibleIntegrations = append(rp.CompatibleIntegrations, buildCompatibleIntegration("Macaron", "Europe"))
 	}
-	if rp.DeviceMake.Name != "Tesla" && rp.Type.Year > 2018 {
-		// add smartcar
-		rp.CompatibleIntegrations = append(rp.CompatibleIntegrations, buildCompatibleIntegration("SmartCar", "Europe"))
-		rp.CompatibleIntegrations = append(rp.CompatibleIntegrations, buildCompatibleIntegration("SmartCar", "Americas"))
-	}
 
 	return rp, nil
 }
@@ -89,12 +84,6 @@ func buildCompatibleIntegration(vendor, region string) services.DeviceCompatibil
 			ID:    "27qftVRWQYpVDcO5DltO5Ojbjxk",
 			Type:  "Hardware",
 			Style: "Addon",
-		}
-	case "SmartCar":
-		dc = services.DeviceCompatibility{
-			ID:    "22N2xaPOq2WW2gAHBHd0Ikn4Zob",
-			Type:  "API",
-			Style: "Webhook",
 		}
 	case "Tesla":
 		dc = services.DeviceCompatibility{

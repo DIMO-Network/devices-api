@@ -63,13 +63,9 @@ go run ./cmd/devices-api
    ```
 It may be helpful to seed the database with test data:
 
-8. Sync Smartcar integration compatibility:
-   ```sh
-   go run ./cmd/devices-api smartcar-sync
-   ```
 Finally, if you want to test document uploads:
 
-9. Execute the following command to point the AWS CLI at LocalStack:
+8. Execute the following command to point the AWS CLI at LocalStack:
    ```sh
    aws --endpoint-url=http://localhost:4566 s3 mb s3://documents
    ```

@@ -35,14 +35,12 @@ type NFTController struct {
 	log              *zerolog.Logger
 	deviceDefSvc     services.DeviceDefinitionService
 	integSvc         services.DeviceDefinitionIntegrationService
-	smartcarTaskSvc  services.SmartcarTaskService
 	teslaTaskService services.TeslaTaskService
 }
 
 // NewNFTController constructor
 func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, s3 *s3.Client,
 	deviceDefSvc services.DeviceDefinitionService,
-	smartcarTaskSvc services.SmartcarTaskService,
 	teslaTaskService services.TeslaTaskService,
 	integSvc services.DeviceDefinitionIntegrationService,
 ) NFTController {
@@ -52,7 +50,6 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 		log:              logger,
 		s3:               s3,
 		deviceDefSvc:     deviceDefSvc,
-		smartcarTaskSvc:  smartcarTaskSvc,
 		teslaTaskService: teslaTaskService,
 		integSvc:         integSvc,
 	}

@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	smartcar "github.com/smartcar/go-sdk"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -33,7 +32,7 @@ import (
 )
 
 // GetUserDeviceIntegration godoc
-// @Description Receive status updates about a Smartcar integration
+// @Description Receive status updates about an integration
 // @Tags        integrations
 // @Success     200 {object} controllers.GetUserDeviceIntegrationResponse
 // @Security    BearerAuth
@@ -224,13 +223,6 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 	}
 
 	switch integ.Vendor {
-	case constants.SmartCarVendor:
-		if apiInt.TaskID.Valid {
-			err = udc.smartcarTaskSvc.StopPoll(apiInt)
-			if err != nil {
-				return err
-			}
-		}
 	case constants.TeslaVendor:
 		if apiInt.TaskID.Valid {
 			err = udc.teslaTaskService.StopPoll(apiInt)
@@ -531,8 +523,6 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 	// The per-integration handler is responsible for handling the fiber context and committing the
 	// transaction.
 	switch vendor := integration.Vendor; vendor {
-	case constants.SmartCarVendor:
-		regErr = udc.registerSmartcarIntegration(c, &logger, tx, integration, ud)
 	case constants.TeslaVendor:
 		regErr = udc.registerDeviceTesla(c, &logger, tx, userDeviceID, integration, ud)
 	case constants.AutoPiVendor:
@@ -626,176 +616,6 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 	if err != nil {
 		logger.Err(err).Msg("Failed to emit integration event.")
 	}
-}
-
-var smartcarCallErr = fiber.NewError(fiber.StatusInternalServerError, "Error communicating with Smartcar.")
-
-func (udc *UserDevicesController) registerSmartcarIntegration(c *fiber.Ctx, logger *zerolog.Logger, tx *sql.Tx, integ *ddgrpc.Integration, ud *models.UserDevice) error {
-	reqBody := new(RegisterDeviceIntegrationRequest)
-	if err := c.BodyParser(reqBody); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Couldn't parse request JSON body.")
-	}
-	var token *smartcar.Token
-	// check for token in redis, if exists do not call this.
-	if ud.VinIdentifier.Valid {
-		scTokenGet, err := udc.redisCache.Get(c.Context(), buildSmartcarTokenKey(ud.VinIdentifier.String, ud.UserID)).Result()
-		if err == nil && len(scTokenGet) > 0 {
-			decrypted, err := udc.cipher.Decrypt(scTokenGet)
-			if err != nil {
-				return errors.Wrap(err, "failed to decrypt sc token")
-			}
-			// found existing token
-			token = &smartcar.Token{}
-			err = json.Unmarshal([]byte(decrypted), token)
-			if err != nil {
-				udc.log.Err(err).Msgf("failed to unmarshal smartcar token found in redis cache for vin: %s", ud.VinIdentifier.String)
-			}
-			// clear cache
-			udc.redisCache.Del(c.Context(), buildSmartcarTokenKey(ud.VinIdentifier.String, ud.UserID))
-		}
-	}
-	if token == nil {
-		// no token found or could be unmarshalled so try exchangecode, assumption is it has not been called before for this code
-		var err error
-		token, err = udc.smartcarClient.ExchangeCode(c.Context(), reqBody.Code, reqBody.RedirectURI)
-		if err != nil {
-			var scErr *services.SmartcarError
-			if errors.As(err, &scErr) {
-				logger.Error().Msgf("Failed exchanging Authorization code. Status code %d, request id %s, and body `%s`.", scErr.Code, scErr.RequestID, string(scErr.Body))
-			} else {
-				logger.Err(err).Msg("Failed to exchange authorization code with Smartcar.")
-			}
-
-			// This may not be the user's fault, but 400 for now.
-			return fiber.NewError(fiber.StatusBadRequest, "Failed to exchange authorization code with Smartcar.")
-		}
-	}
-
-	scUserID, err := udc.smartcarClient.GetUserID(c.Context(), token.Access)
-	if err != nil {
-		logger.Err(err).Msg("Failed to retrieve user ID from Smartcar.")
-		return smartcarCallErr
-	}
-
-	externalID, err := udc.smartcarClient.GetExternalID(c.Context(), token.Access)
-	if err != nil {
-		logger.Err(err).Msg("Failed to retrieve vehicle ID from Smartcar.")
-		return smartcarCallErr
-	}
-	// by default use vin from userdevice, unless if it is not confirmed, in that case pull from SC
-	vin := ud.VinIdentifier.String
-	if !ud.VinConfirmed {
-		vin, err = udc.smartcarClient.GetVIN(c.Context(), token.Access, externalID)
-		if err != nil {
-			logger.Err(err).Msg("Failed to retrieve VIN from Smartcar.")
-			return smartcarCallErr
-		}
-
-		if ud.VinConfirmed && ud.VinIdentifier.String != vin {
-			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Vehicle's confirmed VIN does not match Smartcar's %s.", vin))
-		}
-	}
-	localLog := logger.With().Str("vin", vin).Str("userId", ud.UserID).Logger()
-
-	// Prevent users from connecting a vehicle if it's already connected through another user
-	// device object. Disabled outside of prod for ease of testing.
-	if udc.Settings.IsProduction() {
-		if vin[0:3] == "0SC" {
-			localLog.Error().Msgf("Smartcar test VIN %s is not allowed.", vin)
-			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("Smartcar test VIN %s is not allowed.", vin))
-		}
-		// Probably a race condition here. Need to either lock something or impose a greater
-		// isolation level.
-		conflict, err := models.UserDevices(
-			models.UserDeviceWhere.ID.NEQ(ud.ID), // If you want to re-register, or register a different integration, that's okay.
-			models.UserDeviceWhere.VinIdentifier.EQ(null.StringFrom(vin)),
-			models.UserDeviceWhere.VinConfirmed.EQ(true),
-		).Exists(c.Context(), tx)
-		if err != nil {
-			localLog.Err(err).Msg("Failed to search for VIN conflicts.")
-			return opaqueInternalError
-		}
-
-		if conflict {
-			localLog.Error().Msg("VIN %s already in use.")
-			return fiber.NewError(fiber.StatusConflict, fmt.Sprintf("VIN %s in use by a previously connected device.", ud.VinIdentifier.String))
-		}
-
-		// TODO(elffjs): Super unfortunate to put another blocking call here. Maybe we do a batch?
-		// Doing it only in production because sometimes it's nice to use Teslas to test Smartcar on dev.
-		info, err := udc.smartcarClient.GetInfo(c.Context(), token.Access, externalID)
-		if err != nil {
-			logger.Err(err).Msg("Error listing vehicle details for Smartcar Tesla check.")
-			return smartcarCallErr
-		}
-
-		if info.Make == "TESLA" { // They always have this in ALL CAPS for some reason.
-			return fiber.NewError(fiber.StatusBadRequest, "Teslas should be connected using the official integration.")
-		}
-	}
-
-	endpoints, err := udc.smartcarClient.GetEndpoints(c.Context(), token.Access, externalID)
-	if err != nil {
-		localLog.Err(err).Msg("Failed to retrieve permissions from Smartcar.")
-		return smartcarCallErr
-	}
-
-	var commands *services.UserDeviceAPIIntegrationsMetadataCommands
-
-	doorControl, err := udc.smartcarClient.HasDoorControl(c.Context(), token.Access, externalID)
-	if err != nil {
-		localLog.Err(err).Msg("Failed to retrieve door control permissions from Smartcar.")
-		return smartcarCallErr
-	}
-
-	if doorControl {
-		commands = udc.smartcarClient.GetAvailableCommands()
-	}
-
-	meta := services.UserDeviceAPIIntegrationsMetadata{
-		SmartcarUserID:    &scUserID,
-		SmartcarEndpoints: endpoints,
-		Commands:          commands,
-	}
-
-	b, err := json.Marshal(meta)
-	if err != nil {
-		return err
-	}
-
-	encAccess, err := udc.cipher.Encrypt(token.Access)
-	if err != nil {
-		return opaqueInternalError
-	}
-
-	encRefresh, err := udc.cipher.Encrypt(token.Refresh)
-	if err != nil {
-		return opaqueInternalError
-	}
-
-	err = udc.userDeviceSvc.CreateIntegration(c.Context(), tx, ud.ID, integ.Id, externalID, encAccess, token.AccessExpiry, encRefresh, b)
-	if err != nil {
-		localLog.Err(err).Msg("Unexpected database error inserting new Smartcar integration registration.")
-		return opaqueInternalError
-	}
-	// todo this may cause issues
-	if !ud.VinConfirmed {
-		ud.VinIdentifier = null.StringFrom(strings.ToUpper(vin))
-		ud.VinConfirmed = true
-		_, err = ud.Update(c.Context(), tx, boil.Infer())
-		if err != nil {
-			return opaqueInternalError
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		localLog.Error().Msg("Failed to commit new user device integration.")
-		return opaqueInternalError
-	}
-
-	localLog.Info().Msg("Finished Smartcar device registration.")
-
-	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func IsFleetTelemetryCapable(fs *services.VehicleFleetStatus) bool {
