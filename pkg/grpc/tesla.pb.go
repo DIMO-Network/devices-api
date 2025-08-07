@@ -526,6 +526,86 @@ func (x *GetScopesResponse) GetScopes() []string {
 	return nil
 }
 
+type StopTaskRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	VehicleTokenId int64                  `protobuf:"varint,1,opt,name=vehicle_token_id,json=vehicleTokenId,proto3" json:"vehicle_token_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *StopTaskRequest) Reset() {
+	*x = StopTaskRequest{}
+	mi := &file_pkg_grpc_tesla_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StopTaskRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StopTaskRequest) ProtoMessage() {}
+
+func (x *StopTaskRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_grpc_tesla_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StopTaskRequest.ProtoReflect.Descriptor instead.
+func (*StopTaskRequest) Descriptor() ([]byte, []int) {
+	return file_pkg_grpc_tesla_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *StopTaskRequest) GetVehicleTokenId() int64 {
+	if x != nil {
+		return x.VehicleTokenId
+	}
+	return 0
+}
+
+type StopTaskResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StopTaskResponse) Reset() {
+	*x = StopTaskResponse{}
+	mi := &file_pkg_grpc_tesla_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StopTaskResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StopTaskResponse) ProtoMessage() {}
+
+func (x *StopTaskResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_grpc_tesla_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StopTaskResponse.ProtoReflect.Descriptor instead.
+func (*StopTaskResponse) Descriptor() ([]byte, []int) {
+	return file_pkg_grpc_tesla_proto_rawDescGZIP(), []int{11}
+}
+
 var File_pkg_grpc_tesla_proto protoreflect.FileDescriptor
 
 const file_pkg_grpc_tesla_proto_rawDesc = "" +
@@ -563,13 +643,17 @@ const file_pkg_grpc_tesla_proto_rawDesc = "" +
 	"\x10GetScopesRequest\x12(\n" +
 	"\x10vehicle_token_id\x18\x01 \x01(\x03R\x0evehicleTokenId\"+\n" +
 	"\x11GetScopesResponse\x12\x16\n" +
-	"\x06scopes\x18\x01 \x03(\tR\x06scopes2\xc0\x03\n" +
+	"\x06scopes\x18\x01 \x03(\tR\x06scopes\";\n" +
+	"\x0fStopTaskRequest\x12(\n" +
+	"\x10vehicle_token_id\x18\x01 \x01(\x03R\x0evehicleTokenId\"\x12\n" +
+	"\x10StopTaskResponse2\xfd\x03\n" +
 	"\fTeslaService\x12M\n" +
 	"\x0eGetPollingInfo\x12\x1c.tesla.GetPollingInfoRequest\x1a\x1d.tesla.GetPollingInfoResponse\x12M\n" +
 	"\x0eGetFleetStatus\x12\x1c.tesla.GetFleetStatusRequest\x1a\x1d.tesla.GetFleetStatusResponse\x12h\n" +
 	"\x17GetFleetTelemetryConfig\x12%.tesla.GetFleetTelemetryConfigRequest\x1a&.tesla.GetFleetTelemetryConfigResponse\x12h\n" +
 	"\x17ConfigureFleetTelemetry\x12%.tesla.ConfigureFleetTelemetryRequest\x1a&.tesla.ConfigureFleetTelemetryResponse\x12>\n" +
-	"\tGetScopes\x12\x17.tesla.GetScopesRequest\x1a\x18.tesla.GetScopesResponseB.Z,github.com/DIMO-Network/devices-api/pkg/grpcb\x06proto3"
+	"\tGetScopes\x12\x17.tesla.GetScopesRequest\x1a\x18.tesla.GetScopesResponse\x12;\n" +
+	"\bStopTask\x12\x16.tesla.StopTaskRequest\x1a\x17.tesla.StopTaskResponseB.Z,github.com/DIMO-Network/devices-api/pkg/grpcb\x06proto3"
 
 var (
 	file_pkg_grpc_tesla_proto_rawDescOnce sync.Once
@@ -583,7 +667,7 @@ func file_pkg_grpc_tesla_proto_rawDescGZIP() []byte {
 	return file_pkg_grpc_tesla_proto_rawDescData
 }
 
-var file_pkg_grpc_tesla_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_pkg_grpc_tesla_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_pkg_grpc_tesla_proto_goTypes = []any{
 	(*GetPollingInfoRequest)(nil),           // 0: tesla.GetPollingInfoRequest
 	(*GetPollingInfoResponse)(nil),          // 1: tesla.GetPollingInfoResponse
@@ -595,23 +679,27 @@ var file_pkg_grpc_tesla_proto_goTypes = []any{
 	(*ConfigureFleetTelemetryResponse)(nil), // 7: tesla.ConfigureFleetTelemetryResponse
 	(*GetScopesRequest)(nil),                // 8: tesla.GetScopesRequest
 	(*GetScopesResponse)(nil),               // 9: tesla.GetScopesResponse
-	(*wrapperspb.BoolValue)(nil),            // 10: google.protobuf.BoolValue
+	(*StopTaskRequest)(nil),                 // 10: tesla.StopTaskRequest
+	(*StopTaskResponse)(nil),                // 11: tesla.StopTaskResponse
+	(*wrapperspb.BoolValue)(nil),            // 12: google.protobuf.BoolValue
 }
 var file_pkg_grpc_tesla_proto_depIdxs = []int32{
-	10, // 0: tesla.GetPollingInfoResponse.discounted_data:type_name -> google.protobuf.BoolValue
-	10, // 1: tesla.GetPollingInfoResponse.fleet_telemetry_capable:type_name -> google.protobuf.BoolValue
+	12, // 0: tesla.GetPollingInfoResponse.discounted_data:type_name -> google.protobuf.BoolValue
+	12, // 1: tesla.GetPollingInfoResponse.fleet_telemetry_capable:type_name -> google.protobuf.BoolValue
 	0,  // 2: tesla.TeslaService.GetPollingInfo:input_type -> tesla.GetPollingInfoRequest
 	2,  // 3: tesla.TeslaService.GetFleetStatus:input_type -> tesla.GetFleetStatusRequest
 	4,  // 4: tesla.TeslaService.GetFleetTelemetryConfig:input_type -> tesla.GetFleetTelemetryConfigRequest
 	6,  // 5: tesla.TeslaService.ConfigureFleetTelemetry:input_type -> tesla.ConfigureFleetTelemetryRequest
 	8,  // 6: tesla.TeslaService.GetScopes:input_type -> tesla.GetScopesRequest
-	1,  // 7: tesla.TeslaService.GetPollingInfo:output_type -> tesla.GetPollingInfoResponse
-	3,  // 8: tesla.TeslaService.GetFleetStatus:output_type -> tesla.GetFleetStatusResponse
-	5,  // 9: tesla.TeslaService.GetFleetTelemetryConfig:output_type -> tesla.GetFleetTelemetryConfigResponse
-	7,  // 10: tesla.TeslaService.ConfigureFleetTelemetry:output_type -> tesla.ConfigureFleetTelemetryResponse
-	9,  // 11: tesla.TeslaService.GetScopes:output_type -> tesla.GetScopesResponse
-	7,  // [7:12] is the sub-list for method output_type
-	2,  // [2:7] is the sub-list for method input_type
+	10, // 7: tesla.TeslaService.StopTask:input_type -> tesla.StopTaskRequest
+	1,  // 8: tesla.TeslaService.GetPollingInfo:output_type -> tesla.GetPollingInfoResponse
+	3,  // 9: tesla.TeslaService.GetFleetStatus:output_type -> tesla.GetFleetStatusResponse
+	5,  // 10: tesla.TeslaService.GetFleetTelemetryConfig:output_type -> tesla.GetFleetTelemetryConfigResponse
+	7,  // 11: tesla.TeslaService.ConfigureFleetTelemetry:output_type -> tesla.ConfigureFleetTelemetryResponse
+	9,  // 12: tesla.TeslaService.GetScopes:output_type -> tesla.GetScopesResponse
+	11, // 13: tesla.TeslaService.StopTask:output_type -> tesla.StopTaskResponse
+	8,  // [8:14] is the sub-list for method output_type
+	2,  // [2:8] is the sub-list for method input_type
 	2,  // [2:2] is the sub-list for extension type_name
 	2,  // [2:2] is the sub-list for extension extendee
 	0,  // [0:2] is the sub-list for field type_name
@@ -629,7 +717,7 @@ func file_pkg_grpc_tesla_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_grpc_tesla_proto_rawDesc), len(file_pkg_grpc_tesla_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
