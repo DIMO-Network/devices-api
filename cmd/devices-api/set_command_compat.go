@@ -11,12 +11,11 @@ import (
 	"github.com/google/subcommands"
 	"github.com/rs/zerolog"
 
-	"github.com/DIMO-Network/shared/db"
-
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/shared/pkg/db"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/volatiletech/sqlboiler/v4/boil"

@@ -7,7 +7,7 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/controllers/helpers"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"

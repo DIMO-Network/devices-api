@@ -13,8 +13,8 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/integration"
 	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
+	cip "github.com/DIMO-Network/shared/pkg/cipher"
+	"github.com/DIMO-Network/shared/pkg/db"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
@@ -32,7 +32,7 @@ type Controller struct {
 	IntegClient *integration.Client
 	Store       *tmpcred.Store
 	TeslaAPI    services.TeslaFleetAPIService
-	Cipher      shared.Cipher
+	Cipher      cip.Cipher
 }
 
 type SyntheticTaskManager interface {

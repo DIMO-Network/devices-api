@@ -15,7 +15,7 @@ import (
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	"github.com/DIMO-Network/devices-api/internal/test"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"

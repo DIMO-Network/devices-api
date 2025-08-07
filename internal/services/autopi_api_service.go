@@ -17,8 +17,9 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/http"
+	"github.com/DIMO-Network/shared/pkg/strings"
 	"github.com/pkg/errors"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -53,7 +54,7 @@ type AutoPiAPIService interface {
 
 type autoPiAPIService struct {
 	Settings   *config.Settings
-	httpClient shared.HTTPClientWrapper
+	httpClient http.ClientWrapper
 	dbs        func() *db.ReaderWriter
 }
 
@@ -61,7 +62,7 @@ var ErrNotFound = errors.New("not found")
 
 func NewAutoPiAPIService(settings *config.Settings, dbs func() *db.ReaderWriter) AutoPiAPIService {
 	h := map[string]string{"Authorization": "APIToken " + settings.AutoPiAPIToken}
-	hcw, _ := shared.NewHTTPClientWrapper(settings.AutoPiAPIURL, "", 60*time.Second, h, true) // ok to ignore err since only used for tor check
+	hcw, _ := http.NewClientWrapper(settings.AutoPiAPIURL, "", 60*time.Second, h, true) // ok to ignore err since only used for tor check
 
 	return &autoPiAPIService{
 		Settings:   settings,
@@ -120,7 +121,7 @@ func (a *autoPiAPIService) GetUserDeviceIntegrationByUnitID(ctx context.Context,
 func (a *autoPiAPIService) GetDeviceByUnitID(unitID string) (*AutoPiDongleDevice, error) {
 	res, err := a.httpClient.ExecuteRequest(fmt.Sprintf("/dongle/devices/by_unit_id/%s/", unitID), "GET", nil)
 	if err != nil {
-		var responseError shared.HTTPResponseError
+		var responseError http.ResponseError
 		if errors.As(err, &responseError) {
 			if responseError.StatusCode == 404 {
 				return nil, ErrNotFound
@@ -657,7 +658,7 @@ func BuildCallName(callName *string, dd *ddgrpc.GetDeviceDefinitionItemResponse)
 		}
 		return uniquer
 	}
-	mmy := fmt.Sprintf("%d %s %s", dd.Year, dd.Make.NameSlug, shared.SlugString(dd.Model))
+	mmy := fmt.Sprintf("%d %s %s", dd.Year, dd.Make.NameSlug, strings.SlugString(dd.Model))
 	if callName == nil {
 		return uniquer + ":" + mmy
 	}

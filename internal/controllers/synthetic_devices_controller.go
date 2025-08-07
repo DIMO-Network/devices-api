@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/DIMO-Network/shared"
 	pb_oracle "github.com/DIMO-Network/tesla-oracle/pkg/grpc"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -17,7 +16,8 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/grpcfiber"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -440,7 +440,7 @@ func (sdc *SyntheticDevicesController) GetSyntheticDeviceBurnPayload(c *fiber.Ct
 	// Check that the integration id in the path matches the synthetic's integration.
 	in, err := sdc.deviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "failed to get integration")
+		return grpcfiber.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
 	if intNode, _ := sd.IntegrationTokenID.Uint64(); intNode != in.TokenId {
@@ -505,7 +505,7 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 	// Check that the integration id in the path matches the synthetic's integration.
 	in, err := sdc.deviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "failed to get integration")
+		return grpcfiber.GrpcErrorToFiber(err, "failed to get integration")
 	}
 
 	if intNode, _ := sd.IntegrationTokenID.Uint64(); intNode != in.TokenId {

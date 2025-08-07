@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/DIMO-Network/devices-api/internal/test"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 )

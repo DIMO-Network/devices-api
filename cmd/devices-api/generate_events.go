@@ -4,15 +4,14 @@ import (
 	"context"
 	"flag"
 
-	"github.com/DIMO-Network/shared"
-
 	"github.com/DIMO-Network/devices-api/internal/constants"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/payloads"
 	"github.com/google/subcommands"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -90,7 +89,7 @@ func generateEvents(logger zerolog.Logger, pdb db.Store, eventService services.E
 		}
 
 		err = eventService.Emit(
-			&shared.CloudEvent[any]{
+			&payloads.CloudEvent[any]{
 				Type:    constants.UserDeviceCreationEventType,
 				Subject: device.UserID,
 				Source:  "devices-api",
@@ -144,7 +143,7 @@ func generateEvents(logger zerolog.Logger, pdb db.Store, eventService services.E
 		}
 
 		err = eventService.Emit(
-			&shared.CloudEvent[any]{
+			&payloads.CloudEvent[any]{
 				Type:    "com.dimo.zone.device.integration.create",
 				Subject: scInteg.UserDeviceID,
 				Source:  "devices-api",

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/shared"
+	"github.com/DIMO-Network/shared/pkg/payloads"
 	"github.com/IBM/sarama"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog"
@@ -24,7 +24,7 @@ import (
 //}
 
 type EventService interface {
-	Emit(event *shared.CloudEvent[any]) error
+	Emit(event *payloads.CloudEvent[any]) error
 }
 
 type eventService struct {
@@ -41,8 +41,8 @@ func NewEventService(logger *zerolog.Logger, settings *config.Settings, producer
 	}
 }
 
-func (e *eventService) Emit(event *shared.CloudEvent[any]) error {
-	msgBytes, err := json.Marshal(shared.CloudEvent[any]{
+func (e *eventService) Emit(event *payloads.CloudEvent[any]) error {
+	msgBytes, err := json.Marshal(payloads.CloudEvent[any]{
 		ID:          ksuid.New().String(),
 		Source:      event.Source,
 		SpecVersion: "1.0",

@@ -9,8 +9,8 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services/cio"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/payloads"
 	"github.com/IBM/sarama"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
@@ -60,7 +60,7 @@ func (i *TaskStatusListener) processMessage(msg *message.Message) error {
 	// Keep the pipeline moving no matter what.
 	defer func() { msg.Ack() }()
 
-	event := new(shared.CloudEvent[TaskStatusData])
+	event := new(payloads.CloudEvent[TaskStatusData])
 	if err := json.Unmarshal(msg.Payload, event); err != nil {
 		return errors.Wrap(err, "error parsing task status payload")
 	}
@@ -68,7 +68,7 @@ func (i *TaskStatusListener) processMessage(msg *message.Message) error {
 	return i.processEvent(event)
 }
 
-func (i *TaskStatusListener) processEvent(event *shared.CloudEvent[TaskStatusData]) error {
+func (i *TaskStatusListener) processEvent(event *payloads.CloudEvent[TaskStatusData]) error {
 	switch event.Type {
 	case smartcarStatusEventType:
 		return i.processSmartcarPollStatusEvent(event)
@@ -81,7 +81,7 @@ func (i *TaskStatusListener) processEvent(event *shared.CloudEvent[TaskStatusDat
 	}
 }
 
-func (i *TaskStatusListener) processSmartcarPollStatusEvent(event *shared.CloudEvent[TaskStatusData]) error {
+func (i *TaskStatusListener) processSmartcarPollStatusEvent(event *payloads.CloudEvent[TaskStatusData]) error {
 	var (
 		ctx          = context.Background()
 		userDeviceID = event.Subject
@@ -137,7 +137,8 @@ func (i *TaskStatusListener) processSmartcarPollStatusEvent(event *shared.CloudE
 	return nil
 }
 
-func (i *TaskStatusListener) processTeslaPollStatusEvent(event *shared.CloudEvent[TaskStatusData]) error {
+// okay this is for authentication failure case
+func (i *TaskStatusListener) processTeslaPollStatusEvent(event *payloads.CloudEvent[TaskStatusData]) error {
 	var (
 		ctx          = context.Background()
 		userDeviceID = event.Subject
@@ -192,7 +193,7 @@ func (i *TaskStatusListener) processTeslaPollStatusEvent(event *shared.CloudEven
 	return nil
 }
 
-func (i *TaskStatusListener) processCommandStatusEvent(event *shared.CloudEvent[TaskStatusData]) error {
+func (i *TaskStatusListener) processCommandStatusEvent(event *payloads.CloudEvent[TaskStatusData]) error {
 	dcr, err := models.FindDeviceCommandRequest(context.Background(), i.db().Writer, event.Data.SubTaskID)
 	if err != nil {
 		return fmt.Errorf("failed to find command request: %w", err)

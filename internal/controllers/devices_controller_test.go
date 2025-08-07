@@ -10,7 +10,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"

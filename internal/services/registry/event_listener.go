@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/DIMO-Network/shared"
+	"github.com/DIMO-Network/shared/pkg/payloads"
 	"github.com/IBM/sarama"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -64,7 +64,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 		select {
 		case message := <-claim.Messages():
 			c.logger.Info().Int32("partition", message.Partition).Int64("offset", message.Offset).RawJSON("value", message.Value).Msg("Got message")
-			event := shared.CloudEvent[ceData]{}
+			event := payloads.CloudEvent[ceData]{}
 			err := json.Unmarshal(message.Value, &event)
 			if err != nil {
 				c.logger.Err(err).Int32("partition", message.Partition).Int64("offset", message.Offset).Msg("Failed to parse transaction event.")

@@ -18,9 +18,10 @@ import (
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
-	"github.com/DIMO-Network/shared/redis/mocks"
+	cip "github.com/DIMO-Network/shared/pkg/cipher"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/payloads"
+	"github.com/DIMO-Network/shared/pkg/redis/mocks"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	_ "github.com/lib/pq"
@@ -39,7 +40,7 @@ import (
 
 type fakeEventService struct{}
 
-func (f *fakeEventService) Emit(event *shared.CloudEvent[any]) error {
+func (f *fakeEventService) Emit(event *payloads.CloudEvent[any]) error {
 	fmt.Printf("Emitting %v\n", event)
 	return nil
 }
@@ -93,7 +94,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
 	s.testUserEthAddr = common.HexToAddress("0x1231231231231231231231231231231231231231")
-	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaTaskService, nil, new(shared.ROT13Cipher), s.autoPiSvc,
+	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaTaskService, nil, new(cip.ROT13Cipher), s.autoPiSvc,
 		autoPiIngest, nil, nil, s.redisClient, nil, s.natsService, nil, s.userDeviceSvc, nil, nil, nil)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID, nil), c.RegisterDeviceForUser)

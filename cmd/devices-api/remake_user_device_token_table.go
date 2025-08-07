@@ -13,8 +13,8 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/payloads"
 )
 
 type remakeUserDeviceTokenTableCmd struct {
@@ -66,7 +66,7 @@ func remakeUserDeviceTokenTable(ctx context.Context, pdb db.Store, producer sara
 	for _, vn := range vns {
 		tokenID, _ := vn.TokenID.Int64()
 
-		out := &shared.CloudEvent[MapData]{
+		out := &payloads.CloudEvent[MapData]{
 			ID:          ksuid.New().String(),
 			Source:      "user-device-token-mapping-processor",
 			SpecVersion: "1.0",

@@ -12,7 +12,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
 	"github.com/ericlagergren/decimal"
 	"github.com/google/subcommands"
 	"github.com/rs/zerolog"

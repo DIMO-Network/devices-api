@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/DIMO-Network/shared"
-	credis "github.com/DIMO-Network/shared/redis"
+	"github.com/DIMO-Network/shared/pkg/cipher"
+	credis "github.com/DIMO-Network/shared/pkg/redis"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-redis/redis/v8"
 )
@@ -24,7 +24,7 @@ var (
 
 type Store struct {
 	Redis  credis.CacheService
-	Cipher shared.Cipher
+	Cipher cipher.Cipher
 }
 
 type Credential struct {

@@ -17,8 +17,8 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/payloads"
 	"github.com/segmentio/ksuid"
 )
 
@@ -75,7 +75,7 @@ func (p *stopTaskByKeyCmd) stopTaskByKey(settings *config.Settings, taskKey stri
 		}
 	}
 
-	tt := shared.CloudEvent[any]{
+	tt := payloads.CloudEvent[any]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/FAKE",
 		SpecVersion: "1.0",

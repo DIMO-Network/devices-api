@@ -14,8 +14,8 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/middleware/address"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
+	vinpkg "github.com/DIMO-Network/shared/pkg/vin"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -251,7 +251,7 @@ func (u *UserIntegrationAuthController) decodeTeslaVIN(ctx context.Context, vin 
 	}
 
 	teslaMake := "Tesla"
-	model := shared.VIN(vin).TeslaModel()
+	model := vinpkg.VIN(vin).TeslaModel()
 	// key thing that matters here is the ID, this is a reduce payload compared to the full DD payload
 	return &decodeResult{ID: decodeVIN.DefinitionId, Make: teslaMake, Model: model, Year: int(decodeVIN.Year)}, nil
 }

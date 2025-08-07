@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"

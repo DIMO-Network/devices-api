@@ -14,8 +14,8 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/payloads"
 	smock "github.com/IBM/sarama/mocks"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
@@ -200,7 +200,7 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceSmartcar()
 
 	assert.Equal(s.T(), "{\"message\":\"Submitted synthetic device mint request.\"}", string(body))
 
-	var me shared.CloudEvent[registry.RequestData]
+	var me payloads.CloudEvent[registry.RequestData]
 
 	err = json.Unmarshal(kb, &me)
 	s.Require().NoError(err)

@@ -3,7 +3,7 @@ package services
 import (
 	"math/big"
 
-	"github.com/DIMO-Network/shared"
+	"github.com/DIMO-Network/shared/pkg/payloads"
 	"github.com/IBM/sarama"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
@@ -45,7 +45,7 @@ type deviceIDLink struct {
 }
 
 func (s *ingestRegistrar) Register(externalID, userDeviceID, integrationID string) error {
-	value := shared.CloudEvent[deviceIDLink]{
+	value := payloads.CloudEvent[deviceIDLink]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + integrationID,
 		Subject:     userDeviceID,
@@ -89,7 +89,7 @@ func (s *ingestRegistrar) Deregister(externalID, _, _ string) error {
 }
 
 func (s *ingestRegistrar) Register2(data *AftermarketDeviceVehicleMapping) error {
-	value := shared.CloudEvent[AftermarketDeviceVehicleMapping]{
+	value := payloads.CloudEvent[AftermarketDeviceVehicleMapping]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + data.AftermarketDevice.IntegrationID,
 		Subject:     data.Vehicle.UserDeviceID,

@@ -13,10 +13,10 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
-	"github.com/DIMO-Network/shared/dbtypes"
-	"github.com/DIMO-Network/shared/event/sdmint"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/dbtypes"
+	"github.com/DIMO-Network/shared/pkg/event/sdmint"
+	"github.com/DIMO-Network/shared/pkg/payloads"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog"
@@ -121,7 +121,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return fmt.Errorf("failed to update vehicle record: %w", err)
 				}
 
-				p.Eventer.Emit(&shared.CloudEvent[any]{ //nolint
+				p.Eventer.Emit(&payloads.CloudEvent[any]{ //nolint
 					Type:    "com.dimo.zone.device.mint",
 					Subject: ud.ID,
 					Source:  "devices-api",
@@ -162,7 +162,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				if err != nil {
 					return fmt.Errorf("failed to update vehicle record: %w", err)
 				}
-				p.Eventer.Emit(&shared.CloudEvent[any]{ //nolint
+				p.Eventer.Emit(&payloads.CloudEvent[any]{ //nolint
 					Type:    "com.dimo.zone.device.mint",
 					Subject: ud.ID,
 					Source:  "devices-api",
@@ -253,7 +253,7 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return fmt.Errorf("unexpected connection %s", integrationChainIDs.Name)
 				}
 
-				p.Eventer.Emit(&shared.CloudEvent[any]{ //nolint
+				p.Eventer.Emit(&payloads.CloudEvent[any]{ //nolint
 					ID:          ksuid.New().String(),
 					Source:      "devices-api",
 					SpecVersion: "1.0",

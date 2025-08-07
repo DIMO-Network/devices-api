@@ -6,8 +6,8 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/sdtask"
+	"github.com/DIMO-Network/shared/pkg/payloads"
+	"github.com/DIMO-Network/shared/pkg/sdtask"
 	"github.com/IBM/sarama"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
@@ -53,7 +53,7 @@ func (t *smartcarTaskService) StartPoll(udai *models.UserDeviceAPIIntegration, s
 		return err
 	}
 
-	tt := shared.CloudEvent[SmartcarTask]{
+	tt := payloads.CloudEvent[SmartcarTask]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + udai.IntegrationID,
 		SpecVersion: "1.0",
@@ -75,7 +75,7 @@ func (t *smartcarTaskService) StartPoll(udai *models.UserDeviceAPIIntegration, s
 	integrationTokenID, _ := sd.IntegrationTokenID.Int64()
 	vehicleTokenID, _ := sd.VehicleTokenID.Int64()
 
-	tc := shared.CloudEvent[sdtask.CredentialData]{
+	tc := payloads.CloudEvent[sdtask.CredentialData]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + udai.IntegrationID,
 		SpecVersion: "1.0",
@@ -133,7 +133,7 @@ func (t *smartcarTaskService) Refresh(udai *models.UserDeviceAPIIntegration) err
 		return err
 	}
 
-	tt := shared.CloudEvent[SmartcarTask]{
+	tt := payloads.CloudEvent[SmartcarTask]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + udai.IntegrationID,
 		SpecVersion: "1.0",
@@ -170,7 +170,7 @@ func (t *smartcarTaskService) Refresh(udai *models.UserDeviceAPIIntegration) err
 func (t *smartcarTaskService) StopPoll(udai *models.UserDeviceAPIIntegration) error {
 	var taskKey = udai.TaskID.String
 
-	tt := shared.CloudEvent[any]{
+	tt := payloads.CloudEvent[any]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + udai.IntegrationID,
 		SpecVersion: "1.0",
@@ -220,7 +220,7 @@ type SmartcarDoorTask struct {
 }
 
 func (t *smartcarTaskService) UnlockDoors(udai *models.UserDeviceAPIIntegration) (string, error) {
-	tt := shared.CloudEvent[SmartcarDoorTask]{
+	tt := payloads.CloudEvent[SmartcarDoorTask]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + udai.IntegrationID,
 		SpecVersion: "1.0",
@@ -255,7 +255,7 @@ func (t *smartcarTaskService) UnlockDoors(udai *models.UserDeviceAPIIntegration)
 }
 
 func (t *smartcarTaskService) LockDoors(udai *models.UserDeviceAPIIntegration) (string, error) {
-	tt := shared.CloudEvent[SmartcarDoorTask]{
+	tt := payloads.CloudEvent[SmartcarDoorTask]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + udai.IntegrationID,
 		SpecVersion: "1.0",

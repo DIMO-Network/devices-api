@@ -12,7 +12,7 @@ package mock_services
 import (
 	reflect "reflect"
 
-	shared "github.com/DIMO-Network/shared"
+	"github.com/DIMO-Network/shared/pkg/payloads"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,7 +41,7 @@ func (m *MockEventService) EXPECT() *MockEventServiceMockRecorder {
 }
 
 // Emit mocks base method.
-func (m *MockEventService) Emit(event *shared.CloudEvent[any]) error {
+func (m *MockEventService) Emit(event *payloads.CloudEvent[any]) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Emit", event)
 	ret0, _ := ret[0].(error)

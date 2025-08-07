@@ -13,8 +13,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
+	cip "github.com/DIMO-Network/shared/pkg/cipher"
+	"github.com/DIMO-Network/shared/pkg/db"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services"
@@ -25,7 +25,7 @@ type checkTelemetryCmd struct {
 	logger   zerolog.Logger
 	settings config.Settings
 	pdb      db.Store
-	cipher   shared.Cipher
+	cipher   cip.Cipher
 }
 
 func (*checkTelemetryCmd) Name() string { return "check-telemetry" }
@@ -55,7 +55,7 @@ type partialTeslaClaims struct {
 	Scopes []string `json:"scp"`
 }
 
-func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.Logger, cipher shared.Cipher) error {
+func checkVirtualKeys(settings *config.Settings, pdb db.Store, logger *zerolog.Logger, cipher cip.Cipher) error {
 	userDeviceID := os.Args[2]
 
 	log := logger.With().Str("userDeviceId", userDeviceID).Logger()

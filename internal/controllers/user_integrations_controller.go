@@ -21,7 +21,10 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
+	"github.com/DIMO-Network/shared/pkg/grpcfiber"
+	"github.com/DIMO-Network/shared/pkg/payloads"
+	stringspkg "github.com/DIMO-Network/shared/pkg/strings"
+	vinpkg "github.com/DIMO-Network/shared/pkg/vin"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
@@ -74,7 +77,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 	// Handle fetching virtual key status
 	intd, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "invalid integration id")
+		return grpcfiber.GrpcErrorToFiber(err, "invalid integration id")
 	}
 
 	if intd.Vendor != constants.TeslaVendor {
@@ -220,7 +223,7 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 
 	integ, err := udc.DeviceDefSvc.GetIntegrationByID(ctx, integrationID)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting integration id: "+integrationID)
+		return grpcfiber.GrpcErrorToFiber(err, "deviceDefSvc error getting integration id: "+integrationID)
 	}
 
 	switch integ.Vendor {
@@ -256,7 +259,7 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 		vin = apiInt.R.UserDevice.VinIdentifier.String
 	}
 
-	err = udc.eventService.Emit(&shared.CloudEvent[any]{
+	err = udc.eventService.Emit(&payloads.CloudEvent[any]{
 		Type:    "com.dimo.zone.device.integration.delete",
 		Source:  "devices-api",
 		Subject: userDeviceID,
@@ -357,7 +360,7 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 	// Need this for activity log.
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), device.DefinitionID)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+device.DefinitionID)
+		return grpcfiber.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+device.DefinitionID)
 	}
 
 	err = udc.deleteDeviceIntegration(c.Context(), userID, userDeviceID, integrationID, dd, tx)
@@ -441,7 +444,7 @@ func (udc *UserDevicesController) TelemetrySubscribe(c *fiber.Ctx) error {
 
 	integration, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), udai.IntegrationID)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting integration id: "+udai.IntegrationID)
+		return grpcfiber.GrpcErrorToFiber(err, "deviceDefSvc error getting integration id: "+udai.IntegrationID)
 	}
 
 	switch integration.Vendor {
@@ -514,7 +517,7 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 
 	integration, err := udc.DeviceDefSvc.GetIntegrationByID(c.Context(), integrationID)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "failed to get integration with id: "+integrationID)
+		return grpcfiber.GrpcErrorToFiber(err, "failed to get integration with id: "+integrationID)
 	}
 
 	// if exists, likely means already handled from previous /fromsmartcar endpoint, just return nil but log warn in case
@@ -599,7 +602,7 @@ func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logge
 	}
 
 	err = udc.eventService.Emit(
-		&shared.CloudEvent[any]{
+		&payloads.CloudEvent[any]{
 			Type:    "com.dimo.zone.device.integration.create",
 			Source:  "devices-api",
 			Subject: userDeviceID,
@@ -983,9 +986,9 @@ func (udc *UserDevicesController) getTeslaVehicle(ctx context.Context, token str
 // device_integrations. This should all be handled elsewhere for Tesla.
 func fixTeslaDeviceDefinition(ctx context.Context, logger *zerolog.Logger, exec boil.ContextExecutor, _ *ddgrpc.Integration, ud *models.UserDevice, vin string) error {
 	vinMake := "Tesla"
-	vinModel := shared.VIN(vin).TeslaModel()
-	vinYear := shared.VIN(vin).Year()
-	definitionID := fmt.Sprintf("%s_%s_%d", shared.SlugString(vinMake), shared.SlugString(vinModel), vinYear)
+	vinModel := vinpkg.VIN(vin).TeslaModel()
+	vinYear := vinpkg.VIN(vin).Year()
+	definitionID := fmt.Sprintf("%s_%s_%d", stringspkg.SlugString(vinMake), stringspkg.SlugString(vinModel), vinYear)
 
 	if definitionID != ud.DefinitionID {
 		logger.Warn().Msgf(

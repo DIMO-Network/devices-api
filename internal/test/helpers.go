@@ -13,14 +13,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DIMO-Network/shared"
-
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/models"
 	pb "github.com/DIMO-Network/shared/api/users"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
+	strpkg "github.com/DIMO-Network/shared/pkg/strings"
 	"github.com/docker/go-connections/nat"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
@@ -466,13 +465,13 @@ func BuildDeviceDefinitionGRPC(deviceDefinitionID string, mk string, model strin
 
 	rp := &ddgrpc.GetDeviceDefinitionItemResponse{
 		DeviceDefinitionId: deviceDefinitionID,
-		Id:                 shared.SlugString(mk) + "_" + shared.SlugString(model) + "_" + strconv.Itoa(year),
+		Id:                 strpkg.SlugString(mk) + "_" + strpkg.SlugString(model) + "_" + strconv.Itoa(year),
 		Name:               "Name",
 		Ksuid:              deviceDefinitionID,
 		Make: &ddgrpc.DeviceMake{
 			Id:       ksuid.New().String(),
 			Name:     mk,
-			NameSlug: shared.SlugString(mk),
+			NameSlug: strpkg.SlugString(mk),
 		},
 		Model:    model,
 		Year:     int32(year),
