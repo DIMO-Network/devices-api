@@ -18,7 +18,7 @@ jobs:
 
       - name: Install mockgen
         run: go install go.uber.org/mock/mockgen@v0.5.0
-      
+
       - name: Install swag
         run: go install github.com/swaggo/swag/cmd/swag@latest
 
@@ -44,5 +44,7 @@ jobs:
           if [[ `git status --porcelain` ]]; then
             echo "The following files are dirty:"
             echo "${dirty_files}"
+          echo "Showing the diff of changes:"
+          git diff
             exit 1
           fi
