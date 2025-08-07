@@ -96,7 +96,6 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	app.Post("/user/devices/second", test.AuthInjectorTestHandler(testUserID2, nil), c.RegisterDeviceForUser) // for different test user
 	app.Get("/user/devices/me", test.AuthInjectorTestHandler(s.testUserID, &s.testUserEthAddr), c.GetUserDevices)
 	app.Patch("/vehicle/:tokenID/vin", test.AuthInjectorTestHandler(s.testUserID, &s.testUserEthAddr), c.UpdateVINV2) // Auth done by the middleware.
-	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID, nil), c.RefreshUserDeviceStatus)
 	app.Delete("/user/devices/:userDeviceID", test.AuthInjectorTestHandler(s.testUserID, nil), c.DeleteUserDevice)
 
 	s.controller = &c

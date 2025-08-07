@@ -20,8 +20,6 @@ env:
   REDIS_USER: default
   REDIS_CLUSTER_MODE: true
   REDIS_TLS: true
-  INGEST_SMARTCAR_URL: http://ingest-smartcar-prod:8080
-  INGEST_SMARTCAR_TOPIC: topic.interface.ingest.smartcar
   KAFKA_BROKERS: kafka-prod-dimo-kafka-kafka-brokers:9092
   EVENTS_TOPIC: topic.event
   DEVICE_DATA_INDEX_NAME: device-status-prod*
@@ -74,7 +72,6 @@ env:
   VEHICLE_DECODING_GRPC_ADDR: vehicle-signal-decoding-prod:8086
   DEVICE_DEFINITIONS_GET_BY_KSUID_ENDPOINT: https://device-definitions-api.dimo.zone/device-definitions/
   TESLA_REQUIRED_SCOPES: vehicle_device_data,vehicle_location
-  ACCOUNTS_API_GRPC_ADDR: accounts-api-prod:8086
   TESLA_ORACLE_GRPC_ADDR: tesla-oracle-prod:8086
   ENABLE_SACD_MINT: false
   IDENTITY_API_URL: http://identity-api-prod:8080/query

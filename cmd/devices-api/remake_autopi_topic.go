@@ -54,7 +54,7 @@ func remakeAutoPiTopic(ctx context.Context, pdb db.Store, producer sarama.SyncPr
 	reg := services.NewIngestRegistrar(producer)
 	db := pdb.DBS().Reader
 
-	// Grab the Smartcar integration ID, there should be exactly one.
+	// Grab the AutoPi integration ID, there should be exactly one.
 	var apIntID string
 	integ, err := ddSvc.GetIntegrationByVendor(ctx, constants.AutoPiVendor)
 	if err != nil {
@@ -62,7 +62,7 @@ func remakeAutoPiTopic(ctx context.Context, pdb db.Store, producer sarama.SyncPr
 	}
 	apIntID = integ.Id
 
-	// Find all integration instances that have acquired Smartcar ids.
+	// Find all integration instances that have acquired AutoPi ids.
 	apiInts, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(apIntID),
 		models.UserDeviceAPIIntegrationWhere.ExternalID.NEQ(null.StringFromPtr(nil)),

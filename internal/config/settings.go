@@ -18,8 +18,6 @@ type Settings struct {
 	ServiceName                      string      `yaml:"SERVICE_NAME"`
 	JwtKeySetURL                     string      `yaml:"JWT_KEY_SET_URL"`
 	DeploymentBaseURL                string      `yaml:"DEPLOYMENT_BASE_URL"`
-	SmartcarClientID                 string      `yaml:"SMARTCAR_CLIENT_ID"`
-	SmartcarClientSecret             string      `yaml:"SMARTCAR_CLIENT_SECRET"`
 	RedisURL                         string      `yaml:"REDIS_URL"`
 	RedisPassword                    string      `yaml:"REDIS_PASSWORD"`
 	RedisTLS                         bool        `yaml:"REDIS_TLS"`
@@ -90,8 +88,7 @@ type Settings struct {
 
 	TeslaOracleGRPCAddr string `yaml:"TESLA_ORACLE_GRPC_ADDR"`
 
-	AccountsAPIGRPCAddr string `yaml:"ACCOUNTS_API_GRPC_ADDR"`
-	CustomerIOAPIKey    string `yaml:"CUSTOMER_IO_API_KEY"`
+	CustomerIOAPIKey string `yaml:"CUSTOMER_IO_API_KEY"`
 
 	EnableSACDMint bool `yaml:"ENABLE_SACD_MINT"`
 

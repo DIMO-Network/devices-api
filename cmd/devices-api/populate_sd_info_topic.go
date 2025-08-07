@@ -44,7 +44,7 @@ func (p *populateSDInfoTopicCmd) Execute(_ context.Context, _ *flag.FlagSet, _ .
 	p.producer = p.container.getKafkaProducer()
 	err := remakeSDInfoTopic(&p.settings, p.pdb, p.producer, &p.logger)
 	if err != nil {
-		p.logger.Fatal().Err(err).Msg("Error running Smartcar Kafka re-registration")
+		p.logger.Fatal().Err(err).Msg("Error running synthetic device Kafka re-registration")
 	}
 	return subcommands.ExitSuccess
 }

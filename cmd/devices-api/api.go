@@ -249,7 +249,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	udOwner.Get("/integrations/:integrationID", userDeviceController.GetUserDeviceIntegration)
 	udOwner.Delete("/integrations/:integrationID", userDeviceController.DeleteUserDeviceIntegration)
 	udOwner.Post("/integrations/:integrationID", userDeviceController.RegisterDeviceIntegration)
-	udOwner.Post("/commands/refresh", userDeviceController.RefreshUserDeviceStatus)
 
 	{
 		addr := address.New(&logger)
