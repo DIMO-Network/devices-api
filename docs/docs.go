@@ -340,65 +340,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/devices/fromsmartcar": {
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "adds a device to a user by decoding VIN from Smartcar. If cannot decode returns 424 or 500 if error.\nIf the user device already exists from a different integration, for the same user, this will return a 200 with the full user device object",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "description": "add device to user. all fields required",
-                        "name": "user_device",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.RegisterUserDeviceSmartcar"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.UserDeviceFull"
-                        }
-                    },
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.UserDeviceFull"
-                        }
-                    },
-                    "400": {
-                        "description": "validation failure"
-                    },
-                    "409": {
-                        "description": "VIN already exists either for different a user"
-                    },
-                    "424": {
-                        "description": "unable to decode VIN"
-                    },
-                    "500": {
-                        "description": "server error, dependency error"
-                    }
-                }
-            }
-        },
         "/user/devices/fromvin": {
             "post": {
                 "security": [
@@ -594,36 +535,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/devices/{userDeviceID}/commands/refresh": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Starts the process of refreshing device status from Smartcar",
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "user device ID",
-                        "name": "user_device_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "429": {
-                        "description": "rate limit hit for integration"
-                    }
-                }
-            }
-        },
         "/user/devices/{userDeviceID}/error-codes": {
             "get": {
                 "security": [
@@ -746,7 +657,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Receive status updates about a Smartcar integration",
+                "description": "Receive status updates about a connection",
                 "tags": [
                     "integrations"
                 ],
@@ -765,7 +676,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Submit credentials for registering a device with a given integration. This must be called for any new pairing as well as eg. /fromsmartcar",
+                "description": "Submit credentials for registering a device with a given integration. This must be called for any new pairing.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2008,21 +1919,6 @@ const docTemplate = `{
                     }
                 },
                 "userDeviceId": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_controllers.RegisterUserDeviceSmartcar": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "description": "Code refers to the auth code provided by smartcar when user logs in",
-                    "type": "string"
-                },
-                "countryCode": {
-                    "type": "string"
-                },
-                "redirectURI": {
                     "type": "string"
                 }
             }

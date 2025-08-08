@@ -64,8 +64,6 @@ type UserDevicesController struct {
 	DeviceDefIntSvc       services.DeviceDefinitionIntegrationService
 	log                   *zerolog.Logger
 	eventService          services.EventService
-	smartcarClient        services.SmartcarClient
-	smartcarTaskSvc       services.SmartcarTaskService
 	teslaTaskService      services.TeslaTaskService
 	teslaOracle           pb_oracle.TeslaOracleClient
 	cipher                cipher.Cipher
@@ -117,8 +115,6 @@ func NewUserDevicesController(settings *config.Settings,
 	ddSvc services.DeviceDefinitionService,
 	ddIntSvc services.DeviceDefinitionIntegrationService,
 	eventService services.EventService,
-	smartcarClient services.SmartcarClient,
-	smartcarTaskSvc services.SmartcarTaskService,
 	teslaTaskService services.TeslaTaskService,
 	teslaOracle pb_oracle.TeslaOracleClient,
 	cipher cipher.Cipher,
@@ -142,8 +138,6 @@ func NewUserDevicesController(settings *config.Settings,
 		DeviceDefSvc:          ddSvc,
 		DeviceDefIntSvc:       ddIntSvc,
 		eventService:          eventService,
-		smartcarClient:        smartcarClient,
-		smartcarTaskSvc:       smartcarTaskSvc,
 		teslaTaskService:      teslaTaskService,
 		teslaOracle:           teslaOracle,
 		cipher:                cipher,
@@ -781,30 +775,6 @@ func (udc *UserDevicesController) requestInstantOffer(userDeviceID string, token
 	udc.log.Info().Str("user_device_id", userDeviceID).Msgf("published instant offer request to NATS with Ack: %+v", pubAck)
 }
 
-// RegisterDeviceForUserFromSmartcar godoc
-// @Description adds a device to a user by decoding VIN from Smartcar. If cannot decode returns 424 or 500 if error.
-// @Description If the user device already exists from a different integration, for the same user, this will return a 200 with the full user device object
-// @Tags        user-devices
-// @Produce     json
-// @Accept      json
-// @Param       user_device body controllers.RegisterUserDeviceSmartcar true "add device to user. all fields required"
-// @Security    ApiKeyAuth
-// @Failure		400 "validation failure"
-// @Failure		424 "unable to decode VIN"
-// @Failure		409 "VIN already exists either for different a user"
-// @Failure		500 "server error, dependency error"
-// @Success     201 {object} controllers.UserDeviceFull
-// @Success     200 {object} controllers.UserDeviceFull
-// @Security    BearerAuth
-// @Router      /user/devices/fromsmartcar [post]
-func (udc *UserDevicesController) RegisterDeviceForUserFromSmartcar(_ *fiber.Ctx) error {
-	return fiber.NewError(fiber.StatusBadRequest, "Smartcar creation no longer supported.")
-}
-
-func buildSmartcarTokenKey(vin, userID string) string {
-	return fmt.Sprintf("sc-temp-tok-%s-%s", vin, userID)
-}
-
 func (udc *UserDevicesController) createUserDevice(ctx context.Context, definitionID, styleID, countryCode, userID string, vin, canProtocol *string, vinConfirmed bool) (*UserDeviceFull, error) {
 	ud, dd, err := udc.userDeviceSvc.CreateUserDevice(ctx, definitionID, styleID, countryCode, userID, vin, canProtocol, vinConfirmed)
 	if err != nil {
@@ -1100,7 +1070,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 	userDeviceID := c.Params("userDeviceID")
 
 	if udc.Settings.BlockMinting {
-		return fiber.NewError(fiber.StatusInternalServerError, "Smartcar and Tesla device minting temporarily offline for a network upgrade.")
+		return fiber.NewError(fiber.StatusInternalServerError, "Tesla device minting temporarily offline for a network upgrade.")
 	}
 
 	logger := helpers.GetLogger(c, udc.log)
@@ -1397,13 +1367,6 @@ type RegisterUserDeviceVIN struct {
 	CANProtocol string `json:"canProtocol"`
 }
 
-type RegisterUserDeviceSmartcar struct {
-	// Code refers to the auth code provided by smartcar when user logs in
-	Code        string `json:"code"`
-	RedirectURI string `json:"redirectURI"`
-	CountryCode string `json:"countryCode"`
-}
-
 type UpdateVINReq struct {
 	// VIN is a vehicle identification number. At the very least, it must be
 	// 17 characters in length and contain only letters and numbers.
@@ -1435,14 +1398,6 @@ func (reg *RegisterUserDevice) Validate() error {
 func (reg *RegisterUserDeviceVIN) Validate() error {
 	return validation.ValidateStruct(reg,
 		validation.Field(&reg.VIN, validation.Required, validation.Length(13, 17)),
-		validation.Field(&reg.CountryCode, validation.Required, validation.Length(3, 3)),
-	)
-}
-
-func (reg *RegisterUserDeviceSmartcar) Validate() error {
-	return validation.ValidateStruct(reg,
-		validation.Field(&reg.Code, validation.Required),
-		validation.Field(&reg.RedirectURI, validation.Required),
 		validation.Field(&reg.CountryCode, validation.Required, validation.Length(3, 3)),
 	)
 }

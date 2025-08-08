@@ -27,7 +27,6 @@ import (
 
 type Controller struct {
 	DBS         db.Store
-	Smartcar    SyntheticTaskManager
 	Tesla       SyntheticTaskManager
 	IntegClient *integration.Client
 	Store       *tmpcred.Store

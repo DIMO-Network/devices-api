@@ -57,8 +57,6 @@ type UserDevicesControllerTestSuite struct {
 	deviceDefIntSvc *mock_services.MockDeviceDefinitionIntegrationService
 	testUserID      string
 	testUserEthAddr common.Address
-	scTaskSvc       *mock_services.MockSmartcarTaskService
-	scClient        *mock_services.MockSmartcarClient
 	redisClient     *mocks.MockCacheService
 	autoPiSvc       *mock_services.MockAutoPiAPIService
 	natsService     *services.NATSService
@@ -79,8 +77,6 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(mockCtrl)
 	s.deviceDefIntSvc = mock_services.NewMockDeviceDefinitionIntegrationService(mockCtrl)
-	s.scClient = mock_services.NewMockSmartcarClient(mockCtrl)
-	s.scTaskSvc = mock_services.NewMockSmartcarTaskService(mockCtrl)
 	teslaTaskService := mock_services.NewMockTeslaTaskService(mockCtrl)
 	autoPiIngest := mock_services.NewMockIngestRegistrar(mockCtrl)
 	s.redisClient = mocks.NewMockCacheService(mockCtrl)
@@ -94,16 +90,14 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
 	s.testUserEthAddr = common.HexToAddress("0x1231231231231231231231231231231231231231")
-	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, s.scClient, s.scTaskSvc, teslaTaskService, nil, new(cip.ROT13Cipher), s.autoPiSvc,
+	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, teslaTaskService, nil, new(cip.ROT13Cipher), s.autoPiSvc,
 		autoPiIngest, nil, nil, s.redisClient, nil, s.natsService, nil, s.userDeviceSvc, nil, nil, nil)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID, nil), c.RegisterDeviceForUser)
 	app.Post("/user/devices/fromvin", test.AuthInjectorTestHandler(s.testUserID, &s.testUserEthAddr), c.RegisterDeviceForUserFromVIN)
-	app.Post("/user/devices/fromsmartcar", test.AuthInjectorTestHandler(s.testUserID, nil), c.RegisterDeviceForUserFromSmartcar)
 	app.Post("/user/devices/second", test.AuthInjectorTestHandler(testUserID2, nil), c.RegisterDeviceForUser) // for different test user
 	app.Get("/user/devices/me", test.AuthInjectorTestHandler(s.testUserID, &s.testUserEthAddr), c.GetUserDevices)
 	app.Patch("/vehicle/:tokenID/vin", test.AuthInjectorTestHandler(s.testUserID, &s.testUserEthAddr), c.UpdateVINV2) // Auth done by the middleware.
-	app.Post("/user/devices/:userDeviceID/commands/refresh", test.AuthInjectorTestHandler(s.testUserID, nil), c.RefreshUserDeviceStatus)
 	app.Delete("/user/devices/:userDeviceID", test.AuthInjectorTestHandler(s.testUserID, nil), c.DeleteUserDevice)
 
 	s.controller = &c

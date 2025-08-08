@@ -44,7 +44,6 @@ type SyntheticDevicesControllerTestSuite struct {
 	deviceDefSvc          *mock_services.MockDeviceDefinitionService
 	sdc                   SyntheticDevicesController
 	syntheticDeviceSigSvc *mock_services.MockSyntheticWalletInstanceService
-	smartcarClient        *mock_services.MockSmartcarClient
 }
 
 // SetupSuite starts container db
@@ -58,7 +57,6 @@ func (s *SyntheticDevicesControllerTestSuite) SetupTest() {
 
 	s.deviceDefSvc = mock_services.NewMockDeviceDefinitionService(s.mockCtrl)
 	s.syntheticDeviceSigSvc = mock_services.NewMockSyntheticWalletInstanceService(s.mockCtrl)
-	s.smartcarClient = mock_services.NewMockSmartcarClient(s.mockCtrl)
 
 	mockProducer = smock.NewSyncProducer(s.T(), nil)
 
@@ -107,22 +105,22 @@ func TestSyntheticDevicesControllerTestSuite(t *testing.T) {
 	suite.Run(t, new(SyntheticDevicesControllerTestSuite))
 }
 
-const smartcarKSUID = "22N2xaPOq2WW2gAHBHd0Ikn4Zob"
+const teslaKSUID = "26A5Dk3vvvQutjSyF0Jka2DP5lg"
 
 func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload() {
-	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
+	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2022, nil)
 
 	udID := ksuid.New().String()
 	test.SetupCreateVehicleNFTForMiddleware(s.T(), userEthAddress, mockUserID, udID, 57, s.pdb)
-	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, smartcarKSUID, s.pdb)
+	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, teslaKSUID, s.pdb)
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, smartcarKSUID), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, teslaKSUID), "")
 	response, err := s.app.Test(request)
 	s.Require().NoError(err)
 
 	body, _ := io.ReadAll(response.Body)
 
-	rawExpectedResp := s.sdc.getEIP712Mint(1, 57)
+	rawExpectedResp := s.sdc.getEIP712Mint(2, 57)
 	expectedRespJSON, err := json.Marshal(rawExpectedResp)
 	s.NoError(err)
 
@@ -151,11 +149,11 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 }
 
 func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPayload_VehicleNodeNotExist() {
-	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
+	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model 3", 2022, nil)
 
 	udID := ksuid.New().String()
 
-	request := test.BuildRequest("GET", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, smartCarIntegrationID), "")
+	request := test.BuildRequest("GET", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, teslaKSUID), "")
 	response, err := s.app.Test(request)
 	s.Require().NoError(err)
 
@@ -165,14 +163,14 @@ func (s *SyntheticDevicesControllerTestSuite) TestGetSyntheticDeviceMintingPaylo
 	assert.Equal(s.T(), fmt.Sprintf(`{"code":%d,"message":"No vehicle with that id found."}`, fiber.StatusNotFound), string(body))
 }
 
-func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceSmartcar() {
+func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceTesla() {
 	deviceEthAddr := common.HexToAddress("11")
 
-	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
+	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Explorer", 2022, nil)
 
 	udID := ksuid.New().String()
 	test.SetupCreateVehicleNFTForMiddleware(s.T(), userEthAddress, mockUserID, udID, 57, s.pdb)
-	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, smartcarKSUID, s.pdb)
+	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, teslaKSUID, s.pdb)
 
 	vehicleSig := common.BytesToHash(common.HexToAddress("20").Bytes()).Bytes()
 	s.syntheticDeviceSigSvc.EXPECT().SignHash(gomock.Any(), gomock.Any(), gomock.Any()).Return(vehicleSig, nil).AnyTimes()
@@ -188,7 +186,7 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceSmartcar()
 		"signature": "%s"
 	}`, signature)
 
-	request := test.BuildRequest("POST", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, smartCarIntegrationID), req)
+	request := test.BuildRequest("POST", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, teslaKSUID), req)
 	response, err := s.app.Test(request)
 	s.Require().NoError(err)
 
@@ -263,7 +261,7 @@ func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayl
 	_, addr, err := test.GenerateWallet()
 	s.Require().NoError(err)
 
-	integration := test.BuildIntegrationForGRPCRequest(10, "SmartCar")
+	integration := test.BuildIntegrationForGRPCRequest(10, "Tesla")
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
 
 	test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Ford", "Explorer", 2022, nil)
@@ -288,37 +286,4 @@ func (s *SyntheticDevicesControllerTestSuite) TestSignSyntheticDeviceMintingPayl
 	s.NoError(err)
 	assert.Equal(s.T(), fiber.StatusInternalServerError, response.StatusCode)
 	assert.Equal(s.T(), secp256k1.ErrRecoverFailed.Error(), msg.Message)
-
-	// //
-
-	// email := "some@email.com"
-	// eth := userEthAddress
-
-	// user := test.BuildGetUserGRPC(mockUserID, &email, &eth, &pb.UserReferrer{})
-	// s.userClient.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user, nil)
-
-	// scInt := &ddgrpc.Integration{
-	// 	ID:      "22N2xaPOq2WW2gAHBHd0Ikn4Zob",
-	// 	Vendor:  "SmartCar",
-	// 	TokenId: 1,
-	// }
-
-	// s.deviceDefSvc.EXPECT().GetIntegrationByTokenID(gomock.Any(), uint64(1)).Return(scInt, nil)
-
-	// udID := ksuid.New().String()
-	// _ = test.SetupCreateVehicleNFTForMiddleware(s.T(), common.HexToAddress(userEthAddress), mockUserID, udID, 57, s.pdb)
-
-	// req := `{
-	// 	"ownerSignature": "0xa3438e5cb667dc63ebd694167ae3ad83585f2834c9b04895dd890f805c4c459a024ed9df1b03872536b4ac0c7720d02cb787884a093cfcde5c3bd7f94657e30c1b"
-	// }`
-	// request := test.BuildRequest("POST", fmt.Sprintf("/v1/synthetic/device/mint/%d/%d", 1, 57), req)
-	// response, err := s.app.Test(request)
-	// require.NoError(s.T(), err)
-
-	// body, _ := io.ReadAll(response.Body)
-
-	// msg := struct {
-	// 	Message string `json:"message"`
-	// }{}
-
 }

@@ -41,7 +41,7 @@ func (p *enableTelemetryCmd) SetFlags(f *flag.FlagSet) {
 func (p *enableTelemetryCmd) Execute(_ context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	err := enableTelemetry(&p.settings, p.pdb, &p.logger, p.cipher)
 	if err != nil {
-		p.logger.Fatal().Err(err).Msg("Error running Smartcar Kafka re-registration")
+		p.logger.Fatal().Err(err).Msg("Error enabling Tesla telemetry")
 	}
 	return subcommands.ExitSuccess
 }
