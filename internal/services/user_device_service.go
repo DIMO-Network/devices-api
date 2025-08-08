@@ -6,14 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-
-	"github.com/DIMO-Network/shared"
-
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/payloads"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -149,7 +147,7 @@ func (uds *userDeviceService) CreateUserDeviceByOwner(ctx context.Context, defin
 
 	// todo call devide definitions to check and pull image for this device in case don't have one
 
-	err = uds.eventService.Emit(&shared.CloudEvent[any]{
+	err = uds.eventService.Emit(&payloads.CloudEvent[any]{
 		Type:    constants.UserDeviceCreationEventType,
 		Subject: common.BytesToAddress(ownerAddress).Hex(),
 		Source:  "devices-api",
@@ -252,7 +250,7 @@ func (uds *userDeviceService) CreateUserDevice(ctx context.Context, definitionID
 
 	// todo call devide definitions to check and pull image for this device in case don't have one
 
-	err = uds.eventService.Emit(&shared.CloudEvent[any]{
+	err = uds.eventService.Emit(&payloads.CloudEvent[any]{
 		Type:    constants.UserDeviceCreationEventType,
 		Subject: userID,
 		Source:  "devices-api",

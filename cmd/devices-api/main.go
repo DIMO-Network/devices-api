@@ -18,8 +18,9 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/kafka"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/cio"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
+	cip "github.com/DIMO-Network/shared/pkg/cipher"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/settings"
 	"github.com/IBM/sarama"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
@@ -55,7 +56,7 @@ func main() {
 		}
 	}
 
-	settings, err := shared.LoadConfig[config.Settings]("settings.yaml")
+	settings, err := settings.LoadConfig[config.Settings]("settings.yaml")
 	if err != nil {
 		logger.Fatal().Err(err).Msg("could not load settings")
 	}
@@ -106,12 +107,12 @@ func main() {
 		subcommands.Register(&remakeUserDeviceTokenTableCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 
 		{
-			var cipher shared.Cipher
+			var cipher cip.Cipher
 			if settings.Environment == "dev" || settings.IsProduction() {
 				cipher = createKMS(&settings, &logger)
 			} else {
 				logger.Warn().Msg("Using ROT13 encrypter. Only use this for testing!")
-				cipher = new(shared.ROT13Cipher)
+				cipher = new(cip.ROT13Cipher)
 			}
 			subcommands.Register(&checkTelemetryCmd{logger: logger, settings: settings, pdb: pdb, cipher: cipher}, "device integrations")
 			subcommands.Register(&enableTelemetryCmd{logger: logger, settings: settings, pdb: pdb, cipher: cipher}, "device integrations")
@@ -149,7 +150,7 @@ func createKafkaProducer(settings *config.Settings) (sarama.SyncProducer, error)
 	return p, nil
 }
 
-func createKMS(settings *config.Settings, logger *zerolog.Logger) shared.Cipher {
+func createKMS(settings *config.Settings, logger *zerolog.Logger) cip.Cipher {
 	// Need AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY to be set.
 	// TODO(elffjs): Can we let the SDK grab the region too?
 	awscfg, err := awsconfig.LoadDefaultConfig(context.Background(), awsconfig.WithRegion(settings.AWSRegion))
@@ -157,7 +158,7 @@ func createKMS(settings *config.Settings, logger *zerolog.Logger) shared.Cipher 
 		logger.Fatal().Err(err).Msg("Couldn't create AWS config.")
 	}
 
-	return &shared.KMSCipher{
+	return &cip.KMSCipher{
 		KeyID:  settings.KMSKeyID,
 		Client: kms.NewFromConfig(awscfg),
 	}

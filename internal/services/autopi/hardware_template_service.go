@@ -18,7 +18,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
 	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 

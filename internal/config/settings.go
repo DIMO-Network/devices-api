@@ -4,7 +4,7 @@ import (
 	"net/url"
 
 	"github.com/DIMO-Network/clickhouse-infra/pkg/connect/config"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
 )
 
 // Settings contains the application config

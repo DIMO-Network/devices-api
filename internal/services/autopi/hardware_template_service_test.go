@@ -9,7 +9,7 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/services"
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
 	"github.com/testcontainers/testcontainers-go"
 
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"

@@ -25,8 +25,8 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/payloads"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog"
@@ -72,8 +72,8 @@ type eventsFactoryResp struct {
 
 const AftermarketDeviceContractAddress = "0x00000000000000000000000000000000000000c1"
 
-func marshalMockPayload(payload string) (*shared.CloudEvent[json.RawMessage], error) {
-	event := new(shared.CloudEvent[json.RawMessage])
+func marshalMockPayload(payload string) (*payloads.CloudEvent[json.RawMessage], error) {
+	event := new(payloads.CloudEvent[json.RawMessage])
 	err := json.Unmarshal([]byte(payload), event)
 	if err != nil {
 		return nil, err
@@ -937,7 +937,7 @@ func TestBurnSyntheticDevice(t *testing.T) {
 
 	teslaTask.EXPECT().StopPoll(gomock.Any())
 
-	err = consumer.processEvent(ctx, &shared.CloudEvent[json.RawMessage]{
+	err = consumer.processEvent(ctx, &payloads.CloudEvent[json.RawMessage]{
 		Source: fmt.Sprintf("chain/%d", chainID),
 		Type:   contractEventCEType,
 		Data:   b,

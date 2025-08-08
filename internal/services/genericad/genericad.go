@@ -8,12 +8,11 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
-	"github.com/DIMO-Network/shared"
-
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/payloads"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
@@ -141,7 +140,7 @@ func (i *Integration) Pair(ctx context.Context, amTokenID, vehicleTokenID *big.I
 	}
 
 	_ = i.eventer.Emit(
-		&shared.CloudEvent[any]{
+		&payloads.CloudEvent[any]{
 			Type:    "com.dimo.zone.device.integration.create",
 			Source:  "devices-api",
 			Subject: ud.ID,
@@ -226,7 +225,7 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 		return err
 	}
 
-	_ = i.eventer.Emit(&shared.CloudEvent[any]{
+	_ = i.eventer.Emit(&payloads.CloudEvent[any]{
 		Type:    "com.dimo.zone.device.integration.delete",
 		Source:  "devices-api",
 		Subject: ud.ID,

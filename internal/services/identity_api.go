@@ -9,7 +9,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/shared"
+	"github.com/DIMO-Network/shared/pkg/http"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
@@ -17,7 +17,7 @@ import (
 var ErrBadRequest = errors.New("bad request")
 
 type identityAPIService struct {
-	httpClient     shared.HTTPClientWrapper
+	httpClient     http.ClientWrapper
 	logger         zerolog.Logger
 	identityAPIURL string
 }
@@ -33,7 +33,7 @@ type IdentityAPI interface {
 func NewIdentityAPIService(logger *zerolog.Logger, settings *config.Settings) IdentityAPI {
 	h := map[string]string{}
 	h["Content-Type"] = "application/json"
-	httpClient, _ := shared.NewHTTPClientWrapper("", "", 10*time.Second, h, false) // ok to ignore err since only used for tor check
+	httpClient, _ := http.NewClientWrapper("", "", 10*time.Second, h, false) // ok to ignore err since only used for tor check
 
 	return &identityAPIService{
 		httpClient:     httpClient,
@@ -112,7 +112,7 @@ func (i *identityAPIService) fetchWithQuery(query string, result interface{}) er
 	res, err := i.httpClient.ExecuteRequest(i.identityAPIURL, "POST", payloadBytes)
 	if err != nil {
 		i.logger.Err(err).Str("func", "fetchWithQuery").Msgf("request payload: %s", string(payloadBytes))
-		if _, ok := err.(shared.HTTPResponseError); !ok {
+		if _, ok := err.(http.ResponseError); !ok {
 			return errors.Wrapf(err, "error calling identity api from url %s", i.identityAPIURL)
 		}
 	}

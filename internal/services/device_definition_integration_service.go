@@ -9,7 +9,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/volatiletech/sqlboiler/v4/boil"

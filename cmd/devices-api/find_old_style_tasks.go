@@ -10,9 +10,9 @@ import (
 	"github.com/google/subcommands"
 	"github.com/rs/zerolog"
 
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
-	"github.com/DIMO-Network/shared/sdtask"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/payloads"
+	"github.com/DIMO-Network/shared/pkg/sdtask"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 )
@@ -57,7 +57,7 @@ func (fost *findOldStyleTasks) Execute(_ context.Context, _ *flag.FlagSet, _ ...
 	}
 
 	for _, p := range ps {
-		missing := make(map[string]shared.CloudEvent[sdtask.CredentialData])
+		missing := make(map[string]payloads.CloudEvent[sdtask.CredentialData])
 
 		hwm, err := client.GetOffset(topic, p, sarama.OffsetNewest)
 		if err != nil {
@@ -76,7 +76,7 @@ func (fost *findOldStyleTasks) Execute(_ context.Context, _ *flag.FlagSet, _ ...
 				delete(missing, key)
 			} else {
 
-				var out shared.CloudEvent[sdtask.CredentialData]
+				var out payloads.CloudEvent[sdtask.CredentialData]
 
 				err := json.Unmarshal(m.Value, &out)
 				if err != nil {

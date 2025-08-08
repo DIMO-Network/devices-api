@@ -11,7 +11,7 @@ import (
 	"github.com/ericlagergren/decimal"
 	"github.com/volatiletech/sqlboiler/v4/types"
 
-	"github.com/DIMO-Network/shared"
+	"github.com/DIMO-Network/shared/pkg/grpcfiber"
 
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/segmentio/ksuid"
@@ -86,7 +86,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodes(c *fiber.Ctx) error {
 
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), ud.DefinitionID)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ud.DefinitionID)
+		return grpcfiber.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ud.DefinitionID)
 	}
 
 	req := &QueryDeviceErrorCodesReq{}
@@ -317,7 +317,7 @@ func (udc *UserDevicesController) QueryDeviceErrorCodesByTokenID(c *fiber.Ctx) e
 
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), ud.DefinitionID)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ud.DefinitionID)
+		return grpcfiber.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+ud.DefinitionID)
 	}
 
 	req := &QueryDeviceErrorCodesReq{}

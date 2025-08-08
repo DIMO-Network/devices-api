@@ -11,11 +11,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
-
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/payloads"
 )
 
 type populateTeslaTelemetryMapCmd struct {
@@ -83,7 +82,7 @@ func remakeTeslaTelemTopic(settings *config.Settings, pdb db.Store, producer sar
 			Type:         "Add",
 		}
 
-		b, err := json.Marshal(shared.CloudEvent[userDeviceIDData]{Data: udid})
+		b, err := json.Marshal(payloads.CloudEvent[userDeviceIDData]{Data: udid})
 		if err != nil {
 			return err
 		}

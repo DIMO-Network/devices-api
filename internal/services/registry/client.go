@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/contracts"
-	"github.com/DIMO-Network/shared"
+	"github.com/DIMO-Network/shared/pkg/payloads"
 	"github.com/IBM/sarama"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -447,7 +447,7 @@ func (c *Client) MintVehicleAndSdWithDeviceDefinitionSignAndSacd(requestID strin
 }
 
 func (c *Client) sendRequest(requestID string, data []byte) error {
-	event := shared.CloudEvent[RequestData]{
+	event := payloads.CloudEvent[RequestData]{
 		ID:          ksuid.New().String(),
 		Source:      "devices-api",
 		SpecVersion: "1.0",

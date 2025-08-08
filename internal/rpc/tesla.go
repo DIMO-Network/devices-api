@@ -10,8 +10,8 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
 	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
+	cip "github.com/DIMO-Network/shared/pkg/cipher"
+	"github.com/DIMO-Network/shared/pkg/db"
 	"github.com/IBM/sarama"
 	"github.com/ericlagergren/decimal"
 	"github.com/golang-jwt/jwt/v5"
@@ -27,7 +27,7 @@ import (
 func NewTeslaRPCService(
 	dbs func() *db.ReaderWriter,
 	settings *config.Settings,
-	cipher shared.Cipher,
+	cipher cip.Cipher,
 	teslaAPI services.TeslaFleetAPIService,
 	logger *zerolog.Logger,
 	producer sarama.SyncProducer,
@@ -48,7 +48,7 @@ type teslaRPCServer struct {
 	dbs      func() *db.ReaderWriter
 	logger   *zerolog.Logger
 	settings *config.Settings
-	cipher   shared.Cipher
+	cipher   cip.Cipher
 	teslaAPI services.TeslaFleetAPIService
 	taskSvc  services.TeslaTaskService
 }

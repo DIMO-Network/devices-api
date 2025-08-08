@@ -11,8 +11,9 @@ import (
 	mock_services "github.com/DIMO-Network/devices-api/internal/services/mocks"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
+	cipherpkg "github.com/DIMO-Network/shared/pkg/cipher"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/payloads"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
@@ -82,7 +83,7 @@ func (s *StorageTestSuite) Test_SyntheticMintSmartcar() {
 	integrationNode := int64(1)
 	childKeyNumber := 300
 	syntheticDeviceAddr := common.HexToAddress("4")
-	cipher := new(shared.ROT13Cipher)
+	cipher := new(cipherpkg.ROT13Cipher)
 	ownerAddr := common.HexToAddress("1000")
 	integrationID := "22N2xaPOq2WW2gAHBHd0Ikn4Zob"
 
@@ -175,7 +176,7 @@ func (s *StorageTestSuite) Test_SyntheticMintTesla() {
 	integrationNode := int64(2)
 	childKeyNumber := 300
 	syntheticDeviceAddr := common.HexToAddress("4")
-	cipher := new(shared.ROT13Cipher)
+	cipher := new(cipherpkg.ROT13Cipher)
 	ownerAddr := common.HexToAddress("1000")
 	integrationID := "26A5Dk3vvvQutjSyF0Jka2DP5lg"
 
@@ -270,8 +271,8 @@ func (s *StorageTestSuite) TestMintVehicle() {
 	}
 	s.MustInsert(&mtr)
 
-	var emEv *shared.CloudEvent[any]
-	s.eventSvc.EXPECT().Emit(gomock.Any()).Do(func(event *shared.CloudEvent[any]) {
+	var emEv *payloads.CloudEvent[any]
+	s.eventSvc.EXPECT().Emit(gomock.Any()).Do(func(event *payloads.CloudEvent[any]) {
 		emEv = event
 	})
 
@@ -405,8 +406,8 @@ func (s *StorageTestSuite) TestVehicleNodeMintedWithDeviceDefinition() {
 	}
 	s.MustInsert(&mtr)
 
-	var emEv *shared.CloudEvent[any]
-	s.eventSvc.EXPECT().Emit(gomock.Any()).Do(func(event *shared.CloudEvent[any]) {
+	var emEv *payloads.CloudEvent[any]
+	s.eventSvc.EXPECT().Emit(gomock.Any()).Do(func(event *payloads.CloudEvent[any]) {
 		emEv = event
 	})
 

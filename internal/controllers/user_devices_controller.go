@@ -27,9 +27,11 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
-	"github.com/DIMO-Network/shared/redis"
+	"github.com/DIMO-Network/shared/pkg/cipher"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/grpcfiber"
+	"github.com/DIMO-Network/shared/pkg/payloads"
+	"github.com/DIMO-Network/shared/pkg/redis"
 	pb_oracle "github.com/DIMO-Network/tesla-oracle/pkg/grpc"
 	"github.com/IBM/sarama"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -66,7 +68,7 @@ type UserDevicesController struct {
 	smartcarTaskSvc       services.SmartcarTaskService
 	teslaTaskService      services.TeslaTaskService
 	teslaOracle           pb_oracle.TeslaOracleClient
-	cipher                shared.Cipher
+	cipher                cipher.Cipher
 	autoPiSvc             services.AutoPiAPIService
 	autoPiIngestRegistrar services.IngestRegistrar
 	s3                    *s3.Client
@@ -119,7 +121,7 @@ func NewUserDevicesController(settings *config.Settings,
 	smartcarTaskSvc services.SmartcarTaskService,
 	teslaTaskService services.TeslaTaskService,
 	teslaOracle pb_oracle.TeslaOracleClient,
-	cipher shared.Cipher,
+	cipher cipher.Cipher,
 	autoPiSvc services.AutoPiAPIService,
 	autoPiIngestRegistrar services.IngestRegistrar,
 	producer sarama.SyncProducer,
@@ -176,7 +178,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 			udc.log.Err(err).Str("userDeviceId", userDevice.ID).
 				Str("definitionId", userDevice.DefinitionID).
 				Msg("failed to resolve device definition for vehicle.")
-			return nil, shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+definitionID)
+			return nil, grpcfiber.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+definitionID)
 		}
 		deviceDefinitionResponse[i] = def
 	}
@@ -192,7 +194,7 @@ func (udc *UserDevicesController) dbDevicesToDisplay(ctx context.Context, device
 
 	integrations, err := udc.DeviceDefSvc.GetIntegrations(ctx)
 	if err != nil {
-		return nil, shared.GrpcErrorToFiber(err, "failed to get integrations")
+		return nil, grpcfiber.GrpcErrorToFiber(err, "failed to get integrations")
 	}
 
 	for _, d := range devices {
@@ -625,7 +627,7 @@ func (udc *UserDevicesController) RegisterDeviceForUser(c *fiber.Ctx) error {
 
 	udFull, err := udc.createUserDevice(c.Context(), definitionID, "", reg.CountryCode, userID, nil, nil, false)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "")
+		return grpcfiber.GrpcErrorToFiber(err, "")
 	}
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"userDevice": udFull,
@@ -706,7 +708,7 @@ func (udc *UserDevicesController) RegisterDeviceForUserFromVIN(c *fiber.Ctx) err
 		decodeVIN, err := udc.DeviceDefSvc.DecodeVIN(c.Context(), vin, "", 0, reg.CountryCode)
 		if err != nil {
 			localLog.Err(err).Msg("unable to decode vin for customer request to create vehicle")
-			return shared.GrpcErrorToFiber(err, "unable to decode vin: "+vin)
+			return grpcfiber.GrpcErrorToFiber(err, "unable to decode vin: "+vin)
 		}
 		if len(decodeVIN.DefinitionId) == 0 {
 			localLog.Warn().Msg("unable to decode vin for customer request to create vehicle")
@@ -960,7 +962,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 
 	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), userDevice.DefinitionID)
 	if err != nil {
-		return shared.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DefinitionID)
+		return grpcfiber.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DefinitionID)
 	}
 	autopiDeviceID := ""
 
@@ -997,7 +999,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	if err = udc.eventService.Emit(&shared.CloudEvent[any]{
+	if err = udc.eventService.Emit(&payloads.CloudEvent[any]{
 		Type:    "com.dimo.zone.device.delete",
 		Subject: userID,
 		Source:  "devices-api",

@@ -19,7 +19,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/internal/services"
 
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
 	"github.com/ericlagergren/decimal"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"

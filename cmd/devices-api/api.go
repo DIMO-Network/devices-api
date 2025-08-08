@@ -30,11 +30,11 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
-	"github.com/DIMO-Network/shared/middleware/privilegetoken"
-	"github.com/DIMO-Network/shared/privileges"
-	"github.com/DIMO-Network/shared/redis"
+	cip "github.com/DIMO-Network/shared/pkg/cipher"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/middleware/privilegetoken"
+	"github.com/DIMO-Network/shared/pkg/privileges"
+	"github.com/DIMO-Network/shared/pkg/redis"
 	pb_oracle "github.com/DIMO-Network/tesla-oracle/pkg/grpc"
 	"github.com/IBM/sarama"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -65,12 +65,12 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		JSONDecoder:           json.Unmarshal,
 	})
 
-	var cipher shared.Cipher
+	var cipher cip.Cipher
 	if settings.Environment == "dev" || settings.IsProduction() {
 		cipher = createKMS(settings, &logger)
 	} else {
 		logger.Warn().Msg("Using ROT13 encrypter. Only use this for testing!")
-		cipher = new(shared.ROT13Cipher)
+		cipher = new(cip.ROT13Cipher)
 	}
 
 	registryClient := registry.Client{
@@ -168,7 +168,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1.Get("/swagger/*", swagger.HandlerDefault)
 
 	// Device Definitions
-	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc)
+	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, scTaskSvc, teslaTaskService, ddIntSvc, teslaOracle)
 
 	v1.Get("/countries", countriesController.GetSupportedCountries)
 	v1.Get("/countries/:countryCode", countriesController.GetCountry)
@@ -355,7 +355,7 @@ func startGRPCServer(
 	userDeviceSvc services.UserDeviceService,
 	teslaTaskSvc services.TeslaTaskService,
 	smartcarTaskSvc services.SmartcarTaskService,
-	cipher shared.Cipher,
+	cipher cip.Cipher,
 	teslaAPI services.TeslaFleetAPIService,
 	producer sarama.SyncProducer,
 ) {

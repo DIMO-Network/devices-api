@@ -8,8 +8,8 @@ import (
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/sdtask"
+	"github.com/DIMO-Network/shared/pkg/payloads"
+	"github.com/DIMO-Network/shared/pkg/sdtask"
 	"github.com/IBM/sarama"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
@@ -71,7 +71,7 @@ func (t *teslaTaskService) StartPoll(udai *models.UserDeviceAPIIntegration, sd *
 		return fmt.Errorf("couldn't parse Tesla id %q: %w", udai.ExternalID.String, err)
 	}
 
-	tt := shared.CloudEvent[TeslaTask]{
+	tt := payloads.CloudEvent[TeslaTask]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + udai.IntegrationID,
 		SpecVersion: "1.0",
@@ -97,7 +97,7 @@ func (t *teslaTaskService) StartPoll(udai *models.UserDeviceAPIIntegration, sd *
 	integrationTokenID, _ := sd.IntegrationTokenID.Int64()
 	vehicleTokenID, _ := sd.VehicleTokenID.Int64()
 
-	tc := shared.CloudEvent[sdtask.CredentialData]{
+	tc := payloads.CloudEvent[sdtask.CredentialData]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + udai.IntegrationID,
 		SpecVersion: "1.0",
@@ -158,7 +158,7 @@ func (t *teslaTaskService) StopPoll(udai *models.UserDeviceAPIIntegration) error
 		taskKey = fmt.Sprintf("device/%s/integration/%s", udai.UserDeviceID, udai.IntegrationID)
 	}
 
-	tt := shared.CloudEvent[any]{
+	tt := payloads.CloudEvent[any]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + udai.IntegrationID,
 		SpecVersion: "1.0",
@@ -214,7 +214,7 @@ func (t *teslaTaskService) UnlockDoors(udai *models.UserDeviceAPIIntegration) (s
 		return "", err
 	}
 
-	tt := shared.CloudEvent[TeslaDoorTask]{
+	tt := payloads.CloudEvent[TeslaDoorTask]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + udai.IntegrationID,
 		SpecVersion: "1.0",
@@ -254,7 +254,7 @@ func (t *teslaTaskService) LockDoors(udai *models.UserDeviceAPIIntegration) (str
 		return "", err
 	}
 
-	tt := shared.CloudEvent[TeslaDoorTask]{
+	tt := payloads.CloudEvent[TeslaDoorTask]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + udai.IntegrationID,
 		SpecVersion: "1.0",
@@ -294,7 +294,7 @@ func (t *teslaTaskService) ChargeStart(udai *models.UserDeviceAPIIntegration) (s
 		return "", err
 	}
 
-	tt := shared.CloudEvent[TeslaDoorTask]{
+	tt := payloads.CloudEvent[TeslaDoorTask]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + udai.IntegrationID,
 		SpecVersion: "1.0",
@@ -334,7 +334,7 @@ func (t *teslaTaskService) ChargeStop(udai *models.UserDeviceAPIIntegration) (st
 		return "", err
 	}
 
-	tt := shared.CloudEvent[TeslaDoorTask]{
+	tt := payloads.CloudEvent[TeslaDoorTask]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + udai.IntegrationID,
 		SpecVersion: "1.0",
@@ -374,7 +374,7 @@ func (t *teslaTaskService) OpenTrunk(udai *models.UserDeviceAPIIntegration) (str
 		return "", err
 	}
 
-	tt := shared.CloudEvent[TeslaDoorTask]{
+	tt := payloads.CloudEvent[TeslaDoorTask]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + udai.IntegrationID,
 		SpecVersion: "1.0",
@@ -414,7 +414,7 @@ func (t *teslaTaskService) OpenFrunk(udai *models.UserDeviceAPIIntegration) (str
 		return "", err
 	}
 
-	tt := shared.CloudEvent[TeslaDoorTask]{
+	tt := payloads.CloudEvent[TeslaDoorTask]{
 		ID:          ksuid.New().String(),
 		Source:      "dimo/integration/" + udai.IntegrationID,
 		SpecVersion: "1.0",

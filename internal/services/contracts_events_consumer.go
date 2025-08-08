@@ -16,10 +16,10 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/dex"
 	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
-	"github.com/DIMO-Network/shared/dbtypes"
-	"github.com/DIMO-Network/shared/kafka"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/dbtypes"
+	"github.com/DIMO-Network/shared/pkg/kafka"
+	"github.com/DIMO-Network/shared/pkg/payloads"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -109,7 +109,7 @@ func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *con
 func (c *ContractsEventsConsumer) RunConsumer() error {
 	ctx := context.Background()
 
-	if err := kafka.Consume[*shared.CloudEvent[json.RawMessage]](ctx, kafka.Config{
+	if err := kafka.Consume[*payloads.CloudEvent[json.RawMessage]](ctx, kafka.Config{
 		Brokers: strings.Split(c.settings.KafkaBrokers, ","),
 		Topic:   c.settings.ContractsEventTopic,
 		Group:   "user-devices",
@@ -123,7 +123,7 @@ func (c *ContractsEventsConsumer) RunConsumer() error {
 	return nil
 }
 
-func (c *ContractsEventsConsumer) processEvent(ctx context.Context, event *shared.CloudEvent[json.RawMessage]) error {
+func (c *ContractsEventsConsumer) processEvent(ctx context.Context, event *payloads.CloudEvent[json.RawMessage]) error {
 	if event == nil || event.Type != contractEventCEType {
 		return nil
 	}
@@ -262,7 +262,7 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 		return err
 	}
 
-	err = c.evtSvc.Emit(&shared.CloudEvent[any]{
+	err = c.evtSvc.Emit(&payloads.CloudEvent[any]{
 		Type:    "com.dimo.zone.device.integration.delete",
 		Source:  "devices-api",
 		Subject: ud.ID,
@@ -704,7 +704,7 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 		return fmt.Errorf("failed to insert new user device: %w", err)
 	}
 
-	c.evtSvc.Emit(&shared.CloudEvent[any]{ //nolint
+	c.evtSvc.Emit(&payloads.CloudEvent[any]{ //nolint
 		Type:    "com.dimo.zone.device.mint",
 		Subject: ud.ID,
 		Source:  "devices-api",

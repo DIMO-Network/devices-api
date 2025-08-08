@@ -12,7 +12,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/genericad"
 	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
 	"github.com/google/subcommands"
 	"github.com/rs/zerolog"
 )

@@ -12,13 +12,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DIMO-Network/shared/redis/mocks"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-redis/redis/v8"
 	"github.com/nats-io/nats-server/v2/server"
 
-	"github.com/DIMO-Network/shared/db"
+	cip "github.com/DIMO-Network/shared/pkg/cipher"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/payloads"
+	"github.com/DIMO-Network/shared/pkg/redis/mocks"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/constants"
@@ -27,7 +29,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/segmentio/ksuid"
@@ -61,7 +62,7 @@ type UserIntegrationsControllerTestSuite struct {
 	natsSvc          *services.NATSService
 	natsServer       *server.Server
 	userDeviceSvc    *mock_services.MockUserDeviceService
-	cipher           shared.Cipher
+	cipher           cip.Cipher
 	teslaFleetAPISvc *mock_services.MockTeslaFleetAPIService
 	user1EthAddr     common.Address
 }
@@ -99,7 +100,7 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 	s.natsSvc, s.natsServer, err = mock_services.NewMockNATSService(natsStreamName)
 	s.userDeviceSvc = mock_services.NewMockUserDeviceService(s.mockCtrl)
 	s.teslaFleetAPISvc = mock_services.NewMockTeslaFleetAPIService(s.mockCtrl)
-	s.cipher = new(shared.ROT13Cipher)
+	s.cipher = new(cip.ROT13Cipher)
 	s.user1EthAddr = common.HexToAddress("1")
 
 	if err != nil {
@@ -230,7 +231,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 	s.scClient.EXPECT().ExchangeCode(gomock.Any(), "qxy", "http://dimo.zone/cb").Times(1).Return(&token, nil)
 
 	s.eventSvc.EXPECT().Emit(gomock.Any()).Return(nil).Do(
-		func(event *shared.CloudEvent[any]) error {
+		func(event *payloads.CloudEvent[any]) error {
 			assert.Equal(s.T(), ud.ID, event.Subject)
 			assert.Equal(s.T(), "com.dimo.zone.device.integration.create", event.Type)
 
@@ -258,7 +259,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessNewToken()
 	s.scClient.EXPECT().HasDoorControl(gomock.Any(), "myAccess", "smartcar-idx").Return(false, nil)
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
 
-	rot13 := new(shared.ROT13Cipher)
+	rot13 := new(cip.ROT13Cipher)
 	encAccess, _ := rot13.Encrypt(token.Access)
 	encRefresh, _ := rot13.Encrypt(token.Refresh)
 	s.userDeviceSvc.EXPECT().CreateIntegration(gomock.Any(), gomock.Any(), gomock.Any(), integration.Id, "smartcar-idx",
@@ -309,7 +310,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_FailureTestVIN() 
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
 
 	logger := test.Logger()
-	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, s.eventSvc, s.scClient, s.scTaskSvc, s.teslaTaskService, nil, new(shared.ROT13Cipher), s.autopiAPISvc,
+	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, s.eventSvc, s.scClient, s.scTaskSvc, s.teslaTaskService, nil, new(cip.ROT13Cipher), s.autopiAPISvc,
 		s.autoPiIngest, nil, nil, s.redisClient, nil, s.natsSvc, nil, s.userDeviceSvc, nil, nil, nil)
 
 	app := test.SetupAppFiber(*logger)
@@ -346,19 +347,19 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 	token := &smartcar.Token{
 		Access:        "some-access-code",
 		AccessExpiry:  expiry,
-		Refresh:       "some-refresh-code",
+		Refresh:       "some-refresh-c     ode",
 		RefreshExpiry: expiry,
 		ExpiresIn:     3000,
 	}
 	tokenJSON, err := json.Marshal(token)
 	require.NoError(s.T(), err)
-	cipher := new(shared.ROT13Cipher)
+	cipher := new(cip.ROT13Cipher)
 	encrypted, err := cipher.Encrypt(string(tokenJSON))
 	require.NoError(s.T(), err)
 	s.redisClient.EXPECT().Get(gomock.Any(), buildSmartcarTokenKey(vin, testUserID)).Return(redis.NewStringResult(encrypted, nil))
 	s.redisClient.EXPECT().Del(gomock.Any(), buildSmartcarTokenKey(vin, testUserID)).Return(redis.NewIntResult(1, nil))
 	s.eventSvc.EXPECT().Emit(gomock.Any()).Return(nil).Do(
-		func(event *shared.CloudEvent[any]) error {
+		func(event *payloads.CloudEvent[any]) error {
 			assert.Equal(s.T(), ud.ID, event.Subject)
 			assert.Equal(s.T(), "com.dimo.zone.device.integration.create", event.Type)
 
@@ -386,7 +387,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostSmartCar_SuccessCachedToke
 	s.deviceDefSvc.EXPECT().GetDeviceDefinitionBySlug(gomock.Any(), ud.DefinitionID).Times(1).Return(dd[0], nil)
 	s.deviceDefSvc.EXPECT().GetIntegrationByID(gomock.Any(), integration.Id).Return(integration, nil)
 
-	rot13 := new(shared.ROT13Cipher)
+	rot13 := new(cip.ROT13Cipher)
 	encAccess, _ := rot13.Encrypt(token.Access)
 	encRefresh, _ := rot13.Encrypt(token.Refresh)
 	s.userDeviceSvc.EXPECT().CreateIntegration(gomock.Any(), gomock.Any(), gomock.Any(), integration.Id, "smartcar-idx",
@@ -442,7 +443,7 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
 
 	s.eventSvc.EXPECT().Emit(gomock.Any()).Return(nil).Do(
-		func(event *shared.CloudEvent[any]) error {
+		func(event *payloads.CloudEvent[any]) error {
 			assert.Equal(s.T(), ud.ID, event.Subject)
 			assert.Equal(s.T(), "com.dimo.zone.device.integration.create", event.Type)
 

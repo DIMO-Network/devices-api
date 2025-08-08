@@ -13,12 +13,11 @@ import (
 	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
-	"github.com/DIMO-Network/shared"
-	"github.com/DIMO-Network/shared/db"
-
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/models"
+	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/payloads"
 )
 
 type startIntegrationTask struct {
@@ -103,7 +102,7 @@ func (p *startIntegrationTask) startIntegrationTaskGo() error {
 				return err
 			}
 
-			e := shared.CloudEvent[services.SmartcarTask]{
+			e := payloads.CloudEvent[services.SmartcarTask]{
 				ID:          ksuid.New().String(),
 				Source:      "dimo/integration/" + udai.IntegrationID,
 				SpecVersion: "1.0",

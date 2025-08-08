@@ -7,11 +7,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/DIMO-Network/shared"
-
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/config"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
+	strpkg "github.com/DIMO-Network/shared/pkg/strings"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -226,7 +225,7 @@ func (d *deviceDefinitionService) GetDeviceDefinitionBySlug(_ context.Context, d
 		Make: &ddgrpc.DeviceMake{
 			Name:     def.Manufacturer.Name,
 			TokenId:  uint64(def.Manufacturer.TokenID),
-			NameSlug: shared.SlugString(def.Manufacturer.Name),
+			NameSlug: strpkg.SlugString(def.Manufacturer.Name),
 		},
 		DeviceAttributes:   attrs,
 		HardwareTemplateId: "130",

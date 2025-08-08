@@ -12,7 +12,7 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/test"
 	"github.com/DIMO-Network/devices-api/models"
-	"github.com/DIMO-Network/shared/db"
+	"github.com/DIMO-Network/shared/pkg/db"
 	"github.com/jarcoal/httpmock"
 	"github.com/segmentio/ksuid"
 	"github.com/stretchr/testify/assert"
