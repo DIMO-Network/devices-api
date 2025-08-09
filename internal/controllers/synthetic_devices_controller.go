@@ -250,7 +250,7 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	if ud.TokenID.IsZero() {
+	if ud.TokenID.IsZero() || !ud.OwnerAddress.Valid {
 		return fiber.NewError(fiber.StatusConflict, "Vehicle not minted.")
 	}
 
@@ -288,6 +288,11 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	userAddr, err := helpers.GetJWTEthAddr(c)
 	if err != nil {
 		return err
+	}
+
+	udOwner := common.BytesToAddress(ud.OwnerAddress.Bytes)
+	if udOwner != userAddr {
+		return fiber.NewError(fiber.StatusForbidden, "User is not the owner of this vehicle.")
 	}
 
 	var rawPayload *signer.TypedData
