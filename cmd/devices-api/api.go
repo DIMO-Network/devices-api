@@ -224,7 +224,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1Auth.Get("/user/devices/me", userDeviceController.GetUserDevices)
 
 	// Device creation.
-	v1Auth.Post("/user/devices/fromvin", userDeviceController.RegisterDeviceForUserFromVIN)
 	v1Auth.Post("/user/devices", userDeviceController.RegisterDeviceForUser)
 
 	// documents

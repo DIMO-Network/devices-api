@@ -441,17 +441,6 @@ definitions:
       userDeviceId:
         type: string
     type: object
-  internal_controllers.RegisterUserDeviceVIN:
-    properties:
-      canProtocol:
-        description: CANProtocol is the protocol that was detected by edge-network
-          from the autopi.
-        type: string
-      countryCode:
-        type: string
-      vin:
-        type: string
-    type: object
   internal_controllers.SACDInput:
     properties:
       expiration:
@@ -1242,37 +1231,6 @@ paths:
       - device
       - integration
       - command
-  /user/devices/fromvin:
-    post:
-      consumes:
-      - application/json
-      description: adds a device to a user by decoding a VIN. If cannot decode returns
-        424 or 500 if error. Can optionally include the can bus protocol.
-      parameters:
-      - description: add device to user. VIN is required and so is country
-        in: body
-        name: user_device
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.RegisterUserDeviceVIN'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/internal_controllers.UserDeviceFull'
-        "400":
-          description: validation failure
-        "424":
-          description: unable to decode VIN
-        "500":
-          description: server error, dependency error
-      security:
-      - ApiKeyAuth: []
-      - BearerAuth: []
-      tags:
-      - user-devices
   /user/devices/me:
     get:
       description: gets all devices associated with current user - pulled from token

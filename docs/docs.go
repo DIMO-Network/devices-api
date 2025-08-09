@@ -340,56 +340,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/devices/fromvin": {
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "adds a device to a user by decoding a VIN. If cannot decode returns 424 or 500 if error. Can optionally include the can bus protocol.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user-devices"
-                ],
-                "parameters": [
-                    {
-                        "description": "add device to user. VIN is required and so is country",
-                        "name": "user_device",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.RegisterUserDeviceVIN"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers.UserDeviceFull"
-                        }
-                    },
-                    "400": {
-                        "description": "validation failure"
-                    },
-                    "424": {
-                        "description": "unable to decode VIN"
-                    },
-                    "500": {
-                        "description": "server error, dependency error"
-                    }
-                }
-            }
-        },
         "/user/devices/me": {
             "get": {
                 "security": [
@@ -1919,21 +1869,6 @@ const docTemplate = `{
                     }
                 },
                 "userDeviceId": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_controllers.RegisterUserDeviceVIN": {
-            "type": "object",
-            "properties": {
-                "canProtocol": {
-                    "description": "CANProtocol is the protocol that was detected by edge-network from the autopi.",
-                    "type": "string"
-                },
-                "countryCode": {
-                    "type": "string"
-                },
-                "vin": {
                     "type": "string"
                 }
             }
