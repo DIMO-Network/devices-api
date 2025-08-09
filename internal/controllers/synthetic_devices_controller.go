@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"math/big"
 
-	pb_oracle "github.com/DIMO-Network/tesla-oracle/pkg/grpc"
-
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
 	sig2 "github.com/DIMO-Network/devices-api/internal/contracts/signature"
@@ -18,6 +16,7 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/pkg/db"
 	"github.com/DIMO-Network/shared/pkg/grpcfiber"
+	pb_oracle "github.com/DIMO-Network/tesla-oracle/pkg/grpc"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -31,6 +30,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
+	"google.golang.org/grpc"
 )
 
 type SyntheticDevicesController struct {
@@ -40,7 +40,11 @@ type SyntheticDevicesController struct {
 	deviceDefSvc   services.DeviceDefinitionService
 	walletSvc      services.SyntheticWalletInstanceService
 	registryClient registry.Client
-	teslaOracle    pb_oracle.TeslaOracleClient
+	teslaOracle    TeslaOracleClient
+}
+
+type TeslaOracleClient interface {
+	RegisterNewSyntheticDevice(ctx context.Context, in *pb_oracle.RegisterNewSyntheticDeviceRequest, opts ...grpc.CallOption) (*pb_oracle.RegisterNewSyntheticDeviceResponse, error)
 }
 
 type MintSyntheticDeviceRequest struct {
@@ -58,7 +62,7 @@ func NewSyntheticDevicesController(
 	deviceDefSvc services.DeviceDefinitionService,
 	walletSvc services.SyntheticWalletInstanceService,
 	registryClient registry.Client,
-	teslaOracle pb_oracle.TeslaOracleClient,
+	teslaOracle TeslaOracleClient,
 ) SyntheticDevicesController {
 	return SyntheticDevicesController{
 		Settings:       settings,
