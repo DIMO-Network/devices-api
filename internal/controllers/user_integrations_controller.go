@@ -204,7 +204,7 @@ func IsFirmwareFleetTelemetryCapable(v string) (bool, error) {
 	return year > 2024 || year == 2024 && week >= 26, nil
 }
 
-func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, userID, userDeviceID, integrationID string, dd *ddgrpc.GetDeviceDefinitionItemResponse, tx *sql.Tx) error {
+func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, userDeviceID, integrationID string, tx *sql.Tx) error {
 	apiInt, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
 		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID),
@@ -255,7 +255,6 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 // @Security    BearerAuth
 // @Router      /user/devices/{userDeviceID}/integrations/{integrationID} [delete]
 func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) error {
-	userID := helpers.GetUserID(c)
 	userDeviceID := c.Params("userDeviceID")
 	integrationID := c.Params("integrationID")
 
@@ -316,13 +315,7 @@ func (udc *UserDevicesController) DeleteUserDeviceIntegration(c *fiber.Ctx) erro
 		}
 	}
 
-	// Need this for activity log.
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), device.DefinitionID)
-	if err != nil {
-		return grpcfiber.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+device.DefinitionID)
-	}
-
-	err = udc.deleteDeviceIntegration(c.Context(), userID, userDeviceID, integrationID, dd, tx)
+	err = udc.deleteDeviceIntegration(c.Context(), userDeviceID, integrationID, tx)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}

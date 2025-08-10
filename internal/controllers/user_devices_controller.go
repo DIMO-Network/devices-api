@@ -795,7 +795,6 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 	logger := helpers.GetLogger(c, udc.log)
 
 	udi := c.Params("userDeviceID")
-	userID := helpers.GetUserID(c)
 
 	tx, err := udc.DBS().Writer.BeginTx(c.Context(), &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
@@ -823,10 +822,6 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Vehicle minting in progress. Burn the resulting NFT in order to delete this vehicle.")
 	}
 
-	dd, err := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(c.Context(), userDevice.DefinitionID)
-	if err != nil {
-		return grpcfiber.GrpcErrorToFiber(err, "deviceDefSvc error getting definition id: "+userDevice.DefinitionID)
-	}
 	autopiDeviceID := ""
 
 	for _, apiInteg := range userDevice.R.UserDeviceAPIIntegrations {
@@ -848,7 +843,7 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 	}
 
 	for _, apiInteg := range userDevice.R.UserDeviceAPIIntegrations {
-		err := udc.deleteDeviceIntegration(c.Context(), userID, udi, apiInteg.IntegrationID, dd, tx)
+		err := udc.deleteDeviceIntegration(c.Context(), udi, apiInteg.IntegrationID, tx)
 		if err != nil {
 			return err
 		}

@@ -26,13 +26,11 @@ type Settings struct {
 	TaskStopTopic                    string      `yaml:"TASK_STOP_TOPIC"`
 	TaskCredentialTopic              string      `yaml:"TASK_CREDENTIAL_TOPIC"`
 	TaskStatusTopic                  string      `yaml:"TASK_STATUS_TOPIC"`
-	EventsTopic                      string      `yaml:"EVENTS_TOPIC"`
 	AWSRegion                        string      `yaml:"AWS_REGION"`
 	KMSKeyID                         string      `yaml:"KMS_KEY_ID"`
 	AutoPiAPIToken                   string      `yaml:"AUTO_PI_API_TOKEN"`
 	AutoPiAPIURL                     string      `yaml:"AUTO_PI_API_URL"`
 	AWSDocumentsBucketName           string      `yaml:"AWS_DOCUMENTS_BUCKET_NAME"`
-	NFTS3Bucket                      string      `yaml:"NFT_S3_BUCKET"`
 	DocumentsAWSAccessKeyID          string      `yaml:"DOCUMENTS_AWS_ACCESS_KEY_ID"`
 	DocumentsAWSSecretsAccessKey     string      `yaml:"DOCUMENTS_AWS_SECRET_ACCESS_KEY"`
 	DocumentsAWSEndpoint             string      `yaml:"DOCUMENTS_AWS_ENDPOINT"`
@@ -43,7 +41,6 @@ type Settings struct {
 	DIMORegistryChainID              int64       `yaml:"DIMO_REGISTRY_CHAIN_ID"`
 	MonitoringServerPort             string      `yaml:"MONITORING_SERVER_PORT"`
 	TokenExchangeJWTKeySetURL        string      `yaml:"TOKEN_EXCHANGE_JWK_KEY_SET_URL"`
-	GoogleMapsAPIKey                 string      `yaml:"GOOGLE_MAPS_API_KEY"`
 	VehicleNFTAddress                string      `yaml:"VEHICLE_NFT_ADDRESS"`
 	SyntheticDeviceNFTAddress        string      `yaml:"SYNTHETIC_DEVICE_NFT_ADDRESS"`
 	ContractsEventTopic              string      `yaml:"CONTRACT_EVENT_TOPIC"`
@@ -59,10 +56,6 @@ type Settings struct {
 	ValuationsAPIGRPCAddr            string      `yaml:"VALUATIONS_GRPC_ADDR"`
 
 	MetaTransactionProcessorGRPCAddr string `yaml:"META_TRANSACTION_PROCESSOR_GRPC_ADDR"`
-
-	// IssuerPrivateKey is a base64-encoded secp256k1 private key, used to sign
-	// VIN verifiable credentials.
-	IssuerPrivateKey string `yaml:"ISSUER_PRIVATE_KEY"`
 
 	SyntheticWalletGRPCAddr     string `yaml:"SYNTHETIC_WALLET_GRPC_ADDR"`
 	TeslaClientID               string `yaml:"TESLA_CLIENT_ID"`

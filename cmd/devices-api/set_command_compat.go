@@ -16,11 +16,10 @@ import (
 )
 
 type setCommandCompatibilityCmd struct {
-	logger    zerolog.Logger
-	settings  config.Settings
-	pdb       db.Store
-	ddSvc     services.DeviceDefinitionService
-	container dependencyContainer
+	logger   zerolog.Logger
+	settings config.Settings
+	pdb      db.Store
+	ddSvc    services.DeviceDefinitionService
 }
 
 func (*setCommandCompatibilityCmd) Name() string     { return "set-command-compat" }
