@@ -48,9 +48,7 @@ type ContractsEventsConsumer struct {
 	registryAddr common.Address
 	genericInt   Integration
 	ddSvc        DeviceDefinitionService
-	evtSvc       EventService
-
-	teslaTask SyntheticTaskService
+	teslaTask    SyntheticTaskService
 }
 
 type EventName string
@@ -91,7 +89,7 @@ type Block struct {
 	Time   time.Time   `json:"time,omitempty"`
 }
 
-func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, genericInt Integration, ddSvc DeviceDefinitionService, evtSvc EventService, teslaTask SyntheticTaskService) *ContractsEventsConsumer {
+func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *config.Settings, genericInt Integration, ddSvc DeviceDefinitionService, teslaTask SyntheticTaskService) *ContractsEventsConsumer {
 	return &ContractsEventsConsumer{
 		db:           pdb,
 		log:          log,
@@ -99,7 +97,6 @@ func NewContractsEventsConsumer(pdb db.Store, log *zerolog.Logger, settings *con
 		registryAddr: common.HexToAddress(settings.DIMORegistryAddr),
 		genericInt:   genericInt,
 		ddSvc:        ddSvc,
-		evtSvc:       evtSvc,
 		teslaTask:    teslaTask,
 	}
 }
@@ -247,39 +244,6 @@ func (c *ContractsEventsConsumer) handleSyntheticTransfer(ctx context.Context, e
 		default:
 			c.log.Warn().Msgf("Unexpected integration %s.", integ.Vendor)
 		}
-	}
-
-	// Need this for the event.
-	dd, err := c.ddSvc.GetDeviceDefinitionBySlug(ctx, ud.DefinitionID)
-	if err != nil {
-		return err
-	}
-
-	err = c.evtSvc.Emit(&payloads.CloudEvent[any]{
-		Type:    "com.dimo.zone.device.integration.delete",
-		Source:  "devices-api",
-		Subject: ud.ID,
-		Data: UserDeviceIntegrationEvent{
-			Timestamp: time.Now(),
-			UserID:    ud.UserID,
-			Device: UserDeviceEventDevice{
-				ID:           ud.ID,
-				Make:         dd.Make.Name,
-				Model:        dd.Model,
-				Year:         int(dd.Year),
-				VIN:          ud.VinIdentifier.String,
-				DefinitionID: dd.Id,
-			},
-			Integration: UserDeviceEventIntegration{
-				ID:     integ.Id,
-				Type:   integ.Type,
-				Style:  integ.Style,
-				Vendor: integ.Vendor,
-			},
-		},
-	})
-	if err != nil {
-		c.log.Info().Int64("syntheticDeviceTokenId", args.TokenId.Int64()).Str("owner", args.From.Hex()).Msg("Couldn't send out integration deletion event.")
 	}
 
 	c.log.Info().Int64("syntheticDeviceTokenId", args.TokenId.Int64()).Str("owner", args.From.Hex()).Msg("Burned synthetic device.")
@@ -696,26 +660,6 @@ func (c *ContractsEventsConsumer) vehicleNodeMintedWithDeviceDefinition(e *Contr
 	if err := ud.Insert(ctx, tx, boil.Infer()); err != nil {
 		return fmt.Errorf("failed to insert new user device: %w", err)
 	}
-
-	c.evtSvc.Emit(&payloads.CloudEvent[any]{ //nolint
-		Type:    "com.dimo.zone.device.mint",
-		Subject: ud.ID,
-		Source:  "devices-api",
-		Data: UserDeviceMintEvent{
-			Timestamp: time.Now(),
-			UserID:    ud.UserID,
-			Device: UserDeviceEventDevice{
-				ID:           ud.ID,
-				VIN:          ud.VinIdentifier.String,
-				DefinitionID: args.DeviceDefinitionId,
-			},
-			NFT: UserDeviceEventNFT{
-				TokenID: args.VehicleId,
-				Owner:   args.Owner,
-				TxHash:  e.TransactionHash,
-			},
-		},
-	})
 
 	return tx.Commit()
 

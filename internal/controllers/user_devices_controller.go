@@ -29,7 +29,6 @@ import (
 	"github.com/DIMO-Network/shared/pkg/cipher"
 	"github.com/DIMO-Network/shared/pkg/db"
 	"github.com/DIMO-Network/shared/pkg/grpcfiber"
-	"github.com/DIMO-Network/shared/pkg/payloads"
 	"github.com/DIMO-Network/shared/pkg/redis"
 	pb_oracle "github.com/DIMO-Network/tesla-oracle/pkg/grpc"
 	"github.com/IBM/sarama"
@@ -62,7 +61,6 @@ type UserDevicesController struct {
 	DeviceDefSvc          services.DeviceDefinitionService
 	DeviceDefIntSvc       services.DeviceDefinitionIntegrationService
 	log                   *zerolog.Logger
-	eventService          services.EventService
 	teslaTaskService      services.TeslaTaskService
 	teslaOracle           pb_oracle.TeslaOracleClient
 	cipher                cipher.Cipher
@@ -113,7 +111,6 @@ func NewUserDevicesController(settings *config.Settings,
 	logger *zerolog.Logger,
 	ddSvc services.DeviceDefinitionService,
 	ddIntSvc services.DeviceDefinitionIntegrationService,
-	eventService services.EventService,
 	teslaTaskService services.TeslaTaskService,
 	teslaOracle pb_oracle.TeslaOracleClient,
 	cipher cipher.Cipher,
@@ -136,7 +133,6 @@ func NewUserDevicesController(settings *config.Settings,
 		log:                   logger,
 		DeviceDefSvc:          ddSvc,
 		DeviceDefIntSvc:       ddIntSvc,
-		eventService:          eventService,
 		teslaTaskService:      teslaTaskService,
 		teslaOracle:           teslaOracle,
 		cipher:                cipher,
@@ -863,25 +859,6 @@ func (udc *UserDevicesController) DeleteUserDevice(c *fiber.Ctx) error {
 	}
 
 	if err := tx.Commit(); err != nil {
-		return err
-	}
-
-	if err = udc.eventService.Emit(&payloads.CloudEvent[any]{
-		Type:    "com.dimo.zone.device.delete",
-		Subject: userID,
-		Source:  "devices-api",
-		Data: services.UserDeviceEvent{
-			Timestamp: time.Now(),
-			UserID:    userID,
-			Device: services.UserDeviceEventDevice{
-				ID:           udi,
-				Make:         dd.Make.Name,
-				Model:        dd.Model,
-				Year:         int(dd.Year),
-				DefinitionID: dd.Id,
-			},
-		},
-	}); err != nil {
 		return err
 	}
 

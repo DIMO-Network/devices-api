@@ -92,15 +92,13 @@ func main() {
 	// Run API
 	if len(os.Args) == 1 {
 		startMonitoringServer(logger, &settings)
-		eventService := services.NewEventService(&logger, &settings, deps.getKafkaProducer())
 		startCredentialConsumer(logger, &settings, pdb)
 		startTaskStatusConsumer(logger, &settings, pdb)
-		startWebAPI(logger, &settings, pdb, eventService, deps.getKafkaProducer(), deps.getS3ServiceClient(ctx), deps.getS3NFTServiceClient(ctx))
+		startWebAPI(logger, &settings, pdb, deps.getKafkaProducer(), deps.getS3ServiceClient(ctx), deps.getS3NFTServiceClient(ctx))
 	} else {
 		subcommands.Register(&migrateDBCmd{logger: logger, settings: settings}, "database")
 		subcommands.Register(&findOldStyleTasks{logger: logger, settings: settings, pdb: pdb}, "events")
 
-		subcommands.Register(&generateEventCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "events")
 		subcommands.Register(&setCommandCompatibilityCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
 		subcommands.Register(&remakeAutoPiTopicCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
 		subcommands.Register(&remakeAftermarketTopicCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
@@ -225,8 +223,8 @@ func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, p
 	logger.Info().Msg("Task status consumer started")
 }
 
-func startContractEventsConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store, genericADInteg services.Integration, ddSvc services.DeviceDefinitionService, evtSvc services.EventService, teslaTask services.TeslaTaskService) {
-	cevConsumer := services.NewContractsEventsConsumer(pdb, &logger, settings, genericADInteg, ddSvc, evtSvc, teslaTask)
+func startContractEventsConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store, genericADInteg services.Integration, ddSvc services.DeviceDefinitionService, teslaTask services.TeslaTaskService) {
+	cevConsumer := services.NewContractsEventsConsumer(pdb, &logger, settings, genericADInteg, ddSvc, teslaTask)
 	if err := cevConsumer.RunConsumer(); err != nil {
 		logger.Fatal().Err(err).Msg("error occurred processing contract events")
 	}

@@ -41,7 +41,6 @@ func NewUserDeviceRPCService(
 	hardwareTemplateService autopi.HardwareTemplateService,
 	logger *zerolog.Logger,
 	deviceDefSvc services.DeviceDefinitionService,
-	eventService services.EventService,
 	userDeviceService services.UserDeviceService,
 	teslaTaskService services.TeslaTaskService,
 ) pb.UserDeviceServiceServer {
@@ -50,7 +49,6 @@ func NewUserDeviceRPCService(
 		settings:                settings,
 		hardwareTemplateService: hardwareTemplateService,
 		deviceDefSvc:            deviceDefSvc,
-		eventService:            eventService,
 		userDeviceSvc:           userDeviceService,
 		teslaTaskService:        teslaTaskService,
 	}
@@ -64,7 +62,6 @@ type userDeviceRPCServer struct {
 	logger                  *zerolog.Logger
 	settings                *config.Settings
 	deviceDefSvc            services.DeviceDefinitionService
-	eventService            services.EventService
 	userDeviceSvc           services.UserDeviceService
 	teslaTaskService        services.TeslaTaskService
 }

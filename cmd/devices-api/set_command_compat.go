@@ -16,12 +16,11 @@ import (
 )
 
 type setCommandCompatibilityCmd struct {
-	logger       zerolog.Logger
-	settings     config.Settings
-	pdb          db.Store
-	eventService services.EventService
-	ddSvc        services.DeviceDefinitionService
-	container    dependencyContainer
+	logger    zerolog.Logger
+	settings  config.Settings
+	pdb       db.Store
+	ddSvc     services.DeviceDefinitionService
+	container dependencyContainer
 }
 
 func (*setCommandCompatibilityCmd) Name() string     { return "set-command-compat" }
@@ -38,7 +37,6 @@ func (p *setCommandCompatibilityCmd) SetFlags(f *flag.FlagSet) {
 }
 
 func (p *setCommandCompatibilityCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
-	p.eventService = services.NewEventService(&p.logger, &p.settings, p.container.getKafkaProducer())
 	err := setCommandCompatibility(ctx, p.pdb, p.ddSvc)
 	if err != nil {
 		p.logger.Fatal().Err(err).Msg("Failed during command compatibility fill.")

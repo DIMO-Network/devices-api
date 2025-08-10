@@ -53,7 +53,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store, eventService services.EventService, producer sarama.SyncProducer, s3ServiceClient *s3.Client, s3NFTServiceClient *s3.Client) {
+func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store, producer sarama.SyncProducer, s3ServiceClient *s3.Client, s3NFTServiceClient *s3.Client) {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			return helpers.ErrorHandler(c, err, &logger, settings.IsProduction())
@@ -105,8 +105,8 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	autoPiSvc := services.NewAutoPiAPIService(settings, pdb.DBS)
 	autoPiIngest := services.NewIngestRegistrar(producer)
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, pdb.DBS, &logger)
-	genericADIntegration := genericad.NewIntegration(pdb.DBS, ddSvc, autoPiIngest, eventService, &logger)
-	userDeviceSvc := services.NewUserDeviceService(ddSvc, logger, pdb.DBS, eventService)
+	genericADIntegration := genericad.NewIntegration(pdb.DBS, ddSvc, autoPiIngest, &logger)
+	userDeviceSvc := services.NewUserDeviceService(ddSvc, logger, pdb.DBS)
 
 	openAI := services.NewOpenAI(&logger, *settings)
 
@@ -138,7 +138,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 
 	// controllers
-	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc, eventService,
+	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc,
 		teslaTaskService, teslaOracle, cipher, autoPiSvc, autoPiIngest,
 		producer, s3NFTServiceClient, redisCache, openAI,
 		natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc, ipfsSvc, chConn)
@@ -301,9 +301,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 
 	ctx := context.Background()
-	startContractEventsConsumer(logger, settings, pdb, genericADIntegration, ddSvc, eventService, teslaTaskService)
+	startContractEventsConsumer(logger, settings, pdb, genericADIntegration, ddSvc, teslaTaskService)
 
-	store, err := registry.NewProcessor(pdb.DBS, &logger, settings, eventService, teslaTaskService, ddSvc)
+	store, err := registry.NewProcessor(pdb.DBS, &logger, settings, teslaTaskService, ddSvc)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to create registry storage client")
 	}
@@ -312,7 +312,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		logger.Fatal().Err(err).Msg("Failed to create transaction listener")
 	}
 
-	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, eventService, userDeviceSvc, teslaTaskService, cipher, teslaFleetAPISvc, producer)
+	go startGRPCServer(settings, pdb.DBS, hardwareTemplateService, &logger, ddSvc, userDeviceSvc, teslaTaskService, cipher, teslaFleetAPISvc, producer)
 
 	c := make(chan os.Signal, 1)                    // Create channel to signify a signal being sent with length of 1
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM) // When an interrupt or termination signal is sent, notify the channel
@@ -345,7 +345,6 @@ func startGRPCServer(
 	hardwareTemplateService autopi.HardwareTemplateService,
 	logger *zerolog.Logger,
 	deviceDefSvc services.DeviceDefinitionService,
-	eventService services.EventService,
 	userDeviceSvc services.UserDeviceService,
 	teslaTaskSvc services.TeslaTaskService,
 	cipher cip.Cipher,
@@ -370,7 +369,7 @@ func startGRPCServer(
 	)
 
 	pb.RegisterUserDeviceServiceServer(server, rpc.NewUserDeviceRPCService(dbs, settings, hardwareTemplateService, logger,
-		deviceDefSvc, eventService, userDeviceSvc, teslaTaskSvc))
+		deviceDefSvc, userDeviceSvc, teslaTaskSvc))
 	pb.RegisterAftermarketDeviceServiceServer(server, rpc.NewAftermarketDeviceService(dbs, logger))
 	pb.RegisterTeslaServiceServer(server, rpc.NewTeslaRPCService(dbs, settings, cipher, teslaAPI, logger, producer))
 

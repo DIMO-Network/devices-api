@@ -20,7 +20,6 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	cip "github.com/DIMO-Network/shared/pkg/cipher"
 	"github.com/DIMO-Network/shared/pkg/db"
-	"github.com/DIMO-Network/shared/pkg/payloads"
 	"github.com/DIMO-Network/shared/pkg/redis/mocks"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
@@ -37,13 +36,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-type fakeEventService struct{}
-
-func (f *fakeEventService) Emit(event *payloads.CloudEvent[any]) error {
-	fmt.Printf("Emitting %v\n", event)
-	return nil
-}
 
 type UserDevicesControllerTestSuite struct {
 	suite.Suite
@@ -90,7 +82,7 @@ func (s *UserDevicesControllerTestSuite) SetupSuite() {
 	s.testUserID = "123123"
 	testUserID2 := "3232451"
 	s.testUserEthAddr = common.HexToAddress("0x1231231231231231231231231231231231231231")
-	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, &fakeEventService{}, teslaTaskService, nil, new(cip.ROT13Cipher), s.autoPiSvc,
+	c := NewUserDevicesController(&config.Settings{Port: "3000", Environment: "prod"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, teslaTaskService, nil, new(cip.ROT13Cipher), s.autoPiSvc,
 		autoPiIngest, nil, nil, s.redisClient, nil, s.natsService, nil, s.userDeviceSvc, nil, nil, nil)
 	app := test.SetupAppFiber(*logger)
 	app.Post("/user/devices", test.AuthInjectorTestHandler(s.testUserID, nil), c.RegisterDeviceForUser)

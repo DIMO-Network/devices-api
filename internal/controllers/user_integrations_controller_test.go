@@ -19,7 +19,6 @@ import (
 
 	cip "github.com/DIMO-Network/shared/pkg/cipher"
 	"github.com/DIMO-Network/shared/pkg/db"
-	"github.com/DIMO-Network/shared/pkg/payloads"
 	"github.com/DIMO-Network/shared/pkg/redis/mocks"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
@@ -50,7 +49,6 @@ type UserIntegrationsControllerTestSuite struct {
 	teslaTaskService *mock_services.MockTeslaTaskService
 	autopiAPISvc     *mock_services.MockAutoPiAPIService
 	autoPiIngest     *mock_services.MockIngestRegistrar
-	eventSvc         *mock_services.MockEventService
 	deviceDefSvc     *mock_services.MockDeviceDefinitionService
 	deviceDefIntSvc  *mock_services.MockDeviceDefinitionIntegrationService
 	redisClient      *mocks.MockCacheService
@@ -88,7 +86,6 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 	s.teslaTaskService = mock_services.NewMockTeslaTaskService(s.mockCtrl)
 	s.autopiAPISvc = mock_services.NewMockAutoPiAPIService(s.mockCtrl)
 	s.autoPiIngest = mock_services.NewMockIngestRegistrar(s.mockCtrl)
-	s.eventSvc = mock_services.NewMockEventService(s.mockCtrl)
 	s.redisClient = mocks.NewMockCacheService(s.mockCtrl)
 	s.natsSvc, s.natsServer, err = mock_services.NewMockNATSService(natsStreamName)
 	s.userDeviceSvc = mock_services.NewMockUserDeviceService(s.mockCtrl)
@@ -101,7 +98,7 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 	}
 
 	logger := test.Logger()
-	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, s.eventSvc, s.teslaTaskService, nil, s.cipher, s.autopiAPISvc,
+	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, s.teslaTaskService, nil, s.cipher, s.autopiAPISvc,
 		s.autoPiIngest, nil, nil, s.redisClient, nil, s.natsSvc, nil, s.userDeviceSvc,
 		s.teslaFleetAPISvc, nil, nil)
 
@@ -209,25 +206,6 @@ func (s *UserIntegrationsControllerTestSuite) TestPostTesla_V2() {
 	integration := test.BuildIntegrationGRPC(teslaIntegrationID, constants.TeslaVendor, 10, 0)
 	dd := test.BuildDeviceDefinitionGRPC(ksuid.New().String(), "Tesla", "Model Y", 2022, integration)
 	ud := test.SetupCreateUserDevice(s.T(), testUserID, dd[0].Id, nil, "", s.pdb)
-
-	s.eventSvc.EXPECT().Emit(gomock.Any()).Return(nil).Do(
-		func(event *payloads.CloudEvent[any]) error {
-			assert.Equal(s.T(), ud.ID, event.Subject)
-			assert.Equal(s.T(), "com.dimo.zone.device.integration.create", event.Type)
-
-			data := event.Data.(services.UserDeviceIntegrationEvent)
-
-			assert.Equal(s.T(), dd[0].Make.Name, data.Device.Make)
-			assert.Equal(s.T(), dd[0].Model, data.Device.Model)
-			assert.Equal(s.T(), int(dd[0].Year), data.Device.Year)
-			assert.Equal(s.T(), "5YJYGDEF9NF010423", data.Device.VIN)
-			assert.Equal(s.T(), ud.ID, data.Device.ID)
-
-			assert.Equal(s.T(), constants.TeslaVendor, data.Integration.Vendor)
-			assert.Equal(s.T(), integration.Id, data.Integration.ID)
-			return nil
-		},
-	)
 
 	s.teslaFleetAPISvc.EXPECT().GetVehicle(gomock.Any(), "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", 1145).Return(&services.TeslaVehicle{
 		ID:        1145,

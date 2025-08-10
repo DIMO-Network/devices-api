@@ -10,8 +10,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/constants"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/pkg/db"
-	"github.com/DIMO-Network/shared/pkg/payloads"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -32,7 +30,6 @@ type userDeviceService struct {
 	deviceDefSvc DeviceDefinitionService
 	log          zerolog.Logger
 	dbs          func() *db.ReaderWriter
-	eventService EventService
 }
 
 func (uds *userDeviceService) CreateIntegration(ctx context.Context, tx *sql.Tx, userDeviceID, integrationID, externalID, encryptedAccessToken string,
@@ -57,12 +54,11 @@ func (uds *userDeviceService) CreateIntegration(ctx context.Context, tx *sql.Tx,
 	return nil
 }
 
-func NewUserDeviceService(deviceDefSvc DeviceDefinitionService, log zerolog.Logger, dbs func() *db.ReaderWriter, eventService EventService) UserDeviceService {
+func NewUserDeviceService(deviceDefSvc DeviceDefinitionService, log zerolog.Logger, dbs func() *db.ReaderWriter) UserDeviceService {
 	return &userDeviceService{
 		deviceDefSvc: deviceDefSvc,
 		log:          log,
 		dbs:          dbs,
-		eventService: eventService,
 	}
 }
 
@@ -147,25 +143,6 @@ func (uds *userDeviceService) CreateUserDeviceByOwner(ctx context.Context, defin
 
 	// todo call devide definitions to check and pull image for this device in case don't have one
 
-	err = uds.eventService.Emit(&payloads.CloudEvent[any]{
-		Type:    constants.UserDeviceCreationEventType,
-		Subject: common.BytesToAddress(ownerAddress).Hex(),
-		Source:  "devices-api",
-		Data: UserDeviceEvent{
-			Timestamp: time.Now(),
-			UserID:    common.BytesToAddress(ownerAddress).Hex(),
-			Device: UserDeviceEventDevice{
-				ID:           userDeviceID,
-				Make:         dd.Make.Name,
-				Model:        dd.Model,
-				Year:         int(dd.Year), // Odd.
-				DefinitionID: dd.Id,
-			},
-		},
-	})
-	if err != nil {
-		uds.log.Err(err).Msg("Failed emitting device creation event")
-	}
 	return &ud, dd, nil
 }
 
@@ -249,25 +226,5 @@ func (uds *userDeviceService) CreateUserDevice(ctx context.Context, definitionID
 	}
 
 	// todo call devide definitions to check and pull image for this device in case don't have one
-
-	err = uds.eventService.Emit(&payloads.CloudEvent[any]{
-		Type:    constants.UserDeviceCreationEventType,
-		Subject: userID,
-		Source:  "devices-api",
-		Data: UserDeviceEvent{
-			Timestamp: time.Now(),
-			UserID:    userID,
-			Device: UserDeviceEventDevice{
-				ID:           userDeviceID,
-				Make:         dd.Make.Name,
-				Model:        dd.Model,
-				Year:         int(dd.Year), // Odd.
-				DefinitionID: dd.Id,
-			},
-		},
-	})
-	if err != nil {
-		uds.log.Err(err).Msg("Failed emitting device creation event")
-	}
 	return &ud, dd, nil
 }

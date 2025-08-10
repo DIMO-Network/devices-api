@@ -13,7 +13,6 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	cipherpkg "github.com/DIMO-Network/shared/pkg/cipher"
 	"github.com/DIMO-Network/shared/pkg/db"
-	"github.com/DIMO-Network/shared/pkg/payloads"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
@@ -32,7 +31,6 @@ type StorageTestSuite struct {
 	dbs       db.Store
 	container testcontainers.Container
 	mockCtrl  *gomock.Controller
-	eventSvc  *mock_services.MockEventService
 	ddSvc     *mock_services.MockDeviceDefinitionService
 	teslaSvc  *mock_services.MockTeslaTaskService
 
@@ -56,11 +54,10 @@ func (s *StorageTestSuite) SetupTest() {
 	logger := test.Logger()
 	s.mockCtrl, s.ctx = gomock.WithContext(context.Background(), s.T())
 
-	s.eventSvc = mock_services.NewMockEventService(s.mockCtrl)
 	s.ddSvc = mock_services.NewMockDeviceDefinitionService(s.mockCtrl)
 	s.teslaSvc = mock_services.NewMockTeslaTaskService(s.mockCtrl)
 
-	proc, err := NewProcessor(s.dbs.DBS, logger, &config.Settings{Environment: "prod"}, s.eventSvc, s.teslaSvc, s.ddSvc)
+	proc, err := NewProcessor(s.dbs.DBS, logger, &config.Settings{Environment: "prod"}, s.teslaSvc, s.ddSvc)
 	if err != nil {
 		s.T().Fatal(err)
 	}
@@ -130,8 +127,6 @@ func (s *StorageTestSuite) Test_SyntheticMintTesla() {
 	}
 	s.MustInsert(&udi)
 
-	s.eventSvc.EXPECT().Emit(gomock.Any())
-
 	s.teslaSvc.EXPECT().StartPoll(gomock.Any(), gomock.Any())
 
 	a, _ := contracts.RegistryMetaData.GetAbi()
@@ -176,11 +171,6 @@ func (s *StorageTestSuite) TestMintVehicle() {
 	}
 	s.MustInsert(&mtr)
 
-	var emEv *payloads.CloudEvent[any]
-	s.eventSvc.EXPECT().Emit(gomock.Any()).Do(func(event *payloads.CloudEvent[any]) {
-		emEv = event
-	})
-
 	ud := models.UserDevice{
 		ID:            ksuid.New().String(),
 		MintRequestID: null.StringFrom(mtr.ID),
@@ -212,8 +202,6 @@ func (s *StorageTestSuite) TestMintVehicle() {
 
 	s.Zero(ud.TokenID.Int(nil).Cmp(big.NewInt(14443)))
 	s.Equal(common.HexToAddress("7e74d0f663d58d12817b8bef762bcde3af1f63d6"), common.BytesToAddress(ud.OwnerAddress.Bytes))
-
-	s.Equal(ud.ID, emEv.Subject)
 }
 
 func (s *StorageTestSuite) TestErrorTranslationWithArgs() {
@@ -311,11 +299,6 @@ func (s *StorageTestSuite) TestVehicleNodeMintedWithDeviceDefinition() {
 	}
 	s.MustInsert(&mtr)
 
-	var emEv *payloads.CloudEvent[any]
-	s.eventSvc.EXPECT().Emit(gomock.Any()).Do(func(event *payloads.CloudEvent[any]) {
-		emEv = event
-	})
-
 	ud := models.UserDevice{
 		ID:            ksuid.New().String(),
 		MintRequestID: null.StringFrom(mtr.ID),
@@ -352,8 +335,6 @@ func (s *StorageTestSuite) TestVehicleNodeMintedWithDeviceDefinition() {
 	s.Require().NoError(ud.Reload(s.ctx, s.dbs.DBS().Writer))
 	s.Zero(ud.TokenID.Int(nil).Cmp(big.NewInt(7)))
 	s.Equal(common.HexToAddress("7e74d0f663d58d12817b8bef762bcde3af1f63d6"), common.BytesToAddress(ud.OwnerAddress.Bytes))
-
-	s.Equal(ud.ID, emEv.Subject)
 }
 
 func (s *StorageTestSuite) MustInsert(o boilInsertable) {

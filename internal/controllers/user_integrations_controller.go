@@ -21,7 +21,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/pkg/grpcfiber"
-	"github.com/DIMO-Network/shared/pkg/payloads"
 	stringspkg "github.com/DIMO-Network/shared/pkg/strings"
 	vinpkg "github.com/DIMO-Network/shared/pkg/vin"
 	"github.com/ethereum/go-ethereum/common"
@@ -244,38 +243,6 @@ func (udc *UserDevicesController) deleteDeviceIntegration(ctx context.Context, u
 	_, err = apiInt.Delete(ctx, tx)
 	if err != nil {
 		return err
-	}
-
-	var vin string
-	if apiInt.R.UserDevice.VinConfirmed {
-		vin = apiInt.R.UserDevice.VinIdentifier.String
-	}
-
-	err = udc.eventService.Emit(&payloads.CloudEvent[any]{
-		Type:    "com.dimo.zone.device.integration.delete",
-		Source:  "devices-api",
-		Subject: userDeviceID,
-		Data: services.UserDeviceIntegrationEvent{
-			Timestamp: time.Now(),
-			UserID:    userID,
-			Device: services.UserDeviceEventDevice{
-				ID:           userDeviceID,
-				Make:         dd.Make.Name,
-				Model:        dd.Model,
-				Year:         int(dd.Year),
-				VIN:          vin,
-				DefinitionID: dd.Id,
-			},
-			Integration: services.UserDeviceEventIntegration{
-				ID:     integ.Id,
-				Type:   integ.Type,
-				Style:  integ.Style,
-				Vendor: integ.Vendor,
-			},
-		},
-	})
-	if err != nil {
-		udc.log.Err(err).Msg("Failed to emit integration deletion")
 	}
 
 	return err
@@ -522,27 +489,15 @@ func (udc *UserDevicesController) registerDeviceIntegrationInner(c *fiber.Ctx, u
 		return nil
 	}
 
-	var regErr error
 	// The per-integration handler is responsible for handling the fiber context and committing the
 	// transaction.
 	switch vendor := integration.Vendor; vendor {
 	case constants.TeslaVendor:
-		regErr = udc.registerDeviceTesla(c, &logger, tx, userDeviceID, integration, ud)
-	case constants.AutoPiVendor:
-		logger.Error().Msg("autopi register request via invalid route: /user/devices/:userDeviceID/integrations/:integrationID")
-		return errors.New("this route cannot be used to register an autopi anymore - update your client")
+		return udc.registerDeviceTesla(c, &logger, tx, userDeviceID, integration, ud)
 	default:
 		logger.Error().Str("vendor", vendor).Msg("Attempted to register an unsupported integration")
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("unsupported integration %s", integrationID))
 	}
-
-	if regErr != nil {
-		return regErr
-	}
-
-	udc.runPostRegistration(c.Context(), &logger, userDeviceID, integrationID, integration)
-
-	return nil
 }
 
 // RegisterDeviceIntegration godoc
@@ -562,64 +517,6 @@ func (udc *UserDevicesController) RegisterDeviceIntegration(c *fiber.Ctx) error 
 }
 
 /** Refactored / helper methods **/
-
-// runPostRegistration runs tasks that should be run after a successful integration. For now, this
-// just means emitting an event to topic.event for the activity log.
-func (udc *UserDevicesController) runPostRegistration(ctx context.Context, logger *zerolog.Logger, userDeviceID, integrationID string, integ *ddgrpc.Integration) {
-	// Just reload the entire tree of attributes. Too many things modify this during the registration flow.
-	udai, err := models.UserDeviceAPIIntegrations(
-		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
-		models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ(integrationID),
-		qm.Load(models.UserDeviceAPIIntegrationRels.UserDevice),
-	).One(ctx, udc.DBS().Reader)
-	if err != nil {
-		logger.Err(err).Msg("Couldn't retrieve UDAI for post-registration tasks.")
-		return
-	}
-
-	ud := udai.R.UserDevice
-	definitionID := ud.DefinitionID
-
-	// pull dd info again - don't pass it in, as it may have changed
-	dd, err2 := udc.DeviceDefSvc.GetDeviceDefinitionBySlug(ctx, definitionID)
-	if err2 != nil {
-		tid, _ := ud.TokenID.Uint64()
-		logger.Err(err2).
-			Str("definitionId", ud.DefinitionID).
-			Str("userDeviceId", userDeviceID).
-			Uint64("tokenID", tid).
-			Msg("failed to retrieve device definition")
-	}
-
-	err = udc.eventService.Emit(
-		&payloads.CloudEvent[any]{
-			Type:    "com.dimo.zone.device.integration.create",
-			Source:  "devices-api",
-			Subject: userDeviceID,
-			Data: services.UserDeviceIntegrationEvent{
-				Timestamp: time.Now(),
-				UserID:    ud.UserID,
-				Device: services.UserDeviceEventDevice{
-					ID:           userDeviceID,
-					Make:         dd.Make.Name,
-					Model:        dd.Model,
-					Year:         int(dd.Year),
-					VIN:          ud.VinIdentifier.String,
-					DefinitionID: dd.Id,
-				},
-				Integration: services.UserDeviceEventIntegration{
-					ID:     integ.Id,
-					Type:   integ.Type,
-					Style:  integ.Style,
-					Vendor: integ.Vendor,
-				},
-			},
-		},
-	)
-	if err != nil {
-		logger.Err(err).Msg("Failed to emit integration event.")
-	}
-}
 
 func IsFleetTelemetryCapable(fs *services.VehicleFleetStatus) bool {
 	// We used to check for the presence of a meaningful value (not ""
