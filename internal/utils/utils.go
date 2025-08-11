@@ -31,11 +31,6 @@ type ConnectionChainIDs struct {
 
 var (
 	SyntheticIntegrationKSUIDToOtherIDs = map[string]*ConnectionChainIDs{
-		"22N2xaPOq2WW2gAHBHd0Ikn4Zob": {
-			IntegrationNode: big.NewInt(1),
-			ConnectionID:    nameToConnectionID("Smartcar"),
-			Name:            "Smartcar",
-		},
 		"26A5Dk3vvvQutjSyF0Jka2DP5lg": {
 			IntegrationNode: big.NewInt(2),
 			ConnectionID:    nameToConnectionID("Tesla"),

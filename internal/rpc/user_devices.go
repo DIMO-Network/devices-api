@@ -41,20 +41,16 @@ func NewUserDeviceRPCService(
 	hardwareTemplateService autopi.HardwareTemplateService,
 	logger *zerolog.Logger,
 	deviceDefSvc services.DeviceDefinitionService,
-	eventService services.EventService,
 	userDeviceService services.UserDeviceService,
 	teslaTaskService services.TeslaTaskService,
-	smartcarTaskSvc services.SmartcarTaskService,
 ) pb.UserDeviceServiceServer {
 	return &userDeviceRPCServer{dbs: dbs,
 		logger:                  logger,
 		settings:                settings,
 		hardwareTemplateService: hardwareTemplateService,
 		deviceDefSvc:            deviceDefSvc,
-		eventService:            eventService,
 		userDeviceSvc:           userDeviceService,
 		teslaTaskService:        teslaTaskService,
-		smartcarTaskSvc:         smartcarTaskSvc,
 	}
 }
 
@@ -66,10 +62,8 @@ type userDeviceRPCServer struct {
 	logger                  *zerolog.Logger
 	settings                *config.Settings
 	deviceDefSvc            services.DeviceDefinitionService
-	eventService            services.EventService
 	userDeviceSvc           services.UserDeviceService
 	teslaTaskService        services.TeslaTaskService
-	smartcarTaskSvc         services.SmartcarTaskService
 }
 
 func (s *userDeviceRPCServer) GetUserDevice(ctx context.Context, req *pb.GetUserDeviceRequest) (*pb.UserDevice, error) {
@@ -233,7 +227,7 @@ func (s *userDeviceRPCServer) RegisterUserDeviceFromVIN(ctx context.Context, req
 	if country == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid countryCode field or country not supported: %s", req.CountryCode)
 	}
-	// check for duplicate vin, future: refactor with user_devices_controler fromsmartcar, fromvin
+	// check for duplicate vin, future: refactor with user_devices_controler fromvin
 	vin := strings.ToUpper(req.Vin)
 
 	hasConflict := false
@@ -712,12 +706,6 @@ func (s *userDeviceRPCServer) StopUserDeviceIntegration(ctx context.Context, req
 	}
 
 	switch integ.Vendor {
-	case constants.SmartCarVendor:
-		err = s.smartcarTaskSvc.StopPoll(apiInt)
-		if err != nil {
-			log.Err(err).Msg("failed to stop smartcar poll")
-			return nil, fmt.Errorf("failed to stop smartcar poll: %w", err)
-		}
 	case constants.TeslaVendor:
 		err = s.teslaTaskService.StopPoll(apiInt)
 		if err != nil {

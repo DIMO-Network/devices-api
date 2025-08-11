@@ -441,28 +441,6 @@ definitions:
       userDeviceId:
         type: string
     type: object
-  internal_controllers.RegisterUserDeviceSmartcar:
-    properties:
-      code:
-        description: Code refers to the auth code provided by smartcar when user logs
-          in
-        type: string
-      countryCode:
-        type: string
-      redirectURI:
-        type: string
-    type: object
-  internal_controllers.RegisterUserDeviceVIN:
-    properties:
-      canProtocol:
-        description: CANProtocol is the protocol that was detected by edge-network
-          from the autopi.
-        type: string
-      countryCode:
-        type: string
-      vin:
-        type: string
-    type: object
   internal_controllers.SACDInput:
     properties:
       expiration:
@@ -1010,24 +988,6 @@ paths:
       - BearerAuth: []
       tags:
       - user-devices
-  /user/devices/{userDeviceID}/commands/refresh:
-    post:
-      description: Starts the process of refreshing device status from Smartcar
-      parameters:
-      - description: user device ID
-        in: path
-        name: user_device_id
-        required: true
-        type: string
-      responses:
-        "204":
-          description: No Content
-        "429":
-          description: rate limit hit for integration
-      security:
-      - BearerAuth: []
-      tags:
-      - user-devices
   /user/devices/{userDeviceID}/error-codes:
     get:
       description: Deprecated. Use `/user/vehicle/{tokenID}/error-codes` instead
@@ -1112,7 +1072,7 @@ paths:
       tags:
       - integrations
     get:
-      description: Receive status updates about a Smartcar integration
+      description: Receive status updates about a connection
       responses:
         "200":
           description: OK
@@ -1126,7 +1086,7 @@ paths:
       consumes:
       - application/json
       description: Submit credentials for registering a device with a given integration.
-        This must be called for any new pairing as well as eg. /fromsmartcar
+        This must be called for any new pairing.
       parameters:
       - description: Integration credentials
         in: body
@@ -1271,75 +1231,6 @@ paths:
       - device
       - integration
       - command
-  /user/devices/fromsmartcar:
-    post:
-      consumes:
-      - application/json
-      description: |-
-        adds a device to a user by decoding VIN from Smartcar. If cannot decode returns 424 or 500 if error.
-        If the user device already exists from a different integration, for the same user, this will return a 200 with the full user device object
-      parameters:
-      - description: add device to user. all fields required
-        in: body
-        name: user_device
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.RegisterUserDeviceSmartcar'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers.UserDeviceFull'
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/internal_controllers.UserDeviceFull'
-        "400":
-          description: validation failure
-        "409":
-          description: VIN already exists either for different a user
-        "424":
-          description: unable to decode VIN
-        "500":
-          description: server error, dependency error
-      security:
-      - ApiKeyAuth: []
-      - BearerAuth: []
-      tags:
-      - user-devices
-  /user/devices/fromvin:
-    post:
-      consumes:
-      - application/json
-      description: adds a device to a user by decoding a VIN. If cannot decode returns
-        424 or 500 if error. Can optionally include the can bus protocol.
-      parameters:
-      - description: add device to user. VIN is required and so is country
-        in: body
-        name: user_device
-        required: true
-        schema:
-          $ref: '#/definitions/internal_controllers.RegisterUserDeviceVIN'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/internal_controllers.UserDeviceFull'
-        "400":
-          description: validation failure
-        "424":
-          description: unable to decode VIN
-        "500":
-          description: server error, dependency error
-      security:
-      - ApiKeyAuth: []
-      - BearerAuth: []
-      tags:
-      - user-devices
   /user/devices/me:
     get:
       description: gets all devices associated with current user - pulled from token

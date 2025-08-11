@@ -92,41 +92,23 @@ func main() {
 	// Run API
 	if len(os.Args) == 1 {
 		startMonitoringServer(logger, &settings)
-		eventService := services.NewEventService(&logger, &settings, deps.getKafkaProducer())
 		startCredentialConsumer(logger, &settings, pdb)
 		startTaskStatusConsumer(logger, &settings, pdb)
-		startWebAPI(logger, &settings, pdb, eventService, deps.getKafkaProducer(), deps.getS3ServiceClient(ctx), deps.getS3NFTServiceClient(ctx))
+		startWebAPI(logger, &settings, pdb, deps.getKafkaProducer(), deps.getS3ServiceClient(ctx), deps.getS3NFTServiceClient(ctx))
 	} else {
 		subcommands.Register(&migrateDBCmd{logger: logger, settings: settings}, "database")
 		subcommands.Register(&findOldStyleTasks{logger: logger, settings: settings, pdb: pdb}, "events")
 
-		subcommands.Register(&generateEventCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "events")
 		subcommands.Register(&setCommandCompatibilityCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
 		subcommands.Register(&remakeAutoPiTopicCmd{logger: logger, settings: settings, pdb: pdb, ddSvc: deps.getDeviceDefinitionService()}, "device integrations")
 		subcommands.Register(&remakeAftermarketTopicCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&remakeUserDeviceTokenTableCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 
-		{
-			var cipher cip.Cipher
-			if settings.Environment == "dev" || settings.IsProduction() {
-				cipher = createKMS(&settings, &logger)
-			} else {
-				logger.Warn().Msg("Using ROT13 encrypter. Only use this for testing!")
-				cipher = new(cip.ROT13Cipher)
-			}
-			subcommands.Register(&checkTelemetryCmd{logger: logger, settings: settings, pdb: pdb, cipher: cipher}, "device integrations")
-			subcommands.Register(&enableTelemetryCmd{logger: logger, settings: settings, pdb: pdb, cipher: cipher}, "device integrations")
-		}
-
 		subcommands.Register(&populateSDInfoTopicCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
-		subcommands.Register(&populateTeslaTelemetryMapCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&updateStateCmd{logger: logger, settings: settings, pdb: pdb}, "device integrations")
 		subcommands.Register(&web2PairCmd{logger: logger, settings: settings, pdb: pdb, container: deps}, "device integrations")
 		subcommands.Register(&autoPiKTableDeleteCmd{logger: logger, container: deps}, "device integrations")
 		subcommands.Register(&startSDTask{logger: logger, container: deps, settings: settings, pdb: pdb}, "device integrations")
-		subcommands.Register(&startIntegrationTask{logger: logger, container: deps, settings: settings, pdb: pdb}, "device integrations")
-		subcommands.Register(&smartcarStopConnectionsCmd{container: deps}, "device integrations")
-
 		subcommands.Register(&stopTaskByKeyCmd{logger: logger, settings: settings, container: deps, pdb: pdb}, "tasks")
 
 		subcommands.Register(&syncDeviceTemplatesCmd{logger: logger, settings: settings, pdb: pdb}, "user devices")
@@ -241,8 +223,8 @@ func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, p
 	logger.Info().Msg("Task status consumer started")
 }
 
-func startContractEventsConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store, genericADInteg services.Integration, ddSvc services.DeviceDefinitionService, evtSvc services.EventService, scTask services.SmartcarTaskService, teslaTask services.TeslaTaskService) {
-	cevConsumer := services.NewContractsEventsConsumer(pdb, &logger, settings, genericADInteg, ddSvc, evtSvc, scTask, teslaTask)
+func startContractEventsConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store, genericADInteg services.Integration, ddSvc services.DeviceDefinitionService, teslaTask services.TeslaTaskService) {
+	cevConsumer := services.NewContractsEventsConsumer(pdb, &logger, settings, genericADInteg, ddSvc, teslaTask)
 	if err := cevConsumer.RunConsumer(); err != nil {
 		logger.Fatal().Err(err).Msg("error occurred processing contract events")
 	}

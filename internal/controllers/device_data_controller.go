@@ -47,18 +47,6 @@ type GetUserDeviceErrorCodeQueriesResponseItem struct {
 	ClearedAt *time.Time `json:"clearedAt" example:"2023-05-23T12:57:05Z"`
 }
 
-// RefreshUserDeviceStatus godoc
-// @Description Starts the process of refreshing device status from Smartcar
-// @Tags        user-devices
-// @Param       user_device_id path string true "user device ID"
-// @Success     204
-// @Failure     429 "rate limit hit for integration"
-// @Security    BearerAuth
-// @Router      /user/devices/{userDeviceID}/commands/refresh [post]
-func (udc *UserDevicesController) RefreshUserDeviceStatus(c *fiber.Ctx) error {
-	return c.SendStatus(204)
-}
-
 var errorCodeRegex = regexp.MustCompile(`^.{5,8}$`)
 
 // QueryDeviceErrorCodes godoc

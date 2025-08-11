@@ -41,7 +41,6 @@ type deviceDefinitionService struct {
 	dbs                 func() *db.ReaderWriter
 	log                 *zerolog.Logger
 	definitionsGRPCAddr string
-	googleMapsAPIKey    string
 	identityAPI         IdentityAPI
 }
 
@@ -50,7 +49,6 @@ func NewDeviceDefinitionService(DBS func() *db.ReaderWriter, log *zerolog.Logger
 		dbs:                 DBS,
 		log:                 log,
 		definitionsGRPCAddr: settings.DefinitionsGRPCAddr,
-		googleMapsAPIKey:    settings.GoogleMapsAPIKey,
 		identityAPI:         NewIdentityAPIService(log, settings),
 	}
 }

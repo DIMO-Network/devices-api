@@ -5,14 +5,12 @@ import (
 	"database/sql"
 	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/utils"
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/pkg/db"
-	"github.com/DIMO-Network/shared/pkg/payloads"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
@@ -23,26 +21,23 @@ import (
 )
 
 type Integration struct {
-	db      func() *db.ReaderWriter
-	defs    services.DeviceDefinitionService
-	apReg   services.IngestRegistrar
-	eventer services.EventService
-	logger  *zerolog.Logger
+	db     func() *db.ReaderWriter
+	defs   services.DeviceDefinitionService
+	apReg  services.IngestRegistrar
+	logger *zerolog.Logger
 }
 
 func NewIntegration(
 	db func() *db.ReaderWriter,
 	defs services.DeviceDefinitionService,
 	apReg services.IngestRegistrar,
-	eventer services.EventService,
 	logger *zerolog.Logger,
 ) *Integration {
 	return &Integration{
-		db:      db,
-		defs:    defs,
-		apReg:   apReg,
-		eventer: eventer,
-		logger:  logger,
+		db:     db,
+		defs:   defs,
+		apReg:  apReg,
+		logger: logger,
 	}
 }
 
@@ -103,11 +98,6 @@ func (i *Integration) Pair(ctx context.Context, amTokenID, vehicleTokenID *big.I
 		}
 	}
 
-	def, err := i.defs.GetDeviceDefinitionBySlug(ctx, ud.DefinitionID)
-	if err != nil {
-		return err
-	}
-
 	udai := models.UserDeviceAPIIntegration{
 		UserDeviceID:  ud.ID,
 		IntegrationID: integ.Id,
@@ -138,32 +128,6 @@ func (i *Integration) Pair(ctx context.Context, amTokenID, vehicleTokenID *big.I
 	if err != nil {
 		return err
 	}
-
-	_ = i.eventer.Emit(
-		&payloads.CloudEvent[any]{
-			Type:    "com.dimo.zone.device.integration.create",
-			Source:  "devices-api",
-			Subject: ud.ID,
-			Data: services.UserDeviceIntegrationEvent{
-				Timestamp: time.Now(),
-				UserID:    ud.UserID,
-				Device: services.UserDeviceEventDevice{
-					ID:           ud.ID,
-					DefinitionID: def.Id,
-					Make:         def.Make.Name,
-					Model:        def.Model,
-					Year:         int(def.Year),
-					VIN:          ud.VinIdentifier.String,
-				},
-				Integration: services.UserDeviceEventIntegration{
-					ID:     integ.Id,
-					Type:   integ.Type,
-					Style:  integ.Style,
-					Vendor: integ.Vendor,
-				},
-			},
-		},
-	)
 
 	return nil
 }
@@ -219,33 +183,6 @@ func (i *Integration) Unpair(ctx context.Context, autoPiTokenID, vehicleTokenID 
 	if err != nil {
 		return err
 	}
-
-	def, err := i.defs.GetDeviceDefinitionBySlug(ctx, ud.DefinitionID)
-	if err != nil {
-		return err
-	}
-
-	_ = i.eventer.Emit(&payloads.CloudEvent[any]{
-		Type:    "com.dimo.zone.device.integration.delete",
-		Source:  "devices-api",
-		Subject: ud.ID,
-		Data: services.UserDeviceIntegrationEvent{
-			Timestamp: time.Now(),
-			UserID:    ud.UserID,
-			Device: services.UserDeviceEventDevice{
-				ID:    ud.ID,
-				Make:  def.Make.Name,
-				Model: def.Model,
-				Year:  int(def.Year),
-			},
-			Integration: services.UserDeviceEventIntegration{
-				ID:     integ.Id,
-				Type:   integ.Type,
-				Style:  integ.Style,
-				Vendor: integ.Vendor,
-			},
-		},
-	})
 
 	return nil
 }

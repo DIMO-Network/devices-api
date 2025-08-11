@@ -6,7 +6,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
@@ -15,12 +14,9 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/pkg/db"
 	"github.com/DIMO-Network/shared/pkg/dbtypes"
-	"github.com/DIMO-Network/shared/pkg/event/sdmint"
-	"github.com/DIMO-Network/shared/pkg/payloads"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog"
-	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -39,9 +35,7 @@ type proc struct {
 	DB              func() *db.ReaderWriter
 	Logger          *zerolog.Logger
 	settings        *config.Settings
-	Eventer         services.EventService
 	ErrorTranslator *ABIErrorTranslator
-	smartcarTask    services.SmartcarTaskService
 	teslaTask       services.TeslaTaskService
 	ddSvc           services.DeviceDefinitionService
 }
@@ -121,26 +115,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 					return fmt.Errorf("failed to update vehicle record: %w", err)
 				}
 
-				p.Eventer.Emit(&payloads.CloudEvent[any]{ //nolint
-					Type:    "com.dimo.zone.device.mint",
-					Subject: ud.ID,
-					Source:  "devices-api",
-					Data: services.UserDeviceMintEvent{
-						Timestamp: time.Now(),
-						UserID:    ud.UserID,
-						Device: services.UserDeviceEventDevice{
-							ID:           ud.ID,
-							VIN:          ud.VinIdentifier.String,
-							DefinitionID: ud.DefinitionID,
-						},
-						NFT: services.UserDeviceEventNFT{
-							TokenID: event.VehicleId,
-							Owner:   event.Owner,
-							TxHash:  common.HexToHash(data.Transaction.Hash),
-						},
-					},
-				})
-
 				logger.Info().
 					Str("userDeviceId", mtr.R.MintRequestUserDevice.ID).
 					Int64("vehicleTokenId", event.VehicleId.Int64()).
@@ -162,25 +136,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				if err != nil {
 					return fmt.Errorf("failed to update vehicle record: %w", err)
 				}
-				p.Eventer.Emit(&payloads.CloudEvent[any]{ //nolint
-					Type:    "com.dimo.zone.device.mint",
-					Subject: ud.ID,
-					Source:  "devices-api",
-					Data: services.UserDeviceMintEvent{
-						Timestamp: time.Now(),
-						UserID:    ud.UserID,
-						Device: services.UserDeviceEventDevice{
-							ID:           ud.ID,
-							VIN:          ud.VinIdentifier.String,
-							DefinitionID: ud.DefinitionID,
-						},
-						NFT: services.UserDeviceEventNFT{
-							TokenID: event.TokenId,
-							Owner:   event.Owner,
-							TxHash:  common.HexToHash(data.Transaction.Hash),
-						},
-					},
-				})
 
 				logger.Info().
 					Str("userDeviceId", mtr.R.MintRequestUserDevice.ID).
@@ -239,11 +194,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				}
 
 				switch integrationChainIDs.Name {
-				case "Smartcar":
-					err := p.smartcarTask.StartPoll(ud.R.UserDeviceAPIIntegrations[0], sd)
-					if err != nil {
-						return err
-					}
 				case "Tesla":
 					err := p.teslaTask.StartPoll(ud.R.UserDeviceAPIIntegrations[0], sd)
 					if err != nil {
@@ -252,31 +202,6 @@ func (p *proc) Handle(ctx context.Context, data *ceData) error {
 				default:
 					return fmt.Errorf("unexpected connection %s", integrationChainIDs.Name)
 				}
-
-				p.Eventer.Emit(&payloads.CloudEvent[any]{ //nolint
-					ID:          ksuid.New().String(),
-					Source:      "devices-api",
-					SpecVersion: "1.0",
-					Subject:     ud.ID,
-					Time:        time.Now(),
-					Type:        sdmint.Type,
-					Data: sdmint.Data{
-						Integration: sdmint.Integration{
-							TokenID:       int(event.IntegrationNode.Int64()),
-							IntegrationID: integrationKSUID,
-						},
-						Vehicle: sdmint.Vehicle{
-							TokenID:      int(event.VehicleNode.Int64()),
-							UserDeviceID: ud.ID,
-						},
-						Device: sdmint.Device{
-							TokenID:           int(event.SyntheticDeviceNode.Int64()),
-							ExternalID:        ud.R.UserDeviceAPIIntegrations[0].ExternalID.String,
-							Address:           common.BytesToAddress(sd.WalletAddress),
-							WalletChildNumber: uint32(sd.WalletChildNumber),
-						},
-					},
-				})
 
 				logger.Info().
 					Int64("vehicleTokenId", event.VehicleNode.Int64()).
@@ -311,8 +236,6 @@ func NewProcessor(
 	db func() *db.ReaderWriter,
 	logger *zerolog.Logger,
 	settings *config.Settings,
-	eventer services.EventService,
-	smartcarTask services.SmartcarTaskService,
 	teslaTask services.TeslaTaskService,
 	ddSvc services.DeviceDefinitionService,
 ) (StatusProcessor, error) {
@@ -337,9 +260,7 @@ func NewProcessor(
 		DB:              db,
 		Logger:          logger,
 		settings:        settings,
-		Eventer:         eventer,
 		ErrorTranslator: errorTranslator,
-		smartcarTask:    smartcarTask,
 		teslaTask:       teslaTask,
 		ddSvc:           ddSvc,
 	}, nil

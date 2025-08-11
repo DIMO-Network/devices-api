@@ -65,9 +65,8 @@ func (p *web2PairCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ...interfa
 	p.logger.Info().Msgf("Attempting to web2 pair am device %s to vehicle %s.", amToken, vToken)
 
 	autoPiIngest := services.NewIngestRegistrar(producer)
-	eventService := services.NewEventService(&p.logger, &p.settings, producer)
 
-	integ := genericad.NewIntegration(p.pdb.DBS, ddSvc, autoPiIngest, eventService, &p.logger)
+	integ := genericad.NewIntegration(p.pdb.DBS, ddSvc, autoPiIngest, &p.logger)
 	if err := integ.Pair(ctx, amToken, vToken); err != nil {
 		p.logger.Fatal().Err(err).Msg("Pairing failure.")
 	}
