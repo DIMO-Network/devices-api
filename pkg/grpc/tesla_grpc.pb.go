@@ -25,6 +25,7 @@ const (
 	TeslaService_ConfigureFleetTelemetry_FullMethodName = "/tesla.TeslaService/ConfigureFleetTelemetry"
 	TeslaService_GetScopes_FullMethodName               = "/tesla.TeslaService/GetScopes"
 	TeslaService_StopTask_FullMethodName                = "/tesla.TeslaService/StopTask"
+	TeslaService_StartTask_FullMethodName               = "/tesla.TeslaService/StartTask"
 )
 
 // TeslaServiceClient is the client API for TeslaService service.
@@ -37,6 +38,7 @@ type TeslaServiceClient interface {
 	ConfigureFleetTelemetry(ctx context.Context, in *ConfigureFleetTelemetryRequest, opts ...grpc.CallOption) (*ConfigureFleetTelemetryResponse, error)
 	GetScopes(ctx context.Context, in *GetScopesRequest, opts ...grpc.CallOption) (*GetScopesResponse, error)
 	StopTask(ctx context.Context, in *StopTaskRequest, opts ...grpc.CallOption) (*StopTaskResponse, error)
+	StartTask(ctx context.Context, in *StartTaskRequest, opts ...grpc.CallOption) (*StartTaskResponse, error)
 }
 
 type teslaServiceClient struct {
@@ -107,6 +109,16 @@ func (c *teslaServiceClient) StopTask(ctx context.Context, in *StopTaskRequest, 
 	return out, nil
 }
 
+func (c *teslaServiceClient) StartTask(ctx context.Context, in *StartTaskRequest, opts ...grpc.CallOption) (*StartTaskResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StartTaskResponse)
+	err := c.cc.Invoke(ctx, TeslaService_StartTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TeslaServiceServer is the server API for TeslaService service.
 // All implementations must embed UnimplementedTeslaServiceServer
 // for forward compatibility.
@@ -117,6 +129,7 @@ type TeslaServiceServer interface {
 	ConfigureFleetTelemetry(context.Context, *ConfigureFleetTelemetryRequest) (*ConfigureFleetTelemetryResponse, error)
 	GetScopes(context.Context, *GetScopesRequest) (*GetScopesResponse, error)
 	StopTask(context.Context, *StopTaskRequest) (*StopTaskResponse, error)
+	StartTask(context.Context, *StartTaskRequest) (*StartTaskResponse, error)
 	mustEmbedUnimplementedTeslaServiceServer()
 }
 
@@ -144,6 +157,9 @@ func (UnimplementedTeslaServiceServer) GetScopes(context.Context, *GetScopesRequ
 }
 func (UnimplementedTeslaServiceServer) StopTask(context.Context, *StopTaskRequest) (*StopTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopTask not implemented")
+}
+func (UnimplementedTeslaServiceServer) StartTask(context.Context, *StartTaskRequest) (*StartTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StartTask not implemented")
 }
 func (UnimplementedTeslaServiceServer) mustEmbedUnimplementedTeslaServiceServer() {}
 func (UnimplementedTeslaServiceServer) testEmbeddedByValue()                      {}
@@ -274,6 +290,24 @@ func _TeslaService_StopTask_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TeslaService_StartTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TeslaServiceServer).StartTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TeslaService_StartTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TeslaServiceServer).StartTask(ctx, req.(*StartTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TeslaService_ServiceDesc is the grpc.ServiceDesc for TeslaService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -304,6 +338,10 @@ var TeslaService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StopTask",
 			Handler:    _TeslaService_StopTask_Handler,
+		},
+		{
+			MethodName: "StartTask",
+			Handler:    _TeslaService_StartTask_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
