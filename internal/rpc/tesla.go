@@ -275,12 +275,45 @@ func (s *teslaRPCServer) StopTask(ctx context.Context, req *pb.StopTaskRequest) 
 		return nil, status.Error(codes.NotFound, fmt.Sprintf("No known Tesla task for vehicle %d.", req.VehicleTokenId))
 	}
 
-	err = s.taskSvc.StopPoll(udais[0])
+	err = s.taskSvc.StopPoll(udai)
 	if err != nil {
 		return nil, err
 	}
 
 	return &pb.StopTaskResponse{}, nil
+}
+
+func (s *teslaRPCServer) StartTask(ctx context.Context, req *pb.StartTaskRequest) (*pb.StartTaskResponse, error) {
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(req.VehicleTokenId, 0))),
+		qm.Load(models.UserDeviceRels.UserDeviceAPIIntegrations, models.UserDeviceAPIIntegrationWhere.IntegrationID.EQ("26A5Dk3vvvQutjSyF0Jka2DP5lg")),
+		qm.Load(models.UserDeviceRels.VehicleTokenSyntheticDevice, models.SyntheticDeviceWhere.IntegrationTokenID.EQ(types.NewDecimal(decimal.New(2, 0)))),
+	).One(ctx, s.dbs().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, status.Error(codes.NotFound, fmt.Sprintf("No known vehicle with token id %d.", req.VehicleTokenId))
+		}
+		return nil, err
+	}
+
+	udais := ud.R.UserDeviceAPIIntegrations
+	if len(udais) == 0 || ud.R.VehicleTokenSyntheticDevice == nil {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("No known Tesla connection for vehicle %d.", req.VehicleTokenId))
+	}
+
+	udai := udais[0]
+	if !udai.TaskID.Valid {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("No known Tesla task for vehicle %d.", req.VehicleTokenId))
+	}
+
+	sd := ud.R.VehicleTokenSyntheticDevice
+
+	err = s.taskSvc.StartPoll(udai, sd)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.StartTaskResponse{}, nil
 }
 
 type partialTeslaClaims struct {
