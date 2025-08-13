@@ -14,7 +14,7 @@ service TeslaService {
   rpc GetScopes(GetScopesRequest) returns (GetScopesResponse);
 
   rpc StopTask(StopTaskRequest) returns (StopTaskResponse);
-  // rpc StartTask(StartTaskRequest) returns (StartTaskResponse);
+  rpc StartTask(StartTaskRequest) returns (StartTaskResponse);
 }
 
 message GetPollingInfoRequest {
@@ -70,5 +70,13 @@ message StopTaskRequest {
 }
 
 message StopTaskResponse {
+  // Maybe later.
+}
+
+message StartTaskRequest {
+  int64 vehicle_token_id = 1;
+}
+
+message StartTaskResponse {
   // Maybe later.
 }
