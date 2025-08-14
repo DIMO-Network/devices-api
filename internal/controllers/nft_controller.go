@@ -385,8 +385,8 @@ func (nc *NFTController) handleEnqueueCommand(c *fiber.Ctx, commandPath string) 
 	}
 
 	sd := resp.SyntheticDevices[0] // is it ok to take first?
-	// Check if the subscription status is inactive or pending, and drop the command request if so.
-	if sd.SubscriptionStatus == "inactive" || sd.SubscriptionStatus == "pending" {
+	// Check if the subscription status is inactive, and drop the command request if so.
+	if sd.SubscriptionStatus == "inactive" {
 		logger.Info().Str("subscriptionStatus", sd.SubscriptionStatus).Msgf("Dropping command request for vehicle %s due to subscription status.", nft.VinIdentifier.String)
 		return fiber.NewError(fiber.StatusForbidden, "Vehicle subscription is not active.")
 	}
