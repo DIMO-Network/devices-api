@@ -74,7 +74,7 @@ env:
   NATS_ACK_TIMEOUT: 2m
   SYNTHETIC_DEVICES_ENABLED: true
   SYNTHETIC_WALLET_GRPC_ADDR: synthetic-wallet-instance-dev:8086
-  TESLA_TOKEN_URL: https://auth.tesla.com/oauth2/v3/token
+  TESLA_TOKEN_URL: https://fleet-auth.prd.vn.cloud.tesla.com/oauth2/v3/token
   TESLA_FLEET_URL: http://tesla-command-api-dev.dev.svc.cluster.local:8080
   META_TRANSACTION_PROCESSOR_GRPC_ADDR: meta-transaction-processor-dev:8086
   TESLA_TELEMETRY_HOST_NAME: ingest-tesla.dev.drivedimo.com
