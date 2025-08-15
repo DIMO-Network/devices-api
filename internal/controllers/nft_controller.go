@@ -59,10 +59,6 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 	}
 }
 
-func validVINChar(r rune) bool {
-	return 'A' <= r && r <= 'Z' || '0' <= r && r <= '9'
-}
-
 // UpdateVINV2 godoc
 // @Description updates the VIN on the user device record. Can optionally also update the protocol and the country code.
 // VIN now comes from attestations, no need for this soon.
