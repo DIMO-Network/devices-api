@@ -15,6 +15,7 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/pkg/db"
 	grpcfiber "github.com/DIMO-Network/shared/pkg/grpcfiber"
+	vinutil "github.com/DIMO-Network/shared/pkg/vin"
 	pb_oracle "github.com/DIMO-Network/tesla-oracle/pkg/grpc"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/ericlagergren/decimal"
@@ -88,16 +89,11 @@ func (udc *UserDevicesController) UpdateVINV2(c *fiber.Ctx) error {
 	}
 
 	req.VIN = strings.TrimSpace(strings.ToUpper(req.VIN))
-	isJapanVIN := strings.Contains(req.VIN, "-") && len(req.VIN) > 10 && len(req.VIN) <= 17
 
-	if !isJapanVIN {
-		if len(req.VIN) != 17 {
-			return fiber.NewError(fiber.StatusBadRequest, "VIN must be 17 characters.")
-		}
-		for _, r := range req.VIN {
-			if !validVINChar(r) {
-				return fiber.NewError(fiber.StatusBadRequest, "VIN contains a non-alphanumeric character.")
-			}
+	vin := vinutil.VIN(req.VIN)
+	if !vin.IsValidVIN() {
+		if !vin.IsValidJapanChassis() {
+			return fiber.NewError(fiber.StatusBadRequest, "Invalid VIN.")
 		}
 	}
 
