@@ -15,6 +15,7 @@ import (
 	"github.com/DIMO-Network/devices-api/models"
 	"github.com/DIMO-Network/shared/pkg/db"
 	grpcfiber "github.com/DIMO-Network/shared/pkg/grpcfiber"
+	vinutil "github.com/DIMO-Network/shared/pkg/vin"
 	pb_oracle "github.com/DIMO-Network/tesla-oracle/pkg/grpc"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/ericlagergren/decimal"
@@ -58,10 +59,6 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 	}
 }
 
-func validVINChar(r rune) bool {
-	return 'A' <= r && r <= 'Z' || '0' <= r && r <= '9'
-}
-
 // UpdateVINV2 godoc
 // @Description updates the VIN on the user device record. Can optionally also update the protocol and the country code.
 // VIN now comes from attestations, no need for this soon.
@@ -88,16 +85,11 @@ func (udc *UserDevicesController) UpdateVINV2(c *fiber.Ctx) error {
 	}
 
 	req.VIN = strings.TrimSpace(strings.ToUpper(req.VIN))
-	isJapanVIN := strings.Contains(req.VIN, "-") && len(req.VIN) > 10 && len(req.VIN) <= 17
 
-	if !isJapanVIN {
-		if len(req.VIN) != 17 {
-			return fiber.NewError(fiber.StatusBadRequest, "VIN must be 17 characters.")
-		}
-		for _, r := range req.VIN {
-			if !validVINChar(r) {
-				return fiber.NewError(fiber.StatusBadRequest, "VIN contains a non-alphanumeric character.")
-			}
+	vin := vinutil.VIN(req.VIN)
+	if !vin.IsValidVIN() {
+		if !vin.IsValidJapanChassis() {
+			return fiber.NewError(fiber.StatusBadRequest, "Invalid VIN.")
 		}
 	}
 
