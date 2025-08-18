@@ -448,7 +448,7 @@ func (t *teslaFleetAPIService) SubscribeForTelemetryData(ctx context.Context, to
 	}
 
 	if slices.Contains(subResp.Response.SkippedVehicles.MaxConfigs, vin) {
-		return &TeslaSubscriptionError{internal: "vehicle firmware not supported", Type: MaxConfigs}
+		return &TeslaSubscriptionError{internal: "vehicle has the maximum number of telemetry configurations", Type: MaxConfigs}
 	}
 
 	return nil
