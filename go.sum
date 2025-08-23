@@ -84,6 +84,10 @@ github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb
 github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3/go.mod h1:+8E6RVHd04ewjrSOohmLf82Grt0kfSaVTQlCnHCTLZU=
 github.com/DIMO-Network/tesla-oracle v0.2.1-0.20250806202830-1a6505184b53 h1:TWTCX2QK8Kb0MmX43XD/l8AMPHsPFCia1RAEirLFBbA=
 github.com/DIMO-Network/tesla-oracle v0.2.1-0.20250806202830-1a6505184b53/go.mod h1:b5e4yRUH2+uP+Aa6jwQVT0vn4UJmSXWF/QU96FTRdZw=
+github.com/DIMO-Network/tesla-oracle v0.3.1-0.20250822005404-907cc058b3b7 h1:+Q7BEQEYoooOuI7JKHbGA+xg2117dgs6pR4QieAOJ8g=
+github.com/DIMO-Network/tesla-oracle v0.3.1-0.20250822005404-907cc058b3b7/go.mod h1:zKZJJBT/UF+PiFQJuJQ38abzMfgg49YsMtAoDsi69dE=
+github.com/DIMO-Network/tesla-oracle v0.3.1-0.20250822163135-492a992cf874 h1:EmsVIk6SL4dI+nS+vkrQWx5YBJ7CuiW/YG2u4rWpEIs=
+github.com/DIMO-Network/tesla-oracle v0.3.1-0.20250822163135-492a992cf874/go.mod h1:zKZJJBT/UF+PiFQJuJQ38abzMfgg49YsMtAoDsi69dE=
 github.com/DIMO-Network/vehicle-signal-decoding v0.10.17 h1:VQIO1b2o0xrMBu5+VgE2FRuGI42prNjrTvEZvqQxcq8=
 github.com/DIMO-Network/vehicle-signal-decoding v0.10.17/go.mod h1:sHuoQg4ho/7kpxQtO5rwZBBBxApQTF4IeVdc5cO6g3Y=
 github.com/DIMO-Network/yaml v0.1.0 h1:KQ3oKHUZETchR6Pxbmmol3e4ewrPv/q8cEwqxfwyZbU=

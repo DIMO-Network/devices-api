@@ -48,16 +48,14 @@ require (
 )
 
 require (
-	github.com/DIMO-Network/tesla-oracle v0.0.0-00010101000000-000000000000
 	github.com/DIMO-Network/vehicle-signal-decoding v0.10.17
 	github.com/customerio/cdp-analytics-go v0.0.0-20241122010508-c8b722f2b82c
 )
 
-replace github.com/DIMO-Network/tesla-oracle => github.com/DIMO-Network/tesla-oracle v0.2.1-0.20250806202830-1a6505184b53
-
 require (
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/ClickHouse/ch-go v0.65.1 // indirect
+	github.com/DIMO-Network/tesla-oracle v0.3.1-0.20250822163135-492a992cf874 // indirect
 	github.com/DIMO-Network/yaml v0.1.0 // indirect
 	github.com/MicahParks/keyfunc/v2 v2.1.0 // indirect
 	github.com/avast/retry-go v3.0.0+incompatible // indirect

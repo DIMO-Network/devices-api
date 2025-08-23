@@ -51,9 +51,14 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/queries/qmhelper"
 	"github.com/volatiletech/sqlboiler/v4/types"
+	"google.golang.org/grpc"
 )
 
 var _ = signer.TypedData{} // Use this package so that the swag command doesn't throw a fit.
+
+type TeslaOracle interface {
+	RegisterNewSyntheticDeviceV2(ctx context.Context, in *pb_oracle.RegisterNewSyntheticDeviceV2Request, opts ...grpc.CallOption) (*pb_oracle.RegisterNewSyntheticDeviceV2Response, error)
+}
 
 type UserDevicesController struct {
 	Settings              *config.Settings
@@ -62,7 +67,7 @@ type UserDevicesController struct {
 	DeviceDefIntSvc       services.DeviceDefinitionIntegrationService
 	log                   *zerolog.Logger
 	teslaTaskService      services.TeslaTaskService
-	teslaOracle           pb_oracle.TeslaOracleClient
+	teslaOracle           TeslaOracle
 	cipher                cipher.Cipher
 	autoPiSvc             services.AutoPiAPIService
 	autoPiIngestRegistrar services.IngestRegistrar
@@ -1053,32 +1058,27 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		}
 
 		if newIdents != nil {
+			// Yes, yes, this is all ugly.
 			if newIdents.Name == "Smartcar" {
 				return fiber.NewError(fiber.StatusBadRequest, "Smartcar mints are no longer supported.")
 			}
-
-			var seq struct {
-				NextVal int `boil:"nextval"`
+			if newIdents.Name != "Tesla" {
+				return fiber.NewError(fiber.StatusBadRequest, "Can't mint synthetic devices other than Teslas.")
 			}
 
-			qry := fmt.Sprintf("SELECT nextval('%s.synthetic_devices_serial_sequence');", udc.Settings.DB.Name)
-			err := queries.Raw(qry).Bind(c.Context(), tx, &seq)
+			// register synthetic device with tesla oracle
+			regResp, err := udc.teslaOracle.RegisterNewSyntheticDeviceV2(c.Context(), &pb_oracle.RegisterNewSyntheticDeviceV2Request{
+				Vin: userDevice.VinIdentifier.String,
+			})
 			if err != nil {
-				return err
-			}
-
-			childNum := seq.NextVal
-
-			addr, err := udc.wallet.GetAddress(c.Context(), uint32(childNum))
-			if err != nil {
-				return err
+				return fmt.Errorf("oracle registration call failed: %w", err)
 			}
 
 			sd := models.SyntheticDevice{
 				IntegrationTokenID: types.NewDecimal(decimal.New(newIdents.IntegrationNode.Int64(), 0)),
 				MintRequestID:      requestID,
-				WalletChildNumber:  seq.NextVal,
-				WalletAddress:      addr,
+				WalletChildNumber:  int(regResp.WalletChildNum),
+				WalletAddress:      regResp.SyntheticDeviceAddress,
 			}
 
 			if err := sd.Insert(c.Context(), tx, boil.Infer()); err != nil {
@@ -1102,24 +1102,13 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				return err
 			}
 
-			sign, err := udc.wallet.SignHash(c.Context(), uint32(childNum), hash)
+			sign, err := udc.wallet.SignHash(c.Context(), regResp.WalletChildNum, hash)
 			if err != nil {
 				return err
 			}
 
 			if err := tx.Commit(); err != nil {
 				return err
-			}
-
-			// register synthetic device with tesla oracle
-			if newIdents.Name == "Tesla" {
-				if _, err := udc.teslaOracle.RegisterNewSyntheticDevice(c.Context(), &pb_oracle.RegisterNewSyntheticDeviceRequest{
-					Vin:                    userDevice.VinIdentifier.String,
-					SyntheticDeviceAddress: sd.WalletAddress,
-					WalletChildNum:         uint64(sd.WalletChildNumber),
-				}); err != nil {
-					logger.Err(err).Msg("failed to register synthetic device with tesla oracle")
-				}
 			}
 
 			var maybeIntegrationNode *big.Int
@@ -1137,7 +1126,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 					IntegrationNode:      maybeIntegrationNode,
 					VehicleOwnerSig:      sigBytes,
 					SyntheticDeviceSig:   sign,
-					SyntheticDeviceAddr:  common.BytesToAddress(addr),
+					SyntheticDeviceAddr:  common.BytesToAddress(regResp.SyntheticDeviceAddress),
 					AttrInfoPairsVehicle: attrListsToAttrPairs(mvs.Attributes, mvs.Infos),
 					AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
 				})
@@ -1150,7 +1139,7 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 				IntegrationNode:      maybeIntegrationNode,
 				VehicleOwnerSig:      sigBytes,
 				SyntheticDeviceSig:   sign,
-				SyntheticDeviceAddr:  common.BytesToAddress(addr),
+				SyntheticDeviceAddr:  common.BytesToAddress(regResp.SyntheticDeviceAddress),
 				AttrInfoPairsVehicle: attrListsToAttrPairs(mvs.Attributes, mvs.Infos),
 				AttrInfoPairsDevice:  []contracts.AttributeInfoPair{},
 			}, contracts.SacdInput{
@@ -1249,14 +1238,6 @@ type UpdateVINReq struct {
 	Signature string `json:"signature" example:"16b15f88bbd2e0a22d1d0084b8b7080f2003ea83eab1a00f80d8c18446c9c1b6224f17aa09eaf167717ca4f355bb6dc94356e037edf3adf6735a86fc3741f5231b" validate:"optional"`
 }
 
-type UpdateCountryCodeReq struct {
-	CountryCode *string `json:"countryCode"`
-}
-
-type UpdateImageURLReq struct {
-	ImageURL *string `json:"imageUrl"`
-}
-
 func (reg *RegisterUserDevice) Validate() error {
 	return validation.ValidateStruct(reg,
 		// todo add DefinitionId as validated after mobile app updates
@@ -1332,13 +1313,6 @@ type SyntheticDeviceStatus struct {
 	// BurnTransaction contains the status of the synthetic device burning meta-transaction,
 	// if one is in flight or has failed.
 	BurnTransaction *TransactionStatus `json:"burnTransaction,omitempty"`
-}
-
-type VINCredentialData struct {
-	IssuedAt  time.Time `json:"issuedAt"`
-	ExpiresAt time.Time `json:"expiresAt"`
-	Valid     bool      `json:"valid"`
-	VIN       string    `json:"vin"`
 }
 
 func (udc *UserDevicesController) checkVehicleMint(c *fiber.Ctx, userDevice *models.UserDevice) (*registry.MintVehicleSign, *ddgrpc.GetDeviceDefinitionItemResponse, error) {
