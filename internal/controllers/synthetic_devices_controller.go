@@ -405,15 +405,6 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return err
 	}
 
-	// register synthetic device with tesla oracle
-	if newIntegIDs.Name == "Tesla" {
-		if _, err := sdc.teslaOracle.RegisterNewSyntheticDeviceV2(c.Context(), &pb_oracle.RegisterNewSyntheticDeviceV2Request{
-			Vin: ud.VinIdentifier.String,
-		}); err != nil {
-			sdc.log.Err(err).Msg("failed to register synthetic device with tesla oracle")
-		}
-	}
-
 	return c.JSON(fiber.Map{"message": "Submitted synthetic device mint request."})
 }
 
