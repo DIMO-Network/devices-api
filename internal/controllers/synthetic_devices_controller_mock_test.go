@@ -42,22 +42,22 @@ func (m *MockTeslaOracleClient) EXPECT() *MockTeslaOracleClientMockRecorder {
 	return m.recorder
 }
 
-// RegisterNewSyntheticDevice mocks base method.
-func (m *MockTeslaOracleClient) RegisterNewSyntheticDevice(ctx context.Context, in *grpc.RegisterNewSyntheticDeviceRequest, opts ...grpc0.CallOption) (*grpc.RegisterNewSyntheticDeviceResponse, error) {
+// RegisterNewSyntheticDeviceV2 mocks base method.
+func (m *MockTeslaOracleClient) RegisterNewSyntheticDeviceV2(ctx context.Context, in *grpc.RegisterNewSyntheticDeviceV2Request, opts ...grpc0.CallOption) (*grpc.RegisterNewSyntheticDeviceV2Response, error) {
 	m.ctrl.T.Helper()
 	varargs := []any{ctx, in}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
-	ret := m.ctrl.Call(m, "RegisterNewSyntheticDevice", varargs...)
-	ret0, _ := ret[0].(*grpc.RegisterNewSyntheticDeviceResponse)
+	ret := m.ctrl.Call(m, "RegisterNewSyntheticDeviceV2", varargs...)
+	ret0, _ := ret[0].(*grpc.RegisterNewSyntheticDeviceV2Response)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// RegisterNewSyntheticDevice indicates an expected call of RegisterNewSyntheticDevice.
-func (mr *MockTeslaOracleClientMockRecorder) RegisterNewSyntheticDevice(ctx, in any, opts ...any) *gomock.Call {
+// RegisterNewSyntheticDeviceV2 indicates an expected call of RegisterNewSyntheticDeviceV2.
+func (mr *MockTeslaOracleClientMockRecorder) RegisterNewSyntheticDeviceV2(ctx, in any, opts ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, in}, opts...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterNewSyntheticDevice", reflect.TypeOf((*MockTeslaOracleClient)(nil).RegisterNewSyntheticDevice), varargs...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterNewSyntheticDeviceV2", reflect.TypeOf((*MockTeslaOracleClient)(nil).RegisterNewSyntheticDeviceV2), varargs...)
 }

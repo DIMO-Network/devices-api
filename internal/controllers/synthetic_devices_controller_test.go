@@ -233,10 +233,8 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceTesla() {
 		"signature": "%s"
 	}`, hexutil.Encode(signature))
 
-	s.mockOracle.EXPECT().RegisterNewSyntheticDevice(gomock.Any(), &pb_oracle.RegisterNewSyntheticDeviceRequest{
-		Vin:                    ud.VinIdentifier.String,
-		SyntheticDeviceAddress: deviceEthAddr.Bytes(),
-		WalletChildNum:         1,
+	s.mockOracle.EXPECT().RegisterNewSyntheticDeviceV2(gomock.Any(), &pb_oracle.RegisterNewSyntheticDeviceRequest{
+		Vin: ud.VinIdentifier.String,
 	})
 
 	request := test.BuildRequest("POST", fmt.Sprintf("/v1/user/devices/%s/integrations/%s/commands/mint", udID, teslaKSUID), req)
