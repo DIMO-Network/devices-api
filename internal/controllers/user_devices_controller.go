@@ -1058,10 +1058,6 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 		}
 
 		if newIdents != nil {
-			// Yes, yes, this is all ugly.
-			if newIdents.Name == "Smartcar" {
-				return fiber.NewError(fiber.StatusBadRequest, "Smartcar mints are no longer supported.")
-			}
 			if newIdents.Name != "Tesla" {
 				return fiber.NewError(fiber.StatusBadRequest, "Can't mint synthetic devices other than Teslas.")
 			}
