@@ -48,12 +48,10 @@ require (
 )
 
 require (
-	github.com/DIMO-Network/tesla-oracle v0.0.0-00010101000000-000000000000
+	github.com/DIMO-Network/tesla-oracle v0.3.1
 	github.com/DIMO-Network/vehicle-signal-decoding v0.10.17
 	github.com/customerio/cdp-analytics-go v0.0.0-20241122010508-c8b722f2b82c
 )
-
-replace github.com/DIMO-Network/tesla-oracle => github.com/DIMO-Network/tesla-oracle v0.2.1-0.20250806202830-1a6505184b53
 
 require (
 	dario.cat/mergo v1.0.1 // indirect

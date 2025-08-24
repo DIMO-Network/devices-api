@@ -27,7 +27,6 @@ import (
 	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"google.golang.org/grpc"
@@ -44,7 +43,7 @@ type SyntheticDevicesController struct {
 }
 
 type TeslaOracleClient interface {
-	RegisterNewSyntheticDevice(ctx context.Context, in *pb_oracle.RegisterNewSyntheticDeviceRequest, opts ...grpc.CallOption) (*pb_oracle.RegisterNewSyntheticDeviceResponse, error)
+	RegisterNewSyntheticDeviceV2(ctx context.Context, in *pb_oracle.RegisterNewSyntheticDeviceV2Request, opts ...grpc.CallOption) (*pb_oracle.RegisterNewSyntheticDeviceV2Response, error)
 }
 
 type MintSyntheticDeviceRequest struct {
@@ -333,29 +332,29 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		}
 	}
 
-	childKeyNumber, err := sdc.generateNextChildKeyNumber(c.Context())
-	if err != nil {
-		sdc.log.Err(err).Msg("failed to generate sequence from database")
-		return fiber.NewError(fiber.StatusInternalServerError, "synthetic device minting request failed")
+	if newIntegIDs.Name != "Tesla" {
+		return fiber.NewError(fiber.StatusBadRequest, "Can't mint non-Tesla devices from this API.")
 	}
+
+	regResp, err := sdc.teslaOracle.RegisterNewSyntheticDeviceV2(c.Context(), &pb_oracle.RegisterNewSyntheticDeviceV2Request{
+		Vin: ud.VinIdentifier.String,
+	})
+	if err != nil {
+		return fmt.Errorf("oracle registration call failed: %w", err)
+	}
+
+	sdAddr := regResp.SyntheticDeviceAddress
+	walletChildNum := regResp.WalletChildNum
 
 	requestID := ksuid.New().String()
 
-	syntheticDeviceAddr, err := sdc.walletSvc.GetAddress(c.Context(), uint32(childKeyNumber))
-	if err != nil {
-		sdc.log.Err(err).
-			Str("function-name", "SyntheticWallet.GetAddress").
-			Int("childKeyNumber", childKeyNumber).
-			Msg("Error occurred getting synthetic wallet address")
-		return err
-	}
-
-	virtSig, err := sdc.walletSvc.SignHash(c.Context(), uint32(childKeyNumber), tdHash)
+	// Could have the oracle do this, too.
+	virtSig, err := sdc.walletSvc.SignHash(c.Context(), walletChildNum, tdHash)
 	if err != nil {
 		sdc.log.Err(err).
 			Str("function-name", "SyntheticWallet.SignHash").
 			Bytes("Hash", tdHash).
-			Int("childKeyNumber", childKeyNumber).
+			Uint32("childKeyNumber", walletChildNum).
 			Msg("Error occurred signing message hash")
 		return err
 	}
@@ -373,8 +372,8 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 	syntheticDevice := &models.SyntheticDevice{
 		VehicleTokenID:     types.NewNullDecimal(decimal.New(vid, 0)),
 		IntegrationTokenID: types.NewDecimal(new(decimal.Big).SetBigMantScale(newIntegIDs.IntegrationNode, 0)),
-		WalletChildNumber:  childKeyNumber,
-		WalletAddress:      syntheticDeviceAddr,
+		WalletChildNumber:  int(walletChildNum),
+		WalletAddress:      sdAddr,
 		MintRequestID:      requestID,
 	}
 
@@ -398,23 +397,12 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		IntegrationNode:     realID,
 		VehicleNode:         new(big.Int).SetInt64(vid),
 		VehicleOwnerSig:     ownerSignature,
-		SyntheticDeviceAddr: common.BytesToAddress(syntheticDeviceAddr),
+		SyntheticDeviceAddr: common.BytesToAddress(sdAddr),
 		SyntheticDeviceSig:  virtSig,
 	}
 
 	if err := sdc.registryClient.MintSyntheticDeviceSign(requestID, mvt); err != nil {
 		return err
-	}
-
-	// register synthetic device with tesla oracle
-	if newIntegIDs.Name == "Tesla" {
-		if _, err := sdc.teslaOracle.RegisterNewSyntheticDevice(c.Context(), &pb_oracle.RegisterNewSyntheticDeviceRequest{
-			Vin:                    ud.VinIdentifier.String,
-			SyntheticDeviceAddress: syntheticDeviceAddr,
-			WalletChildNum:         uint64(childKeyNumber),
-		}); err != nil {
-			sdc.log.Err(err).Msg("failed to register synthetic device with tesla oracle")
-		}
 	}
 
 	return c.JSON(fiber.Map{"message": "Submitted synthetic device mint request."})
@@ -598,18 +586,6 @@ func (sdc *SyntheticDevicesController) BurnSyntheticDevice(c *fiber.Ctx) error {
 	}
 
 	return sdc.registryClient.BurnSyntheticDeviceSign(reqID, big.NewInt(vehicleNode), big.NewInt(syntheticDeviceNode), ownerSignature)
-}
-
-func (sdc *SyntheticDevicesController) generateNextChildKeyNumber(ctx context.Context) (int, error) {
-	seq := SyntheticDeviceSequence{}
-
-	qry := fmt.Sprintf("SELECT nextval('%s.synthetic_devices_serial_sequence');", sdc.Settings.DB.Name)
-	err := queries.Raw(qry).Bind(ctx, sdc.DBS().Reader, &seq)
-	if err != nil {
-		return 0, err
-	}
-
-	return seq.NextVal, nil
 }
 
 func (sdc *SyntheticDevicesController) getEIP712Burn(vehicleNode, syntheticDeviceNode int64) *signer.TypedData {
