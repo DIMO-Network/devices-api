@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
@@ -34,6 +35,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"go.uber.org/mock/gomock"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 //go:generate mockgen -source synthetic_devices_controller.go -destination synthetic_devices_controller_mock_test.go -package controllers
@@ -205,7 +207,14 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceTesla() {
 	_, err := ud.Update(s.ctx, s.pdb.DBS().Writer, boil.Infer())
 	s.Require().NoError(err)
 
-	test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, teslaKSUID, s.pdb)
+	udai := test.SetupCreateUserDeviceAPIIntegration(s.T(), "", "xddL", udID, teslaKSUID, s.pdb)
+
+	udai.AccessToken = null.StringFrom("xdd_access_token")
+	udai.RefreshToken = null.StringFrom("xdd_refresh_token")
+	udai.AccessExpiresAt = null.TimeFrom(time.Date(2025, time.March, 9, 0, 0, 0, 0, time.UTC))
+
+	_, err = udai.Update(s.T().Context(), s.pdb.DBS().Writer, boil.Infer())
+	s.Require().NoError(err)
 
 	vehicleSig := common.BytesToHash(common.HexToAddress("20").Bytes()).Bytes()
 	s.syntheticDeviceSigSvc.EXPECT().SignHash(gomock.Any(), gomock.Any(), gomock.Any()).Return(vehicleSig, nil).AnyTimes()
@@ -234,7 +243,11 @@ func (s *SyntheticDevicesControllerTestSuite) Test_MintSyntheticDeviceTesla() {
 	}`, hexutil.Encode(signature))
 
 	s.mockOracle.EXPECT().RegisterNewSyntheticDeviceV2(gomock.Any(), &pb_oracle.RegisterNewSyntheticDeviceV2Request{
-		Vin: ud.VinIdentifier.String,
+		Vin:                   ud.VinIdentifier.String,
+		EncryptedAccessToken:  "xdd_access_token",
+		EncryptedRefreshToken: "xdd_refresh_token",
+		AccessTokenExpiry:     timestamppb.New(time.Date(2025, time.March, 9, 0, 0, 0, 0, time.UTC)),
+		RefreshTokenExpiry:    timestamppb.New(time.Date(2025, time.March, 9, 0, 0, 0, 0, time.UTC).Add((-8 + 3*30*24) * time.Hour)),
 	}).Return(&pb_oracle.RegisterNewSyntheticDeviceV2Response{
 		WalletChildNum:         7,
 		SyntheticDeviceAddress: common.FromHex("0xfF828AC22086188d2dbeF411b73731100944e38D"),
