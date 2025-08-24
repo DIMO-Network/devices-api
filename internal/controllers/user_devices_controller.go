@@ -52,6 +52,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qmhelper"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var _ = signer.TypedData{} // Use this package so that the swag command doesn't throw a fit.
@@ -1049,10 +1050,12 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 	if udais := userDevice.R.UserDeviceAPIIntegrations; len(udais) != 0 {
 		var newIdents *utils.ConnectionChainIDs
+		var mintUDAI *models.UserDeviceAPIIntegration
 
 		for _, udai := range udais {
 			if info, ok := utils.SyntheticIntegrationKSUIDToOtherIDs[udai.IntegrationID]; ok {
 				newIdents = info
+				mintUDAI = udai
 				break
 			}
 		}
@@ -1064,7 +1067,13 @@ func (udc *UserDevicesController) PostMintDevice(c *fiber.Ctx) error {
 
 			// register synthetic device with tesla oracle
 			regResp, err := udc.teslaOracle.RegisterNewSyntheticDeviceV2(c.Context(), &pb_oracle.RegisterNewSyntheticDeviceV2Request{
-				Vin: userDevice.VinIdentifier.String,
+				Vin:                   userDevice.VinIdentifier.String,
+				EncryptedAccessToken:  mintUDAI.AccessToken.String,
+				EncryptedRefreshToken: mintUDAI.RefreshToken.String,
+				AccessTokenExpiry:     timestamppb.New(mintUDAI.AccessExpiresAt.Time),
+				// Tesla says the refresh token lasts "3 months". Unclear what exactly this means.
+				// We subtract 8 hours assuming that Tesla's expires_in continues to be 8 hours.
+				RefreshTokenExpiry: timestamppb.New(mintUDAI.AccessExpiresAt.Time.Add(-8*time.Hour + 3*30*24*time.Hour)),
 			})
 			if err != nil {
 				return fmt.Errorf("oracle registration call failed: %w", err)
