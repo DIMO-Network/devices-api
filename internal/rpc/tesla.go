@@ -221,6 +221,30 @@ func (s *teslaRPCServer) ConfigureFleetTelemetry(ctx context.Context, req *pb.Co
 	return &pb.ConfigureFleetTelemetryResponse{}, nil
 }
 
+func (s *teslaRPCServer) RemoveFleetTelemetry(ctx context.Context, req *pb.RemoveFleetTelemetryRequest) (*pb.RemoveFleetTelemetryResponse, error) {
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(req.VehicleTokenId, 0))),
+	).One(ctx, s.dbs().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, status.Error(codes.NotFound, "No Vehicle with that token id found.")
+		}
+		return nil, err
+	}
+
+	tac, err := s.teslaAPI.GeneratePartnerToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get partner token: %w", err)
+	}
+
+	_, err = s.teslaAPI.RemoveTelemetry(ctx, tac.AccessToken, ud.VinIdentifier.String)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.RemoveFleetTelemetryResponse{}, nil
+}
+
 func (s *teslaRPCServer) GetScopes(ctx context.Context, req *pb.GetScopesRequest) (*pb.GetScopesResponse, error) {
 	ud, err := models.UserDevices(
 		models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(req.VehicleTokenId, 0))),

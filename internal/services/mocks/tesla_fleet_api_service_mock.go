@@ -56,6 +56,21 @@ func (mr *MockTeslaFleetAPIServiceMockRecorder) CompleteTeslaAuthCodeExchange(ct
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompleteTeslaAuthCodeExchange", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).CompleteTeslaAuthCodeExchange), ctx, authCode, redirectURI)
 }
 
+// GeneratePartnerToken mocks base method.
+func (m *MockTeslaFleetAPIService) GeneratePartnerToken(ctx context.Context) (*services.TeslaAuthCodeResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GeneratePartnerToken", ctx)
+	ret0, _ := ret[0].(*services.TeslaAuthCodeResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GeneratePartnerToken indicates an expected call of GeneratePartnerToken.
+func (mr *MockTeslaFleetAPIServiceMockRecorder) GeneratePartnerToken(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GeneratePartnerToken", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).GeneratePartnerToken), ctx)
+}
+
 // GetAvailableCommands mocks base method.
 func (m *MockTeslaFleetAPIService) GetAvailableCommands(token string) (*services.UserDeviceAPIIntegrationsMetadataCommands, error) {
 	m.ctrl.T.Helper()
@@ -114,6 +129,21 @@ func (m *MockTeslaFleetAPIService) GetVehicles(ctx context.Context, token string
 func (mr *MockTeslaFleetAPIServiceMockRecorder) GetVehicles(ctx, token any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVehicles", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).GetVehicles), ctx, token)
+}
+
+// RemoveTelemetry mocks base method.
+func (m *MockTeslaFleetAPIService) RemoveTelemetry(ctx context.Context, token, vin string) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveTelemetry", ctx, token, vin)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RemoveTelemetry indicates an expected call of RemoveTelemetry.
+func (mr *MockTeslaFleetAPIServiceMockRecorder) RemoveTelemetry(ctx, token, vin any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveTelemetry", reflect.TypeOf((*MockTeslaFleetAPIService)(nil).RemoveTelemetry), ctx, token, vin)
 }
 
 // SubscribeForTelemetryData mocks base method.

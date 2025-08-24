@@ -20,6 +20,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog"
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/clientcredentials"
 )
 
 type TeslaVehicle struct {
@@ -31,11 +32,13 @@ type TeslaVehicle struct {
 //go:generate mockgen -source tesla_fleet_api_service.go -destination mocks/tesla_fleet_api_service_mock.go
 type TeslaFleetAPIService interface {
 	CompleteTeslaAuthCodeExchange(ctx context.Context, authCode, redirectURI string) (*TeslaAuthCodeResponse, error)
+	GeneratePartnerToken(ctx context.Context) (*TeslaAuthCodeResponse, error)
 	GetVehicles(ctx context.Context, token string) ([]TeslaVehicle, error)
 	GetVehicle(ctx context.Context, token string, vehicleID int) (*TeslaVehicle, error)
 	WakeUpVehicle(ctx context.Context, token string, vehicleID int) error
 	GetAvailableCommands(token string) (*UserDeviceAPIIntegrationsMetadataCommands, error)
 	VirtualKeyConnectionStatus(ctx context.Context, token, vin string) (*VehicleFleetStatus, error)
+	RemoveTelemetry(ctx context.Context, token string, vin string) (int, error)
 	SubscribeForTelemetryData(ctx context.Context, token, vin string) error
 	GetTelemetrySubscriptionStatus(ctx context.Context, token, vin string) (*VehicleTelemetryStatus, error)
 }
@@ -195,6 +198,57 @@ func (t *teslaFleetAPIService) CompleteTeslaAuthCodeExchange(ctx context.Context
 		Expiry:       tok.Expiry,
 		TokenType:    tok.TokenType,
 	}, nil
+}
+
+// GeneratePartnerToken generates an access token for client-wide operations. Mostly we use this for
+// removing vehicles.
+func (t *teslaFleetAPIService) GeneratePartnerToken(ctx context.Context) (*TeslaAuthCodeResponse, error) {
+	conf := clientcredentials.Config{
+		ClientID:     t.Settings.TeslaClientID,
+		ClientSecret: t.Settings.TeslaClientSecret,
+		TokenURL:     t.Settings.TeslaTokenURL,
+		Scopes:       teslaScopes,
+	}
+
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
+	defer cancel()
+
+	tok, err := conf.Token(ctxTimeout)
+	if err != nil {
+		t.log.Err(err).Msg("Partner token generation failure.")
+		return nil, err
+	}
+
+	return &TeslaAuthCodeResponse{
+		AccessToken:  tok.AccessToken,
+		RefreshToken: tok.RefreshToken,
+		Expiry:       tok.Expiry,
+		TokenType:    tok.TokenType,
+	}, nil
+}
+
+type deleteTelemResp struct {
+	UpdatedVehicles int `json:"updated_vehicles"`
+}
+
+// token here can be a third-party token from the user or our partner token.
+func (t *teslaFleetAPIService) RemoveTelemetry(ctx context.Context, token string, vin string) (int, error) {
+	url := t.FleetBase.JoinPath("api/1/vehicles", vin, "fleet_telemetry_config")
+
+	body, err := t.performRequest(ctx, url, token, http.MethodDelete, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	var subResp TeslaResponseWrapper[deleteTelemResp]
+	err = json.Unmarshal(body, &subResp)
+	if err != nil {
+		return 0, err
+	}
+
+	t.log.Info().Str("rawResp", string(body)).Msg("Raw delete telemetry config response.")
+
+	return subResp.Response.UpdatedVehicles, nil
 }
 
 // GetVehicles calls Tesla Fleet API to get a list of vehicles using authorization token
