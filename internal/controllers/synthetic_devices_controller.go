@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/contracts"
@@ -30,6 +31,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type SyntheticDevicesController struct {
@@ -336,8 +338,16 @@ func (sdc *SyntheticDevicesController) MintSyntheticDevice(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Can't mint non-Tesla devices from this API.")
 	}
 
+	udai := ud.R.UserDeviceAPIIntegrations[0]
+
 	regResp, err := sdc.teslaOracle.RegisterNewSyntheticDeviceV2(c.Context(), &pb_oracle.RegisterNewSyntheticDeviceV2Request{
-		Vin: ud.VinIdentifier.String,
+		Vin:                   ud.VinIdentifier.String,
+		EncryptedAccessToken:  udai.AccessToken.String,
+		EncryptedRefreshToken: udai.RefreshToken.String,
+		AccessTokenExpiry:     timestamppb.New(udai.AccessExpiresAt.Time),
+		// Tesla says the refresh token lasts "3 months". Unclear what exactly this means.
+		// We subtract 8 hours assuming that Tesla's expires_in continues to be 8 hours.
+		RefreshTokenExpiry: timestamppb.New(udai.AccessExpiresAt.Time.Add(-8*time.Hour + 3*30*24*time.Hour)),
 	})
 	if err != nil {
 		return fmt.Errorf("oracle registration call failed: %w", err)
