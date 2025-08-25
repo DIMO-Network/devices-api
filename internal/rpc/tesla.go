@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/DIMO-Network/devices-api/internal/config"
 	"github.com/DIMO-Network/devices-api/internal/services"
@@ -45,12 +47,14 @@ func NewTeslaRPCService(
 // userDeviceRPCServer is the grpc server implementation for the proto services
 type teslaRPCServer struct {
 	pb.UnimplementedTeslaServiceServer
-	dbs      func() *db.ReaderWriter
-	logger   *zerolog.Logger
-	settings *config.Settings
-	cipher   cip.Cipher
-	teslaAPI services.TeslaFleetAPIService
-	taskSvc  services.TeslaTaskService
+	dbs        func() *db.ReaderWriter
+	logger     *zerolog.Logger
+	settings   *config.Settings
+	cipher     cip.Cipher
+	teslaAPI   services.TeslaFleetAPIService
+	taskSvc    services.TeslaTaskService
+	partnerMu  sync.Mutex
+	partnerTok *services.TeslaAuthCodeResponse
 }
 
 func convertBoolRef(b *bool) *wrapperspb.BoolValue {
@@ -232,12 +236,17 @@ func (s *teslaRPCServer) RemoveFleetTelemetry(ctx context.Context, req *pb.Remov
 		return nil, err
 	}
 
-	tac, err := s.teslaAPI.GeneratePartnerToken(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get partner token: %w", err)
+	s.partnerMu.Lock()
+	defer s.partnerMu.Unlock()
+	if s.partnerTok == nil || time.Now().After(s.partnerTok.Expiry.Add(-10*time.Second)) {
+		tac, err := s.teslaAPI.GeneratePartnerToken(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get partner token: %w", err)
+		}
+		s.partnerTok = tac
 	}
 
-	_, err = s.teslaAPI.RemoveTelemetry(ctx, tac.AccessToken, ud.VinIdentifier.String)
+	_, err = s.teslaAPI.RemoveTelemetry(ctx, s.partnerTok.AccessToken, ud.VinIdentifier.String)
 	if err != nil {
 		return nil, err
 	}
