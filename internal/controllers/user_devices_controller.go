@@ -52,6 +52,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qmhelper"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -82,6 +83,7 @@ type UserDevicesController struct {
 	teslaFleetAPISvc      services.TeslaFleetAPIService
 	ipfsSvc               *ipfs.IPFS
 	clickHouseConn        clickhouse.Conn
+	oracleClient          pb_oracle.TeslaOracleClient
 }
 
 // PrivilegedDevices contains all devices for which a privilege has been shared
@@ -133,6 +135,12 @@ func NewUserDevicesController(settings *config.Settings,
 	ipfsSvc *ipfs.IPFS,
 	chConn clickhouse.Conn,
 ) UserDevicesController {
+	oracleConn, err := grpc.NewClient(settings.TeslaOracleGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Couldn't create oracle client.")
+	}
+	oracleClient := pb_oracle.NewTeslaOracleClient(oracleConn)
+
 	return UserDevicesController{
 		Settings:              settings,
 		DBS:                   dbs,
@@ -154,6 +162,7 @@ func NewUserDevicesController(settings *config.Settings,
 		teslaFleetAPISvc:      teslaFleetAPISvc,
 		ipfsSvc:               ipfsSvc,
 		clickHouseConn:        chConn,
+		oracleClient:          oracleClient,
 	}
 }
 
