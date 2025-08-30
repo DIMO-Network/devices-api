@@ -125,7 +125,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 
 	if udc.Settings.TeslaRequiredScopes != "" {
 		// Yes, wasteful Split.
-		for _, scope := range strings.Split(udc.Settings.TeslaRequiredScopes, ",") {
+		for scope := range strings.SplitSeq(udc.Settings.TeslaRequiredScopes, ",") {
 			if !slices.Contains(claims.Scopes, scope) {
 				resp.Tesla.MissingRequiredScopes = append(resp.Tesla.MissingRequiredScopes, scope)
 			}
@@ -153,12 +153,6 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 
 	fleetTelemetryCapable := IsFleetTelemetryCapable(fleetStatus)
 
-	firmwareUpToDate, err := IsFirmwareFleetTelemetryCapable(fleetStatus.FirmwareVersion)
-	if err != nil {
-		logger.Warn().Err(err).Msgf("Couldn't parse firmware version %q.", fleetStatus.FirmwareVersion)
-		firmwareUpToDate = false
-	}
-
 	resp.Tesla.VirtualKeyAdded = fleetStatus.KeyPaired
 	if !fleetTelemetryCapable {
 		resp.Tesla.VirtualKeyStatus = Incapable
@@ -168,7 +162,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 		resp.Tesla.VirtualKeyStatus = Unpaired
 	}
 
-	if fleetTelemetryCapable && !telemStatus.Configured && fleetStatus.KeyPaired && minted && firmwareUpToDate {
+	if CanSetTelemetryConfig(fleetStatus) && !telemStatus.Configured && minted {
 		vid, _ := apiIntegration.R.UserDevice.TokenID.Int64()
 		err := udc.teslaFleetAPISvc.SubscribeForTelemetryData(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
 		// TODO(elffjs): More SD information in the logs?
@@ -185,6 +179,7 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 
 var teslaFirmwareStart = regexp.MustCompile(`^(\d{4})\.(\d+)`)
 
+// Unclear whether we need this.
 func IsFirmwareFleetTelemetryCapable(v string) (bool, error) {
 	m := teslaFirmwareStart.FindStringSubmatch(v)
 	if len(m) == 0 {
@@ -518,6 +513,15 @@ func IsFleetTelemetryCapable(fs *services.VehicleFleetStatus) bool {
 	return fs.VehicleCommandProtocolRequired || !fs.DiscountedDeviceData
 }
 
+func ShouldNotPoll(fs *services.VehicleFleetStatus) bool {
+	return fs.VehicleCommandProtocolRequired || fs.SafetyScreenStreamingToggleEnabled != nil && *fs.SafetyScreenStreamingToggleEnabled
+}
+
+func CanSetTelemetryConfig(fs *services.VehicleFleetStatus) bool {
+	// Ignoring firmware updates.
+	return fs.VehicleCommandProtocolRequired && fs.KeyPaired || fs.SafetyScreenStreamingToggleEnabled != nil && *fs.SafetyScreenStreamingToggleEnabled
+}
+
 func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zerolog.Logger, tx *sql.Tx, userDeviceID string, integ *ddgrpc.Integration, ud *models.UserDevice) error {
 	if existingIntegrations, err := models.UserDeviceAPIIntegrations(
 		models.UserDeviceAPIIntegrationWhere.UserDeviceID.EQ(userDeviceID),
@@ -579,7 +583,7 @@ func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zero
 		return fmt.Errorf("couldn't retrieve fleet status from Tesla: %w", err)
 	}
 
-	fleetTelemetryCapable := IsFleetTelemetryCapable(fs)
+	fleetTelemetryCapable := ShouldNotPoll(fs)
 
 	// Prevent users from connecting a vehicle if it's already connected through another user
 	// device object. Disabled outside of prod for ease of testing.
