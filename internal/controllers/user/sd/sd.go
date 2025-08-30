@@ -145,7 +145,7 @@ func (co *Controller) PostReauthenticate(c *fiber.Ctx) error {
 			return err
 		}
 
-		fleetTelemetryCapable := controllers.IsFleetTelemetryCapable(fs)
+		fleetTelemetryCapable := controllers.ShouldNotPoll(fs)
 
 		md.TeslaVIN = v.VIN
 		md.TeslaDiscountedData = &fs.DiscountedDeviceData
