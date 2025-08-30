@@ -23,6 +23,7 @@ import (
 	"github.com/DIMO-Network/shared/pkg/grpcfiber"
 	stringspkg "github.com/DIMO-Network/shared/pkg/strings"
 	vinpkg "github.com/DIMO-Network/shared/pkg/vin"
+	pb_oracle "github.com/DIMO-Network/tesla-oracle/pkg/grpc"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
@@ -163,14 +164,23 @@ func (udc *UserDevicesController) GetUserDeviceIntegration(c *fiber.Ctx) error {
 	}
 
 	if CanSetTelemetryConfig(fleetStatus) && !telemStatus.Configured && minted {
-		vid, _ := apiIntegration.R.UserDevice.TokenID.Int64()
-		err := udc.teslaFleetAPISvc.SubscribeForTelemetryData(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
-		// TODO(elffjs): More SD information in the logs?
+		vinResp, err := udc.oracleClient.GetSyntheticDevicesByVIN(c.Context(), &pb_oracle.GetSyntheticDevicesByVINRequest{
+			Vin: apiIntegration.R.UserDevice.VinIdentifier.String,
+		})
 		if err != nil {
-			udc.log.Err(err).Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Failed to configure Fleet Telemetry.")
-		} else {
-			resp.Tesla.TelemetrySubscribed = true
-			udc.log.Info().Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Successfully configured Fleet Telemetry.")
+			udc.log.Err(err).Msg("Failed to get Tesla device.")
+		} else if len(vinResp.SyntheticDevices) == 0 {
+			udc.log.Error().Msg("No synthetics for Tesla VIN.")
+		} else if vinResp.SyntheticDevices[0].SubscriptionStatus != "inactive" {
+			vid, _ := apiIntegration.R.UserDevice.TokenID.Int64()
+			err := udc.teslaFleetAPISvc.SubscribeForTelemetryData(c.Context(), accessToken, apiIntegration.R.UserDevice.VinIdentifier.String)
+			// TODO(elffjs): More SD information in the logs?
+			if err != nil {
+				udc.log.Err(err).Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Failed to configure Fleet Telemetry.")
+			} else {
+				resp.Tesla.TelemetrySubscribed = true
+				udc.log.Info().Int64("vehicleId", vid).Int64("integrationId", 2).Msg("Successfully configured Fleet Telemetry.")
+			}
 		}
 	}
 
