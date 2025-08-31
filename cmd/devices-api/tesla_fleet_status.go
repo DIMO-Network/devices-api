@@ -72,14 +72,15 @@ func (p *teslaFleetStatusCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ..
 
 	b, err := client.GetFleetStatus(ctx, atPlain, ud.VinIdentifier.String)
 	if err != nil {
+		var buf bytes.Buffer
+		json.Indent(&buf, b, "", "  ")
+
+		fmt.Println(buf.String())
 		panic(err)
 	}
 
 	var buf bytes.Buffer
-	err = json.Indent(&buf, b, "", "  ")
-	if err != nil {
-		panic(err)
-	}
+	json.Indent(&buf, b, "", "  ")
 
 	fmt.Println(buf.String())
 
