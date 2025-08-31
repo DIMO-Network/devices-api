@@ -114,6 +114,10 @@ func main() {
 		subcommands.Register(&syncDeviceTemplatesCmd{logger: logger, settings: settings, pdb: pdb}, "user devices")
 		subcommands.Register(&vinDecodeCompareCmd{logger: logger, settings: settings, pdb: pdb}, "user devices")
 
+		cipher := createKMS(&settings, &logger)
+
+		subcommands.Register(&teslaFleetStatusCmd{logger: logger, settings: settings, pdb: pdb, cipher: cipher}, "device integrations")
+
 		flag.Parse()
 		os.Exit(int(subcommands.Execute(ctx)))
 	}

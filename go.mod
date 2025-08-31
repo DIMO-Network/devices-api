@@ -1,6 +1,6 @@
 module github.com/DIMO-Network/devices-api
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/DIMO-Network/device-definitions-api v1.2.94
@@ -48,6 +48,7 @@ require (
 )
 
 require (
+	github.com/DIMO-Network/tesla-go v0.0.0-20250831143026-40ba73073a96
 	github.com/DIMO-Network/tesla-oracle v0.3.1
 	github.com/DIMO-Network/vehicle-signal-decoding v0.10.17
 	github.com/customerio/cdp-analytics-go v0.0.0-20241122010508-c8b722f2b82c
