@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -70,19 +69,14 @@ func (p *teslaFleetStatusCmd) Execute(ctx context.Context, _ *flag.FlagSet, _ ..
 		panic(err)
 	}
 
-	b, err := client.GetFleetStatus(ctx, atPlain, ud.VinIdentifier.String)
+	fs, err := client.GetFleetStatus(ctx, atPlain, ud.VinIdentifier.String)
 	if err != nil {
-		var buf bytes.Buffer
-		json.Indent(&buf, b, "", "  ")
-
-		fmt.Println(buf.String())
 		panic(err)
 	}
 
-	var buf bytes.Buffer
-	json.Indent(&buf, b, "", "  ")
+	b, _ := json.MarshalIndent(fs, "", "  ")
 
-	fmt.Println(buf.String())
+	fmt.Println(string(b))
 
 	return subcommands.ExitSuccess
 }
