@@ -529,7 +529,7 @@ func ShouldNotPoll(fs *services.VehicleFleetStatus) bool {
 
 func CanSetTelemetryConfig(fs *services.VehicleFleetStatus) bool {
 	// Ignoring firmware updates.
-	return fs.VehicleCommandProtocolRequired && fs.KeyPaired || fs.SafetyScreenStreamingToggleEnabled != nil && *fs.SafetyScreenStreamingToggleEnabled
+	return fs.KeyPaired || fs.SafetyScreenStreamingToggleEnabled != nil && *fs.SafetyScreenStreamingToggleEnabled
 }
 
 func (udc *UserDevicesController) registerDeviceTesla(c *fiber.Ctx, logger *zerolog.Logger, tx *sql.Tx, userDeviceID string, integ *ddgrpc.Integration, ud *models.UserDevice) error {
