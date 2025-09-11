@@ -144,7 +144,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc, ipfsSvc, chConn)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
-	countriesController := controllers.NewCountriesController()
 	userIntegrationAuthController := controllers.NewUserIntegrationAuthController(settings, pdb.DBS, &logger, ddSvc, teslaFleetAPISvc, &tmpcred.Store{
 		Redis:  redisCache,
 		Cipher: cipher,
@@ -167,9 +166,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 
 	// Device Definitions
 	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, teslaTaskService, ddIntSvc, teslaOracle)
-
-	v1.Get("/countries", countriesController.GetSupportedCountries)
-	v1.Get("/countries/:countryCode", countriesController.GetCountry)
 
 	// webhooks, performs signature validation
 	v1.Post(constants.AutoPiWebhookPath, webhooksController.ProcessCommand)

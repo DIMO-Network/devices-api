@@ -42,25 +42,6 @@ definitions:
     type: object
   big.Int:
     type: object
-  github_com_DIMO-Network_devices-api_internal_constants.CountryInfo:
-    properties:
-      alpha_2:
-        type: string
-      alpha_3:
-        type: string
-      lora_region:
-        type: string
-      name:
-        type: string
-      region:
-        type: string
-      region_code:
-        type: integer
-      sub_region:
-        type: string
-      sub_region_code:
-        type: integer
-    type: object
   github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes:
     properties:
       code:
@@ -712,40 +693,6 @@ info:
   title: DIMO Devices API
   version: "1.0"
 paths:
-  /countries:
-    get:
-      description: Returns all the supported countries
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_constants.CountryInfo'
-      tags:
-      - countries
-  /countries/{countryCode}:
-    get:
-      description: Returns a specific country by 3-letter ISO country code
-      parameters:
-      - description: 3-letter country code
-        in: path
-        name: countryCode
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_DIMO-Network_devices-api_internal_constants.CountryInfo'
-        "400":
-          description: invalid country code
-        "404":
-          description: country not found with that country code
-      tags:
-      - countries
   /documents:
     get:
       consumes:
