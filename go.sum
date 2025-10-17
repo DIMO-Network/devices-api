@@ -80,8 +80,8 @@ github.com/DIMO-Network/device-definitions-api v1.2.94 h1:YKuk2U5Gu/LqXR+VzUmvPd
 github.com/DIMO-Network/device-definitions-api v1.2.94/go.mod h1:18CMNHMMZ5i/7sb34rv8BxoDK6QWOOQ7apzc7X90/XY=
 github.com/DIMO-Network/meta-transaction-processor v0.3.2 h1:eSf34mSmiRilMbQx+4Iyu6aNm/WWJjbopIGYNjz/Z6w=
 github.com/DIMO-Network/meta-transaction-processor v0.3.2/go.mod h1:qJW4pNqQ4kDeumuZJByjrfrCd8dlrCT3//5V4PVKRqA=
-github.com/DIMO-Network/server-garage v0.0.7 h1:kOBVyOtIbxa1x9pAf1epABTb9l/U3khf0PwUaHeHiKs=
-github.com/DIMO-Network/server-garage v0.0.7/go.mod h1:7DFor8MMJ8fLv9EB16Z5LrN+ftW3qeIk+swpkT7F2cU=
+github.com/DIMO-Network/server-garage v0.0.8 h1:BBU5FtYcRthILbMTH/ZInbP7JCTyVEwKyqQToos/kZs=
+github.com/DIMO-Network/server-garage v0.0.8/go.mod h1:gqfVdlPM7vBOXMTG764dA2kZFq7XQdSvmOxDITXV1W8=
 github.com/DIMO-Network/shared v1.0.7 h1:LfSgsqJ6R7EUyfo2GTfuhrCpoDcweJqe7eVOa4j7Xbo=
 github.com/DIMO-Network/shared v1.0.7/go.mod h1:lDHUKwwT2LW6Zvd42Nb33dXklRNTmfyOlbUNx2dQfGY=
 github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3 h1:XMU6rRN57hoh7IYyuVytsIKzDymrbAnnKECFeVf88Hg=
@@ -348,6 +348,8 @@ github.com/go-faster/errors v0.7.1/go.mod h1:5ySTjWFiphBs07IKuiL69nxdfd5+fzh1u7F
 github.com/go-gl/glfw v0.0.0-20190409004039-e6da0acd62b1/go.mod h1:vR7hzQXu2zJy9AVAgeJqvqgH9Q5CA+iKCZ2gyEVpxRU=
 github.com/go-gl/glfw/v3.3/glfw v0.0.0-20191125211704-12ad95a8df72/go.mod h1:tQ2UAYgL5IevRw8kRxooKSPJfGvJ9fJQFa0TUsXzTg8=
 github.com/go-gl/glfw/v3.3/glfw v0.0.0-20200222043503-6f7a984d4dc4/go.mod h1:tQ2UAYgL5IevRw8kRxooKSPJfGvJ9fJQFa0TUsXzTg8=
+github.com/go-jose/go-jose/v3 v3.0.4 h1:Wp5HA7bLQcKnf6YYao/4kpRpVMp/yf6+pJKV8WFSaNY=
+github.com/go-jose/go-jose/v3 v3.0.4/go.mod h1:5b+7YgP7ZICgJDBdfjZaIt+H/9L9T/YQrVfLAMboGkQ=
 github.com/go-kit/kit v0.8.0/go.mod h1:xBxKIO96dXMWWy0MnWVtmwkA9/13aqxPnvrjFYMA2as=
 github.com/go-kit/kit v0.9.0/go.mod h1:xBxKIO96dXMWWy0MnWVtmwkA9/13aqxPnvrjFYMA2as=
 github.com/go-kit/log v0.1.0/go.mod h1:zbhenjAZHb184qTLMA9ZjW7ThYL0H2mk7Q6pNt4vbaY=

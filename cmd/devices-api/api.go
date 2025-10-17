@@ -174,9 +174,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// webhooks, performs signature validation
 	v1.Post(constants.AutoPiWebhookPath, webhooksController.ProcessCommand)
 
-	privilegeAuth := jwtware.New(jwtware.Config{
-		JWKSetURLs: []string{settings.TokenExchangeJWTKeySetURL},
-	})
+	privilegeAuth := jwtmiddleware.NewJWTMiddleware(settings.JwtKeySetURL)
 
 	newNFTHost, err := url.ParseRequestURI(settings.NewNFTHost)
 	if err != nil {

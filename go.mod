@@ -5,8 +5,13 @@ go 1.25.0
 require (
 	github.com/DIMO-Network/device-definitions-api v1.2.94
 	github.com/DIMO-Network/meta-transaction-processor v0.3.2
+	github.com/DIMO-Network/server-garage v0.0.8
 	github.com/DIMO-Network/shared v1.0.7
 	github.com/DIMO-Network/synthetic-wallet-instance v0.0.0-20230601233541-6a4c8afb27d3
+	github.com/DIMO-Network/tesla-go v0.1.0
+	github.com/DIMO-Network/tesla-oracle v0.3.1
+	github.com/DIMO-Network/token-exchange-api v0.3.7
+	github.com/DIMO-Network/vehicle-signal-decoding v0.10.17
 	github.com/IBM/sarama v1.43.3
 	github.com/ThreeDotsLabs/watermill v1.3.5
 	github.com/ThreeDotsLabs/watermill-kafka/v3 v3.0.1
@@ -15,14 +20,20 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/kms v1.35.5
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.60.1
 	github.com/burdiyan/kafkautil v0.0.0-20240215092415-7e6d3d0fc870
+	github.com/customerio/cdp-analytics-go v0.0.0-20241122010508-c8b722f2b82c
 	github.com/docker/go-connections v0.6.0
 	github.com/ericlagergren/decimal v0.0.0-20240411145413-00de7ca16731 // Do not touch.
 	github.com/friendsofgo/errors v0.9.2
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/goccy/go-json v0.10.4
+	github.com/gofiber/contrib/jwt v1.1.2
 	github.com/gofiber/fiber/v2 v2.52.9
+	github.com/gofiber/swagger v1.1.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/subcommands v1.2.0
+	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
+	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/jarcoal/httpmock v1.1.0
 	github.com/lib/pq v1.10.9
 	github.com/nats-io/nats-server/v2 v2.11.1
@@ -42,20 +53,6 @@ require (
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/mock v0.6.0
 	golang.org/x/oauth2 v0.30.0
-)
-
-require (
-	github.com/DIMO-Network/server-garage v0.0.7
-	github.com/DIMO-Network/tesla-go v0.1.0
-	github.com/DIMO-Network/tesla-oracle v0.3.1
-	github.com/DIMO-Network/token-exchange-api v0.3.7
-	github.com/DIMO-Network/vehicle-signal-decoding v0.10.17
-	github.com/customerio/cdp-analytics-go v0.0.0-20241122010508-c8b722f2b82c
-	github.com/gofiber/contrib/jwt v1.1.2
-	github.com/gofiber/swagger v1.1.1
-	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
-	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
-	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 )
 
 require (
