@@ -805,3 +805,24 @@ func (s *userDeviceRPCServer) DeleteUnMintedUserDevice(ctx context.Context, req 
 	log.Info().Msg("deleted unminted user device")
 	return &emptypb.Empty{}, nil
 }
+
+func (s *userDeviceRPCServer) GetVehicleByTokenIdFast(ctx context.Context, req *pb.GetVehicleByTokenIdFastRequest) (*pb.GetVehicleByTokenIdFastResponse, error) {
+	ud, err := models.UserDevices(
+		models.UserDeviceWhere.TokenID.EQ(types.NewNullDecimal(decimal.New(int64(req.TokenId), 0))),
+	).One(ctx, s.dbs().Reader)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, status.Error(codes.NotFound, "No known vehicle with that token id.")
+		}
+		return nil, fmt.Errorf("failed to find vehicle: %w", err)
+	}
+
+	vin := ""
+	if ud.VinConfirmed && ud.VinIdentifier.Valid {
+		vin = ud.VinIdentifier.String
+	}
+
+	return &pb.GetVehicleByTokenIdFastResponse{
+		Vin: vin,
+	}, nil
+}
