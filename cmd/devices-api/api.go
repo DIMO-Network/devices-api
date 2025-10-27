@@ -30,12 +30,12 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
 	"github.com/DIMO-Network/devices-api/internal/services/tmpcred"
 	pb "github.com/DIMO-Network/devices-api/pkg/grpc"
-	"github.com/DIMO-Network/server-garage/pkg/fibercommon/jwtmiddleware"
 	cip "github.com/DIMO-Network/shared/pkg/cipher"
 	"github.com/DIMO-Network/shared/pkg/db"
+	"github.com/DIMO-Network/shared/pkg/middleware/privilegetoken"
+	"github.com/DIMO-Network/shared/pkg/privileges"
 	"github.com/DIMO-Network/shared/pkg/redis"
 	pb_oracle "github.com/DIMO-Network/tesla-oracle/pkg/grpc"
-	"github.com/DIMO-Network/token-exchange-api/pkg/tokenclaims"
 	"github.com/IBM/sarama"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/ethereum/go-ethereum/common"
@@ -174,7 +174,9 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// webhooks, performs signature validation
 	v1.Post(constants.AutoPiWebhookPath, webhooksController.ProcessCommand)
 
-	privilegeAuth := jwtmiddleware.NewJWTMiddleware(settings.JwtKeySetURL)
+	privilegeAuth := jwtware.New(jwtware.Config{
+		JWKSetURLs: []string{settings.TokenExchangeJWTKeySetURL},
+	})
 
 	newNFTHost, err := url.ParseRequestURI(settings.NewNFTHost)
 	if err != nil {
@@ -190,24 +192,25 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 		return c.Redirect(newNFTHost.JoinPath("vehicle", strconv.Itoa(tokenID)).String(), fiber.StatusMovedPermanently)
 	})
 
-	tokenIDParam := "tokenID"
-	vPriv := app.Group("/v1/vehicle/:"+tokenIDParam, privilegeAuth)
+	vPriv := app.Group("/v1/vehicle/:tokenID", privilegeAuth)
+
+	privTokenWare := privilegetoken.New(privilegetoken.Config{Log: &logger})
 
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 
 	// vehicle command privileges
-	vPriv.Patch("/vin", jwtmiddleware.OneOfPermissions(vehicleAddr, tokenIDParam, []string{tokenclaims.PermissionExecuteCommands}), userDeviceController.UpdateVINV2)
-	vPriv.Post("/commands/doors/unlock", jwtmiddleware.OneOfPermissions(vehicleAddr, tokenIDParam, []string{tokenclaims.PermissionExecuteCommands}), nftController.UnlockDoors)
-	vPriv.Post("/commands/doors/lock", jwtmiddleware.OneOfPermissions(vehicleAddr, tokenIDParam, []string{tokenclaims.PermissionExecuteCommands}), nftController.LockDoors)
-	vPriv.Post("/commands/trunk/open", jwtmiddleware.OneOfPermissions(vehicleAddr, tokenIDParam, []string{tokenclaims.PermissionExecuteCommands}), nftController.OpenTrunk)
-	vPriv.Post("/commands/frunk/open", jwtmiddleware.OneOfPermissions(vehicleAddr, tokenIDParam, []string{tokenclaims.PermissionExecuteCommands}), nftController.OpenFrunk)
-	vPriv.Post("/commands/charge/start", jwtmiddleware.OneOfPermissions(vehicleAddr, tokenIDParam, []string{tokenclaims.PermissionExecuteCommands}), nftController.ChargeStart)
-	vPriv.Post("/commands/charge/stop", jwtmiddleware.OneOfPermissions(vehicleAddr, tokenIDParam, []string{tokenclaims.PermissionExecuteCommands}), nftController.ChargeStop)
+	vPriv.Patch("/vin", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), userDeviceController.UpdateVINV2)
+	vPriv.Post("/commands/doors/unlock", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.UnlockDoors)
+	vPriv.Post("/commands/doors/lock", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.LockDoors)
+	vPriv.Post("/commands/trunk/open", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.OpenTrunk)
+	vPriv.Post("/commands/frunk/open", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.OpenFrunk)
+	vPriv.Post("/commands/charge/start", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.ChargeStart)
+	vPriv.Post("/commands/charge/stop", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleCommands}), nftController.ChargeStop)
 
 	// Vehicle owner routes.
-	vPriv.Get("/error-codes", jwtmiddleware.OneOfPermissions(vehicleAddr, tokenIDParam, []string{tokenclaims.PermissionGetNonLocationHistory}), userDeviceController.GetUserDeviceErrorCodeQueriesByTokenID)
-	vPriv.Post("/error-codes", jwtmiddleware.OneOfPermissions(vehicleAddr, tokenIDParam, []string{tokenclaims.PermissionGetNonLocationHistory}), userDeviceController.QueryDeviceErrorCodesByTokenID)
-	vPriv.Post("/error-codes/clear", jwtmiddleware.OneOfPermissions(vehicleAddr, tokenIDParam, []string{tokenclaims.PermissionGetNonLocationHistory}), userDeviceController.ClearUserDeviceErrorCodeQueryByTokenID)
+	vPriv.Get("/error-codes", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleNonLocationData}), userDeviceController.GetUserDeviceErrorCodeQueriesByTokenID)
+	vPriv.Post("/error-codes", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleNonLocationData}), userDeviceController.QueryDeviceErrorCodesByTokenID)
+	vPriv.Post("/error-codes/clear", privTokenWare.OneOf(vehicleAddr, []privileges.Privilege{privileges.VehicleNonLocationData}), userDeviceController.ClearUserDeviceErrorCodeQueryByTokenID)
 
 	// Traditional tokens
 
