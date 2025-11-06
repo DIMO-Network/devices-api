@@ -34,8 +34,6 @@ type Settings struct {
 	DocumentsAWSAccessKeyID          string      `yaml:"DOCUMENTS_AWS_ACCESS_KEY_ID"`
 	DocumentsAWSSecretsAccessKey     string      `yaml:"DOCUMENTS_AWS_SECRET_ACCESS_KEY"`
 	DocumentsAWSEndpoint             string      `yaml:"DOCUMENTS_AWS_ENDPOINT"`
-	NFTAWSAccessKeyID                string      `yaml:"NFT_AWS_ACCESS_KEY_ID"`
-	NFTAWSSecretsAccessKey           string      `yaml:"NFT_AWS_SECRET_ACCESS_KEY"`
 	DefinitionsGRPCAddr              string      `yaml:"DEFINITIONS_GRPC_ADDR"`
 	DIMORegistryAddr                 string      `yaml:"DIMO_REGISTRY_ADDR"`
 	DIMORegistryChainID              int64       `yaml:"DIMO_REGISTRY_CHAIN_ID"`

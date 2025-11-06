@@ -17,7 +17,6 @@ import (
 	grpcfiber "github.com/DIMO-Network/shared/pkg/grpcfiber"
 	vinutil "github.com/DIMO-Network/shared/pkg/vin"
 	pb_oracle "github.com/DIMO-Network/tesla-oracle/pkg/grpc"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -32,7 +31,6 @@ import (
 type NFTController struct {
 	Settings         *config.Settings
 	DBS              func() *db.ReaderWriter
-	s3               *s3.Client
 	log              *zerolog.Logger
 	deviceDefSvc     services.DeviceDefinitionService
 	integSvc         services.DeviceDefinitionIntegrationService
@@ -41,7 +39,7 @@ type NFTController struct {
 }
 
 // NewNFTController constructor
-func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger, s3 *s3.Client,
+func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, logger *zerolog.Logger,
 	deviceDefSvc services.DeviceDefinitionService,
 	teslaTaskService services.TeslaTaskService,
 	integSvc services.DeviceDefinitionIntegrationService,
@@ -51,7 +49,6 @@ func NewNFTController(settings *config.Settings, dbs func() *db.ReaderWriter, lo
 		Settings:         settings,
 		DBS:              dbs,
 		log:              logger,
-		s3:               s3,
 		deviceDefSvc:     deviceDefSvc,
 		teslaTaskService: teslaTaskService,
 		integSvc:         integSvc,

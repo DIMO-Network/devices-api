@@ -94,7 +94,7 @@ func main() {
 		startMonitoringServer(logger, &settings)
 		startCredentialConsumer(logger, &settings, pdb)
 		startTaskStatusConsumer(logger, &settings, pdb)
-		startWebAPI(logger, &settings, pdb, deps.getKafkaProducer(), deps.getS3ServiceClient(ctx), deps.getS3NFTServiceClient(ctx))
+		startWebAPI(logger, &settings, pdb, deps.getKafkaProducer(), deps.getS3ServiceClient(ctx))
 	} else {
 		subcommands.Register(&migrateDBCmd{logger: logger, settings: settings}, "database")
 		subcommands.Register(&findOldStyleTasks{logger: logger, settings: settings, pdb: pdb}, "events")

@@ -52,7 +52,6 @@ env:
   AWS_REGION: us-east-2
   GRPC_PORT: 8086
   AWS_DOCUMENTS_BUCKET_NAME: dimo-network-documents-dev
-  NFT_S3_BUCKET: dimo-network-nfts-dev
   USERS_API_GRPC_ADDR: users-api-dev:8086
   VALUATIONS_GRPC_ADDR: valuations-api-dev:8086
   DIMO_REGISTRY_CHAIN_ID: 80002

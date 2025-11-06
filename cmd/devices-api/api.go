@@ -53,7 +53,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store, producer sarama.SyncProducer, s3ServiceClient *s3.Client, s3NFTServiceClient *s3.Client) {
+func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store, producer sarama.SyncProducer, s3ServiceClient *s3.Client) {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			return helpers.ErrorHandler(c, err, &logger, settings.IsProduction())
@@ -140,7 +140,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	// controllers
 	userDeviceController := controllers.NewUserDevicesController(settings, pdb.DBS, &logger, ddSvc, ddIntSvc,
 		teslaTaskService, teslaOracle, cipher, autoPiSvc, autoPiIngest,
-		producer, s3NFTServiceClient, redisCache, openAI,
+		producer, redisCache, openAI,
 		natsSvc, wallet, userDeviceSvc, teslaFleetAPISvc, ipfsSvc, chConn)
 	webhooksController := controllers.NewWebhooksController(settings, pdb.DBS, &logger, autoPiSvc, ddIntSvc)
 	documentsController := controllers.NewDocumentsController(settings, &logger, s3ServiceClient, pdb.DBS)
@@ -166,7 +166,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	v1.Get("/swagger/*", swagger.HandlerDefault)
 
 	// Device Definitions
-	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, s3NFTServiceClient, ddSvc, teslaTaskService, ddIntSvc, teslaOracle)
+	nftController := controllers.NewNFTController(settings, pdb.DBS, &logger, ddSvc, teslaTaskService, ddIntSvc, teslaOracle)
 
 	v1.Get("/countries", countriesController.GetSupportedCountries)
 	v1.Get("/countries/:countryCode", countriesController.GetCountry)
