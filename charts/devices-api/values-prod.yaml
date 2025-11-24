@@ -81,7 +81,7 @@ env:
   BLOCK_MINTING: false
   NEW_NFT_HOST: https://assets.dimo.xyz
 ingress:
-  enabled: true
+  enabled: false
   className: nginx
   annotations:
     nginx.ingress.kubernetes.io/auth-tls-secret: ingress/cf-origin-ca
