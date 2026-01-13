@@ -530,6 +530,39 @@ func (t *teslaFleetAPIService) GetTelemetrySubscriptionStatus(ctx context.Contex
 	}, nil
 }
 
+type TeslaOptionsResponse struct {
+	Codes []TeslaOptionCode `json:"codes"`
+}
+
+type TeslaOptionCode struct {
+	Code        string `json:"code"`
+	DisplayName string `json:"displayName"`
+	IsActive    bool   `json:"isActive"`
+}
+
+// GetOptions returns a list of option codes for the vehicle with the given VIN.
+// https://developer.tesla.com/docs/fleet-api/endpoints/vehicle-endpoints#options
+func (t *teslaFleetAPIService) GetOptions(ctx context.Context, token, vin string) ([]TeslaOptionCode, error) {
+	u := t.FleetBase.JoinPath("api/1/dx/vehicles/options")
+
+	q := u.Query()
+	q.Set("vin", vin)
+	u.RawQuery = q.Encode()
+
+	body, err := t.performRequest(ctx, u, token, http.MethodGet, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var optionsResp TeslaResponseWrapper[TeslaOptionsResponse]
+	err = json.Unmarshal(body, &optionsResp)
+	if err != nil {
+		return nil, err
+	}
+
+	return optionsResp.Response.Codes, nil
+}
+
 var ErrUnauthorized = errors.New("unauthorized")
 
 // performRequest a helper function for making http requests, it adds a timeout context and parses error response
