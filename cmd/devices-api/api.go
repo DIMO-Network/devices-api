@@ -24,7 +24,6 @@ import (
 	"github.com/DIMO-Network/devices-api/internal/rpc"
 	"github.com/DIMO-Network/devices-api/internal/services"
 	"github.com/DIMO-Network/devices-api/internal/services/autopi"
-	"github.com/DIMO-Network/devices-api/internal/services/genericad"
 	"github.com/DIMO-Network/devices-api/internal/services/integration"
 	"github.com/DIMO-Network/devices-api/internal/services/ipfs"
 	"github.com/DIMO-Network/devices-api/internal/services/registry"
@@ -105,7 +104,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	autoPiSvc := services.NewAutoPiAPIService(settings, pdb.DBS)
 	autoPiIngest := services.NewIngestRegistrar(producer)
 	hardwareTemplateService := autopi.NewHardwareTemplateService(autoPiSvc, pdb.DBS, &logger)
-	genericADIntegration := genericad.NewIntegration(pdb.DBS, ddSvc, autoPiIngest, &logger)
 	userDeviceSvc := services.NewUserDeviceService(ddSvc, logger, pdb.DBS)
 
 	openAI := services.NewOpenAI(&logger, *settings)
@@ -301,7 +299,6 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings, pdb db.Store,
 	}
 
 	ctx := context.Background()
-	startContractEventsConsumer(logger, settings, pdb, genericADIntegration, ddSvc, teslaTaskService)
 
 	store, err := registry.NewProcessor(pdb.DBS, &logger, settings, teslaTaskService, ddSvc)
 	if err != nil {
