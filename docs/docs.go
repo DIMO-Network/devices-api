@@ -15,59 +15,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/countries": {
-            "get": {
-                "description": "Returns all the supported countries",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "countries"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_constants.CountryInfo"
-                        }
-                    }
-                }
-            }
-        },
-        "/countries/{countryCode}": {
-            "get": {
-                "description": "Returns a specific country by 3-letter ISO country code",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "countries"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "3-letter country code",
-                        "name": "countryCode",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_devices-api_internal_constants.CountryInfo"
-                        }
-                    },
-                    "400": {
-                        "description": "invalid country code"
-                    },
-                    "404": {
-                        "description": "country not found with that country code"
-                    }
-                }
-            }
-        },
         "/documents": {
             "get": {
                 "security": [
@@ -1292,35 +1239,6 @@ const docTemplate = `{
         },
         "big.Int": {
             "type": "object"
-        },
-        "github_com_DIMO-Network_devices-api_internal_constants.CountryInfo": {
-            "type": "object",
-            "properties": {
-                "alpha_2": {
-                    "type": "string"
-                },
-                "alpha_3": {
-                    "type": "string"
-                },
-                "lora_region": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "region": {
-                    "type": "string"
-                },
-                "region_code": {
-                    "type": "integer"
-                },
-                "sub_region": {
-                    "type": "string"
-                },
-                "sub_region_code": {
-                    "type": "integer"
-                }
-            }
         },
         "github_com_DIMO-Network_devices-api_internal_controllers_helpers.ErrorRes": {
             "type": "object",
