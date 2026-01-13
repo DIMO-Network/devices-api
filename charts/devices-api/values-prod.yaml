@@ -1,8 +1,8 @@
-replicaCount: 2
+replicaCount: 1
 image:
   repository: dimozone/devices-api
   pullPolicy: IfNotPresent
-  tag: 1.41.6
+  tag: 1.42.0
 cronJob:
   enabled: false
   schedule: 0 0 1 * *
@@ -29,7 +29,6 @@ env:
   VALUATIONS_GRPC_ADDR: valuations-api-prod:8086
   AWS_DOCUMENTS_BUCKET_NAME: dimo-network-documents-prod
   DIMO_REGISTRY_CHAIN_ID: 137
-  NFT_S3_BUCKET: dimo-network-nfts-prod
   DEFINITIONS_GRPC_ADDR: device-definitions-api-prod:8086
   DIMO_REGISTRY_ADDR: '0xFA8beC73cebB9D88FF88a2f75E7D7312f2Fd39EC'
   TOKEN_EXCHANGE_JWK_KEY_SET_URL: http://dex-roles-rights-prod.prod.svc.cluster.local:5556/keys
@@ -82,7 +81,7 @@ env:
   BLOCK_MINTING: false
   NEW_NFT_HOST: https://assets.dimo.xyz
 ingress:
-  enabled: true
+  enabled: false
   className: nginx
   annotations:
     nginx.ingress.kubernetes.io/auth-tls-secret: ingress/cf-origin-ca

@@ -37,6 +37,17 @@ service UserDeviceService {
   rpc DeleteVehicle(DeleteVehicleRequest) returns (google.protobuf.Empty);
   // used by dimo admin to delete unminted user_device records
   rpc DeleteUnMintedUserDevice(DeleteUnMintedUserDeviceRequest) returns (google.protobuf.Empty);
+
+  rpc GetVehicleByTokenIdFast(GetVehicleByTokenIdFastRequest)
+    returns (GetVehicleByTokenIdFastResponse);
+}
+
+message GetVehicleByTokenIdFastRequest {
+  uint32 token_id = 1;
+}
+
+message GetVehicleByTokenIdFastResponse {
+  string vin = 1;
 }
 
 message GetUserDeviceByAutoPIUnitIdRequest { string id = 1; }

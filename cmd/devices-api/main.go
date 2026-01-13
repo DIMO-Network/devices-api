@@ -94,7 +94,7 @@ func main() {
 		startMonitoringServer(logger, &settings)
 		startCredentialConsumer(logger, &settings, pdb)
 		startTaskStatusConsumer(logger, &settings, pdb)
-		startWebAPI(logger, &settings, pdb, deps.getKafkaProducer(), deps.getS3ServiceClient(ctx), deps.getS3NFTServiceClient(ctx))
+		startWebAPI(logger, &settings, pdb, deps.getKafkaProducer(), deps.getS3ServiceClient(ctx))
 	} else {
 		subcommands.Register(&migrateDBCmd{logger: logger, settings: settings}, "database")
 		subcommands.Register(&findOldStyleTasks{logger: logger, settings: settings, pdb: pdb}, "events")
@@ -225,15 +225,6 @@ func startTaskStatusConsumer(logger zerolog.Logger, settings *config.Settings, p
 	consumer.Start(context.Background(), taskStatusService.ProcessTaskUpdates)
 
 	logger.Info().Msg("Task status consumer started")
-}
-
-func startContractEventsConsumer(logger zerolog.Logger, settings *config.Settings, pdb db.Store, genericADInteg services.Integration, ddSvc services.DeviceDefinitionService, teslaTask services.TeslaTaskService) {
-	cevConsumer := services.NewContractsEventsConsumer(pdb, &logger, settings, genericADInteg, ddSvc, teslaTask)
-	if err := cevConsumer.RunConsumer(); err != nil {
-		logger.Fatal().Err(err).Msg("error occurred processing contract events")
-	}
-
-	logger.Info().Msg("Contracts events consumer started")
 }
 
 func startMonitoringServer(logger zerolog.Logger, config *config.Settings) {

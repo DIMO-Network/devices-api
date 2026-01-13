@@ -32,7 +32,6 @@ import (
 	"github.com/DIMO-Network/shared/pkg/redis"
 	pb_oracle "github.com/DIMO-Network/tesla-oracle/pkg/grpc"
 	"github.com/IBM/sarama"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/ericlagergren/decimal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -73,7 +72,6 @@ type UserDevicesController struct {
 	cipher                cipher.Cipher
 	autoPiSvc             services.AutoPiAPIService
 	autoPiIngestRegistrar services.IngestRegistrar
-	s3                    *s3.Client
 	producer              sarama.SyncProducer
 	redisCache            redis.CacheService
 	openAI                services.OpenAI
@@ -125,7 +123,6 @@ func NewUserDevicesController(settings *config.Settings,
 	autoPiSvc services.AutoPiAPIService,
 	autoPiIngestRegistrar services.IngestRegistrar,
 	producer sarama.SyncProducer,
-	s3NFTClient *s3.Client,
 	cache redis.CacheService,
 	openAI services.OpenAI,
 	natsSvc *services.NATSService,
@@ -152,7 +149,6 @@ func NewUserDevicesController(settings *config.Settings,
 		cipher:                cipher,
 		autoPiSvc:             autoPiSvc,
 		autoPiIngestRegistrar: autoPiIngestRegistrar,
-		s3:                    s3NFTClient,
 		producer:              producer,
 		redisCache:            cache,
 		openAI:                openAI,

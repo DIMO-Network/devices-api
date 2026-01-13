@@ -16,13 +16,12 @@ import (
 
 // dependencyContainer way to hold different dependencies we need for our app. We could put all our deps and follow this pattern for everything.
 type dependencyContainer struct {
-	kafkaProducer      sarama.SyncProducer
-	settings           *config.Settings
-	logger             *zerolog.Logger
-	s3ServiceClient    *s3.Client
-	s3NFTServiceClient *s3.Client
-	ddSvc              services.DeviceDefinitionService
-	dbs                func() *db.ReaderWriter
+	kafkaProducer   sarama.SyncProducer
+	settings        *config.Settings
+	logger          *zerolog.Logger
+	s3ServiceClient *s3.Client
+	ddSvc           services.DeviceDefinitionService
+	dbs             func() *db.ReaderWriter
 }
 
 func newDependencyContainer(settings *config.Settings, logger zerolog.Logger, dbs func() *db.ReaderWriter) dependencyContainer {
@@ -65,27 +64,6 @@ func (dc *dependencyContainer) getS3ServiceClient(ctx context.Context) *s3.Clien
 		})
 	}
 	return dc.s3ServiceClient
-}
-
-func (dc *dependencyContainer) getS3NFTServiceClient(ctx context.Context) *s3.Client {
-	if dc.s3NFTServiceClient == nil {
-
-		cfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(dc.settings.AWSRegion))
-		if err != nil {
-			dc.logger.Fatal().Err(err).Msg("Could not load aws config, terminating")
-		}
-
-		dc.s3NFTServiceClient = s3.NewFromConfig(cfg, func(o *s3.Options) {
-			o.Region = dc.settings.AWSRegion
-			o.Credentials = credentials.NewStaticCredentialsProvider(dc.settings.NFTAWSAccessKeyID, dc.settings.NFTAWSSecretsAccessKey, "")
-
-			if dc.settings.DocumentsAWSEndpoint != "" {
-				o.BaseEndpoint = &dc.settings.DocumentsAWSEndpoint
-				o.UsePathStyle = true
-			}
-		})
-	}
-	return dc.s3NFTServiceClient
 }
 
 func (dc *dependencyContainer) getDeviceDefinitionService() services.DeviceDefinitionService {
