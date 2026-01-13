@@ -99,7 +99,7 @@ func (s *UserIntegrationsControllerTestSuite) SetupSuite() {
 
 	logger := test.Logger()
 	c := NewUserDevicesController(&config.Settings{Port: "3000"}, s.pdb.DBS, logger, s.deviceDefSvc, s.deviceDefIntSvc, s.teslaTaskService, nil, s.cipher, s.autopiAPISvc,
-		s.autoPiIngest, nil, nil, s.redisClient, nil, s.natsSvc, nil, s.userDeviceSvc,
+		s.autoPiIngest, nil, s.redisClient, nil, s.natsSvc, nil, s.userDeviceSvc,
 		s.teslaFleetAPISvc, nil, nil)
 
 	app := test.SetupAppFiber(*logger)
